@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 25% 98%;
+    --foreground: 222 32% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 32% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 32% 12%;
+
+    --primary: 191 79% 44%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 191 55% 94%;
+    --secondary-foreground: 195 60% 22%;
+
+    --muted: 212 22% 95%;
+    --muted-foreground: 215 16% 46%;
+
+    --accent: 210 25% 94%;
+    --accent-foreground: 222 32% 14%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 106 50% 42%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 26 83% 14%;
+
+    --border: 214 20% 89%;
+    --input: 214 20% 89%;
+    --ring: 191 79% 44%;
+
+    --radius: 0.85rem;
+
+    /* Sidebar keeps a constant deep navy-indigo identity in both themes */
+    --sidebar: 231 46% 14%;
+    --sidebar-foreground: 220 35% 96%;
+    --sidebar-accent: 245 75% 62%;
+    --sidebar-border: 231 35% 24%;
+  }
+
+  .dark {
+    --background: 222 30% 8%;
+    --foreground: 210 25% 96%;
+
+    --card: 222 26% 11%;
+    --card-foreground: 210 25% 96%;
+
+    --popover: 222 26% 11%;
+    --popover-foreground: 210 25% 96%;
+
+    --primary: 191 85% 55%;
+    --primary-foreground: 222 30% 8%;
+
+    --secondary: 222 22% 16%;
+    --secondary-foreground: 191 60% 85%;
+
+    --muted: 222 20% 16%;
+    --muted-foreground: 215 16% 65%;
+
+    --accent: 222 20% 18%;
+    --accent-foreground: 210 25% 96%;
+
+    --destructive: 0 70% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 106 45% 55%;
+    --success-foreground: 222 30% 10%;
+
+    --warning: 38 92% 58%;
+    --warning-foreground: 26 83% 12%;
+
+    --border: 222 20% 20%;
+    --input: 222 20% 20%;
+    --ring: 191 85% 55%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Baloo 2", "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
