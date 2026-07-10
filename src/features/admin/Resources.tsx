@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookOpen, ClipboardList, Upload, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/dialog";
 import { RESOURCES } from "@/data/resources";
 import { BATCHES } from "@/data/batches";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listResources, toFrontendResource, uploadResource, type ApiResourceType } from "@/api/resources";
 import type { Resource } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -28,12 +31,45 @@ const TYPE_META: Record<Resource["type"], { icon: typeof BookOpen; color: string
   recording: { icon: Video, color: CHART_PALETTE[4], label: "Recording" },
 };
 
+/** The dialog has no explicit type field yet; infer worksheet vs. other from the file. */
+function inferResourceType(file: File): ApiResourceType {
+  if (file.type.startsWith("video/")) return "Other";
+  if (file.type === "application/epub+zip") return "ReadingBook";
+  return "Worksheet";
+}
+
 export default function AdminResources() {
+  const { data: apiResources, reload } = useApiData(
+    () => listResources().then((items) => items.map(toFrontendResource)),
+    RESOURCES
+  );
+  // Access toggles stay client-side until per-resource flags land in the API
   const [resources, setResources] = useState<Resource[]>(RESOURCES);
+  useEffect(() => setResources(apiResources), [apiResources]);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadCourse, setUploadCourse] = useState<Resource["courseCategory"]>("Phonics");
   const [uploadBatch, setUploadBatch] = useState<string>(BATCHES[0].id);
-  const [pendingFile, setPendingFile] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  function handleUpload() {
+    if (!apiEnabled() || !pendingFile) {
+      setUploadOpen(false);
+      return;
+    }
+    setUploading(true);
+    uploadResource(pendingFile, {
+      title: pendingFile.name.replace(/\.[^.]+$/, ""),
+      type: inferResourceType(pendingFile),
+      isDownloadable: inferResourceType(pendingFile) === "Worksheet",
+    })
+      .then(() => {
+        reload();
+        setUploadOpen(false);
+        setPendingFile(null);
+      })
+      .finally(() => setUploading(false));
+  }
 
   function toggleField(id: string, field: "downloadable" | "visibleToParents") {
     setResources((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: !r[field] } : r)));
@@ -132,13 +168,16 @@ export default function AdminResources() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Upload Resource</DialogTitle>
-            <DialogDescription>Add a book, worksheet or recording to the content library. This is a mock upload — no file is transferred.</DialogDescription>
+            <DialogDescription>
+              Add a book, worksheet or recording to the content library.
+              {!apiEnabled() && " This is a mock upload — no file is transferred."}
+            </DialogDescription>
           </DialogHeader>
 
           <FileDropzone
             label="Drag & drop a file or click to browse"
             hint="PDF, DOCX, MP4 up to 50MB"
-            onFile={(file) => setPendingFile(file.name)}
+            onFile={(file) => setPendingFile(file)}
           />
 
           <div className="grid grid-cols-2 gap-4">
@@ -178,8 +217,8 @@ export default function AdminResources() {
             <Button variant="outline" onClick={() => setUploadOpen(false)}>
               Cancel
             </Button>
-            <Button disabled={!pendingFile} onClick={() => setUploadOpen(false)}>
-              Upload
+            <Button disabled={!pendingFile || uploading} onClick={handleUpload}>
+              {uploading ? "Uploading…" : "Upload"}
             </Button>
           </DialogFooter>
         </DialogContent>

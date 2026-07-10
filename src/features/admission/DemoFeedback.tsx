@@ -7,11 +7,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DEMO_FEEDBACKS } from "@/data/feedback";
+import { useApiData } from "@/api/hooks";
+import { listDemoBookings, listDemoFeedback, toAwaitingFeedback, toFrontendFeedback } from "@/api/demoBookings";
 import { formatDate, formatNumber } from "@/lib/utils";
 
 export default function AdmissionDemoFeedback() {
-  const submitted = DEMO_FEEDBACKS.filter((f) => f.submitted);
-  const pending = DEMO_FEEDBACKS.filter((f) => !f.submitted);
+  const { data: feedbacks } = useApiData(
+    () =>
+      Promise.all([listDemoFeedback(), listDemoBookings("DemoScheduled")]).then(
+        ([submittedItems, awaitingBookings]) => [
+          ...submittedItems.map(toFrontendFeedback),
+          ...awaitingBookings.map(toAwaitingFeedback),
+        ]
+      ),
+    DEMO_FEEDBACKS
+  );
+  const submitted = feedbacks.filter((f) => f.submitted);
+  const pending = feedbacks.filter((f) => !f.submitted);
 
   return (
     <div>
@@ -22,7 +34,7 @@ export default function AdmissionDemoFeedback() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Total Demo Feedback" value={formatNumber(DEMO_FEEDBACKS.length)} icon={Users2} tone="primary" />
+        <KpiCard label="Total Demo Feedback" value={formatNumber(feedbacks.length)} icon={Users2} tone="primary" />
         <KpiCard label="Submitted" value={formatNumber(submitted.length)} icon={ClipboardCheck} tone="success" />
         <KpiCard label="Awaiting Teacher" value={formatNumber(pending.length)} icon={Hourglass} tone="warning" />
       </div>

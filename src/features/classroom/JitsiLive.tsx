@@ -14,6 +14,7 @@ declare global {
     JitsiMeetExternalAPI?: new (domain: string, options: Record<string, unknown>) => {
       dispose: () => void;
       addListener: (event: string, listener: () => void) => void;
+      executeCommand: (command: string, ...args: unknown[]) => void;
     };
   }
 }
@@ -53,7 +54,13 @@ export default function JitsiLive({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let api: { dispose: () => void; addListener: (event: string, listener: () => void) => void } | undefined;
+    let api:
+      | {
+          dispose: () => void;
+          addListener: (event: string, listener: () => void) => void;
+          executeCommand: (command: string, ...args: unknown[]) => void;
+        }
+      | undefined;
     let cancelled = false;
 
     loadJitsiScript()
@@ -76,6 +83,13 @@ export default function JitsiLive({
           },
         });
         api.addListener("readyToClose", () => navigate(-1));
+        if (mode === "teacher") {
+          // Auto session recording: starts when the host joins; requires Jibri
+          // on the Jitsi deployment (no-op on deployments without it).
+          api.addListener("videoConferenceJoined", () => {
+            api?.executeCommand("startRecording", { mode: "file" });
+          });
+        }
       })
       .catch((err: Error) => setError(err.message));
 

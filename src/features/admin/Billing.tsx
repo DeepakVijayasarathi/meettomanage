@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { INVOICES } from "@/data/invoices";
 import { getParentById } from "@/data/users";
+import { useApiData } from "@/api/hooks";
+import { listInvoices, toFrontendInvoice } from "@/api/billing";
 import type { Invoice } from "@/types";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -26,7 +28,10 @@ const DEPARTMENT_COLOR: Record<Invoice["department"], string> = {
 };
 
 export default function AdminBilling() {
-  const [invoices] = useState<Invoice[]>(INVOICES);
+  const { data: invoices } = useApiData(
+    () => listInvoices().then((items) => items.map(toFrontendInvoice)),
+    INVOICES
+  );
   const [detail, setDetail] = useState<Invoice | null>(null);
   const [downloaded, setDownloaded] = useState(false);
 

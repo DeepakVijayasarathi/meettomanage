@@ -18,13 +18,38 @@ import {
 } from "@/components/ui/dialog";
 import { PAYOUTS } from "@/data/payouts";
 import { getTeacherById } from "@/data/users";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listPayouts, savePayoutRate, toFrontendPayout } from "@/api/payouts";
 import type { TeacherPayout } from "@/types";
 import { formatCurrency, formatNumber, getInitials } from "@/lib/utils";
 
 export default function AdminPayouts() {
-  const [payouts] = useState<TeacherPayout[]>(PAYOUTS);
+  const { data: payouts } = useApiData(
+    () => listPayouts().then((items) => items.map(toFrontendPayout)),
+    PAYOUTS
+  );
   const [rateTarget, setRateTarget] = useState<TeacherPayout | null>(null);
   const [rateSaved, setRateSaved] = useState(false);
+  const [rates, setRates] = useState<Record<30 | 45 | 60, number>>({ 30: 900, 45: 1100, 60: 1400 });
+
+  function handleSaveRates() {
+    if (!apiEnabled() || !rateTarget) {
+      setRateSaved(true);
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    Promise.all(
+      ([30, 45, 60] as const).map((duration) =>
+        savePayoutRate({
+          teacherProfileId: rateTarget.teacherId,
+          durationMinutes: duration,
+          ratePerSession: rates[duration],
+          effectiveFrom: today,
+        })
+      )
+    ).then(() => setRateSaved(true));
+  }
 
   const totals = useMemo(() => {
     const thisMonth = payouts.filter((p) => p.month === "July 2026");
@@ -167,27 +192,29 @@ export default function AdminPayouts() {
             <>
               <DialogHeader>
                 <DialogTitle>Configure Rate — {rateTarget.teacherName}</DialogTitle>
-                <DialogDescription>Set per-session payout rates by class duration. This is a mock form — no data is persisted.</DialogDescription>
+                <DialogDescription>
+                  Set per-session payout rates by class duration.
+                  {!apiEnabled() && " This is a mock form — no data is persisted."}
+                </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="rate-30">30-minute session rate (₹)</Label>
-                  <Input id="rate-30" type="number" defaultValue={900} />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="rate-45">45-minute session rate (₹)</Label>
-                  <Input id="rate-45" type="number" defaultValue={1100} />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="rate-60">60-minute session rate (₹)</Label>
-                  <Input id="rate-60" type="number" defaultValue={1400} />
-                </div>
+                {([30, 45, 60] as const).map((duration) => (
+                  <div key={duration} className="grid gap-1.5">
+                    <Label htmlFor={`rate-${duration}`}>{duration}-minute session rate (₹)</Label>
+                    <Input
+                      id={`rate-${duration}`}
+                      type="number"
+                      value={rates[duration]}
+                      onChange={(e) => setRates((prev) => ({ ...prev, [duration]: Number(e.target.value) }))}
+                    />
+                  </div>
+                ))}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setRateTarget(null)}>
                   Cancel
                 </Button>
-                <Button onClick={() => setRateSaved(true)}>
+                <Button onClick={handleSaveRates}>
                   {rateSaved ? <CheckCircle2 className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
                   {rateSaved ? "Rates Saved" : "Save Rates"}
                 </Button>

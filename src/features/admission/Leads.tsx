@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Mail, MessageSquarePlus, Phone, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -21,6 +21,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate, getInitials } from "@/lib/utils";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listDemoBookings, toApiConversionStatus, toFrontendLead, updateConversionStatus } from "@/api/demoBookings";
 import { LEADS as INITIAL_LEADS, type ConversionStage, type Lead } from "./data";
 
 const STAGE_OPTIONS: { value: ConversionStage | "all"; label: string }[] = [
@@ -41,7 +44,12 @@ const STAGE_BADGE: Record<ConversionStage, BadgeProps["variant"]> = {
 };
 
 export default function AdmissionLeads() {
+  const { data: apiLeads, reload } = useApiData(
+    () => listDemoBookings().then((bookings) => bookings.map(toFrontendLead)),
+    INITIAL_LEADS
+  );
   const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS);
+  useEffect(() => setLeads(apiLeads), [apiLeads]);
   const [stageFilter, setStageFilter] = useState<ConversionStage | "all">("all");
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
   const [noteText, setNoteText] = useState("");
@@ -61,6 +69,21 @@ export default function AdmissionLeads() {
 
   function handleLogFollowUp() {
     if (!activeLead || !noteText.trim()) return;
+
+    if (apiEnabled()) {
+      // The API keeps one running notes field per booking; append and persist
+      const combined = [...activeLead.notes.map((n) => n.note), noteText.trim()].join("\n");
+      updateConversionStatus(activeLead.id, toApiConversionStatus(activeLead.conversionStage), combined)
+        .then(() => {
+          reload();
+          setJustLogged(activeLead.childName);
+          setTimeout(() => setJustLogged(null), 4000);
+        })
+        .catch(() => setJustLogged(null));
+      setActiveLead(null);
+      return;
+    }
+
     const today = "2026-07-09";
     const newNote = {
       id: `n-${Math.random().toString(36).slice(2, 9)}`,

@@ -18,6 +18,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DEMO_FEEDBACKS } from "@/data/feedback";
 import { COURSES } from "@/data/courses";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listCourses } from "@/api/courses";
+import {
+  listMyDemoBookings,
+  listMyDemoFeedback,
+  submitDemoFeedback,
+  toAwaitingFeedback,
+  toFrontendFeedback,
+} from "@/api/demoBookings";
 import { cn, formatDate } from "@/lib/utils";
 import type { CourseType, DemoFeedback } from "@/types";
 
@@ -41,8 +51,24 @@ const EMPTY_FORM: FormState = {
   remarks: "",
 };
 
+const MOCK_FEEDBACKS = DEMO_FEEDBACKS.filter((f) => f.teacherName === TEACHER_NAME);
+const MOCK_COURSE_OPTIONS = COURSES.filter((c) => c.type !== "demo").map((c) => ({ id: c.id, name: c.name }));
+
 export default function TeacherDemoFeedback() {
-  const [feedbacks, setFeedbacks] = useState<DemoFeedback[]>(() => DEMO_FEEDBACKS.filter((f) => f.teacherName === TEACHER_NAME));
+  const { data: apiFeedbacks, reload } = useApiData(
+    () =>
+      Promise.all([listMyDemoBookings(), listMyDemoFeedback()]).then(([bookings, submittedItems]) => [
+        ...bookings.filter((b) => b.conversionStatus === "DemoScheduled").map(toAwaitingFeedback),
+        ...submittedItems.map(toFrontendFeedback),
+      ]),
+    MOCK_FEEDBACKS
+  );
+  const { data: courseOptions } = useApiData(
+    () => listCourses().then((courses) => courses.map((c) => ({ id: c.id, name: c.name }))),
+    MOCK_COURSE_OPTIONS
+  );
+  const [feedbacks, setFeedbacks] = useState<DemoFeedback[]>(MOCK_FEEDBACKS);
+  useEffect(() => setFeedbacks(apiFeedbacks), [apiFeedbacks]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [justSubmitted, setJustSubmitted] = useState<string | null>(null);
@@ -77,6 +103,25 @@ export default function TeacherDemoFeedback() {
 
   function handleSubmit() {
     if (!active || !isValid) return;
+
+    if (apiEnabled()) {
+      // The pending card's id is the demo booking id
+      submitDemoFeedback(active.id, {
+        academicLevel: form.academicLevel.trim(),
+        strengths: form.strengths.trim(),
+        improvementAreas: form.improvementAreas.trim(),
+        recommendedCourseId: courseOptions.find((c) => c.name === form.recommendedCourse)?.id,
+        suggestedBatchType: form.suggestedBatchType === "1:1" ? "Individual" : "Group",
+        remarks: form.remarks.trim() || undefined,
+      }).then(() => {
+        reload();
+        setJustSubmitted(active.childName);
+      });
+      setActiveId(null);
+      setForm(EMPTY_FORM);
+      return;
+    }
+
     setFeedbacks((prev) => prev.map((f) => (f.id === active.id ? { ...f, ...form, submitted: true } : f)));
     setJustSubmitted(active.childName);
     setActiveId(null);
@@ -241,7 +286,7 @@ export default function TeacherDemoFeedback() {
                         <SelectValue placeholder="Select a course" />
                       </SelectTrigger>
                       <SelectContent>
-                        {COURSES.filter((c) => c.type !== "demo").map((c) => (
+                        {courseOptions.map((c) => (
                           <SelectItem key={c.id} value={c.name}>
                             {c.name}
                           </SelectItem>

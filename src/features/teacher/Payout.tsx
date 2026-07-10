@@ -6,6 +6,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
 import { getPayoutsForTeacher } from "@/data/payouts";
+import { useApiData } from "@/api/hooks";
+import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { TeacherPayout } from "@/types";
 
@@ -16,7 +18,11 @@ function parseMonth(month: string) {
 }
 
 export default function TeacherPayout() {
-  const payouts = [...getPayoutsForTeacher(TEACHER_ID)].sort((a, b) => parseMonth(b.month).getTime() - parseMonth(a.month).getTime());
+  const { data: fetchedPayouts } = useApiData(
+    () => listMyPayouts().then((items) => items.map(toFrontendPayout)),
+    getPayoutsForTeacher(TEACHER_ID)
+  );
+  const payouts = [...fetchedPayouts].sort((a, b) => parseMonth(b.month).getTime() - parseMonth(a.month).getTime());
   const latest = payouts[0];
   const lifetimeTotal = payouts.reduce((sum, p) => sum + p.finalAmount, 0);
   const lifetimeSessions = payouts.reduce((sum, p) => sum + p.sessionsCompleted, 0);
