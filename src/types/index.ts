@@ -95,6 +95,8 @@ export interface ClassSession {
   type: CourseType;
   recordingAvailable?: boolean;
   recordingExpiresOn?: string;
+  /** Jitsi room id from the backend; present only on API-backed sessions. */
+  meetingRoomId?: string;
 }
 
 export interface Invoice {

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { apiEnabled } from "@/lib/api";
+import JitsiLive from "./JitsiLive";
 import { HelpCircle, LogOut, MessageSquare, PanelRightClose, PanelRightOpen, Sparkles, Users } from "lucide-react";
 import { SESSIONS } from "@/data/sessions";
 import type { ChatMessage, Participant } from "@/types";
@@ -31,6 +33,19 @@ function formatElapsed(totalSeconds: number) {
 }
 
 export default function LiveClassroom({ mode }: { mode: "teacher" | "student" }) {
+  const location = useLocation();
+
+  // Real sessions launched from an API-backed dashboard carry their Jitsi room
+  // via route state; the interactive mock stays for demo mode and design work.
+  const launch = location.state as { room?: string; title?: string } | null;
+  if (apiEnabled() && launch?.room) {
+    return <JitsiLive room={launch.room} title={launch.title} mode={mode} />;
+  }
+
+  return <MockLiveClassroom mode={mode} />;
+}
+
+function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
   const { sessionId } = useParams();
   const navigate = useNavigate();
 

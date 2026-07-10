@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowRight, Eye, EyeOff, Lock, Mail, Sparkles, Video, CalendarCheck2, Wallet } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, Sparkles, Video, CalendarCheck2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useSession } from "@/state/session";
+import { apiEnabled } from "@/lib/api";
+import { login } from "@/api/auth";
+import { toFrontendRole } from "@/api/types";
 import type { Role } from "@/types";
 
 // Colour-matched to the logo's own cast: the blue boy, the pink girl, the green nest.
@@ -31,13 +34,36 @@ function GoogleIcon() {
 export default function Login() {
   const [role, setRole] = useState<Role>("admin");
   const [showPassword, setShowPassword] = useState(false);
-  const { setRole: setSessionRole } = useSession();
+  const [email, setEmail] = useState(apiEnabled() ? "" : "demo@readernest.com");
+  const [password, setPassword] = useState(apiEnabled() ? "" : "demo-password");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { setRole: setSessionRole, setUserName } = useSession();
   const navigate = useNavigate();
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSessionRole(role);
-    navigate(ROLE_META[role].homePath);
+
+    // Demo mode: no backend configured, enter as the selected preview role
+    if (!apiEnabled()) {
+      setSessionRole(role);
+      navigate(ROLE_META[role].homePath);
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response = await login(email, password);
+      const frontendRole = toFrontendRole(response.user.role);
+      setSessionRole(frontendRole);
+      setUserName(response.user.fullName);
+      navigate(ROLE_META[frontendRole].homePath);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -111,7 +137,15 @@ export default function Login() {
               </Label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-ink/35" />
-                <Input id="email" type="email" placeholder="you@readernest.com" defaultValue="demo@readernest.com" className="h-11 pl-9" required />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@readernest.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-11 pl-9"
+                  required
+                />
               </div>
             </div>
 
@@ -125,7 +159,8 @@ export default function Login() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  defaultValue="demo-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="h-11 pl-9 pr-9"
                   required
                 />
@@ -139,26 +174,35 @@ export default function Login() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="portal" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/50">
-                <Sparkles className="h-3 w-3 text-brand-amber" /> Preview as (demo)
-              </Label>
-              <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-                <SelectTrigger id="portal" className="h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLE_ORDER.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      <span className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ROLE_META[r].hex }} />
-                        {ROLE_META[r].label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!apiEnabled() && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="portal" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/50">
+                  <Sparkles className="h-3 w-3 text-brand-amber" /> Preview as (demo)
+                </Label>
+                <Select value={role} onValueChange={(v) => setRole(v as Role)}>
+                  <SelectTrigger id="portal" className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLE_ORDER.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        <span className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ROLE_META[r].hex }} />
+                          {ROLE_META[r].label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {error && (
+              <p className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                {error}
+              </p>
+            )}
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm font-medium text-brand-ink/70">
@@ -170,9 +214,26 @@ export default function Login() {
               </Link>
             </div>
 
-            <Button type="submit" size="lg" className="mt-1 w-full !bg-brand-green !text-white hover:!bg-brand-greenDark">
-              Sign in to {ROLE_META[role].shortLabel}
-              <ArrowRight className="h-4 w-4" />
+            <Button
+              type="submit"
+              size="lg"
+              disabled={submitting}
+              className="mt-1 w-full !bg-brand-green !text-white hover:!bg-brand-greenDark"
+            >
+              {submitting ? (
+                <>
+                  Signing in… <Loader2 className="h-4 w-4 animate-spin" />
+                </>
+              ) : apiEnabled() ? (
+                <>
+                  Sign in <ArrowRight className="h-4 w-4" />
+                </>
+              ) : (
+                <>
+                  Sign in to {ROLE_META[role].shortLabel}
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </Button>
           </form>
 
@@ -183,9 +244,11 @@ export default function Login() {
             </Link>
           </p>
 
-          <p className="mt-6 text-center text-xs text-brand-ink/40">
-            This is a demo build with mock data — no credentials are verified.
-          </p>
+          {!apiEnabled() && (
+            <p className="mt-6 text-center text-xs text-brand-ink/40">
+              This is a demo build with mock data — no credentials are verified.
+            </p>
+          )}
         </div>
       </div>
     </div>

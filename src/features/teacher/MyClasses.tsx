@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { CalendarClock, List, Users } from "lucide-react";
+import { useApiData } from "@/api/hooks";
+import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -48,15 +50,27 @@ function isJoinable(status: SessionStatus) {
 }
 
 export default function TeacherMyClasses() {
+  const navigate = useNavigate();
+  const { data: mySessions } = useApiData(
+    () => listMySessions().then((sessions) => sessions.map(toFrontendSession)),
+    getSessionsForTeacher(TEACHER_ID)
+  );
   const allSessions = useMemo(
     () =>
-      [...getSessionsForTeacher(TEACHER_ID)].sort((a, b) =>
+      [...mySessions].sort((a, b) =>
         a.date === b.date ? a.startTime.localeCompare(b.startTime) : a.date.localeCompare(b.date)
       ),
-    []
+    [mySessions]
   );
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<ClassSession | null>(null);
+
+  // Real sessions launch straight into the Jitsi room; mock sessions open the demo classroom
+  function startClass(session: ClassSession) {
+    navigate(`/teacher/live/${session.id}`, {
+      state: session.meetingRoomId ? { room: session.meetingRoomId, title: session.title } : undefined,
+    });
+  }
 
   const filtered = statusFilter === "all" ? allSessions : allSessions.filter((s) => s.status === statusFilter);
 
@@ -104,8 +118,8 @@ export default function TeacherMyClasses() {
       header: "Action",
       render: (row) =>
         isJoinable(row.status) ? (
-          <Button asChild size="sm">
-            <Link to={`/teacher/live/${row.id}`}>{row.status === "demo" ? "Start Demo" : "Start Class"}</Link>
+          <Button size="sm" onClick={(e) => { e.stopPropagation(); startClass(row); }}>
+            {row.status === "demo" ? "Start Demo" : "Start Class"}
           </Button>
         ) : row.status === "completed" ? (
           <Button asChild size="sm" variant="outline">
@@ -197,8 +211,8 @@ export default function TeacherMyClasses() {
                   Close
                 </Button>
                 {isJoinable(selected.status) && (
-                  <Button asChild>
-                    <Link to={`/teacher/live/${selected.id}`}>{selected.status === "demo" ? "Start Demo" : "Start Class"}</Link>
+                  <Button onClick={() => startClass(selected)}>
+                    {selected.status === "demo" ? "Start Demo" : "Start Class"}
                   </Button>
                 )}
               </DialogFooter>

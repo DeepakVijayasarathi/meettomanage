@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Role } from "@/types";
 import { CHILDREN } from "@/data/children";
+import { setAccessToken } from "@/lib/api";
 
 interface SessionState {
   role: Role | null;
@@ -11,6 +12,8 @@ interface SessionState {
   enrolledChildIds: string[];
   markEnrollmentComplete: (childId: string) => void;
   userName: string;
+  /** Set from the API user on real login; falls back to demo names otherwise. */
+  setUserName: (name: string | null) => void;
 }
 
 const SessionContext = createContext<SessionState | null>(null);
@@ -18,6 +21,7 @@ const SessionContext = createContext<SessionState | null>(null);
 const ROLE_KEY = "trn.role";
 const CHILD_KEY = "trn.activeChildId";
 const ENROLLED_KEY = "trn.enrolledChildIds";
+const NAME_KEY = "trn.userName";
 
 const NAME_BY_ROLE: Record<Role, string> = {
   admin: "Ananya Rao",
@@ -45,6 +49,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (raw) return JSON.parse(raw);
     return CHILDREN.filter((c) => c.enrollmentComplete).map((c) => c.id);
   });
+  const [apiUserName, setApiUserName] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(NAME_KEY);
+  });
 
   useEffect(() => {
     if (role) localStorage.setItem(ROLE_KEY, role);
@@ -59,19 +67,30 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(ENROLLED_KEY, JSON.stringify(enrolledChildIds));
   }, [enrolledChildIds]);
 
+  const setUserName = (name: string | null) => {
+    setApiUserName(name);
+    if (name) localStorage.setItem(NAME_KEY, name);
+    else localStorage.removeItem(NAME_KEY);
+  };
+
   const value = useMemo<SessionState>(
     () => ({
       role,
       setRole: setRoleState,
-      logout: () => setRoleState(null),
+      logout: () => {
+        setRoleState(null);
+        setUserName(null);
+        setAccessToken(null);
+      },
       activeChildId,
       setActiveChildId: setActiveChildIdState,
       enrolledChildIds,
       markEnrollmentComplete: (childId: string) =>
         setEnrolledChildIds((prev) => (prev.includes(childId) ? prev : [...prev, childId])),
-      userName: role ? NAME_BY_ROLE[role] : "Guest",
+      userName: apiUserName ?? (role ? NAME_BY_ROLE[role] : "Guest"),
+      setUserName,
     }),
-    [role, activeChildId, enrolledChildIds]
+    [role, activeChildId, enrolledChildIds, apiUserName]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

@@ -1,0 +1,64 @@
+import { apiFetch } from "@/lib/api";
+import type { ClassSession, SessionStatus } from "@/types";
+
+export interface ApiClassSession {
+  id: string;
+  batchId: string | null;
+  batchName: string | null;
+  teacherProfileId: string;
+  teacherName: string;
+  type: "Regular" | "Demo";
+  status:
+    | "Scheduled"
+    | "InProgress"
+    | "Completed"
+    | "Cancelled"
+    | "Rescheduled"
+    | "TeacherNoShow"
+    | "StudentNoShow"
+    | "CarriedForward";
+  scheduledStartAtUtc: string;
+  scheduledEndAtUtc: string;
+  meetingRoomId: string | null;
+  rescheduledFromSessionId: string | null;
+  cancellationReason: string | null;
+}
+
+const STATUS_FROM_API: Record<ApiClassSession["status"], SessionStatus> = {
+  Scheduled: "scheduled",
+  InProgress: "scheduled",
+  Completed: "completed",
+  Cancelled: "cancelled",
+  Rescheduled: "rescheduled",
+  TeacherNoShow: "noshow",
+  StudentNoShow: "noshow",
+  CarriedForward: "scheduled",
+};
+
+export function toFrontendSession(session: ApiClassSession): ClassSession {
+  const start = new Date(session.scheduledStartAtUtc);
+  const end = new Date(session.scheduledEndAtUtc);
+  const minutes = Math.round((end.getTime() - start.getTime()) / 60000);
+
+  return {
+    id: session.id,
+    title: session.batchName ?? (session.type === "Demo" ? "Demo class" : "Class session"),
+    batchId: session.batchId ?? undefined,
+    teacherId: session.teacherProfileId,
+    teacherName: session.teacherName,
+    childIds: [],
+    date: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`,
+    startTime: `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`,
+    duration: ([30, 45, 60].includes(minutes) ? minutes : 45) as ClassSession["duration"],
+    status: session.type === "Demo" && session.status === "Scheduled" ? "demo" : STATUS_FROM_API[session.status],
+    type: session.type === "Demo" ? "demo" : "group",
+    meetingRoomId: session.meetingRoomId ?? undefined,
+  };
+}
+
+/** The signed-in teacher's own sessions in a ±60-day window. */
+export async function listMySessions(): Promise<ApiClassSession[]> {
+  const from = new Date(Date.now() - 60 * 86400_000).toISOString();
+  const to = new Date(Date.now() + 60 * 86400_000).toISOString();
+  return apiFetch<ApiClassSession[]>(`/api/sessions/mine?fromUtc=${from}&toUtc=${to}`);
+}

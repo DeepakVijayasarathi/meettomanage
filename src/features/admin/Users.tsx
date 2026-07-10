@@ -24,6 +24,10 @@ import { getCourseById } from "@/data/courses";
 import type { AppUser, Child } from "@/types";
 import { formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { createUser, listUsers, toAppUser } from "@/api/users";
+import type { ApiRole } from "@/api/types";
 
 function UserAvatar({ name, color }: { name: string; color: string }) {
   return (
@@ -33,15 +37,79 @@ function UserAvatar({ name, color }: { name: string; color: string }) {
   );
 }
 
+const ADD_ROLE_TO_API: Record<string, ApiRole> = {
+  parent: "Parent",
+  teacher: "Teacher",
+  admission: "AdmissionTeam",
+  subadmin: "SubAdmin",
+};
+
 export default function AdminUsers() {
-  const [parents] = useState<AppUser[]>(PARENTS);
-  const [teachers] = useState<AppUser[]>(TEACHERS);
-  const [staff] = useState<AppUser[]>([...ADMISSION_TEAM, ...SUB_ADMINS]);
+  const {
+    data: parents,
+    error: parentsError,
+    reload: reloadParents,
+  } = useApiData(() => listUsers({ role: "Parent" }).then((r) => r.items.map(toAppUser)), PARENTS);
+  const { data: teachers, reload: reloadTeachers } = useApiData(
+    () => listUsers({ role: "Teacher" }).then((r) => r.items.map(toAppUser)),
+    TEACHERS
+  );
+  const { data: staff, reload: reloadStaff } = useApiData(
+    async () => {
+      const [admission, subAdmins] = await Promise.all([
+        listUsers({ role: "AdmissionTeam" }),
+        listUsers({ role: "SubAdmin" }),
+      ]);
+      return [...admission.items, ...subAdmins.items].map(toAppUser);
+    },
+    [...ADMISSION_TEAM, ...SUB_ADMINS]
+  );
 
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
   const [detailChild, setDetailChild] = useState<Child | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addRole, setAddRole] = useState("parent");
+  const [addName, setAddName] = useState("");
+  const [addEmail, setAddEmail] = useState("");
+  const [addPhone, setAddPhone] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addSubmitting, setAddSubmitting] = useState(false);
+
+  async function handleCreateUser() {
+    if (!apiEnabled()) {
+      setAddOpen(false);
+      return;
+    }
+
+    const [firstName, ...rest] = addName.trim().split(/\s+/);
+    if (!firstName || !addEmail.trim()) {
+      setAddError("Name and email are required.");
+      return;
+    }
+
+    setAddSubmitting(true);
+    setAddError(null);
+    try {
+      await createUser({
+        email: addEmail.trim(),
+        firstName,
+        lastName: rest.join(" ") || firstName,
+        phone: addPhone.trim() || undefined,
+        role: ADD_ROLE_TO_API[addRole],
+      });
+      setAddOpen(false);
+      setAddName("");
+      setAddEmail("");
+      setAddPhone("");
+      reloadParents();
+      reloadTeachers();
+      reloadStaff();
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "Could not create the user.");
+    } finally {
+      setAddSubmitting(false);
+    }
+  }
 
   const userColumns: DataTableColumn<AppUser>[] = useMemo(
     () => [
@@ -169,6 +237,12 @@ export default function AdminUsers() {
           </Button>
         }
       />
+
+      {apiEnabled() && parentsError && (
+        <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+          Could not reach the API ({parentsError}) — showing demo data.
+        </p>
+      )}
 
       <Tabs defaultValue="parents">
         <TabsList>
@@ -344,20 +418,24 @@ export default function AdminUsers() {
               <HeartHandshake className="h-5 w-5" />
             </span>
             <DialogTitle>Add New User</DialogTitle>
-            <DialogDescription>Create a parent, teacher or staff account. This is a mock form — no data is persisted.</DialogDescription>
+            <DialogDescription>
+              {apiEnabled()
+                ? "Create a parent, teacher or staff account. Login credentials are emailed automatically."
+                : "Create a parent, teacher or staff account. This is a mock form — no data is persisted."}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid gap-1.5">
               <Label htmlFor="add-name">Full name</Label>
-              <Input id="add-name" placeholder="e.g. Simran Kaur" />
+              <Input id="add-name" placeholder="e.g. Simran Kaur" value={addName} onChange={(e) => setAddName(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="add-email">Email</Label>
-              <Input id="add-email" type="email" placeholder="name@example.com" />
+              <Input id="add-email" type="email" placeholder="name@example.com" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="add-phone">Phone</Label>
-              <Input id="add-phone" placeholder="+91 90000 00000" />
+              <Input id="add-phone" placeholder="+91 90000 00000" value={addPhone} onChange={(e) => setAddPhone(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
               <Label>Role</Label>
@@ -374,11 +452,14 @@ export default function AdminUsers() {
               </Select>
             </div>
           </div>
+          {addError && <p className="text-sm font-medium text-red-600">{addError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setAddOpen(false)}>Create User</Button>
+            <Button onClick={handleCreateUser} disabled={addSubmitting}>
+              {addSubmitting ? "Creating…" : "Create User"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

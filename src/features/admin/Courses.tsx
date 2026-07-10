@@ -19,14 +19,19 @@ import { COURSES } from "@/data/courses";
 import type { Course } from "@/types";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { createCourse, listCourses, toFrontendCourse } from "@/api/courses";
 
-const CATEGORY_COLOR: Record<Course["category"], string> = {
+const CATEGORY_COLOR: Record<string, string> = {
   Phonics: CHART_PALETTE[3],
   Maths: CHART_PALETTE[4],
   Reading: CHART_PALETTE[0],
   Writing: CHART_PALETTE[5],
   Speaking: CHART_PALETTE[6],
 };
+
+const FALLBACK_CATEGORY_COLOR = CHART_PALETTE[1];
 
 const STATUS_VARIANT: Record<Course["status"], "success" | "warning" | "muted"> = {
   active: "success",
@@ -35,11 +40,50 @@ const STATUS_VARIANT: Record<Course["status"], "success" | "warning" | "muted"> 
 };
 
 export default function AdminCourses() {
-  const [courses] = useState<Course[]>(COURSES);
+  const { data: courses, error: apiError, reload } = useApiData(
+    () => listCourses().then((list) => list.map(toFrontendCourse)),
+    COURSES
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const [category, setCategory] = useState<Course["category"]>("Phonics");
   const [type, setType] = useState<Course["type"]>("group");
   const [duration, setDuration] = useState("30");
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function handleCreate() {
+    if (!apiEnabled()) {
+      setCreateOpen(false);
+      return;
+    }
+
+    if (!name.trim()) {
+      setSaveError("Course name is required.");
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await createCourse({
+        name: name.trim(),
+        categoryName: category,
+        type,
+        durationMinutes: Number(duration),
+        price: Number(price) || 0,
+      });
+      setCreateOpen(false);
+      setName("");
+      setPrice("");
+      reload();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not create the course.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const columns: DataTableColumn<Course>[] = useMemo(
     () => [
@@ -52,7 +96,10 @@ export default function AdminCourses() {
           <div className="flex items-center gap-3">
             <span
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-              style={{ backgroundColor: `${CATEGORY_COLOR[row.category]}1A`, color: CATEGORY_COLOR[row.category] }}
+              style={{
+                backgroundColor: `${CATEGORY_COLOR[row.category] ?? FALLBACK_CATEGORY_COLOR}1A`,
+                color: CATEGORY_COLOR[row.category] ?? FALLBACK_CATEGORY_COLOR,
+              }}
             >
               <BookOpen className="h-[18px] w-[18px]" />
             </span>
@@ -135,6 +182,12 @@ export default function AdminCourses() {
         }
       />
 
+      {apiEnabled() && apiError && (
+        <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+          Could not reach the API ({apiError}) — showing demo data.
+        </p>
+      )}
+
       <DataTable
         data={courses}
         columns={columns}
@@ -147,12 +200,16 @@ export default function AdminCourses() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Course</DialogTitle>
-            <DialogDescription>Add a new course to the catalogue. This is a mock form — no data is persisted.</DialogDescription>
+            <DialogDescription>
+              {apiEnabled()
+                ? "Add a new course to the catalogue."
+                : "Add a new course to the catalogue. This is a mock form — no data is persisted."}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid gap-1.5">
               <Label htmlFor="course-name">Course name</Label>
-              <Input id="course-name" placeholder="e.g. Grammar Foundations" />
+              <Input id="course-name" placeholder="e.g. Grammar Foundations" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-1.5">
@@ -200,15 +257,18 @@ export default function AdminCourses() {
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="course-price">Price (₹)</Label>
-                <Input id="course-price" type="number" placeholder="2500" />
+                <Input id="course-price" type="number" placeholder="2500" value={price} onChange={(e) => setPrice(e.target.value)} />
               </div>
             </div>
           </div>
+          {saveError && <p className="text-sm font-medium text-red-600">{saveError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setCreateOpen(false)}>Create Course</Button>
+            <Button onClick={handleCreate} disabled={saving}>
+              {saving ? "Creating…" : "Create Course"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

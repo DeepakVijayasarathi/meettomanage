@@ -23,6 +23,9 @@ import { getTeacherById, TEACHERS } from "@/data/users";
 import type { Batch, BatchStatus } from "@/types";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate } from "@/lib/utils";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listBatches, listTeacherOptions, toFrontendBatch, updateBatch, type ApiBatch, type DisplayBatch } from "@/api/batches";
 
 const STATUS_META: Record<BatchStatus, { label: string; icon: typeof Layers; empty: string }> = {
   active: { label: "Active", icon: Layers, empty: "No active batches at the moment." },
@@ -30,9 +33,9 @@ const STATUS_META: Record<BatchStatus, { label: string; icon: typeof Layers; emp
   upcoming: { label: "Upcoming", icon: Rocket, empty: "No upcoming batches scheduled." },
 };
 
-function BatchCard({ batch, index, onOpen }: { batch: Batch; index: number; onOpen: (b: Batch) => void }) {
-  const course = getCourseById(batch.courseId);
-  const teacher = getTeacherById(batch.teacherId);
+function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: number; onOpen: (b: DisplayBatch) => void }) {
+  const courseName = getCourseById(batch.courseId)?.name ?? batch.courseName;
+  const teacherName = getTeacherById(batch.teacherId)?.name ?? batch.teacherName;
   const color = CHART_PALETTE[index % CHART_PALETTE.length];
   const pct = Math.round((batch.enrolled / Math.max(batch.capacity, 1)) * 100);
 
@@ -45,7 +48,7 @@ function BatchCard({ batch, index, onOpen }: { batch: Batch; index: number; onOp
           </span>
           <div>
             <p className="font-semibold text-foreground">{batch.name}</p>
-            <p className="text-xs text-muted-foreground">{course?.name ?? "—"}</p>
+            <p className="text-xs text-muted-foreground">{courseName ?? "—"}</p>
           </div>
         </div>
         <Badge variant="outline" className="uppercase">{batch.type}</Badge>
@@ -66,7 +69,7 @@ function BatchCard({ batch, index, onOpen }: { batch: Batch; index: number; onOp
         {batch.schedule}
       </div>
       <div className="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
-        Teacher: <span className="font-medium text-foreground">{teacher?.name ?? "Unassigned"}</span>
+        Teacher: <span className="font-medium text-foreground">{teacherName ?? "Unassigned"}</span>
       </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
@@ -80,20 +83,53 @@ function BatchCard({ batch, index, onOpen }: { batch: Batch; index: number; onOp
 }
 
 export default function AdminBatches() {
-  const [detail, setDetail] = useState<Batch | null>(null);
+  const { data: batchData, reload } = useApiData<{ raw: ApiBatch[]; mapped: DisplayBatch[] }>(
+    async () => {
+      const raw = await listBatches();
+      return { raw, mapped: raw.map(toFrontendBatch) };
+    },
+    { raw: [], mapped: BATCHES }
+  );
+  const { data: teacherOptions } = useApiData(() => listTeacherOptions(), []);
+
+  const [detail, setDetail] = useState<DisplayBatch | null>(null);
   const [teacherAssignment, setTeacherAssignment] = useState<string>("");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const grouped = useMemo(() => {
-    const map: Record<BatchStatus, Batch[]> = { active: [], dormant: [], upcoming: [] };
-    BATCHES.forEach((b) => map[b.status].push(b));
+    const map: Record<BatchStatus, DisplayBatch[]> = { active: [], dormant: [], upcoming: [] };
+    batchData.mapped.forEach((b) => map[b.status].push(b));
     return map;
-  }, []);
+  }, [batchData]);
 
-  function openDetail(b: Batch) {
+  function openDetail(b: DisplayBatch) {
     setDetail(b);
     setTeacherAssignment(b.teacherId);
     setSaved(false);
+    setSaveError(null);
+  }
+
+  async function saveDetail() {
+    if (!detail) return;
+
+    if (!apiEnabled()) {
+      setSaved(true);
+      setTimeout(() => setDetail(null), 700);
+      return;
+    }
+
+    const raw = batchData.raw.find((b) => b.id === detail.id);
+    if (!raw) return;
+
+    try {
+      await updateBatch(raw, teacherAssignment);
+      setSaved(true);
+      reload();
+      setTimeout(() => setDetail(null), 700);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not save the batch.");
+    }
   }
 
   return (
@@ -135,7 +171,7 @@ export default function AdminBatches() {
             <>
               <DialogHeader>
                 <DialogTitle>{detail.name}</DialogTitle>
-                <DialogDescription>{getCourseById(detail.courseId)?.name} · {detail.schedule}</DialogDescription>
+                <DialogDescription>{getCourseById(detail.courseId)?.name ?? detail.courseName} · {detail.schedule}</DialogDescription>
               </DialogHeader>
 
               <Card className="bg-muted/30 p-4">
@@ -167,11 +203,17 @@ export default function AdminBatches() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {TEACHERS.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name} · {t.department}
-                        </SelectItem>
-                      ))}
+                      {apiEnabled() && teacherOptions.length > 0
+                        ? teacherOptions.map((t) => (
+                            <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
+                              {t.fullName} {t.department ? `· ${t.department}` : ""}
+                            </SelectItem>
+                          ))
+                        : TEACHERS.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>
+                              {t.name} · {t.department}
+                            </SelectItem>
+                          ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -194,18 +236,12 @@ export default function AdminBatches() {
                 </div>
               </div>
 
+              {saveError && <p className="text-sm font-medium text-red-600">{saveError}</p>}
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDetail(null)}>
                   Close
                 </Button>
-                <Button
-                  onClick={() => {
-                    setSaved(true);
-                    setTimeout(() => setDetail(null), 700);
-                  }}
-                >
-                  {saved ? "Saved!" : "Save Changes"}
-                </Button>
+                <Button onClick={saveDetail}>{saved ? "Saved!" : "Save Changes"}</Button>
               </DialogFooter>
             </>
           )}

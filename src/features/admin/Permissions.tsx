@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, RotateCcw, Save, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SUB_ADMINS } from "@/data/users";
 import { getInitials, cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
+import { apiEnabled } from "@/lib/api";
+import { getPermissions, setPermissions, type ApiPermission, type PermissionModuleName } from "@/api/permissions";
 
 const MODULES = ["Users", "Courses", "Batches", "Calendar", "Billing", "Reports", "Resources"] as const;
 const ACTIONS = ["View", "Add", "Edit", "Delete", "Approve"] as const;
@@ -16,6 +18,52 @@ const ACTIONS = ["View", "Add", "Edit", "Delete", "Approve"] as const;
 type Module = (typeof MODULES)[number];
 type Action = (typeof ACTIONS)[number];
 type Matrix = Record<Module, Record<Action, boolean>>;
+
+// Maps this screen's display modules to the backend's PermissionModule enum
+const MODULE_TO_API: Record<Module, PermissionModuleName> = {
+  Users: "UserManagement",
+  Courses: "CourseBatchManagement",
+  Batches: "CourseBatchManagement",
+  Calendar: "SessionCalendarManagement",
+  Billing: "BillingFinance",
+  Reports: "ReportsAnalytics",
+  Resources: "ContentAccessManagement",
+};
+
+function apiPermissionsToMatrix(permissions: ApiPermission[]): Matrix {
+  const matrix = {} as Matrix;
+  MODULES.forEach((mod) => {
+    const apiModule = MODULE_TO_API[mod];
+    const grant = permissions.find((p) => p.module === apiModule);
+    matrix[mod] = {
+      View: grant?.canView ?? false,
+      Add: grant?.canCreate ?? false,
+      Edit: grant?.canEdit ?? false,
+      Delete: grant?.canDelete ?? false,
+      Approve: grant?.canApprove ?? false,
+    };
+  });
+  return matrix;
+}
+
+function matrixToApiPermissions(matrix: Matrix): ApiPermission[] {
+  // Collapse Courses+Batches (same backend module) by OR-ing their flags
+  const byApiModule = new Map<PermissionModuleName, ApiPermission>();
+  MODULES.forEach((mod) => {
+    const apiModule = MODULE_TO_API[mod];
+    const row = matrix[mod];
+    const existing = byApiModule.get(apiModule);
+    byApiModule.set(apiModule, {
+      module: apiModule,
+      canView: (existing?.canView ?? false) || row.View,
+      canCreate: (existing?.canCreate ?? false) || row.Add,
+      canEdit: (existing?.canEdit ?? false) || row.Edit,
+      canDelete: (existing?.canDelete ?? false) || row.Delete,
+      canApprove: (existing?.canApprove ?? false) || row.Approve,
+    });
+  });
+  return Array.from(byApiModule.values());
+}
 
 function defaultMatrix(seed: number): Matrix {
   const matrix = {} as Matrix;
@@ -36,6 +84,28 @@ export default function AdminPermissions() {
     Object.fromEntries(SUB_ADMINS.map((s, i) => [s.id, defaultMatrix(i)]))
   );
   const [savedTick, setSavedTick] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Sub-admins in demo mode carry mock ids (sa-1, sa-2); the API expects real
+  // Guids, so this screen only calls the permissions endpoints once those
+  // sub-admin accounts exist as real users (Sprint 1 follow-up: replace
+  // SUB_ADMINS with a live sub-admin list wired the same way as Users.tsx).
+  useEffect(() => {
+    if (!apiEnabled()) return;
+    let cancelled = false;
+    getPermissions(activeId)
+      .then((permissions) => {
+        if (!cancelled) setMatrices((prev) => ({ ...prev, [activeId]: apiPermissionsToMatrix(permissions) }));
+        setLoadError(null);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Could not load permissions.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId]);
 
   const activeSubAdmin = SUB_ADMINS.find((s) => s.id === activeId) ?? SUB_ADMINS[0];
   const matrix = matrices[activeId];
@@ -72,9 +142,23 @@ export default function AdminPermissions() {
     setMatrices((prev) => ({ ...prev, [activeId]: defaultMatrix(idx) }));
   }
 
-  function saveProfile() {
-    setSavedTick(Date.now());
-    setTimeout(() => setSavedTick(null), 2200);
+  async function saveProfile() {
+    if (!apiEnabled()) {
+      setSavedTick(Date.now());
+      setTimeout(() => setSavedTick(null), 2200);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await setPermissions(activeId, matrixToApiPermissions(matrix));
+      setSavedTick(Date.now());
+      setTimeout(() => setSavedTick(null), 2200);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Could not save permissions.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -123,9 +207,9 @@ export default function AdminPermissions() {
                     <RotateCcw className="h-3.5 w-3.5" />
                     Reset
                   </Button>
-                  <Button size="sm" onClick={saveProfile}>
+                  <Button size="sm" onClick={saveProfile} disabled={saving}>
                     {savedTick ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
-                    {savedTick ? "Saved" : "Save Changes"}
+                    {saving ? "Saving…" : savedTick ? "Saved" : "Save Changes"}
                   </Button>
                 </div>
               </CardHeader>
@@ -177,8 +261,13 @@ export default function AdminPermissions() {
                   </table>
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Click a module name to toggle every action in that row. Changes are local to this session and are not persisted.
+                  {apiEnabled()
+                    ? "Click a module name to toggle every action in that row."
+                    : "Click a module name to toggle every action in that row. Changes are local to this session and are not persisted."}
                 </p>
+                {apiEnabled() && loadError && (
+                  <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{loadError}</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
