@@ -88,6 +88,39 @@ export async function recordPayment(
   });
 }
 
+export interface ApiFeeSuspension {
+  id: string;
+  parentProfileId: string;
+  parentName: string;
+  invoiceId: string | null;
+  invoiceNumber: string | null;
+  reason: string | null;
+  status: "Active" | "Lifted";
+  suspendedAtUtc: string;
+  liftedAtUtc: string | null;
+  autoRestored: boolean;
+}
+
+export interface ApiPaymentLink {
+  invoiceId: string;
+  invoiceNumber: string;
+  url: string;
+  gatewayReference: string;
+  amountDue: number;
+}
+
+export async function createPaymentLink(invoiceId: string): Promise<ApiPaymentLink> {
+  return apiFetch<ApiPaymentLink>(`/api/invoices/${invoiceId}/payment-link`, { method: "POST" });
+}
+
+export async function listSuspensions(status?: "Active" | "Lifted"): Promise<ApiFeeSuspension[]> {
+  return apiFetch<ApiFeeSuspension[]>(`/api/invoices/suspensions${status ? `?status=${status}` : ""}`);
+}
+
+export async function liftSuspension(id: string): Promise<ApiFeeSuspension> {
+  return apiFetch<ApiFeeSuspension>(`/api/invoices/suspensions/${id}/lift`, { method: "POST" });
+}
+
 export async function listPackagePlans(): Promise<ApiPackagePlan[]> {
   return apiFetch<ApiPackagePlan[]>("/api/package-plans");
 }

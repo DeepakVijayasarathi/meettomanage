@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarPlus, CheckCircle2, Trash2, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -14,6 +14,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SESSIONS } from "@/data/sessions";
 import { TEACHERS } from "@/data/users";
 import { LEADS } from "./data";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listTeacherOptions } from "@/api/batches";
+import { createDemoBooking, listDemoBookings, type ApiDemoBooking } from "@/api/demoBookings";
 import { formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import type { SessionStatus } from "@/types";
@@ -67,8 +71,43 @@ function seedRows(): DemoRow[] {
   });
 }
 
+function bookingToRow(booking: ApiDemoBooking): DemoRow {
+  const start = booking.scheduledStartAtUtc ? new Date(booking.scheduledStartAtUtc) : null;
+  const status: SessionStatus =
+    booking.conversionStatus === "DemoScheduled" ? "demo" : booking.conversionStatus === "NotInterested" ? "cancelled" : "completed";
+  return {
+    id: booking.id,
+    childName: booking.childName,
+    childAge: booking.childAge ?? undefined,
+    parents: [
+      { id: `${booking.id}-p1`, name: booking.parentName, phone: booking.parentPhone ?? "—", email: booking.parentEmail },
+      ...booking.participants.map((p, index) => ({
+        id: `${booking.id}-x${index}`,
+        name: p.name,
+        phone: p.phone ?? "",
+        email: p.email,
+      })),
+    ],
+    date: start ? start.toISOString().slice(0, 10) : "",
+    startTime: start ? start.toISOString().slice(11, 16) : "",
+    teacherId: "",
+    teacherName: "Auto-assigned",
+    status,
+    notes: booking.followUpNotes ?? undefined,
+  };
+}
+
 export default function AdmissionDemoScheduling() {
+  const { data: apiRows, reload: reloadRows } = useApiData(
+    () => listDemoBookings().then((bookings) => bookings.map(bookingToRow)),
+    seedRows()
+  );
+  const { data: teacherOptions } = useApiData(
+    () => listTeacherOptions().then((teachers) => teachers.map((t) => ({ id: t.teacherProfileId, name: t.fullName }))),
+    TEACHERS.filter((t) => t.status === "active").map((t) => ({ id: t.id, name: t.name }))
+  );
   const [rows, setRows] = useState<DemoRow[]>(seedRows);
+  useEffect(() => setRows(apiRows), [apiRows]);
   const [childName, setChildName] = useState("");
   const [childAge, setChildAge] = useState("");
   const [parents, setParents] = useState<DemoParentField[]>([blankParent()]);
@@ -80,7 +119,7 @@ export default function AdmissionDemoScheduling() {
   const [cancelTarget, setCancelTarget] = useState<DemoRow | null>(null);
   const [completeTarget, setCompleteTarget] = useState<DemoRow | null>(null);
 
-  const activeTeachers = useMemo(() => TEACHERS.filter((t) => t.status === "active"), []);
+  const activeTeachers = teacherOptions;
 
   function updateParent(id: string, field: keyof DemoParentField, value: string) {
     setParents((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
@@ -98,7 +137,8 @@ export default function AdmissionDemoScheduling() {
     childName.trim().length > 0 &&
     date.length > 0 &&
     time.length > 0 &&
-    teacherId.length > 0 &&
+    // API mode auto-assigns a teacher when none is picked, but needs the parent's email
+    (apiEnabled() ? parents[0].email.trim().length > 0 : teacherId.length > 0) &&
     parents.every((p) => p.name.trim().length > 0 && p.phone.trim().length > 0);
 
   function resetForm() {
@@ -113,6 +153,34 @@ export default function AdmissionDemoScheduling() {
 
   function handleSchedule() {
     if (!isValid) return;
+
+    if (apiEnabled()) {
+      const primary = parents[0];
+      const startUtc = new Date(`${date}T${time}:00`);
+      const endUtc = new Date(startUtc.getTime() + 30 * 60_000);
+      createDemoBooking({
+        parentName: primary.name.trim(),
+        parentEmail: primary.email.trim(),
+        parentPhone: primary.phone.trim() || undefined,
+        childName: childName.trim(),
+        childAge: childAge ? Number(childAge) : undefined,
+        teacherProfileId: teacherId || undefined,
+        scheduledStartAtUtc: startUtc.toISOString(),
+        scheduledEndAtUtc: endUtc.toISOString(),
+        participants: parents
+          .slice(1)
+          .filter((p) => p.email.trim().length > 0)
+          .map((p) => ({ name: p.name.trim(), email: p.email.trim(), phone: p.phone.trim() || null })),
+      })
+        .then(() => {
+          reloadRows();
+          setJustScheduled(childName.trim());
+          resetForm();
+        })
+        .catch((err: Error) => setJustScheduled(`Error: ${err.message}`));
+      return;
+    }
+
     const teacher = TEACHERS.find((t) => t.id === teacherId);
     const newRow: DemoRow = {
       id: `demo-${Math.random().toString(36).slice(2, 9)}`,
@@ -330,7 +398,7 @@ export default function AdmissionDemoScheduling() {
                 <SelectContent>
                   {activeTeachers.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.name} · {t.department}
+                      {t.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

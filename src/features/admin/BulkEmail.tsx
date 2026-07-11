@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Mail, Send, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,24 +11,46 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CHILDREN } from "@/data/children";
 import { BATCHES } from "@/data/batches";
 import { CHART_PALETTE } from "@/lib/roles";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listBatches } from "@/api/batches";
+import { sendBulkEmail } from "@/api/reports";
 
 type Scope = "all" | "batch";
 
+const MOCK_BATCH_OPTIONS = BATCHES.map((b) => ({ id: b.id, name: b.name }));
+
 export default function AdminBulkEmail() {
+  const { data: batchOptions } = useApiData(
+    () => listBatches().then((batches) => batches.map((b) => ({ id: b.id, name: b.name }))),
+    MOCK_BATCH_OPTIONS
+  );
   const [scope, setScope] = useState<Scope>("all");
   const [batchId, setBatchId] = useState(BATCHES[0].id);
+  useEffect(() => {
+    if (batchOptions.length > 0) setBatchId(batchOptions[0].id);
+  }, [batchOptions]);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sent, setSent] = useState(false);
+  const [sentCount, setSentCount] = useState<number | null>(null);
 
   const activeStudents = useMemo(() => CHILDREN.filter((c) => c.enrollmentComplete), []);
 
   const recipientCount = useMemo(() => {
+    if (sentCount !== null) return sentCount;
     if (scope === "all") return activeStudents.length;
     return CHILDREN.filter((c) => c.batchId === batchId).length;
-  }, [scope, batchId, activeStudents]);
+  }, [scope, batchId, activeStudents, sentCount]);
 
   function handleSend() {
+    if (apiEnabled()) {
+      sendBulkEmail({ subject, body, batchId: scope === "batch" ? batchId : undefined }).then((result) => {
+        setSentCount(result.recipientCount);
+        setSent(true);
+      });
+      return;
+    }
     setSent(true);
   }
 
@@ -88,7 +110,7 @@ export default function AdminBulkEmail() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {BATCHES.map((b) => (
+                    {batchOptions.map((b) => (
                       <SelectItem key={b.id} value={b.id}>
                         {b.name}
                       </SelectItem>

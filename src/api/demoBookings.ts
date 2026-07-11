@@ -89,7 +89,8 @@ export async function createDemoBooking(input: {
   childName: string;
   childAge?: number;
   department?: "Phonics" | "Maths";
-  teacherProfileId: string;
+  /** Omit to auto-assign the least-loaded available teacher. */
+  teacherProfileId?: string;
   scheduledStartAtUtc: string;
   scheduledEndAtUtc: string;
   participants?: ApiDemoParticipant[];

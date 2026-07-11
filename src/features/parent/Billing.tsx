@@ -10,6 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { getChildrenByParent } from "@/data/children";
 import { getInvoicesForParent } from "@/data/invoices";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { toFrontendInvoice } from "@/api/billing";
+import { getParentDashboard, getParentInvoices } from "@/api/parentPortal";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Invoice } from "@/types";
 
@@ -17,7 +21,14 @@ const PARENT_ID = "p-1";
 
 export default function ParentBilling() {
   const children = getChildrenByParent(PARENT_ID);
-  const invoices = getInvoicesForParent(PARENT_ID);
+  const { data: invoices } = useApiData(
+    () => getParentInvoices().then((items) => items.map(toFrontendInvoice)),
+    getInvoicesForParent(PARENT_ID)
+  );
+  const { data: isSuspended } = useApiData(
+    () => getParentDashboard().then((d) => d.isSuspended),
+    children.some((c) => c.feeStatus === "suspended")
+  );
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null);
   const [payOpen, setPayOpen] = useState(false);
 
@@ -26,7 +37,9 @@ export default function ParentBilling() {
     setPayOpen(true);
   }
 
-  const suspendedChild = children.find((c) => c.feeStatus === "suspended");
+  const suspendedChild = apiEnabled()
+    ? (isSuspended ? children[0] : undefined)
+    : children.find((c) => c.feeStatus === "suspended");
 
   const outstanding = invoices.filter((i) => i.status !== "paid");
   const paid = invoices.filter((i) => i.status === "paid");

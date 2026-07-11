@@ -1,4 +1,4 @@
-import {
+﻿import {
   Users,
   UserCheck,
   IndianRupee,
@@ -45,11 +45,31 @@ import {
   TEACHER_UTILIZATION,
 } from "@/data/kpis";
 import { SESSIONS } from "@/data/sessions";
+import { useApiData } from "@/api/hooks";
+import { getDashboardSummary } from "@/api/reports";
 
 const TODAY = "2026-07-09";
 
 export default function AdminDashboard() {
   const todaySessions = SESSIONS.filter((s) => s.date === TODAY).sort((a, b) => a.startTime.localeCompare(b.startTime));
+  // Live aggregates replace the mock KPI block when the API is configured
+  const { data: kpis } = useApiData(
+    () =>
+      getDashboardSummary().then((s) => ({
+        totalStudents: s.totalStudents,
+        activeStudents: s.activeStudents,
+        revenueThisMonth: s.revenueCollected,
+        revenueGrowth: 0,
+        enrollments: s.totalEnrollments,
+        conversionRate: s.conversionRatePercent,
+        teacherUtilization: s.teacherUtilizationSessionsPerTeacher,
+        attendanceRate: ADMIN_KPIS.attendanceRate,
+        renewalRate: ADMIN_KPIS.renewalRate,
+        refundRate: s.refundRatePercent,
+        batchOccupancy: s.batchOccupancyPercent,
+      })),
+    ADMIN_KPIS
+  );
 
   return (
     <div>
@@ -63,42 +83,42 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Total Students"
-          value={formatNumber(ADMIN_KPIS.totalStudents)}
+          value={formatNumber(kpis.totalStudents)}
           icon={Users}
           tone="primary"
           trend={{ value: 6.2, label: "vs last month" }}
         />
         <KpiCard
           label="Active Students"
-          value={formatNumber(ADMIN_KPIS.activeStudents)}
+          value={formatNumber(kpis.activeStudents)}
           icon={UserCheck}
           tone="success"
           trend={{ value: 3.8, label: "vs last month" }}
         />
         <KpiCard
           label="Revenue This Month"
-          value={formatCurrency(ADMIN_KPIS.revenueThisMonth)}
+          value={formatCurrency(kpis.revenueThisMonth)}
           icon={IndianRupee}
           tone="primary"
-          trend={{ value: ADMIN_KPIS.revenueGrowth, label: "vs last month" }}
+          trend={{ value: kpis.revenueGrowth, label: "vs last month" }}
         />
         <KpiCard
           label="New Enrollments"
-          value={formatNumber(ADMIN_KPIS.enrollments)}
+          value={formatNumber(kpis.enrollments)}
           icon={GraduationCap}
           tone="warning"
           trend={{ value: 4.1, label: "vs last month" }}
         />
         <KpiCard
           label="Conversion Rate"
-          value={formatPercent(ADMIN_KPIS.conversionRate)}
+          value={formatPercent(kpis.conversionRate)}
           icon={TrendingUp}
           tone="success"
           trend={{ value: 2.4, label: "vs last month" }}
         />
         <KpiCard
           label="Teacher Utilization"
-          value={formatPercent(ADMIN_KPIS.teacherUtilization)}
+          value={formatPercent(kpis.teacherUtilization)}
           icon={ClipboardCheck}
           tone="primary"
           trend={{ value: -1.2, label: "vs last month" }}
@@ -119,14 +139,14 @@ export default function AdminDashboard() {
         />
         <KpiCard
           label="Refund Rate"
-          value={formatPercent(ADMIN_KPIS.refundRate, 1)}
+          value={formatPercent(kpis.refundRate, 1)}
           icon={Undo2}
           tone="destructive"
           trend={{ value: 0.4, label: "vs last month" }}
         />
         <KpiCard
           label="Batch Occupancy"
-          value={formatPercent(ADMIN_KPIS.batchOccupancy)}
+          value={formatPercent(kpis.batchOccupancy)}
           icon={LayoutGrid}
           tone="neutral"
           trend={{ value: 2.9, label: "vs last month" }}
@@ -146,7 +166,7 @@ export default function AdminDashboard() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={56} />
+              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `â‚¹${(v / 1000).toFixed(0)}k`} width={56} />
               <RTooltip
                 formatter={(value: number) => [formatCurrency(value), "Revenue"]}
                 contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }}
@@ -276,7 +296,7 @@ export default function AdminDashboard() {
                   <div>
                     <p className="text-sm font-semibold text-foreground">{s.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {s.startTime} · {s.duration} min · {s.teacherName} · {s.childIds.length} student{s.childIds.length === 1 ? "" : "s"}
+                      {s.startTime} Â· {s.duration} min Â· {s.teacherName} Â· {s.childIds.length} student{s.childIds.length === 1 ? "" : "s"}
                     </p>
                   </div>
                 </div>

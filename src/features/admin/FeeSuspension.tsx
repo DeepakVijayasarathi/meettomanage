@@ -10,6 +10,9 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CHILDREN } from "@/data/children";
 import { getParentById } from "@/data/users";
 import { INVOICES } from "@/data/invoices";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listSuspensions, liftSuspension, type ApiFeeSuspension } from "@/api/billing";
 import type { Child } from "@/types";
 import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 
@@ -40,6 +43,60 @@ export default function AdminFeeSuspension() {
 
   function invoiceFor(child: Child) {
     return INVOICES.find((i) => i.childName === child.name && (i.status === "overdue" || i.status === "partial"));
+  }
+
+  const { data: suspensions, reload: reloadSuspensions } = useApiData<ApiFeeSuspension[]>(
+    () => listSuspensions("Active"),
+    []
+  );
+
+  function handleLift(suspension: ApiFeeSuspension) {
+    liftSuspension(suspension.id).then(() => reloadSuspensions());
+  }
+
+  // API mode: real suspensions created by the overdue automation, lifted here or by payment
+  if (apiEnabled()) {
+    return (
+      <div>
+        <PageHeader
+          eyebrow="Collections"
+          title="Fee Suspension"
+          description="Accounts suspended by the fee-overdue automation. Access restores automatically on payment, or manually here."
+        />
+
+        {suspensions.length === 0 ? (
+          <EmptyState icon={ShieldOff} title="No suspended accounts" description="Every account is currently in good standing." />
+        ) : (
+          <div className="flex flex-col gap-4">
+            {suspensions.map((suspension) => (
+              <Card key={suspension.id} className="border-destructive/40">
+                <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-11 w-11">
+                      <AvatarFallback>{getInitials(suspension.parentName)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold text-foreground">{suspension.parentName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {suspension.invoiceNumber ? `Invoice ${suspension.invoiceNumber} · ` : ""}
+                        Suspended {formatDate(suspension.suspendedAtUtc.slice(0, 10))}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <FeeStatusBadge status="suspended" />
+                    <Button variant="outline" onClick={() => handleLift(suspension)}>
+                      <Undo2 className="h-4 w-4" />
+                      Restore Access
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (

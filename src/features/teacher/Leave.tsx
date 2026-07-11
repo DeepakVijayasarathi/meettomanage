@@ -10,8 +10,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getLeavesForTeacher } from "@/data/leaves";
 import { getSessionsForTeacher } from "@/data/sessions";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listMySessions, toFrontendSession } from "@/api/sessions";
+import { listMyLeave, submitLeave, type ApiLeaveRequest } from "@/api/academicOps";
 import { cn, formatDate } from "@/lib/utils";
 import type { ClassSession, LeaveRequest } from "@/types";
+
+function toFrontendLeave(leave: ApiLeaveRequest): LeaveRequest {
+  const noticeHours = (new Date(leave.startAtUtc).getTime() - new Date(leave.createdAtUtc).getTime()) / 3_600_000;
+  return {
+    id: leave.id,
+    teacherId: leave.teacherProfileId,
+    teacherName: leave.teacherName,
+    date: leave.startAtUtc.slice(0, 10),
+    session: `${leave.affectedSessionCount} session(s) affected`,
+    reason: leave.reason,
+    hoursBeforeSession: Math.round(noticeHours * 10) / 10,
+    status: leave.status.toLowerCase() as LeaveRequest["status"],
+  };
+}
 
 const TEACHER_ID = "t-1";
 const TEACHER_NAME = "Karan Mehta";
@@ -53,12 +71,22 @@ function LeaveStatusBadge({ status }: { status: LeaveRequest["status"] }) {
 }
 
 export default function TeacherLeave() {
-  const eligibleSessions = getSessionsForTeacher(TEACHER_ID)
+  const now = apiEnabled() ? new Date() : NOW;
+  const { data: fetchedSessions } = useApiData(
+    () => listMySessions().then((sessions) => sessions.map(toFrontendSession)),
+    getSessionsForTeacher(TEACHER_ID)
+  );
+  const eligibleSessions = fetchedSessions
     .filter((s) => s.status === "scheduled" || s.status === "demo")
-    .filter((s) => sessionDateTime(s) > NOW)
+    .filter((s) => sessionDateTime(s) > now)
     .sort((a, b) => sessionDateTime(a).getTime() - sessionDateTime(b).getTime());
 
+  const { data: fetchedLeaves, reload: reloadLeaves } = useApiData(
+    () => listMyLeave().then((items) => items.map(toFrontendLeave)),
+    getLeavesForTeacher(TEACHER_ID)
+  );
   const [leaves, setLeaves] = useState<LeaveRequest[]>(() => getLeavesForTeacher(TEACHER_ID));
+  useEffect(() => setLeaves(fetchedLeaves), [fetchedLeaves]);
   const [sessionId, setSessionId] = useState<string>("");
   const [reason, setReason] = useState("");
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -70,12 +98,27 @@ export default function TeacherLeave() {
   }, [confirmation]);
 
   const selectedSession = eligibleSessions.find((s) => s.id === sessionId) ?? null;
-  const hoursBefore = selectedSession ? hoursBetween(sessionDateTime(selectedSession), NOW) : null;
+  const hoursBefore = selectedSession ? hoursBetween(sessionDateTime(selectedSession), now) : null;
   const isBlocked = hoursBefore !== null && hoursBefore < MIN_HOURS_NOTICE;
   const canSubmit = !!selectedSession && reason.trim().length > 0 && !isBlocked;
 
   function handleSubmit() {
     if (!selectedSession || hoursBefore === null || !canSubmit) return;
+
+    if (apiEnabled()) {
+      const start = sessionDateTime(selectedSession);
+      const end = new Date(start.getTime() + selectedSession.duration * 60_000);
+      submitLeave({ startAtUtc: start.toISOString(), endAtUtc: end.toISOString(), reason: reason.trim() })
+        .then(() => {
+          reloadLeaves();
+          setConfirmation(`Leave request for "${selectedSession.title}" submitted — pending admin approval.`);
+        })
+        .catch((err: Error) => setConfirmation(err.message));
+      setSessionId("");
+      setReason("");
+      return;
+    }
+
     const newLeave: LeaveRequest = {
       id: `lv-${Date.now()}`,
       teacherId: TEACHER_ID,
