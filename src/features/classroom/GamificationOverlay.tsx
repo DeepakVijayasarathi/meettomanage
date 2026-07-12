@@ -16,6 +16,17 @@ const MEDAL_STYLES = [
   "bg-orange-300 text-orange-900",
 ];
 
+// Milestone badges earned as stars accumulate during the class
+const MILESTONES: { stars: number; badge: string; label: string }[] = [
+  { stars: 10, badge: "🏆", label: "Champion — 10 stars" },
+  { stars: 6, badge: "🥈", label: "Star Reader — 6 stars" },
+  { stars: 3, badge: "🥉", label: "Rising Star — 3 stars" },
+];
+
+function badgeFor(stars: number) {
+  return MILESTONES.find((m) => stars >= m.stars);
+}
+
 export default function GamificationOverlay({ celebrating, onCelebrationEnd, leaderboard }: GamificationOverlayProps) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -98,6 +109,11 @@ export default function GamificationOverlay({ celebrating, onCelebrationEnd, lea
                 {i + 1}
               </span>
               <span className="flex-1 truncate font-medium text-white/85">{entry.name}</span>
+              {badgeFor(entry.stars) && (
+                <span title={badgeFor(entry.stars)!.label} className="text-sm leading-none">
+                  {badgeFor(entry.stars)!.badge}
+                </span>
+              )}
               <span className="flex items-center gap-0.5 text-xs font-semibold" style={{ color: entry.color }}>
                 <Star className="h-3 w-3 fill-current" />
                 {entry.stars}

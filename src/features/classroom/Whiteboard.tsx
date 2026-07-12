@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Circle as CircleIcon,
   Eraser,
+  Hand,
   Minus,
   PenTool,
   Plus,
   Puzzle,
   Square,
+  StickyNote,
   Trash2,
   Type,
   ChevronLeft,
@@ -18,7 +20,7 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import WhiteboardActivity from "./WhiteboardActivity";
 
-type ToolId = "pen" | "eraser" | "rectangle" | "circle" | "line" | "text";
+type ToolId = "pen" | "eraser" | "rectangle" | "circle" | "line" | "text" | "sticky" | "pan";
 
 interface Point {
   x: number;
@@ -52,6 +54,8 @@ const TOOLS: { id: ToolId; label: string; icon: typeof PenTool }[] = [
   { id: "circle", label: "Circle", icon: CircleIcon },
   { id: "line", label: "Line", icon: Minus },
   { id: "text", label: "Text", icon: Type },
+  { id: "sticky", label: "Sticky note", icon: StickyNote },
+  { id: "pan", label: "Pan the canvas", icon: Hand },
 ];
 
 function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
@@ -103,6 +107,25 @@ function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
     ctx.font = `600 ${Math.max(16, stroke.width * 5)}px "Plus Jakarta Sans", sans-serif`;
     ctx.textBaseline = "top";
     ctx.fillText(stroke.text ?? "", p.x, p.y);
+  } else if (stroke.tool === "sticky") {
+    const p = stroke.points[0];
+    if (!p) return;
+    const lines = (stroke.text ?? "").split("\n");
+    const noteW = 168;
+    const noteH = Math.max(64, 26 + lines.length * 18);
+    ctx.save();
+    ctx.shadowColor = "rgba(15, 23, 42, 0.18)";
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
+    ctx.fillStyle = stroke.color;
+    ctx.beginPath();
+    ctx.roundRect(p.x, p.y, noteW, noteH, 8);
+    ctx.fill();
+    ctx.restore();
+    ctx.font = '500 13px "Plus Jakarta Sans", sans-serif';
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#0F172A";
+    lines.forEach((line, i) => ctx.fillText(line, p.x + 10, p.y + 12 + i * 18, noteW - 20));
   }
   ctx.globalCompositeOperation = "source-over";
 }
@@ -119,12 +142,15 @@ export default function Whiteboard({ canDraw, onActivityComplete }: WhiteboardPr
   const [color, setColor] = useState(CHART_PALETTE[0]);
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [showActivity, setShowActivity] = useState(false);
-  const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string } | null>(null);
+  const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string; sticky?: boolean } | null>(null);
+  // Infinite canvas: strokes live in world coordinates; the view pans over them
+  const [viewOffset, setViewOffset] = useState<Point>({ x: 0, y: 0 });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const drawingRef = useRef(false);
   const draftRef = useRef<Stroke | null>(null);
+  const panRef = useRef<{ startX: number; startY: number; origin: Point } | null>(null);
 
   const currentPage = pages[pageIndex];
 
@@ -133,9 +159,12 @@ export default function Whiteboard({ canDraw, onActivityComplete }: WhiteboardPr
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(-viewOffset.x, -viewOffset.y);
     const all = draftRef.current ? [...currentPage.strokes, draftRef.current] : currentPage.strokes;
     for (const stroke of all) drawStroke(ctx, stroke);
-  }, [currentPage]);
+    ctx.restore();
+  }, [currentPage, viewOffset]);
 
   // Re-render whenever this page's committed strokes change (page switch or new stroke).
   useEffect(() => {
@@ -163,14 +192,21 @@ export default function Whiteboard({ canDraw, onActivityComplete }: WhiteboardPr
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    // Screen → world: pan offset keeps strokes anchored while the view moves
+    return { x: e.clientX - rect.left + viewOffset.x, y: e.clientY - rect.top + viewOffset.y };
   }
 
   function handlePointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!canDraw) return;
+    if (tool === "pan") {
+      panRef.current = { startX: e.clientX, startY: e.clientY, origin: viewOffset };
+      canvasRef.current?.setPointerCapture(e.pointerId);
+      return;
+    }
     const pt = getPoint(e);
-    if (tool === "text") {
-      setTextDraft({ x: pt.x, y: pt.y, value: "" });
+    if (tool === "text" || tool === "sticky") {
+      // The input is positioned in screen space; converted back to world on commit
+      setTextDraft({ x: pt.x - viewOffset.x, y: pt.y - viewOffset.y, value: "", sticky: tool === "sticky" });
       return;
     }
     drawingRef.current = true;
@@ -179,6 +215,11 @@ export default function Whiteboard({ canDraw, onActivityComplete }: WhiteboardPr
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (panRef.current) {
+      const { startX, startY, origin } = panRef.current;
+      setViewOffset({ x: origin.x - (e.clientX - startX), y: origin.y - (e.clientY - startY) });
+      return;
+    }
     if (!drawingRef.current || !draftRef.current) return;
     const pt = getPoint(e);
     if (tool === "pen" || tool === "eraser") {
@@ -190,6 +231,7 @@ export default function Whiteboard({ canDraw, onActivityComplete }: WhiteboardPr
   }
 
   function commitDraft() {
+    panRef.current = null;
     if (!drawingRef.current || !draftRef.current) return;
     drawingRef.current = false;
     const finished = draftRef.current;
@@ -202,9 +244,10 @@ export default function Whiteboard({ canDraw, onActivityComplete }: WhiteboardPr
     if (textDraft.value.trim()) {
       const stroke: Stroke = {
         id: nextId(),
-        tool: "text",
-        points: [{ x: textDraft.x, y: textDraft.y }],
-        color,
+        tool: textDraft.sticky ? "sticky" : "text",
+        points: [{ x: textDraft.x + viewOffset.x, y: textDraft.y + viewOffset.y }],
+        // Sticky notes read best on a warm paper tone unless a light swatch is picked
+        color: textDraft.sticky && color === CHART_PALETTE[0] ? "#FDE68A" : color,
         width: strokeWidth,
         text: textDraft.value,
       };
@@ -329,7 +372,13 @@ export default function Whiteboard({ canDraw, onActivityComplete }: WhiteboardPr
       <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-white shadow-card">
         <canvas
           ref={canvasRef}
-          className={cn("h-full w-full touch-none", canDraw ? (tool === "text" ? "cursor-text" : "cursor-crosshair") : "cursor-default")}
+          className={cn(
+            "h-full w-full touch-none",
+            !canDraw && "cursor-default",
+            canDraw && (tool === "text" || tool === "sticky") && "cursor-text",
+            canDraw && tool === "pan" && "cursor-grab active:cursor-grabbing",
+            canDraw && tool !== "text" && tool !== "sticky" && tool !== "pan" && "cursor-crosshair"
+          )}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={commitDraft}
