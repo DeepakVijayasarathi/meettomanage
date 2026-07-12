@@ -4,6 +4,7 @@ import { PhoneOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
+import { postEngagement } from "@/api/engagement";
 
 // Loaded from the Jitsi deployment at runtime (see docs/JITSI_ARCHITECTURE.md);
 // meet.jit.si for development, the self-hosted domain in production.
@@ -13,7 +14,7 @@ declare global {
   interface Window {
     JitsiMeetExternalAPI?: new (domain: string, options: Record<string, unknown>) => {
       dispose: () => void;
-      addListener: (event: string, listener: () => void) => void;
+      addListener: (event: string, listener: (payload: { id?: string; muted?: boolean }) => void) => void;
       executeCommand: (command: string, ...args: unknown[]) => void;
     };
   }
@@ -43,10 +44,12 @@ export default function JitsiLive({
   room,
   title,
   mode,
+  sessionId,
 }: {
   room: string;
   title?: string;
   mode: "teacher" | "student";
+  sessionId?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -57,11 +60,38 @@ export default function JitsiLive({
     let api:
       | {
           dispose: () => void;
-          addListener: (event: string, listener: () => void) => void;
+          addListener: (event: string, listener: (payload: { id?: string; muted?: boolean }) => void) => void;
           executeCommand: (command: string, ...args: unknown[]) => void;
         }
       | undefined;
     let cancelled = false;
+
+    // Talk-time & camera attentiveness: accumulated from Jitsi media signals,
+    // flushed as engagement events when the participant leaves.
+    const media = {
+      selfId: "",
+      talkMs: 0,
+      talkSince: 0,
+      camMs: 0,
+      camSince: 0,
+    };
+    const flushMedia = () => {
+      const now = Date.now();
+      if (media.talkSince) {
+        media.talkMs += now - media.talkSince;
+        media.talkSince = 0;
+      }
+      if (media.camSince) {
+        media.camMs += now - media.camSince;
+        media.camSince = 0;
+      }
+      const talkSeconds = Math.round(media.talkMs / 1000);
+      const camSeconds = Math.round(media.camMs / 1000);
+      if (talkSeconds > 0) postEngagement(sessionId, userName, "TalkTimeSeconds", talkSeconds);
+      if (camSeconds > 0) postEngagement(sessionId, userName, "CameraOnSeconds", camSeconds);
+      media.talkMs = 0;
+      media.camMs = 0;
+    };
 
     loadJitsiScript()
       .then(() => {
@@ -83,18 +113,40 @@ export default function JitsiLive({
           },
         });
         api.addListener("readyToClose", () => navigate(-1));
-        if (mode === "teacher") {
-          // Auto session recording: starts when the host joins; requires Jibri
-          // on the Jitsi deployment (no-op on deployments without it).
-          api.addListener("videoConferenceJoined", () => {
+        api.addListener("videoConferenceJoined", (payload) => {
+          media.selfId = payload?.id ?? "";
+          media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
+          if (mode === "teacher") {
+            // Auto session recording: starts when the host joins; requires Jibri
+            // on the Jitsi deployment (no-op on deployments without it).
             api?.executeCommand("startRecording", { mode: "file" });
-          });
-        }
+          }
+        });
+        api.addListener("dominantSpeakerChanged", (payload) => {
+          const now = Date.now();
+          if (payload?.id === media.selfId) {
+            media.talkSince ||= now;
+          } else if (media.talkSince) {
+            media.talkMs += now - media.talkSince;
+            media.talkSince = 0;
+          }
+        });
+        api.addListener("videoMuteStatusChanged", (payload) => {
+          const now = Date.now();
+          if (payload?.muted && media.camSince) {
+            media.camMs += now - media.camSince;
+            media.camSince = 0;
+          } else if (payload?.muted === false) {
+            media.camSince ||= now;
+          }
+        });
+        api.addListener("videoConferenceLeft", () => flushMedia());
       })
       .catch((err: Error) => setError(err.message));
 
     return () => {
       cancelled = true;
+      flushMedia();
       api?.dispose();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -35,12 +35,13 @@ function formatElapsed(totalSeconds: number) {
 
 export default function LiveClassroom({ mode }: { mode: "teacher" | "student" }) {
   const location = useLocation();
+  const { sessionId } = useParams();
 
   // Real sessions launched from an API-backed dashboard carry their Jitsi room
   // via route state; the interactive mock stays for demo mode and design work.
   const launch = location.state as { room?: string; title?: string } | null;
   if (apiEnabled() && launch?.room) {
-    return <JitsiLive room={launch.room} title={launch.title} mode={mode} />;
+    return <JitsiLive room={launch.room} title={launch.title} mode={mode} sessionId={sessionId} />;
   }
 
   return <MockLiveClassroom mode={mode} />;

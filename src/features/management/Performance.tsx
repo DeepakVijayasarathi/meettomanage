@@ -20,6 +20,9 @@ import { formatCurrency, formatPercent } from "@/lib/utils";
 import { ADMIN_KPIS, BATCH_OCCUPANCY_BY_COURSE, TEACHER_UTILIZATION } from "@/data/kpis";
 import { TEACHERS } from "@/data/users";
 import { getPayoutsForTeacher } from "@/data/payouts";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { getTeacherPerformance } from "@/api/reports";
 import type { AppUser, TeacherPayout } from "@/types";
 
 /** TEACHER_UTILIZATION keys teachers by an abbreviated "First L." form — map back to full names. */
@@ -44,10 +47,13 @@ interface TeacherRow {
   teacher: AppUser;
   utilization?: number;
   payout?: TeacherPayout;
+  sessions?: number;
 }
 
+const AVATAR_FALLBACKS = ["#7C5CFF", "#0EA5E9", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6"];
+
 export default function ManagementPerformance() {
-  const rows = useMemo<TeacherRow[]>(
+  const mockRows = useMemo<TeacherRow[]>(
     () =>
       TEACHERS.map((teacher) => ({
         teacher,
@@ -57,7 +63,30 @@ export default function ManagementPerformance() {
     []
   );
 
-  const activeTeachers = TEACHERS.filter((t) => t.status === "active").length;
+  // Live rows from the teacher-performance report: attendance % drives the meter
+  const { data: rows } = useApiData<TeacherRow[]>(
+    () =>
+      getTeacherPerformance().then((items) =>
+        items.map((t, i) => ({
+          teacher: {
+            id: t.teacherProfileId,
+            name: t.teacherName,
+            email: "",
+            phone: "",
+            role: "teacher" as const,
+            status: "active" as const,
+            avatarColor: AVATAR_FALLBACKS[i % AVATAR_FALLBACKS.length],
+            joinedOn: "",
+            department: (t.department ?? undefined) as AppUser["department"],
+          },
+          utilization: Math.round(t.studentAttendancePercent),
+          sessions: t.sessionsCompleted,
+        }))
+      ),
+    mockRows
+  );
+
+  const activeTeachers = apiEnabled() ? rows.length : TEACHERS.filter((t) => t.status === "active").length;
 
   const columns: DataTableColumn<TeacherRow>[] = [
     {
@@ -104,9 +133,10 @@ export default function ManagementPerformance() {
     {
       key: "sessions",
       header: "Sessions (latest month)",
-      accessor: (r) => r.payout?.sessionsCompleted ?? -1,
+      accessor: (r) => r.sessions ?? r.payout?.sessionsCompleted ?? -1,
       sortable: true,
-      render: (r) => (r.payout ? r.payout.sessionsCompleted : <span className="text-xs text-muted-foreground">—</span>),
+      render: (r) =>
+        r.sessions ?? r.payout?.sessionsCompleted ?? <span className="text-xs text-muted-foreground">—</span>,
     },
     {
       key: "payout",

@@ -30,6 +30,38 @@ export async function sendBulkEmail(input: {
   });
 }
 
+export interface ApiTeacherPerformance {
+  teacherProfileId: string;
+  teacherName: string;
+  department: string | null;
+  sessionsCompleted: number;
+  teacherNoShows: number;
+  upcomingSessions: number;
+  studentAttendancePercent: number;
+  summariesWritten: number;
+}
+
+export interface ApiStudentAnalytics {
+  childId: string;
+  childName: string;
+  attendancePercent: number;
+  sessionsAttended: number;
+  quizAttempts: number;
+  quizCorrect: number;
+  activityInteractions: number;
+  whiteboardInteractions: number;
+  averageEngagementScore: number;
+  insights: string[];
+}
+
+export async function getTeacherPerformance(): Promise<ApiTeacherPerformance[]> {
+  return apiFetch<ApiTeacherPerformance[]>("/api/reports/teacher-performance");
+}
+
+export async function getStudentAnalytics(childId: string): Promise<ApiStudentAnalytics> {
+  return apiFetch<ApiStudentAnalytics>(`/api/reports/student-analytics/${childId}`);
+}
+
 /** Downloads a CSV export (attendance | revenue | payouts | conversion) with the auth token. */
 export async function downloadReportCsv(report: "attendance" | "revenue" | "payouts" | "conversion"): Promise<void> {
   const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
