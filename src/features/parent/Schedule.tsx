@@ -15,6 +15,10 @@ import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { getSessionsForChild } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { toFrontendSession } from "@/api/sessions";
+import { getParentSchedule } from "@/api/parentPortal";
 import { cn, formatDate } from "@/lib/utils";
 import type { ClassSession } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, recordingExpiryLabel } from "./utils";
@@ -26,7 +30,18 @@ export default function ParentSchedule() {
   const child = getChildById(activeChildId);
   const [selected, setSelected] = useState<ClassSession | null>(null);
 
-  const sessions = useMemo(() => (child ? getSessionsForChild(child.id) : []), [child]);
+  const { data: apiSessions } = useApiData<ClassSession[]>(
+    () => {
+      const from = new Date(Date.now() - 60 * 86400_000).toISOString();
+      const to = new Date(Date.now() + 60 * 86400_000).toISOString();
+      return getParentSchedule(from, to).then((items) => items.map(toFrontendSession));
+    },
+    []
+  );
+  const sessions = useMemo(
+    () => (apiEnabled() ? apiSessions : child ? getSessionsForChild(child.id) : []),
+    [apiSessions, child]
+  );
 
   const upcoming = useMemo(
     () => sessions.filter((s) => ["scheduled", "demo", "rescheduled"].includes(s.status)).sort(compareSessionAsc),
@@ -38,7 +53,7 @@ export default function ParentSchedule() {
     [sessions]
   );
 
-  const isEnrolled = child ? enrolledChildIds.includes(child.id) : false;
+  const isEnrolled = apiEnabled() ? true : child ? enrolledChildIds.includes(child.id) : false;
   const batch = child ? getBatchById(child.batchId) : undefined;
 
   return (

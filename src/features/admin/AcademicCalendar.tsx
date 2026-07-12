@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarBoard } from "@/components/CalendarBoard";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import {
   Dialog,
@@ -16,11 +17,31 @@ import {
 import { SESSIONS } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getChildById } from "@/data/children";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listSessions, toFrontendSession } from "@/api/sessions";
+import { createHoliday, deleteHoliday, listHolidays, type ApiHoliday } from "@/api/academicOps";
 import type { ClassSession } from "@/types";
 import { formatDate } from "@/lib/utils";
 
 export default function AdminAcademicCalendar() {
   const [selected, setSelected] = useState<ClassSession | null>(null);
+  const { data: sessions } = useApiData<ClassSession[]>(
+    () => listSessions().then((items) => items.map(toFrontendSession)),
+    SESSIONS
+  );
+  const { data: holidays, reload: reloadHolidays } = useApiData<ApiHoliday[]>(() => listHolidays(), []);
+  const [holidayDate, setHolidayDate] = useState("");
+  const [holidayName, setHolidayName] = useState("");
+
+  function handleAddHoliday() {
+    if (!holidayDate || !holidayName.trim()) return;
+    createHoliday({ date: holidayDate, name: holidayName.trim() }).then(() => {
+      setHolidayDate("");
+      setHolidayName("");
+      reloadHolidays();
+    });
+  }
 
   return (
     <div>
@@ -31,8 +52,54 @@ export default function AdminAcademicCalendar() {
       />
 
       <Card className="p-5">
-        <CalendarBoard sessions={SESSIONS} initialMonth={new Date(2026, 6, 1)} onSessionClick={setSelected} />
+        <CalendarBoard
+          sessions={sessions}
+          initialMonth={apiEnabled() ? new Date() : new Date(2026, 6, 1)}
+          onSessionClick={setSelected}
+        />
       </Card>
+
+      {apiEnabled() && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Holiday Calendar</CardTitle>
+            <CardDescription>Automated scheduling skips these dates when generating batch sessions.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-muted-foreground" htmlFor="holiday-date">Date</label>
+                <Input id="holiday-date" type="date" value={holidayDate} onChange={(e) => setHolidayDate(e.target.value)} className="w-44" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-muted-foreground" htmlFor="holiday-name">Name</label>
+                <Input id="holiday-name" value={holidayName} onChange={(e) => setHolidayName(e.target.value)} placeholder="e.g. Diwali" className="w-56" />
+              </div>
+              <Button onClick={handleAddHoliday} disabled={!holidayDate || !holidayName.trim()}>
+                <Plus className="h-4 w-4" /> Add Holiday
+              </Button>
+            </div>
+            {holidays.length > 0 && (
+              <ul className="flex flex-col divide-y divide-border">
+                {holidays.map((h) => (
+                  <li key={h.id} className="flex items-center justify-between py-2 text-sm">
+                    <span className="font-medium text-foreground">
+                      {formatDate(h.date)} — {h.name}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteHoliday(h.id).then(reloadHolidays)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <DialogContent>

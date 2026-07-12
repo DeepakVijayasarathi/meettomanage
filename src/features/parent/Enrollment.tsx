@@ -13,6 +13,8 @@ import { Progress } from "@/components/ui/progress";
 import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { COURSES } from "@/data/courses";
+import { apiEnabled } from "@/lib/api";
+import { submitEnrollmentForm } from "@/api/parentPortal";
 
 const STEPS = ["Child Details", "Family & Contact", "Course & Notes"] as const;
 
@@ -70,6 +72,18 @@ export default function ParentEnrollment() {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+
+    if (apiEnabled()) {
+      // Answers travel as a JSON document; the field list is client-configurable
+      // (docs/ENROLLMENT_FORM_FIELDS.md) so no schema coupling here
+      submitEnrollmentForm({ ...form }).then(() => {
+        markEnrollmentComplete(childId);
+        setActiveChildId(childId);
+        setSubmitted(true);
+      });
+      return;
+    }
+
     markEnrollmentComplete(childId);
     setActiveChildId(childId);
     setSubmitted(true);

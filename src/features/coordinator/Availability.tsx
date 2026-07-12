@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { addDays, format } from "date-fns";
 import { CalendarOff, CheckCircle2, Clock, PartyPopper, UserCheck, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -11,8 +11,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TEACHERS } from "@/data/users";
 import { SESSIONS } from "@/data/sessions";
 import { LEAVE_REQUESTS } from "@/data/leaves";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listLeave, reviewLeave, type ApiLeaveRequest } from "@/api/academicOps";
 import { cn, formatDate, getInitials } from "@/lib/utils";
 import type { LeaveRequest } from "@/types";
+
+function toFrontendLeave(leave: ApiLeaveRequest): LeaveRequest {
+  const hoursBefore = Math.max(
+    0,
+    Math.round((new Date(leave.startAtUtc).getTime() - new Date(leave.createdAtUtc).getTime()) / 3_600_000)
+  );
+  return {
+    id: leave.id,
+    teacherId: leave.teacherProfileId,
+    teacherName: leave.teacherName,
+    date: leave.startAtUtc.slice(0, 10),
+    session: `${leave.affectedSessionCount} scheduled session(s) affected`,
+    reason: leave.reason,
+    hoursBeforeSession: hoursBefore,
+    status: leave.status.toLowerCase() as LeaveRequest["status"],
+  };
+}
 
 const TODAY = "2026-07-09";
 const NOW = new Date("2026-07-09T12:00:00");
@@ -51,9 +71,22 @@ const DAY_STATE_LABEL: Record<DayState, string> = {
 };
 
 export default function CoordinatorAvailability() {
+  const { data: apiLeaves, reload } = useApiData<LeaveRequest[]>(
+    () => listLeave().then((items) => items.map(toFrontendLeave)),
+    LEAVE_REQUESTS
+  );
   const [leaves, setLeaves] = useState<LeaveRequest[]>(LEAVE_REQUESTS);
+  useEffect(() => setLeaves(apiLeaves), [apiLeaves]);
   const [approveTarget, setApproveTarget] = useState<LeaveRequest | null>(null);
   const [rejectTarget, setRejectTarget] = useState<LeaveRequest | null>(null);
+
+  function decide(target: LeaveRequest, approve: boolean) {
+    if (apiEnabled()) {
+      reviewLeave(target.id, approve).then(reload);
+      return;
+    }
+    setLeaves((prev) => prev.map((l) => (l.id === target.id ? { ...l, status: approve ? "approved" : "rejected" } : l)));
+  }
 
   const activeTeachers = useMemo(() => TEACHERS.filter((t) => t.status === "active"), []);
 
@@ -265,7 +298,7 @@ export default function CoordinatorAvailability() {
         confirmLabel="Approve"
         onConfirm={() => {
           if (!approveTarget) return;
-          setLeaves((prev) => prev.map((l) => (l.id === approveTarget.id ? { ...l, status: "approved" } : l)));
+          decide(approveTarget, true);
         }}
       />
 
@@ -278,7 +311,7 @@ export default function CoordinatorAvailability() {
         destructive
         onConfirm={() => {
           if (!rejectTarget) return;
-          setLeaves((prev) => prev.map((l) => (l.id === rejectTarget.id ? { ...l, status: "rejected" } : l)));
+          decide(rejectTarget, false);
         }}
       />
     </div>

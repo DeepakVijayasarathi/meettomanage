@@ -16,18 +16,85 @@ import {
 import { CHILDREN } from "@/data/children";
 import { getParentById } from "@/data/users";
 import { getCourseById } from "@/data/courses";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listEnrollmentForms, reviewEnrollmentForm, type ApiEnrollmentForm } from "@/api/parentPortal";
 import type { Child } from "@/types";
 import { getInitials } from "@/lib/utils";
 
-export default function AdminEnrollments() {
-  const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
-  const [detail, setDetail] = useState<Child | null>(null);
+/** Mock Child rows and live enrollment-form rows share one table shape. */
+type EnrollmentRow = Child & { parentName?: string; formJson?: string; dob?: string };
 
-  function isComplete(child: Child) {
+function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
+  let answers: Record<string, unknown> = {};
+  try {
+    answers = JSON.parse(form.formDataJson) as Record<string, unknown>;
+  } catch {
+    /* malformed answers still render as a pending row */
+  }
+  const dob = typeof answers.dob === "string" ? answers.dob : undefined;
+  const age = dob ? Math.max(0, Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 86400_000))) : 0;
+  return {
+    id: form.id,
+    parentId: form.parentProfileId,
+    parentName: form.parentName,
+    name: typeof answers.childName === "string" && answers.childName ? answers.childName : "(child name pending)",
+    age,
+    grade: typeof answers.grade === "string" ? answers.grade : "—",
+    avatarColor: "#7c5cff",
+    courseId: typeof answers.courseInterest === "string" ? answers.courseInterest : "",
+    batchId: "",
+    classesCompleted: 0,
+    classesRemaining: 0,
+    attendancePercent: 0,
+    feeStatus: "due",
+    enrollmentComplete: form.status === "Approved",
+    formJson: form.formDataJson,
+    dob,
+  };
+}
+
+export default function AdminEnrollments() {
+  const { data: rows, reload } = useApiData<EnrollmentRow[]>(
+    () => listEnrollmentForms().then((forms) => forms.map(toEnrollmentRow)),
+    CHILDREN
+  );
+  const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
+  const [detail, setDetail] = useState<EnrollmentRow | null>(null);
+
+  function isComplete(child: EnrollmentRow) {
     return child.enrollmentComplete || approvedIds.has(child.id);
   }
 
-  const columns: DataTableColumn<Child>[] = useMemo(
+  function handleApprove(row: EnrollmentRow) {
+    if (apiEnabled()) {
+      const parts = row.name.split(" ");
+      reviewEnrollmentForm(row.id, {
+        approve: true,
+        childFirstName: parts[0],
+        childLastName: parts.slice(1).join(" ") || undefined,
+        childDateOfBirth: row.dob,
+      }).then(() => {
+        reload();
+        setDetail(null);
+      });
+      return;
+    }
+    setApprovedIds((prev) => new Set(prev).add(row.id));
+    setDetail(null);
+  }
+
+  function handleDownload(row: EnrollmentRow) {
+    const blob = new Blob([row.formJson ?? JSON.stringify(row, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `enrollment-${row.name.replace(/[^a-z0-9]+/gi, "-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const columns: DataTableColumn<EnrollmentRow>[] = useMemo(
     () => [
       {
         key: "name",
@@ -51,8 +118,8 @@ export default function AdminEnrollments() {
       {
         key: "parent",
         header: "Parent",
-        accessor: (row) => getParentById(row.parentId)?.name ?? "",
-        render: (row) => <span className="text-sm">{getParentById(row.parentId)?.name ?? "—"}</span>,
+        accessor: (row) => row.parentName ?? getParentById(row.parentId)?.name ?? "",
+        render: (row) => <span className="text-sm">{row.parentName ?? getParentById(row.parentId)?.name ?? "—"}</span>,
       },
       {
         key: "course",
@@ -82,7 +149,7 @@ export default function AdminEnrollments() {
       />
 
       <DataTable
-        data={CHILDREN}
+        data={rows}
         columns={columns}
         rowKey={(row) => row.id}
         searchPlaceholder="Search by student name…"
@@ -136,21 +203,16 @@ export default function AdminEnrollments() {
                 <Button variant="outline" onClick={() => setDetail(null)}>
                   Close
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" onClick={() => handleDownload(detail)}>
                   <Download className="h-4 w-4" />
-                  Download PDF
+                  Download
                 </Button>
                 <Button variant="outline">
                   <FileEdit className="h-4 w-4" />
                   Edit
                 </Button>
                 {!isComplete(detail) && (
-                  <Button
-                    onClick={() => {
-                      setApprovedIds((prev) => new Set(prev).add(detail.id));
-                      setDetail(null);
-                    }}
-                  >
+                  <Button onClick={() => handleApprove(detail)}>
                     <CheckCircle2 className="h-4 w-4" />
                     Approve
                   </Button>

@@ -11,6 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getChildById } from "@/data/children";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listMySessions, toFrontendSession } from "@/api/sessions";
+import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
 import { cn, formatDate, getInitials } from "@/lib/utils";
 import type { ClassSession } from "@/types";
 
@@ -47,10 +51,28 @@ function sessionSubtitle(session: ClassSession) {
 
 export default function TeacherAttendance() {
   const [selected, setSelected] = useState<ClassSession | null>(null);
+  const [apiRecords, setApiRecords] = useState<ApiSessionAttendance[] | null>(null);
 
-  const completed = getSessionsForTeacher(TEACHER_ID)
-    .filter((s) => s.status === "completed")
-    .sort((a, b) => b.date.localeCompare(a.date));
+  const { data: apiCompleted } = useApiData<ClassSession[]>(
+    () =>
+      listMySessions().then((items) =>
+        items.map(toFrontendSession).filter((s) => s.status === "completed")
+      ),
+    []
+  );
+  const completed = apiEnabled()
+    ? [...apiCompleted].sort((a, b) => b.date.localeCompare(a.date))
+    : getSessionsForTeacher(TEACHER_ID)
+        .filter((s) => s.status === "completed")
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+  function openSummary(session: ClassSession) {
+    setSelected(session);
+    setApiRecords(null);
+    if (apiEnabled()) {
+      listAttendance(session.id).then(setApiRecords).catch(() => setApiRecords([]));
+    }
+  }
 
   const totalPresent = completed.reduce((sum, s) => sum + (ATTENDANCE_RECORDS[s.id]?.filter((r) => r.present).length ?? s.childIds.length), 0);
   const totalSeats = completed.reduce((sum, s) => sum + (ATTENDANCE_RECORDS[s.id]?.length ?? s.childIds.length), 0);
@@ -138,14 +160,25 @@ export default function TeacherAttendance() {
       key: "actions",
       header: "",
       render: (row) => (
-        <Button size="sm" variant="outline" onClick={() => setSelected(row)}>
+        <Button size="sm" variant="outline" onClick={() => openSummary(row)}>
           View summary
         </Button>
       ),
     },
   ];
 
-  const selectedRecords = selected ? ATTENDANCE_RECORDS[selected.id] : undefined;
+  // Live rows come from the attendance API; mock mode keeps the simulated breakdown
+  const selectedRecords = apiEnabled()
+    ? apiRecords
+        ?.filter((r) => r.participantType === "Student")
+        .map<AttendanceRecord>((r) => ({
+          childId: r.childName ?? r.childId ?? "",
+          present: r.status !== "Absent",
+          note: r.status === "Late" ? "Joined late" : undefined,
+        }))
+    : selected
+      ? ATTENDANCE_RECORDS[selected.id]
+      : undefined;
 
   return (
     <div>
@@ -171,7 +204,7 @@ export default function TeacherAttendance() {
             columns={columns}
             rowKey={(row) => row.id}
             searchPlaceholder="Search sessions…"
-            onRowClick={(row) => setSelected(row)}
+            onRowClick={(row) => openSummary(row)}
           />
         )}
       </div>
@@ -200,7 +233,7 @@ export default function TeacherAttendance() {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="text-sm font-medium text-foreground">{child?.name ?? "Unknown student"}</p>
+                          <p className="text-sm font-medium text-foreground">{child?.name ?? record.childId ?? "Unknown student"}</p>
                           {record.note && <p className="text-xs text-muted-foreground">{record.note}</p>}
                         </div>
                       </div>

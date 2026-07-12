@@ -62,3 +62,10 @@ export async function listMySessions(): Promise<ApiClassSession[]> {
   const to = new Date(Date.now() + 60 * 86400_000).toISOString();
   return apiFetch<ApiClassSession[]>(`/api/sessions/mine?fromUtc=${from}&toUtc=${to}`);
 }
+
+/** Admin/coordinator calendar: every session in a ±60-day window. */
+export async function listSessions(): Promise<ApiClassSession[]> {
+  const from = new Date(Date.now() - 60 * 86400_000).toISOString();
+  const to = new Date(Date.now() + 60 * 86400_000).toISOString();
+  return apiFetch<ApiClassSession[]>(`/api/sessions?fromUtc=${from}&toUtc=${to}`);
+}

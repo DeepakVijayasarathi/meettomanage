@@ -12,6 +12,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { getResourcesForBatch } from "@/data/resources";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { downloadResource, toFrontendResource } from "@/api/resources";
+import { getParentResources } from "@/api/parentPortal";
 import { cn, formatDate } from "@/lib/utils";
 import type { Resource } from "@/types";
 import { findRecordingSession, recordingExpiryLabel } from "./utils";
@@ -30,12 +34,22 @@ const TONE_CLASS: Record<Tone, string> = {
 export default function ParentResources() {
   const { activeChildId, enrolledChildIds } = useSession();
   const child = getChildById(activeChildId);
-  const isEnrolled = child ? enrolledChildIds.includes(child.id) : false;
+  const isEnrolled = apiEnabled() ? true : child ? enrolledChildIds.includes(child.id) : false;
   const [preview, setPreview] = useState<Resource | null>(null);
 
+  // Admin-granted resources; the endpoint itself blocks access while fee-suspended
+  const { data: apiResources } = useApiData<Resource[]>(
+    () => getParentResources().then((items) => items.map(toFrontendResource)),
+    []
+  );
   const resources = useMemo(
-    () => (child ? getResourcesForBatch(child.batchId).filter((r) => r.visibleToParents) : []),
-    [child]
+    () =>
+      apiEnabled()
+        ? apiResources
+        : child
+          ? getResourcesForBatch(child.batchId).filter((r) => r.visibleToParents)
+          : [],
+    [apiResources, child]
   );
 
   const books = resources.filter((r) => r.type === "book");
@@ -43,6 +57,10 @@ export default function ParentResources() {
   const recordings = resources.filter((r) => r.type === "recording");
 
   function handleDownload(resource: Resource) {
+    if (apiEnabled()) {
+      downloadResource(resource.id, resource.title);
+      return;
+    }
     const blob = new Blob(
       [`${resource.title}\n\nThis is a simulated worksheet download for The Reader Nest demo.\nUploaded on ${resource.uploadedOn}.`],
       { type: "text/plain" }

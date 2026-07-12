@@ -26,6 +26,10 @@ import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { getSessionsForChild } from "@/data/sessions";
 import { getInvoicesForParent } from "@/data/invoices";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { toFrontendSession } from "@/api/sessions";
+import { getParentDashboard, getParentSchedule, type ApiParentDashboard } from "@/api/parentPortal";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import type { Child, ClassSession, Invoice } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart } from "./utils";
@@ -34,10 +38,37 @@ const PARENT_ID = "p-1";
 
 export default function ParentDashboard() {
   const { activeChildId, enrolledChildIds, userName } = useSession();
-  const child = getChildById(activeChildId);
+  const mockChild = getChildById(activeChildId);
   const [payOpen, setPayOpen] = useState(false);
 
-  const sessions = useMemo(() => (child ? getSessionsForChild(child.id) : []), [child]);
+  // Live overlay: the API's per-child summary and real schedule replace the mock numbers
+  const { data: apiDash } = useApiData<ApiParentDashboard | null>(() => getParentDashboard(), null);
+  const { data: apiSessions } = useApiData<ClassSession[]>(
+    () => {
+      const from = new Date(Date.now() - 60 * 86400_000).toISOString();
+      const to = new Date(Date.now() + 60 * 86400_000).toISOString();
+      return getParentSchedule(from, to).then((items) => items.map(toFrontendSession));
+    },
+    []
+  );
+
+  const apiChild = apiDash?.children[0] ?? null;
+  const child: Child | undefined =
+    apiEnabled() && mockChild && apiChild
+      ? {
+          ...mockChild,
+          name: apiChild.name,
+          classesCompleted: apiChild.classesCompleted,
+          classesRemaining: apiChild.classesRemaining,
+          attendancePercent: apiChild.attendancePercent,
+          feeStatus: apiChild.feeStatus,
+        }
+      : mockChild;
+
+  const sessions = useMemo(
+    () => (apiEnabled() ? apiSessions : child ? getSessionsForChild(child.id) : []),
+    [apiSessions, child]
+  );
 
   const upcoming = useMemo(
     () =>
@@ -82,7 +113,8 @@ export default function ParentDashboard() {
     );
   }
 
-  const isEnrolled = enrolledChildIds.includes(child.id);
+  // The mandatory first-login enrollment form gates the dashboard (API flag when live)
+  const isEnrolled = apiEnabled() && apiDash ? apiDash.enrollmentFormCompleted : enrolledChildIds.includes(child.id);
 
   return (
     <div>
