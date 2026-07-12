@@ -133,9 +133,11 @@ function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
 interface WhiteboardProps {
   canDraw: boolean;
   onActivityComplete?: () => void;
+  /** Engagement tracking: fired for every committed stroke/text/sticky. */
+  onInteraction?: () => void;
 }
 
-export default function Whiteboard({ canDraw, onActivityComplete }: WhiteboardProps) {
+export default function Whiteboard({ canDraw, onActivityComplete, onInteraction }: WhiteboardProps) {
   const [pages, setPages] = useState<Page[]>([{ id: nextId(), strokes: [] }]);
   const [pageIndex, setPageIndex] = useState(0);
   const [tool, setTool] = useState<ToolId>("pen");
@@ -237,6 +239,7 @@ export default function Whiteboard({ canDraw, onActivityComplete }: WhiteboardPr
     const finished = draftRef.current;
     draftRef.current = null;
     setPages((prev) => prev.map((p, i) => (i === pageIndex ? { ...p, strokes: [...p.strokes, finished] } : p)));
+    onInteraction?.();
   }
 
   function commitText() {
@@ -252,6 +255,7 @@ export default function Whiteboard({ canDraw, onActivityComplete }: WhiteboardPr
         text: textDraft.value,
       };
       setPages((prev) => prev.map((p, i) => (i === pageIndex ? { ...p, strokes: [...p.strokes, stroke] } : p)));
+      onInteraction?.();
     }
     setTextDraft(null);
   }

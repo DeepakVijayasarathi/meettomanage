@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Star, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
+import { playCelebration } from "@/lib/sounds";
 import type { LeaderboardEntry } from "./classroomData";
 
 interface GamificationOverlayProps {
   celebrating: boolean;
   onCelebrationEnd: () => void;
   leaderboard: LeaderboardEntry[];
+  /** Custom banner for special moments (e.g. birthdays); defaults to the reward cheer. */
+  message?: string;
 }
 
 const MEDAL_STYLES = [
@@ -27,8 +30,13 @@ function badgeFor(stars: number) {
   return MILESTONES.find((m) => stars >= m.stars);
 }
 
-export default function GamificationOverlay({ celebrating, onCelebrationEnd, leaderboard }: GamificationOverlayProps) {
+export default function GamificationOverlay({ celebrating, onCelebrationEnd, leaderboard, message }: GamificationOverlayProps) {
   const [collapsed, setCollapsed] = useState(false);
+
+  // Dhol + clapping accompany every celebration moment
+  useEffect(() => {
+    if (celebrating) playCelebration();
+  }, [celebrating]);
 
   const pieces = useMemo(
     () =>
@@ -72,7 +80,7 @@ export default function GamificationOverlay({ celebrating, onCelebrationEnd, lea
           ))}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="animate-pop-in rounded-2xl border border-white/10 bg-[#12162B]/95 px-7 py-5 text-center backdrop-blur">
-              <p className="font-display text-xl font-bold text-white sm:text-2xl">Great job! 🎉</p>
+              <p className="font-display text-xl font-bold text-white sm:text-2xl">{message ?? "Great job! 🎉"}</p>
             </div>
           </div>
         </div>

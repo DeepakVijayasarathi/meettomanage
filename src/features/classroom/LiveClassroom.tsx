@@ -15,6 +15,7 @@ import ChatPanel from "./ChatPanel";
 import Toolbar from "./Toolbar";
 import QuizOverlay from "./QuizOverlay";
 import GamificationOverlay from "./GamificationOverlay";
+import { postEngagement } from "@/api/engagement";
 
 type StageView = "video" | "whiteboard";
 type RightTab = "participants" | "chat" | "quiz";
@@ -73,6 +74,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
   const [boardAccess, setBoardAccess] = useState<Record<string, boolean>>({});
   const [quizOpen, setQuizOpen] = useState(false);
   const [celebrating, setCelebrating] = useState(false);
+  const [celebrationMessage, setCelebrationMessage] = useState<string | undefined>(undefined);
   const [chatPreset, setChatPreset] = useState<string | null>(null);
 
   useEffect(() => {
@@ -131,6 +133,24 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
   }
 
   const canDrawBoard = mode === "teacher" || Boolean(selfId && boardAccess[selfId]);
+  const selfName = self?.name ?? (mode === "teacher" ? "Teacher" : "Student");
+
+  function celebrate(message?: string) {
+    setCelebrationMessage(message);
+    setCelebrating(true);
+  }
+
+  // Attention signal: a ping whenever the participant returns focus to the class tab
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        postEngagement(sessionId, selfName, "AttentionPing");
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, selfName]);
 
   if (!session) {
     return (
@@ -208,10 +228,38 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
           {stageView === "video" ? (
             <VideoStage participants={participants} boardAccess={boardAccess} />
           ) : (
-            <Whiteboard canDraw={canDrawBoard} onActivityComplete={() => setCelebrating(true)} />
+            <Whiteboard
+              canDraw={canDrawBoard}
+              onActivityComplete={() => {
+                celebrate();
+                postEngagement(sessionId, selfName, "ActivityCompleted");
+              }}
+              onInteraction={() => postEngagement(sessionId, selfName, "WhiteboardInteraction")}
+            />
           )}
 
-          <GamificationOverlay celebrating={celebrating} onCelebrationEnd={() => setCelebrating(false)} leaderboard={LEADERBOARD_SEED} />
+          {mode === "teacher" && (
+            <button
+              title="Birthday celebration"
+              onClick={() => {
+                const student = participants.find((p) => p.role === "student");
+                celebrate(`Happy Birthday${student ? `, ${student.name.split(" ")[0]}` : ""}! 🎂`);
+              }}
+              className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-[#12162B]/95 text-lg backdrop-blur transition-transform hover:scale-110"
+            >
+              🎂
+            </button>
+          )}
+
+          <GamificationOverlay
+            celebrating={celebrating}
+            onCelebrationEnd={() => {
+              setCelebrating(false);
+              setCelebrationMessage(undefined);
+            }}
+            leaderboard={LEADERBOARD_SEED}
+            message={celebrationMessage}
+          />
 
           <div className="absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
             <Toolbar
@@ -228,7 +276,11 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
               onToggleCam={() => updateParticipant(selfId, { camOn: !(self?.camOn ?? true) })}
               onToggleScreenShare={() => setScreenSharing((s) => !s)}
               onToggleStage={() => setStageView((v) => (v === "video" ? "whiteboard" : "video"))}
-              onToggleHand={() => updateParticipant(selfId, { handRaised: !(self?.handRaised ?? false) })}
+              onToggleHand={() => {
+                const raising = !(self?.handRaised ?? false);
+                updateParticipant(selfId, { handRaised: raising });
+                if (raising) postEngagement(sessionId, selfName, "HandRaise");
+              }}
               onMuteAll={handleMuteAll}
               onToggleWaitingRoom={() => {
                 setRightOpen(true);
@@ -240,7 +292,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
                 setRightOpen(true);
                 setRightTab("quiz");
               }}
-              onCelebrate={() => setCelebrating(true)}
+              onCelebrate={() => celebrate()}
               onLeave={() => navigate(mode === "teacher" ? "/teacher" : "/parent")}
             />
           </div>
@@ -286,7 +338,14 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
                 />
               </TabsContent>
               <TabsContent value="quiz" className="mt-0 min-h-0 flex-1 overflow-hidden">
-                <QuizOverlay active={quizOpen} mode={mode} onCorrectAnswer={() => setCelebrating(true)} />
+                <QuizOverlay
+                  active={quizOpen}
+                  mode={mode}
+                  onCorrectAnswer={() => {
+                    celebrate();
+                    postEngagement(sessionId, selfName, "QuizCorrect");
+                  }}
+                />
               </TabsContent>
             </Tabs>
           </aside>
