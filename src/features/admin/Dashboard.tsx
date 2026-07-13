@@ -166,7 +166,7 @@ export default function AdminDashboard() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `â‚¹${(v / 1000).toFixed(0)}k`} width={56} />
+              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={56} />
               <RTooltip
                 formatter={(value: number) => [formatCurrency(value), "Revenue"]}
                 contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }}
@@ -296,7 +296,7 @@ export default function AdminDashboard() {
                   <div>
                     <p className="text-sm font-semibold text-foreground">{s.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {s.startTime} Â· {s.duration} min Â· {s.teacherName} Â· {s.childIds.length} student{s.childIds.length === 1 ? "" : "s"}
+                      {s.startTime} · {s.duration} min · {s.teacherName} · {s.childIds.length} student{s.childIds.length === 1 ? "" : "s"}
                     </p>
                   </div>
                 </div>

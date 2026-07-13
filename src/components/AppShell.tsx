@@ -1,10 +1,12 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
-import { NAV_BY_ROLE } from "@/lib/nav";
+import { NAV_BY_ROLE, type NavSection } from "@/lib/nav";
 import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { hexToHslTriple } from "@/lib/utils";
+import { apiEnabled } from "@/lib/api";
+import { getPortalMenu, toNavSections } from "@/api/menus";
 import type { Role } from "@/types";
 
 interface AppShellProps {
@@ -23,6 +25,25 @@ export function AppShell({ role, children }: AppShellProps) {
   });
   const meta = ROLE_META[role];
 
+  // DB-maintained sidebar: served per portal from /api/menus; the static
+  // NAV_BY_ROLE stays as the demo-mode / loading / error fallback.
+  const [apiSections, setApiSections] = useState<NavSection[] | null>(null);
+  useEffect(() => {
+    setApiSections(null);
+    if (!apiEnabled()) return;
+    let cancelled = false;
+    getPortalMenu(role)
+      .then((items) => {
+        if (!cancelled && items.length > 0) setApiSections(toNavSections(items));
+      })
+      .catch(() => {
+        /* keep static nav */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [role]);
+
   useEffect(() => {
     setRole(role);
   }, [role, setRole]);
@@ -39,7 +60,7 @@ export function AppShell({ role, children }: AppShellProps) {
   return (
     <div className="flex min-h-screen bg-background" style={accentStyle}>
       <Sidebar
-        sections={NAV_BY_ROLE[role]}
+        sections={apiSections ?? NAV_BY_ROLE[role]}
         roleLabel={meta.label}
         roleHex={meta.hex}
         mobileOpen={mobileOpen}
