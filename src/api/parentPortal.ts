@@ -49,6 +49,29 @@ export async function getParentInvoices(): Promise<ApiInvoice[]> {
   return apiFetch<ApiInvoice[]>("/api/parent-portal/invoices");
 }
 
+export interface ApiParentChild {
+  id: string;
+  firstName: string;
+  lastName: string;
+  academicLevel: string | null;
+  isActive: boolean;
+}
+
+/** The signed-in parent's own children (approved enrollments). */
+export async function getParentChildren(): Promise<ApiParentChild[]> {
+  return apiFetch<ApiParentChild[]>("/api/parent-portal/children");
+}
+
+export interface ApiPaymentMethod {
+  key: string;
+  name: string;
+}
+
+/** Enabled payment-gateway integrations for the Pay Now popup (the UI adds Cash on top). */
+export async function getPaymentMethods(): Promise<ApiPaymentMethod[]> {
+  return apiFetch<ApiPaymentMethod[]>("/api/parent-portal/payment-methods");
+}
+
 /** Mandatory first-login enrollment form (answers as a JSON document). */
 export async function submitEnrollmentForm(formData: Record<string, unknown>): Promise<ApiEnrollmentForm> {
   return apiFetch<ApiEnrollmentForm>("/api/enrollment-forms", {

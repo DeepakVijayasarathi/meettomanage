@@ -25,9 +25,14 @@ import { CHILDREN } from "@/data/children";
 import { getPayoutsForTeacher } from "@/data/payouts";
 import { DEMO_FEEDBACKS } from "@/data/feedback";
 import { useSession } from "@/state/session";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listMySessions, toFrontendSession } from "@/api/sessions";
+import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
+import { listMyDemoBookings, toAwaitingFeedback } from "@/api/demoBookings";
 import { CHART_PALETTE } from "@/lib/roles";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import type { ClassSession, SessionStatus } from "@/types";
+import type { ClassSession, DemoFeedback, SessionStatus, TeacherPayout } from "@/types";
 
 const TEACHER_ID = "t-1";
 const TEACHER_NAME = "Karan Mehta";
@@ -58,34 +63,56 @@ const STATUS_ICON: Partial<Record<SessionStatus, typeof PartyPopper>> = {
 export default function TeacherDashboard() {
   const { userName } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
+  const usingApi = apiEnabled();
 
-  const teacherSessions = getSessionsForTeacher(TEACHER_ID);
+  // Live teacher data; demo mode keeps the mock roster.
+  const { data: apiSessions } = useApiData<ClassSession[]>(
+    () => listMySessions().then((s) => s.map(toFrontendSession)),
+    []
+  );
+  const { data: apiPayouts } = useApiData<TeacherPayout[]>(
+    () => listMyPayouts().then((p) => p.map(toFrontendPayout)),
+    []
+  );
+  const { data: apiPending } = useApiData<DemoFeedback[]>(
+    () => listMyDemoBookings().then((b) => b.filter((x) => x.conversionStatus === "DemoScheduled").map(toAwaitingFeedback)),
+    []
+  );
+
+  // Real "now" in API mode; the mock universe is pinned to a fixed date.
+  const now = usingApi ? new Date() : NOW;
+  const today = usingApi ? now.toISOString().slice(0, 10) : TODAY;
+
+  const teacherSessions = usingApi ? apiSessions : getSessionsForTeacher(TEACHER_ID);
 
   const todaysSessions = teacherSessions
-    .filter((s) => s.date === TODAY)
+    .filter((s) => s.date === today)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-  const weekStart = startOfWeek(NOW);
-  const weekEnd = endOfWeek(NOW);
+  const weekStart = startOfWeek(now);
+  const weekEnd = endOfWeek(now);
   const thisWeekSessions = teacherSessions.filter(
     (s) =>
       isWithinInterval(parseISO(s.date), { start: weekStart, end: weekEnd }) &&
       (s.status === "scheduled" || s.status === "completed" || s.status === "demo")
   );
 
+  // Attendance average has no aggregate endpoint yet, so it's demo-only.
   const teacherBatchIds = BATCHES.filter((b) => b.teacherId === TEACHER_ID).map((b) => b.id);
   const teacherChildren = CHILDREN.filter((c) => teacherBatchIds.includes(c.batchId));
-  const avgAttendance = teacherChildren.length
-    ? Math.round(teacherChildren.reduce((sum, c) => sum + c.attendancePercent, 0) / teacherChildren.length)
-    : 0;
+  const avgAttendance = usingApi
+    ? 0
+    : teacherChildren.length
+      ? Math.round(teacherChildren.reduce((sum, c) => sum + c.attendancePercent, 0) / teacherChildren.length)
+      : 0;
 
-  const payouts = getPayoutsForTeacher(TEACHER_ID);
+  const payouts = usingApi ? apiPayouts : getPayoutsForTeacher(TEACHER_ID);
   const latestPayout = payouts[payouts.length - 1];
 
-  const pendingFeedback = DEMO_FEEDBACKS.filter((f) => f.teacherName === TEACHER_NAME && !f.submitted);
+  const pendingFeedback = usingApi ? apiPending : DEMO_FEEDBACKS.filter((f) => f.teacherName === TEACHER_NAME && !f.submitted);
 
-  const windowStart = startOfDay(addDays(NOW, 1));
-  const windowEnd = addDays(NOW, 7);
+  const windowStart = startOfDay(addDays(now, 1));
+  const windowEnd = addDays(now, 7);
   const upcoming = teacherSessions
     .filter((s) => {
       const d = parseISO(s.date);
@@ -116,10 +143,10 @@ export default function TeacherDashboard() {
         <KpiCard label="This Week" value={String(thisWeekSessions.length)} icon={Clock} tone="warning" />
         <KpiCard
           label="Student Attendance"
-          value={`${avgAttendance}%`}
+          value={avgAttendance ? `${avgAttendance}%` : "—"}
           icon={Users}
           tone="success"
-          trend={{ value: avgAttendance - 90, label: "vs 90% target" }}
+          trend={avgAttendance ? { value: avgAttendance - 90, label: "vs 90% target" } : undefined}
         />
         <KpiCard
           label="Payout This Month"
@@ -159,7 +186,7 @@ export default function TeacherDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Today's Classes</CardTitle>
-            <CardDescription>{formatDate(TODAY, "long")}</CardDescription>
+            <CardDescription>{formatDate(today, "long")}</CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
             {todaysSessions.length === 0 ? (

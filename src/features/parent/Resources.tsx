@@ -20,8 +20,6 @@ import { cn, formatDate } from "@/lib/utils";
 import type { Resource } from "@/types";
 import { findRecordingSession, recordingExpiryLabel } from "./utils";
 
-const PARENT_ID = "p-1";
-
 type Tone = "primary" | "success" | "warning" | "neutral";
 
 const TONE_CLASS: Record<Tone, string> = {
@@ -32,9 +30,18 @@ const TONE_CLASS: Record<Tone, string> = {
 };
 
 export default function ParentResources() {
-  const { activeChildId, enrolledChildIds } = useSession();
-  const child = getChildById(activeChildId);
-  const isEnrolled = apiEnabled() ? true : child ? enrolledChildIds.includes(child.id) : false;
+  const { activeChildId, enrolledChildIds, children: sessionChildren } = useSession();
+  const usingApi = apiEnabled();
+  const mockChild = getChildById(activeChildId);
+  const sessionChild = sessionChildren.find((c) => c.id === activeChildId) ?? sessionChildren[0];
+  const child = usingApi
+    ? sessionChild
+      ? { id: sessionChild.id, name: sessionChild.name }
+      : undefined
+    : mockChild
+      ? { id: mockChild.id, name: mockChild.name }
+      : undefined;
+  const isEnrolled = usingApi ? (sessionChild?.enrollmentComplete ?? false) : mockChild ? enrolledChildIds.includes(mockChild.id) : false;
   const [preview, setPreview] = useState<Resource | null>(null);
 
   // Admin-granted resources; the endpoint itself blocks access while fee-suspended
@@ -44,12 +51,12 @@ export default function ParentResources() {
   );
   const resources = useMemo(
     () =>
-      apiEnabled()
+      usingApi
         ? apiResources
-        : child
-          ? getResourcesForBatch(child.batchId).filter((r) => r.visibleToParents)
+        : mockChild
+          ? getResourcesForBatch(mockChild.batchId).filter((r) => r.visibleToParents)
           : [],
-    [apiResources, child]
+    [usingApi, apiResources, mockChild]
   );
 
   const books = resources.filter((r) => r.type === "book");
@@ -78,7 +85,7 @@ export default function ParentResources() {
   return (
     <div>
       <PageHeader title="Resources &amp; Recordings" description="Worksheets, reading books and 15-day recording access for your child." />
-      <MultiChildSwitcher parentId={PARENT_ID} />
+      <MultiChildSwitcher />
 
       {child && !isEnrolled && (
         <Card className="mt-4 border-warning/40 bg-warning/5 p-4">

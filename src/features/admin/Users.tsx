@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, HeartHandshake, Plus, ShieldCheck, UserCog, Users as UsersIcon } from "lucide-react";
+import { CheckCircle2, GraduationCap, HeartHandshake, Loader2, Mail, MessageCircle, Plus, ShieldCheck, UserCog, Users as UsersIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
@@ -22,11 +22,11 @@ import { PARENTS, TEACHERS, ADMISSION_TEAM, SUB_ADMINS, getParentById } from "@/
 import { CHILDREN } from "@/data/children";
 import { getCourseById } from "@/data/courses";
 import type { AppUser, Child } from "@/types";
-import { formatDate, getInitials } from "@/lib/utils";
+import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { createUser, listUsers, toAppUser } from "@/api/users";
+import { createUser, getCredentialChannels, listStudents, listUsers, resendCredentials, toAppUser, updateUser, type StudentRow } from "@/api/users";
 import type { ApiRole } from "@/api/types";
 import { listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
 
@@ -65,9 +65,60 @@ export default function AdminUsers() {
     },
     [...ADMISSION_TEAM, ...SUB_ADMINS]
   );
+  const { data: students } = useApiData<StudentRow[]>(listStudents, CHILDREN);
 
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
   const [detailChild, setDetailChild] = useState<Child | null>(null);
+  // Edit-profile dialog (name + phone) for any user account.
+  const [editUser, setEditUser] = useState<AppUser | null>(null);
+  const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  function openEdit(u: AppUser) {
+    const [firstName, ...rest] = u.name.trim().split(/\s+/);
+    setEditForm({ firstName: firstName ?? "", lastName: rest.join(" "), phone: u.phone === "—" ? "" : u.phone });
+    setEditError(null);
+    setEditUser(u);
+    setDetailUser(null);
+  }
+
+  async function handleUpdateUser() {
+    if (!editUser) return;
+    if (!editForm.firstName.trim()) {
+      setEditError("First name is required.");
+      return;
+    }
+    if (!apiEnabled()) {
+      setEditUser(null);
+      return;
+    }
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      await updateUser(editUser.id, {
+        firstName: editForm.firstName.trim(),
+        lastName: editForm.lastName.trim() || editForm.firstName.trim(),
+        phone: editForm.phone.trim() || undefined,
+      });
+      setEditUser(null);
+      reloadParents();
+      reloadTeachers();
+      reloadStaff();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Could not update the profile.");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+  // Onboarding credential (re)send from the user detail dialog.
+  const [sending, setSending] = useState<"Email" | "WhatsApp" | null>(null);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
+  // Which delivery channels are switched on in Settings → Integrations (is_enabled).
+  // Demo mode shows both; with the API, only enabled channels get a button.
+  const [channels, setChannels] = useState<{ email: boolean; whatsApp: boolean }>(() =>
+    apiEnabled() ? { email: false, whatsApp: false } : { email: true, whatsApp: true }
+  );
   const [addOpen, setAddOpen] = useState(false);
   const [addRole, setAddRole] = useState("parent");
   const [addName, setAddName] = useState("");
@@ -85,7 +136,38 @@ export default function AdminUsers() {
       .catch(() => {
         /* role dropdown just stays empty */
       });
+    getCredentialChannels()
+      .then(setChannels)
+      .catch(() => {
+        /* leave both hidden if we can't tell */
+      });
   }, []);
+
+  // Clear any previous send result whenever a different user's dialog opens.
+  useEffect(() => setSendResult(null), [detailUser]);
+
+  async function handleResend(channel: "Email" | "WhatsApp") {
+    if (!detailUser) return;
+    if (!apiEnabled()) {
+      setSendResult({ ok: true, message: `Demo mode — no ${channel} actually sent.` });
+      return;
+    }
+    setSending(channel);
+    setSendResult(null);
+    try {
+      await resendCredentials(detailUser.id, channel);
+      setSendResult({
+        ok: true,
+        message: channel === "Email"
+          ? `Welcome email with a new temporary password sent to ${detailUser.email}.`
+          : `Welcome WhatsApp with a new temporary password sent to ${detailUser.phone}.`,
+      });
+    } catch (err) {
+      setSendResult({ ok: false, message: err instanceof Error ? err.message : `Could not send the ${channel} message.` });
+    } finally {
+      setSending(null);
+    }
+  }
 
   async function handleCreateUser() {
     if (!apiEnabled()) {
@@ -166,7 +248,7 @@ export default function AdminUsers() {
     []
   );
 
-  const studentColumns: DataTableColumn<Child>[] = useMemo(
+  const studentColumns: DataTableColumn<StudentRow>[] = useMemo(
     () => [
       {
         key: "name",
@@ -179,7 +261,8 @@ export default function AdminUsers() {
             <div>
               <p className="font-semibold text-foreground">{row.name}</p>
               <p className="text-xs text-muted-foreground">
-                {row.grade} · Age {row.age}
+                {row.grade}
+                {row.age ? ` · Age ${row.age}` : ""}
               </p>
             </div>
           </div>
@@ -188,13 +271,13 @@ export default function AdminUsers() {
       {
         key: "parent",
         header: "Parent",
-        accessor: (row) => getParentById(row.parentId)?.name ?? "",
-        render: (row) => <span className="text-sm">{getParentById(row.parentId)?.name ?? "—"}</span>,
+        accessor: (row) => row.parentName ?? getParentById(row.parentId)?.name ?? "",
+        render: (row) => <span className="text-sm">{row.parentName ?? getParentById(row.parentId)?.name ?? "—"}</span>,
       },
       {
         key: "course",
         header: "Course",
-        render: (row) => <span className="text-sm text-muted-foreground">{getCourseById(row.courseId)?.name ?? "—"}</span>,
+        render: (row) => <span className="text-sm text-muted-foreground">{row.courseName ?? getCourseById(row.courseId)?.name ?? "—"}</span>,
       },
       {
         key: "attendance",
@@ -286,7 +369,7 @@ export default function AdminUsers() {
 
         <TabsContent value="students">
           <DataTable
-            data={CHILDREN}
+            data={students}
             columns={studentColumns}
             rowKey={(row) => row.id}
             searchPlaceholder="Search students by name…"
@@ -355,14 +438,110 @@ export default function AdminUsers() {
                   </div>
                 )}
               </div>
+
+              {/* Onboarding: (re)send the welcome message + a fresh temporary password.
+                  Each button appears only when its channel is switched on in Settings → Integrations. */}
+              <div className="mt-2 rounded-xl border border-border bg-muted/30 p-4">
+                <p className="text-sm font-semibold text-foreground">Onboarding &amp; access</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Send this {detailUser.role === "parent" ? "parent" : "user"} their login and a new temporary password so they can sign in
+                  {detailUser.role === "parent" ? " and enrol their child." : "."}
+                </p>
+                {channels.email || channels.whatsApp ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {channels.email && (
+                      <Button size="sm" onClick={() => handleResend("Email")} disabled={sending !== null}>
+                        {sending === "Email" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                        Send Welcome Email
+                      </Button>
+                    )}
+                    {channels.whatsApp && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleResend("WhatsApp")}
+                        disabled={sending !== null || detailUser.phone === "—" || !detailUser.phone}
+                        title={detailUser.phone === "—" || !detailUser.phone ? "No phone number on file" : undefined}
+                      >
+                        {sending === "WhatsApp" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
+                        Send WhatsApp
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    No delivery channel is enabled. Turn on Email or WhatsApp in Settings &rarr; Integrations to send credentials.
+                  </p>
+                )}
+                {sendResult && (
+                  <p
+                    className={cn(
+                      "mt-3 flex items-start gap-1.5 rounded-lg px-3 py-2 text-xs font-medium",
+                      sendResult.ok ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"
+                    )}
+                  >
+                    {sendResult.ok && <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+                    {sendResult.message}
+                  </p>
+                )}
+              </div>
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDetailUser(null)}>
                   Close
                 </Button>
-                <Button>Edit Profile</Button>
+                <Button onClick={() => openEdit(detailUser)}>Edit Profile</Button>
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit profile dialog */}
+      <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit profile</DialogTitle>
+            <DialogDescription>{editUser?.email}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="edit-first">First name</Label>
+                <Input
+                  id="edit-first"
+                  value={editForm.firstName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, firstName: e.target.value }))}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="edit-last">Last name</Label>
+                <Input
+                  id="edit-last"
+                  value={editForm.lastName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, lastName: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="edit-phone">Phone</Label>
+              <Input
+                id="edit-phone"
+                placeholder="+91 90000 00000"
+                value={editForm.phone}
+                onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+              />
+            </div>
+          </div>
+          {editError && <p className="text-sm font-medium text-red-600">{editError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditUser(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateUser} disabled={editSaving}>
+              {editSaving ? "Saving…" : "Save Changes"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

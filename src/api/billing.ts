@@ -142,3 +142,37 @@ export async function createPackagePlan(input: SavePackagePlanInput): Promise<Ap
 export async function updatePackagePlan(id: string, input: SavePackagePlanInput): Promise<ApiPackagePlan> {
   return apiFetch<ApiPackagePlan>(`/api/package-plans/${id}`, { method: "PUT", body: JSON.stringify(input) });
 }
+
+export interface ApiPaymentAccountTransaction {
+  id: string;
+  invoiceNumber: string;
+  studentName: string | null;
+  amount: number;
+  status: string;
+  dateUtc: string;
+}
+
+export interface ApiPaymentAccount {
+  id: string;
+  name: string;
+  department: "Phonics" | "Maths";
+  gatewayProvider: string;
+  gatewayAccountRef: string;
+  isActive: boolean;
+  transactionCount: number;
+  totalCollected: number;
+  recentTransactions: ApiPaymentAccountTransaction[];
+}
+
+/** Department payment accounts with live collection stats, for the Payment Gateway Mapping screen. */
+export async function listPaymentAccounts(): Promise<ApiPaymentAccount[]> {
+  return apiFetch<ApiPaymentAccount[]>("/api/payment-accounts");
+}
+
+/** Pins a parent's payments to a specific department account (parent user id). */
+export async function setPaymentMapping(parentUserId: string, paymentAccountId: string): Promise<void> {
+  await apiFetch<void>("/api/payment-accounts/mapping", {
+    method: "PUT",
+    body: JSON.stringify({ parentUserId, paymentAccountId }),
+  });
+}

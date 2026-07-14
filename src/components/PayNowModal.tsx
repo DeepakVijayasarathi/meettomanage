@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { CheckCircle2, CreditCard, Landmark, Smartphone } from "lucide-react";
+import { useEffect, useState, type ComponentType } from "react";
+import { Banknote, CheckCircle2, CreditCard, Landmark, Smartphone, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { apiEnabled } from "@/lib/api";
+import { getPaymentMethods } from "@/api/parentPortal";
 
 interface PayNowModalProps {
   open: boolean;
@@ -12,15 +14,58 @@ interface PayNowModalProps {
   invoiceLabel?: string;
 }
 
-const METHODS = [
+interface PayMethod {
+  id: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+}
+
+// Cash is always offered (recorded as an offline payment); gateways come from the DB.
+const CASH_METHOD: PayMethod = { id: "cash", label: "Cash", icon: Banknote };
+
+// Demo-mode methods when no backend is configured.
+const DEMO_METHODS: PayMethod[] = [
   { id: "upi", label: "UPI", icon: Smartphone },
   { id: "card", label: "Card", icon: CreditCard },
   { id: "netbanking", label: "Net Banking", icon: Landmark },
+  CASH_METHOD,
 ];
 
+/** Picks an icon for a gateway from its integration key. */
+function iconForGateway(key: string): PayMethod["icon"] {
+  const k = key.toLowerCase();
+  if (k.includes("upi")) return Smartphone;
+  if (k.includes("bank")) return Landmark;
+  if (k.includes("razorpay") || k.includes("cashfree") || k.includes("stripe") || k.includes("card")) return CreditCard;
+  return Wallet;
+}
+
 export function PayNowModal({ open, onOpenChange, amount, invoiceLabel }: PayNowModalProps) {
-  const [method, setMethod] = useState("upi");
+  const [methods, setMethods] = useState<PayMethod[]>(DEMO_METHODS);
+  const [method, setMethod] = useState<string>(DEMO_METHODS[0].id);
   const [status, setStatus] = useState<"idle" | "processing" | "success">("idle");
+
+  // Load enabled payment gateways (+ Cash) each time the popup opens.
+  useEffect(() => {
+    if (!open || !apiEnabled()) return;
+    let cancelled = false;
+    getPaymentMethods()
+      .then((gateways) => {
+        if (cancelled) return;
+        const list: PayMethod[] = [
+          ...gateways.map((g) => ({ id: g.key, label: g.name, icon: iconForGateway(g.key) })),
+          CASH_METHOD,
+        ];
+        setMethods(list);
+        setMethod(list[0]?.id ?? "cash");
+      })
+      .catch(() => {
+        if (!cancelled) setMethods([CASH_METHOD]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   function handlePay() {
     setStatus("processing");
@@ -58,20 +103,23 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel }: PayNow
               <p className="text-xs font-medium text-muted-foreground">Amount due</p>
               <p className="text-2xl font-bold tracking-tight">{formatCurrency(amount)}</p>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {METHODS.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setMethod(m.id)}
-                  className={cn(
-                    "flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-xs font-semibold transition-colors",
-                    method === m.id ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/50"
-                  )}
-                >
-                  <m.icon className="h-[18px] w-[18px]" />
-                  {m.label}
-                </button>
-              ))}
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">Choose a payment method</p>
+              <div className="grid grid-cols-3 gap-2">
+                {methods.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setMethod(m.id)}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center text-xs font-semibold transition-colors",
+                      method === m.id ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <m.icon className="h-[18px] w-[18px]" />
+                    <span className="line-clamp-1">{m.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
             <Button className="w-full" onClick={handlePay} disabled={status === "processing"}>
               {status === "processing" ? "Processing…" : `Pay ${formatCurrency(amount)}`}

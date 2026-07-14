@@ -1,7 +1,22 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Role } from "@/types";
-import { CHILDREN } from "@/data/children";
-import { setAccessToken } from "@/lib/api";
+import { CHILDREN, getChildrenByParent } from "@/data/children";
+import { apiEnabled, setAccessToken } from "@/lib/api";
+import { getParentChildren } from "@/api/parentPortal";
+
+/** The logged-in parent's children, for the child switcher across parent screens. */
+export interface SessionChild {
+  id: string;
+  name: string;
+  enrollmentComplete: boolean;
+}
+
+// Demo mode shows one family's roster (the p-1 mock parent), matching the old switcher.
+const MOCK_SESSION_CHILDREN: SessionChild[] = getChildrenByParent("p-1").map((c) => ({
+  id: c.id,
+  name: c.name,
+  enrollmentComplete: c.enrollmentComplete,
+}));
 
 interface SessionState {
   role: Role | null;
@@ -11,6 +26,8 @@ interface SessionState {
   setActiveChildId: (id: string) => void;
   enrolledChildIds: string[];
   markEnrollmentComplete: (childId: string) => void;
+  /** The logged-in parent's children (real from the API, or mock in demo mode). */
+  children: SessionChild[];
   userName: string;
   /** Set from the API user on real login; falls back to demo names otherwise. */
   setUserName: (name: string | null) => void;
@@ -53,10 +70,36 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return null;
     return localStorage.getItem(NAME_KEY);
   });
+  const [childList, setChildList] = useState<SessionChild[]>(MOCK_SESSION_CHILDREN);
 
   useEffect(() => {
     if (role) localStorage.setItem(ROLE_KEY, role);
     else localStorage.removeItem(ROLE_KEY);
+  }, [role]);
+
+  // Load the signed-in parent's real children so the switcher + parent screens
+  // reflect their actual family, not the demo roster. Demo mode keeps the mock.
+  useEffect(() => {
+    if (role !== "parent" || !apiEnabled()) return;
+    let cancelled = false;
+    getParentChildren()
+      .then((list) => {
+        if (cancelled) return;
+        const mapped: SessionChild[] = list.map((c) => ({
+          id: c.id,
+          name: `${c.firstName} ${c.lastName}`.trim(),
+          enrollmentComplete: c.isActive,
+        }));
+        setChildList(mapped);
+        setEnrolledChildIds(mapped.filter((c) => c.enrollmentComplete).map((c) => c.id));
+        setActiveChildIdState((prev) => (mapped.some((c) => c.id === prev) ? prev : mapped[0]?.id ?? ""));
+      })
+      .catch(() => {
+        /* keep whatever's loaded */
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [role]);
 
   useEffect(() => {
@@ -87,10 +130,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       enrolledChildIds,
       markEnrollmentComplete: (childId: string) =>
         setEnrolledChildIds((prev) => (prev.includes(childId) ? prev : [...prev, childId])),
+      children: childList,
       userName: apiUserName ?? (role ? NAME_BY_ROLE[role] : "Guest"),
       setUserName,
     }),
-    [role, activeChildId, enrolledChildIds, apiUserName]
+    [role, activeChildId, enrolledChildIds, childList, apiUserName]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

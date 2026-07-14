@@ -23,11 +23,19 @@ import { cn, formatDate } from "@/lib/utils";
 import type { ClassSession } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, recordingExpiryLabel } from "./utils";
 
-const PARENT_ID = "p-1";
-
 export default function ParentSchedule() {
-  const { activeChildId, enrolledChildIds } = useSession();
-  const child = getChildById(activeChildId);
+  const { activeChildId, enrolledChildIds, children: sessionChildren } = useSession();
+  const usingApi = apiEnabled();
+  const mockChild = getChildById(activeChildId);
+  const sessionChild = sessionChildren.find((c) => c.id === activeChildId) ?? sessionChildren[0];
+  // Normalized active child (real in API mode, mock otherwise) — just id + name.
+  const child = usingApi
+    ? sessionChild
+      ? { id: sessionChild.id, name: sessionChild.name }
+      : undefined
+    : mockChild
+      ? { id: mockChild.id, name: mockChild.name }
+      : undefined;
   const [selected, setSelected] = useState<ClassSession | null>(null);
 
   const { data: apiSessions } = useApiData<ClassSession[]>(
@@ -39,8 +47,8 @@ export default function ParentSchedule() {
     []
   );
   const sessions = useMemo(
-    () => (apiEnabled() ? apiSessions : child ? getSessionsForChild(child.id) : []),
-    [apiSessions, child]
+    () => (usingApi ? apiSessions : mockChild ? getSessionsForChild(mockChild.id) : []),
+    [usingApi, apiSessions, mockChild]
   );
 
   const upcoming = useMemo(
@@ -53,13 +61,13 @@ export default function ParentSchedule() {
     [sessions]
   );
 
-  const isEnrolled = apiEnabled() ? true : child ? enrolledChildIds.includes(child.id) : false;
-  const batch = child ? getBatchById(child.batchId) : undefined;
+  const isEnrolled = usingApi ? (sessionChild?.enrollmentComplete ?? false) : mockChild ? enrolledChildIds.includes(mockChild.id) : false;
+  const batch = !usingApi && mockChild ? getBatchById(mockChild.batchId) : undefined;
 
   return (
     <div>
       <PageHeader title="Schedule &amp; Live Class" description="Upcoming sessions, calendar view and one-click join for your child." />
-      <MultiChildSwitcher parentId={PARENT_ID} />
+      <MultiChildSwitcher />
 
       {child && !isEnrolled && (
         <Card className="mt-4 border-warning/40 bg-warning/5 p-4">

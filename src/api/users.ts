@@ -1,6 +1,9 @@
 import { apiFetch } from "@/lib/api";
-import type { AppUser } from "@/types";
+import type { AppUser, Child } from "@/types";
 import { toFrontendRole, toFrontendStatus, type ApiRole, type ApiUser, type PagedResult } from "./types";
+
+/** A students-directory row: the mock Child shape plus resolved parent/course names from the API. */
+export type StudentRow = Child & { parentName?: string; courseName?: string };
 
 // Stable colour per user so avatars don't change between visits
 const AVATAR_COLORS = ["#5B93E0", "#F08A1D", "#8B5CF6", "#17A9C9", "#23A455", "#EC4899", "#EAB308", "#F53BA6"];
@@ -9,6 +12,38 @@ function avatarColorFor(id: string): string {
   let hash = 0;
   for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+export interface ApiStudent {
+  id: string;
+  fullName: string;
+  age: number | null;
+  academicLevel: string | null;
+  parentName: string;
+  courseName: string | null;
+  isActive: boolean;
+}
+
+/** Admin students directory (real enrolled children). Attendance/fee show neutral defaults until those subsystems populate. */
+export async function listStudents(): Promise<StudentRow[]> {
+  const students = await apiFetch<ApiStudent[]>("/api/users/students");
+  return students.map((s) => ({
+    id: s.id,
+    parentId: "",
+    name: s.fullName,
+    age: s.age ?? 0,
+    grade: s.academicLevel ?? "—",
+    avatarColor: avatarColorFor(s.id),
+    courseId: "",
+    batchId: "",
+    classesCompleted: 0,
+    classesRemaining: 0,
+    attendancePercent: 0,
+    feeStatus: "paid",
+    enrollmentComplete: s.isActive,
+    parentName: s.parentName,
+    courseName: s.courseName ?? undefined,
+  }));
 }
 
 export function toAppUser(user: ApiUser): AppUser {
@@ -37,6 +72,34 @@ export async function listUsers(params: {
   query.set("page", String(params.page ?? 1));
   query.set("pageSize", String(params.pageSize ?? 100));
   return apiFetch<PagedResult<ApiUser>>(`/api/users?${query}`);
+}
+
+/** Regenerates the account's temp password and (re)sends the onboarding welcome message over the chosen channel. */
+export async function resendCredentials(userId: string, channel: "Email" | "WhatsApp"): Promise<void> {
+  await apiFetch<void>(`/api/users/${userId}/resend-credentials`, {
+    method: "POST",
+    body: JSON.stringify({ channel }),
+  });
+}
+
+export async function updateUser(
+  id: string,
+  request: { firstName: string; lastName: string; phone?: string }
+): Promise<ApiUser> {
+  return apiFetch<ApiUser>(`/api/users/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(request),
+  });
+}
+
+export interface CredentialChannels {
+  email: boolean;
+  whatsApp: boolean;
+}
+
+/** Which credential-delivery channels are enabled in Settings → Integrations (drives which Send buttons show). */
+export async function getCredentialChannels(): Promise<CredentialChannels> {
+  return apiFetch<CredentialChannels>("/api/users/credential-channels");
 }
 
 export async function createUser(request: {

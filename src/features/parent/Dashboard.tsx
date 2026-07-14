@@ -29,12 +29,32 @@ import { getInvoicesForParent } from "@/data/invoices";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { toFrontendSession } from "@/api/sessions";
-import { getParentDashboard, getParentSchedule, type ApiParentDashboard } from "@/api/parentPortal";
+import { getParentDashboard, getParentSchedule, type ApiParentChildSummary, type ApiParentDashboard } from "@/api/parentPortal";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { CHART_PALETTE } from "@/lib/roles";
 import type { Child, ClassSession, Invoice } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart } from "./utils";
 
 const PARENT_ID = "p-1";
+
+/** Maps a live API child summary onto the Child shape the dashboard renders. */
+function apiChildToChild(summary: ApiParentChildSummary, enrolled: boolean, index: number): Child {
+  return {
+    id: summary.childId,
+    parentId: "",
+    name: summary.name,
+    age: 0,
+    grade: summary.academicLevel ?? "—",
+    avatarColor: CHART_PALETTE[index % CHART_PALETTE.length],
+    courseId: "",
+    batchId: "",
+    classesCompleted: summary.classesCompleted,
+    classesRemaining: summary.classesRemaining,
+    attendancePercent: summary.attendancePercent,
+    feeStatus: summary.feeStatus,
+    enrollmentComplete: enrolled,
+  };
+}
 
 export default function ParentDashboard() {
   const { activeChildId, enrolledChildIds, userName } = useSession();
@@ -52,18 +72,17 @@ export default function ParentDashboard() {
     []
   );
 
-  const apiChild = apiDash?.children[0] ?? null;
-  const child: Child | undefined =
-    apiEnabled() && mockChild && apiChild
-      ? {
-          ...mockChild,
-          name: apiChild.name,
-          classesCompleted: apiChild.classesCompleted,
-          classesRemaining: apiChild.classesRemaining,
-          attendancePercent: apiChild.attendancePercent,
-          feeStatus: apiChild.feeStatus,
-        }
-      : mockChild;
+  const usingApi = apiEnabled();
+  const apiChildren = apiDash?.children ?? [];
+  // The shared child switcher drives activeChildId; match the dashboard's child to it.
+  const selectedApiChild = apiChildren.find((c) => c.childId === activeChildId) ?? apiChildren[0] ?? null;
+
+  // In API mode the real children drive the dashboard; demo mode keeps the mock child.
+  const child: Child | undefined = usingApi
+    ? selectedApiChild
+      ? apiChildToChild(selectedApiChild, apiDash?.enrollmentFormCompleted ?? false, apiChildren.indexOf(selectedApiChild))
+      : undefined
+    : mockChild;
 
   const sessions = useMemo(
     () => (apiEnabled() ? apiSessions : child ? getSessionsForChild(child.id) : []),
@@ -124,7 +143,7 @@ export default function ParentDashboard() {
         description={`Here's how ${child.name.split(" ")[0]} is doing this week.`}
       />
 
-      <MultiChildSwitcher parentId={PARENT_ID} />
+      <MultiChildSwitcher />
 
       <div className="mt-6">
         {!isEnrolled ? (

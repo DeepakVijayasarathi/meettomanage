@@ -8,6 +8,7 @@ import { PayNowModal } from "@/components/PayNowModal";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useSession } from "@/state/session";
 import { getChildrenByParent } from "@/data/children";
 import { getInvoicesForParent } from "@/data/invoices";
 import { apiEnabled } from "@/lib/api";
@@ -20,14 +21,15 @@ import type { Invoice } from "@/types";
 const PARENT_ID = "p-1";
 
 export default function ParentBilling() {
-  const children = getChildrenByParent(PARENT_ID);
+  const { children } = useSession();
+  const mockChildren = getChildrenByParent(PARENT_ID);
   const { data: invoices } = useApiData(
     () => getParentInvoices().then((items) => items.map(toFrontendInvoice)),
     getInvoicesForParent(PARENT_ID)
   );
   const { data: isSuspended } = useApiData(
     () => getParentDashboard().then((d) => d.isSuspended),
-    children.some((c) => c.feeStatus === "suspended")
+    mockChildren.some((c) => c.feeStatus === "suspended")
   );
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null);
   const [payOpen, setPayOpen] = useState(false);
@@ -37,9 +39,12 @@ export default function ParentBilling() {
     setPayOpen(true);
   }
 
+  // The suspended child's name for the banner: real children in API mode, mock in demo.
   const suspendedChild = apiEnabled()
-    ? (isSuspended ? children[0] : undefined)
-    : children.find((c) => c.feeStatus === "suspended");
+    ? isSuspended
+      ? children[0]
+      : undefined
+    : mockChildren.find((c) => c.feeStatus === "suspended");
 
   const outstanding = invoices.filter((i) => i.status !== "paid");
   const paid = invoices.filter((i) => i.status === "paid");

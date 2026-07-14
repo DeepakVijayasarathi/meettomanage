@@ -1,19 +1,18 @@
 import { Link } from "react-router-dom";
 import { AlertCircle, Plus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { getChildrenByParent } from "@/data/children";
 import { useSession } from "@/state/session";
+import { CHART_PALETTE } from "@/lib/roles";
 import { cn, getInitials } from "@/lib/utils";
 
-export function MultiChildSwitcher({ parentId = "p-1" }: { parentId?: string }) {
-  const { activeChildId, setActiveChildId, enrolledChildIds } = useSession();
-  const children = getChildrenByParent(parentId);
+export function MultiChildSwitcher() {
+  const { activeChildId, setActiveChildId, children } = useSession();
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {children.map((child) => {
-        const complete = enrolledChildIds.includes(child.id);
+      {children.map((child, i) => {
         const active = activeChildId === child.id;
+        const color = CHART_PALETTE[i % CHART_PALETTE.length];
         return (
           <button
             key={child.id}
@@ -24,12 +23,12 @@ export function MultiChildSwitcher({ parentId = "p-1" }: { parentId?: string }) 
             )}
           >
             <Avatar className="h-6 w-6">
-              <AvatarFallback style={{ backgroundColor: `${child.avatarColor}22`, color: child.avatarColor }} className="text-[10px]">
+              <AvatarFallback style={{ backgroundColor: `${color}22`, color }} className="text-[10px]">
                 {getInitials(child.name)}
               </AvatarFallback>
             </Avatar>
             {child.name.split(" ")[0]}
-            {!complete && (
+            {!child.enrollmentComplete && (
               <span className="flex items-center gap-0.5 rounded-full bg-warning/25 px-1.5 py-0.5 text-[10px] font-bold text-warning-foreground">
                 <AlertCircle className="h-3 w-3" /> Setup
               </span>
