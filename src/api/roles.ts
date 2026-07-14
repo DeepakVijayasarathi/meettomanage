@@ -6,6 +6,8 @@ export interface ApiRole {
   name: string;
   displayName: string;
   description: string | null;
+  /** Route a user assigned this role lands on after login, e.g. "/subadmin/reports". */
+  defaultRoute: string | null;
   isSystem: boolean;
   permissions: ApiPermission[];
 }
@@ -14,6 +16,7 @@ export interface SaveRoleRequest {
   name: string;
   displayName: string;
   description: string | null;
+  defaultRoute: string | null;
   permissions: ApiPermission[];
 }
 

@@ -46,6 +46,8 @@ export async function createUser(request: {
   phone?: string;
   role: ApiRole;
   department?: "Phonics" | "Maths";
+  /** Role preset to assign immediately; only valid when role is "SubAdmin". */
+  roleDefinitionId?: string;
 }): Promise<ApiUser> {
   return apiFetch<ApiUser>("/api/users", {
     method: "POST",

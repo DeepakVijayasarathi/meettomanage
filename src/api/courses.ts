@@ -42,6 +42,16 @@ export async function listCourses(): Promise<ApiCourse[]> {
   return apiFetch<ApiCourse[]>("/api/courses?includeInactive=true");
 }
 
+export interface ApiCourseOption {
+  id: string;
+  name: string;
+}
+
+/** Active courses as id/name pairs only — for role dropdowns (e.g. a teacher recommending a course), not gated behind course-management permissions. */
+export async function listCourseOptions(): Promise<ApiCourseOption[]> {
+  return apiFetch<ApiCourseOption[]>("/api/courses/options");
+}
+
 export async function listCategories(): Promise<ApiCourseCategory[]> {
   return apiFetch<ApiCourseCategory[]>("/api/courses/categories");
 }

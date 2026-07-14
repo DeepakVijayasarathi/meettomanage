@@ -16,6 +16,8 @@ export interface ApiUser {
   status: ApiUserStatus;
   timeZoneId: string;
   department: "Phonics" | "Maths" | null;
+  /** Assigned role (preset) id; only meaningful for Sub Admin accounts. */
+  roleDefinitionId: string | null;
   createdAtUtc: string;
   lastLoginAtUtc: string | null;
 }
@@ -32,6 +34,8 @@ export interface LoginResponse {
   expiresAtUtc: string;
   user: ApiUser;
   permissions: string[];
+  /** Route to navigate to right after login — the user's role default, or their portal home. */
+  defaultRoute: string;
 }
 
 const ROLE_FROM_API: Record<ApiRole, Role> = {

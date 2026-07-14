@@ -20,7 +20,7 @@ import { DEMO_FEEDBACKS } from "@/data/feedback";
 import { COURSES } from "@/data/courses";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listCourses } from "@/api/courses";
+import { listCourseOptions } from "@/api/courses";
 import {
   listMyDemoBookings,
   listMyDemoFeedback,
@@ -63,10 +63,7 @@ export default function TeacherDemoFeedback() {
       ]),
     MOCK_FEEDBACKS
   );
-  const { data: courseOptions } = useApiData(
-    () => listCourses().then((courses) => courses.map((c) => ({ id: c.id, name: c.name }))),
-    MOCK_COURSE_OPTIONS
-  );
+  const { data: courseOptions } = useApiData(() => listCourseOptions(), MOCK_COURSE_OPTIONS);
   const [feedbacks, setFeedbacks] = useState<DemoFeedback[]>(MOCK_FEEDBACKS);
   useEffect(() => setFeedbacks(apiFeedbacks), [apiFeedbacks]);
   const [activeId, setActiveId] = useState<string | null>(null);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GraduationCap, HeartHandshake, Plus, ShieldCheck, UserCog, Users as UsersIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -28,6 +28,7 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { createUser, listUsers, toAppUser } from "@/api/users";
 import type { ApiRole } from "@/api/types";
+import { listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
 
 function UserAvatar({ name, color }: { name: string; color: string }) {
   return (
@@ -72,8 +73,19 @@ export default function AdminUsers() {
   const [addName, setAddName] = useState("");
   const [addEmail, setAddEmail] = useState("");
   const [addPhone, setAddPhone] = useState("");
+  const [addRoleDefinitionId, setAddRoleDefinitionId] = useState<string>("");
+  const [rolePresets, setRolePresets] = useState<ApiRolePreset[]>([]);
   const [addError, setAddError] = useState<string | null>(null);
   const [addSubmitting, setAddSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!apiEnabled()) return;
+    listRoles()
+      .then(setRolePresets)
+      .catch(() => {
+        /* role dropdown just stays empty */
+      });
+  }, []);
 
   async function handleCreateUser() {
     if (!apiEnabled()) {
@@ -96,11 +108,13 @@ export default function AdminUsers() {
         lastName: rest.join(" ") || firstName,
         phone: addPhone.trim() || undefined,
         role: ADD_ROLE_TO_API[addRole],
+        roleDefinitionId: addRole === "subadmin" && addRoleDefinitionId ? addRoleDefinitionId : undefined,
       });
       setAddOpen(false);
       setAddName("");
       setAddEmail("");
       setAddPhone("");
+      setAddRoleDefinitionId("");
       reloadParents();
       reloadTeachers();
       reloadStaff();
@@ -451,6 +465,27 @@ export default function AdminUsers() {
                 </SelectContent>
               </Select>
             </div>
+            {addRole === "subadmin" && rolePresets.length > 0 && (
+              <div className="grid gap-1.5">
+                <Label>Assign role (optional)</Label>
+                <Select value={addRoleDefinitionId || "__none"} onValueChange={(v) => setAddRoleDefinitionId(v === "__none" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">No role — assign permissions later</SelectItem>
+                    {rolePresets.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        {role.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Applies that role&rsquo;s permissions immediately and routes them there after login.
+                </p>
+              </div>
+            )}
           </div>
           {addError && <p className="text-sm font-medium text-red-600">{addError}</p>}
           <DialogFooter>

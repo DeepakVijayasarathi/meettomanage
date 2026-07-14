@@ -58,7 +58,7 @@ export default function Login() {
       const frontendRole = toFrontendRole(response.user.role);
       setSessionRole(frontendRole);
       setUserName(response.user.fullName);
-      navigate(ROLE_META[frontendRole].homePath);
+      navigate(response.defaultRoute || ROLE_META[frontendRole].homePath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed. Please try again.");
     } finally {
