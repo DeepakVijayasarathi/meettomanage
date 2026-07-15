@@ -9,11 +9,24 @@ interface QuizOverlayProps {
   active: boolean;
   mode: "teacher" | "student";
   onCorrectAnswer: () => void;
+  /** Real-time sync: question index pushed by the teacher via the hub (students follow it). */
+  syncedIndex?: number | null;
+  /** Real-time sync: teacher advanced to a question — broadcast it to the class. */
+  onLaunchQuestion?: (index: number) => void;
+  /** Real-time sync: this participant answered — feeds the live leaderboard. */
+  onAnswered?: (questionIndex: number, correct: boolean) => void;
 }
 
 const QUESTION_SECONDS = 15;
 
-export default function QuizOverlay({ active, mode, onCorrectAnswer }: QuizOverlayProps) {
+export default function QuizOverlay({
+  active,
+  mode,
+  onCorrectAnswer,
+  syncedIndex,
+  onLaunchQuestion,
+  onAnswered,
+}: QuizOverlayProps) {
   const [qIndex, setQIndex] = useState(0);
   const [phase, setPhase] = useState<"countdown" | "revealed">("countdown");
   const [timeLeft, setTimeLeft] = useState(QUESTION_SECONDS);
@@ -54,8 +67,15 @@ export default function QuizOverlay({ active, mode, onCorrectAnswer }: QuizOverl
     if (selected === null) return;
     const isCorrect = selected === question.correctIndex;
     setScore((s) => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
+    onAnswered?.(qIndex, isCorrect);
     if (isCorrect) onCorrectAnswer();
-  }, [phase, selected, question, onCorrectAnswer]);
+  }, [phase, selected, question, onCorrectAnswer, onAnswered, qIndex]);
+
+  // Students follow the teacher's broadcast question index.
+  useEffect(() => {
+    if (syncedIndex == null) return;
+    setQIndex(syncedIndex);
+  }, [syncedIndex]);
 
   function selectOption(idx: number) {
     if (phase !== "countdown" || selected !== null) return;
@@ -63,7 +83,11 @@ export default function QuizOverlay({ active, mode, onCorrectAnswer }: QuizOverl
   }
 
   function nextQuestion() {
-    setQIndex((i) => i + 1);
+    setQIndex((i) => {
+      const next = i + 1;
+      onLaunchQuestion?.(next);
+      return next;
+    });
   }
 
   if (!active) {

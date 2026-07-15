@@ -1,18 +1,20 @@
 import { useState } from "react";
-import { BookOpenText, Calculator, Landmark, Link2, ShieldCheck } from "lucide-react";
+import { BookOpenText, Calculator, Landmark, Link2, Pencil, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PARENTS } from "@/data/users";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listPaymentAccounts, setPaymentMapping, type ApiPaymentAccount } from "@/api/billing";
+import { listPaymentAccounts, setPaymentMapping, updatePaymentAccount, type ApiPaymentAccount } from "@/api/billing";
 import { listUsers, toAppUser } from "@/api/users";
 import type { AppUser } from "@/types";
 
@@ -44,7 +46,7 @@ const DEMO_ACCOUNTS: ApiPaymentAccount[] = [
 
 const DEPT_ICON = { Phonics: BookOpenText, Maths: Calculator } as const;
 
-function DepartmentCard({ account, color }: { account: ApiPaymentAccount; color: string }) {
+function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount; color: string; onEdit: () => void }) {
   const Icon = DEPT_ICON[account.department] ?? BookOpenText;
   return (
     <Card>
@@ -60,11 +62,16 @@ function DepartmentCard({ account, color }: { account: ApiPaymentAccount; color:
             </CardDescription>
           </div>
         </div>
-        {account.isActive && (
-          <Badge variant="success" className="gap-1">
-            <ShieldCheck className="h-3.5 w-3.5" /> Active
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {account.isActive && (
+            <Badge variant="success" className="gap-1">
+              <ShieldCheck className="h-3.5 w-3.5" /> Active
+            </Badge>
+          )}
+          <Button size="sm" variant="ghost" onClick={onEdit} title="Edit gateway wiring">
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="mb-4 grid grid-cols-2 gap-3">
@@ -115,7 +122,7 @@ function DepartmentCard({ account, color }: { account: ApiPaymentAccount; color:
 }
 
 export default function AdminPaymentMapping() {
-  const { data: accounts } = useApiData<ApiPaymentAccount[]>(listPaymentAccounts, DEMO_ACCOUNTS);
+  const { data: accounts, reload: reloadAccounts } = useApiData<ApiPaymentAccount[]>(listPaymentAccounts, DEMO_ACCOUNTS);
   const { data: parents } = useApiData<AppUser[]>(
     () => listUsers({ role: "Parent" }).then((r) => r.items.map(toAppUser)),
     PARENTS
@@ -125,6 +132,50 @@ export default function AdminPaymentMapping() {
   const [selectedAccount, setSelectedAccount] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // Gateway-wiring editor (per department card)
+  const [editAccount, setEditAccount] = useState<ApiPaymentAccount | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editProvider, setEditProvider] = useState("razorpay");
+  const [editRef, setEditRef] = useState("");
+  const [editActive, setEditActive] = useState(true);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  function openEdit(account: ApiPaymentAccount) {
+    setEditAccount(account);
+    setEditName(account.name);
+    setEditProvider(account.gatewayProvider.toLowerCase().includes("cashfree") ? "cashfree" : "razorpay");
+    setEditRef(account.gatewayAccountRef === "pending-client-decision" ? "" : account.gatewayAccountRef);
+    setEditActive(account.isActive);
+    setEditError(null);
+  }
+
+  async function saveAccountEdit() {
+    if (!editAccount) return;
+    if (!apiEnabled()) {
+      setResult({ ok: true, message: "Demo mode — account not persisted." });
+      setEditAccount(null);
+      return;
+    }
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      await updatePaymentAccount(editAccount.id, {
+        name: editName.trim(),
+        gatewayProvider: editProvider,
+        gatewayAccountRef: editRef.trim(),
+        isActive: editActive,
+      });
+      setResult({ ok: true, message: `${editName.trim()} now charges through ${editProvider}.` });
+      setEditAccount(null);
+      reloadAccounts();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Could not save the account.");
+    } finally {
+      setEditSaving(false);
+    }
+  }
 
   const effectiveParent = selectedParent || parents[0]?.id || "";
   const effectiveAccount = selectedAccount || accounts[0]?.id || "";
@@ -160,9 +211,79 @@ export default function AdminPaymentMapping() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {accounts.map((account, i) => (
-          <DepartmentCard key={account.id} account={account} color={CHART_PALETTE[(i + 3) % CHART_PALETTE.length]} />
+          <DepartmentCard
+            key={account.id}
+            account={account}
+            color={CHART_PALETTE[(i + 3) % CHART_PALETTE.length]}
+            onEdit={() => openEdit(account)}
+          />
         ))}
       </div>
+
+      <Dialog open={!!editAccount} onOpenChange={(open) => !open && setEditAccount(null)}>
+        <DialogContent className="max-w-md">
+          {editAccount && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Edit {editAccount.department} payment account</DialogTitle>
+                <DialogDescription>
+                  Which gateway this department charges through. API keys live in Settings → Integrations; only the account reference is stored here.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-4">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="acct-name">Account name</Label>
+                  <Input id="acct-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label>Gateway</Label>
+                    <Select value={editProvider} onValueChange={setEditProvider}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="razorpay">Razorpay</SelectItem>
+                        <SelectItem value="cashfree">Cashfree</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label>Status</Label>
+                    <Select value={editActive ? "active" : "inactive"} onValueChange={(v) => setEditActive(v === "active")}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="acct-ref">Merchant / account reference</Label>
+                  <Input
+                    id="acct-ref"
+                    placeholder="e.g. acc_LkzT9v2Abc123 (from the gateway dashboard)"
+                    value={editRef}
+                    onChange={(e) => setEditRef(e.target.value)}
+                  />
+                </div>
+                {editError && <p className="text-sm font-medium text-destructive">{editError}</p>}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditAccount(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={saveAccountEdit} disabled={editSaving || !editName.trim() || !editRef.trim()}>
+                  {editSaving ? "Saving…" : "Save account"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Card className="mt-6">
         <CardHeader className="flex-row items-center gap-3 space-y-0">

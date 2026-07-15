@@ -4,6 +4,7 @@ import { CalendarClock, List, Users } from "lucide-react";
 import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { PageHeader } from "@/components/PageHeader";
+import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
@@ -137,6 +138,7 @@ export default function TeacherMyClasses() {
         title="My Classes"
         description="All your scheduled, live, completed and past sessions in one place."
         eyebrow="Teaching"
+        actions={<CalendarSyncButton />}
       />
 
       <Tabs defaultValue="list">

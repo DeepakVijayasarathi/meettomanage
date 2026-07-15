@@ -75,7 +75,7 @@ export async function listUsers(params: {
 }
 
 /** Regenerates the account's temp password and (re)sends the onboarding welcome message over the chosen channel. */
-export async function resendCredentials(userId: string, channel: "Email" | "WhatsApp"): Promise<void> {
+export async function resendCredentials(userId: string, channel: "Email" | "WhatsApp" | "Sms"): Promise<void> {
   await apiFetch<void>(`/api/users/${userId}/resend-credentials`, {
     method: "POST",
     body: JSON.stringify({ channel }),
@@ -95,6 +95,7 @@ export async function updateUser(
 export interface CredentialChannels {
   email: boolean;
   whatsApp: boolean;
+  sms: boolean;
 }
 
 /** Which credential-delivery channels are enabled in Settings → Integrations (drives which Send buttons show). */

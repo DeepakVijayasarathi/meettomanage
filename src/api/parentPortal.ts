@@ -89,6 +89,21 @@ export async function listEnrollmentForms(status?: ApiEnrollmentForm["status"]):
   return apiFetch<ApiEnrollmentForm[]>(`/api/enrollment-forms${status ? `?status=${status}` : ""}`);
 }
 
+export interface ParentPaymentResult {
+  mode: "redirect" | "cash";
+  url: string | null;
+  gatewayReference: string | null;
+  message: string;
+}
+
+/** Pay Now: cash records a pending intent; a gateway key returns a checkout URL. */
+export async function payInvoice(invoiceId: string, methodKey: string): Promise<ParentPaymentResult> {
+  return apiFetch<ParentPaymentResult>(`/api/parent-portal/invoices/${invoiceId}/pay`, {
+    method: "POST",
+    body: JSON.stringify({ methodKey }),
+  });
+}
+
 /** Admin edits the submitted answers before approval. */
 export async function updateEnrollmentForm(id: string, formData: Record<string, unknown>): Promise<ApiEnrollmentForm> {
   return apiFetch<ApiEnrollmentForm>(`/api/enrollment-forms/${id}`, {

@@ -1,20 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PhoneOff } from "lucide-react";
+import { PartyPopper, PhoneOff, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
 import { postEngagement } from "@/api/engagement";
+import { registerRecording } from "@/api/sessions";
+import { cn } from "@/lib/utils";
+import InteractivePanel from "./InteractivePanel";
+import GamificationOverlay from "./GamificationOverlay";
+import type { LeaderboardEntry } from "./classroomData";
 
 // Loaded from the Jitsi deployment at runtime (see docs/JITSI_ARCHITECTURE.md);
 // meet.jit.si for development, the self-hosted domain in production.
 const JITSI_DOMAIN = (import.meta.env.VITE_JITSI_DOMAIN as string | undefined) ?? "meet.jit.si";
 
+const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 declare global {
   interface Window {
     JitsiMeetExternalAPI?: new (domain: string, options: Record<string, unknown>) => {
       dispose: () => void;
-      addListener: (event: string, listener: (payload: { id?: string; muted?: boolean }) => void) => void;
+      addListener: (event: string, listener: (payload: { id?: string; muted?: boolean; link?: string }) => void) => void;
       executeCommand: (command: string, ...args: unknown[]) => void;
     };
   }
@@ -38,7 +45,8 @@ function loadJitsiScript(): Promise<void> {
 /**
  * One-click live classroom: embeds the Jitsi room generated for the session.
  * Video/audio, screen share, chat, reactions, raise hand and the tile controls
- * are native Jitsi; whiteboard and gamification layer on top in Sprint 2/3.
+ * are native Jitsi; the Interactive panel layers the shared whiteboard, live
+ * quiz, leaderboard and roster on top via the classroom SignalR hub.
  */
 export default function JitsiLive({
   room,
@@ -55,12 +63,25 @@ export default function JitsiLive({
   const navigate = useNavigate();
   const { userName } = useSession();
   const [error, setError] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [celebrating, setCelebrating] = useState(false);
+  const [celebrationMessage, setCelebrationMessage] = useState<string | undefined>(undefined);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const celebrateAllRef = useRef<((message?: string) => void) | null>(null);
+
+  // The interactive layer needs a real session id for the hub group + engagement.
+  const interactive = !!sessionId && GUID_RE.test(sessionId);
+
+  function celebrate(message?: string) {
+    setCelebrationMessage(message);
+    setCelebrating(true);
+  }
 
   useEffect(() => {
     let api:
       | {
           dispose: () => void;
-          addListener: (event: string, listener: (payload: { id?: string; muted?: boolean }) => void) => void;
+          addListener: (event: string, listener: (payload: { id?: string; muted?: boolean; link?: string }) => void) => void;
           executeCommand: (command: string, ...args: unknown[]) => void;
         }
       | undefined;
@@ -122,6 +143,13 @@ export default function JitsiLive({
             api?.executeCommand("startRecording", { mode: "file" });
           }
         });
+        // Auto recording registration: when the deployment publishes the recording
+        // link, file it against the session (drives the 15-day parent window).
+        api.addListener("recordingLinkAvailable", (payload) => {
+          if (mode === "teacher" && interactive && payload?.link) {
+            registerRecording(sessionId!, payload.link).catch(() => undefined);
+          }
+        });
         api.addListener("dominantSpeakerChanged", (payload) => {
           const now = Date.now();
           if (payload?.id === media.selfId) {
@@ -159,17 +187,63 @@ export default function JitsiLive({
           <Logo showWordmark={false} imgClassName="h-8 w-8" />
           <p className="text-sm font-semibold text-white">{title ?? "Live class"}</p>
         </div>
-        <Button size="sm" variant="destructive" onClick={() => navigate(-1)}>
-          <PhoneOff className="h-4 w-4" />
-          Leave
-        </Button>
+        <div className="flex items-center gap-2">
+          {interactive && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className={cn("gap-1.5 bg-white/10 text-white hover:bg-white/20", panelOpen && "bg-brand-violet/30")}
+              onClick={() => setPanelOpen((o) => !o)}
+            >
+              <Sparkles className="h-3.5 w-3.5" /> Interactive
+            </Button>
+          )}
+          <Button size="sm" variant="destructive" onClick={() => navigate(-1)}>
+            <PhoneOff className="h-4 w-4" />
+            Leave
+          </Button>
+        </div>
       </header>
       {error ? (
         <div className="flex flex-1 items-center justify-center">
           <p className="rounded-lg bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">{error}</p>
         </div>
       ) : (
-        <div ref={containerRef} className="flex-1" />
+        <div className="relative flex min-h-0 flex-1">
+          <div ref={containerRef} className="min-w-0 flex-1" />
+          {interactive && (
+            <aside className={cn("w-[380px] shrink-0 border-l border-white/10", !panelOpen && "hidden")}>
+              <InteractivePanel
+                sessionId={sessionId!}
+                mode={mode}
+                displayName={userName}
+                onCelebrate={celebrate}
+                onLeaderboard={setLeaderboard}
+                onReady={(fn) => {
+                  celebrateAllRef.current = fn;
+                }}
+              />
+            </aside>
+          )}
+          <GamificationOverlay
+            celebrating={celebrating}
+            onCelebrationEnd={() => {
+              setCelebrating(false);
+              setCelebrationMessage(undefined);
+            }}
+            leaderboard={leaderboard}
+            message={celebrationMessage}
+          />
+          {mode === "teacher" && interactive && (
+            <button
+              title="Send a celebration to the class"
+              onClick={() => (celebrateAllRef.current ?? celebrate)("Great job, everyone! 🎉")}
+              className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-[#12162B]/95 text-white backdrop-blur transition-transform hover:scale-110"
+            >
+              <PartyPopper className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

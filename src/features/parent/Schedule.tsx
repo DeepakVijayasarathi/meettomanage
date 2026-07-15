@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CalendarDays, ListChecks, PlayCircle, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { SessionStatusBadge } from "@/components/StatusBadge";
@@ -66,7 +67,11 @@ export default function ParentSchedule() {
 
   return (
     <div>
-      <PageHeader title="Schedule &amp; Live Class" description="Upcoming sessions, calendar view and one-click join for your child." />
+      <PageHeader
+        title="Schedule &amp; Live Class"
+        description="Upcoming sessions, calendar view and one-click join for your child."
+        actions={<CalendarSyncButton />}
+      />
       <MultiChildSwitcher />
 
       {child && !isEnrolled && (

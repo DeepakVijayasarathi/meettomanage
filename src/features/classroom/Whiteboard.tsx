@@ -27,7 +27,7 @@ interface Point {
   y: number;
 }
 
-interface Stroke {
+export interface Stroke {
   id: string;
   tool: ToolId;
   points: Point[];
@@ -35,6 +35,13 @@ interface Stroke {
   width: number;
   text?: string;
 }
+
+/** One synced board operation, relayed verbatim through the classroom hub. */
+export type BoardOp =
+  | { kind: "stroke"; pageIndex: number; stroke: Stroke }
+  | { kind: "clear"; pageIndex: number }
+  | { kind: "addPage" }
+  | { kind: "removePage"; pageIndex: number };
 
 interface Page {
   id: string;
@@ -135,9 +142,13 @@ interface WhiteboardProps {
   onActivityComplete?: () => void;
   /** Engagement tracking: fired for every committed stroke/text/sticky. */
   onInteraction?: () => void;
+  /** Real-time sync: local board ops broadcast to the class via the hub. */
+  onBoardOp?: (op: BoardOp) => void;
+  /** Real-time sync: subscribe to remote board ops; returns an unsubscribe. */
+  subscribeBoardOps?: (handler: (op: BoardOp) => void) => () => void;
 }
 
-export default function Whiteboard({ canDraw, onActivityComplete, onInteraction }: WhiteboardProps) {
+export default function Whiteboard({ canDraw, onActivityComplete, onInteraction, onBoardOp, subscribeBoardOps }: WhiteboardProps) {
   const [pages, setPages] = useState<Page[]>([{ id: nextId(), strokes: [] }]);
   const [pageIndex, setPageIndex] = useState(0);
   const [tool, setTool] = useState<ToolId>("pen");
@@ -239,6 +250,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction 
     const finished = draftRef.current;
     draftRef.current = null;
     setPages((prev) => prev.map((p, i) => (i === pageIndex ? { ...p, strokes: [...p.strokes, finished] } : p)));
+    onBoardOp?.({ kind: "stroke", pageIndex, stroke: finished });
     onInteraction?.();
   }
 
@@ -255,6 +267,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction 
         text: textDraft.value,
       };
       setPages((prev) => prev.map((p, i) => (i === pageIndex ? { ...p, strokes: [...p.strokes, stroke] } : p)));
+      onBoardOp?.({ kind: "stroke", pageIndex, stroke });
       onInteraction?.();
     }
     setTextDraft(null);
@@ -262,18 +275,49 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction 
 
   function clearBoard() {
     setPages((prev) => prev.map((p, i) => (i === pageIndex ? { ...p, strokes: [] } : p)));
+    onBoardOp?.({ kind: "clear", pageIndex });
   }
 
   function addPage() {
     setPages((prev) => [...prev, { id: nextId(), strokes: [] }]);
     setPageIndex(pages.length);
+    onBoardOp?.({ kind: "addPage" });
   }
 
   function removePage() {
     if (pages.length <= 1) return;
     setPages((prev) => prev.filter((_, i) => i !== pageIndex));
     setPageIndex((i) => Math.max(0, i - 1));
+    onBoardOp?.({ kind: "removePage", pageIndex });
   }
+
+  // Apply remote board ops from classmates (relayed through the classroom hub).
+  useEffect(() => {
+    if (!subscribeBoardOps) return;
+    return subscribeBoardOps((op) => {
+      switch (op.kind) {
+        case "stroke":
+          setPages((prev) => {
+            // Pad so an op for a page we haven't created yet still lands
+            const pages = [...prev];
+            while (pages.length <= op.pageIndex) pages.push({ id: nextId(), strokes: [] });
+            return pages.map((p, i) => (i === op.pageIndex ? { ...p, strokes: [...p.strokes, op.stroke] } : p));
+          });
+          break;
+        case "clear":
+          setPages((prev) => prev.map((p, i) => (i === op.pageIndex ? { ...p, strokes: [] } : p)));
+          break;
+        case "addPage":
+          setPages((prev) => [...prev, { id: nextId(), strokes: [] }]);
+          break;
+        case "removePage":
+          setPages((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== op.pageIndex) : prev));
+          setPageIndex((i) => Math.max(0, Math.min(i, pages.length - 2)));
+          break;
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscribeBoardOps]);
 
   return (
     <div className="flex h-full flex-col gap-2 p-3">

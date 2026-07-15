@@ -112,12 +112,12 @@ export default function AdminUsers() {
     }
   }
   // Onboarding credential (re)send from the user detail dialog.
-  const [sending, setSending] = useState<"Email" | "WhatsApp" | null>(null);
+  const [sending, setSending] = useState<"Email" | "WhatsApp" | "Sms" | null>(null);
   const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
   // Which delivery channels are switched on in Settings → Integrations (is_enabled).
   // Demo mode shows both; with the API, only enabled channels get a button.
-  const [channels, setChannels] = useState<{ email: boolean; whatsApp: boolean }>(() =>
-    apiEnabled() ? { email: false, whatsApp: false } : { email: true, whatsApp: true }
+  const [channels, setChannels] = useState<{ email: boolean; whatsApp: boolean; sms: boolean }>(() =>
+    apiEnabled() ? { email: false, whatsApp: false, sms: false } : { email: true, whatsApp: true, sms: true }
   );
   const [addOpen, setAddOpen] = useState(false);
   const [addRole, setAddRole] = useState("parent");
@@ -146,7 +146,7 @@ export default function AdminUsers() {
   // Clear any previous send result whenever a different user's dialog opens.
   useEffect(() => setSendResult(null), [detailUser]);
 
-  async function handleResend(channel: "Email" | "WhatsApp") {
+  async function handleResend(channel: "Email" | "WhatsApp" | "Sms") {
     if (!detailUser) return;
     if (!apiEnabled()) {
       setSendResult({ ok: true, message: `Demo mode — no ${channel} actually sent.` });
@@ -160,7 +160,7 @@ export default function AdminUsers() {
         ok: true,
         message: channel === "Email"
           ? `Welcome email with a new temporary password sent to ${detailUser.email}.`
-          : `Welcome WhatsApp with a new temporary password sent to ${detailUser.phone}.`,
+          : `Welcome ${channel === "Sms" ? "SMS" : "WhatsApp"} with a new temporary password sent to ${detailUser.phone}.`,
       });
     } catch (err) {
       setSendResult({ ok: false, message: err instanceof Error ? err.message : `Could not send the ${channel} message.` });
@@ -447,7 +447,7 @@ export default function AdminUsers() {
                   Send this {detailUser.role === "parent" ? "parent" : "user"} their login and a new temporary password so they can sign in
                   {detailUser.role === "parent" ? " and enrol their child." : "."}
                 </p>
-                {channels.email || channels.whatsApp ? (
+                {channels.email || channels.whatsApp || channels.sms ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {channels.email && (
                       <Button size="sm" onClick={() => handleResend("Email")} disabled={sending !== null}>
@@ -467,10 +467,22 @@ export default function AdminUsers() {
                         Send WhatsApp
                       </Button>
                     )}
+                    {channels.sms && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleResend("Sms")}
+                        disabled={sending !== null || detailUser.phone === "—" || !detailUser.phone}
+                        title={detailUser.phone === "—" || !detailUser.phone ? "No phone number on file" : undefined}
+                      >
+                        {sending === "Sms" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
+                        Send SMS
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <p className="mt-3 text-xs text-muted-foreground">
-                    No delivery channel is enabled. Turn on Email or WhatsApp in Settings &rarr; Integrations to send credentials.
+                    No delivery channel is enabled. Turn on Email, WhatsApp or SMS in Settings &rarr; Integrations to send credentials.
                   </p>
                 )}
                 {sendResult && (

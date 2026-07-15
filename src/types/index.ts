@@ -101,6 +101,8 @@ export interface ClassSession {
 
 export interface Invoice {
   id: string;
+  /** Real backend invoice Guid (id above is the display invoice number); present in API mode only. */
+  apiId?: string;
   parentId: string;
   childName: string;
   department: "Phonics" | "Maths";

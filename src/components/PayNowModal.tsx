@@ -1,17 +1,21 @@
 import { useEffect, useState, type ComponentType } from "react";
-import { Banknote, CheckCircle2, CreditCard, Landmark, Smartphone, Wallet } from "lucide-react";
+import { Banknote, CheckCircle2, CreditCard, ExternalLink, Landmark, Smartphone, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
-import { getPaymentMethods } from "@/api/parentPortal";
+import { getPaymentMethods, payInvoice } from "@/api/parentPortal";
 
 interface PayNowModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   amount: number;
   invoiceLabel?: string;
+  /** Real invoice id: enables the live payment flow (checkout link / cash intent) in API mode. */
+  invoiceId?: string;
+  /** Called after a payment was initiated (cash intent or checkout opened) so the caller can refresh. */
+  onInitiated?: () => void;
 }
 
 interface PayMethod {
@@ -38,10 +42,13 @@ function iconForGateway(key: string): PayMethod["icon"] {
   return Wallet;
 }
 
-export function PayNowModal({ open, onOpenChange, amount, invoiceLabel }: PayNowModalProps) {
+export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceId, onInitiated }: PayNowModalProps) {
   const [methods, setMethods] = useState<PayMethod[]>(DEMO_METHODS);
   const [method, setMethod] = useState<string>(DEMO_METHODS[0].id);
-  const [status, setStatus] = useState<"idle" | "processing" | "success">("idle");
+  const [status, setStatus] = useState<"idle" | "processing" | "success" | "redirect" | "cash">("idle");
+  const [resultMessage, setResultMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const liveFlow = apiEnabled() && !!invoiceId;
 
   // Load enabled payment gateways (+ Cash) each time the popup opens.
   useEffect(() => {
@@ -63,14 +70,41 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel }: PayNow
     };
   }, [open]);
 
-  function handlePay() {
+  async function handlePay() {
+    setError(null);
     setStatus("processing");
-    setTimeout(() => setStatus("success"), 1200);
+
+    if (!liveFlow) {
+      // Demo checkout: simulated success only when no backend/invoice is wired.
+      setTimeout(() => setStatus("success"), 1200);
+      return;
+    }
+
+    try {
+      const result = await payInvoice(invoiceId!, method);
+      setResultMessage(result.message);
+      if (result.mode === "redirect" && result.url) {
+        window.open(result.url, "_blank", "noopener");
+        setStatus("redirect");
+      } else {
+        setStatus("cash");
+      }
+      onInitiated?.();
+    } catch (e) {
+      setStatus("idle");
+      setError(e instanceof Error ? e.message : "Could not start the payment. Please try again.");
+    }
   }
 
   function handleClose(next: boolean) {
     onOpenChange(next);
-    if (!next) setTimeout(() => setStatus("idle"), 200);
+    if (!next) {
+      setTimeout(() => {
+        setStatus("idle");
+        setResultMessage(null);
+        setError(null);
+      }, 200);
+    }
   }
 
   return (
@@ -85,6 +119,17 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel }: PayNow
             <p className="mt-1 text-sm text-muted-foreground">
               {formatCurrency(amount)} received{invoiceLabel ? ` for ${invoiceLabel}` : ""}. A receipt has been sent to your email and access has been restored.
             </p>
+            <Button className="mt-6 w-full" onClick={() => handleClose(false)}>
+              Done
+            </Button>
+          </div>
+        ) : status === "redirect" || status === "cash" ? (
+          <div className="flex flex-col items-center py-4 text-center">
+            <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
+              {status === "redirect" ? <ExternalLink className="h-8 w-8" /> : <Banknote className="h-8 w-8" />}
+            </span>
+            <h3 className="text-lg font-bold">{status === "redirect" ? "Complete your payment" : "Cash payment noted"}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{resultMessage}</p>
             <Button className="mt-6 w-full" onClick={() => handleClose(false)}>
               Done
             </Button>
@@ -123,10 +168,13 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel }: PayNow
               </div>
               )}
             </div>
+            {error && <p className="text-sm font-medium text-destructive">{error}</p>}
             <Button className="w-full" onClick={handlePay} disabled={status === "processing" || !method}>
               {status === "processing" ? "Processing…" : `Pay ${formatCurrency(amount)}`}
             </Button>
-            <p className="text-center text-[11px] text-muted-foreground">Secured, encrypted payment · This is a demo checkout.</p>
+            <p className="text-center text-[11px] text-muted-foreground">
+              {liveFlow ? "Secured, encrypted payment via the centre's payment gateway." : "Secured, encrypted payment · This is a demo checkout."}
+            </p>
           </>
         )}
       </DialogContent>

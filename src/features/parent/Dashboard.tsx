@@ -29,7 +29,8 @@ import { getInvoicesForParent } from "@/data/invoices";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { toFrontendSession } from "@/api/sessions";
-import { getParentDashboard, getParentSchedule, type ApiParentChildSummary, type ApiParentDashboard } from "@/api/parentPortal";
+import { getParentDashboard, getParentInvoices, getParentSchedule, type ApiParentChildSummary, type ApiParentDashboard } from "@/api/parentPortal";
+import { toFrontendInvoice } from "@/api/billing";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import type { Child, ClassSession, Invoice } from "@/types";
@@ -108,9 +109,16 @@ export default function ParentDashboard() {
     [sessions]
   );
 
-  const invoice = child
-    ? getInvoicesForParent(PARENT_ID).find((i) => i.childName === child.name && i.status !== "paid")
-    : undefined;
+  // Real unpaid invoice drives the fee card / Pay Now in API mode; demo keeps the mock lookup.
+  const { data: apiInvoices, reload: reloadInvoices } = useApiData<Invoice[]>(
+    () => getParentInvoices().then((items) => items.map(toFrontendInvoice)),
+    []
+  );
+  const invoice = apiEnabled()
+    ? apiInvoices.find((i) => i.status !== "paid")
+    : child
+      ? getInvoicesForParent(PARENT_ID).find((i) => i.childName === child.name && i.status !== "paid")
+      : undefined;
 
   const firstName = userName !== "Guest" ? userName.split(" ")[0] : "there";
 
@@ -196,6 +204,8 @@ export default function ParentDashboard() {
           onOpenChange={setPayOpen}
           amount={invoice.amount}
           invoiceLabel={`${invoice.courseName} — ${child.name}`}
+          invoiceId={invoice.apiId}
+          onInitiated={reloadInvoices}
         />
       )}
     </div>

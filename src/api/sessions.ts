@@ -56,6 +56,21 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
   };
 }
 
+/** Personal iCalendar feed URL (absolute) for external calendar apps — created server-side on first request. */
+export async function getCalendarFeedUrl(): Promise<string> {
+  const { url } = await apiFetch<{ url: string }>("/api/sessions/calendar/feed-url");
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  return `${baseUrl}${url}`;
+}
+
+/** Auto session recording: registers the finished recording link against the session (15-day parent window). */
+export async function registerRecording(sessionId: string, storageUrl: string, durationSeconds?: number): Promise<void> {
+  await apiFetch(`/api/sessions/${sessionId}/recordings`, {
+    method: "POST",
+    body: JSON.stringify({ storageUrl, durationSeconds }),
+  });
+}
+
 /** The signed-in teacher's own sessions in a ±60-day window. */
 export async function listMySessions(): Promise<ApiClassSession[]> {
   const from = new Date(Date.now() - 60 * 86400_000).toISOString();

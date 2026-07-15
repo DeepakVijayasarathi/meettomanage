@@ -23,7 +23,7 @@ const PARENT_ID = "p-1";
 export default function ParentBilling() {
   const { children } = useSession();
   const mockChildren = getChildrenByParent(PARENT_ID);
-  const { data: invoices } = useApiData(
+  const { data: invoices, reload: reloadInvoices } = useApiData(
     () => getParentInvoices().then((items) => items.map(toFrontendInvoice)),
     getInvoicesForParent(PARENT_ID)
   );
@@ -155,6 +155,8 @@ export default function ParentBilling() {
         onOpenChange={setPayOpen}
         amount={payInvoice?.amount ?? 0}
         invoiceLabel={payInvoice ? `${payInvoice.courseName} — ${payInvoice.childName}` : undefined}
+        invoiceId={payInvoice?.apiId}
+        onInitiated={reloadInvoices}
       />
     </div>
   );

@@ -44,6 +44,7 @@ const INVOICE_STATUS_FROM_API: Record<ApiInvoiceStatus, Invoice["status"]> = {
 export function toFrontendInvoice(invoice: ApiInvoice): Invoice {
   return {
     id: invoice.invoiceNumber,
+    apiId: invoice.id,
     parentId: invoice.parentProfileId,
     // Child/course display names need a lookup endpoint; arrives with the dashboard work
     childName: "—",
@@ -167,6 +168,17 @@ export interface ApiPaymentAccount {
 /** Department payment accounts with live collection stats, for the Payment Gateway Mapping screen. */
 export async function listPaymentAccounts(): Promise<ApiPaymentAccount[]> {
   return apiFetch<ApiPaymentAccount[]>("/api/payment-accounts");
+}
+
+/** Admin edit of a department account's gateway wiring (name/provider/ref/active). */
+export async function updatePaymentAccount(
+  id: string,
+  input: { name: string; gatewayProvider: string; gatewayAccountRef: string; isActive: boolean }
+): Promise<ApiPaymentAccount> {
+  return apiFetch<ApiPaymentAccount>(`/api/payment-accounts/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }
 
 /** Pins a parent's payments to a specific department account (parent user id). */
