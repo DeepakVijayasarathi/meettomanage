@@ -11,6 +11,7 @@ export interface ApiResource {
   fileSizeBytes: number | null;
   courseId: string | null;
   batchId: string | null;
+  batchName: string | null;
   isDownloadable: boolean;
   description: string | null;
   createdAtUtc: string;
@@ -47,6 +48,45 @@ export function toFrontendResource(resource: ApiResource): Resource {
 export async function listResources(type?: ApiResourceType): Promise<ApiResource[]> {
   const query = type ? `?type=${type}` : "";
   return apiFetch<ApiResource[]>(`/api/resources${query}`);
+}
+
+/** Teacher portal: resources tied to the signed-in teacher's own batches. */
+export async function listMyResources(type?: ApiResourceType): Promise<ApiResource[]> {
+  const query = type ? `?type=${type}` : "";
+  return apiFetch<ApiResource[]>(`/api/resources/mine${query}`);
+}
+
+/** Teacher portal: upload a resource to one of the teacher's own batches. */
+export async function uploadMyResource(
+  file: File,
+  metadata: { title: string; type: ApiResourceType; batchId: string; isDownloadable?: boolean; description?: string }
+): Promise<ApiResource> {
+  const form = new FormData();
+  form.set("file", file);
+  form.set("Title", metadata.title);
+  form.set("Type", metadata.type);
+  form.set("BatchId", metadata.batchId);
+  form.set("IsDownloadable", String(metadata.isDownloadable ?? false));
+  if (metadata.description) form.set("Description", metadata.description);
+  return apiFetch<ApiResource>("/api/resources/mine", { method: "POST", body: form });
+}
+
+/** Teacher portal: download a resource the teacher owns. */
+export async function downloadMyResource(id: string, fallbackName: string): Promise<void> {
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  const token = getAccessToken();
+  const response = await fetch(`${baseUrl}/api/resources/${id}/mine/download`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fallbackName;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function uploadResource(

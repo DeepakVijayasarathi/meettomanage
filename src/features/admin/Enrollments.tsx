@@ -5,6 +5,9 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -15,10 +18,11 @@ import {
 } from "@/components/ui/dialog";
 import { CHILDREN } from "@/data/children";
 import { getParentById } from "@/data/users";
-import { getCourseById } from "@/data/courses";
+import { COURSES, getCourseById } from "@/data/courses";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listEnrollmentForms, reviewEnrollmentForm, type ApiEnrollmentForm } from "@/api/parentPortal";
+import { listEnrollmentForms, reviewEnrollmentForm, updateEnrollmentForm, type ApiEnrollmentForm } from "@/api/parentPortal";
+import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
 import type { Child } from "@/types";
 import { getInitials } from "@/lib/utils";
 
@@ -62,8 +66,67 @@ export default function AdminEnrollments() {
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<EnrollmentRow | null>(null);
 
+  // Edit dialog
+  const [editRow, setEditRow] = useState<EnrollmentRow | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDob, setEditDob] = useState("");
+  const [editGrade, setEditGrade] = useState("");
+  const [editCourse, setEditCourse] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [banner, setBanner] = useState<string | null>(null);
+
+  const { data: courseOptions } = useApiData<ApiCourseOption[]>(
+    () => listCourseOptions(),
+    COURSES.map((c) => ({ id: c.id, name: c.name }))
+  );
+
   function isComplete(child: EnrollmentRow) {
     return child.enrollmentComplete || approvedIds.has(child.id);
+  }
+
+  function openEdit(row: EnrollmentRow) {
+    setEditRow(row);
+    setEditName(row.name === "(child name pending)" ? "" : row.name);
+    setEditDob(row.dob ?? "");
+    setEditGrade(row.grade === "—" ? "" : row.grade);
+    setEditCourse(row.courseId);
+    setEditError(null);
+  }
+
+  async function handleSaveEdit() {
+    if (!editRow) return;
+    // Merge edits back into the original answers so client-defined fields are preserved.
+    let answers: Record<string, unknown> = {};
+    try {
+      answers = editRow.formJson ? (JSON.parse(editRow.formJson) as Record<string, unknown>) : {};
+    } catch {
+      answers = {};
+    }
+    answers.childName = editName.trim();
+    answers.dob = editDob || undefined;
+    answers.grade = editGrade.trim() || undefined;
+    answers.courseInterest = editCourse || undefined;
+
+    if (!apiEnabled()) {
+      setBanner(`"${editName.trim() || "Enrollment"}" updated. (Demo only — not persisted.)`);
+      setEditRow(null);
+      return;
+    }
+
+    setSaving(true);
+    setEditError(null);
+    try {
+      await updateEnrollmentForm(editRow.id, answers);
+      setBanner(`"${editName.trim() || "Enrollment"}" updated.`);
+      setEditRow(null);
+      setDetail(null);
+      reload();
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : "Could not save changes.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleApprove(row: EnrollmentRow) {
@@ -148,6 +211,13 @@ export default function AdminEnrollments() {
         description="Review submitted enrollment forms — approve, edit or download as PDF."
       />
 
+      {banner && (
+        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
+          <CheckCircle2 className="h-4 w-4" />
+          {banner}
+        </div>
+      )}
+
       <DataTable
         data={rows}
         columns={columns}
@@ -207,7 +277,7 @@ export default function AdminEnrollments() {
                   <Download className="h-4 w-4" />
                   Download
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" disabled={isComplete(detail)} onClick={() => openEdit(detail)}>
                   <FileEdit className="h-4 w-4" />
                   Edit
                 </Button>
@@ -220,6 +290,61 @@ export default function AdminEnrollments() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editRow} onOpenChange={(open) => !open && setEditRow(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <span className="mb-1 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <FileEdit className="h-5 w-5" />
+            </span>
+            <DialogTitle>Edit enrollment</DialogTitle>
+            <DialogDescription>Correct the submitted answers before approval.</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-name">Student name</Label>
+              <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Child's full name" />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-dob">Date of birth</Label>
+                <Input id="edit-dob" type="date" value={editDob} onChange={(e) => setEditDob(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-grade">Grade</Label>
+                <Input id="edit-grade" value={editGrade} onChange={(e) => setEditGrade(e.target.value)} placeholder="e.g. Grade 2" />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>Course interest</Label>
+              <Select value={editCourse} onValueChange={setEditCourse}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a course" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courseOptions.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {editError && <p className="text-sm font-medium text-destructive">{editError}</p>}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditRow(null)}>
+              Cancel
+            </Button>
+            <Button disabled={saving} onClick={handleSaveEdit}>
+              {saving ? "Saving…" : "Save changes"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -20,20 +20,18 @@ interface PayMethod {
   icon: ComponentType<{ className?: string }>;
 }
 
-// Cash is always offered (recorded as an offline payment); gateways come from the DB.
-const CASH_METHOD: PayMethod = { id: "cash", label: "Cash", icon: Banknote };
-
-// Demo-mode methods when no backend is configured.
+// Demo-mode methods when no backend is configured (real methods come from Settings → Integrations).
 const DEMO_METHODS: PayMethod[] = [
   { id: "upi", label: "UPI", icon: Smartphone },
   { id: "card", label: "Card", icon: CreditCard },
   { id: "netbanking", label: "Net Banking", icon: Landmark },
-  CASH_METHOD,
+  { id: "cash", label: "Cash", icon: Banknote },
 ];
 
-/** Picks an icon for a gateway from its integration key. */
+/** Picks an icon for a payment method from its integration key. */
 function iconForGateway(key: string): PayMethod["icon"] {
   const k = key.toLowerCase();
+  if (k.includes("cash")) return Banknote;
   if (k.includes("upi")) return Smartphone;
   if (k.includes("bank")) return Landmark;
   if (k.includes("razorpay") || k.includes("cashfree") || k.includes("stripe") || k.includes("card")) return CreditCard;
@@ -52,15 +50,13 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel }: PayNow
     getPaymentMethods()
       .then((gateways) => {
         if (cancelled) return;
-        const list: PayMethod[] = [
-          ...gateways.map((g) => ({ id: g.key, label: g.name, icon: iconForGateway(g.key) })),
-          CASH_METHOD,
-        ];
+        // Every enabled payment method (gateways + Cash) is served from Settings → Integrations.
+        const list: PayMethod[] = gateways.map((g) => ({ id: g.key, label: g.name, icon: iconForGateway(g.key) }));
         setMethods(list);
-        setMethod(list[0]?.id ?? "cash");
+        setMethod(list[0]?.id ?? "");
       })
       .catch(() => {
-        if (!cancelled) setMethods([CASH_METHOD]);
+        if (!cancelled) setMethods([]);
       });
     return () => {
       cancelled = true;
@@ -105,6 +101,11 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel }: PayNow
             </div>
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">Choose a payment method</p>
+              {methods.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+                  No payment methods are enabled yet. An admin can turn on a gateway or Cash in Settings → Integrations.
+                </p>
+              ) : (
               <div className="grid grid-cols-3 gap-2">
                 {methods.map((m) => (
                   <button
@@ -120,8 +121,9 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel }: PayNow
                   </button>
                 ))}
               </div>
+              )}
             </div>
-            <Button className="w-full" onClick={handlePay} disabled={status === "processing"}>
+            <Button className="w-full" onClick={handlePay} disabled={status === "processing" || !method}>
               {status === "processing" ? "Processing…" : `Pay ${formatCurrency(amount)}`}
             </Button>
             <p className="text-center text-[11px] text-muted-foreground">Secured, encrypted payment · This is a demo checkout.</p>

@@ -89,6 +89,14 @@ export async function listEnrollmentForms(status?: ApiEnrollmentForm["status"]):
   return apiFetch<ApiEnrollmentForm[]>(`/api/enrollment-forms${status ? `?status=${status}` : ""}`);
 }
 
+/** Admin edits the submitted answers before approval. */
+export async function updateEnrollmentForm(id: string, formData: Record<string, unknown>): Promise<ApiEnrollmentForm> {
+  return apiFetch<ApiEnrollmentForm>(`/api/enrollment-forms/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ formDataJson: JSON.stringify(formData) }),
+  });
+}
+
 export async function reviewEnrollmentForm(
   id: string,
   input: { approve: boolean; childFirstName?: string; childLastName?: string; childDateOfBirth?: string }
