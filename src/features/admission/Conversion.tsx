@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CHART_PALETTE } from "@/lib/roles";
 import { cn, formatDate, getInitials } from "@/lib/utils";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listDemoBookings, toApiConversionStatus, toFrontendLead, updateConversionStatus } from "@/api/demoBookings";
 import { LEADS as INITIAL_LEADS, type ConversionStage, type Lead } from "./data";
 
 type BoardStage = "Demo Completed" | "Follow-up" | "Enrolled" | "Not Interested";
@@ -29,7 +32,13 @@ function isBoardStage(stage: ConversionStage): stage is BoardStage {
 }
 
 export default function AdmissionConversion() {
-  const [leads, setLeads] = useState<Lead[]>(() => INITIAL_LEADS.filter((l) => isBoardStage(l.conversionStage)));
+  const usingApi = apiEnabled();
+  const { data: apiLeads, reload } = useApiData<Lead[]>(
+    () => listDemoBookings().then((b) => b.map(toFrontendLead)),
+    INITIAL_LEADS
+  );
+  const [demoLeads, setDemoLeads] = useState<Lead[]>(() => INITIAL_LEADS);
+  const leads = usingApi ? apiLeads : demoLeads;
 
   const columns = useMemo(() => {
     const grouped: Record<BoardStage, Lead[]> = { "Demo Completed": [], "Follow-up": [], Enrolled: [], "Not Interested": [] };
@@ -39,8 +48,13 @@ export default function AdmissionConversion() {
     return grouped;
   }, [leads]);
 
-  function moveLead(leadId: string, stage: BoardStage) {
-    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, conversionStage: stage } : l)));
+  async function moveLead(leadId: string, stage: BoardStage) {
+    if (usingApi) {
+      await updateConversionStatus(leadId, toApiConversionStatus(stage));
+      reload();
+      return;
+    }
+    setDemoLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, conversionStage: stage } : l)));
   }
 
   return (

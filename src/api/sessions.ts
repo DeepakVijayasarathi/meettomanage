@@ -84,3 +84,32 @@ export async function listSessions(): Promise<ApiClassSession[]> {
   const to = new Date(Date.now() + 60 * 86400_000).toISOString();
   return apiFetch<ApiClassSession[]>(`/api/sessions?fromUtc=${from}&toUtc=${to}`);
 }
+
+/** Schedules one session (regular needs a batch; demo doesn't). */
+export async function scheduleSession(input: {
+  batchId?: string;
+  teacherProfileId: string;
+  type: "Regular" | "Demo";
+  scheduledStartAtUtc: string;
+  scheduledEndAtUtc: string;
+}): Promise<ApiClassSession> {
+  return apiFetch<ApiClassSession>("/api/sessions", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function rescheduleSession(
+  id: string,
+  scheduledStartAtUtc: string,
+  scheduledEndAtUtc: string
+): Promise<ApiClassSession> {
+  return apiFetch<ApiClassSession>(`/api/sessions/${id}/reschedule`, {
+    method: "POST",
+    body: JSON.stringify({ scheduledStartAtUtc, scheduledEndAtUtc }),
+  });
+}
+
+export async function cancelSession(id: string, reason: string): Promise<ApiClassSession> {
+  return apiFetch<ApiClassSession>(`/api/sessions/${id}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}

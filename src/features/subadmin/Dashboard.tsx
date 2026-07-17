@@ -15,7 +15,9 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";
+import { ScheduleConflictsPanel } from "@/components/ScheduleConflictsPanel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -101,16 +103,19 @@ export default function SubAdminDashboard() {
   return (
     <div>
       <PageHeader
-        eyebrow="Sub Admin Portal · Restricted Console"
+        eyebrow="Relationship Manager · Restricted Console"
         title={`Welcome back, ${firstName}`}
         description="You're signed in with permission-based access — a delegated slice of the Admin console. Everything on this page reflects exactly what your Admin has granted you, nothing more."
         actions={
-          <Button asChild variant="outline">
-            <Link to="/subadmin/permissions">
-              <ShieldCheck className="h-4 w-4" />
-              View my permissions
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <PersonalMeetingButton />
+            <Button asChild variant="outline">
+              <Link to="/subadmin/permissions">
+                <ShieldCheck className="h-4 w-4" />
+                View my permissions
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -270,6 +275,11 @@ export default function SubAdminDashboard() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Conflicts & attention — relocated here from the coordinator per client feedback. */}
+      <div className="mt-6">
+        <ScheduleConflictsPanel />
       </div>
 
       <ConfirmDialog

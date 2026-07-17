@@ -16,6 +16,16 @@ import { TEACHERS, getTeacherById } from "@/data/users";
 import type { ClassDuration, ClassSession, SessionStatus } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { cancelSession, listSessions, rescheduleSession, scheduleSession, toFrontendSession } from "@/api/sessions";
+import { listBatches, listTeacherOptions } from "@/api/batches";
+import { listCourseOptions } from "@/api/courses";
+
+interface Opt {
+  id: string;
+  label: string;
+}
 
 const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
   { value: "all", label: "All statuses" },
@@ -43,7 +53,18 @@ const NEW_SESSION_DEFAULTS = {
 };
 
 export default function CoordinatorScheduling() {
-  const [sessions, setSessions] = useState<ClassSession[]>(SESSIONS);
+  const usingApi = apiEnabled();
+  const { data: apiSessions, reload } = useApiData<ClassSession[]>(
+    () => listSessions().then((s) => s.map(toFrontendSession)),
+    SESSIONS
+  );
+  const { data: apiBatches } = useApiData(() => listBatches(), []);
+  const { data: apiTeachers } = useApiData(() => listTeacherOptions(), []);
+  const { data: apiCourses } = useApiData(() => listCourseOptions(), []);
+
+  const [demoSessions, setDemoSessions] = useState<ClassSession[]>(SESSIONS);
+  const sessions = usingApi ? apiSessions : demoSessions;
+
   const [statusFilter, setStatusFilter] = useState<SessionStatus | "all">("all");
   const [rescheduleTarget, setRescheduleTarget] = useState<ClassSession | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ClassSession | null>(null);
@@ -56,10 +77,18 @@ export default function CoordinatorScheduling() {
     [sessions, statusFilter]
   );
 
-  const availableBatches = useMemo(
-    () => (form.courseId ? BATCHES.filter((b) => b.courseId === form.courseId) : []),
-    [form.courseId]
-  );
+  // Unified dropdown options (real in API mode, mock otherwise).
+  const courseOpts: Opt[] = usingApi
+    ? apiCourses.map((c) => ({ id: c.id, label: c.name }))
+    : COURSES.filter((c) => c.status === "active").map((c) => ({ id: c.id, label: `${c.name} (${c.type})` }));
+  const teacherOpts: Opt[] = usingApi
+    ? apiTeachers.map((t) => ({ id: t.teacherProfileId, label: `${t.fullName}${t.department ? ` · ${t.department}` : ""}` }))
+    : TEACHERS.filter((t) => t.status === "active").map((t) => ({ id: t.id, label: `${t.name} · ${t.department}` }));
+  const batchOpts: Opt[] = form.courseId
+    ? usingApi
+      ? apiBatches.filter((b) => b.courseId === form.courseId).map((b) => ({ id: b.id, label: b.name }))
+      : BATCHES.filter((b) => b.courseId === form.courseId).map((b) => ({ id: b.id, label: b.name }))
+    : [];
 
   const canSubmit = !!form.courseId && !!form.teacherId && !!form.date && !!form.time;
 
@@ -67,8 +96,31 @@ export default function CoordinatorScheduling() {
     setForm(NEW_SESSION_DEFAULTS);
   }
 
-  function handleCreateSession() {
+  async function handleCreateSession() {
     if (!canSubmit) return;
+
+    if (usingApi) {
+      const start = new Date(`${form.date}T${form.time}:00`);
+      const end = new Date(start.getTime() + Number(form.duration) * 60000);
+      try {
+        await scheduleSession({
+          batchId: form.batchId !== "none" ? form.batchId : undefined,
+          teacherProfileId: form.teacherId,
+          type: form.batchId !== "none" ? "Regular" : "Demo",
+          scheduledStartAtUtc: start.toISOString(),
+          scheduledEndAtUtc: end.toISOString(),
+        });
+        reload();
+        setCreateOpen(false);
+        resetForm();
+        setConfirmation(`Session scheduled for ${formatDate(form.date, "long")} at ${form.time}.`);
+        window.setTimeout(() => setConfirmation(null), 5000);
+      } catch (err) {
+        setConfirmation(err instanceof Error ? err.message : "Could not schedule the session.");
+      }
+      return;
+    }
+
     const course = getCourseById(form.courseId);
     const teacher = getTeacherById(form.teacherId);
     const batch = form.batchId !== "none" ? getBatchById(form.batchId) : undefined;
@@ -89,11 +141,32 @@ export default function CoordinatorScheduling() {
       type: course?.type ?? "group",
     };
 
-    setSessions((prev) => [newSession, ...prev]);
+    setDemoSessions((prev) => [newSession, ...prev]);
     setCreateOpen(false);
     resetForm();
     setConfirmation(`"${title}" scheduled for ${formatDate(form.date, "long")} at ${form.time}.`);
     window.setTimeout(() => setConfirmation(null), 5000);
+  }
+
+  async function doReschedule(session: ClassSession) {
+    if (!usingApi) {
+      setDemoSessions((prev) => prev.map((s) => (s.id === session.id ? { ...s, status: "rescheduled" } : s)));
+      return;
+    }
+    const start = new Date(`${session.date}T${session.startTime}:00`);
+    const newStart = new Date(start.getTime() + 7 * 86400_000);
+    const newEnd = new Date(newStart.getTime() + session.duration * 60000);
+    await rescheduleSession(session.id, newStart.toISOString(), newEnd.toISOString());
+    reload();
+  }
+
+  async function doCancel(session: ClassSession) {
+    if (!usingApi) {
+      setDemoSessions((prev) => prev.map((s) => (s.id === session.id ? { ...s, status: "cancelled" } : s)));
+      return;
+    }
+    await cancelSession(session.id, "Cancelled by coordinator");
+    reload();
   }
 
   const columns: DataTableColumn<ClassSession>[] = useMemo(
@@ -250,7 +323,7 @@ export default function CoordinatorScheduling() {
         confirmLabel="Reschedule"
         onConfirm={() => {
           if (!rescheduleTarget) return;
-          setSessions((prev) => prev.map((s) => (s.id === rescheduleTarget.id ? { ...s, status: "rescheduled" } : s)));
+          void doReschedule(rescheduleTarget);
         }}
       />
 
@@ -263,7 +336,7 @@ export default function CoordinatorScheduling() {
         destructive
         onConfirm={() => {
           if (!cancelTarget) return;
-          setSessions((prev) => prev.map((s) => (s.id === cancelTarget.id ? { ...s, status: "cancelled" } : s)));
+          void doCancel(cancelTarget);
         }}
       />
 
@@ -291,9 +364,9 @@ export default function CoordinatorScheduling() {
                   <SelectValue placeholder="Select a course" />
                 </SelectTrigger>
                 <SelectContent>
-                  {COURSES.filter((c) => c.status === "active").map((c) => (
+                  {courseOpts.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.name} ({c.type})
+                      {c.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -308,9 +381,9 @@ export default function CoordinatorScheduling() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None — 1:1 / standalone session</SelectItem>
-                  {availableBatches.map((b) => (
+                  {batchOpts.map((b) => (
                     <SelectItem key={b.id} value={b.id}>
-                      {b.name}
+                      {b.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -324,9 +397,9 @@ export default function CoordinatorScheduling() {
                   <SelectValue placeholder="Select a teacher" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TEACHERS.filter((t) => t.status === "active").map((t) => (
+                  {teacherOpts.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.name} · {t.department}
+                      {t.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

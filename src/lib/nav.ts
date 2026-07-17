@@ -174,10 +174,9 @@ export const ADMISSION_NAV: NavSection[] = [
 export const COORDINATOR_NAV: NavSection[] = [
   { items: [{ label: "Dashboard", to: "/coordinator", icon: LayoutDashboard, end: true }] },
   {
-    title: "Scheduling",
+    title: "Monitoring",
     items: [
       { label: "Academic Calendar", to: "/coordinator/calendar", icon: CalendarDays },
-      { label: "Scheduling", to: "/coordinator/scheduling", icon: CalendarClock },
       { label: "Teacher Availability", to: "/coordinator/availability", icon: CalendarRange },
     ],
   },

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
 import { SessionStatusBadge } from "@/components/StatusBadge";
@@ -24,11 +25,15 @@ import { LEAVE_REQUESTS } from "@/data/leaves";
 import { useSession } from "@/state/session";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate } from "@/lib/utils";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listSessions, toFrontendSession } from "@/api/sessions";
+import { listLeave, toFrontendLeave } from "@/api/academicOps";
 import type { ClassSession, LeaveRequest, SessionStatus } from "@/types";
 
-// Deterministic "today" for this mock universe — keeps the dashboard reproducible.
-const TODAY = "2026-07-09";
-const NOW = new Date("2026-07-09T12:00:00");
+// Deterministic "today" for the mock universe; API mode uses the real clock.
+const MOCK_TODAY = "2026-07-09";
+const MOCK_NOW = new Date("2026-07-09T12:00:00");
 
 const PLACEHOLDER_STATUSES: SessionStatus[] = ["holiday", "leave"];
 
@@ -39,111 +44,49 @@ function formatTimeLabel(time: string) {
   return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
-interface AttentionItem {
-  id: string;
-  tone: "destructive" | "warning";
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  ctaLabel: string;
-  ctaTo: string;
-}
-
 export default function CoordinatorDashboard() {
   const { userName } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
 
+  const usingApi = apiEnabled();
+  const { data: apiSessions } = useApiData<ClassSession[]>(() => listSessions().then((s) => s.map(toFrontendSession)), SESSIONS);
+  const { data: apiLeaves } = useApiData<LeaveRequest[]>(() => listLeave().then((l) => l.map(toFrontendLeave)), LEAVE_REQUESTS);
+
+  const sessions = usingApi ? apiSessions : SESSIONS;
+  const leaves = usingApi ? apiLeaves : LEAVE_REQUESTS;
+  const TODAY = usingApi ? new Date().toISOString().slice(0, 10) : MOCK_TODAY;
+  const NOW = usingApi ? new Date() : MOCK_NOW;
+
   const todaySessions = useMemo(
     () =>
-      SESSIONS.filter((s) => s.date === TODAY && !PLACEHOLDER_STATUSES.includes(s.status)).sort((a, b) =>
+      sessions.filter((s) => s.date === TODAY && !PLACEHOLDER_STATUSES.includes(s.status)).sort((a, b) =>
         a.startTime.localeCompare(b.startTime)
       ),
-    []
+    [sessions, TODAY]
   );
 
-  const demosToday = useMemo(() => SESSIONS.filter((s) => s.date === TODAY && s.status === "demo"), []);
+  const demosToday = useMemo(() => sessions.filter((s) => s.date === TODAY && s.status === "demo"), [sessions, TODAY]);
 
   const teachersOnLeaveToday = useMemo(() => {
     const ids = new Set<string>();
-    LEAVE_REQUESTS.filter((l) => l.status === "approved" && l.date === TODAY).forEach((l) => ids.add(l.teacherId));
-    SESSIONS.filter((s) => s.date === TODAY && s.status === "leave").forEach((s) => ids.add(s.teacherId));
+    leaves.filter((l) => l.status === "approved" && l.date === TODAY).forEach((l) => ids.add(l.teacherId));
+    sessions.filter((s) => s.date === TODAY && s.status === "leave").forEach((s) => ids.add(s.teacherId));
     return ids.size;
-  }, []);
+  }, [leaves, sessions, TODAY]);
 
   const weekStart = startOfWeek(NOW);
   const weekEnd = endOfWeek(NOW);
   const noShowsThisWeek = useMemo(
-    () => SESSIONS.filter((s) => s.status === "noshow" && isWithinInterval(parseISO(s.date), { start: weekStart, end: weekEnd })),
-    [weekStart, weekEnd]
+    () => sessions.filter((s) => s.status === "noshow" && isWithinInterval(parseISO(s.date), { start: weekStart, end: weekEnd })),
+    [sessions, weekStart, weekEnd]
   );
 
   const leaveByStatus = useMemo(() => {
     const counts: Record<LeaveRequest["status"], number> = { pending: 0, approved: 0, rejected: 0, blocked: 0 };
-    LEAVE_REQUESTS.forEach((l) => counts[l.status]++);
+    leaves.forEach((l) => counts[l.status]++);
     return counts;
-  }, []);
+  }, [leaves]);
 
-  // Cross-reference approved / pending leave against sessions still showing as "scheduled"
-  // on the same date for the same teacher — the real reason this role exists.
-  const attentionItems = useMemo(() => {
-    const items: AttentionItem[] = [];
-
-    LEAVE_REQUESTS.filter((l) => l.status === "approved").forEach((l) => {
-      const clash = SESSIONS.find((s) => s.teacherId === l.teacherId && s.date === l.date && s.status === "scheduled");
-      if (clash) {
-        items.push({
-          id: `approved-${l.id}`,
-          tone: "destructive",
-          icon: AlertTriangle,
-          title: `${l.teacherName} is on approved leave, but "${clash.title}" is still scheduled`,
-          description: `${formatDate(l.date, "long")} · ${clash.startTime} — the calendar hasn't been updated to reflect the approved leave yet. Mark the session as leave or reassign a substitute.`,
-          ctaLabel: "Resolve in Calendar",
-          ctaTo: "/coordinator/calendar",
-        });
-      }
-    });
-
-    LEAVE_REQUESTS.filter((l) => l.status === "pending").forEach((l) => {
-      const clash = SESSIONS.find((s) => s.teacherId === l.teacherId && s.date === l.date && s.status === "scheduled");
-      if (clash) {
-        items.push({
-          id: `pending-${l.id}`,
-          tone: "warning",
-          icon: Clock,
-          title: `${l.teacherName}'s leave request is pending approval`,
-          description: `Requested for ${formatDate(l.date, "long")}, overlapping "${clash.title}" at ${clash.startTime} — decide before the session date to avoid a last-minute scramble.`,
-          ctaLabel: "Review in Availability",
-          ctaTo: "/coordinator/availability",
-        });
-      }
-    });
-
-    LEAVE_REQUESTS.filter((l) => l.status === "blocked").forEach((l) => {
-      items.push({
-        id: `blocked-${l.id}`,
-        tone: "warning",
-        icon: ShieldAlert,
-        title: `${l.teacherName}'s late leave request was auto-blocked`,
-        description: `Only ${l.hoursBeforeSession}h notice given for "${l.session}" on ${formatDate(l.date, "long")} — below the minimum notice window. Confirm the teacher is still covering the session.`,
-        ctaLabel: "Check Coverage",
-        ctaTo: "/coordinator/scheduling",
-      });
-    });
-
-    noShowsThisWeek.forEach((s) => {
-      items.push({
-        id: `noshow-${s.id}`,
-        tone: "destructive",
-        icon: UserX,
-        title: `"${s.title}" was marked No-Show`,
-        description: `${formatDate(s.date, "long")} · ${s.startTime} with ${s.teacherName} — confirm whether it needs a reschedule or parent follow-up.`,
-        ctaLabel: "Reschedule",
-        ctaTo: "/coordinator/scheduling",
-      });
-    });
-
-    return items;
-  }, [noShowsThisWeek]);
 
   return (
     <div>
@@ -152,11 +95,14 @@ export default function CoordinatorDashboard() {
         title={`Good day, ${firstName}`}
         description="Today's academic operations at a glance — sessions, teacher availability and anything that needs your attention."
         actions={
-          <Button asChild>
-            <Link to="/coordinator/calendar">
-              Open Academic Calendar <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <PersonalMeetingButton />
+            <Button asChild>
+              <Link to="/coordinator/calendar">
+                Open Academic Calendar <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -204,54 +150,6 @@ export default function CoordinatorDashboard() {
           </CardContent>
         </Card>
       </div>
-
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Conflicts &amp; Attention Needed</CardTitle>
-          <CardDescription>Leave requests and no-shows that clash with the live calendar</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {attentionItems.length === 0 ? (
-            <EmptyState
-              icon={CalendarClock}
-              title="Nothing needs attention"
-              description="No leave conflicts or unresolved no-shows right now — the calendar is fully in sync."
-            />
-          ) : (
-            <div className="flex flex-col gap-3">
-              {attentionItems.map((item) => (
-                <div
-                  key={item.id}
-                  className={
-                    item.tone === "destructive"
-                      ? "flex flex-col gap-3 rounded-xl border border-destructive/25 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between"
-                      : "flex flex-col gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 sm:flex-row sm:items-center sm:justify-between"
-                  }
-                >
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={
-                        item.tone === "destructive"
-                          ? "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive"
-                          : "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warning/20 text-warning-foreground"
-                      }
-                    >
-                      <item.icon className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                      <p className="mt-0.5 text-sm text-muted-foreground">{item.description}</p>
-                    </div>
-                  </div>
-                  <Button asChild size="sm" variant="outline" className="shrink-0 self-start sm:self-center">
-                    <Link to={item.ctaTo}>{item.ctaLabel}</Link>
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -7,6 +7,14 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { DEPARTMENT_REVENUE, ENROLLMENT_FUNNEL, REVENUE_TREND } from "@/data/kpis";
+import { useApiData } from "@/api/hooks";
+import { getDashboardSummary, type ApiDashboardSummary } from "@/api/reports";
+
+const DEMO_SUMMARY: Pick<ApiDashboardSummary, "revenueTrend" | "revenueByDepartment" | "enrollmentFunnel"> = {
+  revenueTrend: REVENUE_TREND,
+  revenueByDepartment: DEPARTMENT_REVENUE.map((d) => ({ name: d.department, revenue: d.value })),
+  enrollmentFunnel: ENROLLMENT_FUNNEL,
+};
 
 function toCsv(columns: string[], rows: (string | number)[][]) {
   return [columns.join(","), ...rows.map((r) => r.join(","))].join("\n");
@@ -80,32 +88,38 @@ function SummaryCard({ icon: Icon, title, description, columns, rows, filename }
 }
 
 export default function ManagementReports() {
+  const { data: summary } = useApiData(() => getDashboardSummary(), DEMO_SUMMARY as ApiDashboardSummary);
+
   const monthlySummary = useMemo(() => {
     const columns = ["Month", "Revenue", "MoM Change"];
-    const rows = REVENUE_TREND.map((d, i) => {
-      const prev = REVENUE_TREND[i - 1];
-      const change = prev ? (((d.revenue - prev.revenue) / prev.revenue) * 100).toFixed(1) + "%" : "—";
+    const rows = summary.revenueTrend.map((d, i) => {
+      const prev = summary.revenueTrend[i - 1];
+      const change = prev && prev.revenue > 0 ? (((d.revenue - prev.revenue) / prev.revenue) * 100).toFixed(1) + "%" : "—";
       return [d.month, formatCurrency(d.revenue), change];
     });
     return { columns, rows };
-  }, []);
+  }, [summary.revenueTrend]);
 
   const departmentComparison = useMemo(() => {
-    const total = DEPARTMENT_REVENUE.reduce((sum, d) => sum + d.value, 0);
+    const total = summary.revenueByDepartment.reduce((sum, d) => sum + d.revenue, 0);
     const columns = ["Department", "Revenue", "Share"];
-    const rows = DEPARTMENT_REVENUE.map((d) => [d.department, formatCurrency(d.value), formatPercent((d.value / total) * 100, 1)]);
+    const rows = summary.revenueByDepartment.map((d) => [
+      d.name,
+      formatCurrency(d.revenue),
+      formatPercent(total > 0 ? (d.revenue / total) * 100 : 0, 1),
+    ]);
     return { columns, rows };
-  }, []);
+  }, [summary.revenueByDepartment]);
 
   const funnelSummary = useMemo(() => {
     const columns = ["Stage", "Count", "Conversion from Previous"];
-    const rows = ENROLLMENT_FUNNEL.map((d, i) => {
-      const prev = ENROLLMENT_FUNNEL[i - 1];
-      const conv = prev ? formatPercent((d.value / prev.value) * 100, 0) : "—";
+    const rows = summary.enrollmentFunnel.map((d, i) => {
+      const prev = summary.enrollmentFunnel[i - 1];
+      const conv = prev && prev.value > 0 ? formatPercent((d.value / prev.value) * 100, 0) : "—";
       return [d.stage, d.value, conv];
     });
     return { columns, rows };
-  }, []);
+  }, [summary.enrollmentFunnel]);
 
   return (
     <div>

@@ -13,6 +13,8 @@ export interface ApiDashboardSummary {
   batchOccupancyPercent: number;
   teacherUtilizationSessionsPerTeacher: number;
   revenueByDepartment: { name: string; revenue: number }[];
+  revenueTrend: { month: string; revenue: number }[];
+  enrollmentFunnel: { stage: string; value: number }[];
 }
 
 export async function getDashboardSummary(): Promise<ApiDashboardSummary> {

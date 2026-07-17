@@ -99,13 +99,13 @@ export default function AdminPermissions() {
       <PageHeader
         eyebrow="Access Control"
         title="Roles & Permissions"
-        description="Configure module-level permissions per sub-admin and maintain reusable role presets in the database."
+        description="Configure module-level permissions per relationship manager and maintain reusable role presets in the database."
       />
 
       <Tabs defaultValue="subadmins">
         <TabsList>
           <TabsTrigger value="subadmins" className="gap-1.5">
-            <UserCog className="h-4 w-4" /> Sub Admins
+            <UserCog className="h-4 w-4" /> Relationship Managers
           </TabsTrigger>
           <TabsTrigger value="roles" className="gap-1.5">
             <ShieldCheck className="h-4 w-4" /> Role Presets
@@ -277,7 +277,7 @@ function SubAdminMatrix() {
     return (
       <Card>
         <CardContent className="py-10 text-center text-sm text-muted-foreground">
-          {loadingSubAdmins ? "Loading sub admins…" : "No sub admin accounts yet. Create one from the Users page first."}
+          {loadingSubAdmins ? "Loading relationship managers…" : "No relationship manager accounts yet. Create one from the Users page first."}
         </CardContent>
       </Card>
     );
@@ -633,7 +633,7 @@ function RolePresets() {
         <div>
           <CardTitle>Role Presets</CardTitle>
           <CardDescription>
-            Reusable permission matrices stored in the database. Apply one to a sub-admin from the Sub Admins tab.
+            Reusable permission matrices stored in the database. Apply one to a relationship manager from the Relationship Managers tab.
           </CardDescription>
         </div>
         <Button size="sm" onClick={startNew}>
@@ -705,7 +705,7 @@ function RolePresets() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none">Sub Admin dashboard (default)</SelectItem>
+                    <SelectItem value="__none">Relationship Manager dashboard (default)</SelectItem>
                     {subadminRoutes.map((item) => (
                       <SelectItem key={item.id} value={item.path}>
                         {item.label}
@@ -716,7 +716,7 @@ function RolePresets() {
               </div>
             </div>
             <p className="mb-4 text-xs text-muted-foreground">
-              A Sub Admin assigned this role lands here right after signing in, instead of the generic dashboard.
+              A Relationship Manager assigned this role lands here right after signing in, instead of the generic dashboard.
             </p>
 
             <div className="overflow-x-auto rounded-xl border border-border">

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, CreditCard, ReceiptText, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CreditCard, Download, ReceiptText, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -14,7 +14,7 @@ import { getInvoicesForParent } from "@/data/invoices";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { toFrontendInvoice } from "@/api/billing";
-import { getParentDashboard, getParentInvoices } from "@/api/parentPortal";
+import { downloadParentInvoice, getParentDashboard, getParentInvoices } from "@/api/parentPortal";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Invoice } from "@/types";
 
@@ -77,14 +77,25 @@ export default function ParentBilling() {
     {
       key: "action",
       header: "",
-      render: (r) =>
-        r.status !== "paid" ? (
-          <Button size="sm" onClick={() => openPayModal(r)}>
-            Pay Now
-          </Button>
-        ) : (
-          <span className="text-xs text-muted-foreground">—</span>
-        ),
+      render: (r) => (
+        <div className="flex items-center justify-end gap-1.5">
+          {r.status !== "paid" && (
+            <Button size="sm" onClick={() => openPayModal(r)}>
+              Pay Now
+            </Button>
+          )}
+          {r.apiId && (
+            <Button
+              size="sm"
+              variant="outline"
+              title="Download invoice"
+              onClick={() => downloadParentInvoice(r.apiId!, r.id).catch(() => undefined)}
+            >
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      ),
     },
   ];
 

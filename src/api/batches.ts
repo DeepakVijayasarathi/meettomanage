@@ -64,3 +64,28 @@ export async function updateBatch(batch: ApiBatch, teacherProfileId: string): Pr
     }),
   });
 }
+
+export async function createBatch(input: {
+  courseId: string;
+  teacherProfileId: string;
+  name: string;
+  capacity: number;
+  startDate?: string;
+  endDate?: string;
+}): Promise<ApiBatch> {
+  return apiFetch<ApiBatch>("/api/batches", { method: "POST", body: JSON.stringify(input) });
+}
+
+/**
+ * Bulk-creates the batch's full session plan (all course sessions on the chosen
+ * weekdays from the start date, skipping holidays). Returns the created sessions.
+ */
+export async function generateSchedule(
+  batchId: string,
+  input: { startDate: string; daysOfWeek: number[]; startTimeUtc: string }
+): Promise<unknown[]> {
+  return apiFetch<unknown[]>(`/api/batches/${batchId}/generate-schedule`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}

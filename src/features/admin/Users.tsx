@@ -311,7 +311,7 @@ export default function AdminUsers() {
         header: "Role",
         render: (row) => (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold capitalize text-foreground/80">
-            {row.role === "admission" ? "Admission Team" : "Sub Admin"}
+            {row.role === "admission" ? "Admission Team" : "Parent Relationship Manager"}
           </span>
         ),
       },
@@ -326,7 +326,7 @@ export default function AdminUsers() {
       <PageHeader
         eyebrow="Directory"
         title="Users"
-        description="Manage parents, students, teachers, admission team and sub-admins across the platform."
+        description="Manage parents, students, teachers, admission team and relationship managers across the platform."
         actions={
           <Button onClick={() => setAddOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -652,7 +652,7 @@ export default function AdminUsers() {
                   <SelectItem value="parent">Parent</SelectItem>
                   <SelectItem value="teacher">Teacher</SelectItem>
                   <SelectItem value="admission">Admission Team</SelectItem>
-                  <SelectItem value="subadmin">Sub Admin</SelectItem>
+                  <SelectItem value="subadmin">Parent Relationship Manager</SelectItem>
                 </SelectContent>
               </Select>
             </div>

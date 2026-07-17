@@ -21,7 +21,12 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import { COURSES } from "@/data/courses";
 import { DEPARTMENT_REVENUE, REVENUE_TREND } from "@/data/kpis";
+import { useApiData } from "@/api/hooks";
+import { getDashboardSummary, type ApiDashboardSummary } from "@/api/reports";
 import type { Course } from "@/types";
+
+const DEMO_TREND = REVENUE_TREND;
+const DEMO_DEPT: ApiDashboardSummary["revenueByDepartment"] = DEPARTMENT_REVENUE.map((d) => ({ name: d.department, revenue: d.value }));
 
 const CATEGORY_COLOR: Record<Course["category"], string> = {
   Phonics: CHART_PALETTE[3],
@@ -32,6 +37,14 @@ const CATEGORY_COLOR: Record<Course["category"], string> = {
 };
 
 export default function ManagementRevenue() {
+  const { data: trend } = useApiData(() => getDashboardSummary().then((s) => s.revenueTrend), DEMO_TREND);
+  const { data: deptRaw } = useApiData(() => getDashboardSummary().then((s) => s.revenueByDepartment), DEMO_DEPT);
+  const departmentRevenue = deptRaw.map((d, i) => ({
+    department: d.name,
+    value: d.revenue,
+    color: CHART_PALETTE[(i + 3) % CHART_PALETTE.length],
+  }));
+
   const sortedCourses = useMemo(() => [...COURSES].sort((a, b) => b.revenue - a.revenue), []);
   const totalRevenue = useMemo(() => COURSES.reduce((sum, c) => sum + c.revenue, 0), []);
 
@@ -109,7 +122,7 @@ export default function ManagementRevenue() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <ChartCard title="Revenue Trend" description="Monthly revenue, last 6 months" className="lg:col-span-2" height={300}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={REVENUE_TREND} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
+            <AreaChart data={trend} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
               <defs>
                 <linearGradient id="revTrendFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={CHART_PALETTE[0]} stopOpacity={0.3} />
@@ -132,7 +145,7 @@ export default function ManagementRevenue() {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={DEPARTMENT_REVENUE}
+                data={departmentRevenue}
                 dataKey="value"
                 nameKey="department"
                 innerRadius={62}
@@ -140,7 +153,7 @@ export default function ManagementRevenue() {
                 paddingAngle={3}
                 strokeWidth={0}
               >
-                {DEPARTMENT_REVENUE.map((d) => (
+                {departmentRevenue.map((d) => (
                   <Cell key={d.department} fill={d.color} />
                 ))}
               </Pie>

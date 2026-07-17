@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import type { LeaveRequest } from "@/types";
 
 export interface ApiHoliday {
   id: string;
@@ -34,6 +35,21 @@ export interface ApiSessionAttendance {
   status: ApiAttendanceStatus;
   joinedAtUtc: string | null;
   leftAtUtc: string | null;
+}
+
+/** Maps an API leave request onto the frontend LeaveRequest shape (shared across teacher/coordinator screens). */
+export function toFrontendLeave(leave: ApiLeaveRequest): LeaveRequest {
+  const noticeHours = (new Date(leave.startAtUtc).getTime() - new Date(leave.createdAtUtc).getTime()) / 3_600_000;
+  return {
+    id: leave.id,
+    teacherId: leave.teacherProfileId,
+    teacherName: leave.teacherName,
+    date: leave.startAtUtc.slice(0, 10),
+    session: `${leave.affectedSessionCount} session(s) affected`,
+    reason: leave.reason,
+    hoursBeforeSession: Math.round(noticeHours * 10) / 10,
+    status: leave.status.toLowerCase() as LeaveRequest["status"],
+  };
 }
 
 export async function listHolidays(): Promise<ApiHoliday[]> {

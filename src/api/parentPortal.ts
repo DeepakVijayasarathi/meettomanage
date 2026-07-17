@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getAccessToken } from "@/lib/api";
 import type { ApiInvoice } from "@/api/billing";
 import type { ApiClassSession } from "@/api/sessions";
 import type { ApiResource } from "@/api/resources";
@@ -87,6 +87,23 @@ export async function listMyEnrollmentForms(): Promise<ApiEnrollmentForm[]> {
 // Admin review side
 export async function listEnrollmentForms(status?: ApiEnrollmentForm["status"]): Promise<ApiEnrollmentForm[]> {
   return apiFetch<ApiEnrollmentForm[]>(`/api/enrollment-forms${status ? `?status=${status}` : ""}`);
+}
+
+/** Downloads the print-ready invoice document with the bearer token and saves it. */
+export async function downloadParentInvoice(invoiceId: string, invoiceNumber: string): Promise<void> {
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  const token = getAccessToken();
+  const response = await fetch(`${baseUrl}/api/parent-portal/invoices/${invoiceId}/download`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `invoice-${invoiceNumber}.html`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export interface ParentPaymentResult {

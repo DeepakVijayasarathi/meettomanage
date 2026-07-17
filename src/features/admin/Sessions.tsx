@@ -1,15 +1,29 @@
 import { useMemo, useState } from "react";
-import { CalendarClock, Users2 } from "lucide-react";
+import { CalendarClock, Plus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SESSIONS } from "@/data/sessions";
 import type { ClassSession, SessionStatus } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { cancelSession, listSessions, rescheduleSession, scheduleSession, toFrontendSession } from "@/api/sessions";
+import { listBatches, listTeacherOptions } from "@/api/batches";
 
 const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
   { value: "all", label: "All statuses" },
@@ -23,16 +37,127 @@ const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
   { value: "leave", label: "Teacher Leave" },
 ];
 
+/** Local "YYYY-MM-DDTHH:mm" from date + time inputs → UTC ISO string. */
+function toUtcIso(date: string, time: string): string {
+  return new Date(`${date}T${time}:00`).toISOString();
+}
+
 export default function AdminSessions() {
-  const [sessions, setSessions] = useState<ClassSession[]>(SESSIONS);
+  const usingApi = apiEnabled();
+  const { data: apiSessions, reload } = useApiData<ClassSession[]>(
+    () => listSessions().then((items) => items.map(toFrontendSession)),
+    []
+  );
+  const { data: batches } = useApiData(() => listBatches(), []);
+  const { data: teachers } = useApiData(() => listTeacherOptions(), []);
+
+  // Demo fallback keeps the old local mock behaviour.
+  const [mockSessions, setMockSessions] = useState<ClassSession[]>(SESSIONS);
+  const sessions = usingApi ? apiSessions : mockSessions;
+
   const [statusFilter, setStatusFilter] = useState<SessionStatus | "all">("all");
   const [rescheduleTarget, setRescheduleTarget] = useState<ClassSession | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ClassSession | null>(null);
+  const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Schedule-session dialog
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [newType, setNewType] = useState<"Regular" | "Demo">("Regular");
+  const [newBatch, setNewBatch] = useState("");
+  const [newTeacher, setNewTeacher] = useState("");
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("10:00");
+  const [newDuration, setNewDuration] = useState("45");
+  const [saving, setSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+
+  // Reschedule dialog (real date/time picker, not just a status flip)
+  const [reschedDate, setReschedDate] = useState("");
+  const [reschedTime, setReschedTime] = useState("10:00");
+  const [reschedBusy, setReschedBusy] = useState(false);
 
   const filtered = useMemo(
     () => (statusFilter === "all" ? sessions : sessions.filter((s) => s.status === statusFilter)),
     [sessions, statusFilter]
   );
+
+  function notify(ok: boolean, text: string) {
+    setBanner({ ok, text });
+    setTimeout(() => setBanner(null), 5000);
+  }
+
+  // When a batch is picked, default the teacher to the batch's teacher.
+  function pickBatch(batchId: string) {
+    setNewBatch(batchId);
+    const batch = batches.find((b) => b.id === batchId);
+    if (batch) setNewTeacher(batch.teacherProfileId);
+  }
+
+  async function handleSchedule() {
+    if (!newTeacher || !newDate || (newType === "Regular" && !newBatch)) return;
+    if (!usingApi) {
+      notify(true, "Demo mode — session not persisted.");
+      setScheduleOpen(false);
+      return;
+    }
+    setSaving(true);
+    setScheduleError(null);
+    try {
+      const start = toUtcIso(newDate, newTime);
+      const end = new Date(new Date(start).getTime() + (Number(newDuration) || 45) * 60000).toISOString();
+      await scheduleSession({
+        batchId: newType === "Regular" ? newBatch : undefined,
+        teacherProfileId: newTeacher,
+        type: newType,
+        scheduledStartAtUtc: start,
+        scheduledEndAtUtc: end,
+      });
+      notify(true, "Session scheduled — it now shows on the teacher's and parents' schedules.");
+      setScheduleOpen(false);
+      reload();
+    } catch (err) {
+      setScheduleError(err instanceof Error ? err.message : "Could not schedule the session.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleReschedule() {
+    if (!rescheduleTarget || !reschedDate) return;
+    if (!usingApi) {
+      setMockSessions((prev) => prev.map((s) => (s.id === rescheduleTarget.id ? { ...s, status: "rescheduled" } : s)));
+      setRescheduleTarget(null);
+      return;
+    }
+    setReschedBusy(true);
+    try {
+      const start = toUtcIso(reschedDate, reschedTime);
+      const end = new Date(new Date(start).getTime() + rescheduleTarget.duration * 60000).toISOString();
+      await rescheduleSession(rescheduleTarget.id, start, end);
+      notify(true, `"${rescheduleTarget.title}" rescheduled to ${formatDate(reschedDate)} ${reschedTime}.`);
+      setRescheduleTarget(null);
+      reload();
+    } catch (err) {
+      notify(false, err instanceof Error ? err.message : "Could not reschedule the session.");
+    } finally {
+      setReschedBusy(false);
+    }
+  }
+
+  async function handleCancel() {
+    if (!cancelTarget) return;
+    if (!usingApi) {
+      setMockSessions((prev) => prev.map((s) => (s.id === cancelTarget.id ? { ...s, status: "cancelled" } : s)));
+      return;
+    }
+    try {
+      await cancelSession(cancelTarget.id, "Cancelled by admin");
+      notify(true, `"${cancelTarget.title}" cancelled. Parents and the teacher can see the change.`);
+      reload();
+    } catch (err) {
+      notify(false, err instanceof Error ? err.message : "Could not cancel the session.");
+    }
+  }
 
   const columns: DataTableColumn<ClassSession>[] = useMemo(
     () => [
@@ -82,7 +207,7 @@ export default function AdminSessions() {
         render: (row) => (
           <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
             <Users2 className="h-3.5 w-3.5" />
-            {row.childIds.length}
+            {row.childIds.length || "—"}
           </span>
         ),
       },
@@ -105,6 +230,8 @@ export default function AdminSessions() {
               onClick={(e) => {
                 e.stopPropagation();
                 setRescheduleTarget(row);
+                setReschedDate(row.date);
+                setReschedTime(row.startTime);
               }}
             >
               Reschedule
@@ -134,13 +261,32 @@ export default function AdminSessions() {
         eyebrow="Scheduling"
         title="Sessions"
         description="Every class, demo and leave block across the academy — schedule, reschedule and cancel as needed."
+        actions={
+          <Button onClick={() => { setScheduleOpen(true); setScheduleError(null); }}>
+            <Plus className="h-4 w-4" /> Schedule Session
+          </Button>
+        }
       />
+
+      {banner && (
+        <div
+          className={
+            banner.ok
+              ? "mb-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success"
+              : "mb-5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive"
+          }
+        >
+          {banner.text}
+        </div>
+      )}
 
       <DataTable
         data={filtered}
         columns={columns}
         rowKey={(row) => row.id}
         searchPlaceholder="Search sessions by title or teacher…"
+        emptyTitle="No sessions in this window"
+        emptyDescription="Schedule a session, or generate a batch schedule from Batches → Manage."
         toolbar={
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as SessionStatus | "all")}>
             <SelectTrigger className="w-48">
@@ -157,29 +303,141 @@ export default function AdminSessions() {
         }
       />
 
-      <ConfirmDialog
-        open={!!rescheduleTarget}
-        onOpenChange={(open) => !open && setRescheduleTarget(null)}
-        title="Reschedule session?"
-        description={rescheduleTarget ? `"${rescheduleTarget.title}" will be marked as rescheduled. Parents and the teacher will be notified.` : undefined}
-        confirmLabel="Reschedule"
-        onConfirm={() => {
-          if (!rescheduleTarget) return;
-          setSessions((prev) => prev.map((s) => (s.id === rescheduleTarget.id ? { ...s, status: "rescheduled" } : s)));
-        }}
-      />
+      {/* Schedule a session */}
+      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Schedule a session</DialogTitle>
+            <DialogDescription>Regular sessions belong to a batch; demo sessions only need a teacher.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label>Type</Label>
+                <Select value={newType} onValueChange={(v) => setNewType(v as "Regular" | "Demo")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Regular">Regular</SelectItem>
+                    <SelectItem value="Demo">Demo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Duration (min)</Label>
+                <Select value={newDuration} onValueChange={setNewDuration}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30">30</SelectItem>
+                    <SelectItem value="45">45</SelectItem>
+                    <SelectItem value="60">60</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {newType === "Regular" && (
+              <div className="grid gap-1.5">
+                <Label>Batch</Label>
+                <Select value={newBatch} onValueChange={pickBatch}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select batch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {batches.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name} · {b.courseName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="grid gap-1.5">
+              <Label>Teacher</Label>
+              <Select value={newTeacher} onValueChange={setNewTeacher}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select teacher" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teachers.map((t) => (
+                    <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
+                      {t.fullName} {t.department ? `· ${t.department}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="ns-date">Date</Label>
+                <Input id="ns-date" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="ns-time">Start time</Label>
+                <Input id="ns-time" type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
+              </div>
+            </div>
+            {scheduleError && <p className="text-sm font-medium text-destructive">{scheduleError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScheduleOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={saving || !newTeacher || !newDate || (newType === "Regular" && !newBatch)}
+              onClick={handleSchedule}
+            >
+              {saving ? "Scheduling…" : "Schedule"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule with a real new slot */}
+      <Dialog open={!!rescheduleTarget} onOpenChange={(open) => !open && setRescheduleTarget(null)}>
+        <DialogContent className="max-w-sm">
+          {rescheduleTarget && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Reschedule session</DialogTitle>
+                <DialogDescription>
+                  "{rescheduleTarget.title}" — pick the new slot. Parents and the teacher see the change immediately.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="rs-date">New date</Label>
+                  <Input id="rs-date" type="date" value={reschedDate} onChange={(e) => setReschedDate(e.target.value)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="rs-time">New time</Label>
+                  <Input id="rs-time" type="time" value={reschedTime} onChange={(e) => setReschedTime(e.target.value)} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setRescheduleTarget(null)}>
+                  Close
+                </Button>
+                <Button disabled={reschedBusy || !reschedDate} onClick={handleReschedule}>
+                  {reschedBusy ? "Rescheduling…" : "Reschedule"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={!!cancelTarget}
         onOpenChange={(open) => !open && setCancelTarget(null)}
         title="Cancel this session?"
-        description={cancelTarget ? `"${cancelTarget.title}" will be cancelled. This action can be reversed by rescheduling.` : undefined}
+        description={cancelTarget ? `"${cancelTarget.title}" will be cancelled. Parents and the teacher will see the change.` : undefined}
         confirmLabel="Cancel Session"
         destructive
-        onConfirm={() => {
-          if (!cancelTarget) return;
-          setSessions((prev) => prev.map((s) => (s.id === cancelTarget.id ? { ...s, status: "cancelled" } : s)));
-        }}
+        onConfirm={handleCancel}
       />
     </div>
   );

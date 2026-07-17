@@ -1,15 +1,22 @@
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useSession } from "@/state/session";
+import { apiEnabled } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export default function PortalSelect() {
   const navigate = useNavigate();
   const { setRole } = useSession();
+
+  // The multi-portal picker is a demo/exploration aid only. In production every
+  // user signs in and is routed to the single portal their role grants.
+  if (apiEnabled()) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-muted/30 px-6 py-12">

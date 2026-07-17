@@ -59,7 +59,6 @@ const AdmissionReports = lazy(() => import("@/features/admission/Reports"));
 
 const CoordinatorDashboard = lazy(() => import("@/features/coordinator/Dashboard"));
 const CoordinatorCalendar = lazy(() => import("@/features/coordinator/Calendar"));
-const CoordinatorScheduling = lazy(() => import("@/features/coordinator/Scheduling"));
 const CoordinatorAvailability = lazy(() => import("@/features/coordinator/Availability"));
 
 const ManagementDashboard = lazy(() => import("@/features/management/Dashboard"));
@@ -156,7 +155,6 @@ export default function App() {
             <Route path="/coordinator" element={<AppShell role="coordinator"><Outlet /></AppShell>}>
               <Route index element={<CoordinatorDashboard />} />
               <Route path="calendar" element={<CoordinatorCalendar />} />
-              <Route path="scheduling" element={<CoordinatorScheduling />} />
               <Route path="availability" element={<CoordinatorAvailability />} />
             </Route>
 

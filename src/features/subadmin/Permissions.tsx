@@ -40,7 +40,7 @@ export default function SubAdminPermissions() {
       <PageHeader
         eyebrow="Access Control · Read-only"
         title="My Permissions"
-        description="This is exactly what your Admin has granted you — a fixed, read-only record. Sub Admins cannot edit their own permissions."
+        description="This is exactly what your Admin has granted you — a fixed, read-only record. Relationship Managers cannot edit their own permissions."
       />
 
       {/* Profile + summary strip */}
@@ -54,7 +54,7 @@ export default function SubAdminPermissions() {
             </Avatar>
             <div>
               <p className="text-sm font-semibold text-foreground">{profile.name}</p>
-              <p className="text-xs text-muted-foreground">{profile.email} &middot; Sub Admin since {formatDate(profile.joinedOn, "long")}</p>
+              <p className="text-xs text-muted-foreground">{profile.email} &middot; Relationship Manager since {formatDate(profile.joinedOn, "long")}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">

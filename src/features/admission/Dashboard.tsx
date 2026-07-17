@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
+import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";
 import { ChartCard } from "@/components/ChartCard";
 import { SessionStatusBadge } from "@/components/StatusBadge";
@@ -20,11 +21,18 @@ import { Badge } from "@/components/ui/badge";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/utils";
 import { SESSIONS } from "@/data/sessions";
-import { LEADS, getConversionFunnel, getConversionRate, getRevenueThisMonth } from "./data";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listDemoBookings, toFrontendLead } from "@/api/demoBookings";
+import { listSessions, toFrontendSession } from "@/api/sessions";
+import { getDashboardSummary } from "@/api/reports";
+import { LEADS, getConversionFunnel, getConversionRate, getRevenueThisMonth, type Lead, type ConversionStage } from "./data";
+import type { ClassSession } from "@/types";
 
-const TODAY = "2026-07-09";
-const WEEK_START = "2026-07-06";
-const WEEK_END = "2026-07-12";
+const TODAY = new Date().toISOString().slice(0, 10);
+const WEEK_START = new Date(Date.now() - 3 * 86400_000).toISOString().slice(0, 10);
+const WEEK_END = new Date(Date.now() + 4 * 86400_000).toISOString().slice(0, 10);
+const FUNNEL_STAGES: ConversionStage[] = ["Demo Scheduled", "Demo Completed", "Follow-up", "Enrolled", "Not Interested"];
 
 const FUNNEL_COLORS: Record<string, string> = {
   "Demo Scheduled": CHART_PALETTE[4],
@@ -35,12 +43,28 @@ const FUNNEL_COLORS: Record<string, string> = {
 };
 
 export default function AdmissionDashboard() {
-  const demoSessions = SESSIONS.filter((s) => s.type === "demo");
+  const usingApi = apiEnabled();
+  const { data: leads } = useApiData<Lead[]>(() => listDemoBookings().then((b) => b.map(toFrontendLead)), LEADS);
+  const { data: apiSessions } = useApiData<ClassSession[]>(
+    () => listSessions().then((s) => s.map(toFrontendSession)),
+    SESSIONS
+  );
+  const { data: collectedRevenue } = useApiData<number>(
+    () => getDashboardSummary().then((s) => s.revenueCollected),
+    getRevenueThisMonth()
+  );
+
+  const demoSessions = apiSessions.filter((s) => s.type === "demo");
   const demosThisWeek = demoSessions.filter((s) => s.date >= WEEK_START && s.date <= WEEK_END).length;
-  const conversionRate = getConversionRate();
-  const pendingFollowUps = LEADS.filter((l) => l.conversionStage === "Follow-up").length;
-  const revenueThisMonth = getRevenueThisMonth();
-  const funnel = getConversionFunnel();
+  const enrolledCount = leads.filter((l) => l.conversionStage === "Enrolled").length;
+  const conversionRate = usingApi
+    ? leads.length > 0 ? Math.round((enrolledCount / leads.length) * 100) : 0
+    : getConversionRate();
+  const pendingFollowUps = leads.filter((l) => l.conversionStage === "Follow-up").length;
+  const revenueThisMonth = collectedRevenue;
+  const funnel = usingApi
+    ? FUNNEL_STAGES.map((stage) => ({ stage, value: leads.filter((l) => l.conversionStage === stage).length }))
+    : getConversionFunnel();
 
   const upcomingDemos = demoSessions
     .filter((s) => s.date >= TODAY)
@@ -54,12 +78,15 @@ export default function AdmissionDashboard() {
         title="Good to see you, Priya"
         description="Your demo-to-enrollment pipeline at a glance — scheduling, feedback, follow-ups and conversions."
         actions={
-          <Button asChild>
-            <Link to="/admission/demo-scheduling">
-              <CalendarClock className="h-4 w-4" />
-              Schedule a demo
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <PersonalMeetingButton />
+            <Button asChild>
+              <Link to="/admission/demo-scheduling">
+                <CalendarClock className="h-4 w-4" />
+                Schedule a demo
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -124,12 +151,12 @@ export default function AdmissionDashboard() {
             </span>
             <div>
               <h3 className="text-base font-semibold text-foreground">Pipeline Snapshot</h3>
-              <p className="text-sm text-muted-foreground">{LEADS.length} active leads</p>
+              <p className="text-sm text-muted-foreground">{leads.length} active leads</p>
             </div>
           </div>
           <div className="flex flex-col divide-y divide-border">
             {(["Demo Scheduled", "Demo Completed", "Follow-up", "Enrolled", "Not Interested"] as const).map((stage) => {
-              const count = LEADS.filter((l) => l.conversionStage === stage).length;
+              const count = leads.filter((l) => l.conversionStage === stage).length;
               return (
                 <div key={stage} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                   <div className="flex items-center gap-2">

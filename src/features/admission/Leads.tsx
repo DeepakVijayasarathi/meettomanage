@@ -23,7 +23,14 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate, getInitials } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listDemoBookings, toApiConversionStatus, toFrontendLead, updateConversionStatus } from "@/api/demoBookings";
+import {
+  listDemoBookings,
+  listParentDemoHistory,
+  toApiConversionStatus,
+  toFrontendLead,
+  updateConversionStatus,
+  type ApiParentDemoHistory,
+} from "@/api/demoBookings";
 import { LEADS as INITIAL_LEADS, type ConversionStage, type Lead } from "./data";
 
 const STAGE_OPTIONS: { value: ConversionStage | "all"; label: string }[] = [
@@ -52,6 +59,21 @@ export default function AdmissionLeads() {
   useEffect(() => setLeads(apiLeads), [apiLeads]);
   const [stageFilter, setStageFilter] = useState<ConversionStage | "all">("all");
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  // Per-parent demo record (every demo this parent has ever taken) for the open lead.
+  const [history, setHistory] = useState<ApiParentDemoHistory | null>(null);
+  useEffect(() => {
+    setHistory(null);
+    if (!apiEnabled() || !activeLead?.email) return;
+    let cancelled = false;
+    listParentDemoHistory(activeLead.email)
+      .then((records) => {
+        if (!cancelled) setHistory(records.find((r) => r.parentEmail === activeLead.email) ?? null);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [activeLead]);
   const [noteText, setNoteText] = useState("");
   const [nextFollowUp, setNextFollowUp] = useState("");
   const [justLogged, setJustLogged] = useState<string | null>(null);
@@ -251,6 +273,34 @@ export default function AdmissionLeads() {
                   <Sparkles className="h-3 w-3" /> {activeLead.recommendedCourse}
                 </Badge>
               </div>
+
+              {/* Demo record: every demo this parent has taken, with teacher + auto fee. */}
+              {history && (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Demo history</p>
+                      <p className="text-xs font-semibold text-foreground">
+                        {history.totalDemos} demo{history.totalDemos === 1 ? "" : "s"} · {history.enrolledCount} enrolled · ₹{history.totalPayable} payable
+                      </p>
+                    </div>
+                    <div className="flex max-h-36 flex-col gap-1.5 overflow-y-auto">
+                      {history.bookings.map((b) => (
+                        <div key={b.id} className="flex items-center justify-between gap-2 text-sm">
+                          <span className="truncate text-foreground">
+                            {b.childName}
+                            <span className="text-xs text-muted-foreground">
+                              {" "}
+                              · {b.scheduledStartAtUtc ? formatDate(b.scheduledStartAtUtc.slice(0, 10)) : "—"} · {b.teacherName ?? "—"}
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-xs font-semibold text-foreground">₹{b.payableAmount}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {activeLead.notes.length > 0 && (
                 <Card className="bg-muted/30">

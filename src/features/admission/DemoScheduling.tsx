@@ -33,12 +33,16 @@ interface DemoRow {
   id: string;
   childName: string;
   childAge?: number;
+  /** Additional children attending the same demo (a demo can host several kids). */
+  extraChildren: string[];
   parents: DemoParentField[];
   date: string;
   startTime: string;
   teacherId: string;
   teacherName: string;
   status: SessionStatus;
+  /** Auto-calculated demo fee: ₹50 per demo, ₹100 once the lead is Enrolled. */
+  payableAmount: number;
   notes?: string;
   isNew?: boolean;
 }
@@ -60,12 +64,14 @@ function seedRows(): DemoRow[] {
       id: s.id,
       childName: lead?.childName ?? s.title.replace("Demo · ", ""),
       childAge: lead?.childAge,
+      extraChildren: [],
       parents,
       date: s.date,
       startTime: s.startTime,
       teacherId: s.teacherId,
       teacherName: s.teacherName,
       status: s.status,
+      payableAmount: lead?.conversionStage === "Enrolled" ? 100 : 50,
       notes: lead?.notes[0]?.note,
     };
   });
@@ -75,24 +81,28 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
   const start = booking.scheduledStartAtUtc ? new Date(booking.scheduledStartAtUtc) : null;
   const status: SessionStatus =
     booking.conversionStatus === "DemoScheduled" ? "demo" : booking.conversionStatus === "NotInterested" ? "cancelled" : "completed";
+  const adults = booking.participants.filter((p) => !p.isChild);
+  const kids = booking.participants.filter((p) => p.isChild);
   return {
     id: booking.id,
     childName: booking.childName,
     childAge: booking.childAge ?? undefined,
+    extraChildren: kids.map((k) => k.name),
     parents: [
       { id: `${booking.id}-p1`, name: booking.parentName, phone: booking.parentPhone ?? "—", email: booking.parentEmail },
-      ...booking.participants.map((p, index) => ({
+      ...adults.map((p, index) => ({
         id: `${booking.id}-x${index}`,
         name: p.name,
         phone: p.phone ?? "",
-        email: p.email,
+        email: p.email ?? "",
       })),
     ],
     date: start ? start.toISOString().slice(0, 10) : "",
     startTime: start ? start.toISOString().slice(11, 16) : "",
-    teacherId: "",
-    teacherName: "Auto-assigned",
+    teacherId: booking.teacherProfileId ?? "",
+    teacherName: booking.teacherName ?? "Auto-assigned",
     status,
+    payableAmount: booking.payableAmount,
     notes: booking.followUpNotes ?? undefined,
   };
 }
@@ -110,6 +120,8 @@ export default function AdmissionDemoScheduling() {
   useEffect(() => setRows(apiRows), [apiRows]);
   const [childName, setChildName] = useState("");
   const [childAge, setChildAge] = useState("");
+  // A demo can host more than two kids — extra children join by name only.
+  const [extraChildren, setExtraChildren] = useState<string[]>([]);
   const [parents, setParents] = useState<DemoParentField[]>([blankParent()]);
   const [date, setDate] = useState("2026-07-14");
   const [time, setTime] = useState("16:00");
@@ -144,6 +156,7 @@ export default function AdmissionDemoScheduling() {
   function resetForm() {
     setChildName("");
     setChildAge("");
+    setExtraChildren([]);
     setParents([blankParent()]);
     setDate("2026-07-14");
     setTime("16:00");
@@ -167,10 +180,15 @@ export default function AdmissionDemoScheduling() {
         teacherProfileId: teacherId || undefined,
         scheduledStartAtUtc: startUtc.toISOString(),
         scheduledEndAtUtc: endUtc.toISOString(),
-        participants: parents
-          .slice(1)
-          .filter((p) => p.email.trim().length > 0)
-          .map((p) => ({ name: p.name.trim(), email: p.email.trim(), phone: p.phone.trim() || null })),
+        participants: [
+          ...parents
+            .slice(1)
+            .filter((p) => p.email.trim().length > 0)
+            .map((p) => ({ name: p.name.trim(), email: p.email.trim(), phone: p.phone.trim() || null })),
+          ...extraChildren
+            .filter((name) => name.trim().length > 0)
+            .map((name) => ({ name: name.trim(), email: null, phone: null, isChild: true })),
+        ],
       })
         .then(() => {
           reloadRows();
@@ -186,12 +204,14 @@ export default function AdmissionDemoScheduling() {
       id: `demo-${Math.random().toString(36).slice(2, 9)}`,
       childName: childName.trim(),
       childAge: childAge ? Number(childAge) : undefined,
+      extraChildren: extraChildren.filter((n) => n.trim().length > 0),
       parents,
       date,
       startTime: time,
       teacherId,
       teacherName: teacher?.name ?? "—",
       status: "demo",
+      payableAmount: 50,
       notes: notes.trim() || undefined,
       isNew: true,
     };
@@ -219,6 +239,9 @@ export default function AdmissionDemoScheduling() {
             <div>
               <p className="font-semibold text-foreground">{row.childName}</p>
               {row.childAge && <p className="text-xs text-muted-foreground">Age {row.childAge}</p>}
+              {row.extraChildren.length > 0 && (
+                <p className="text-xs font-medium text-primary">+ {row.extraChildren.join(", ")}</p>
+              )}
             </div>
           </div>
         ),
@@ -270,6 +293,17 @@ export default function AdmissionDemoScheduling() {
             <SessionStatusBadge status={row.status} />
             {row.isNew && <span className="text-xs font-semibold text-primary">New</span>}
           </div>
+        ),
+      },
+      {
+        key: "fee",
+        header: "Demo Fee",
+        sortable: true,
+        accessor: (row) => row.payableAmount,
+        render: (row) => (
+          <span className="text-sm font-semibold text-foreground" title="₹50 per demo · ₹100 once enrolled">
+            ₹{row.payableAmount}
+          </span>
         ),
       },
       {
@@ -341,6 +375,40 @@ export default function AdmissionDemoScheduling() {
               <Label htmlFor="childAge">Child Age</Label>
               <Input id="childAge" type="number" min={2} max={16} placeholder="e.g. 6" value={childAge} onChange={(e) => setChildAge(e.target.value)} />
             </div>
+          </div>
+
+          {/* A demo can host more than two kids — add each additional child by name. */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Additional children attending</Label>
+              <Button type="button" variant="soft" size="sm" onClick={() => setExtraChildren((prev) => [...prev, ""])}>
+                <UserPlus className="h-3.5 w-3.5" /> Add another child
+              </Button>
+            </div>
+            {extraChildren.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {extraChildren.map((name, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_auto] gap-3 rounded-lg border border-border bg-muted/30 p-3">
+                    <Input
+                      placeholder={`Child ${idx + 2} name`}
+                      value={name}
+                      onChange={(e) =>
+                        setExtraChildren((prev) => prev.map((n, i) => (i === idx ? e.target.value : n)))
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="justify-self-end text-destructive hover:text-destructive"
+                      onClick={() => setExtraChildren((prev) => prev.filter((_, i) => i !== idx))}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-3">

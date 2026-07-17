@@ -29,6 +29,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
+import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";
 import { ChartCard } from "@/components/ChartCard";
 import { SessionStatusBadge } from "@/components/StatusBadge";
@@ -77,6 +78,7 @@ export default function AdminDashboard() {
         eyebrow="Overview"
         title="Admin Dashboard"
         description="A real-time snapshot of enrollment, revenue and academic operations across The Reader Nest."
+        actions={<PersonalMeetingButton />}
       />
 
       {/* KPI row */}

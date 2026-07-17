@@ -20,52 +20,81 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
+import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";
 import { ChartCard } from "@/components/ChartCard";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/utils";
 import { ADMIN_KPIS, DEPARTMENT_REVENUE, ENROLLMENT_FUNNEL, REVENUE_TREND } from "@/data/kpis";
+import { useApiData } from "@/api/hooks";
+import { getDashboardSummary, type ApiDashboardSummary } from "@/api/reports";
 
-const TODAY = "2026-07-09";
+const TODAY = new Date().toISOString().slice(0, 10);
+
+// Demo-mode fallback built from the mock KPI constants, in the API summary shape.
+const DEMO_SUMMARY: ApiDashboardSummary = {
+  totalStudents: ADMIN_KPIS.totalStudents,
+  activeStudents: ADMIN_KPIS.totalStudents,
+  revenueCollected: ADMIN_KPIS.revenueThisMonth,
+  revenuePending: 0,
+  totalEnrollments: 0,
+  activeBatches: 0,
+  dormantBatches: 0,
+  conversionRatePercent: ADMIN_KPIS.conversionRate,
+  refundRatePercent: 0,
+  batchOccupancyPercent: ADMIN_KPIS.batchOccupancy,
+  teacherUtilizationSessionsPerTeacher: 0,
+  revenueByDepartment: DEPARTMENT_REVENUE.map((d) => ({ name: d.department, revenue: d.value })),
+  revenueTrend: REVENUE_TREND,
+  enrollmentFunnel: ENROLLMENT_FUNNEL,
+};
 
 export default function ManagementDashboard() {
+  const { data: summary } = useApiData<ApiDashboardSummary>(() => getDashboardSummary(), DEMO_SUMMARY);
+  const departmentRevenue = summary.revenueByDepartment.map((d, i) => ({
+    department: d.name,
+    value: d.revenue,
+    color: CHART_PALETTE[(i + 4) % CHART_PALETTE.length],
+  }));
+
   return (
     <div>
       <PageHeader
         eyebrow="Executive Overview"
         title="Good to see you, Vikram"
         description={`A curated view of enrollment, revenue and retention health across The Reader Nest — as of ${formatDate(TODAY, "long")}.`}
+        actions={<PersonalMeetingButton />}
       />
 
       {/* Hero KPI row — the handful of numbers a board actually asks about */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Total Students"
-          value={formatNumber(ADMIN_KPIS.totalStudents)}
+          value={formatNumber(summary.totalStudents)}
           icon={Users}
           tone="primary"
-          trend={{ value: 6.2, label: "vs last month" }}
+          trend={{ value: summary.activeStudents, label: "active now" }}
         />
         <KpiCard
-          label="Revenue This Month"
-          value={formatCurrency(ADMIN_KPIS.revenueThisMonth)}
+          label="Revenue Collected"
+          value={formatCurrency(summary.revenueCollected)}
           icon={IndianRupee}
           tone="success"
-          trend={{ value: ADMIN_KPIS.revenueGrowth, label: "vs last month" }}
+          trend={{ value: summary.revenuePending, label: "still pending" }}
         />
         <KpiCard
           label="Conversion Rate"
-          value={formatPercent(ADMIN_KPIS.conversionRate)}
+          value={formatPercent(summary.conversionRatePercent)}
           icon={TrendingUp}
           tone="neutral"
-          trend={{ value: 2.4, label: "demo → enrollment" }}
+          trend={{ value: summary.totalEnrollments, label: "active enrollments" }}
         />
         <KpiCard
-          label="Renewal Rate"
-          value={formatPercent(ADMIN_KPIS.renewalRate)}
+          label="Batch Occupancy"
+          value={formatPercent(summary.batchOccupancyPercent)}
           icon={RefreshCw}
           tone="warning"
-          trend={{ value: -0.8, label: "vs last month" }}
+          trend={{ value: summary.activeBatches, label: "active batches" }}
         />
       </div>
 
@@ -78,7 +107,7 @@ export default function ManagementDashboard() {
           height={320}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={REVENUE_TREND} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
+            <AreaChart data={summary.revenueTrend} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
               <defs>
                 <linearGradient id="mgmtRevenueFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={CHART_PALETTE[4]} stopOpacity={0.32} />
@@ -101,7 +130,7 @@ export default function ManagementDashboard() {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={DEPARTMENT_REVENUE}
+                data={departmentRevenue}
                 dataKey="value"
                 nameKey="department"
                 innerRadius={68}
@@ -109,7 +138,7 @@ export default function ManagementDashboard() {
                 paddingAngle={3}
                 strokeWidth={0}
               >
-                {DEPARTMENT_REVENUE.map((d) => (
+                {departmentRevenue.map((d) => (
                   <Cell key={d.department} fill={d.color} />
                 ))}
               </Pie>
@@ -130,13 +159,13 @@ export default function ManagementDashboard() {
           height={260}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={ENROLLMENT_FUNNEL} layout="vertical" margin={{ left: 8, right: 32, top: 8, bottom: 0 }}>
+            <BarChart data={summary.enrollmentFunnel} layout="vertical" margin={{ left: 8, right: 32, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
               <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} />
               <YAxis type="category" dataKey="stage" tickLine={false} axisLine={false} fontSize={12} width={116} />
               <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="value" radius={[0, 8, 8, 0]} maxBarSize={28}>
-                {ENROLLMENT_FUNNEL.map((_, i) => (
+                {summary.enrollmentFunnel.map((_, i) => (
                   <Cell key={i} fill={CHART_PALETTE[(i + 4) % CHART_PALETTE.length]} />
                 ))}
               </Bar>
@@ -146,9 +175,10 @@ export default function ManagementDashboard() {
       </div>
 
       <p className="mt-6 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-        Revenue has climbed for five straight months to {formatCurrency(ADMIN_KPIS.revenueThisMonth)}, and the business is currently
-        converting {formatPercent(ADMIN_KPIS.conversionRate)} of demos into paid enrollments with a {formatPercent(ADMIN_KPIS.renewalRate)} renewal
-        rate. Deeper cuts by course, teacher and batch are one click away in Revenue and Performance.
+        {formatCurrency(summary.revenueCollected)} collected to date with {formatCurrency(summary.revenuePending)} still pending, and the
+        business is currently converting {formatPercent(summary.conversionRatePercent)} of demos into paid enrollments across{" "}
+        {summary.activeBatches} active batches at {formatPercent(summary.batchOccupancyPercent)} occupancy. Deeper cuts by course, teacher
+        and batch are one click away in Revenue and Performance.
       </p>
     </div>
   );

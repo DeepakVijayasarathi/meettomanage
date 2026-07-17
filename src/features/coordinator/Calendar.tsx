@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarClock, PartyPopper, RefreshCcw } from "lucide-react";
+import { CalendarClock, PartyPopper, RefreshCcw, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -17,13 +17,25 @@ import {
 import { SESSIONS } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getChildById } from "@/data/children";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { cancelSession, listSessions, rescheduleSession, toFrontendSession } from "@/api/sessions";
 import type { ClassSession } from "@/types";
 import { formatDate } from "@/lib/utils";
 
 const LOCKED_STATUSES: ClassSession["status"][] = ["cancelled", "completed", "holiday", "leave"];
+const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo", "rescheduled"];
+const JITSI_DOMAIN = (import.meta.env.VITE_JITSI_DOMAIN as string | undefined) ?? "meet.jit.si";
 
 export default function CoordinatorCalendar() {
-  const [sessions, setSessions] = useState<ClassSession[]>(SESSIONS);
+  const usingApi = apiEnabled();
+  const { data: apiSessions, reload } = useApiData<ClassSession[]>(
+    () => listSessions().then((s) => s.map(toFrontendSession)),
+    SESSIONS
+  );
+  const [demoSessions, setDemoSessions] = useState<ClassSession[]>(SESSIONS);
+  const sessions = usingApi ? apiSessions : demoSessions;
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [holidayOpen, setHolidayOpen] = useState(false);
@@ -31,8 +43,31 @@ export default function CoordinatorCalendar() {
   const selected = selectedId ? sessions.find((s) => s.id === selectedId) ?? null : null;
   const locked = selected ? LOCKED_STATUSES.includes(selected.status) : true;
 
-  function updateStatus(id: string, status: ClassSession["status"]) {
-    setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+  function localStatus(id: string, status: ClassSession["status"]) {
+    setDemoSessions((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+  }
+
+  async function doReschedule(session: ClassSession) {
+    if (!usingApi) {
+      localStatus(session.id, "rescheduled");
+      return;
+    }
+    // Coordinator "reschedule" pushes the session one week forward at the same slot.
+    const start = new Date(`${session.date}T${session.startTime}:00`);
+    const newStart = new Date(start.getTime() + 7 * 86400_000);
+    const newEnd = new Date(newStart.getTime() + session.duration * 60000);
+    await rescheduleSession(session.id, newStart.toISOString(), newEnd.toISOString());
+    reload();
+  }
+
+  async function doHoliday(session: ClassSession) {
+    if (!usingApi) {
+      localStatus(session.id, "holiday");
+      return;
+    }
+    // No session-level "holiday" state on the backend; cancelling frees the slot as the dialog states.
+    await cancelSession(session.id, "Marked as holiday by coordinator");
+    reload();
   }
 
   return (
@@ -101,9 +136,19 @@ export default function CoordinatorCalendar() {
                 <Button variant="outline" disabled={locked} onClick={() => setHolidayOpen(true)}>
                   <PartyPopper className="h-4 w-4" /> Mark Holiday
                 </Button>
-                <Button disabled={locked} onClick={() => setRescheduleOpen(true)}>
+                <Button variant="outline" disabled={locked} onClick={() => setRescheduleOpen(true)}>
                   <RefreshCcw className="h-4 w-4" /> Reschedule
                 </Button>
+                {/* Monitor-only: the coordinator can drop into any ongoing/upcoming class or demo. */}
+                {JOINABLE_STATUSES.includes(selected.status) && selected.meetingRoomId && (
+                  <Button
+                    onClick={() =>
+                      window.open(`https://${JITSI_DOMAIN}/${selected.meetingRoomId}`, "_blank", "noopener")
+                    }
+                  >
+                    <Video className="h-4 w-4" /> Join Class
+                  </Button>
+                )}
               </DialogFooter>
             </>
           )}
@@ -118,7 +163,8 @@ export default function CoordinatorCalendar() {
         confirmLabel="Mark Rescheduled"
         onConfirm={() => {
           if (!selected) return;
-          updateStatus(selected.id, "rescheduled");
+          void doReschedule(selected);
+          setSelectedId(null);
         }}
       />
 
@@ -130,7 +176,8 @@ export default function CoordinatorCalendar() {
         confirmLabel="Mark Holiday"
         onConfirm={() => {
           if (!selected) return;
-          updateStatus(selected.id, "holiday");
+          void doHoliday(selected);
+          setSelectedId(null);
         }}
       />
     </div>

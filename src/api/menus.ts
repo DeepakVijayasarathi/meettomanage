@@ -105,9 +105,13 @@ export function resolveMenuIcon(name: string): LucideIcon {
   return MENU_ICONS[name] ?? Circle;
 }
 
-/** Active sidebar items for one portal (any signed-in user). */
-export async function getPortalMenu(portal: string): Promise<ApiMenuItem[]> {
-  return apiFetch<ApiMenuItem[]>(`/api/menus/portal/${portal}`);
+/**
+ * The signed-in user's own sidebar — resolved server-side from their account role's
+ * portal and filtered by the module grants their assigned role carries. This is the
+ * menu the app shell renders so navigation reflects the role assigned to the user.
+ */
+export async function getMyMenu(): Promise<ApiMenuItem[]> {
+  return apiFetch<ApiMenuItem[]>("/api/menus/mine");
 }
 
 /** All configured items including inactive, for the admin menu manager. */

@@ -6,7 +6,7 @@ import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { hexToHslTriple } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
-import { getPortalMenu, toNavSections } from "@/api/menus";
+import { getMyMenu, toNavSections } from "@/api/menus";
 import type { Role } from "@/types";
 
 interface AppShellProps {
@@ -25,14 +25,15 @@ export function AppShell({ role, children }: AppShellProps) {
   });
   const meta = ROLE_META[role];
 
-  // DB-maintained sidebar: served per portal from /api/menus; the static
-  // NAV_BY_ROLE stays as the demo-mode / loading / error fallback.
+  // DB-maintained, role-permission-filtered sidebar: /api/menus/mine returns the
+  // signed-in user's portal items minus any their assigned role can't view. The
+  // static NAV_BY_ROLE stays as the demo-mode / loading / error fallback.
   const [apiSections, setApiSections] = useState<NavSection[] | null>(null);
   useEffect(() => {
     setApiSections(null);
     if (!apiEnabled()) return;
     let cancelled = false;
-    getPortalMenu(role)
+    getMyMenu()
       .then((items) => {
         if (!cancelled && items.length > 0) setApiSections(toNavSections(items));
       })

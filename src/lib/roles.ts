@@ -37,9 +37,9 @@ export const ROLE_META: Record<Role, RoleMeta> = {
   },
   subadmin: {
     role: "subadmin",
-    label: "Sub Admin Portal",
-    shortLabel: "Sub Admin",
-    description: "Permission-based operational access for internal teams.",
+    label: "Parent Relationship Manager",
+    shortLabel: "Relationship Manager",
+    description: "Parent relationship management with permission-based operational access.",
     colorVar: "role-subadmin",
     hex: "#0E9C8C",
     icon: UserCog,

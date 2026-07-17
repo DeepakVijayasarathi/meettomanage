@@ -11,8 +11,11 @@ export type ApiConversionStatus =
 
 export interface ApiDemoParticipant {
   name: string;
-  email: string;
+  /** Adults carry an email for the confirmation; additional children don't. */
+  email: string | null;
   phone: string | null;
+  /** True marks an additional child attending the demo. */
+  isChild?: boolean;
 }
 
 export interface ApiDemoBooking {
@@ -28,7 +31,29 @@ export interface ApiDemoBooking {
   followUpNotes: string | null;
   scheduledStartAtUtc: string | null;
   meetingRoomId: string | null;
+  /** Teacher conducting (or who conducted) the demo. */
+  teacherProfileId: string | null;
+  teacherName: string | null;
+  /** Auto-calculated demo fee: ₹50 per demo, ₹100 once Enrolled. */
+  payableAmount: number;
   participants: ApiDemoParticipant[];
+}
+
+/** Per-parent demo record: every demo this parent has taken, with fee totals. */
+export interface ApiParentDemoHistory {
+  parentName: string;
+  parentEmail: string;
+  parentPhone: string | null;
+  totalDemos: number;
+  enrolledCount: number;
+  lastDemoAtUtc: string | null;
+  totalPayable: number;
+  bookings: ApiDemoBooking[];
+}
+
+export async function listParentDemoHistory(search?: string): Promise<ApiParentDemoHistory[]> {
+  const query = search ? `?search=${encodeURIComponent(search)}` : "";
+  return apiFetch<ApiParentDemoHistory[]>(`/api/demo-bookings/parent-history${query}`);
 }
 
 const STAGE_FROM_API: Record<ApiConversionStatus, ConversionStage> = {
@@ -62,8 +87,8 @@ export function toFrontendLead(booking: ApiDemoBooking): Lead {
     email: booking.parentEmail,
     // CRM provenance fields are not tracked by the API yet
     source: "Website Enquiry",
-    teacherId: "",
-    teacherName: "",
+    teacherId: booking.teacherProfileId ?? "",
+    teacherName: booking.teacherName ?? "",
     demoDate,
     demoSessionId: booking.classSessionId ?? undefined,
     recommendedCourse: booking.department ?? "—",

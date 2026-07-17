@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarDays, Layers, Moon, Rocket } from "lucide-react";
+import { CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -18,14 +19,34 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BATCHES } from "@/data/batches";
-import { getCourseById } from "@/data/courses";
+import { COURSES, getCourseById } from "@/data/courses";
 import { getTeacherById, TEACHERS } from "@/data/users";
 import type { Batch, BatchStatus } from "@/types";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listBatches, listTeacherOptions, toFrontendBatch, updateBatch, type ApiBatch, type DisplayBatch } from "@/api/batches";
+import {
+  createBatch,
+  generateSchedule,
+  listBatches,
+  listTeacherOptions,
+  toFrontendBatch,
+  updateBatch,
+  type ApiBatch,
+  type DisplayBatch,
+} from "@/api/batches";
+import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
+
+const WEEKDAYS = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 0, label: "Sun" },
+];
 
 const STATUS_META: Record<BatchStatus, { label: string; icon: typeof Layers; empty: string }> = {
   active: { label: "Active", icon: Layers, empty: "No active batches at the moment." },
@@ -92,10 +113,85 @@ export default function AdminBatches() {
   );
   const { data: teacherOptions } = useApiData(() => listTeacherOptions(), []);
 
+  const { data: courseOptions } = useApiData<ApiCourseOption[]>(
+    () => listCourseOptions(),
+    COURSES.map((c) => ({ id: c.id, name: c.name }))
+  );
+
   const [detail, setDetail] = useState<DisplayBatch | null>(null);
   const [teacherAssignment, setTeacherAssignment] = useState<string>("");
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // New-batch dialog
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newCourse, setNewCourse] = useState("");
+  const [newTeacher, setNewTeacher] = useState("");
+  const [newCapacity, setNewCapacity] = useState("8");
+  const [newStart, setNewStart] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [banner, setBanner] = useState<string | null>(null);
+
+  // Generate-schedule (inside Manage dialog)
+  const [genDays, setGenDays] = useState<number[]>([1, 3]);
+  const [genStart, setGenStart] = useState("");
+  const [genTime, setGenTime] = useState("10:00");
+  const [genBusy, setGenBusy] = useState(false);
+  const [genResult, setGenResult] = useState<string | null>(null);
+
+  async function handleCreate() {
+    if (!newName.trim() || !newCourse || !newTeacher) return;
+    if (!apiEnabled()) {
+      setBanner(`"${newName.trim()}" created. (Demo only — not persisted.)`);
+      setCreateOpen(false);
+      return;
+    }
+    setCreating(true);
+    setCreateError(null);
+    try {
+      await createBatch({
+        courseId: newCourse,
+        teacherProfileId: newTeacher,
+        name: newName.trim(),
+        capacity: Math.max(1, Number(newCapacity) || 1),
+        startDate: newStart || undefined,
+      });
+      setBanner(`Batch "${newName.trim()}" created. Open Manage → Generate schedule to create its sessions.`);
+      setCreateOpen(false);
+      setNewName("");
+      setNewStart("");
+      reload();
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Could not create the batch.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function handleGenerateSchedule() {
+    if (!detail || !genStart || genDays.length === 0) return;
+    if (!apiEnabled()) {
+      setGenResult("Demo mode — schedule not persisted.");
+      return;
+    }
+    setGenBusy(true);
+    setGenResult(null);
+    try {
+      const created = await generateSchedule(detail.id, {
+        startDate: genStart,
+        daysOfWeek: genDays,
+        startTimeUtc: `${genTime}:00`,
+      });
+      setGenResult(`${created.length} sessions created — they now appear on the teacher's and parents' schedules.`);
+      reload();
+    } catch (err) {
+      setGenResult(err instanceof Error ? err.message : "Could not generate the schedule.");
+    } finally {
+      setGenBusy(false);
+    }
+  }
 
   const grouped = useMemo(() => {
     const map: Record<BatchStatus, DisplayBatch[]> = { active: [], dormant: [], upcoming: [] };
@@ -108,6 +204,8 @@ export default function AdminBatches() {
     setTeacherAssignment(b.teacherId);
     setSaved(false);
     setSaveError(null);
+    setGenResult(null);
+    setGenStart(b.startDate && b.startDate > new Date().toISOString().slice(0, 10) ? b.startDate : "");
   }
 
   async function saveDetail() {
@@ -138,7 +236,16 @@ export default function AdminBatches() {
         eyebrow="Operations"
         title="Batches"
         description="View and manage active, dormant and upcoming batches — capacity, schedule and teacher assignment."
+        actions={
+          <Button onClick={() => { setCreateOpen(true); setCreateError(null); }}>
+            <Plus className="h-4 w-4" /> New Batch
+          </Button>
+        }
       />
+
+      {banner && (
+        <div className="mb-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">{banner}</div>
+      )}
 
       <Tabs defaultValue="active">
         <TabsList>
@@ -236,6 +343,54 @@ export default function AdminBatches() {
                 </div>
               </div>
 
+              {/* Session plan: bulk-creates every course session on the chosen weekdays (skips holidays) */}
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <CalendarPlus className="h-4 w-4" /> Generate class schedule
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Creates all of this batch's course sessions from a start date on the selected weekdays (holidays skipped).
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="gen-start">Start date</Label>
+                    <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="gen-time">Class time (UTC)</Label>
+                    <Input id="gen-time" type="time" value={genTime} onChange={(e) => setGenTime(e.target.value)} />
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {WEEKDAYS.map((d) => (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() =>
+                        setGenDays((prev) => (prev.includes(d.value) ? prev.filter((v) => v !== d.value) : [...prev, d.value]))
+                      }
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                        genDays.includes(d.value)
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:bg-muted/50"
+                      )}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+                <Button
+                  size="sm"
+                  className="mt-3"
+                  disabled={genBusy || !genStart || genDays.length === 0}
+                  onClick={handleGenerateSchedule}
+                >
+                  {genBusy ? "Generating…" : "Generate sessions"}
+                </Button>
+                {genResult && <p className="mt-2 text-xs font-medium text-foreground">{genResult}</p>}
+              </div>
+
               {saveError && <p className="text-sm font-medium text-red-600">{saveError}</p>}
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDetail(null)}>
@@ -245,6 +400,79 @@ export default function AdminBatches() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* New batch */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create a batch</DialogTitle>
+            <DialogDescription>Pick the course and teacher, set capacity (1 = individual batch), then generate its schedule from Manage.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="nb-name">Batch name</Label>
+              <Input id="nb-name" placeholder="e.g. Phonics Level 1 — Evening B" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label>Course</Label>
+                <Select value={newCourse} onValueChange={setNewCourse}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courseOptions.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Teacher</Label>
+                <Select value={newTeacher} onValueChange={setNewTeacher}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select teacher" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {apiEnabled() && teacherOptions.length > 0
+                      ? teacherOptions.map((t) => (
+                          <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
+                            {t.fullName} {t.department ? `· ${t.department}` : ""}
+                          </SelectItem>
+                        ))
+                      : TEACHERS.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name} · {t.department}
+                          </SelectItem>
+                        ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="nb-capacity">Capacity</Label>
+                <Input id="nb-capacity" type="number" min={1} max={500} value={newCapacity} onChange={(e) => setNewCapacity(e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="nb-start">Start date (optional)</Label>
+                <Input id="nb-start" type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
+              </div>
+            </div>
+            {createError && <p className="text-sm font-medium text-destructive">{createError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={creating || !newName.trim() || !newCourse || !newTeacher} onClick={handleCreate}>
+              {creating ? "Creating…" : "Create Batch"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
