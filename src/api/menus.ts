@@ -24,6 +24,7 @@ import {
   LayoutDashboard,
   Link2,
   Mail,
+  Plug,
   Receipt,
   Settings,
   ShieldCheck,
@@ -81,6 +82,7 @@ export const MENU_ICONS: Record<string, LucideIcon> = {
   Ban,
   BarChart3,
   Mail,
+  Plug,
   ClipboardCheck,
   Settings,
   Video,
@@ -130,6 +132,35 @@ export async function updateMenuItem(id: string, request: SaveMenuItemRequest): 
 
 export async function deleteMenuItem(id: string): Promise<void> {
   await apiFetch<void>(`/api/menus/${id}`, { method: "DELETE" });
+}
+
+/** Portal keys shown as human labels on the Roles & Permissions "Menus: …" captions. */
+const PORTAL_LABELS: Record<string, string> = {
+  admin: "Admin",
+  teacher: "Teacher",
+  parent: "Parent",
+  subadmin: "Sub Admin",
+  admission: "Admission",
+  coordinator: "Coordinator",
+  management: "Management",
+  student: "Student",
+};
+
+/**
+ * Groups every active, module-gated menu item by the module that governs it, e.g.
+ * `{ BillingFinance: ["Admin — Billing & Finance", "Admission — Payment Tracking"] }`.
+ * Items with no RequiredModule (always visible) are excluded — there's nothing to
+ * grant for them. Used by the Roles & Permissions matrix so toggling a module shows
+ * concretely which real sidebar menus, across every portal, that grant controls.
+ */
+export function groupMenusByModule(items: ApiMenuItem[]): Partial<Record<PermissionModuleName, string[]>> {
+  const grouped: Partial<Record<PermissionModuleName, string[]>> = {};
+  for (const item of items) {
+    if (!item.requiredModule || !item.isActive) continue;
+    const label = `${PORTAL_LABELS[item.portal] ?? item.portal} — ${item.label}`;
+    (grouped[item.requiredModule] ??= []).push(label);
+  }
+  return grouped;
 }
 
 /** Groups the flat DB rows into the NavSection shape the Sidebar renders. */

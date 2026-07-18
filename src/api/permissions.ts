@@ -17,6 +17,9 @@ export const PERMISSION_MODULES = [
 
 export type PermissionModuleName = (typeof PERMISSION_MODULES)[number]["value"];
 
+/** Backend PermissionAction enum names, in claim-string form ("Module:Action"). */
+export const PERMISSION_ACTIONS_LABELS = ["View", "Create", "Edit", "Delete", "Approve"] as const;
+
 export interface ApiPermission {
   module: PermissionModuleName;
   canView: boolean;
@@ -34,5 +37,25 @@ export async function setPermissions(userId: string, permissions: ApiPermission[
   await apiFetch<void>(`/api/users/${userId}/permissions`, {
     method: "PUT",
     body: JSON.stringify(permissions),
+  });
+}
+
+/** All 11 modules, every action false — a fresh, no-grant starting point. */
+export function emptyPermissions(): ApiPermission[] {
+  return PERMISSION_MODULES.map((m) => ({
+    module: m.value,
+    canView: false,
+    canCreate: false,
+    canEdit: false,
+    canDelete: false,
+    canApprove: false,
+  }));
+}
+
+/** Aligns a role/user's sparse permission rows onto the full module list for editing. */
+export function expandPermissions(permissions: ApiPermission[]): ApiPermission[] {
+  return PERMISSION_MODULES.map((m) => {
+    const grant = permissions.find((p) => p.module === m.value);
+    return grant ? { ...grant } : { module: m.value, canView: false, canCreate: false, canEdit: false, canDelete: false, canApprove: false };
   });
 }

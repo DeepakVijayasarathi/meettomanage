@@ -4,13 +4,17 @@ import type { Invoice } from "@/types";
 export type ApiInvoiceStatus = "Pending" | "PartiallyPaid" | "Paid" | "Overdue" | "Cancelled";
 export type ApiBillingType = "Subscription" | "SessionBased" | "OneTime";
 export type ApiBillingCycle = "Monthly" | "Quarterly" | "Yearly" | "OneTime";
-export type ApiPaymentMethod = "Card" | "Upi" | "NetBanking" | "Wallet" | "Other";
+export type ApiPaymentMethod = "Card" | "Upi" | "NetBanking" | "Wallet" | "Other" | "Cash";
 
 export interface ApiInvoice {
   id: string;
   invoiceNumber: string;
   parentProfileId: string;
   childId: string | null;
+  /** Resolved child display name; null when the invoice has no child linked. */
+  childName: string | null;
+  /** Resolved course/plan name via the invoice's subscription, when it has one. */
+  courseName: string | null;
   department: "Phonics" | "Maths";
   amount: number;
   amountPaid: number;
@@ -46,14 +50,13 @@ export function toFrontendInvoice(invoice: ApiInvoice): Invoice {
     id: invoice.invoiceNumber,
     apiId: invoice.id,
     parentId: invoice.parentProfileId,
-    // Child/course display names need a lookup endpoint; arrives with the dashboard work
-    childName: "—",
+    childName: invoice.childName ?? "—",
     department: invoice.department,
     amount: invoice.amount,
     status: INVOICE_STATUS_FROM_API[invoice.status],
     issuedOn: invoice.issuedAtUtc.slice(0, 10),
     dueOn: invoice.dueDate,
-    courseName: "—",
+    courseName: invoice.courseName ?? "—",
   };
 }
 
@@ -186,5 +189,38 @@ export async function setPaymentMapping(parentUserId: string, paymentAccountId: 
   await apiFetch<void>("/api/payment-accounts/mapping", {
     method: "PUT",
     body: JSON.stringify({ parentUserId, paymentAccountId }),
+  });
+}
+
+/** A parent's pending "pay by cash" declaration, awaiting staff confirmation at the centre. */
+export interface ApiCashIntent {
+  transactionId: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  parentName: string;
+  amount: number;
+  currency: string;
+  reference: string;
+  requestedAtUtc: string;
+}
+
+/** Pending cash intents for Billing → Pending Cash Confirmations (Admin, Sub Admin, Admission Team). */
+export async function listCashIntents(): Promise<ApiCashIntent[]> {
+  return apiFetch<ApiCashIntent[]>("/api/invoices/cash-intents");
+}
+
+/** Confirms the cash was collected; omit amount to accept the parent's declared amount as-is. */
+export async function confirmCashIntent(transactionId: string, amount?: number): Promise<ApiCashIntent> {
+  return apiFetch<ApiCashIntent>(`/api/invoices/cash-intents/${transactionId}/confirm`, {
+    method: "POST",
+    body: JSON.stringify({ amount }),
+  });
+}
+
+/** Rejects a cash intent (parent never showed up / paid another way). */
+export async function rejectCashIntent(transactionId: string, reason?: string): Promise<void> {
+  await apiFetch<void>(`/api/invoices/cash-intents/${transactionId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
   });
 }

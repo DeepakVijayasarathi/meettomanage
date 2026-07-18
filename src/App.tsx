@@ -46,6 +46,7 @@ const LiveClassroom = lazy(() => import("@/features/classroom/LiveClassroom"));
 
 const SubAdminDashboard = lazy(() => import("@/features/subadmin/Dashboard"));
 const SubAdminPermissions = lazy(() => import("@/features/subadmin/Permissions"));
+const SubAdminIntegrations = lazy(() => import("@/features/subadmin/Integrations"));
 const SubAdminReports = lazy(() => import("@/features/subadmin/Reports"));
 const SubAdminAuditLog = lazy(() => import("@/features/subadmin/AuditLog"));
 
@@ -138,6 +139,7 @@ export default function App() {
             <Route path="/subadmin" element={<AppShell role="subadmin"><Outlet /></AppShell>}>
               <Route index element={<SubAdminDashboard />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
+              <Route path="integrations" element={<SubAdminIntegrations />} />
               <Route path="reports" element={<SubAdminReports />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
             </Route>

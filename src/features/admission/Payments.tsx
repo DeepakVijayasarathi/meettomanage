@@ -1,70 +1,117 @@
 import { useMemo, useState } from "react";
-import { Bell, CheckCircle2, Copy, IndianRupee, Link2, ListChecks, Wallet } from "lucide-react";
+import { CheckCircle2, IndianRupee, Link2, ListChecks, Loader2, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { KpiCard } from "@/components/KpiCard";
 import { FeeStatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CashConfirmationsPanel } from "@/components/CashConfirmationsPanel";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listInvoices, toFrontendInvoice, createPaymentLink } from "@/api/billing";
+import type { Invoice } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { PAYMENT_LINKS as INITIAL_PAYMENT_LINKS, type PaymentLink, type PaymentStatus } from "./data";
+import { PAYMENT_LINKS } from "./data";
 
-const STATUS_OPTIONS: { value: PaymentStatus | "all"; label: string }[] = [
+type RowStatus = Invoice["status"];
+
+/** One row of the Payment Tracking table — a real invoice in API mode, a demo payment link otherwise. */
+interface PaymentRow {
+  id: string;
+  /** Real invoice Guid; present only in API mode, needed to generate a live payment link. */
+  apiId?: string;
+  childName: string;
+  courseName: string;
+  department: "Phonics" | "Maths";
+  amount: number;
+  status: RowStatus;
+  issuedOn: string;
+  dueOn: string;
+}
+
+const STATUS_OPTIONS: { value: RowStatus | "all"; label: string }[] = [
   { value: "all", label: "All statuses" },
-  { value: "Pending", label: "Pending" },
-  { value: "Paid", label: "Paid" },
-  { value: "Partially Paid", label: "Partially Paid" },
+  { value: "pending", label: "Pending" },
+  { value: "partial", label: "Partially Paid" },
+  { value: "overdue", label: "Overdue" },
+  { value: "paid", label: "Paid" },
 ];
 
-function toFeeStatusKey(status: PaymentStatus) {
-  if (status === "Paid") return "paid";
-  if (status === "Partially Paid") return "partial";
-  return "pending";
+const DEMO_ROWS: PaymentRow[] = PAYMENT_LINKS.map((link) => ({
+  id: link.id,
+  childName: link.childName,
+  courseName: link.courseName,
+  department: link.department,
+  amount: link.amount,
+  status: link.status === "Paid" ? "paid" : link.status === "Partially Paid" ? "partial" : "pending",
+  issuedOn: link.linkSharedOn,
+  dueOn: link.paidOn ?? link.linkSharedOn,
+}));
+
+function fromInvoice(invoice: Invoice): PaymentRow {
+  return {
+    id: invoice.id,
+    apiId: invoice.apiId,
+    childName: invoice.childName,
+    courseName: invoice.courseName,
+    department: invoice.department,
+    amount: invoice.amount,
+    status: invoice.status,
+    issuedOn: invoice.issuedOn,
+    dueOn: invoice.dueOn,
+  };
 }
 
 export default function AdmissionPayments() {
-  const [links, setLinks] = useState<PaymentLink[]>(INITIAL_PAYMENT_LINKS);
-  const [statusFilter, setStatusFilter] = useState<PaymentStatus | "all">("all");
+  const { data: rows } = useApiData(
+    () => listInvoices().then((items) => items.map(toFrontendInvoice).map(fromInvoice)),
+    DEMO_ROWS
+  );
+  const [statusFilter, setStatusFilter] = useState<RowStatus | "all">("all");
+  const [linkBusyId, setLinkBusyId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [reminderSentId, setReminderSentId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const filtered = useMemo(
-    () => (statusFilter === "all" ? links : links.filter((l) => l.status === statusFilter)),
-    [links, statusFilter]
+    () => (statusFilter === "all" ? rows : rows.filter((r) => r.status === statusFilter)),
+    [rows, statusFilter]
   );
 
   const totals = useMemo(() => {
-    const paid = links.filter((l) => l.status === "Paid").reduce((s, l) => s + l.amountPaid, 0);
-    const outstanding = links.reduce((s, l) => s + (l.amount - l.amountPaid), 0);
-    const partial = links.filter((l) => l.status === "Partially Paid").length;
-    return { paid, outstanding, partial, total: links.length };
-  }, [links]);
+    const paid = rows.filter((r) => r.status === "paid").reduce((s, r) => s + r.amount, 0);
+    const outstanding = rows.filter((r) => r.status !== "paid").reduce((s, r) => s + r.amount, 0);
+    const partial = rows.filter((r) => r.status === "partial").length;
+    return { paid, outstanding, partial, total: rows.length };
+  }, [rows]);
 
-  function handleCopy(link: PaymentLink) {
-    navigator.clipboard?.writeText(link.paymentLinkUrl).catch(() => undefined);
-    setCopiedId(link.id);
-    setTimeout(() => setCopiedId((id) => (id === link.id ? null : id)), 2000);
+  async function handleGenerateLink(row: PaymentRow) {
+    setError(null);
+    if (!apiEnabled() || !row.apiId) {
+      // Demo mode: nothing real to generate — there's no gateway to call.
+      return;
+    }
+    setLinkBusyId(row.id);
+    try {
+      const link = await createPaymentLink(row.apiId);
+      await navigator.clipboard?.writeText(link.url).catch(() => undefined);
+      setCopiedId(row.id);
+      setTimeout(() => setCopiedId((id) => (id === row.id ? null : id)), 2500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not generate a payment link for this invoice.");
+    } finally {
+      setLinkBusyId(null);
+    }
   }
 
-  function handleRemind(link: PaymentLink) {
-    setLinks((prev) => prev.map((l) => (l.id === link.id ? { ...l, lastReminderOn: "2026-07-09" } : l)));
-    setReminderSentId(link.id);
-    setTimeout(() => setReminderSentId((id) => (id === link.id ? null : id)), 2500);
-  }
-
-  const columns: DataTableColumn<PaymentLink>[] = useMemo(
+  const columns: DataTableColumn<PaymentRow>[] = useMemo(
     () => [
       {
         key: "child",
-        header: "Child / Parent",
+        header: "Child",
         sortable: true,
         accessor: (row) => row.childName,
-        render: (row) => (
-          <div>
-            <p className="font-semibold text-foreground">{row.childName}</p>
-            <p className="text-xs text-muted-foreground">{row.parentName}</p>
-          </div>
-        ),
+        render: (row) => <p className="font-semibold text-foreground">{row.childName}</p>,
       },
       {
         key: "course",
@@ -84,33 +131,21 @@ export default function AdmissionPayments() {
         render: (row) => <span className="text-sm font-semibold text-foreground">{formatCurrency(row.amount)}</span>,
       },
       {
-        key: "paid",
-        header: "Paid",
-        sortable: true,
-        accessor: (row) => row.amountPaid,
-        render: (row) => (
-          <span className="text-sm text-muted-foreground">
-            {formatCurrency(row.amountPaid)}
-            {row.status === "Partially Paid" && <span className="ml-1 text-xs">/ {formatCurrency(row.amount)}</span>}
-          </span>
-        ),
-      },
-      {
         key: "status",
         header: "Status",
         sortable: true,
         accessor: (row) => row.status,
-        render: (row) => <FeeStatusBadge status={toFeeStatusKey(row.status)} />,
+        render: (row) => <FeeStatusBadge status={row.status} />,
       },
       {
-        key: "shared",
-        header: "Link Shared",
+        key: "issued",
+        header: "Issued / Due",
         sortable: true,
-        accessor: (row) => row.linkSharedOn,
+        accessor: (row) => row.issuedOn,
         render: (row) => (
           <div className="text-xs">
-            <p className="font-medium text-foreground">{formatDate(row.linkSharedOn)}</p>
-            {row.lastReminderOn && <p className="text-muted-foreground">Reminded {formatDate(row.lastReminderOn)}</p>}
+            <p className="font-medium text-foreground">Issued {formatDate(row.issuedOn)}</p>
+            <p className="text-muted-foreground">Due {formatDate(row.dueOn)}</p>
           </div>
         ),
       },
@@ -118,50 +153,61 @@ export default function AdmissionPayments() {
         key: "actions",
         header: "Actions",
         render: (row) => (
-          <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="sm" onClick={() => handleCopy(row)}>
-              {copiedId === row.id ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-              {copiedId === row.id ? "Copied" : "Copy link"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={row.status === "Paid"}
-              onClick={() => handleRemind(row)}
-            >
-              <Bell className="h-3.5 w-3.5" />
-              {reminderSentId === row.id ? "Sent!" : "Remind"}
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={row.status === "paid" || linkBusyId === row.id || (!apiEnabled())}
+            onClick={() => handleGenerateLink(row)}
+          >
+            {linkBusyId === row.id ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : copiedId === row.id ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+            ) : (
+              <Link2 className="h-3.5 w-3.5" />
+            )}
+            {linkBusyId === row.id ? "Generating…" : copiedId === row.id ? "Link copied" : "Generate & copy link"}
+          </Button>
         ),
       },
     ],
-    [copiedId, reminderSentId]
+    [linkBusyId, copiedId]
   );
 
   return (
     <div>
       <PageHeader
         eyebrow="Billing"
-        title="Payment Links"
-        description="Share payment links with parents ahead of enrollment and track how collection is trending."
+        title="Payment Tracking"
+        description="Generate and share payment links with parents ahead of enrollment, and track how collection is trending."
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Payment Links" value={String(totals.total)} icon={Link2} tone="primary" />
+        <KpiCard label="Invoices" value={String(totals.total)} icon={Link2} tone="primary" />
         <KpiCard label="Collected" value={formatCurrency(totals.paid)} icon={IndianRupee} tone="success" />
         <KpiCard label="Outstanding" value={formatCurrency(totals.outstanding)} icon={Wallet} tone="destructive" />
         <KpiCard label="Partially Paid" value={String(totals.partial)} icon={ListChecks} tone="warning" />
       </div>
 
-      <div className="mt-6">
+      <div className="mt-8">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Pending Cash Confirmations
+        </h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Parents who chose "Cash" on Pay Now from their portal. Confirm once collected at the centre so their invoice and access update.
+        </p>
+        <CashConfirmationsPanel />
+      </div>
+
+      <div className="mt-8">
+        {error && <p className="mb-3 text-sm font-medium text-destructive">{error}</p>}
         <DataTable
           data={filtered}
           columns={columns}
           rowKey={(row) => row.id}
-          searchPlaceholder="Search by child, parent or course…"
+          searchPlaceholder="Search by child or course…"
           toolbar={
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as PaymentStatus | "all")}>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as RowStatus | "all")}>
               <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>
@@ -175,6 +221,11 @@ export default function AdmissionPayments() {
             </Select>
           }
         />
+        {!apiEnabled() && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Demo mode — payment link generation needs the API connected (VITE_API_BASE_URL).
+          </p>
+        )}
       </div>
     </div>
   );

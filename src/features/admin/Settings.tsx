@@ -4,6 +4,8 @@ import {
   Building2,
   CheckCircle2,
   CreditCard,
+  Eye,
+  EyeOff,
   Globe2,
   ListTree,
   Mail,
@@ -660,6 +662,13 @@ const CATEGORY_ORDER: IntegrationCategoryName[] = ["Email", "Messaging", "Paymen
 
 type ConfigRow = { key: string; value: string };
 
+/** Mirrors the backend's IsSecretField heuristic so a Razorpay/Cashfree key or secret is masked while typing, not just on read. */
+const SECRET_FIELD_HINTS = ["secret", "key", "token", "password"];
+function isSecretField(fieldName: string): boolean {
+  const lower = fieldName.toLowerCase();
+  return SECRET_FIELD_HINTS.some((hint) => lower.includes(hint));
+}
+
 function configToRows(config: Record<string, string | null>): ConfigRow[] {
   const rows = Object.entries(config).map(([key, value]) => ({ key, value: value ?? "" }));
   return rows.length > 0 ? rows : [{ key: "", value: "" }];
@@ -678,8 +687,14 @@ const EMPTY_INTEGRATION_FORM: SaveIntegrationRequest = {
   config: {},
 };
 
-/** DB-backed integrations master: Email, WhatsApp, Razorpay, Cashfree, Zoom, Jitsi Meet and any custom ones the admin adds. */
-function IntegrationsManager() {
+/**
+ * DB-backed integrations master: Email, WhatsApp, Razorpay, Cashfree, Zoom, Jitsi Meet and any
+ * custom ones the admin adds. Exported so the Sub Admin portal's own Integrations page
+ * (`src/features/subadmin/Integrations.tsx`, shown only with Settings access) can reuse the
+ * exact same editor rather than duplicating it — one implementation, gated by permission
+ * rather than by which portal you're in.
+ */
+export function IntegrationsManager() {
   const [integrations, setIntegrations] = useState<ApiIntegration[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -688,6 +703,7 @@ function IntegrationsManager() {
   const [isNew, setIsNew] = useState(false);
   const [form, setForm] = useState<SaveIntegrationRequest | null>(null);
   const [configRows, setConfigRows] = useState<ConfigRow[]>([]);
+  const [revealedRows, setRevealedRows] = useState<Set<number>>(new Set());
 
   async function reload() {
     if (!apiEnabled()) return;
@@ -718,6 +734,7 @@ function IntegrationsManager() {
       config: integration.config,
     });
     setConfigRows(configToRows(integration.config));
+    setRevealedRows(new Set());
   }
 
   function startNew() {
@@ -725,12 +742,23 @@ function IntegrationsManager() {
     setIsNew(true);
     setForm({ ...EMPTY_INTEGRATION_FORM });
     setConfigRows([{ key: "", value: "" }]);
+    setRevealedRows(new Set());
   }
 
   function cancelEdit() {
     setEditingId(null);
     setIsNew(false);
     setForm(null);
+    setRevealedRows(new Set());
+  }
+
+  function toggleRevealed(index: number) {
+    setRevealedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
   }
 
   async function toggleEnabled(integration: ApiIntegration) {
@@ -867,31 +895,52 @@ function IntegrationsManager() {
                 </Button>
               </div>
               <div className="flex flex-col gap-2">
-                {configRows.map((row, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Input
-                      value={row.key}
-                      onChange={(e) => setConfigRows(configRows.map((r, ri) => (ri === i ? { ...r, key: e.target.value } : r)))}
-                      placeholder="field name, e.g. apiKey"
-                      className="w-48 font-mono text-xs"
-                    />
-                    <Input
-                      value={row.value}
-                      onChange={(e) => setConfigRows(configRows.map((r, ri) => (ri === i ? { ...r, value: e.target.value } : r)))}
-                      placeholder="value"
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      onClick={() => setConfigRows(configRows.filter((_, ri) => ri !== i))}
-                    >
-                      <X className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </div>
-                ))}
+                {configRows.map((row, i) => {
+                  const secret = isSecretField(row.key);
+                  const revealed = revealedRows.has(i);
+                  return (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input
+                        value={row.key}
+                        onChange={(e) => setConfigRows(configRows.map((r, ri) => (ri === i ? { ...r, key: e.target.value } : r)))}
+                        placeholder="field name, e.g. apiKey"
+                        className="w-48 font-mono text-xs"
+                      />
+                      <div className="relative flex-1">
+                        <Input
+                          type={secret && !revealed ? "password" : "text"}
+                          value={row.value}
+                          onChange={(e) => setConfigRows(configRows.map((r, ri) => (ri === i ? { ...r, value: e.target.value } : r)))}
+                          placeholder="value"
+                          className={cn(secret && "pr-9")}
+                          autoComplete="off"
+                        />
+                        {secret && (
+                          <button
+                            type="button"
+                            onClick={() => toggleRevealed(i)}
+                            className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-muted-foreground hover:text-foreground"
+                            aria-label={revealed ? "Hide value" : "Show value"}
+                          >
+                            {revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={() => setConfigRows(configRows.filter((_, ri) => ri !== i))}
+                      >
+                        <X className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                Fields named with "key", "secret", "token" or "password" (e.g. Razorpay's keyId/keySecret) are masked while typing.
+              </p>
             </div>
 
             <div className="flex items-center gap-2 pb-1">

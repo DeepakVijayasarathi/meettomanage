@@ -18,6 +18,7 @@ import { INVOICES } from "@/data/invoices";
 import { getParentById } from "@/data/users";
 import { useApiData } from "@/api/hooks";
 import { listInvoices, toFrontendInvoice } from "@/api/billing";
+import { CashConfirmationsPanel } from "@/components/CashConfirmationsPanel";
 import type { Invoice } from "@/types";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -124,7 +125,14 @@ export default function AdminBilling() {
         <KpiCard label="Overdue Invoices" value={`${formatNumber(totals.overdueCount)} · ${formatCurrency(totals.overdueAmount)}`} icon={AlertTriangle} tone="destructive" />
       </div>
 
-      <div className="mt-6">
+      <div className="mt-8">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Pending Cash Confirmations
+        </h2>
+        <CashConfirmationsPanel />
+      </div>
+
+      <div className="mt-8">
         <DataTable
           data={invoices}
           columns={columns}

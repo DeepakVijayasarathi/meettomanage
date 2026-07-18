@@ -10,6 +10,11 @@ export async function login(email: string, password: string): Promise<LoginRespo
   return response;
 }
 
+/** Refreshes the signed-in user's permissions/route from the current token — no new token issued. */
+export async function getCurrentUser(): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>("/api/auth/me");
+}
+
 export function logout() {
   setAccessToken(null);
 }

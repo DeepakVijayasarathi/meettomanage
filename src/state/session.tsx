@@ -1,8 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Role } from "@/types";
 import { CHILDREN, getChildrenByParent } from "@/data/children";
-import { apiEnabled, setAccessToken } from "@/lib/api";
+import { apiEnabled, getAccessToken, setAccessToken } from "@/lib/api";
 import { getParentChildren } from "@/api/parentPortal";
+import { getCurrentUser } from "@/api/auth";
+import { checkPermission, type PermissionAction } from "@/lib/permissions";
+import type { PermissionModuleName } from "@/api/permissions";
 
 /** The logged-in parent's children, for the child switcher across parent screens. */
 export interface SessionChild {
@@ -31,6 +34,11 @@ interface SessionState {
   userName: string;
   /** Set from the API user on real login; falls back to demo names otherwise. */
   setUserName: (name: string | null) => void;
+  /** "Module:Action" claim strings from login/`/api/auth/me`; empty ([]) for Admin (implicit full access) and in demo mode. */
+  permissions: string[];
+  setPermissions: (permissions: string[]) => void;
+  /** Does the current login have this permission? Admin always true; demo mode always true (nothing to gate against). */
+  hasPermission: (module: PermissionModuleName, action: PermissionAction) => boolean;
 }
 
 const SessionContext = createContext<SessionState | null>(null);
@@ -39,6 +47,7 @@ const ROLE_KEY = "trn.role";
 const CHILD_KEY = "trn.activeChildId";
 const ENROLLED_KEY = "trn.enrolledChildIds";
 const NAME_KEY = "trn.userName";
+const PERMISSIONS_KEY = "trn.permissions";
 
 const NAME_BY_ROLE: Record<Role, string> = {
   admin: "Ananya Rao",
@@ -70,11 +79,39 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return null;
     return localStorage.getItem(NAME_KEY);
   });
+  const [permissions, setPermissionsState] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    const raw = localStorage.getItem(PERMISSIONS_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  });
   const [childList, setChildList] = useState<SessionChild[]>(MOCK_SESSION_CHILDREN);
 
   useEffect(() => {
     if (role) localStorage.setItem(ROLE_KEY, role);
     else localStorage.removeItem(ROLE_KEY);
+  }, [role]);
+
+  const setPermissions = (next: string[]) => {
+    setPermissionsState(next);
+    localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(next));
+  };
+
+  // Refresh permissions from the server on load so an admin's mid-session permission
+  // change (or an already-open tab) doesn't leave a stale cached grant in effect.
+  useEffect(() => {
+    if (!apiEnabled() || !role || !getAccessToken()) return;
+    let cancelled = false;
+    getCurrentUser()
+      .then((response) => {
+        if (!cancelled) setPermissions(response.permissions);
+      })
+      .catch(() => {
+        /* keep whatever was cached from login */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
 
   // Load the signed-in parent's real children so the switcher + parent screens
@@ -123,6 +160,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       logout: () => {
         setRoleState(null);
         setUserName(null);
+        setPermissions([]);
         setAccessToken(null);
       },
       activeChildId,
@@ -133,8 +171,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       children: childList,
       userName: apiUserName ?? (role ? NAME_BY_ROLE[role] : "Guest"),
       setUserName,
+      permissions,
+      setPermissions,
+      // Demo mode (no API configured) never populates permissions, so ungating everything
+      // there keeps existing demo screens working rather than hiding features behind an
+      // empty claim set that was never meant to gate anything outside API mode.
+      hasPermission: (module, action) =>
+        !apiEnabled() || checkPermission(role, permissions, module, action),
     }),
-    [role, activeChildId, enrolledChildIds, childList, apiUserName]
+    [role, activeChildId, enrolledChildIds, childList, apiUserName, permissions]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

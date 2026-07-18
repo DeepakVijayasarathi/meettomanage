@@ -3,103 +3,72 @@ import { Check, Plus, RotateCcw, Save, ShieldCheck, Trash2, UserCog, Wand2 } fro
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PermissionMatrix, PERMISSION_ACTIONS, type PermissionActionKey } from "@/components/PermissionMatrix";
 import { SUB_ADMINS } from "@/data/users";
 import { getInitials, cn } from "@/lib/utils";
-import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listUsers, toAppUser } from "@/api/users";
-import { getPermissions, setPermissions, PERMISSION_MODULES, type ApiPermission, type PermissionModuleName } from "@/api/permissions";
+import {
+  getPermissions,
+  setPermissions,
+  emptyPermissions,
+  expandPermissions,
+  PERMISSION_MODULES,
+  type ApiPermission,
+  type PermissionModuleName,
+} from "@/api/permissions";
 import { applyRoleToUser, createRole, deleteRole, listRoles, updateRole, type ApiRole } from "@/api/roles";
-import { listMenuItems, type ApiMenuItem } from "@/api/menus";
+import { listMenuItems, groupMenusByModule, type ApiMenuItem } from "@/api/menus";
 
-const MODULES = ["Users", "Courses", "Batches", "Calendar", "Billing", "Reports", "Resources"] as const;
-const ACTIONS = ["View", "Add", "Edit", "Delete", "Approve"] as const;
+const TOTAL_GRANTS = PERMISSION_MODULES.length * PERMISSION_ACTIONS.length;
 
-type Module = (typeof MODULES)[number];
-type Action = (typeof ACTIONS)[number];
-type Matrix = Record<Module, Record<Action, boolean>>;
-
-// Maps this screen's display modules to the backend's PermissionModule enum
-const MODULE_TO_API: Record<Module, PermissionModuleName> = {
-  Users: "UserManagement",
-  Courses: "CourseBatchManagement",
-  Batches: "CourseBatchManagement",
-  Calendar: "SessionCalendarManagement",
-  Billing: "BillingFinance",
-  Reports: "ReportsAnalytics",
-  Resources: "ContentAccessManagement",
-};
-
-function apiPermissionsToMatrix(permissions: ApiPermission[]): Matrix {
-  const matrix = {} as Matrix;
-  MODULES.forEach((mod) => {
-    const apiModule = MODULE_TO_API[mod];
-    const grant = permissions.find((p) => p.module === apiModule);
-    matrix[mod] = {
-      View: grant?.canView ?? false,
-      Add: grant?.canCreate ?? false,
-      Edit: grant?.canEdit ?? false,
-      Delete: grant?.canDelete ?? false,
-      Approve: grant?.canApprove ?? false,
+/** Plausible demo defaults: View mostly on, Delete/Approve sparse, varies per profile. */
+function defaultPermissions(seed: number): ApiPermission[] {
+  return PERMISSION_MODULES.map((mod, mi) => {
+    const base = (mi + seed) % 3 !== 0;
+    return {
+      module: mod.value,
+      canView: true,
+      canCreate: base,
+      canEdit: base,
+      canDelete: (mi + seed) % 2 === 0 && base,
+      canApprove: (mi + seed + 1) % 3 === 0 && base,
     };
   });
-  return matrix;
 }
 
-function matrixToApiPermissions(matrix: Matrix): ApiPermission[] {
-  // Collapse Courses+Batches (same backend module) by OR-ing their flags
-  const byApiModule = new Map<PermissionModuleName, ApiPermission>();
-  MODULES.forEach((mod) => {
-    const apiModule = MODULE_TO_API[mod];
-    const row = matrix[mod];
-    const existing = byApiModule.get(apiModule);
-    byApiModule.set(apiModule, {
-      module: apiModule,
-      canView: (existing?.canView ?? false) || row.View,
-      canCreate: (existing?.canCreate ?? false) || row.Add,
-      canEdit: (existing?.canEdit ?? false) || row.Edit,
-      canDelete: (existing?.canDelete ?? false) || row.Delete,
-      canApprove: (existing?.canApprove ?? false) || row.Approve,
-    });
-  });
-  return Array.from(byApiModule.values());
-}
-
-/** Tri-state for a select-all checkbox: fully on, fully off, or a mix. */
-function triState(values: boolean[]): boolean | "indeterminate" {
-  if (values.length === 0) return false;
-  if (values.every(Boolean)) return true;
-  if (values.every((v) => !v)) return false;
-  return "indeterminate";
-}
-
-function defaultMatrix(seed: number): Matrix {
-  const matrix = {} as Matrix;
-  MODULES.forEach((mod, mi) => {
-    matrix[mod] = {} as Record<Action, boolean>;
-    ACTIONS.forEach((action, ai) => {
-      // Seed a plausible default: View always on, Delete/Approve sparse, varies per profile
-      const base = action === "View" ? true : (mi + ai + seed) % 3 !== 0;
-      matrix[mod][action] = action === "Delete" ? (mi + seed) % 2 === 0 && base : base;
-    });
-  });
-  return matrix;
+/** Only modules with at least one grant are persisted — the matrix stays sparse in the DB. */
+function toSparsePermissions(permissions: ApiPermission[]): ApiPermission[] {
+  return permissions.filter((p) => p.canView || p.canCreate || p.canEdit || p.canDelete || p.canApprove);
 }
 
 export default function AdminPermissions() {
+  // Every real sidebar menu across every portal, grouped by the module that gates it —
+  // fetched once here and handed to both tabs so "which menus does this module control"
+  // is answered identically wherever a permission matrix is edited.
+  const [menusByModule, setMenusByModule] = useState<Partial<Record<PermissionModuleName, string[]>>>({});
+
+  useEffect(() => {
+    if (!apiEnabled()) return;
+    listMenuItems()
+      .then((items: ApiMenuItem[]) => setMenusByModule(groupMenusByModule(items)))
+      .catch(() => {
+        /* captions just stay empty */
+      });
+  }, []);
+
   return (
     <div>
       <PageHeader
         eyebrow="Access Control"
         title="Roles & Permissions"
-        description="Configure module-level permissions per relationship manager and maintain reusable role presets in the database."
+        description="Manage every module — and the real menus each one controls — per relationship manager, and maintain reusable role presets that also drive Teacher, Parent and Admission Team access."
       />
 
       <Tabs defaultValue="subadmins">
@@ -113,25 +82,29 @@ export default function AdminPermissions() {
         </TabsList>
 
         <TabsContent value="subadmins">
-          <SubAdminMatrix />
+          <SubAdminMatrix menusByModule={menusByModule} />
         </TabsContent>
         <TabsContent value="roles">
-          <RolePresets />
+          <RolePresets menusByModule={menusByModule} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function SubAdminMatrix() {
+interface MenusByModuleProp {
+  menusByModule: Partial<Record<PermissionModuleName, string[]>>;
+}
+
+function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
   const { data: subAdmins, loading: loadingSubAdmins } = useApiData(
     () => listUsers({ role: "SubAdmin" }).then((r) => r.items.map(toAppUser)),
     SUB_ADMINS
   );
 
   const [activeId, setActiveId] = useState(subAdmins[0]?.id ?? "");
-  const [matrices, setMatrices] = useState<Record<string, Matrix>>(() =>
-    Object.fromEntries(subAdmins.map((s, i) => [s.id, defaultMatrix(i)]))
+  const [matrices, setMatrices] = useState<Record<string, ApiPermission[]>>(() =>
+    Object.fromEntries(subAdmins.map((s, i) => [s.id, defaultPermissions(i)]))
   );
   const [savedTick, setSavedTick] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -145,7 +118,7 @@ function SubAdminMatrix() {
     setMatrices((prev) => {
       const next = { ...prev };
       subAdmins.forEach((s, i) => {
-        if (!next[s.id]) next[s.id] = defaultMatrix(i);
+        if (!next[s.id]) next[s.id] = defaultPermissions(i);
       });
       return next;
     });
@@ -162,7 +135,7 @@ function SubAdminMatrix() {
     let cancelled = false;
     getPermissions(activeId)
       .then((permissions) => {
-        if (!cancelled) setMatrices((prev) => ({ ...prev, [activeId]: apiPermissionsToMatrix(permissions) }));
+        if (!cancelled) setMatrices((prev) => ({ ...prev, [activeId]: expandPermissions(permissions) }));
         setLoadError(null);
       })
       .catch((err: unknown) => {
@@ -186,55 +159,38 @@ function SubAdminMatrix() {
 
   const grantedCount = useMemo(() => {
     if (!matrix) return 0;
-    let count = 0;
-    MODULES.forEach((m) => ACTIONS.forEach((a) => matrix[m][a] && count++));
-    return count;
+    return matrix.reduce((count, p) => count + PERMISSION_ACTIONS.filter((a) => p[a.key]).length, 0);
   }, [matrix]);
 
-  function toggle(mod: Module, action: Action) {
-    setMatrices((prev) => ({
-      ...prev,
-      [activeId]: {
-        ...prev[activeId],
-        [mod]: { ...prev[activeId][mod], [action]: !prev[activeId][mod][action] },
-      },
-    }));
+  function updateMatrix(updater: (rows: ApiPermission[]) => ApiPermission[]) {
+    setMatrices((prev) => ({ ...prev, [activeId]: updater(prev[activeId]) }));
   }
 
-  function toggleRow(mod: Module) {
-    const allOn = ACTIONS.every((a) => matrix[mod][a]);
-    setMatrices((prev) => ({
-      ...prev,
-      [activeId]: {
-        ...prev[activeId],
-        [mod]: Object.fromEntries(ACTIONS.map((a) => [a, !allOn])) as Record<Action, boolean>,
-      },
-    }));
+  function toggle(module: PermissionModuleName, action: PermissionActionKey) {
+    updateMatrix((rows) => rows.map((p) => (p.module === module ? { ...p, [action]: !p[action] } : p)));
   }
 
-  function toggleColumn(action: Action) {
-    const allOn = MODULES.every((m) => matrix[m][action]);
-    setMatrices((prev) => ({
-      ...prev,
-      [activeId]: Object.fromEntries(
-        MODULES.map((m) => [m, { ...prev[activeId][m], [action]: !allOn }])
-      ) as Matrix,
-    }));
+  function toggleRow(module: PermissionModuleName) {
+    const grant = matrix.find((p) => p.module === module)!;
+    const allOn = PERMISSION_ACTIONS.every((a) => grant[a.key]);
+    updateMatrix((rows) =>
+      rows.map((p) => (p.module === module ? { ...p, ...Object.fromEntries(PERMISSION_ACTIONS.map((a) => [a.key, !allOn])) } : p))
+    );
+  }
+
+  function toggleColumn(action: PermissionActionKey) {
+    const allOn = matrix.every((p) => p[action]);
+    updateMatrix((rows) => rows.map((p) => ({ ...p, [action]: !allOn })));
   }
 
   function toggleAll() {
-    const allOn = MODULES.every((m) => ACTIONS.every((a) => matrix[m][a]));
-    setMatrices((prev) => ({
-      ...prev,
-      [activeId]: Object.fromEntries(
-        MODULES.map((m) => [m, Object.fromEntries(ACTIONS.map((a) => [a, !allOn])) as Record<Action, boolean>])
-      ) as Matrix,
-    }));
+    const allOn = matrix.every((p) => PERMISSION_ACTIONS.every((a) => p[a.key]));
+    updateMatrix((rows) => rows.map((p) => ({ ...p, ...Object.fromEntries(PERMISSION_ACTIONS.map((a) => [a.key, !allOn])) })));
   }
 
   function resetProfile() {
     const idx = subAdmins.findIndex((s) => s.id === activeId);
-    setMatrices((prev) => ({ ...prev, [activeId]: defaultMatrix(idx) }));
+    setMatrices((prev) => ({ ...prev, [activeId]: defaultPermissions(idx) }));
   }
 
   async function applyPreset(roleName: string) {
@@ -244,13 +200,13 @@ function SubAdminMatrix() {
     if (apiEnabled()) {
       try {
         await applyRoleToUser(activeId, roleName);
-        setMatrices((prev) => ({ ...prev, [activeId]: apiPermissionsToMatrix(preset.permissions) }));
+        setMatrices((prev) => ({ ...prev, [activeId]: expandPermissions(preset.permissions) }));
         setLoadError(null);
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : "Could not apply the preset.");
       }
     } else {
-      setMatrices((prev) => ({ ...prev, [activeId]: apiPermissionsToMatrix(preset.permissions) }));
+      setMatrices((prev) => ({ ...prev, [activeId]: expandPermissions(preset.permissions) }));
     }
   }
 
@@ -263,7 +219,7 @@ function SubAdminMatrix() {
 
     setSaving(true);
     try {
-      await setPermissions(activeId, matrixToApiPermissions(matrix));
+      await setPermissions(activeId, toSparsePermissions(matrix));
       setSavedTick(Date.now());
       setTimeout(() => setSavedTick(null), 2200);
     } catch (err) {
@@ -318,7 +274,7 @@ function SubAdminMatrix() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                  {grantedCount} / {MODULES.length * ACTIONS.length} granted
+                  {grantedCount} / {TOTAL_GRANTS} granted
                 </span>
                 {presets.length > 0 && (
                   <Select value="" onValueChange={applyPreset}>
@@ -347,78 +303,17 @@ function SubAdminMatrix() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full min-w-[640px] text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/40">
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        <div className="flex items-center gap-2.5">
-                          <Checkbox
-                            checked={triState(MODULES.flatMap((m) => ACTIONS.map((a) => matrix[m][a])))}
-                            onCheckedChange={toggleAll}
-                            aria-label="Select all permissions"
-                          />
-                          Module
-                        </div>
-                      </th>
-                      {ACTIONS.map((action) => (
-                        <th key={action} className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          <div className="flex flex-col items-center gap-1.5">
-                            <Checkbox
-                              checked={triState(MODULES.map((m) => matrix[m][action]))}
-                              onCheckedChange={() => toggleColumn(action)}
-                              aria-label={`Select all ${action}`}
-                            />
-                            {action}
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {MODULES.map((mod, mi) => (
-                      <tr key={mod} className="border-b border-border last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <Checkbox
-                              checked={triState(ACTIONS.map((a) => matrix[mod][a]))}
-                              onCheckedChange={() => toggleRow(mod)}
-                              aria-label={`Select all ${mod}`}
-                            />
-                            <button
-                              onClick={() => toggleRow(mod)}
-                              className="flex items-center gap-2.5 text-left font-semibold text-foreground hover:text-primary"
-                            >
-                              <span
-                                className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold"
-                                style={{
-                                  backgroundColor: `${CHART_PALETTE[mi % CHART_PALETTE.length]}1A`,
-                                  color: CHART_PALETTE[mi % CHART_PALETTE.length],
-                                }}
-                              >
-                                {mod[0]}
-                              </span>
-                              {mod}
-                            </button>
-                          </div>
-                        </td>
-                        {ACTIONS.map((action) => (
-                          <td key={action} className="px-4 py-3 text-center">
-                            <Checkbox
-                              checked={matrix[mod][action]}
-                              onCheckedChange={() => toggle(mod, action)}
-                              className={cn("mx-auto", action === "View" && "opacity-90")}
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <PermissionMatrix
+                permissions={matrix}
+                menusByModule={menusByModule}
+                onToggle={toggle}
+                onToggleRow={toggleRow}
+                onToggleColumn={toggleColumn}
+                onToggleAll={toggleAll}
+              />
               <p className="mt-3 text-xs text-muted-foreground">
                 {apiEnabled()
-                  ? "Click a module name to toggle every action in that row."
+                  ? "Click a module name to toggle every action in that row. A module with no menu listed under it isn't currently used by any screen."
                   : "Click a module name to toggle every action in that row. Changes are local to this session and are not persisted."}
               </p>
               {apiEnabled() && loadError && (
@@ -432,39 +327,17 @@ function SubAdminMatrix() {
   );
 }
 
-const ROLE_ACTIONS = [
-  { key: "canView", label: "View" },
-  { key: "canCreate", label: "Add" },
-  { key: "canEdit", label: "Edit" },
-  { key: "canDelete", label: "Delete" },
-  { key: "canApprove", label: "Approve" },
-] as const;
-
-type RoleActionKey = (typeof ROLE_ACTIONS)[number]["key"];
-
-function emptyRolePermissions(): ApiPermission[] {
-  return PERMISSION_MODULES.map((m) => ({
-    module: m.value,
-    canView: false,
-    canCreate: false,
-    canEdit: false,
-    canDelete: false,
-    canApprove: false,
-  }));
-}
-
-/** Aligns a role's sparse permission rows onto the full module list for editing. */
-function expandPermissions(permissions: ApiPermission[]): ApiPermission[] {
-  return PERMISSION_MODULES.map((m) => {
-    const grant = permissions.find((p) => p.module === m.value);
-    return grant ? { ...grant } : { module: m.value, canView: false, canCreate: false, canEdit: false, canDelete: false, canApprove: false };
-  });
-}
-
 type RoleDraft = { name: string; displayName: string; description: string; defaultRoute: string; permissions: ApiPermission[] };
 
-/** DB-maintained permission roles: create, edit the matrix, delete (non-system). */
-function RolePresets() {
+/**
+ * DB-maintained permission roles: create, edit the matrix, delete (non-system).
+ * This is the single place that also defines what a Teacher, Parent or Admission
+ * Team login can do by default — those three fixed-portal roles resolve their
+ * permission claims from the matching system role here at login time, so editing
+ * the "teacher"/"parent"/"admission" preset changes real access for every account
+ * of that type immediately, the same way it does for a Sub Admin preset.
+ */
+function RolePresets({ menusByModule }: MenusByModuleProp) {
   const [roles, setRoles] = useState<ApiRole[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<RoleDraft | null>(null);
@@ -527,10 +400,10 @@ function RolePresets() {
   function startNew() {
     setSelectedId(null);
     setIsNew(true);
-    setDraft({ name: "", displayName: "", description: "", defaultRoute: "", permissions: emptyRolePermissions() });
+    setDraft({ name: "", displayName: "", description: "", defaultRoute: "", permissions: emptyPermissions() });
   }
 
-  function togglePermission(module: PermissionModuleName, action: RoleActionKey) {
+  function togglePermission(module: PermissionModuleName, action: PermissionActionKey) {
     if (!draft) return;
     setDraft({
       ...draft,
@@ -541,18 +414,18 @@ function RolePresets() {
   function toggleModuleRow(module: PermissionModuleName) {
     if (!draft) return;
     const grant = draft.permissions.find((p) => p.module === module)!;
-    const allOn = ROLE_ACTIONS.every((a) => grant[a.key]);
+    const allOn = PERMISSION_ACTIONS.every((a) => grant[a.key]);
     setDraft({
       ...draft,
       permissions: draft.permissions.map((p) =>
         p.module === module
-          ? { ...p, ...Object.fromEntries(ROLE_ACTIONS.map((a) => [a.key, !allOn])) }
+          ? { ...p, ...Object.fromEntries(PERMISSION_ACTIONS.map((a) => [a.key, !allOn])) }
           : p
       ),
     });
   }
 
-  function toggleActionColumn(action: RoleActionKey) {
+  function toggleActionColumn(action: PermissionActionKey) {
     if (!draft) return;
     const allOn = draft.permissions.every((p) => p[action]);
     setDraft({ ...draft, permissions: draft.permissions.map((p) => ({ ...p, [action]: !allOn })) });
@@ -560,12 +433,12 @@ function RolePresets() {
 
   function toggleAllPermissions() {
     if (!draft) return;
-    const allOn = draft.permissions.every((p) => ROLE_ACTIONS.every((a) => p[a.key]));
+    const allOn = draft.permissions.every((p) => PERMISSION_ACTIONS.every((a) => p[a.key]));
     setDraft({
       ...draft,
       permissions: draft.permissions.map((p) => ({
         ...p,
-        ...Object.fromEntries(ROLE_ACTIONS.map((a) => [a.key, !allOn])),
+        ...Object.fromEntries(PERMISSION_ACTIONS.map((a) => [a.key, !allOn])),
       })),
     });
   }
@@ -575,8 +448,7 @@ function RolePresets() {
     setBusy(true);
     setError(null);
     try {
-      // Only persist modules with at least one grant; the matrix stays sparse in the DB
-      const permissions = draft.permissions.filter((p) => p.canView || p.canCreate || p.canEdit || p.canDelete || p.canApprove);
+      const permissions = toSparsePermissions(draft.permissions);
       const request = {
         name: draft.name,
         displayName: draft.displayName,
@@ -633,7 +505,8 @@ function RolePresets() {
         <div>
           <CardTitle>Role Presets</CardTitle>
           <CardDescription>
-            Reusable permission matrices stored in the database. Apply one to a relationship manager from the Relationship Managers tab.
+            Reusable permission matrices stored in the database — including Teacher, Parent and Admission Team's own default
+            access. Apply a preset to a relationship manager from the Relationship Managers tab.
           </CardDescription>
         </div>
         <Button size="sm" onClick={startNew}>
@@ -717,73 +590,18 @@ function RolePresets() {
             </div>
             <p className="mb-4 text-xs text-muted-foreground">
               A Relationship Manager assigned this role lands here right after signing in, instead of the generic dashboard.
+              For the Teacher/Parent/Admission system roles this field is informational only — those logins keep their fixed
+              portal home.
             </p>
 
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full min-w-[640px] text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/40">
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      <div className="flex items-center gap-2.5">
-                        <Checkbox
-                          checked={triState(draft.permissions.flatMap((p) => ROLE_ACTIONS.map((a) => p[a.key])))}
-                          onCheckedChange={toggleAllPermissions}
-                          aria-label="Select all permissions"
-                        />
-                        Module
-                      </div>
-                    </th>
-                    {ROLE_ACTIONS.map((action) => (
-                      <th key={action.key} className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        <div className="flex flex-col items-center gap-1.5">
-                          <Checkbox
-                            checked={triState(draft.permissions.map((p) => p[action.key]))}
-                            onCheckedChange={() => toggleActionColumn(action.key)}
-                            aria-label={`Select all ${action.label}`}
-                          />
-                          {action.label}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {PERMISSION_MODULES.map((mod, mi) => {
-                    const grant = draft.permissions.find((p) => p.module === mod.value)!;
-                    return (
-                      <tr key={mod.value} className="border-b border-border last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <Checkbox
-                              checked={triState(ROLE_ACTIONS.map((a) => grant[a.key]))}
-                              onCheckedChange={() => toggleModuleRow(mod.value)}
-                              aria-label={`Select all ${mod.label}`}
-                            />
-                            <span className="flex items-center gap-2.5 font-semibold text-foreground">
-                              <span
-                                className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold"
-                                style={{
-                                  backgroundColor: `${CHART_PALETTE[mi % CHART_PALETTE.length]}1A`,
-                                  color: CHART_PALETTE[mi % CHART_PALETTE.length],
-                                }}
-                              >
-                                {mod.label[0]}
-                              </span>
-                              {mod.label}
-                            </span>
-                          </div>
-                        </td>
-                        {ROLE_ACTIONS.map((action) => (
-                          <td key={action.key} className="px-4 py-3 text-center">
-                            <Checkbox checked={grant[action.key]} onCheckedChange={() => togglePermission(mod.value, action.key)} className="mx-auto" />
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <PermissionMatrix
+              permissions={draft.permissions}
+              menusByModule={menusByModule}
+              onToggle={togglePermission}
+              onToggleRow={toggleModuleRow}
+              onToggleColumn={toggleActionColumn}
+              onToggleAll={toggleAllPermissions}
+            />
 
             <div className="mt-4 flex items-center justify-between">
               <div>

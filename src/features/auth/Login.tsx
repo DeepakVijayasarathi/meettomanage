@@ -38,7 +38,7 @@ export default function Login() {
   const [password, setPassword] = useState(apiEnabled() ? "" : "demo-password");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setRole: setSessionRole, setUserName } = useSession();
+  const { setRole: setSessionRole, setUserName, setPermissions } = useSession();
   const navigate = useNavigate();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -58,6 +58,7 @@ export default function Login() {
       const frontendRole = toFrontendRole(response.user.role);
       setSessionRole(frontendRole);
       setUserName(response.user.fullName);
+      setPermissions(response.permissions);
       navigate(response.defaultRoute || ROLE_META[frontendRole].homePath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed. Please try again.");

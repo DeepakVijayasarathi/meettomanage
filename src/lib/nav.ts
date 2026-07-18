@@ -14,6 +14,7 @@ import {
   Ban,
   BarChart3,
   Mail,
+  Plug,
   ClipboardCheck,
   Settings,
   Video,
@@ -137,7 +138,10 @@ export const SUBADMIN_NAV: NavSection[] = [
   { items: [{ label: "Dashboard", to: "/subadmin", icon: LayoutDashboard, end: true }] },
   {
     title: "Access",
-    items: [{ label: "My Permissions", to: "/subadmin/permissions", icon: ShieldCheck }],
+    items: [
+      { label: "My Permissions", to: "/subadmin/permissions", icon: ShieldCheck },
+      { label: "Integrations", to: "/subadmin/integrations", icon: Plug },
+    ],
   },
   {
     title: "Delegated Work",
