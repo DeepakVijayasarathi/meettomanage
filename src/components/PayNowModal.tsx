@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
-import { getPaymentMethods, payInvoice } from "@/api/parentPortal";
+import { getPaymentMethods, payInvoice, refreshInvoicePayment } from "@/api/parentPortal";
 
 interface PayNowModalProps {
   open: boolean;
@@ -48,6 +48,8 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "redirect" | "cash">("idle");
   const [resultMessage, setResultMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyNote, setVerifyNote] = useState<string | null>(null);
   const liveFlow = apiEnabled() && !!invoiceId;
 
   // Load enabled payment gateways (+ Cash) each time the popup opens.
@@ -82,6 +84,13 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
 
     try {
       const result = await payInvoice(invoiceId!, method);
+      // Chosen gateway can't start a checkout (turned off / missing keys) → keep the payer on
+      // the form with the actionable reason so they can pick another method.
+      if (result.mode === "unavailable") {
+        setStatus("idle");
+        setError(result.message ?? "This payment method is not available right now.");
+        return;
+      }
       setResultMessage(result.message);
       if (result.mode === "redirect" && result.url) {
         window.open(result.url, "_blank", "noopener");
@@ -96,6 +105,42 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
     }
   }
 
+  // Verify with the gateway whether the checkout completed (webhook-independent), and flip
+  // the invoice to paid if so. Returns true when confirmed paid.
+  async function verifyPayment(silent = false): Promise<boolean> {
+    if (!liveFlow) return false;
+    if (!silent) setVerifyNote(null);
+    setVerifying(true);
+    try {
+      const invoice = await refreshInvoicePayment(invoiceId!);
+      if (invoice.status === "Paid") {
+        setStatus("success");
+        onInitiated?.();
+        return true;
+      }
+      if (!silent) {
+        setVerifyNote("We haven't received this payment yet. If you've just paid, wait a moment and try again.");
+      }
+      return false;
+    } catch {
+      if (!silent) setVerifyNote("Couldn't check the payment status. Please try again.");
+      return false;
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  // When the payer returns to this tab after the gateway page, auto-check once.
+  useEffect(() => {
+    if (status !== "redirect") return;
+    function onFocus() {
+      void verifyPayment(true);
+    }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
   function handleClose(next: boolean) {
     onOpenChange(next);
     if (!next) {
@@ -103,6 +148,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
         setStatus("idle");
         setResultMessage(null);
         setError(null);
+        setVerifyNote(null);
       }, 200);
     }
   }
@@ -130,9 +176,26 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
             </span>
             <h3 className="text-lg font-bold">{status === "redirect" ? "Complete your payment" : "Cash payment noted"}</h3>
             <p className="mt-1 text-sm text-muted-foreground">{resultMessage}</p>
-            <Button className="mt-6 w-full" onClick={() => handleClose(false)}>
-              Done
-            </Button>
+            {status === "redirect" && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Paid in the checkout tab? Come back here and confirm — your invoice updates right away.
+              </p>
+            )}
+            {verifyNote && <p className="mt-3 text-sm font-medium text-warning">{verifyNote}</p>}
+            {status === "redirect" ? (
+              <div className="mt-6 flex w-full flex-col gap-2">
+                <Button className="w-full" onClick={() => verifyPayment(false)} disabled={verifying}>
+                  {verifying ? "Checking…" : "I've paid — verify now"}
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => handleClose(false)}>
+                  Close
+                </Button>
+              </div>
+            ) : (
+              <Button className="mt-6 w-full" onClick={() => handleClose(false)}>
+                Done
+              </Button>
+            )}
           </div>
         ) : (
           <>

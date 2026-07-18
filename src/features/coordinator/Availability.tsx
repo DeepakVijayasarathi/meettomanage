@@ -13,7 +13,9 @@ import { SESSIONS } from "@/data/sessions";
 import { LEAVE_REQUESTS } from "@/data/leaves";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listLeave, reviewLeave, type ApiLeaveRequest } from "@/api/academicOps";
+import { listHolidays, listLeave, reviewLeave, type ApiLeaveRequest } from "@/api/academicOps";
+import { listTeacherOptions } from "@/api/batches";
+import { CHART_PALETTE } from "@/lib/roles";
 import { cn, formatDate, getInitials } from "@/lib/utils";
 import type { LeaveRequest } from "@/types";
 
@@ -34,7 +36,7 @@ function toFrontendLeave(leave: ApiLeaveRequest): LeaveRequest {
   };
 }
 
-const TODAY = "2026-07-09";
+// Deterministic reference clock for the mock universe; API mode uses the real clock.
 const NOW = new Date("2026-07-09T12:00:00");
 const WEEK_LENGTH = 7;
 
@@ -71,11 +73,17 @@ const DAY_STATE_LABEL: Record<DayState, string> = {
 };
 
 export default function CoordinatorAvailability() {
+  const usingApi = apiEnabled();
+  // Real clock in API mode; the mock universe stays pinned for reproducible demos.
+  const [now] = useState(() => (usingApi ? new Date() : NOW));
+  const today = format(now, "yyyy-MM-dd");
   const { data: apiLeaves, reload } = useApiData<LeaveRequest[]>(
     () => listLeave().then((items) => items.map(toFrontendLeave)),
     LEAVE_REQUESTS
   );
-  const [leaves, setLeaves] = useState<LeaveRequest[]>(LEAVE_REQUESTS);
+  const { data: apiTeachers } = useApiData(() => listTeacherOptions(), []);
+  const { data: apiHolidays } = useApiData(() => listHolidays(), []);
+  const [leaves, setLeaves] = useState<LeaveRequest[]>(usingApi ? [] : LEAVE_REQUESTS);
   useEffect(() => setLeaves(apiLeaves), [apiLeaves]);
   const [approveTarget, setApproveTarget] = useState<LeaveRequest | null>(null);
   const [rejectTarget, setRejectTarget] = useState<LeaveRequest | null>(null);
@@ -88,30 +96,50 @@ export default function CoordinatorAvailability() {
     setLeaves((prev) => prev.map((l) => (l.id === target.id ? { ...l, status: approve ? "approved" : "rejected" } : l)));
   }
 
-  const activeTeachers = useMemo(() => TEACHERS.filter((t) => t.status === "active"), []);
+  // Live roster from the API; the mock TEACHERS list never renders in API mode.
+  const teacherRoster = useMemo(
+    () =>
+      usingApi
+        ? apiTeachers.map((t, i) => ({
+            id: t.teacherProfileId,
+            name: t.fullName,
+            department: t.department ?? "—",
+            status: "active" as const,
+            avatarColor: CHART_PALETTE[i % CHART_PALETTE.length],
+          }))
+        : TEACHERS,
+    [usingApi, apiTeachers]
+  );
+  const activeTeachers = useMemo(() => teacherRoster.filter((t) => t.status === "active"), [teacherRoster]);
+  const holidayDates = useMemo(() => new Set(apiHolidays.map((h) => h.date.slice(0, 10))), [apiHolidays]);
 
   const pendingCount = leaves.filter((l) => l.status === "pending").length;
-  const approvedUpcomingCount = leaves.filter((l) => l.status === "approved" && l.date >= TODAY).length;
+  const approvedUpcomingCount = leaves.filter((l) => l.status === "approved" && l.date >= today).length;
   const holidaysThisMonth = useMemo(
-    () => SESSIONS.filter((s) => s.status === "holiday" && s.date.startsWith("2026-07")).length,
-    []
+    () =>
+      usingApi
+        ? apiHolidays.filter((h) => h.date.slice(0, 7) === today.slice(0, 7)).length
+        : SESSIONS.filter((s) => s.status === "holiday" && s.date.startsWith("2026-07")).length,
+    [usingApi, apiHolidays, today]
   );
   const teachersOnLeaveToday = useMemo(() => {
     const ids = new Set<string>();
-    leaves.filter((l) => l.status === "approved" && l.date === TODAY).forEach((l) => ids.add(l.teacherId));
-    SESSIONS.filter((s) => s.date === TODAY && s.status === "leave").forEach((s) => ids.add(s.teacherId));
+    leaves.filter((l) => l.status === "approved" && l.date === today).forEach((l) => ids.add(l.teacherId));
+    if (!usingApi) SESSIONS.filter((s) => s.date === today && s.status === "leave").forEach((s) => ids.add(s.teacherId));
     return ids.size;
-  }, [leaves]);
+  }, [leaves, usingApi, today]);
   const activeTeachersToday = activeTeachers.length - teachersOnLeaveToday;
 
-  const weekDays = useMemo(() => Array.from({ length: WEEK_LENGTH }, (_, i) => addDays(NOW, i)), []);
+  const weekDays = useMemo(() => Array.from({ length: WEEK_LENGTH }, (_, i) => addDays(now, i)), [now]);
 
   function getDayState(teacherId: string, dateKey: string): DayState {
-    const isHoliday = SESSIONS.some((s) => s.date === dateKey && s.status === "holiday");
+    const isHoliday = usingApi
+      ? holidayDates.has(dateKey)
+      : SESSIONS.some((s) => s.date === dateKey && s.status === "holiday");
     if (isHoliday) return "holiday";
     const isOnLeave =
       leaves.some((l) => l.teacherId === teacherId && l.date === dateKey && l.status === "approved") ||
-      SESSIONS.some((s) => s.teacherId === teacherId && s.date === dateKey && s.status === "leave");
+      (!usingApi && SESSIONS.some((s) => s.teacherId === teacherId && s.date === dateKey && s.status === "leave"));
     if (isOnLeave) return "leave";
     return "available";
   }
@@ -150,7 +178,7 @@ export default function CoordinatorAvailability() {
             ))}
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-border">
+          <div className="overflow-x-auto rounded-xl border border-border">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -216,7 +244,7 @@ export default function CoordinatorAvailability() {
                   <div className="flex items-start gap-3">
                     <span
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                      style={{ backgroundColor: TEACHERS.find((t) => t.id === leave.teacherId)?.avatarColor ?? "#94A3B8" }}
+                      style={{ backgroundColor: teacherRoster.find((t) => t.id === leave.teacherId)?.avatarColor ?? "#94A3B8" }}
                     >
                       {getInitials(leave.teacherName)}
                     </span>
@@ -247,9 +275,9 @@ export default function CoordinatorAvailability() {
       <div className="mt-6">
         <h2 className="mb-3 text-base font-bold text-foreground">Teacher Leave Overview</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {TEACHERS.map((teacher) => {
+          {teacherRoster.map((teacher) => {
             const upcomingApproved = leaves
-              .filter((l) => l.teacherId === teacher.id && l.status === "approved" && l.date >= TODAY)
+              .filter((l) => l.teacherId === teacher.id && l.status === "approved" && l.date >= today)
               .sort((a, b) => a.date.localeCompare(b.date));
             return (
               <Card key={teacher.id}>

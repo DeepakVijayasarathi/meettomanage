@@ -22,8 +22,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency } from "@/lib/utils";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listDemoBookings, listDemoFeedback, toFrontendLead, toFrontendFeedback } from "@/api/demoBookings";
+import { listInvoices, toFrontendInvoice } from "@/api/billing";
+import { getDashboardSummary } from "@/api/reports";
 import { DEMO_FEEDBACKS } from "@/data/feedback";
-import { CONVERSION_RATE_TREND, LEADS, PAYMENT_LINKS, getDemosPerTeacher } from "./data";
+import type { DemoFeedback } from "@/types";
+import { CONVERSION_RATE_TREND, LEADS, PAYMENT_LINKS, getDemosPerTeacher, type Lead } from "./data";
 
 type ReportType = "feedback" | "payments" | "conversion";
 
@@ -38,22 +44,41 @@ interface ReportRow {
   cells: (string | number)[];
 }
 
-function buildReport(type: ReportType, fromDate: string, toDate: string): { headers: string[]; rows: ReportRow[] } {
+interface PaymentReportRow {
+  id: string;
+  childName: string;
+  parentName: string;
+  courseName: string;
+  department: string;
+  amount: number;
+  amountPaid: number;
+  status: string;
+  linkSharedOn: string;
+}
+
+function buildReport(
+  type: ReportType,
+  fromDate: string,
+  toDate: string,
+  feedbacks: DemoFeedback[],
+  payments: PaymentReportRow[],
+  leads: Lead[]
+): { headers: string[]; rows: ReportRow[] } {
   if (type === "feedback") {
-    const rows = DEMO_FEEDBACKS.filter((f) => f.demoDate >= fromDate && f.demoDate <= toDate).map((f) => ({
+    const rows = feedbacks.filter((f) => f.demoDate >= fromDate && f.demoDate <= toDate).map((f) => ({
       id: f.id,
       cells: [f.childName, f.parentName, f.teacherName, f.demoDate, f.submitted ? "Submitted" : "Awaiting", f.recommendedCourse || "—"],
     }));
     return { headers: ["Child", "Parent", "Teacher", "Demo Date", "Feedback Status", "Recommended Course"], rows };
   }
   if (type === "payments") {
-    const rows = PAYMENT_LINKS.filter((p) => p.linkSharedOn >= fromDate && p.linkSharedOn <= toDate).map((p) => ({
+    const rows = payments.filter((p) => p.linkSharedOn >= fromDate && p.linkSharedOn <= toDate).map((p) => ({
       id: p.id,
       cells: [p.childName, p.parentName, p.courseName, p.department, p.amount, p.amountPaid, p.status, p.linkSharedOn],
     }));
-    return { headers: ["Child", "Parent", "Course", "Department", "Amount", "Paid", "Status", "Link Shared"], rows };
+    return { headers: ["Child", "Parent", "Course", "Department", "Amount", "Paid", "Status", "Issued / Shared"], rows };
   }
-  const rows = LEADS.filter((l) => l.createdOn >= fromDate && l.createdOn <= toDate).map((l) => ({
+  const rows = leads.filter((l) => l.createdOn >= fromDate && l.createdOn <= toDate).map((l) => ({
     id: l.id,
     cells: [l.childName, l.parentName, l.conversionStage, l.recommendedCourse, l.lastContactedOn, l.nextFollowUpOn ?? "—"],
   }));
@@ -66,12 +91,60 @@ function toCsv(headers: string[], rows: ReportRow[]) {
 }
 
 export default function AdmissionReports() {
+  const usingApi = apiEnabled();
+  // Demo mode keeps the mock universe's pinned range; API mode covers the last ~60 days.
   const [reportType, setReportType] = useState<ReportType>("conversion");
-  const [fromDate, setFromDate] = useState("2026-06-01");
-  const [toDate, setToDate] = useState("2026-07-09");
+  const [fromDate, setFromDate] = useState(
+    usingApi ? new Date(Date.now() - 60 * 86400_000).toISOString().slice(0, 10) : "2026-06-01"
+  );
+  const [toDate, setToDate] = useState(usingApi ? new Date().toISOString().slice(0, 10) : "2026-07-09");
 
-  const { headers, rows } = useMemo(() => buildReport(reportType, fromDate, toDate), [reportType, fromDate, toDate]);
-  const demosPerTeacher = useMemo(() => getDemosPerTeacher(), []);
+  const { data: apiLeads } = useApiData<Lead[]>(() => listDemoBookings().then((b) => b.map(toFrontendLead)), []);
+  const { data: apiFeedbacks } = useApiData<DemoFeedback[]>(
+    () => listDemoFeedback().then((f) => f.map(toFrontendFeedback)),
+    []
+  );
+  const { data: apiPayments } = useApiData<PaymentReportRow[]>(
+    () =>
+      listInvoices().then((items) =>
+        items.map(toFrontendInvoice).map((inv) => ({
+          id: inv.id,
+          childName: inv.childName,
+          parentName: "—",
+          courseName: inv.courseName,
+          department: inv.department,
+          amount: inv.amount,
+          amountPaid: inv.amountPaid ?? 0,
+          status: inv.status,
+          linkSharedOn: inv.issuedOn,
+        }))
+      ),
+    []
+  );
+
+  const leads = usingApi ? apiLeads : LEADS;
+  const feedbacks = usingApi ? apiFeedbacks : DEMO_FEEDBACKS;
+  const payments = usingApi ? apiPayments : PAYMENT_LINKS;
+
+  const { headers, rows } = useMemo(
+    () => buildReport(reportType, fromDate, toDate, feedbacks, payments, leads),
+    [reportType, fromDate, toDate, feedbacks, payments, leads]
+  );
+  // Live monthly demo→enrolled conversion from the dashboard summary.
+  const { data: apiConversionTrend } = useApiData(
+    () => getDashboardSummary().then((s) => s.conversionRateTrend ?? []),
+    []
+  );
+  const conversionTrend = usingApi ? apiConversionTrend : CONVERSION_RATE_TREND;
+  const demosPerTeacher = useMemo(() => {
+    if (!usingApi) return getDemosPerTeacher();
+    const counts = new Map<string, number>();
+    for (const lead of leads) {
+      if (!lead.teacherName) continue;
+      counts.set(lead.teacherName, (counts.get(lead.teacherName) ?? 0) + 1);
+    }
+    return [...counts.entries()].map(([teacher, demos]) => ({ teacher, demos }));
+  }, [usingApi, leads]);
 
   const columns: DataTableColumn<ReportRow>[] = useMemo(
     () =>
@@ -109,7 +182,7 @@ export default function AdmissionReports() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <ChartCard title="Conversion Rate Trend" description="Demo-to-enrollment conversion, last 6 months">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={CONVERSION_RATE_TREND} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+            <LineChart data={conversionTrend} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
               <YAxis tickLine={false} axisLine={false} fontSize={12} width={40} tickFormatter={(v) => `${v}%`} />

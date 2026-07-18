@@ -1,6 +1,7 @@
 import { differenceInCalendarDays, differenceInMinutes, format, subDays } from "date-fns";
 import type { ClassSession, Resource } from "@/types";
 import { SESSIONS } from "@/data/sessions";
+import { apiEnabled } from "@/lib/api";
 
 /**
  * Fixed "now" for this mock universe (today is 2026-07-09 per the product brief).
@@ -12,12 +13,17 @@ export const MOCK_NOW = new Date("2026-07-09T16:25:00");
 export const TODAY_ISO = format(MOCK_NOW, "yyyy-MM-dd");
 export const YESTERDAY_ISO = format(subDays(MOCK_NOW, 1), "yyyy-MM-dd");
 
+/** Real clock against real API sessions; the fixed demo clock against mock data. */
+function now(): Date {
+  return apiEnabled() ? new Date() : MOCK_NOW;
+}
+
 export function sessionStart(session: ClassSession): Date {
   return new Date(`${session.date}T${session.startTime}:00`);
 }
 
 export function minutesUntilStart(session: ClassSession): number {
-  return differenceInMinutes(sessionStart(session), MOCK_NOW);
+  return differenceInMinutes(sessionStart(session), now());
 }
 
 const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo", "rescheduled"];
@@ -47,7 +53,7 @@ export function compareSessionDesc(a: ClassSession, b: ClassSession): number {
 }
 
 export function daysUntil(dateStr: string): number {
-  return differenceInCalendarDays(new Date(dateStr), MOCK_NOW);
+  return differenceInCalendarDays(new Date(dateStr), now());
 }
 
 /**
@@ -56,6 +62,9 @@ export function daysUntil(dateStr: string): number {
  * can read its 15-day expiry window.
  */
 export function findRecordingSession(resource: Resource): ClassSession | undefined {
+  // The mock session lookup is demo-only — a real API resource must never pick up a
+  // fabricated expiry from the demo SESSIONS table.
+  if (apiEnabled()) return undefined;
   return SESSIONS.find(
     (s) => s.batchId === resource.batchId && s.date === resource.uploadedOn && s.recordingAvailable
   );

@@ -53,6 +53,7 @@ export function toFrontendInvoice(invoice: ApiInvoice): Invoice {
     childName: invoice.childName ?? "—",
     department: invoice.department,
     amount: invoice.amount,
+    amountPaid: invoice.amountPaid,
     status: INVOICE_STATUS_FROM_API[invoice.status],
     issuedOn: invoice.issuedAtUtc.slice(0, 10),
     dueOn: invoice.dueDate,
@@ -127,6 +128,45 @@ export async function liftSuspension(id: string): Promise<ApiFeeSuspension> {
 
 export async function listPackagePlans(): Promise<ApiPackagePlan[]> {
   return apiFetch<ApiPackagePlan[]>("/api/package-plans");
+}
+
+export type ApiSubscriptionStatus = "Active" | "Paused" | "Cancelled" | "Expired";
+
+export interface ApiSubscription {
+  id: string;
+  parentProfileId: string;
+  childId: string;
+  childName: string;
+  packagePlanId: string;
+  planName: string;
+  status: ApiSubscriptionStatus;
+  startDate: string;
+  nextBillingAtUtc: string | null;
+  cancelledAtUtc: string | null;
+}
+
+/** Renewal tracking: filter by status to see lapsed vs renewed subscriptions. */
+export async function listSubscriptions(status?: ApiSubscriptionStatus): Promise<ApiSubscription[]> {
+  return apiFetch<ApiSubscription[]>(`/api/subscriptions${status ? `?status=${status}` : ""}`);
+}
+
+/** Attaches a child to a plan; the hourly billing job invoices it from the start date. */
+export async function createSubscription(input: {
+  parentProfileId: string;
+  childId: string;
+  packagePlanId: string;
+  /** yyyy-MM-dd */
+  startDate: string;
+}): Promise<ApiSubscription> {
+  return apiFetch<ApiSubscription>("/api/subscriptions", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function renewSubscription(id: string): Promise<ApiSubscription> {
+  return apiFetch<ApiSubscription>(`/api/subscriptions/${id}/renew`, { method: "POST" });
+}
+
+export async function cancelSubscription(id: string): Promise<ApiSubscription> {
+  return apiFetch<ApiSubscription>(`/api/subscriptions/${id}/cancel`, { method: "POST" });
 }
 
 export interface SavePackagePlanInput {

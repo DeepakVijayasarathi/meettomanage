@@ -86,7 +86,7 @@ function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount
         </div>
 
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recent Transactions</p>
-        <div className="overflow-hidden rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-lg border border-border">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">

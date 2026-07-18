@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getPayoutsForTeacher } from "@/data/payouts";
 import { useApiData } from "@/api/hooks";
 import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
+import { useSession } from "@/state/session";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { TeacherPayout } from "@/types";
 
@@ -18,6 +19,7 @@ function parseMonth(month: string) {
 }
 
 export default function TeacherPayout() {
+  const { userName } = useSession();
   const { data: fetchedPayouts } = useApiData(
     () => listMyPayouts().then((items) => items.map(toFrontendPayout)),
     getPayoutsForTeacher(TEACHER_ID)
@@ -117,7 +119,7 @@ export default function TeacherPayout() {
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                 <Lock className="h-4 w-4" />
               </span>
-              You're viewing payout records for <strong className="text-foreground">Karan Mehta (you)</strong> only. Other teachers' payout data is
+              You're viewing payout records for <strong className="text-foreground">{userName} (you)</strong> only. Other teachers' payout data is
               never visible from this screen.
             </CardContent>
           </Card>

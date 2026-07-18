@@ -35,13 +35,17 @@ export default function AdminBulkEmail() {
   const [sent, setSent] = useState(false);
   const [sentCount, setSentCount] = useState<number | null>(null);
 
+  const usingApi = apiEnabled();
   const activeStudents = useMemo(() => CHILDREN.filter((c) => c.enrollmentComplete), []);
 
+  // API mode has no recipient-preview endpoint: the count is only known once the
+  // send returns, so show a placeholder instead of a number from the mock roster.
   const recipientCount = useMemo(() => {
     if (sentCount !== null) return sentCount;
+    if (usingApi) return null;
     if (scope === "all") return activeStudents.length;
     return CHILDREN.filter((c) => c.batchId === batchId).length;
-  }, [scope, batchId, activeStudents, sentCount]);
+  }, [scope, batchId, activeStudents, sentCount, usingApi]);
 
   function handleSend() {
     if (apiEnabled()) {
@@ -138,8 +142,14 @@ export default function AdminBulkEmail() {
 
             <div className="flex items-center justify-between border-t border-border pt-4">
               <p className="text-sm text-muted-foreground">
-                This will be delivered to <span className="font-semibold text-foreground">{recipientCount}</span> recipient
-                {recipientCount === 1 ? "" : "s"}.
+                {recipientCount === null ? (
+                  <>The recipient count is confirmed when the email is sent.</>
+                ) : (
+                  <>
+                    This will be delivered to <span className="font-semibold text-foreground">{recipientCount}</span> recipient
+                    {recipientCount === 1 ? "" : "s"}.
+                  </>
+                )}
               </p>
               <Button disabled={!subject.trim() || !body.trim()} onClick={handleSend}>
                 <Send className="h-4 w-4" />
@@ -158,13 +168,13 @@ export default function AdminBulkEmail() {
               <p className="text-sm font-semibold text-foreground">Recipient Preview</p>
             </div>
             <div className="rounded-lg bg-muted/40 p-4 text-center">
-              <p className="text-3xl font-bold text-foreground">{recipientCount}</p>
+              <p className="text-3xl font-bold text-foreground">{recipientCount ?? "—"}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {scope === "all" ? "active students across all batches" : "students in the selected batch"}
               </p>
             </div>
             <ul className="flex flex-col gap-2 text-sm text-muted-foreground">
-              <li>• Delivery is simulated — no real emails are sent.</li>
+              {!usingApi && <li>• Delivery is simulated — no real emails are sent.</li>}
               <li>• Recipients are derived live from enrollment and batch data.</li>
               <li>• Use &quot;Per Batch&quot; scope to target a single class roster.</li>
             </ul>

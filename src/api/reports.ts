@@ -15,6 +15,12 @@ export interface ApiDashboardSummary {
   revenueByDepartment: { name: string; revenue: number }[];
   revenueTrend: { month: string; revenue: number }[];
   enrollmentFunnel: { stage: string; value: number }[];
+  /** Student attendance % per week, last 6 weeks (oldest first). */
+  weeklyAttendanceTrend: { week: string; attendance: number }[];
+  /** Active-batch fill rate per course (highest first). */
+  batchOccupancyByCourse: { course: string; occupancy: number }[];
+  /** Demo→enrolled conversion % per booking-month, last 6 months (oldest first). */
+  conversionRateTrend: { month: string; rate: number }[];
 }
 
 export async function getDashboardSummary(): Promise<ApiDashboardSummary> {

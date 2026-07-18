@@ -15,11 +15,15 @@ export interface SessionChild {
 }
 
 // Demo mode shows one family's roster (the p-1 mock parent), matching the old switcher.
-const MOCK_SESSION_CHILDREN: SessionChild[] = getChildrenByParent("p-1").map((c) => ({
-  id: c.id,
-  name: c.name,
-  enrollmentComplete: c.enrollmentComplete,
-}));
+// In API mode the roster starts empty and is filled from the signed-in parent's real
+// children — a real login must never see the demo family.
+const MOCK_SESSION_CHILDREN: SessionChild[] = apiEnabled()
+  ? []
+  : getChildrenByParent("p-1").map((c) => ({
+      id: c.id,
+      name: c.name,
+      enrollmentComplete: c.enrollmentComplete,
+    }));
 
 interface SessionState {
   role: Role | null;
@@ -66,14 +70,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return (localStorage.getItem(ROLE_KEY) as Role | null) ?? null;
   });
   const [activeChildId, setActiveChildIdState] = useState<string>(() => {
-    if (typeof window === "undefined") return CHILDREN[0].id;
-    return localStorage.getItem(CHILD_KEY) ?? CHILDREN[0].id;
+    if (typeof window === "undefined") return apiEnabled() ? "" : CHILDREN[0].id;
+    return localStorage.getItem(CHILD_KEY) ?? (apiEnabled() ? "" : CHILDREN[0].id);
   });
   const [enrolledChildIds, setEnrolledChildIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     const raw = localStorage.getItem(ENROLLED_KEY);
     if (raw) return JSON.parse(raw);
-    return CHILDREN.filter((c) => c.enrollmentComplete).map((c) => c.id);
+    return apiEnabled() ? [] : CHILDREN.filter((c) => c.enrollmentComplete).map((c) => c.id);
   });
   const [apiUserName, setApiUserName] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
@@ -169,7 +173,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       markEnrollmentComplete: (childId: string) =>
         setEnrolledChildIds((prev) => (prev.includes(childId) ? prev : [...prev, childId])),
       children: childList,
-      userName: apiUserName ?? (role ? NAME_BY_ROLE[role] : "Guest"),
+      // Demo persona names are demo-mode only; a real login shows its API name or nothing.
+      userName: apiUserName ?? (!apiEnabled() && role ? NAME_BY_ROLE[role] : "Guest"),
       setUserName,
       permissions,
       setPermissions,

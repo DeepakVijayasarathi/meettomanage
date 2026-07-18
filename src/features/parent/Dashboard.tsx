@@ -63,7 +63,7 @@ export default function ParentDashboard() {
   const [payOpen, setPayOpen] = useState(false);
 
   // Live overlay: the API's per-child summary and real schedule replace the mock numbers
-  const { data: apiDash } = useApiData<ApiParentDashboard | null>(() => getParentDashboard(), null);
+  const { data: apiDash } = useApiData<ApiParentDashboard | null>(() => getParentDashboard(), null, null);
   const { data: apiSessions } = useApiData<ClassSession[]>(
     () => {
       const from = new Date(Date.now() - 60 * 86400_000).toISOString();

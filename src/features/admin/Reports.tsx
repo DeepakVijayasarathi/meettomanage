@@ -22,6 +22,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatPercent } from "@/lib/utils";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { getDashboardSummary, getTeacherPerformance, type ApiDashboardSummary } from "@/api/reports";
 import {
   ATTENDANCE_TREND,
   ENROLLMENT_FUNNEL,
@@ -38,27 +41,34 @@ const REPORT_OPTIONS: { value: ReportType; label: string }[] = [
   { value: "conversion", label: "Enrollment Conversion Report" },
 ];
 
-function reportRows(type: ReportType): { columns: string[]; rows: (string | number)[][] } {
+interface ReportSources {
+  attendance: { week: string; attendance: number }[];
+  revenueTrend: ApiDashboardSummary["revenueTrend"];
+  utilization: { teacher: string; utilization: number }[];
+  funnel: ApiDashboardSummary["enrollmentFunnel"];
+}
+
+function reportRows(type: ReportType, sources: ReportSources): { columns: string[]; rows: (string | number)[][] } {
   switch (type) {
     case "attendance":
       return {
         columns: ["Week", "Attendance %"],
-        rows: ATTENDANCE_TREND.map((d) => [d.week, d.attendance]),
+        rows: sources.attendance.map((d) => [d.week, d.attendance]),
       };
     case "revenue":
       return {
         columns: ["Month", "Revenue (₹)"],
-        rows: REVENUE_TREND.map((d) => [d.month, d.revenue]),
+        rows: sources.revenueTrend.map((d) => [d.month, d.revenue]),
       };
     case "performance":
       return {
         columns: ["Teacher", "Utilization %"],
-        rows: TEACHER_UTILIZATION.map((d) => [d.teacher, d.utilization]),
+        rows: sources.utilization.map((d) => [d.teacher, d.utilization]),
       };
     case "conversion":
       return {
         columns: ["Stage", "Count"],
-        rows: ENROLLMENT_FUNNEL.map((d) => [d.stage, d.value]),
+        rows: sources.funnel.map((d) => [d.stage, d.value]),
       };
   }
 }
@@ -69,12 +79,48 @@ function toCsv(columns: string[], rows: (string | number)[][]) {
 }
 
 export default function AdminReports() {
+  const usingApi = apiEnabled();
   const [reportType, setReportType] = useState<ReportType>("revenue");
-  const [fromDate, setFromDate] = useState("2026-02-01");
-  const [toDate, setToDate] = useState("2026-07-09");
+  const [fromDate, setFromDate] = useState(
+    usingApi ? new Date(Date.now() - 150 * 86400_000).toISOString().slice(0, 10) : "2026-02-01"
+  );
+  const [toDate, setToDate] = useState(usingApi ? new Date().toISOString().slice(0, 10) : "2026-07-09");
   const [generated, setGenerated] = useState<ReportType | null>(null);
 
-  const { columns, rows } = useMemo(() => reportRows(generated ?? reportType), [generated, reportType]);
+  const { data: summary } = useApiData<
+    Pick<ApiDashboardSummary, "revenueTrend" | "enrollmentFunnel" | "weeklyAttendanceTrend">
+  >(
+    () =>
+      getDashboardSummary().then((s) => ({
+        revenueTrend: s.revenueTrend,
+        enrollmentFunnel: s.enrollmentFunnel,
+        weeklyAttendanceTrend: s.weeklyAttendanceTrend ?? [],
+      })),
+    { revenueTrend: REVENUE_TREND, enrollmentFunnel: ENROLLMENT_FUNNEL, weeklyAttendanceTrend: ATTENDANCE_TREND },
+    { revenueTrend: [], enrollmentFunnel: [], weeklyAttendanceTrend: [] }
+  );
+  const { data: utilization } = useApiData<{ teacher: string; utilization: number }[]>(
+    () =>
+      getTeacherPerformance().then((items) =>
+        items.map((t) => ({ teacher: t.teacherName, utilization: Math.round(t.studentAttendancePercent) }))
+      ),
+    TEACHER_UTILIZATION
+  );
+
+  const sources: ReportSources = useMemo(
+    () => ({
+      attendance: summary.weeklyAttendanceTrend,
+      revenueTrend: summary.revenueTrend,
+      utilization,
+      funnel: summary.enrollmentFunnel,
+    }),
+    [summary, utilization]
+  );
+
+  const { columns, rows } = useMemo(
+    () => reportRows(generated ?? reportType, sources),
+    [generated, reportType, sources]
+  );
 
   function handleExport() {
     const csv = toCsv(columns, rows);
@@ -171,7 +217,7 @@ export default function AdminReports() {
                   Export CSV
                 </Button>
               </div>
-              <div className="overflow-hidden rounded-lg border border-border">
+              <div className="overflow-x-auto rounded-lg border border-border">
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">

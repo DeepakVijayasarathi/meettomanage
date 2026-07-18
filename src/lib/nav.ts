@@ -76,6 +76,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Finance",
     items: [
       { label: "Billing & Finance", to: "/admin/billing", icon: Receipt },
+      { label: "Packages & Subscriptions", to: "/admin/packages", icon: CreditCard },
       { label: "Payment Gateway Mapping", to: "/admin/payment-mapping", icon: Landmark },
       { label: "Teacher Payouts", to: "/admin/payouts", icon: Wallet },
       { label: "Fee Suspension", to: "/admin/fee-suspension", icon: Ban, badge: "2" },
@@ -122,6 +123,7 @@ export const PARENT_NAV: NavSection[] = [
     items: [
       { label: "Schedule & Live Class", to: "/parent/schedule", icon: CalendarClock },
       { label: "Resources & Recordings", to: "/parent/resources", icon: FolderOpen },
+      { label: "Student View", to: "/student", icon: Sparkles },
     ],
   },
   {

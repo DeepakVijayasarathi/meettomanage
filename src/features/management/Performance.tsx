@@ -22,7 +22,7 @@ import { TEACHERS } from "@/data/users";
 import { getPayoutsForTeacher } from "@/data/payouts";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { getTeacherPerformance } from "@/api/reports";
+import { getDashboardSummary, getTeacherPerformance } from "@/api/reports";
 import type { AppUser, TeacherPayout } from "@/types";
 
 /** TEACHER_UTILIZATION keys teachers by an abbreviated "First L." form — map back to full names. */
@@ -86,7 +86,30 @@ export default function ManagementPerformance() {
     mockRows
   );
 
-  const activeTeachers = apiEnabled() ? rows.length : TEACHERS.filter((t) => t.status === "active").length;
+  const usingApi = apiEnabled();
+  const activeTeachers = usingApi ? rows.length : TEACHERS.filter((t) => t.status === "active").length;
+
+  // Live occupancy (overall + per course) from the dashboard summary; live utilization
+  // averaged from the per-teacher report. Demo mode keeps the mock KPI constants.
+  const { data: liveSummary } = useApiData(
+    () =>
+      getDashboardSummary().then((s) => ({
+        occupancy: s.batchOccupancyPercent,
+        occupancyByCourse: s.batchOccupancyByCourse ?? [],
+      })),
+    { occupancy: ADMIN_KPIS.batchOccupancy, occupancyByCourse: BATCH_OCCUPANCY_BY_COURSE },
+    { occupancy: 0, occupancyByCourse: [] }
+  );
+  const liveOccupancy = liveSummary.occupancy;
+  const avgUtilization = usingApi
+    ? rows.length > 0
+      ? Math.round(rows.reduce((sum, r) => sum + (r.utilization ?? 0), 0) / rows.length)
+      : 0
+    : ADMIN_KPIS.teacherUtilization;
+  const utilizationChart = usingApi
+    ? rows.map((r) => ({ teacher: abbreviate(r.teacher.name), utilization: r.utilization ?? 0 }))
+    : TEACHER_UTILIZATION;
+  const occupancyChart = usingApi ? liveSummary.occupancyByCourse : BATCH_OCCUPANCY_BY_COURSE;
 
   const columns: DataTableColumn<TeacherRow>[] = [
     {
@@ -171,31 +194,36 @@ export default function ManagementPerformance() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard
           label="Avg. Teacher Utilization"
-          value={formatPercent(ADMIN_KPIS.teacherUtilization)}
+          value={formatPercent(avgUtilization)}
           icon={Gauge}
           tone="primary"
-          trend={{ value: -1.2, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: -1.2, label: "vs last month" }}
         />
         <KpiCard
           label="Avg. Batch Occupancy"
-          value={formatPercent(ADMIN_KPIS.batchOccupancy)}
+          value={formatPercent(liveOccupancy)}
           icon={LayoutGrid}
           tone="success"
-          trend={{ value: 2.9, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: 2.9, label: "vs last month" }}
         />
-        <KpiCard label="Active Teachers" value={`${activeTeachers} / ${TEACHERS.length}`} icon={UserCheck} tone="neutral" />
+        <KpiCard
+          label="Active Teachers"
+          value={usingApi ? String(activeTeachers) : `${activeTeachers} / ${TEACHERS.length}`}
+          icon={UserCheck}
+          tone="neutral"
+        />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
         <ChartCard title="Teacher Utilization" description="Sessions delivered vs. capacity, by teacher" height={300}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={TEACHER_UTILIZATION} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+            <BarChart data={utilizationChart} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="teacher" tickLine={false} axisLine={false} fontSize={11} interval={0} angle={-12} textAnchor="end" height={44} />
               <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={40} />
               <RTooltip formatter={(value: number) => [`${value}%`, "Utilization"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="utilization" radius={[8, 8, 0, 0]} maxBarSize={40}>
-                {TEACHER_UTILIZATION.map((_, i) => (
+                {utilizationChart.map((_, i) => (
                   <Cell key={i} fill={CHART_PALETTE[(i + 4) % CHART_PALETTE.length]} />
                 ))}
               </Bar>
@@ -205,13 +233,13 @@ export default function ManagementPerformance() {
 
         <ChartCard title="Batch Occupancy by Course" description="Fill rate across active batches" height={300}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={BATCH_OCCUPANCY_BY_COURSE} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+            <BarChart data={occupancyChart} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="course" tickLine={false} axisLine={false} fontSize={12} />
               <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={40} />
               <RTooltip formatter={(value: number) => [`${value}%`, "Occupancy"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="occupancy" radius={[8, 8, 0, 0]} maxBarSize={44}>
-                {BATCH_OCCUPANCY_BY_COURSE.map((_, i) => (
+                {occupancyChart.map((_, i) => (
                   <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
                 ))}
               </Bar>

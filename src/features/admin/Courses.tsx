@@ -211,7 +211,7 @@ export default function AdminCourses() {
               <Label htmlFor="course-name">Course name</Label>
               <Input id="course-name" placeholder="e.g. Grammar Foundations" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label>Category</Label>
                 <Select value={category} onValueChange={(v) => setCategory(v as Course["category"])}>
@@ -241,7 +241,7 @@ export default function AdminCourses() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label>Duration</Label>
                 <Select value={duration} onValueChange={setDuration}>

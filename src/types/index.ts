@@ -107,6 +107,8 @@ export interface Invoice {
   childName: string;
   department: "Phonics" | "Maths";
   amount: number;
+  /** Amount settled so far; balance due = amount - amountPaid. Present in API mode. */
+  amountPaid?: number;
   status: "paid" | "pending" | "overdue" | "partial";
   issuedOn: string;
   dueOn: string;

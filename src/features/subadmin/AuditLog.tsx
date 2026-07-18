@@ -12,6 +12,9 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listAuditLogs } from "@/api/audit";
 import { AUDIT_LOG, MODULES, MODULE_META, type AuditEntry, type SubAdminModule } from "./data";
 
 function formatTimestamp(iso: string) {
@@ -59,13 +62,16 @@ const COLUMNS: DataTableColumn<AuditEntry>[] = [
     key: "module",
     header: "Module",
     render: (r) => {
+      // API entity names won't always match the demo module set — fall back to a neutral chip.
       const meta = MODULE_META[r.module];
+      const Icon = meta?.icon ?? History;
+      const color = meta?.color ?? "hsl(var(--muted-foreground))";
       return (
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold"
-          style={{ backgroundColor: `${meta.color}1A`, color: meta.color }}
+          style={{ backgroundColor: `${color}1A`, color }}
         >
-          <meta.icon className="h-3 w-3" />
+          <Icon className="h-3 w-3" />
           {r.module}
         </span>
       );
@@ -81,15 +87,32 @@ const COLUMNS: DataTableColumn<AuditEntry>[] = [
 ];
 
 export default function SubAdminAuditLog() {
+  const usingApi = apiEnabled();
   const [moduleFilter, setModuleFilter] = useState<SubAdminModule | "all">("all");
 
+  // Real trail from the audit API; the scripted persona log is demo-only.
+  const { data: apiEntries } = useApiData<AuditEntry[]>(
+    () =>
+      listAuditLogs({ pageSize: 200 }).then((page) =>
+        page.items.map((entry) => ({
+          id: entry.id,
+          module: entry.entityName as SubAdminModule,
+          action: entry.action,
+          detail: entry.actorName ? `${entry.actorName}${entry.entityId ? ` · ${entry.entityId}` : ""}` : entry.entityId ?? "—",
+          timestamp: entry.createdAtUtc,
+        }))
+      ),
+    []
+  );
+  const entries = usingApi ? apiEntries : AUDIT_LOG;
+
   const filtered = useMemo(
-    () => (moduleFilter === "all" ? AUDIT_LOG : AUDIT_LOG.filter((e) => e.module === moduleFilter)),
-    [moduleFilter]
+    () => (moduleFilter === "all" ? entries : entries.filter((e) => e.module === moduleFilter)),
+    [entries, moduleFilter]
   );
 
-  const modulesTouched = useMemo(() => new Set(AUDIT_LOG.map((e) => e.module)).size, []);
-  const mostRecent = AUDIT_LOG[0];
+  const modulesTouched = useMemo(() => new Set(entries.map((e) => e.module)).size, [entries]);
+  const mostRecent = entries[0];
 
   return (
     <div>
@@ -100,9 +123,14 @@ export default function SubAdminAuditLog() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Total Actions Logged" value={String(AUDIT_LOG.length)} icon={History} tone="primary" />
+        <KpiCard label="Total Actions Logged" value={String(entries.length)} icon={History} tone="primary" />
         <KpiCard label="Modules Touched" value={String(modulesTouched)} icon={History} tone="success" />
-        <KpiCard label="Most Recent Action" value={formatTimestamp(mostRecent.timestamp)} icon={History} tone="neutral" />
+        <KpiCard
+          label="Most Recent Action"
+          value={mostRecent ? formatTimestamp(mostRecent.timestamp) : "—"}
+          icon={History}
+          tone="neutral"
+        />
       </div>
 
       <div className="mt-6">
@@ -132,7 +160,18 @@ export default function SubAdminAuditLog() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={() => download(`neha-kulkarni-audit-log-2026-07-09.csv`, toCsv(filtered))}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  download(
+                    usingApi
+                      ? `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
+                      : `neha-kulkarni-audit-log-2026-07-09.csv`,
+                    toCsv(filtered)
+                  )
+                }
+              >
                 <Download className="h-3.5 w-3.5" />
                 Export CSV
               </Button>

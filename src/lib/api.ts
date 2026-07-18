@@ -39,6 +39,16 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
 
+  // An expired/revoked token means the session is no longer authenticated: clear it
+  // and land on login. Auth endpoints are exempt (a wrong password is also a 401).
+  if (response.status === 401 && token && !path.startsWith("/api/auth/")) {
+    setAccessToken(null);
+    localStorage.removeItem("trn.role");
+    localStorage.removeItem("trn.userName");
+    localStorage.removeItem("trn.permissions");
+    window.location.assign("/login");
+  }
+
   if (!response.ok) {
     // Backend errors arrive as RFC 7807 ProblemDetails
     let detail = response.statusText;

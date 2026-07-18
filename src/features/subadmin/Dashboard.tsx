@@ -24,6 +24,13 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useSession } from "@/state/session";
 import { formatDate, formatPercent } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listBatches, toFrontendBatch } from "@/api/batches";
+import { listSessions, toFrontendSession } from "@/api/sessions";
+import { getDashboardSummary } from "@/api/reports";
+import { listAuditLogs } from "@/api/audit";
+import { PERMISSION_MODULES } from "@/api/permissions";
 import { BATCHES } from "@/data/batches";
 import { SESSIONS } from "@/data/sessions";
 import { ADMIN_KPIS } from "@/data/kpis";
@@ -33,14 +40,15 @@ import {
   FULL_ACCESS_MODULES,
   VIEW_ONLY_MODULES,
   NO_ACCESS_MODULES,
+  type SubAdminModule,
   type AssignedModuleCard,
 } from "./data";
 
 const TODAY = "2026-07-09";
 const ADMIN_CONTACT = "Ananya Rao";
 
-function timeAgo(iso: string) {
-  const diffMs = new Date(`${TODAY}T23:59:59`).getTime() - new Date(iso).getTime();
+function timeAgo(iso: string, nowMs: number) {
+  const diffMs = nowMs - new Date(iso).getTime();
   const hrs = Math.round(diffMs / 3_600_000);
   if (hrs < 1) return "Just now";
   if (hrs < 24) return `${hrs} hr${hrs === 1 ? "" : "s"} ago`;
@@ -48,18 +56,77 @@ function timeAgo(iso: string) {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
+interface ActivityRow {
+  id: string;
+  action: string;
+  detail: string;
+  module: string;
+  timestamp: string;
+}
+
 export default function SubAdminDashboard() {
-  const { userName } = useSession();
+  const { userName, permissions } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
+  const usingApi = apiEnabled();
+  // The mock universe's clock is pinned; a real login measures against the real one.
+  const nowMs = usingApi ? Date.now() : new Date(`${TODAY}T23:59:59`).getTime();
+  const adminContact = usingApi ? "your Admin" : `${ADMIN_CONTACT} (Admin)`;
 
   const [requestOpen, setRequestOpen] = useState(false);
   const [requested, setRequested] = useState(false);
 
-  const activeBatches = BATCHES.filter((b) => b.status === "active").length;
-  const sessionsToday = SESSIONS.filter((s) => s.date === TODAY).length;
-  const recentActivity = AUDIT_LOG.slice(0, 5);
+  const { data: apiBatches } = useApiData(() => listBatches().then((items) => items.map(toFrontendBatch)), []);
+  const { data: apiSessions } = useApiData(() => listSessions().then((items) => items.map(toFrontendSession)), []);
+  const { data: liveSummary } = useApiData(
+    () =>
+      getDashboardSummary().then((s) => ({
+        occupancy: s.batchOccupancyPercent,
+        // Latest week with recorded attendance drives the KPI.
+        attendance: [...(s.weeklyAttendanceTrend ?? [])].reverse().find((w) => w.attendance > 0)?.attendance ?? 0,
+      })),
+    { occupancy: ADMIN_KPIS.batchOccupancy, attendance: ADMIN_KPIS.attendanceRate },
+    { occupancy: 0, attendance: 0 }
+  );
+  const liveOccupancy = liveSummary.occupancy;
+  const { data: apiActivity } = useApiData<ActivityRow[]>(
+    () =>
+      listAuditLogs({ page: 1, pageSize: 5 }).then((page) =>
+        page.items.map((entry) => ({
+          id: entry.id,
+          action: `${entry.action} — ${entry.entityName}`,
+          detail: entry.actorName ?? "—",
+          module: entry.entityName,
+          timestamp: entry.createdAtUtc,
+        }))
+      ),
+    []
+  );
 
-  const totalModules = FULL_ACCESS_MODULES.length + VIEW_ONLY_MODULES.length + NO_ACCESS_MODULES.length;
+  const activeBatches = usingApi
+    ? apiBatches.filter((b) => b.status === "active").length
+    : BATCHES.filter((b) => b.status === "active").length;
+  const todayIso = new Date(nowMs).toISOString().slice(0, 10);
+  const sessionsToday = usingApi
+    ? apiSessions.filter((s) => s.date === todayIso).length
+    : SESSIONS.filter((s) => s.date === TODAY).length;
+  const recentActivity: ActivityRow[] = usingApi ? apiActivity : AUDIT_LOG.slice(0, 5);
+  const attendanceRate = usingApi ? liveSummary.attendance : ADMIN_KPIS.attendanceRate;
+
+  // Real logins derive their module scope from the session's permission claims;
+  // demo mode keeps the Neha persona's scripted grants.
+  const scope = usingApi
+    ? PERMISSION_MODULES.reduce(
+        (acc, module) => {
+          const has = (action: string) => permissions.includes(`${module.value}:${action}`);
+          if (has("Create") || has("Edit") || has("Delete") || has("Approve")) acc.full.push(module.label);
+          else if (has("View")) acc.view.push(module.label);
+          else acc.none.push(module.label);
+          return acc;
+        },
+        { full: [] as string[], view: [] as string[], none: [] as string[] }
+      )
+    : { full: [...FULL_ACCESS_MODULES], view: [...VIEW_ONLY_MODULES], none: [...NO_ACCESS_MODULES] };
+  const totalModules = scope.full.length + scope.view.length + scope.none.length;
 
   const moduleCards: AssignedModuleCard[] = [
     {
@@ -67,7 +134,7 @@ export default function SubAdminDashboard() {
       title: "Batches",
       icon: Layers,
       color: CHART_PALETTE[2],
-      stat: `${activeBatches} active batches · ${formatPercent(ADMIN_KPIS.batchOccupancy)} avg occupancy`,
+      stat: `${activeBatches} active batches · ${formatPercent(liveOccupancy)} avg occupancy`,
       ctaLabel: "View batch report",
       to: "/subadmin/reports",
     },
@@ -76,7 +143,7 @@ export default function SubAdminDashboard() {
       title: "Sessions & Attendance",
       icon: CalendarClock,
       color: CHART_PALETTE[3],
-      stat: `${sessionsToday} sessions today · ${formatPercent(ADMIN_KPIS.attendanceRate)} attendance this month`,
+      stat: `${sessionsToday} sessions today · ${formatPercent(attendanceRate)} attendance this month`,
       ctaLabel: "View attendance report",
       to: "/subadmin/reports",
     },
@@ -94,7 +161,10 @@ export default function SubAdminDashboard() {
       title: "Audit Log",
       icon: History,
       color: CHART_PALETTE[6],
-      stat: `${AUDIT_LOG.length} actions logged · last ${timeAgo(AUDIT_LOG[0].timestamp)}`,
+      stat:
+        recentActivity.length > 0
+          ? `Last action ${timeAgo(recentActivity[0].timestamp, nowMs)}`
+          : "No actions logged yet",
       ctaLabel: "View my activity",
       to: "/subadmin/audit-log",
     },
@@ -128,15 +198,15 @@ export default function SubAdminDashboard() {
             </span>
             <div>
               <p className="text-sm font-semibold text-foreground">
-                You have access to {FULL_ACCESS_MODULES.length} of {totalModules} modules with full working rights
+                You have access to {scope.full.length} of {totalModules} modules with full working rights
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">Full access:</span>{" "}
-                {FULL_ACCESS_MODULES.join(", ")} &middot;{" "}
+                {scope.full.join(", ") || "None"} &middot;{" "}
                 <span className="font-medium text-foreground">View-only:</span>{" "}
-                {VIEW_ONLY_MODULES.join(", ")} &middot;{" "}
+                {scope.view.join(", ") || "None"} &middot;{" "}
                 <span className="font-medium text-foreground">No access:</span>{" "}
-                {NO_ACCESS_MODULES.join(", ")}
+                {scope.none.join(", ") || "None"}
               </p>
             </div>
           </div>
@@ -150,21 +220,27 @@ export default function SubAdminDashboard() {
 
       {/* KPI row — only modules Neha plausibly has access to. No billing/payout metrics. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Active Batches" value={String(activeBatches)} icon={Layers} tone="primary" trend={{ value: 2.1, label: "vs last month" }} />
+        <KpiCard
+          label="Active Batches"
+          value={String(activeBatches)}
+          icon={Layers}
+          tone="primary"
+          trend={usingApi ? undefined : { value: 2.1, label: "vs last month" }}
+        />
         <KpiCard label="Sessions Today" value={String(sessionsToday)} icon={Clock} tone="warning" />
         <KpiCard
           label="Attendance Rate"
-          value={formatPercent(ADMIN_KPIS.attendanceRate)}
+          value={formatPercent(attendanceRate)}
           icon={CheckCircle2}
           tone="success"
-          trend={{ value: 1.5, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: 1.5, label: "vs last month" }}
         />
         <KpiCard
           label="Batch Occupancy"
-          value={formatPercent(ADMIN_KPIS.batchOccupancy)}
+          value={formatPercent(liveOccupancy)}
           icon={LayoutGrid}
           tone="neutral"
-          trend={{ value: 2.9, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: 2.9, label: "vs last month" }}
         />
       </div>
 
@@ -218,15 +294,19 @@ export default function SubAdminDashboard() {
               </Button>
             </div>
             <div className="flex flex-col divide-y divide-border">
+              {recentActivity.length === 0 && (
+                <p className="py-6 text-center text-sm text-muted-foreground">No activity recorded yet.</p>
+              )}
               {recentActivity.map((entry, i) => {
-                const meta = MODULE_META[entry.module];
+                // API entity names won't always match the demo module set — fall back to a neutral icon.
+                const MetaIcon = MODULE_META[entry.module as SubAdminModule]?.icon ?? History;
                 return (
                   <div key={entry.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                     <span
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
                       style={{ backgroundColor: `${CHART_PALETTE[i % CHART_PALETTE.length]}1A`, color: CHART_PALETTE[i % CHART_PALETTE.length] }}
                     >
-                      <meta.icon className="h-[18px] w-[18px]" />
+                      <MetaIcon className="h-[18px] w-[18px]" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">{entry.action}</p>
@@ -234,7 +314,7 @@ export default function SubAdminDashboard() {
                     </div>
                     <div className="shrink-0 text-right">
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{entry.module}</span>
-                      <p className="mt-1 text-[11px] text-muted-foreground">{timeAgo(entry.timestamp)}</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">{timeAgo(entry.timestamp, nowMs)}</p>
                     </div>
                   </div>
                 );
@@ -256,7 +336,7 @@ export default function SubAdminDashboard() {
             </div>
             <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
               <EyeOff className="h-3.5 w-3.5" />
-              Locked modules: {NO_ACCESS_MODULES.join(", ") || "None"}
+              Locked modules: {scope.none.join(", ") || "None"}
             </div>
             <Button
               variant={requested ? "outline" : "default"}
@@ -270,7 +350,7 @@ export default function SubAdminDashboard() {
             </Button>
             {requested && (
               <p className="text-[11px] text-muted-foreground">
-                Sent to {ADMIN_CONTACT} (Admin) on {formatDate(TODAY, "long")}.
+                Sent to {adminContact} on {formatDate(new Date(nowMs).toISOString().slice(0, 10), "long")}.
               </p>
             )}
           </CardContent>
@@ -286,7 +366,7 @@ export default function SubAdminDashboard() {
         open={requestOpen}
         onOpenChange={setRequestOpen}
         title="Request additional access?"
-        description={`This notifies ${ADMIN_CONTACT} (Admin) that you're requesting broader module permissions. This is a simulated action for this demo — no email is actually sent.`}
+        description={`This notifies ${adminContact} that you're requesting broader module permissions. This is a simulated action — no email is actually sent.`}
         confirmLabel="Send request"
         onConfirm={() => setRequested(true)}
       />

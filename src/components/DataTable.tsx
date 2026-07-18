@@ -98,7 +98,7 @@ export function DataTable<T>({
       {sorted.length === 0 ? (
         <EmptyState icon={Search} title={emptyTitle} description={emptyDescription} />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
+        <div className="overflow-x-auto rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">

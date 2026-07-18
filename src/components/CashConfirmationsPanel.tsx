@@ -39,6 +39,9 @@ export function CashConfirmationsPanel() {
       reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not confirm this payment.");
+      // A stale intent (invoice already paid) is auto-closed server-side — refresh
+      // the queue so it disappears instead of erroring again on the next click.
+      reload();
     } finally {
       setBusyId(null);
     }

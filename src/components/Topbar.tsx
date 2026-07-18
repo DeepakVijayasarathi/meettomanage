@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu, Search, LogOut, User, Settings } from "lucide-react";
+import { AccountDialog } from "@/components/AccountDialog";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,13 @@ interface TopbarProps {
 export function Topbar({ onMenuClick, title }: TopbarProps) {
   const { userName, logout } = useSession();
   const navigate = useNavigate();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [accountTab, setAccountTab] = useState<"profile" | "preferences">("profile");
+
+  function openAccount(tab: "profile" | "preferences") {
+    setAccountTab(tab);
+    setAccountOpen(true);
+  }
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md sm:px-6">
@@ -52,10 +61,10 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
           <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuLabel className="text-foreground">{userName}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openAccount("profile")}>
               <User /> Profile
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openAccount("preferences")}>
               <Settings /> Preferences
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -71,6 +80,8 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <AccountDialog open={accountOpen} onOpenChange={setAccountOpen} initialTab={accountTab} />
     </header>
   );
 }

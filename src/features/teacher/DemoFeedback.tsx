@@ -64,7 +64,7 @@ export default function TeacherDemoFeedback() {
     MOCK_FEEDBACKS
   );
   const { data: courseOptions } = useApiData(() => listCourseOptions(), MOCK_COURSE_OPTIONS);
-  const [feedbacks, setFeedbacks] = useState<DemoFeedback[]>(MOCK_FEEDBACKS);
+  const [feedbacks, setFeedbacks] = useState<DemoFeedback[]>(() => (apiEnabled() ? [] : MOCK_FEEDBACKS));
   useEffect(() => setFeedbacks(apiFeedbacks), [apiFeedbacks]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);

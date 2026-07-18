@@ -81,7 +81,7 @@ export default function CoordinatorCalendar() {
       <Card className="p-5">
         <CalendarBoard
           sessions={sessions}
-          initialMonth={new Date(2026, 6, 1)}
+          initialMonth={usingApi ? new Date() : new Date(2026, 6, 1)}
           onSessionClick={(s) => setSelectedId(s.id)}
         />
       </Card>

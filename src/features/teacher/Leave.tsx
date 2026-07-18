@@ -85,7 +85,7 @@ export default function TeacherLeave() {
     () => listMyLeave().then((items) => items.map(toFrontendLeave)),
     getLeavesForTeacher(TEACHER_ID)
   );
-  const [leaves, setLeaves] = useState<LeaveRequest[]>(() => getLeavesForTeacher(TEACHER_ID));
+  const [leaves, setLeaves] = useState<LeaveRequest[]>(() => (apiEnabled() ? [] : getLeavesForTeacher(TEACHER_ID)));
   useEffect(() => setLeaves(fetchedLeaves), [fetchedLeaves]);
   const [sessionId, setSessionId] = useState<string>("");
   const [reason, setReason] = useState("");
@@ -180,7 +180,11 @@ export default function TeacherLeave() {
       <Card>
         <CardHeader>
           <CardTitle>Apply for Leave</CardTitle>
-          <CardDescription>Reference time for this demo: {formatDate(NOW, "long")}, {formatTimeLabel("12:00")}.</CardDescription>
+          <CardDescription>
+            {apiEnabled()
+              ? "Notice is calculated against the current time."
+              : `Reference time for this demo: ${formatDate(NOW, "long")}, ${formatTimeLabel("12:00")}.`}
+          </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
           {eligibleSessions.length === 0 ? (

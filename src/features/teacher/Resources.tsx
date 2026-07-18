@@ -113,7 +113,8 @@ export default function TeacherResources() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [type, setType] = useState<Resource["type"]>("worksheet");
-  const [batchId, setBatchId] = useState<string>("");
+  // Multi-batch visibility: the teacher chooses which of their batches see this material.
+  const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -134,8 +135,12 @@ export default function TeacherResources() {
     : [...localAdds, ...demoView];
 
   useEffect(() => {
-    setBatchId((prev) => prev || batchOptions[0]?.id || "");
+    setSelectedBatchIds((prev) => (prev.length > 0 ? prev : batchOptions[0]?.id ? [batchOptions[0].id] : []));
   }, [batchOptions]);
+
+  function toggleBatch(id: string) {
+    setSelectedBatchIds((prev) => (prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]));
+  }
 
   useEffect(() => {
     if (!confirmation) return;
@@ -146,13 +151,17 @@ export default function TeacherResources() {
   function resetUploadForm() {
     setTitle("");
     setType("worksheet");
-    setBatchId(batchOptions[0]?.id ?? "");
+    setSelectedBatchIds(batchOptions[0]?.id ? [batchOptions[0].id] : []);
     setFile(null);
     setUploadError(null);
   }
 
   async function handleUpload() {
-    if (!title.trim() || !batchId) return;
+    if (!title.trim() || selectedBatchIds.length === 0) return;
+    const batchLabel = batchOptions
+      .filter((b) => selectedBatchIds.includes(b.id))
+      .map((b) => b.name)
+      .join(", ");
 
     if (usingApi) {
       if (!file) {
@@ -165,10 +174,10 @@ export default function TeacherResources() {
         await uploadMyResource(file, {
           title: title.trim(),
           type: API_TYPE[type],
-          batchId,
+          batchIds: selectedBatchIds,
           isDownloadable: type === "worksheet",
         });
-        setConfirmation(`"${title.trim()}" uploaded to ${batchOptions.find((b) => b.id === batchId)?.name ?? "your batch"}.`);
+        setConfirmation(`"${title.trim()}" uploaded — visible to ${batchLabel}.`);
         setUploadOpen(false);
         resetUploadForm();
         reload();
@@ -185,7 +194,7 @@ export default function TeacherResources() {
       id: `r-new-${Date.now()}`,
       title: title.trim(),
       type,
-      batchName: batchOptions.find((b) => b.id === batchId)?.name ?? "General",
+      batchName: batchLabel || "General",
       uploadedOn: "2026-07-09",
       downloadable: type !== "recording",
       visibleToParents: false,
@@ -260,19 +269,25 @@ export default function TeacherResources() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label>Batch</Label>
-                    <Select value={batchId} onValueChange={setBatchId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a batch" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {batchOptions.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>
-                            {b.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Visible to batches</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {batchOptions.map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => toggleBatch(b.id)}
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                            selectedBatchIds.includes(b.id)
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:bg-muted/50"
+                          )}
+                        >
+                          {b.name}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Pick one or more batches — the material shows only to those batches.</p>
                   </div>
                 </div>
 
@@ -283,7 +298,7 @@ export default function TeacherResources() {
                 <Button variant="outline" onClick={() => setUploadOpen(false)}>
                   Cancel
                 </Button>
-                <Button disabled={!title.trim() || !batchId || submitting} onClick={handleUpload}>
+                <Button disabled={!title.trim() || selectedBatchIds.length === 0 || submitting} onClick={handleUpload}>
                   {submitting ? "Uploading…" : "Upload"}
                 </Button>
               </DialogFooter>

@@ -180,7 +180,7 @@ export default function AdminResources() {
             onFile={(file) => setPendingFile(file)}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label>Course category</Label>
               <Select value={uploadCourse} onValueChange={(v) => setUploadCourse(v as Resource["courseCategory"])}>

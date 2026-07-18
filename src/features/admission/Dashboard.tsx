@@ -26,6 +26,7 @@ import { useApiData } from "@/api/hooks";
 import { listDemoBookings, toFrontendLead } from "@/api/demoBookings";
 import { listSessions, toFrontendSession } from "@/api/sessions";
 import { getDashboardSummary } from "@/api/reports";
+import { useSession } from "@/state/session";
 import { LEADS, getConversionFunnel, getConversionRate, getRevenueThisMonth, type Lead, type ConversionStage } from "./data";
 import type { ClassSession } from "@/types";
 
@@ -44,6 +45,7 @@ const FUNNEL_COLORS: Record<string, string> = {
 
 export default function AdmissionDashboard() {
   const usingApi = apiEnabled();
+  const { userName } = useSession();
   const { data: leads } = useApiData<Lead[]>(() => listDemoBookings().then((b) => b.map(toFrontendLead)), LEADS);
   const { data: apiSessions } = useApiData<ClassSession[]>(
     () => listSessions().then((s) => s.map(toFrontendSession)),
@@ -51,7 +53,8 @@ export default function AdmissionDashboard() {
   );
   const { data: collectedRevenue } = useApiData<number>(
     () => getDashboardSummary().then((s) => s.revenueCollected),
-    getRevenueThisMonth()
+    getRevenueThisMonth(),
+    0
   );
 
   const demoSessions = apiSessions.filter((s) => s.type === "demo");
@@ -75,7 +78,7 @@ export default function AdmissionDashboard() {
     <div>
       <PageHeader
         eyebrow="Admission Team"
-        title="Good to see you, Priya"
+        title={`Good to see you, ${userName.split(" ")[0]}`}
         description="Your demo-to-enrollment pipeline at a glance — scheduling, feedback, follow-ups and conversions."
         actions={
           <div className="flex flex-wrap items-center gap-2">

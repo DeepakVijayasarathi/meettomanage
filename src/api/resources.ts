@@ -59,13 +59,15 @@ export async function listMyResources(type?: ApiResourceType): Promise<ApiResour
 /** Teacher portal: upload a resource to one of the teacher's own batches. */
 export async function uploadMyResource(
   file: File,
-  metadata: { title: string; type: ApiResourceType; batchId: string; isDownloadable?: boolean; description?: string }
+  metadata: { title: string; type: ApiResourceType; batchIds: string[]; isDownloadable?: boolean; description?: string }
 ): Promise<ApiResource> {
   const form = new FormData();
   form.set("file", file);
   form.set("Title", metadata.title);
   form.set("Type", metadata.type);
-  form.set("BatchId", metadata.batchId);
+  // Multi-batch visibility: the teacher chooses which batch(es) see the material.
+  metadata.batchIds.forEach((id) => form.append("BatchIds", id));
+  if (metadata.batchIds[0]) form.set("BatchId", metadata.batchIds[0]);
   form.set("IsDownloadable", String(metadata.isDownloadable ?? false));
   if (metadata.description) form.set("Description", metadata.description);
   return apiFetch<ApiResource>("/api/resources/mine", { method: "POST", body: form });

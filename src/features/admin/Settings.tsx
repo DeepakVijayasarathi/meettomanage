@@ -674,6 +674,60 @@ function configToRows(config: Record<string, string | null>): ConfigRow[] {
   return rows.length > 0 ? rows : [{ key: "", value: "" }];
 }
 
+/**
+ * Credentials each payment gateway's adapter requires to run live (see
+ * RazorpayGateway/CashfreeGateway.IsConfigured). Aliases mirror the field names
+ * the adapters also accept, so an existing "razorpayKey" row counts as keyId.
+ */
+const GATEWAY_REQUIRED_FIELDS: Record<string, { field: string; label: string; aliases: string[] }[]> = {
+  razorpay: [
+    { field: "keyId", label: "Key Id", aliases: ["keyid", "razorpaykey", "apikey"] },
+    { field: "keySecret", label: "Key Secret", aliases: ["razorpaysecret", "secret", "apisecret"] },
+  ],
+  cashfree: [
+    { field: "appId", label: "App Id", aliases: [] },
+    { field: "secretKey", label: "Secret Key", aliases: [] },
+  ],
+};
+
+function requiredFieldsFor(integrationKey: string) {
+  return GATEWAY_REQUIRED_FIELDS[integrationKey.trim().toLowerCase()] ?? [];
+}
+
+function rowSatisfies(row: ConfigRow, spec: { field: string; aliases: string[] }): boolean {
+  const key = row.key.trim().toLowerCase();
+  return key === spec.field.toLowerCase() || spec.aliases.includes(key);
+}
+
+/** Pre-adds empty rows for a gateway's required credentials so they can't be missed. */
+function withRequiredRows(integrationKey: string, rows: ConfigRow[]): ConfigRow[] {
+  const missing = requiredFieldsFor(integrationKey).filter((spec) => !rows.some((row) => rowSatisfies(row, spec)));
+  if (missing.length === 0) return rows;
+  const base = rows.length === 1 && rows[0].key === "" && rows[0].value === "" ? [] : rows;
+  return [...base, ...missing.map((spec) => ({ key: spec.field, value: "" }))];
+}
+
+/** Required credentials that are absent or blank — the gateway can't go live without them. */
+function missingRequiredFields(integrationKey: string, rows: ConfigRow[]): string[] {
+  return requiredFieldsFor(integrationKey)
+    .filter((spec) => !rows.some((row) => rowSatisfies(row, spec) && row.value.trim().length > 0))
+    .map((spec) => `${spec.label} (${spec.field})`);
+}
+
+/**
+ * Razorpay Key IDs always start with "rzp_test_"/"rzp_live_"; anything else in the
+ * keyId field (most commonly the secret pasted twice) guarantees a 401 at payment time.
+ */
+function configFormatWarning(integrationKey: string, rows: ConfigRow[]): string | null {
+  if (integrationKey.trim().toLowerCase() !== "razorpay") return null;
+  const keyIdSpec = GATEWAY_REQUIRED_FIELDS.razorpay[0];
+  const keyIdRow = rows.find((row) => rowSatisfies(row, keyIdSpec) && row.value.trim().length > 0);
+  if (keyIdRow && !keyIdRow.value.trim().startsWith("rzp_")) {
+    return `The value in "${keyIdRow.key.trim()}" doesn't look like a Razorpay Key Id — it should start with rzp_test_ or rzp_live_. If you pasted the Key Secret there, payments will fail with a 401.`;
+  }
+  return null;
+}
+
 function rowsToConfig(rows: ConfigRow[]): Record<string, string | null> {
   return Object.fromEntries(rows.filter((r) => r.key.trim().length > 0).map((r) => [r.key.trim(), r.value]));
 }
@@ -733,7 +787,7 @@ export function IntegrationsManager() {
       isEnabled: integration.isEnabled,
       config: integration.config,
     });
-    setConfigRows(configToRows(integration.config));
+    setConfigRows(withRequiredRows(integration.key, configToRows(integration.config)));
     setRevealedRows(new Set());
   }
 
@@ -941,6 +995,18 @@ export function IntegrationsManager() {
               <p className="mt-1.5 text-[11px] text-muted-foreground">
                 Fields named with "key", "secret", "token" or "password" (e.g. Razorpay's keyId/keySecret) are masked while typing.
               </p>
+              {missingRequiredFields(form.key, configRows).length > 0 && (
+                <p className="mt-1.5 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+                  {form.name || form.key} can't process live payments yet — missing:{" "}
+                  {missingRequiredFields(form.key, configRows).join(", ")}. Parents who pick this gateway will see a
+                  "not fully configured" message until these are filled in.
+                </p>
+              )}
+              {configFormatWarning(form.key, configRows) && (
+                <p className="mt-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                  {configFormatWarning(form.key, configRows)}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-2 pb-1">

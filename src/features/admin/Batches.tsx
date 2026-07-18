@@ -55,8 +55,9 @@ const STATUS_META: Record<BatchStatus, { label: string; icon: typeof Layers; emp
 };
 
 function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: number; onOpen: (b: DisplayBatch) => void }) {
-  const courseName = getCourseById(batch.courseId)?.name ?? batch.courseName;
-  const teacherName = getTeacherById(batch.teacherId)?.name ?? batch.teacherName;
+  // API rows carry their own resolved names; the mock lookups are demo-only
+  const courseName = apiEnabled() ? batch.courseName : getCourseById(batch.courseId)?.name;
+  const teacherName = apiEnabled() ? batch.teacherName : getTeacherById(batch.teacherId)?.name;
   const color = CHART_PALETTE[index % CHART_PALETTE.length];
   const pct = Math.round((batch.enrolled / Math.max(batch.capacity, 1)) * 100);
 
@@ -109,7 +110,8 @@ export default function AdminBatches() {
       const raw = await listBatches();
       return { raw, mapped: raw.map(toFrontendBatch) };
     },
-    { raw: [], mapped: BATCHES }
+    { raw: [], mapped: BATCHES },
+    { raw: [], mapped: [] }
   );
   const { data: teacherOptions } = useApiData(() => listTeacherOptions(), []);
 
@@ -278,7 +280,7 @@ export default function AdminBatches() {
             <>
               <DialogHeader>
                 <DialogTitle>{detail.name}</DialogTitle>
-                <DialogDescription>{getCourseById(detail.courseId)?.name ?? detail.courseName} · {detail.schedule}</DialogDescription>
+                <DialogDescription>{(apiEnabled() ? detail.courseName : getCourseById(detail.courseId)?.name) ?? "—"} · {detail.schedule}</DialogDescription>
               </DialogHeader>
 
               <Card className="bg-muted/30 p-4">

@@ -35,13 +35,29 @@ function formatElapsed(totalSeconds: number) {
 
 export default function LiveClassroom({ mode }: { mode: "teacher" | "student" }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { sessionId } = useParams();
 
   // Real sessions launched from an API-backed dashboard carry their Jitsi room
   // via route state; the interactive mock stays for demo mode and design work.
   const launch = location.state as { room?: string; title?: string } | null;
-  if (apiEnabled() && launch?.room) {
-    return <JitsiLive room={launch.room} title={launch.title} mode={mode} sessionId={sessionId} />;
+  if (apiEnabled()) {
+    if (launch?.room) {
+      return <JitsiLive room={launch.room} title={launch.title} mode={mode} sessionId={sessionId} />;
+    }
+    // No launch context (e.g. a pasted URL): never fall back to the mock classroom
+    // with fabricated participants — send the user back to start the class properly.
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+        <h1 className="text-xl font-semibold text-foreground">This class link can't be opened directly</h1>
+        <p className="max-w-md text-sm text-muted-foreground">
+          Join your live class from the schedule so we can connect you to the right room.
+        </p>
+        <Button onClick={() => navigate(mode === "teacher" ? "/teacher" : "/parent", { replace: true })}>
+          Go to my dashboard
+        </Button>
+      </div>
+    );
   }
 
   return <MockLiveClassroom mode={mode} />;

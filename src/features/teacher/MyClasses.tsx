@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getCourseById } from "@/data/courses";
+import { apiEnabled } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { ClassSession, SessionStatus } from "@/types";
 
@@ -178,7 +179,7 @@ export default function TeacherMyClasses() {
         </TabsContent>
 
         <TabsContent value="calendar">
-          <CalendarBoard sessions={allSessions} initialMonth={new Date(2026, 6, 1)} onSessionClick={(s) => setSelected(s)} />
+          <CalendarBoard sessions={allSessions} initialMonth={apiEnabled() ? new Date() : new Date(2026, 6, 1)} onSessionClick={(s) => setSelected(s)} />
         </TabsContent>
       </Tabs>
 

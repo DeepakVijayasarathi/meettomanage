@@ -27,30 +27,49 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/utils";
 import { ADMIN_KPIS, DEPARTMENT_REVENUE, ENROLLMENT_FUNNEL, REVENUE_TREND } from "@/data/kpis";
 import { useApiData } from "@/api/hooks";
+import { useSession } from "@/state/session";
 import { getDashboardSummary, type ApiDashboardSummary } from "@/api/reports";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
-// Demo-mode fallback built from the mock KPI constants, in the API summary shape.
-const DEMO_SUMMARY: ApiDashboardSummary = {
-  totalStudents: ADMIN_KPIS.totalStudents,
-  activeStudents: ADMIN_KPIS.totalStudents,
-  revenueCollected: ADMIN_KPIS.revenueThisMonth,
+// API mode must never render the demo numbers: this zeroed summary is the seed
+// (and the resting state if the request fails).
+const EMPTY_SUMMARY: ApiDashboardSummary = {
+  totalStudents: 0,
+  activeStudents: 0,
+  revenueCollected: 0,
   revenuePending: 0,
   totalEnrollments: 0,
   activeBatches: 0,
   dormantBatches: 0,
-  conversionRatePercent: ADMIN_KPIS.conversionRate,
+  conversionRatePercent: 0,
   refundRatePercent: 0,
-  batchOccupancyPercent: ADMIN_KPIS.batchOccupancy,
+  batchOccupancyPercent: 0,
   teacherUtilizationSessionsPerTeacher: 0,
+  revenueByDepartment: [],
+  revenueTrend: [],
+  enrollmentFunnel: [],
+  weeklyAttendanceTrend: [],
+  batchOccupancyByCourse: [],
+  conversionRateTrend: [],
+};
+
+// Demo-mode fallback built from the mock KPI constants, in the API summary shape.
+const DEMO_SUMMARY: ApiDashboardSummary = {
+  ...EMPTY_SUMMARY,
+  totalStudents: ADMIN_KPIS.totalStudents,
+  activeStudents: ADMIN_KPIS.totalStudents,
+  revenueCollected: ADMIN_KPIS.revenueThisMonth,
+  conversionRatePercent: ADMIN_KPIS.conversionRate,
+  batchOccupancyPercent: ADMIN_KPIS.batchOccupancy,
   revenueByDepartment: DEPARTMENT_REVENUE.map((d) => ({ name: d.department, revenue: d.value })),
   revenueTrend: REVENUE_TREND,
   enrollmentFunnel: ENROLLMENT_FUNNEL,
 };
 
 export default function ManagementDashboard() {
-  const { data: summary } = useApiData<ApiDashboardSummary>(() => getDashboardSummary(), DEMO_SUMMARY);
+  const { userName } = useSession();
+  const { data: summary } = useApiData<ApiDashboardSummary>(() => getDashboardSummary(), DEMO_SUMMARY, EMPTY_SUMMARY);
   const departmentRevenue = summary.revenueByDepartment.map((d, i) => ({
     department: d.name,
     value: d.revenue,
@@ -61,7 +80,7 @@ export default function ManagementDashboard() {
     <div>
       <PageHeader
         eyebrow="Executive Overview"
-        title="Good to see you, Vikram"
+        title={`Good to see you, ${userName.split(" ")[0]}`}
         description={`A curated view of enrollment, revenue and retention health across The Reader Nest — as of ${formatDate(TODAY, "long")}.`}
         actions={<PersonalMeetingButton />}
       />

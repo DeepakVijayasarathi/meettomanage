@@ -209,10 +209,10 @@ export default function JitsiLive({
           <p className="rounded-lg bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">{error}</p>
         </div>
       ) : (
-        <div className="relative flex min-h-0 flex-1">
-          <div ref={containerRef} className="min-w-0 flex-1" />
+        <div className="relative flex min-h-0 flex-1 flex-col md:flex-row">
+          <div ref={containerRef} className="min-h-0 min-w-0 flex-1" />
           {interactive && (
-            <aside className={cn("w-[380px] shrink-0 border-l border-white/10", !panelOpen && "hidden")}>
+            <aside className={cn("min-h-0 w-full shrink-0 border-t border-white/10 md:w-[380px] md:border-l md:border-t-0", !panelOpen && "hidden")}>
               <InteractivePanel
                 sessionId={sessionId!}
                 mode={mode}

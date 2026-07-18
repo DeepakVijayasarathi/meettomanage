@@ -20,6 +20,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatPercent } from "@/lib/utils";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listBatches, toFrontendBatch } from "@/api/batches";
+import { getDashboardSummary } from "@/api/reports";
 import { ATTENDANCE_TREND, BATCH_OCCUPANCY_BY_COURSE } from "@/data/kpis";
 import { BATCHES } from "@/data/batches";
 import { getCourseById } from "@/data/courses";
@@ -35,7 +39,7 @@ interface BatchRow extends Batch {
   occupancy: number;
 }
 
-const BATCH_ROWS: BatchRow[] = BATCHES.map((b) => ({
+const MOCK_BATCH_ROWS: BatchRow[] = BATCHES.map((b) => ({
   ...b,
   courseName: getCourseById(b.courseId)?.name ?? "—",
   teacherName: getTeacherById(b.teacherId)?.name ?? "—",
@@ -92,22 +96,54 @@ const BATCH_COLUMNS: DataTableColumn<BatchRow>[] = [
 
 export default function SubAdminReports() {
   const [tab, setTab] = useState<ReportKey>("attendance");
+  const usingApi = apiEnabled();
+  const reportDate = usingApi ? new Date().toISOString().slice(0, 10) : "2026-07-09";
 
-  const attendanceRows = useMemo(() => ATTENDANCE_TREND.map((d) => [d.week, d.attendance] as [string, number]), []);
-  const occupancyRows = useMemo(() => BATCH_OCCUPANCY_BY_COURSE.map((d) => [d.course, d.occupancy] as [string, number]), []);
+  // Live roster from the batches API; the demo roster only renders without a backend.
+  const { data: batchRows } = useApiData<BatchRow[]>(
+    () =>
+      listBatches().then((items) =>
+        items.map((b) => {
+          const mapped = toFrontendBatch(b);
+          return {
+            ...mapped,
+            courseName: mapped.courseName ?? "—",
+            teacherName: mapped.teacherName ?? "—",
+            occupancy: mapped.capacity > 0 ? Math.round((mapped.enrolled / mapped.capacity) * 100) : 0,
+          };
+        })
+      ),
+    MOCK_BATCH_ROWS
+  );
+
+  // Live attendance + per-course occupancy from the dashboard summary.
+  const { data: liveTrends } = useApiData(
+    () =>
+      getDashboardSummary().then((s) => ({
+        attendance: s.weeklyAttendanceTrend ?? [],
+        occupancy: s.batchOccupancyByCourse ?? [],
+      })),
+    { attendance: ATTENDANCE_TREND, occupancy: BATCH_OCCUPANCY_BY_COURSE },
+    { attendance: [], occupancy: [] }
+  );
+  const attendanceTrend = usingApi ? liveTrends.attendance : ATTENDANCE_TREND;
+  const occupancyByCourse = usingApi ? liveTrends.occupancy : BATCH_OCCUPANCY_BY_COURSE;
+
+  const attendanceRows = useMemo(() => attendanceTrend.map((d) => [d.week, d.attendance] as [string, number]), [attendanceTrend]);
+  const occupancyRows = useMemo(() => occupancyByCourse.map((d) => [d.course, d.occupancy] as [string, number]), [occupancyByCourse]);
 
   function exportAttendance() {
-    download(`attendance-report-2026-07-09.csv`, toCsv(["Week", "Attendance %"], attendanceRows));
+    download(`attendance-report-${reportDate}.csv`, toCsv(["Week", "Attendance %"], attendanceRows));
   }
   function exportOccupancy() {
-    download(`batch-occupancy-report-2026-07-09.csv`, toCsv(["Course", "Occupancy %"], occupancyRows));
+    download(`batch-occupancy-report-${reportDate}.csv`, toCsv(["Course", "Occupancy %"], occupancyRows));
   }
   function exportRoster() {
     download(
-      `batch-roster-report-2026-07-09.csv`,
+      `batch-roster-report-${reportDate}.csv`,
       toCsv(
         ["Batch", "Course", "Teacher", "Enrolled", "Capacity", "Occupancy %", "Status"],
-        BATCH_ROWS.map((r) => [r.name, r.courseName, r.teacherName, r.enrolled, r.capacity, r.occupancy, STATUS_LABEL[r.status]])
+        batchRows.map((r) => [r.name, r.courseName, r.teacherName, r.enrolled, r.capacity, r.occupancy, STATUS_LABEL[r.status]])
       )
     );
   }
@@ -120,7 +156,8 @@ export default function SubAdminReports() {
         description="Reports are scoped to the modules you have view access to. Financial and enrollment-revenue reports are not part of your permissions."
       />
 
-      {NO_ACCESS_MODULES.length > 0 && (
+      {/* The scripted persona scope is demo-only; real scope is enforced by permissions. */}
+      {!usingApi && NO_ACCESS_MODULES.length > 0 && (
         <Card className="mb-6 border-dashed">
           <CardContent className="flex items-center gap-3 p-4">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -158,7 +195,7 @@ export default function SubAdminReports() {
               }
             >
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={ATTENDANCE_TREND} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+                <LineChart data={attendanceTrend} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis dataKey="week" tickLine={false} axisLine={false} fontSize={12} />
                   <YAxis domain={[80, 100]} tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={40} />
@@ -181,12 +218,16 @@ export default function SubAdminReports() {
                 <div className="mt-auto grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-lg bg-muted/50 p-3">
                     <p className="text-xs text-muted-foreground">Latest week</p>
-                    <p className="font-semibold text-foreground">{formatPercent(ATTENDANCE_TREND[ATTENDANCE_TREND.length - 1].attendance)}</p>
+                    <p className="font-semibold text-foreground">
+                      {attendanceTrend.length > 0 ? formatPercent(attendanceTrend[attendanceTrend.length - 1].attendance) : "—"}
+                    </p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-3">
                     <p className="text-xs text-muted-foreground">4-week avg</p>
                     <p className="font-semibold text-foreground">
-                      {formatPercent(Math.round(ATTENDANCE_TREND.reduce((s, d) => s + d.attendance, 0) / ATTENDANCE_TREND.length))}
+                      {attendanceTrend.length > 0
+                        ? formatPercent(Math.round(attendanceTrend.reduce((s, d) => s + d.attendance, 0) / attendanceTrend.length))
+                        : "—"}
                     </p>
                   </div>
                 </div>
@@ -207,13 +248,13 @@ export default function SubAdminReports() {
             }
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={BATCH_OCCUPANCY_BY_COURSE} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+              <BarChart data={occupancyByCourse} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis dataKey="course" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={40} />
                 <RTooltip formatter={(value: number) => [`${value}%`, "Occupancy"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
                 <Bar dataKey="occupancy" radius={[6, 6, 0, 0]} maxBarSize={48}>
-                  {BATCH_OCCUPANCY_BY_COURSE.map((_, i) => (
+                  {occupancyByCourse.map((_, i) => (
                     <Cell key={i} fill={CHART_PALETTE[(i + 2) % CHART_PALETTE.length]} />
                   ))}
                 </Bar>
@@ -232,7 +273,7 @@ export default function SubAdminReports() {
                   </span>
                   <div>
                     <p className="text-sm font-semibold text-foreground">Batch Roster Report</p>
-                    <p className="text-xs text-muted-foreground">All {BATCH_ROWS.length} batches you have view access to</p>
+                    <p className="text-xs text-muted-foreground">All {batchRows.length} batches you have view access to</p>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={exportRoster}>
@@ -241,7 +282,7 @@ export default function SubAdminReports() {
                 </Button>
               </div>
               <DataTable
-                data={BATCH_ROWS}
+                data={batchRows}
                 columns={BATCH_COLUMNS}
                 rowKey={(r) => r.id}
                 searchPlaceholder="Search batches, courses or teachers…"

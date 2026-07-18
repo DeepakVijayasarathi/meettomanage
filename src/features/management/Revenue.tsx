@@ -23,6 +23,7 @@ import { COURSES } from "@/data/courses";
 import { DEPARTMENT_REVENUE, REVENUE_TREND } from "@/data/kpis";
 import { useApiData } from "@/api/hooks";
 import { getDashboardSummary, type ApiDashboardSummary } from "@/api/reports";
+import { listCourses, toFrontendCourse } from "@/api/courses";
 import type { Course } from "@/types";
 
 const DEMO_TREND = REVENUE_TREND;
@@ -45,8 +46,12 @@ export default function ManagementRevenue() {
     color: CHART_PALETTE[(i + 3) % CHART_PALETTE.length],
   }));
 
-  const sortedCourses = useMemo(() => [...COURSES].sort((a, b) => b.revenue - a.revenue), []);
-  const totalRevenue = useMemo(() => COURSES.reduce((sum, c) => sum + c.revenue, 0), []);
+  const { data: courses } = useApiData(
+    () => listCourses().then((list) => list.map(toFrontendCourse)),
+    COURSES
+  );
+  const sortedCourses = useMemo(() => [...courses].sort((a, b) => b.revenue - a.revenue), [courses]);
+  const totalRevenue = useMemo(() => courses.reduce((sum, c) => sum + c.revenue, 0), [courses]);
 
   const columns: DataTableColumn<Course>[] = [
     {

@@ -76,7 +76,8 @@ export default function TeacherAttendance() {
 
   const totalPresent = completed.reduce((sum, s) => sum + (ATTENDANCE_RECORDS[s.id]?.filter((r) => r.present).length ?? s.childIds.length), 0);
   const totalSeats = completed.reduce((sum, s) => sum + (ATTENDANCE_RECORDS[s.id]?.length ?? s.childIds.length), 0);
-  const avgAttendance = totalSeats > 0 ? Math.round((totalPresent / totalSeats) * 100) : 0;
+  // No aggregate attendance endpoint yet — the average is demo-only, never fabricated in API mode.
+  const avgAttendance = apiEnabled() ? 0 : totalSeats > 0 ? Math.round((totalPresent / totalSeats) * 100) : 0;
   const uniqueStudents = new Set(completed.flatMap((s) => s.childIds)).size;
   const recordingsAvailable = completed.filter((s) => s.recordingAvailable).length;
 
@@ -133,6 +134,8 @@ export default function TeacherAttendance() {
       key: "attendance",
       header: "Attendance",
       render: (row) => {
+        // Live per-session detail loads in the summary dialog; no fabricated counts in API mode.
+        if (apiEnabled()) return <span className="text-sm text-muted-foreground">View summary</span>;
         const records = ATTENDANCE_RECORDS[row.id];
         if (!records) return <span className="text-sm text-muted-foreground">{row.childIds.length}/{row.childIds.length} present</span>;
         const present = records.filter((r) => r.present).length;
@@ -169,8 +172,8 @@ export default function TeacherAttendance() {
 
   // Live rows come from the attendance API; mock mode keeps the simulated breakdown
   const selectedRecords = apiEnabled()
-    ? apiRecords
-        ?.filter((r) => r.participantType === "Student")
+    ? (apiRecords ?? [])
+        .filter((r) => r.participantType === "Student")
         .map<AttendanceRecord>((r) => ({
           childId: r.childName ?? r.childId ?? "",
           present: r.status !== "Absent",
@@ -254,7 +257,7 @@ export default function TeacherAttendance() {
               <div>
                 <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Session notes</p>
                 <p className="rounded-lg bg-muted/50 p-3 text-sm text-foreground">
-                  {SESSION_NOTES[selected.id] ?? "No notes were recorded for this session."}
+                  {(apiEnabled() ? undefined : SESSION_NOTES[selected.id]) ?? "No notes were recorded for this session."}
                 </p>
               </div>
 

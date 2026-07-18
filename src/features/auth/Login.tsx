@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, Sparkles, Video, CalendarCheck2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,10 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const { setRole: setSessionRole, setUserName, setPermissions } = useSession();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Where RequireAuth bounced the visitor from, so login lands them back there.
+  // Their portal home stays the fallback; a cross-role path re-bounces harmlessly.
+  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +51,7 @@ export default function Login() {
     // Demo mode: no backend configured, enter as the selected preview role
     if (!apiEnabled()) {
       setSessionRole(role);
-      navigate(ROLE_META[role].homePath);
+      navigate(from ?? ROLE_META[role].homePath);
       return;
     }
 
@@ -59,7 +63,7 @@ export default function Login() {
       setSessionRole(frontendRole);
       setUserName(response.user.fullName);
       setPermissions(response.permissions);
-      navigate(response.defaultRoute || ROLE_META[frontendRole].homePath);
+      navigate(from ?? (response.defaultRoute || ROLE_META[frontendRole].homePath));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed. Please try again.");
     } finally {

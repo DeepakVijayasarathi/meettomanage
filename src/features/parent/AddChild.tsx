@@ -8,10 +8,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { COURSES } from "@/data/courses";
+import { apiEnabled } from "@/lib/api";
 
 export default function ParentAddChild() {
   const [form, setForm] = useState({ name: "", age: "", grade: "", gender: "", courseInterest: "" });
   const [submitted, setSubmitted] = useState(false);
+
+  // In API mode a child is added through the real enrollment form (reviewed and approved
+  // by the team) — never through this demo-only quick-add with its sample data.
+  if (apiEnabled()) {
+    return (
+      <div>
+        <PageHeader title="Add Child" description="Enroll a sibling under your account." />
+        <Card className="mx-auto mt-10 max-w-lg p-8 text-center">
+          <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <UserPlus className="h-7 w-7" />
+          </span>
+          <h2 className="text-lg font-bold text-foreground">Add a child via the enrollment form</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Fill in the enrollment form with your child's details — once our team reviews and approves it, they'll appear on your
+            dashboard.
+          </p>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button asChild>
+              <Link to="/parent/enrollment">
+                Start Enrollment <CheckCircle2 className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/parent">Back to Dashboard</Link>
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   const courseOptions = COURSES.filter((c) => c.type !== "demo" && c.status === "active");
 

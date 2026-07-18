@@ -16,6 +16,13 @@ const DEMO_SUMMARY: Pick<ApiDashboardSummary, "revenueTrend" | "revenueByDepartm
   enrollmentFunnel: ENROLLMENT_FUNNEL,
 };
 
+// API mode seeds (and settles errors) with empty tables — never the demo figures.
+const EMPTY_SUMMARY: Pick<ApiDashboardSummary, "revenueTrend" | "revenueByDepartment" | "enrollmentFunnel"> = {
+  revenueTrend: [],
+  revenueByDepartment: [],
+  enrollmentFunnel: [],
+};
+
 function toCsv(columns: string[], rows: (string | number)[][]) {
   return [columns.join(","), ...rows.map((r) => r.join(","))].join("\n");
 }
@@ -60,7 +67,7 @@ function SummaryCard({ icon: Icon, title, description, columns, rows, filename }
             Export
           </Button>
         </div>
-        <div className="overflow-hidden rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-lg border border-border">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -88,7 +95,11 @@ function SummaryCard({ icon: Icon, title, description, columns, rows, filename }
 }
 
 export default function ManagementReports() {
-  const { data: summary } = useApiData(() => getDashboardSummary(), DEMO_SUMMARY as ApiDashboardSummary);
+  const { data: summary } = useApiData(
+    () => getDashboardSummary(),
+    DEMO_SUMMARY as ApiDashboardSummary,
+    EMPTY_SUMMARY as ApiDashboardSummary
+  );
 
   const monthlySummary = useMemo(() => {
     const columns = ["Month", "Revenue", "MoM Change"];

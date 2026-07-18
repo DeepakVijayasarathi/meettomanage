@@ -107,7 +107,8 @@ export async function downloadParentInvoice(invoiceId: string, invoiceNumber: st
 }
 
 export interface ParentPaymentResult {
-  mode: "redirect" | "cash";
+  // "unavailable" = the chosen gateway is turned off or missing keys; message says how to fix it.
+  mode: "redirect" | "cash" | "unavailable";
   url: string | null;
   gatewayReference: string | null;
   message: string;
@@ -118,6 +119,16 @@ export async function payInvoice(invoiceId: string, methodKey: string): Promise<
   return apiFetch<ParentPaymentResult>(`/api/parent-portal/invoices/${invoiceId}/pay`, {
     method: "POST",
     body: JSON.stringify({ methodKey }),
+  });
+}
+
+/**
+ * After returning from the gateway checkout, asks the backend to verify the payment
+ * directly with the gateway (no webhook needed) and returns the refreshed invoice.
+ */
+export async function refreshInvoicePayment(invoiceId: string): Promise<ApiInvoice> {
+  return apiFetch<ApiInvoice>(`/api/parent-portal/invoices/${invoiceId}/refresh-payment`, {
+    method: "POST",
   });
 }
 

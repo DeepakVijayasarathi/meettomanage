@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/AppShell";
+import { RequireAuth } from "@/components/RequireAuth";
 import { Logo } from "@/components/Logo";
 
 const Login = lazy(() => import("@/features/auth/Login"));
@@ -18,6 +19,7 @@ const AdminAcademicCalendar = lazy(() => import("@/features/admin/AcademicCalend
 const AdminSessions = lazy(() => import("@/features/admin/Sessions"));
 const AdminResources = lazy(() => import("@/features/admin/Resources"));
 const AdminBilling = lazy(() => import("@/features/admin/Billing"));
+const AdminPackages = lazy(() => import("@/features/admin/Packages"));
 const AdminPaymentMapping = lazy(() => import("@/features/admin/PaymentMapping"));
 const AdminPayouts = lazy(() => import("@/features/admin/Payouts"));
 const AdminFeeSuspension = lazy(() => import("@/features/admin/FeeSuspension"));
@@ -94,10 +96,24 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
 
             {/* Immersive, full-screen classroom — rendered outside the portal shell */}
-            <Route path="/teacher/live/:sessionId" element={<LiveClassroom mode="teacher" />} />
-            <Route path="/parent/live/:sessionId" element={<LiveClassroom mode="student" />} />
+            <Route
+              path="/teacher/live/:sessionId"
+              element={
+                <RequireAuth role="teacher">
+                  <LiveClassroom mode="teacher" />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/parent/live/:sessionId"
+              element={
+                <RequireAuth role="parent">
+                  <LiveClassroom mode="student" />
+                </RequireAuth>
+              }
+            />
 
-            <Route path="/admin" element={<AppShell role="admin"><Outlet /></AppShell>}>
+            <Route path="/admin" element={<RequireAuth role="admin"><AppShell role="admin"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<AdminDashboard />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="permissions" element={<AdminPermissions />} />
@@ -107,6 +123,7 @@ export default function App() {
               <Route path="sessions" element={<AdminSessions />} />
               <Route path="resources" element={<AdminResources />} />
               <Route path="billing" element={<AdminBilling />} />
+              <Route path="packages" element={<AdminPackages />} />
               <Route path="payment-mapping" element={<AdminPaymentMapping />} />
               <Route path="payouts" element={<AdminPayouts />} />
               <Route path="fee-suspension" element={<AdminFeeSuspension />} />
@@ -116,7 +133,7 @@ export default function App() {
               <Route path="settings" element={<AdminSettings />} />
             </Route>
 
-            <Route path="/teacher" element={<AppShell role="teacher"><Outlet /></AppShell>}>
+            <Route path="/teacher" element={<RequireAuth role="teacher"><AppShell role="teacher"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<TeacherDashboard />} />
               <Route path="classes" element={<TeacherMyClasses />} />
               <Route path="attendance" element={<TeacherAttendance />} />
@@ -126,7 +143,7 @@ export default function App() {
               <Route path="resources" element={<TeacherResources />} />
             </Route>
 
-            <Route path="/parent" element={<AppShell role="parent"><Outlet /></AppShell>}>
+            <Route path="/parent" element={<RequireAuth role="parent"><AppShell role="parent"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<ParentDashboard />} />
               <Route path="enrollment" element={<ParentEnrollment />} />
               <Route path="schedule" element={<ParentSchedule />} />
@@ -136,7 +153,7 @@ export default function App() {
               <Route path="add-child" element={<ParentAddChild />} />
             </Route>
 
-            <Route path="/subadmin" element={<AppShell role="subadmin"><Outlet /></AppShell>}>
+            <Route path="/subadmin" element={<RequireAuth role="subadmin"><AppShell role="subadmin"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<SubAdminDashboard />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
@@ -144,7 +161,7 @@ export default function App() {
               <Route path="audit-log" element={<SubAdminAuditLog />} />
             </Route>
 
-            <Route path="/admission" element={<AppShell role="admission"><Outlet /></AppShell>}>
+            <Route path="/admission" element={<RequireAuth role="admission"><AppShell role="admission"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<AdmissionDashboard />} />
               <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
               <Route path="demo-feedback" element={<AdmissionDemoFeedback />} />
@@ -154,20 +171,21 @@ export default function App() {
               <Route path="reports" element={<AdmissionReports />} />
             </Route>
 
-            <Route path="/coordinator" element={<AppShell role="coordinator"><Outlet /></AppShell>}>
+            <Route path="/coordinator" element={<RequireAuth role="coordinator"><AppShell role="coordinator"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<CoordinatorDashboard />} />
               <Route path="calendar" element={<CoordinatorCalendar />} />
               <Route path="availability" element={<CoordinatorAvailability />} />
             </Route>
 
-            <Route path="/management" element={<AppShell role="management"><Outlet /></AppShell>}>
+            <Route path="/management" element={<RequireAuth role="management"><AppShell role="management"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<ManagementDashboard />} />
               <Route path="revenue" element={<ManagementRevenue />} />
               <Route path="performance" element={<ManagementPerformance />} />
               <Route path="reports" element={<ManagementReports />} />
             </Route>
 
-            <Route path="/student" element={<AppShell role="student"><Outlet /></AppShell>}>
+            {/* The student view doubles as the parent's "what my child sees" preview. */}
+            <Route path="/student" element={<RequireAuth role="student" also={["parent"]}><AppShell role="student"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<StudentDashboard />} />
             </Route>
 

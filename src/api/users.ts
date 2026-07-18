@@ -3,7 +3,7 @@ import type { AppUser, Child } from "@/types";
 import { toFrontendRole, toFrontendStatus, type ApiRole, type ApiUser, type PagedResult } from "./types";
 
 /** A students-directory row: the mock Child shape plus resolved parent/course names from the API. */
-export type StudentRow = Child & { parentName?: string; courseName?: string };
+export type StudentRow = Child & { parentName?: string; courseName?: string; rmNotes?: string };
 
 // Stable colour per user so avatars don't change between visits
 const AVATAR_COLORS = ["#5B93E0", "#F08A1D", "#8B5CF6", "#17A9C9", "#23A455", "#EC4899", "#EAB308", "#F53BA6"];
@@ -16,12 +16,22 @@ function avatarColorFor(id: string): string {
 
 export interface ApiStudent {
   id: string;
+  parentProfileId: string;
   fullName: string;
   age: number | null;
   academicLevel: string | null;
   parentName: string;
   courseName: string | null;
+  rmNotes: string | null;
   isActive: boolean;
+}
+
+/** RM special enrolment notes on a child profile. */
+export async function updateStudentNotes(childId: string, notes: string): Promise<void> {
+  await apiFetch<void>(`/api/users/students/${childId}/notes`, {
+    method: "PUT",
+    body: JSON.stringify({ notes }),
+  });
 }
 
 /** Admin students directory (real enrolled children). Attendance/fee show neutral defaults until those subsystems populate. */
@@ -29,7 +39,7 @@ export async function listStudents(): Promise<StudentRow[]> {
   const students = await apiFetch<ApiStudent[]>("/api/users/students");
   return students.map((s) => ({
     id: s.id,
-    parentId: "",
+    parentId: s.parentProfileId,
     name: s.fullName,
     age: s.age ?? 0,
     grade: s.academicLevel ?? "—",
@@ -43,6 +53,7 @@ export async function listStudents(): Promise<StudentRow[]> {
     enrollmentComplete: s.isActive,
     parentName: s.parentName,
     courseName: s.courseName ?? undefined,
+    rmNotes: s.rmNotes ?? undefined,
   }));
 }
 

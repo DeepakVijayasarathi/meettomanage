@@ -46,31 +46,78 @@ import {
   TEACHER_UTILIZATION,
 } from "@/data/kpis";
 import { SESSIONS } from "@/data/sessions";
+import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getDashboardSummary } from "@/api/reports";
+import { listSessions, toFrontendSession } from "@/api/sessions";
+import type { ClassSession } from "@/types";
 
 const TODAY = "2026-07-09";
 
+// API mode starts from zeros/empties — never the demo numbers — until real aggregates arrive.
+const ZERO_KPIS: typeof ADMIN_KPIS = {
+  totalStudents: 0,
+  activeStudents: 0,
+  revenueThisMonth: 0,
+  revenueGrowth: 0,
+  enrollments: 0,
+  conversionRate: 0,
+  teacherUtilization: 0,
+  attendanceRate: 0,
+  renewalRate: 0,
+  refundRate: 0,
+  batchOccupancy: 0,
+};
+
+/** Local YYYY-MM-DD (matches the date key toFrontendSession produces). */
+function localDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export default function AdminDashboard() {
-  const todaySessions = SESSIONS.filter((s) => s.date === TODAY).sort((a, b) => a.startTime.localeCompare(b.startTime));
-  // Live aggregates replace the mock KPI block when the API is configured
-  const { data: kpis } = useApiData(
+  const usingApi = apiEnabled();
+  const todayKey = usingApi ? localDateKey(new Date()) : TODAY;
+  const { data: apiSessions } = useApiData<ClassSession[]>(
+    () => listSessions().then((items) => items.map(toFrontendSession)),
+    []
+  );
+  const todaySessions = (usingApi ? apiSessions : SESSIONS)
+    .filter((s) => s.date === todayKey)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  // Live aggregates replace the mock KPI block and charts when the API is configured
+  const { data: dashboard } = useApiData(
     () =>
       getDashboardSummary().then((s) => ({
-        totalStudents: s.totalStudents,
-        activeStudents: s.activeStudents,
-        revenueThisMonth: s.revenueCollected,
-        revenueGrowth: 0,
-        enrollments: s.totalEnrollments,
-        conversionRate: s.conversionRatePercent,
-        teacherUtilization: s.teacherUtilizationSessionsPerTeacher,
-        attendanceRate: ADMIN_KPIS.attendanceRate,
-        renewalRate: ADMIN_KPIS.renewalRate,
-        refundRate: s.refundRatePercent,
-        batchOccupancy: s.batchOccupancyPercent,
+        kpis: {
+          totalStudents: s.totalStudents,
+          activeStudents: s.activeStudents,
+          revenueThisMonth: s.revenueCollected,
+          revenueGrowth: 0,
+          enrollments: s.totalEnrollments,
+          conversionRate: s.conversionRatePercent,
+          teacherUtilization: s.teacherUtilizationSessionsPerTeacher,
+          // No attendance/renewal aggregate endpoint yet — 0, never the demo numbers
+          attendanceRate: 0,
+          renewalRate: 0,
+          refundRate: s.refundRatePercent,
+          batchOccupancy: s.batchOccupancyPercent,
+        },
+        revenueTrend: s.revenueTrend,
+        departmentRevenue: s.revenueByDepartment.map((d, i) => ({
+          department: d.name,
+          value: d.revenue,
+          color: CHART_PALETTE[(i + 3) % CHART_PALETTE.length],
+        })),
+        enrollmentFunnel: s.enrollmentFunnel,
       })),
-    ADMIN_KPIS
+    { kpis: ADMIN_KPIS, revenueTrend: REVENUE_TREND, departmentRevenue: DEPARTMENT_REVENUE, enrollmentFunnel: ENROLLMENT_FUNNEL },
+    { kpis: ZERO_KPIS, revenueTrend: [], departmentRevenue: [], enrollmentFunnel: [] }
   );
+  const { kpis, revenueTrend, departmentRevenue, enrollmentFunnel } = dashboard;
+  // No per-teacher utilization / attendance-trend / occupancy-by-course endpoints yet — empty charts in API mode
+  const teacherUtilization = usingApi ? [] : TEACHER_UTILIZATION;
+  const attendanceTrend = usingApi ? [] : ATTENDANCE_TREND;
+  const batchOccupancyByCourse = usingApi ? [] : BATCH_OCCUPANCY_BY_COURSE;
 
   return (
     <div>
@@ -88,70 +135,70 @@ export default function AdminDashboard() {
           value={formatNumber(kpis.totalStudents)}
           icon={Users}
           tone="primary"
-          trend={{ value: 6.2, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: 6.2, label: "vs last month" }}
         />
         <KpiCard
           label="Active Students"
           value={formatNumber(kpis.activeStudents)}
           icon={UserCheck}
           tone="success"
-          trend={{ value: 3.8, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: 3.8, label: "vs last month" }}
         />
         <KpiCard
           label="Revenue This Month"
           value={formatCurrency(kpis.revenueThisMonth)}
           icon={IndianRupee}
           tone="primary"
-          trend={{ value: kpis.revenueGrowth, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: kpis.revenueGrowth, label: "vs last month" }}
         />
         <KpiCard
           label="New Enrollments"
           value={formatNumber(kpis.enrollments)}
           icon={GraduationCap}
           tone="warning"
-          trend={{ value: 4.1, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: 4.1, label: "vs last month" }}
         />
         <KpiCard
           label="Conversion Rate"
           value={formatPercent(kpis.conversionRate)}
           icon={TrendingUp}
           tone="success"
-          trend={{ value: 2.4, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: 2.4, label: "vs last month" }}
         />
         <KpiCard
           label="Teacher Utilization"
           value={formatPercent(kpis.teacherUtilization)}
           icon={ClipboardCheck}
           tone="primary"
-          trend={{ value: -1.2, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: -1.2, label: "vs last month" }}
         />
         <KpiCard
           label="Attendance Rate"
-          value={formatPercent(ADMIN_KPIS.attendanceRate)}
+          value={formatPercent(kpis.attendanceRate)}
           icon={CalendarCheck2}
           tone="success"
-          trend={{ value: 1.5, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: 1.5, label: "vs last month" }}
         />
         <KpiCard
           label="Renewal Rate"
-          value={formatPercent(ADMIN_KPIS.renewalRate)}
+          value={formatPercent(kpis.renewalRate)}
           icon={RefreshCw}
           tone="warning"
-          trend={{ value: -0.8, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: -0.8, label: "vs last month" }}
         />
         <KpiCard
           label="Refund Rate"
           value={formatPercent(kpis.refundRate, 1)}
           icon={Undo2}
           tone="destructive"
-          trend={{ value: 0.4, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: 0.4, label: "vs last month" }}
         />
         <KpiCard
           label="Batch Occupancy"
           value={formatPercent(kpis.batchOccupancy)}
           icon={LayoutGrid}
           tone="neutral"
-          trend={{ value: 2.9, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: 2.9, label: "vs last month" }}
         />
       </div>
 
@@ -159,7 +206,7 @@ export default function AdminDashboard() {
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
         <ChartCard title="Revenue Trend" description="Monthly revenue, last 6 months">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={REVENUE_TREND} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
+            <AreaChart data={revenueTrend} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
               <defs>
                 <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={CHART_PALETTE[0]} stopOpacity={0.35} />
@@ -182,7 +229,7 @@ export default function AdminDashboard() {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={DEPARTMENT_REVENUE}
+                data={departmentRevenue}
                 dataKey="value"
                 nameKey="department"
                 innerRadius={62}
@@ -190,7 +237,7 @@ export default function AdminDashboard() {
                 paddingAngle={3}
                 strokeWidth={0}
               >
-                {DEPARTMENT_REVENUE.map((d) => (
+                {departmentRevenue.map((d) => (
                   <Cell key={d.department} fill={d.color} />
                 ))}
               </Pie>
@@ -206,13 +253,13 @@ export default function AdminDashboard() {
 
         <ChartCard title="Enrollment Funnel" description="Demo to enrollment conversion, this quarter">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={ENROLLMENT_FUNNEL} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
+            <BarChart data={enrollmentFunnel} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
               <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} />
               <YAxis type="category" dataKey="stage" tickLine={false} axisLine={false} fontSize={12} width={104} />
               <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={22}>
-                {ENROLLMENT_FUNNEL.map((_, i) => (
+                {enrollmentFunnel.map((_, i) => (
                   <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
                 ))}
               </Bar>
@@ -222,13 +269,13 @@ export default function AdminDashboard() {
 
         <ChartCard title="Teacher Utilization" description="Sessions delivered vs. capacity, by teacher">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={TEACHER_UTILIZATION} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+            <BarChart data={teacherUtilization} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="teacher" tickLine={false} axisLine={false} fontSize={11} interval={0} angle={-12} textAnchor="end" height={44} />
               <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={40} />
               <RTooltip formatter={(value: number) => [`${value}%`, "Utilization"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="utilization" radius={[6, 6, 0, 0]} maxBarSize={36}>
-                {TEACHER_UTILIZATION.map((_, i) => (
+                {teacherUtilization.map((_, i) => (
                   <Cell key={i} fill={CHART_PALETTE[(i + 2) % CHART_PALETTE.length]} />
                 ))}
               </Bar>
@@ -238,7 +285,7 @@ export default function AdminDashboard() {
 
         <ChartCard title="Attendance Trend" description="Weekly attendance rate, this month">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={ATTENDANCE_TREND} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+            <LineChart data={attendanceTrend} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="week" tickLine={false} axisLine={false} fontSize={12} />
               <YAxis domain={[80, 100]} tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={40} />
@@ -250,13 +297,13 @@ export default function AdminDashboard() {
 
         <ChartCard title="Batch Occupancy by Course" description="Fill rate across active batches">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={BATCH_OCCUPANCY_BY_COURSE} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+            <BarChart data={batchOccupancyByCourse} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="course" tickLine={false} axisLine={false} fontSize={12} />
               <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={40} />
               <RTooltip formatter={(value: number) => [`${value}%`, "Occupancy"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="occupancy" radius={[6, 6, 0, 0]} maxBarSize={40}>
-                {BATCH_OCCUPANCY_BY_COURSE.map((_, i) => (
+                {batchOccupancyByCourse.map((_, i) => (
                   <Cell key={i} fill={CHART_PALETTE[(i + 4) % CHART_PALETTE.length]} />
                 ))}
               </Bar>
@@ -274,7 +321,7 @@ export default function AdminDashboard() {
             </span>
             <div>
               <h3 className="text-base font-semibold text-foreground">Today&apos;s Sessions</h3>
-              <p className="text-sm text-muted-foreground">{formatDate(TODAY, "long")}</p>
+              <p className="text-sm text-muted-foreground">{formatDate(todayKey, "long")}</p>
             </div>
           </div>
           <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">

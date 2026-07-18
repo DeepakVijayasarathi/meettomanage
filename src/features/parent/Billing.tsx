@@ -29,7 +29,8 @@ export default function ParentBilling() {
   );
   const { data: isSuspended } = useApiData(
     () => getParentDashboard().then((d) => d.isSuspended),
-    mockChildren.some((c) => c.feeStatus === "suspended")
+    mockChildren.some((c) => c.feeStatus === "suspended"),
+    false
   );
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null);
   const [payOpen, setPayOpen] = useState(false);

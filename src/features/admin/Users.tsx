@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
@@ -26,7 +27,7 @@ import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { createUser, getCredentialChannels, listStudents, listUsers, resendCredentials, toAppUser, updateUser, type StudentRow } from "@/api/users";
+import { createUser, getCredentialChannels, listStudents, listUsers, resendCredentials, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
 import type { ApiRole } from "@/api/types";
 import { listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
 
@@ -69,6 +70,12 @@ export default function AdminUsers() {
 
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
   const [detailChild, setDetailChild] = useState<Child | null>(null);
+  // RM special enrolment notes for the open child profile.
+  const [childNotes, setChildNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  useEffect(() => {
+    setChildNotes((detailChild as StudentRow | null)?.rmNotes ?? "");
+  }, [detailChild]);
   // Edit-profile dialog (name + phone) for any user account.
   const [editUser, setEditUser] = useState<AppUser | null>(null);
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "" });
@@ -517,7 +524,7 @@ export default function AdminUsers() {
             <DialogDescription>{editUser?.email}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label htmlFor="edit-first">First name</Label>
                 <Input
@@ -601,11 +608,41 @@ export default function AdminUsers() {
                   </div>
                 </div>
               </div>
+
+              {/* RM special enrolment notes — visible on the profile to whoever is the RM. */}
+              <div className="mt-2 flex flex-col gap-1.5">
+                <Label htmlFor="rm-notes">Relationship Manager notes</Label>
+                <Textarea
+                  id="rm-notes"
+                  placeholder="e.g. Enrolled during the discount window; services begin after 4 months."
+                  value={childNotes}
+                  onChange={(e) => setChildNotes(e.target.value)}
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground">Shown on this child's profile to the current RM and admins.</p>
+              </div>
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDetailChild(null)}>
                   Close
                 </Button>
-                <Button>Edit Profile</Button>
+                <Button
+                  disabled={savingNotes || !apiEnabled()}
+                  onClick={async () => {
+                    if (!detailChild) return;
+                    setSavingNotes(true);
+                    try {
+                      await updateStudentNotes(detailChild.id, childNotes.trim());
+                      setDetailChild(null);
+                    } catch {
+                      /* keep dialog open on failure */
+                    } finally {
+                      setSavingNotes(false);
+                    }
+                  }}
+                >
+                  {savingNotes ? "Saving…" : "Save notes"}
+                </Button>
               </DialogFooter>
             </>
           )}
