@@ -38,6 +38,13 @@ export async function sendBulkEmail(input: {
   });
 }
 
+/** Live recipient count for the compose screen — same rule the send itself uses. */
+export async function getBulkEmailRecipientCount(batchId?: string): Promise<number> {
+  const query = batchId ? `?batchId=${encodeURIComponent(batchId)}` : "";
+  const result = await apiFetch<{ recipientCount: number }>(`/api/communications/bulk-email/recipients${query}`);
+  return result.recipientCount;
+}
+
 export interface ApiTeacherPerformance {
   teacherProfileId: string;
   teacherName: string;

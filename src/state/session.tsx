@@ -28,6 +28,13 @@ const MOCK_SESSION_CHILDREN: SessionChild[] = apiEnabled()
 interface SessionState {
   role: Role | null;
   setRole: (role: Role | null) => void;
+  /**
+   * Where this login "lives" — the API's defaultRoute (e.g. a Sub Admin assigned the
+   * Admission preset homes on "/admission", not "/subadmin"). RequireAuth admits the
+   * user into the portal this path belongs to and bounces stray visits back here.
+   */
+  homePath: string | null;
+  setHomePath: (path: string | null) => void;
   logout: () => void;
   activeChildId: string;
   setActiveChildId: (id: string) => void;
@@ -48,6 +55,7 @@ interface SessionState {
 const SessionContext = createContext<SessionState | null>(null);
 
 const ROLE_KEY = "trn.role";
+const HOME_KEY = "trn.homePath";
 const CHILD_KEY = "trn.activeChildId";
 const ENROLLED_KEY = "trn.enrolledChildIds";
 const NAME_KEY = "trn.userName";
@@ -89,11 +97,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return raw ? (JSON.parse(raw) as string[]) : [];
   });
   const [childList, setChildList] = useState<SessionChild[]>(MOCK_SESSION_CHILDREN);
+  const [homePath, setHomePathState] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(HOME_KEY);
+  });
 
-  useEffect(() => {
-    if (role) localStorage.setItem(ROLE_KEY, role);
+  const setHomePath = (path: string | null) => {
+    setHomePathState(path);
+    if (path) localStorage.setItem(HOME_KEY, path);
+    else localStorage.removeItem(HOME_KEY);
+  };
+
+  // Persisted synchronously (not in an effect): navigating or reloading right after
+  // login would unload the page before a deferred effect ran, losing the session role
+  // and bouncing the next full page load back to /login.
+  const setRole = (next: Role | null) => {
+    setRoleState(next);
+    if (next) localStorage.setItem(ROLE_KEY, next);
     else localStorage.removeItem(ROLE_KEY);
-  }, [role]);
+  };
 
   const setPermissions = (next: string[]) => {
     setPermissionsState(next);
@@ -107,7 +129,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     getCurrentUser()
       .then((response) => {
-        if (!cancelled) setPermissions(response.permissions);
+        if (cancelled) return;
+        setPermissions(response.permissions);
+        if (response.defaultRoute) setHomePath(response.defaultRoute);
       })
       .catch(() => {
         /* keep whatever was cached from login */
@@ -160,11 +184,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SessionState>(
     () => ({
       role,
-      setRole: setRoleState,
+      setRole,
+      homePath,
+      setHomePath,
       logout: () => {
-        setRoleState(null);
+        setRole(null);
         setUserName(null);
         setPermissions([]);
+        setHomePath(null);
         setAccessToken(null);
       },
       activeChildId,
@@ -184,7 +211,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       hasPermission: (module, action) =>
         !apiEnabled() || checkPermission(role, permissions, module, action),
     }),
-    [role, activeChildId, enrolledChildIds, childList, apiUserName, permissions]
+    [role, activeChildId, enrolledChildIds, childList, apiUserName, permissions, homePath]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

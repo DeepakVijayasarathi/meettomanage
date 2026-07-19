@@ -1,11 +1,50 @@
 import { useEffect, useState, type ComponentType } from "react";
-import { Banknote, CheckCircle2, CreditCard, ExternalLink, Landmark, Smartphone, Wallet } from "lucide-react";
+import { Banknote, CheckCircle2, CreditCard, ExternalLink, Landmark, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
-import { getPaymentMethods, payInvoice, refreshInvoicePayment } from "@/api/parentPortal";
+import {
+  getPaymentMethods,
+  payInvoice,
+  refreshInvoicePayment,
+  startInlineCheckout,
+  verifyInlineCheckout,
+} from "@/api/parentPortal";
+
+/** Success proof Razorpay's checkout hands to the handler callback. */
+interface RazorpaySuccessResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: string, callback: (response: { error?: { description?: string } }) => void) => void;
+    };
+  }
+}
+
+// checkout.js is loaded once, lazily, the first time a payer picks Razorpay.
+let razorpayScript: Promise<void> | null = null;
+function loadRazorpayScript(): Promise<void> {
+  if (window.Razorpay) return Promise.resolve();
+  razorpayScript ??= new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve();
+    script.onerror = () => {
+      razorpayScript = null;
+      reject(new Error("Could not load the secure checkout. Check your connection and try again."));
+    };
+    document.body.appendChild(script);
+  });
+  return razorpayScript;
+}
 
 interface PayNowModalProps {
   open: boolean;
@@ -45,7 +84,7 @@ function iconForGateway(key: string): PayMethod["icon"] {
 export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceId, onInitiated }: PayNowModalProps) {
   const [methods, setMethods] = useState<PayMethod[]>(DEMO_METHODS);
   const [method, setMethod] = useState<string>(DEMO_METHODS[0].id);
-  const [status, setStatus] = useState<"idle" | "processing" | "success" | "redirect" | "cash">("idle");
+  const [status, setStatus] = useState<"idle" | "processing" | "success" | "redirect" | "cash" | "inline">("idle");
   const [resultMessage, setResultMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
@@ -82,6 +121,17 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
       return;
     }
 
+    // Razorpay pays in an in-page popup (no redirect); everything else keeps the
+    // checkout-link / cash-intent flow.
+    if (method.toLowerCase().includes("razorpay")) {
+      await payInline();
+      return;
+    }
+
+    await payViaLinkOrCash();
+  }
+
+  async function payViaLinkOrCash() {
     try {
       const result = await payInvoice(invoiceId!, method);
       // Chosen gateway can't start a checkout (turned off / missing keys) → keep the payer on
@@ -102,6 +152,79 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
     } catch (e) {
       setStatus("idle");
       setError(e instanceof Error ? e.message : "Could not start the payment. Please try again.");
+    }
+  }
+
+  /** In-page Razorpay popup: order → checkout.js → server-verified settlement, no redirect. */
+  async function payInline() {
+    try {
+      const checkout = await startInlineCheckout(invoiceId!, method);
+      if (checkout.mode === "unavailable") {
+        setStatus("idle");
+        setError(checkout.message ?? "This payment method is not available right now.");
+        return;
+      }
+
+      await loadRazorpayScript();
+      onInitiated?.();
+      setStatus("inline");
+
+      const razorpay = new window.Razorpay!({
+        key: checkout.keyId,
+        order_id: checkout.orderId,
+        amount: checkout.amount,
+        currency: checkout.currency,
+        name: checkout.displayName ?? "The Reader Nest",
+        description: checkout.description ?? invoiceLabel,
+        prefill: {
+          name: checkout.prefillName ?? undefined,
+          email: checkout.prefillEmail ?? undefined,
+          contact: checkout.prefillContact ?? undefined,
+        },
+        theme: { color: "#57B33B" },
+        handler: (response: RazorpaySuccessResponse) => {
+          void settleInline(response);
+        },
+        modal: {
+          ondismiss: () => {
+            // Only a pre-payment dismissal lands here (success goes through handler).
+            setStatus((current) => (current === "inline" ? "idle" : current));
+            setError(
+              "Checkout was closed before the payment finished. If you did complete it, the invoice will update automatically within the hour."
+            );
+          },
+        },
+      });
+      razorpay.on("payment.failed", (response) => {
+        setStatus("idle");
+        setError(response.error?.description ?? "The payment failed. No money moved — please try again.");
+      });
+      razorpay.open();
+    } catch (e) {
+      setStatus("idle");
+      setError(e instanceof Error ? e.message : "Could not start the payment. Please try again.");
+    }
+  }
+
+  /** Sends the popup's success proof for server-side verification and flips the invoice to Paid. */
+  async function settleInline(response: RazorpaySuccessResponse) {
+    setStatus("processing");
+    try {
+      await verifyInlineCheckout(invoiceId!, {
+        orderId: response.razorpay_order_id,
+        paymentId: response.razorpay_payment_id,
+        signature: response.razorpay_signature,
+      });
+      setStatus("success");
+      onInitiated?.();
+    } catch (e) {
+      // The charge went through at the gateway; verification is what failed. Try the
+      // pull-based reconcile before bothering the payer.
+      const settled = await verifyPayment(true);
+      if (!settled) {
+        setStatus("idle");
+        setError(e instanceof Error ? e.message : "We couldn't verify the payment yet — it will reconcile automatically.");
+      }
     }
   }
 
@@ -154,9 +277,33 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
-        {status === "success" ? (
+    // While the Razorpay popup is on screen, our dialog must not be modal — Radix's
+    // focus trap would keep yanking focus out of the gateway's iframe (card fields
+    // couldn't be typed into). It becomes modal again the moment the popup closes.
+    <Dialog open={open} onOpenChange={handleClose} modal={status !== "inline"}>
+      <DialogContent
+        className="max-w-md"
+        // While the Razorpay popup is up, our dialog must survive Escape/outside clicks —
+        // otherwise the success confirmation after payment has nowhere to appear. The
+        // popup handles its own dismissal and hands control back via ondismiss.
+        onEscapeKeyDown={(e) => {
+          if (status === "inline") e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          if (status === "inline") e.preventDefault();
+        }}
+      >
+        {status === "inline" ? (
+          <div className="flex flex-col items-center py-4 text-center">
+            <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
+              <ShieldCheck className="h-8 w-8" />
+            </span>
+            <h3 className="text-lg font-bold">Complete your payment</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Finish the payment in the secure Razorpay window. Your invoice updates here the moment it succeeds.
+            </p>
+          </div>
+        ) : status === "success" ? (
           <div className="flex flex-col items-center py-4 text-center">
             <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-success">
               <CheckCircle2 className="h-8 w-8" />

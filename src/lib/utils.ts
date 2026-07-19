@@ -35,6 +35,11 @@ export function formatDate(value: string | Date, pattern: "short" | "long" | "ti
   }
 }
 
+/** Amount still owed on an invoice; partial payments reduce it (mock rows have no amountPaid). */
+export function invoiceBalance(invoice: { amount: number; amountPaid?: number }): number {
+  return Math.max(0, invoice.amount - (invoice.amountPaid ?? 0));
+}
+
 export function initials(name: string) {
   return name
     .split(" ")

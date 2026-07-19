@@ -39,6 +39,8 @@ export interface ApiPayoutRate {
   teacherName: string;
   durationMinutes: number;
   ratePerSession: number;
+  /** Teacher no-show deduction as % of the session rate (100 = full rate). */
+  teacherNoShowPenaltyPercent: number;
   effectiveFrom: string;
   isActive: boolean;
 }
@@ -106,6 +108,8 @@ export async function savePayoutRate(input: {
   teacherProfileId: string;
   durationMinutes: 30 | 45 | 60;
   ratePerSession: number;
+  /** No-show deduction as % of the session rate; omitted = 100 (full rate). */
+  teacherNoShowPenaltyPercent?: number;
   effectiveFrom: string;
 }): Promise<ApiPayoutRate> {
   return apiFetch<ApiPayoutRate>("/api/payout-rates", { method: "POST", body: JSON.stringify(input) });

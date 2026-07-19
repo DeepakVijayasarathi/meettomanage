@@ -89,7 +89,7 @@ export function AccountDialog({
     try {
       const updated = await updateMyAccount({
         firstName: firstName.trim(),
-        lastName: lastName.trim() || firstName.trim(),
+        lastName: lastName.trim(),
         phone: phone.trim() || undefined,
         timeZoneId,
       });

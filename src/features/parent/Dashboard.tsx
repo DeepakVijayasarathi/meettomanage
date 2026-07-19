@@ -20,6 +20,7 @@ import { FeeStatusBadge, SessionStatusBadge } from "@/components/StatusBadge";
 import { PayNowModal } from "@/components/PayNowModal";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSession } from "@/state/session";
@@ -29,9 +30,18 @@ import { getInvoicesForParent } from "@/data/invoices";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { toFrontendSession } from "@/api/sessions";
-import { getParentDashboard, getParentInvoices, getParentSchedule, type ApiParentChildSummary, type ApiParentDashboard } from "@/api/parentPortal";
+import { listCourseOptions } from "@/api/courses";
+import {
+  getParentDashboard,
+  getParentInvoices,
+  getParentSchedule,
+  listMyEnrollmentForms,
+  type ApiEnrollmentForm,
+  type ApiParentChildSummary,
+  type ApiParentDashboard,
+} from "@/api/parentPortal";
 import { toFrontendInvoice } from "@/api/billing";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, invoiceBalance } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import type { Child, ClassSession, Invoice } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart } from "./utils";
@@ -74,6 +84,17 @@ export default function ParentDashboard() {
   );
 
   const usingApi = apiEnabled();
+
+  // Enrollments the parent has submitted that the admin hasn't approved yet — shown
+  // as pending students with their submitted answers, so a fresh submission is
+  // immediately visible instead of the child silently "not existing" until approval.
+  const { data: myForms } = useApiData<ApiEnrollmentForm[]>(() => listMyEnrollmentForms(), []);
+  const awaitingForms = useMemo(
+    () => (usingApi ? myForms.filter((f) => f.status === "Submitted" || f.status === "Rejected") : []),
+    [usingApi, myForms]
+  );
+  const { data: courseOptions } = useApiData(() => listCourseOptions(), []);
+
   const apiChildren = apiDash?.children ?? [];
   // The shared child switcher drives activeChildId; match the dashboard's child to it.
   const selectedApiChild = apiChildren.find((c) => c.childId === activeChildId) ?? apiChildren[0] ?? null;
@@ -126,16 +147,20 @@ export default function ParentDashboard() {
     return (
       <div>
         <PageHeader title="Parent Dashboard" description="Classes completed, attendance and fee status for your children." />
-        <EmptyState
-          icon={Sparkles}
-          title="No child selected"
-          description="Add a child to your account to get started."
-          action={
-            <Button asChild>
-              <Link to="/parent/add-child">Add child</Link>
-            </Button>
-          }
-        />
+        {awaitingForms.length > 0 ? (
+          <PendingEnrollments forms={awaitingForms} courseOptions={courseOptions} />
+        ) : (
+          <EmptyState
+            icon={Sparkles}
+            title="No child selected"
+            description="Add a child to your account to get started."
+            action={
+              <Button asChild>
+                <Link to="/parent/add-child">Add child</Link>
+              </Button>
+            }
+          />
+        )}
       </div>
     );
   }
@@ -152,6 +177,12 @@ export default function ParentDashboard() {
       />
 
       <MultiChildSwitcher />
+
+      {awaitingForms.length > 0 && (
+        <div className="mt-6">
+          <PendingEnrollments forms={awaitingForms} courseOptions={courseOptions} />
+        </div>
+      )}
 
       <div className="mt-6">
         {!isEnrolled ? (
@@ -202,7 +233,7 @@ export default function ParentDashboard() {
         <PayNowModal
           open={payOpen}
           onOpenChange={setPayOpen}
-          amount={invoice.amount}
+          amount={invoiceBalance(invoice)}
           invoiceLabel={`${invoice.courseName} — ${child.name}`}
           invoiceId={invoice.apiId}
           onInitiated={reloadInvoices}
@@ -259,7 +290,7 @@ function FeeCard({ child, invoice, onPay }: { child: Child; invoice?: Invoice; o
       </div>
       {needsAction ? (
         <Button size="sm" className="mt-4 w-full" onClick={onPay}>
-          Pay {invoice ? formatCurrency(invoice.amount) : "Now"}
+          Pay {invoice ? formatCurrency(invoiceBalance(invoice)) : "Now"}
         </Button>
       ) : (
         <p className="mt-4 text-xs font-medium text-success">All caught up — thank you!</p>
@@ -328,6 +359,88 @@ function RecentRow({ session }: { session: ClassSession }) {
         )}
       </div>
       <SessionStatusBadge status={session.status} />
+    </div>
+  );
+}
+
+/** One submitted-but-unreviewed (or rejected) enrollment, with the answers the parent gave. */
+function PendingEnrollments({
+  forms,
+  courseOptions,
+}: {
+  forms: ApiEnrollmentForm[];
+  courseOptions: { id: string; name: string }[];
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      {forms.map((form) => {
+        let answers: Record<string, unknown> = {};
+        try {
+          answers = JSON.parse(form.formDataJson) as Record<string, unknown>;
+        } catch {
+          /* malformed answers still render the card */
+        }
+        const text = (key: string) => (typeof answers[key] === "string" && answers[key] ? String(answers[key]) : "—");
+        const childName = text("childName") === "—" ? "(name pending)" : text("childName");
+        const rejected = form.status === "Rejected";
+        const courseName = courseOptions.find((c) => c.id === answers.courseInterest)?.name ?? "—";
+        const days = Array.isArray(answers.preferredDays) && answers.preferredDays.length > 0 ? (answers.preferredDays as string[]).join(", ") : "—";
+
+        return (
+          <Card key={form.id} className={cn("p-5", rejected ? "border-destructive/40 bg-destructive/5" : "border-warning/40 bg-warning/5")}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span
+                  className={cn(
+                    "flex h-11 w-11 items-center justify-center rounded-xl",
+                    rejected ? "bg-destructive/10 text-destructive" : "bg-warning/20 text-warning-foreground"
+                  )}
+                >
+                  <Clock3 className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="font-semibold text-foreground">{childName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Enrollment submitted {form.submittedAtUtc ? formatDate(form.submittedAtUtc, "long") : "—"}
+                  </p>
+                </div>
+              </div>
+              <Badge variant={rejected ? "destructive" : "warning"}>{rejected ? "Needs changes" : "Pending approval"}</Badge>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
+              <PendingValue label="Date of birth" value={text("dob") === "—" ? "—" : formatDate(text("dob"))} />
+              <PendingValue label="Grade" value={text("grade")} />
+              <PendingValue label="School" value={text("schoolName")} />
+              <PendingValue label="Course" value={courseName} />
+              <PendingValue label="Preferred days" value={days} />
+              <PendingValue label="Preferred time" value={text("preferredTime")} />
+            </div>
+
+            <p className="mt-4 text-xs text-muted-foreground">
+              {rejected
+                ? "The centre asked for corrections — please review and resubmit the enrollment form."
+                : "The centre is reviewing this enrollment. Classes, schedule and billing unlock automatically once it's approved."}
+            </p>
+            {rejected && (
+              <Button size="sm" asChild className="mt-3">
+                <Link to="/parent/enrollment">
+                  Edit &amp; resubmit <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+function PendingValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-medium capitalize text-foreground">{value}</p>
     </div>
   );
 }

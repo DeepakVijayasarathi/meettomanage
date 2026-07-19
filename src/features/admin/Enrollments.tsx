@@ -23,8 +23,9 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listEnrollmentForms, reviewEnrollmentForm, updateEnrollmentForm, type ApiEnrollmentForm } from "@/api/parentPortal";
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
+import { listPackagePlans, type ApiPackagePlan } from "@/api/billing";
 import type { Child } from "@/types";
-import { getInitials } from "@/lib/utils";
+import { formatCurrency, getInitials } from "@/lib/utils";
 
 /** Mock Child rows and live enrollment-form rows share one table shape. */
 type EnrollmentRow = Child & { parentName?: string; formJson?: string; dob?: string };
@@ -81,6 +82,25 @@ export default function AdminEnrollments() {
     COURSES.map((c) => ({ id: c.id, name: c.name }))
   );
 
+  // Active billing plans for the approval picker; approving with one selected starts
+  // the child's subscription and issues the first invoice straight away.
+  const { data: activePlans } = useApiData<ApiPackagePlan[]>(
+    () => listPackagePlans().then((plans) => plans.filter((p) => p.isActive)),
+    []
+  );
+  const [approvePlanId, setApprovePlanId] = useState<string>("");
+  const [approving, setApproving] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
+
+  function openDetail(row: EnrollmentRow) {
+    // Pre-select the plan when the child's course-of-interest has exactly one —
+    // the common case approves with billing in a single click.
+    const courseMatches = activePlans.filter((p) => p.courseId && p.courseId === row.courseId);
+    setApprovePlanId(courseMatches.length === 1 ? courseMatches[0].id : "");
+    setApproveError(null);
+    setDetail(row);
+  }
+
   function isComplete(child: EnrollmentRow) {
     return child.enrollmentComplete || approvedIds.has(child.id);
   }
@@ -129,18 +149,32 @@ export default function AdminEnrollments() {
     }
   }
 
-  function handleApprove(row: EnrollmentRow) {
+  async function handleApprove(row: EnrollmentRow) {
     if (apiEnabled()) {
       const parts = row.name.split(" ");
-      reviewEnrollmentForm(row.id, {
-        approve: true,
-        childFirstName: parts[0],
-        childLastName: parts.slice(1).join(" ") || undefined,
-        childDateOfBirth: row.dob,
-      }).then(() => {
+      setApproving(true);
+      setApproveError(null);
+      try {
+        await reviewEnrollmentForm(row.id, {
+          approve: true,
+          childFirstName: parts[0],
+          childLastName: parts.slice(1).join(" ") || undefined,
+          childDateOfBirth: row.dob,
+          packagePlanId: approvePlanId || undefined,
+        });
+        const plan = activePlans.find((p) => p.id === approvePlanId);
+        setBanner(
+          plan
+            ? `"${row.name}" approved — billing started on ${plan.name} (${formatCurrency(plan.price)}); the first invoice is on its way to the parent.`
+            : `"${row.name}" approved without a billing plan. Assign one from Packages & Subscriptions when ready.`
+        );
         reload();
         setDetail(null);
-      });
+      } catch (e) {
+        setApproveError(e instanceof Error ? e.message : "Could not approve the enrollment.");
+      } finally {
+        setApproving(false);
+      }
       return;
     }
     setApprovedIds((prev) => new Set(prev).add(row.id));
@@ -223,7 +257,7 @@ export default function AdminEnrollments() {
         columns={columns}
         rowKey={(row) => row.id}
         searchPlaceholder="Search by student name…"
-        onRowClick={(row) => setDetail(row)}
+        onRowClick={openDetail}
       />
 
       <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>
@@ -269,6 +303,37 @@ export default function AdminEnrollments() {
                 </div>
               </div>
 
+              {!isComplete(detail) && apiEnabled() && activePlans.length > 0 && (
+                <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-muted/40 p-4">
+                  <Label>Billing plan on approval</Label>
+                  <Select value={approvePlanId || "__none"} onValueChange={(v) => setApprovePlanId(v === "__none" ? "" : v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="No billing plan — assign later" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">No billing plan — assign later</SelectItem>
+                      {[...activePlans]
+                        .sort(
+                          (a, b) =>
+                            Number(Boolean(b.courseId && b.courseId === detail.courseId)) -
+                            Number(Boolean(a.courseId && a.courseId === detail.courseId))
+                        )
+                        .map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name} — {formatCurrency(p.price)}
+                            {p.billingCycle !== "OneTime" ? ` / ${p.billingCycle.toLowerCase().replace("ly", "")}` : " one-time"}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Starts the subscription and issues the first invoice to the parent the moment you approve.
+                  </p>
+                </div>
+              )}
+
+              {approveError && <p className="text-sm font-medium text-destructive">{approveError}</p>}
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDetail(null)}>
                   Close
@@ -282,9 +347,9 @@ export default function AdminEnrollments() {
                   Edit
                 </Button>
                 {!isComplete(detail) && (
-                  <Button onClick={() => handleApprove(detail)}>
+                  <Button disabled={approving} onClick={() => handleApprove(detail)}>
                     <CheckCircle2 className="h-4 w-4" />
-                    Approve
+                    {approving ? "Approving…" : "Approve"}
                   </Button>
                 )}
               </DialogFooter>

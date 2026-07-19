@@ -38,7 +38,7 @@ export default function Login() {
   const [password, setPassword] = useState(apiEnabled() ? "" : "demo-password");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setRole: setSessionRole, setUserName, setPermissions } = useSession();
+  const { setRole: setSessionRole, setUserName, setPermissions, setHomePath } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
   // Where RequireAuth bounced the visitor from, so login lands them back there.
@@ -51,6 +51,7 @@ export default function Login() {
     // Demo mode: no backend configured, enter as the selected preview role
     if (!apiEnabled()) {
       setSessionRole(role);
+      setHomePath(ROLE_META[role].homePath);
       navigate(from ?? ROLE_META[role].homePath);
       return;
     }
@@ -60,10 +61,12 @@ export default function Login() {
     try {
       const response = await login(email, password);
       const frontendRole = toFrontendRole(response.user.role);
+      const homePath = response.defaultRoute || ROLE_META[frontendRole].homePath;
       setSessionRole(frontendRole);
       setUserName(response.user.fullName);
       setPermissions(response.permissions);
-      navigate(from ?? (response.defaultRoute || ROLE_META[frontendRole].homePath));
+      setHomePath(homePath);
+      navigate(from ?? homePath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed. Please try again.");
     } finally {

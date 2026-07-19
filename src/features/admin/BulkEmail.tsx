@@ -14,7 +14,7 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listBatches } from "@/api/batches";
-import { sendBulkEmail } from "@/api/reports";
+import { getBulkEmailRecipientCount, sendBulkEmail } from "@/api/reports";
 
 type Scope = "all" | "batch";
 
@@ -38,14 +38,31 @@ export default function AdminBulkEmail() {
   const usingApi = apiEnabled();
   const activeStudents = useMemo(() => CHILDREN.filter((c) => c.enrollmentComplete), []);
 
-  // API mode has no recipient-preview endpoint: the count is only known once the
-  // send returns, so show a placeholder instead of a number from the mock roster.
+  // Live recipient count from the server, resolved by the same rule the send uses;
+  // demo mode counts the mock roster.
+  const [apiCount, setApiCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!usingApi) return;
+    let cancelled = false;
+    setApiCount(null);
+    getBulkEmailRecipientCount(scope === "batch" ? batchId : undefined)
+      .then((count) => {
+        if (!cancelled) setApiCount(count);
+      })
+      .catch(() => {
+        /* keep the placeholder if the preview can't load */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [usingApi, scope, batchId]);
+
   const recipientCount = useMemo(() => {
     if (sentCount !== null) return sentCount;
-    if (usingApi) return null;
+    if (usingApi) return apiCount;
     if (scope === "all") return activeStudents.length;
     return CHILDREN.filter((c) => c.batchId === batchId).length;
-  }, [scope, batchId, activeStudents, sentCount, usingApi]);
+  }, [scope, batchId, activeStudents, sentCount, usingApi, apiCount]);
 
   function handleSend() {
     if (apiEnabled()) {
@@ -143,7 +160,7 @@ export default function AdminBulkEmail() {
             <div className="flex items-center justify-between border-t border-border pt-4">
               <p className="text-sm text-muted-foreground">
                 {recipientCount === null ? (
-                  <>The recipient count is confirmed when the email is sent.</>
+                  <>Counting recipients…</>
                 ) : (
                   <>
                     This will be delivered to <span className="font-semibold text-foreground">{recipientCount}</span> recipient

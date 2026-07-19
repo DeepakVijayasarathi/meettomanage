@@ -105,7 +105,7 @@ export default function AdminUsers() {
     try {
       await updateUser(editUser.id, {
         firstName: editForm.firstName.trim(),
-        lastName: editForm.lastName.trim() || editForm.firstName.trim(),
+        lastName: editForm.lastName.trim(),
         phone: editForm.phone.trim() || undefined,
       });
       setEditUser(null);
@@ -194,7 +194,7 @@ export default function AdminUsers() {
       await createUser({
         email: addEmail.trim(),
         firstName,
-        lastName: rest.join(" ") || firstName,
+        lastName: rest.join(" "),
         phone: addPhone.trim() || undefined,
         role: ADD_ROLE_TO_API[addRole],
         roleDefinitionId: addRole === "subadmin" && addRoleDefinitionId ? addRoleDefinitionId : undefined,

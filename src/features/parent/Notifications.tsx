@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertCircle, AlertTriangle, BellOff, CheckCheck, CheckCircle2, Info, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { apiEnabled } from "@/lib/api";
+import {
+  getMyNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  toNotificationItem,
+  type ApiNotification,
+} from "@/api/notifications";
 import type { NotificationItem } from "@/types";
 import { TODAY_ISO, YESTERDAY_ISO } from "./utils";
 
@@ -122,25 +130,74 @@ const TYPE_TONE: Record<NotificationItem["type"], string> = {
 
 const GROUP_ORDER = ["Today", "Yesterday", "Earlier"] as const;
 
-function groupByDay(list: ParentNotification[]) {
+/** yyyy-MM-dd in the viewer's local timezone. */
+function localIsoDate(date: Date): string {
+  return date.toLocaleDateString("en-CA");
+}
+
+function groupByDay(list: ParentNotification[], todayIso: string, yesterdayIso: string) {
   const map = new Map<string, ParentNotification[]>();
   for (const n of list) {
-    const label = n.date === TODAY_ISO ? "Today" : n.date === YESTERDAY_ISO ? "Yesterday" : "Earlier";
+    const label = n.date === todayIso ? "Today" : n.date === yesterdayIso ? "Yesterday" : "Earlier";
     map.set(label, [...(map.get(label) ?? []), n]);
   }
   return GROUP_ORDER.filter((l) => map.has(l)).map((l) => [l, map.get(l)!] as const);
 }
 
+function apiToParentNotification(n: ApiNotification): ParentNotification {
+  return { ...toNotificationItem(n), date: localIsoDate(new Date(n.createdAtUtc)) };
+}
+
 export default function ParentNotifications() {
-  const [items, setItems] = useState<ParentNotification[]>(PARENT_NOTIFICATIONS);
+  const usingApi = apiEnabled();
+  const [items, setItems] = useState<ParentNotification[]>(usingApi ? [] : PARENT_NOTIFICATIONS);
+  const [loaded, setLoaded] = useState(!usingApi);
   const unreadCount = items.filter((n) => !n.read).length;
 
+  // API mode: the parent's real feed (attendance, payments, reminders, reports),
+  // shared with the topbar bell. The mock list is demo-only.
+  useEffect(() => {
+    if (!usingApi) return;
+    let cancelled = false;
+    getMyNotifications(50)
+      .then((feed) => {
+        if (cancelled) return;
+        setItems(feed.items.map(apiToParentNotification));
+        setLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [usingApi]);
+
+  // Demo dates come from the fixed demo clock; real notifications use the real one.
+  const todayIso = usingApi ? localIsoDate(new Date()) : TODAY_ISO;
+  const yesterdayIso = usingApi ? localIsoDate(new Date(Date.now() - 86400_000)) : YESTERDAY_ISO;
+
   function toggleRead(id: string) {
+    if (usingApi) {
+      // The server tracks read-state one-way; clicking an unread row marks it read.
+      const target = items.find((n) => n.id === id);
+      if (!target || target.read) return;
+      setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      markNotificationRead(id).catch(() => {
+        /* reload will reconcile */
+      });
+      return;
+    }
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: !n.read } : n)));
   }
 
   function markAllRead() {
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    if (usingApi) {
+      markAllNotificationsRead().catch(() => {
+        /* reload will reconcile */
+      });
+    }
   }
 
   return (
@@ -162,10 +219,12 @@ export default function ParentNotifications() {
         </TabsList>
 
         <TabsContent value="all">
-          <NotificationGroups groups={groupByDay(items)} onToggle={toggleRead} />
+          {loaded && <NotificationGroups groups={groupByDay(items, todayIso, yesterdayIso)} onToggle={toggleRead} />}
         </TabsContent>
         <TabsContent value="unread">
-          <NotificationGroups groups={groupByDay(items.filter((n) => !n.read))} onToggle={toggleRead} />
+          {loaded && (
+            <NotificationGroups groups={groupByDay(items.filter((n) => !n.read), todayIso, yesterdayIso)} onToggle={toggleRead} />
+          )}
         </TabsContent>
       </Tabs>
     </div>

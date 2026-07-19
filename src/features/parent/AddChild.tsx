@@ -1,45 +1,174 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, PartyPopper, UserPlus } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock3, PartyPopper, TrendingUp, UserPlus, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FeeStatusBadge } from "@/components/StatusBadge";
+import { EmptyState } from "@/components/EmptyState";
 import { COURSES } from "@/data/courses";
 import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import {
+  getParentDashboard,
+  listMyEnrollmentForms,
+  type ApiEnrollmentForm,
+  type ApiParentDashboard,
+} from "@/api/parentPortal";
+import { cn, formatDate, getInitials } from "@/lib/utils";
+import { CHART_PALETTE } from "@/lib/roles";
 
 export default function ParentAddChild() {
   const [form, setForm] = useState({ name: "", age: "", grade: "", gender: "", courseInterest: "" });
   const [submitted, setSubmitted] = useState(false);
 
+  // API mode: the real family roster + any enrollments still under review.
+  const { data: dash } = useApiData<ApiParentDashboard | null>(() => getParentDashboard(), null, null);
+  const { data: myForms } = useApiData<ApiEnrollmentForm[]>(() => listMyEnrollmentForms(), []);
+
   // In API mode a child is added through the real enrollment form (reviewed and approved
   // by the team) — never through this demo-only quick-add with its sample data.
   if (apiEnabled()) {
+    const children = dash?.children ?? [];
+    const awaiting = myForms.filter((f) => f.status === "Submitted" || f.status === "Rejected");
+
     return (
       <div>
-        <PageHeader title="Add Child" description="Enroll a sibling under your account." />
-        <Card className="mx-auto mt-10 max-w-lg p-8 text-center">
-          <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <UserPlus className="h-7 w-7" />
-          </span>
-          <h2 className="text-lg font-bold text-foreground">Add a child via the enrollment form</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Fill in the enrollment form with your child's details — once our team reviews and approves it, they'll appear on your
-            dashboard.
-          </p>
-          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+        <PageHeader
+          title="Add Child"
+          description="Your family's enrolled children, enrollments under review, and adding a sibling."
+          actions={
             <Button asChild>
               <Link to="/parent/enrollment">
-                Start Enrollment <CheckCircle2 className="h-4 w-4" />
+                <UserPlus className="h-4 w-4" /> Add a child
               </Link>
             </Button>
-            <Button variant="outline" asChild>
-              <Link to="/parent">Back to Dashboard</Link>
-            </Button>
+          }
+        />
+
+        {children.length === 0 && awaiting.length === 0 ? (
+          <EmptyState
+            icon={UserRound}
+            title="No children yet"
+            description="Add your first child through the enrollment form — once our team approves it, they'll appear here and on your dashboard."
+            action={
+              <Button asChild>
+                <Link to="/parent/enrollment">
+                  Start Enrollment <CheckCircle2 className="h-4 w-4" />
+                </Link>
+              </Button>
+            }
+          />
+        ) : (
+          <div className="flex flex-col gap-6">
+            {children.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Enrolled children ({children.length})
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {children.map((child, index) => {
+                    const color = CHART_PALETTE[index % CHART_PALETTE.length];
+                    return (
+                      <Card key={child.childId} className="p-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span
+                              className="flex h-11 w-11 items-center justify-center rounded-xl text-sm font-bold"
+                              style={{ backgroundColor: `${color}22`, color }}
+                            >
+                              {getInitials(child.name)}
+                            </span>
+                            <div>
+                              <p className="font-semibold text-foreground">{child.name}</p>
+                              <p className="text-xs text-muted-foreground">{child.academicLevel ?? "Level not set yet"}</p>
+                            </div>
+                          </div>
+                          <FeeStatusBadge status={child.feeStatus} />
+                        </div>
+                        <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+                          <div>
+                            <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                              <CheckCircle2 className="h-3 w-3" /> Completed
+                            </p>
+                            <p className="mt-0.5 font-semibold text-foreground">{child.classesCompleted} classes</p>
+                          </div>
+                          <div>
+                            <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                              <CalendarClock className="h-3 w-3" /> Remaining
+                            </p>
+                            <p className="mt-0.5 font-semibold text-foreground">{child.classesRemaining} classes</p>
+                          </div>
+                          <div>
+                            <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                              <TrendingUp className="h-3 w-3" /> Attendance
+                            </p>
+                            <p className="mt-0.5 font-semibold text-foreground">{child.attendancePercent}%</p>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {awaiting.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Awaiting approval ({awaiting.length})
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {awaiting.map((pendingForm) => {
+                    let answers: Record<string, unknown> = {};
+                    try {
+                      answers = JSON.parse(pendingForm.formDataJson) as Record<string, unknown>;
+                    } catch {
+                      /* malformed answers still render */
+                    }
+                    const name = typeof answers.childName === "string" && answers.childName ? answers.childName : "(name pending)";
+                    const rejected = pendingForm.status === "Rejected";
+                    return (
+                      <Card
+                        key={pendingForm.id}
+                        className={cn("p-5", rejected ? "border-destructive/40 bg-destructive/5" : "border-warning/40 bg-warning/5")}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={cn(
+                                "flex h-11 w-11 items-center justify-center rounded-xl",
+                                rejected ? "bg-destructive/10 text-destructive" : "bg-warning/20 text-warning-foreground"
+                              )}
+                            >
+                              <Clock3 className="h-5 w-5" />
+                            </span>
+                            <div>
+                              <p className="font-semibold text-foreground">{name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Submitted {pendingForm.submittedAtUtc ? formatDate(pendingForm.submittedAtUtc, "long") : "—"}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant={rejected ? "destructive" : "warning"}>{rejected ? "Needs changes" : "Pending approval"}</Badge>
+                        </div>
+                        {rejected && (
+                          <Button size="sm" asChild className="mt-4">
+                            <Link to="/parent/enrollment">Edit &amp; resubmit</Link>
+                          </Button>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-        </Card>
+        )}
       </div>
     );
   }

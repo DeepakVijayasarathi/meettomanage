@@ -15,7 +15,7 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { toFrontendInvoice } from "@/api/billing";
 import { downloadParentInvoice, getParentDashboard, getParentInvoices } from "@/api/parentPortal";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, invoiceBalance } from "@/lib/utils";
 import type { Invoice } from "@/types";
 
 const PARENT_ID = "p-1";
@@ -49,7 +49,8 @@ export default function ParentBilling() {
 
   const outstanding = invoices.filter((i) => i.status !== "paid");
   const paid = invoices.filter((i) => i.status === "paid");
-  const totalOutstanding = outstanding.reduce((sum, i) => sum + i.amount, 0);
+  // Partial payments count only what's still owed
+  const totalOutstanding = outstanding.reduce((sum, i) => sum + invoiceBalance(i), 0);
   const totalPaid = paid.reduce((sum, i) => sum + i.amount, 0);
   const nextDue = [...outstanding].sort((a, b) => +new Date(a.dueOn) - +new Date(b.dueOn))[0];
 
@@ -72,7 +73,26 @@ export default function ParentBilling() {
         </div>
       ),
     },
-    { key: "amount", header: "Amount", render: (r) => formatCurrency(r.amount), sortable: true, accessor: (r) => r.amount },
+    {
+      key: "amount",
+      header: "Amount",
+      render: (r) => {
+        const balance = invoiceBalance(r);
+        const partiallyPaid = r.status !== "paid" && (r.amountPaid ?? 0) > 0;
+        return (
+          <div>
+            <p className="font-medium text-foreground">{formatCurrency(r.amount)}</p>
+            {partiallyPaid && (
+              <p className="text-xs text-muted-foreground">
+                Paid {formatCurrency(r.amountPaid!)} · <span className="font-semibold text-warning-foreground">Balance {formatCurrency(balance)}</span>
+              </p>
+            )}
+          </div>
+        );
+      },
+      sortable: true,
+      accessor: (r) => r.amount,
+    },
     { key: "due", header: "Due Date", render: (r) => formatDate(r.dueOn, "short"), sortable: true, accessor: (r) => r.dueOn },
     { key: "status", header: "Status", render: (r) => <FeeStatusBadge status={r.status} /> },
     {
@@ -82,7 +102,7 @@ export default function ParentBilling() {
         <div className="flex items-center justify-end gap-1.5">
           {r.status !== "paid" && (
             <Button size="sm" onClick={() => openPayModal(r)}>
-              Pay Now
+              Pay {formatCurrency(invoiceBalance(r))}
             </Button>
           )}
           {r.apiId && (
@@ -165,7 +185,7 @@ export default function ParentBilling() {
       <PayNowModal
         open={payOpen}
         onOpenChange={setPayOpen}
-        amount={payInvoice?.amount ?? 0}
+        amount={payInvoice ? invoiceBalance(payInvoice) : 0}
         invoiceLabel={payInvoice ? `${payInvoice.courseName} — ${payInvoice.childName}` : undefined}
         invoiceId={payInvoice?.apiId}
         onInitiated={reloadInvoices}

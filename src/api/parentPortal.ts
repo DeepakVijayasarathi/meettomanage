@@ -126,6 +126,41 @@ export async function payInvoice(invoiceId: string, methodKey: string): Promise<
  * After returning from the gateway checkout, asks the backend to verify the payment
  * directly with the gateway (no webhook needed) and returns the refreshed invoice.
  */
+/** What the in-page Razorpay popup (checkout.js) needs, or the reason it can't run. */
+export interface ApiInlineCheckout {
+  mode: "inline" | "unavailable";
+  message: string | null;
+  keyId: string | null;
+  orderId: string | null;
+  /** Minor units (paise for INR), as checkout.js expects. */
+  amount: number;
+  currency: string;
+  displayName: string | null;
+  description: string | null;
+  prefillName: string | null;
+  prefillEmail: string | null;
+  prefillContact: string | null;
+}
+
+/** Creates the gateway order for an in-page checkout popup — the payer never leaves the page. */
+export async function startInlineCheckout(invoiceId: string, methodKey: string): Promise<ApiInlineCheckout> {
+  return apiFetch<ApiInlineCheckout>(`/api/parent-portal/invoices/${invoiceId}/checkout`, {
+    method: "POST",
+    body: JSON.stringify({ methodKey }),
+  });
+}
+
+/** Settles the invoice from the popup's success proof (verified server-side); returns the refreshed invoice. */
+export async function verifyInlineCheckout(
+  invoiceId: string,
+  proof: { orderId: string; paymentId: string; signature: string }
+): Promise<ApiInvoice> {
+  return apiFetch<ApiInvoice>(`/api/parent-portal/invoices/${invoiceId}/checkout/verify`, {
+    method: "POST",
+    body: JSON.stringify(proof),
+  });
+}
+
 export async function refreshInvoicePayment(invoiceId: string): Promise<ApiInvoice> {
   return apiFetch<ApiInvoice>(`/api/parent-portal/invoices/${invoiceId}/refresh-payment`, {
     method: "POST",
@@ -142,7 +177,14 @@ export async function updateEnrollmentForm(id: string, formData: Record<string, 
 
 export async function reviewEnrollmentForm(
   id: string,
-  input: { approve: boolean; childFirstName?: string; childLastName?: string; childDateOfBirth?: string }
+  input: {
+    approve: boolean;
+    childFirstName?: string;
+    childLastName?: string;
+    childDateOfBirth?: string;
+    /** Starts the child on this billing plan at approval — first invoice is issued immediately. */
+    packagePlanId?: string;
+  }
 ): Promise<ApiEnrollmentForm> {
   return apiFetch<ApiEnrollmentForm>(`/api/enrollment-forms/${id}/review`, {
     method: "POST",
