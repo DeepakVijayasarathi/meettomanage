@@ -6,17 +6,10 @@ RUN npm ci
 
 COPY . .
 
-ARG VITE_API_BASE_URL
-ARG VITE_JITSI_DOMAIN
-ARG VITE_BRAND_NAME
-ARG VITE_BRAND_PRIMARY
-ARG VITE_BRAND_LOGO_URL
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
-    VITE_JITSI_DOMAIN=$VITE_JITSI_DOMAIN \
-    VITE_BRAND_NAME=$VITE_BRAND_NAME \
-    VITE_BRAND_PRIMARY=$VITE_BRAND_PRIMARY \
-    VITE_BRAND_LOGO_URL=$VITE_BRAND_LOGO_URL
-
+# VITE_* configuration comes from .env.production (baked into the bundle by
+# `vite build`). Don't reintroduce blanket ARG/ENV VITE_* lines here: an empty
+# environment variable overrides the .env file in Vite and silently switches
+# the app into demo mode.
 RUN npm run build
 
 FROM nginx:1.27-alpine AS final

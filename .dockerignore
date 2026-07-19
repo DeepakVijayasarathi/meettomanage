@@ -4,6 +4,9 @@ dist
 .github
 Docs
 *.tsbuildinfo
-.env*
+# .env.production must stay in the build context — it configures the bundle.
+.env.development
+.env.local
+.env.*.local
 Dockerfile
 .dockerignore
