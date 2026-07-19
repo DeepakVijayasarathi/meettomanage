@@ -45,8 +45,12 @@ export default function AdminPayouts() {
     PAYOUTS.map((p) => ({ id: p.teacherId, name: p.teacherName }))
   );
 
+  // Sentinel for the centre-wide default rate card (PDF: "tutor payout rules" — one
+  // baseline card pays every teacher without their own rates).
+  const DEFAULT_CARD = "__default";
+
   function openRateDialog(teacherId?: string) {
-    setRateTeacherId(teacherId ?? teacherOptions[0]?.id ?? "");
+    setRateTeacherId(teacherId ?? DEFAULT_CARD);
     setRateSaved(false);
     setRateOpen(true);
   }
@@ -56,9 +60,12 @@ export default function AdminPayouts() {
   useEffect(() => {
     if (!rateOpen || !rateTeacherId || !apiEnabled()) return;
     let cancelled = false;
-    listPayoutRates(rateTeacherId)
-      .then((rows) => {
+    const wantDefault = rateTeacherId === DEFAULT_CARD;
+    // The default card's rows carry a null teacherProfileId, so fetch all and filter.
+    (wantDefault ? listPayoutRates() : listPayoutRates(rateTeacherId))
+      .then((allRows) => {
         if (cancelled) return;
+        const rows = allRows.filter((r) => (wantDefault ? r.teacherProfileId === null : r.teacherProfileId === rateTeacherId));
         setRates((prev) => {
           const next = { ...prev };
           for (const duration of [30, 45, 60] as const) {
@@ -77,6 +84,7 @@ export default function AdminPayouts() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rateOpen, rateTeacherId]);
 
   function handleSaveRates() {
@@ -88,7 +96,7 @@ export default function AdminPayouts() {
     Promise.all(
       ([30, 45, 60] as const).map((duration) =>
         savePayoutRate({
-          teacherProfileId: rateTeacherId,
+          teacherProfileId: rateTeacherId === DEFAULT_CARD ? undefined : rateTeacherId,
           durationMinutes: duration,
           ratePerSession: rates[duration],
           teacherNoShowPenaltyPercent: penaltyPercent,
@@ -217,7 +225,7 @@ export default function AdminPayouts() {
         title="Teacher Payouts"
         description="Monthly payout calculation, per-duration rate configuration, and payment history."
         actions={
-          <Button size="sm" onClick={() => openRateDialog()} disabled={teacherOptions.length === 0}>
+          <Button size="sm" onClick={() => openRateDialog()}>
             <Settings2 className="h-4 w-4" />
             Configure Rates
           </Button>
@@ -257,7 +265,9 @@ export default function AdminPayouts() {
                     <SelectTrigger>
                       <SelectValue placeholder="Select a teacher" />
                     </SelectTrigger>
+                    {/* The default card pays any teacher without rates of their own */}
                     <SelectContent>
+                      <SelectItem value={DEFAULT_CARD}>All teachers (default rate card)</SelectItem>
                       {teacherOptions.map((t) => (
                         <SelectItem key={t.id} value={t.id}>
                           {t.name}

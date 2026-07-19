@@ -35,7 +35,8 @@ export interface ApiPayout {
 
 export interface ApiPayoutRate {
   id: string;
-  teacherProfileId: string;
+  /** Null identifies the centre-wide default rate card. */
+  teacherProfileId: string | null;
   teacherName: string;
   durationMinutes: number;
   ratePerSession: number;
@@ -105,7 +106,8 @@ export async function listPayoutRates(teacherProfileId?: string): Promise<ApiPay
 }
 
 export async function savePayoutRate(input: {
-  teacherProfileId: string;
+  /** Omit to save the centre-wide default rate card (pays teachers without their own rates). */
+  teacherProfileId?: string;
   durationMinutes: 30 | 45 | 60;
   ratePerSession: number;
   /** No-show deduction as % of the session rate; omitted = 100 (full rate). */
