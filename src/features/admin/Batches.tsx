@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket } from "lucide-react";
+import { CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,13 +27,19 @@ import { cn, formatDate } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
+  assignStudentToBatch,
   createBatch,
   generateSchedule,
+  listBatchEnrollments,
   listBatches,
   listTeacherOptions,
+  listUnassignedStudents,
+  removeStudentFromBatch,
   toFrontendBatch,
   updateBatch,
   type ApiBatch,
+  type ApiBatchStudent,
+  type ApiUnassignedChild,
   type DisplayBatch,
 } from "@/api/batches";
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
@@ -143,6 +149,59 @@ export default function AdminBatches() {
   const [genBusy, setGenBusy] = useState(false);
   const [genResult, setGenResult] = useState<string | null>(null);
 
+  // Assign students (inside Manage dialog) — WBS "Course & Batch Management Flow" step 6.
+  const [roster, setRoster] = useState<ApiBatchStudent[]>([]);
+  const [unassigned, setUnassigned] = useState<ApiUnassignedChild[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
+  const [rosterError, setRosterError] = useState<string | null>(null);
+  const [assigning, setAssigning] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  async function reloadRoster(batchId: string) {
+    if (!apiEnabled()) return;
+    setRosterLoading(true);
+    try {
+      const [students, candidates] = await Promise.all([listBatchEnrollments(batchId), listUnassignedStudents(batchId)]);
+      setRoster(students);
+      setUnassigned(candidates);
+      setRosterError(null);
+    } catch (err) {
+      setRosterError(err instanceof Error ? err.message : "Could not load the student roster.");
+    } finally {
+      setRosterLoading(false);
+    }
+  }
+
+  async function handleAssignStudent(childId: string) {
+    if (!detail || !childId) return;
+    setAssigning(true);
+    setRosterError(null);
+    try {
+      await assignStudentToBatch(detail.id, childId);
+      await reloadRoster(detail.id);
+      reload();
+    } catch (err) {
+      setRosterError(err instanceof Error ? err.message : "Could not assign this student.");
+    } finally {
+      setAssigning(false);
+    }
+  }
+
+  async function handleRemoveStudent(childId: string) {
+    if (!detail) return;
+    setRemovingId(childId);
+    setRosterError(null);
+    try {
+      await removeStudentFromBatch(detail.id, childId);
+      await reloadRoster(detail.id);
+      reload();
+    } catch (err) {
+      setRosterError(err instanceof Error ? err.message : "Could not remove this student.");
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
   async function handleCreate() {
     if (!newName.trim() || !newCourse || !newTeacher) return;
     if (!apiEnabled()) {
@@ -208,6 +267,10 @@ export default function AdminBatches() {
     setSaveError(null);
     setGenResult(null);
     setGenStart(b.startDate && b.startDate > new Date().toISOString().slice(0, 10) ? b.startDate : "");
+    setRoster([]);
+    setUnassigned([]);
+    setRosterError(null);
+    void reloadRoster(b.id);
   }
 
   async function saveDetail() {
@@ -287,7 +350,9 @@ export default function AdminBatches() {
                 <CardContent className="grid grid-cols-2 gap-4 p-0 text-sm">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Enrolled</p>
-                    <p className="mt-1 font-semibold text-foreground">{detail.enrolled} / {detail.capacity}</p>
+                    <p className="mt-1 font-semibold text-foreground">
+                      {apiEnabled() ? roster.length : detail.enrolled} / {detail.capacity}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Duration</p>
@@ -326,23 +391,77 @@ export default function AdminBatches() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-1.5">
-                  <Label>Assign students</Label>
-                  <Select defaultValue="">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Search and add a student…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none" disabled>
-                        No unassigned students available
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {detail.enrolled} of {detail.capacity} seats filled. {detail.capacity - detail.enrolled} seat
-                    {detail.capacity - detail.enrolled === 1 ? "" : "s"} remaining.
-                  </p>
-                </div>
+                {apiEnabled() ? (
+                  <div className="grid gap-1.5">
+                    <Label>Assign students</Label>
+                    <Select value="" onValueChange={handleAssignStudent} disabled={assigning || roster.length >= detail.capacity}>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            roster.length >= detail.capacity
+                              ? "Batch is at capacity"
+                              : assigning
+                                ? "Assigning…"
+                                : "Search and add a student…"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {unassigned.length === 0 ? (
+                          <SelectItem value="__none" disabled>
+                            No unassigned students available
+                          </SelectItem>
+                        ) : (
+                          unassigned.map((c) => (
+                            <SelectItem key={c.childId} value={c.childId}>
+                              {c.childName} — {c.parentName}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {roster.length} of {detail.capacity} seats filled.{" "}
+                      {Math.max(0, detail.capacity - roster.length)} seat
+                      {Math.max(0, detail.capacity - roster.length) === 1 ? "" : "s"} remaining.
+                    </p>
+                    {rosterError && <p className="text-xs font-medium text-destructive">{rosterError}</p>}
+
+                    {rosterLoading ? (
+                      <p className="text-xs text-muted-foreground">Loading roster…</p>
+                    ) : roster.length > 0 ? (
+                      <ul className="mt-1 flex flex-col gap-1.5">
+                        {roster.map((s) => (
+                          <li
+                            key={s.enrollmentId}
+                            className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-sm"
+                          >
+                            <span className="truncate">
+                              {s.childName}
+                              {s.academicLevel && <span className="text-xs text-muted-foreground"> · {s.academicLevel}</span>}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveStudent(s.childId)}
+                              disabled={removingId === s.childId}
+                              title="Remove from batch"
+                              className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="grid gap-1.5">
+                    <Label>Assign students</Label>
+                    <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+                      Demo mode — connect the API (VITE_API_BASE_URL) to assign real students to this batch.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Session plan: bulk-creates every course session on the chosen weekdays (skips holidays) */}

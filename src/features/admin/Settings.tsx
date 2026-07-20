@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Bell,
   Building2,
@@ -16,8 +17,10 @@ import {
   Plus,
   Puzzle,
   Save,
+  Settings2,
   Trash2,
   Video,
+  Wallet,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -30,7 +33,16 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn, hexToHslTriple } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { EmptyState } from "@/components/EmptyState";
+import { cn, formatCurrency, hexToHslTriple } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -55,6 +67,8 @@ import {
   type IntegrationCategory as IntegrationCategoryName,
   type SaveIntegrationRequest,
 } from "@/api/integrations";
+import { listPayoutRates, savePayoutRate, type ApiPayoutRate } from "@/api/payouts";
+import { listTeacherOptions } from "@/api/batches";
 
 const SWATCHES = ["#1F6FE0", "#57B33B", "#17A9C9", "#F08A1D", "#8B5CF6", "#F53BA6", "#EAB308", "#0D9488"];
 
@@ -104,6 +118,19 @@ export default function AdminSettings() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Deep-linkable tabs: other screens (e.g. Teacher Payouts) can send admins straight
+  // to a specific tab via /admin/settings?tab=payroll.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") ?? "general");
+  function changeTab(tab: string) {
+    setActiveTab(tab);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", tab);
+      return next;
+    }, { replace: true });
+  }
 
   const { data: apiSettings } = useApiData(getSettings, []);
 
@@ -163,7 +190,7 @@ export default function AdminSettings() {
       <PageHeader
         eyebrow="Configuration"
         title="Settings & Branding"
-        description="White-label branding, domain, notification preferences, sidebar menus and integrations — stored in the database."
+        description="White-label branding, domain, notification preferences, sidebar menus, teacher payout rates and integrations — stored in the database."
         actions={
           <Button onClick={saveAll} disabled={saving}>
             {saved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
@@ -174,7 +201,7 @@ export default function AdminSettings() {
 
       {error && <p className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>}
 
-      <Tabs defaultValue="general">
+      <Tabs value={activeTab} onValueChange={changeTab}>
         <TabsList>
           <TabsTrigger value="general" className="gap-1.5">
             <Building2 className="h-4 w-4" /> General
@@ -187,6 +214,9 @@ export default function AdminSettings() {
           </TabsTrigger>
           <TabsTrigger value="menus" className="gap-1.5">
             <ListTree className="h-4 w-4" /> Menus
+          </TabsTrigger>
+          <TabsTrigger value="payroll" className="gap-1.5">
+            <Wallet className="h-4 w-4" /> Payroll
           </TabsTrigger>
           <TabsTrigger value="integrations" className="gap-1.5">
             <Plug className="h-4 w-4" /> Integrations
@@ -373,6 +403,10 @@ export default function AdminSettings() {
 
         <TabsContent value="menus">
           <MenuManager />
+        </TabsContent>
+
+        <TabsContent value="payroll">
+          <PayoutRatesManager />
         </TabsContent>
 
         <TabsContent value="integrations">
@@ -646,6 +680,264 @@ function MenuManager() {
           Changes take effect the next time a portal sidebar loads. The frontend falls back to its built-in navigation if a portal has no items.
         </p>
       </CardContent>
+    </Card>
+  );
+}
+
+/** Sentinel for the centre-wide default rate card (a null TeacherProfileId in the API). */
+const DEFAULT_RATE_CARD = "__default";
+
+type RateCardRow = {
+  key: string;
+  label: string;
+  rates: Partial<Record<30 | 45 | 60, number>>;
+  penaltyPercent: number;
+};
+
+/** Groups the flat rate rows into one summary row per card (default + each teacher). */
+function buildRateCardRows(allRates: ApiPayoutRate[]): RateCardRow[] {
+  const map = new Map<string, RateCardRow>();
+  // listPayoutRates() orders newest-EffectiveFrom-first within each teacher+duration
+  // group, so the first row seen per (card, duration) here is always the live one.
+  for (const rate of allRates) {
+    const key = rate.teacherProfileId ?? DEFAULT_RATE_CARD;
+    let row = map.get(key);
+    if (!row) {
+      row = { key, label: rate.teacherName, rates: {}, penaltyPercent: rate.teacherNoShowPenaltyPercent };
+      map.set(key, row);
+    }
+    const duration = rate.durationMinutes as 30 | 45 | 60;
+    if (row.rates[duration] === undefined) {
+      row.rates[duration] = rate.ratePerSession;
+    }
+  }
+  return [...map.values()].sort((a, b) => (a.key === DEFAULT_RATE_CARD ? -1 : b.key === DEFAULT_RATE_CARD ? 1 : a.label.localeCompare(b.label)));
+}
+
+/**
+ * Teacher payout rate cards (WBS p.31 "tutor payout rules" / "Penalty configuration"):
+ * per-session rates by class duration and the teacher no-show penalty. A card with no
+ * teacher is the centre-wide default that pays anyone without their own card; a
+ * teacher's own card overrides it for that teacher only.
+ */
+function PayoutRatesManager() {
+  const [allRates, setAllRates] = useState<ApiPayoutRate[]>([]);
+  const [loaded, setLoaded] = useState(!apiEnabled());
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: teacherOptions } = useApiData(
+    () => listTeacherOptions().then((list) => list.map((t) => ({ id: t.teacherProfileId, name: t.fullName }))),
+    []
+  );
+
+  async function reload() {
+    if (!apiEnabled()) return;
+    try {
+      setAllRates(await listPayoutRates());
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load payout rate cards.");
+    } finally {
+      setLoaded(true);
+    }
+  }
+
+  useEffect(() => {
+    void reload();
+  }, []);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogTeacherId, setDialogTeacherId] = useState<string>(DEFAULT_RATE_CARD);
+  const [rates, setRates] = useState<Record<30 | 45 | 60, number>>({ 30: 900, 45: 1100, 60: 1400 });
+  const [penaltyPercent, setPenaltyPercent] = useState(100);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const cardRows = useMemo(() => buildRateCardRows(allRates), [allRates]);
+
+  function openDialog(cardKey: string) {
+    setDialogTeacherId(cardKey);
+    setSaved(false);
+    setDialogOpen(true);
+  }
+
+  // Prefill from whatever's already loaded for this card — no extra round trip.
+  useEffect(() => {
+    if (!dialogOpen) return;
+    const rows = allRates.filter((r) => (r.teacherProfileId ?? DEFAULT_RATE_CARD) === dialogTeacherId);
+    setRates((prev) => {
+      const next = { ...prev };
+      for (const duration of [30, 45, 60] as const) {
+        const current = rows.find((r) => r.durationMinutes === duration);
+        if (current) next[duration] = current.ratePerSession;
+      }
+      return next;
+    });
+    setPenaltyPercent(rows[0]?.teacherNoShowPenaltyPercent ?? 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogOpen, dialogTeacherId]);
+
+  async function handleSave() {
+    if (!apiEnabled()) {
+      setSaved(true);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      await Promise.all(
+        ([30, 45, 60] as const).map((duration) =>
+          savePayoutRate({
+            teacherProfileId: dialogTeacherId === DEFAULT_RATE_CARD ? undefined : dialogTeacherId,
+            durationMinutes: duration,
+            ratePerSession: rates[duration],
+            teacherNoShowPenaltyPercent: penaltyPercent,
+            effectiveFrom: today,
+          })
+        )
+      );
+      setSaved(true);
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save the rate card.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!apiEnabled()) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Teacher Payout Rates</CardTitle>
+          <CardDescription>
+            Rate cards are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode has no payout data.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+        <div>
+          <CardTitle>Teacher Payout Rates</CardTitle>
+          <CardDescription>
+            Per-session rates by class duration, plus the teacher no-show penalty. The default card pays any teacher
+            without rates of their own; a teacher's own card overrides it just for them.
+          </CardDescription>
+        </div>
+        <Button size="sm" onClick={() => openDialog(DEFAULT_RATE_CARD)}>
+          <Plus className="h-3.5 w-3.5" /> Add Rate Card
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {error && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{error}</p>}
+
+        {!loaded ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
+        ) : cardRows.length === 0 ? (
+          <EmptyState
+            icon={Wallet}
+            title="No rate cards configured yet"
+            description="Set up the default rate card first — it pays every teacher until they have a card of their own."
+            action={
+              <Button size="sm" onClick={() => openDialog(DEFAULT_RATE_CARD)}>
+                <Plus className="h-3.5 w-3.5" /> Configure Default Rate Card
+              </Button>
+            }
+          />
+        ) : (
+          <div className="flex flex-col">
+            {cardRows.map((row, i) => (
+              <div key={row.key}>
+                {i > 0 && <Separator className="my-1" />}
+                <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {row.key === DEFAULT_RATE_CARD ? "All teachers (default)" : row.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      30-min {formatCurrency(row.rates[30] ?? 0)} · 45-min {formatCurrency(row.rates[45] ?? 0)} · 60-min{" "}
+                      {formatCurrency(row.rates[60] ?? 0)} · No-show penalty {row.penaltyPercent}%
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => openDialog(row.key)}>
+                    <Pencil className="h-3.5 w-3.5" /> Edit
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          {dialogOpen && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Configure Rate Card</DialogTitle>
+                <DialogDescription>Set per-session payout rates by class duration and the no-show penalty.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <div className="grid gap-1.5">
+                  <Label>Applies to</Label>
+                  <Select value={dialogTeacherId} onValueChange={setDialogTeacherId}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={DEFAULT_RATE_CARD}>All teachers (default rate card)</SelectItem>
+                      {teacherOptions.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {([30, 45, 60] as const).map((duration) => (
+                  <div key={duration} className="grid gap-1.5">
+                    <Label htmlFor={`payroll-rate-${duration}`}>{duration}-minute session rate (₹)</Label>
+                    <Input
+                      id={`payroll-rate-${duration}`}
+                      type="number"
+                      value={rates[duration]}
+                      onChange={(e) => setRates((prev) => ({ ...prev, [duration]: Number(e.target.value) }))}
+                    />
+                  </div>
+                ))}
+                <div className="grid gap-1.5">
+                  <Label htmlFor="payroll-noshow-penalty">No-show penalty (% of session rate)</Label>
+                  <Input
+                    id="payroll-noshow-penalty"
+                    type="number"
+                    min={0}
+                    max={300}
+                    value={penaltyPercent}
+                    onChange={(e) => setPenaltyPercent(Number(e.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Deducted when a session is marked teacher no-show: 100 deducts the full session rate, 0 disables the deduction.
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSave} disabled={saving}>
+                  {saved ? <CheckCircle2 className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
+                  {saving ? "Saving…" : saved ? "Saved!" : "Save Rate Card"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

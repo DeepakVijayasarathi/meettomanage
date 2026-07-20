@@ -1,28 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, IndianRupee, Settings2, UsersRound, Wallet } from "lucide-react";
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
+import { IndianRupee, Settings2, UsersRound, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PAYOUTS } from "@/data/payouts";
 import { getTeacherById } from "@/data/users";
-import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listPayoutRates, listPayouts, savePayoutRate, toFrontendPayout } from "@/api/payouts";
-import { listTeacherOptions } from "@/api/batches";
+import { listPayouts, toFrontendPayout } from "@/api/payouts";
 import type { TeacherPayout } from "@/types";
 import { formatCurrency, formatNumber, getInitials } from "@/lib/utils";
 
@@ -31,80 +19,6 @@ export default function AdminPayouts() {
     () => listPayouts().then((items) => items.map(toFrontendPayout)),
     PAYOUTS
   );
-  const [rateOpen, setRateOpen] = useState(false);
-  const [rateTeacherId, setRateTeacherId] = useState<string>("");
-  const [rateSaved, setRateSaved] = useState(false);
-  const [rates, setRates] = useState<Record<30 | 45 | 60, number>>({ 30: 900, 45: 1100, 60: 1400 });
-  // WBS p.31 "Penalty configuration": no-show deduction as % of the session rate.
-  const [penaltyPercent, setPenaltyPercent] = useState(100);
-
-  // Rate cards must be configurable BEFORE a teacher's first payout accrues, so the
-  // picker lists every teacher — not just those already on the payouts table.
-  const { data: teacherOptions } = useApiData(
-    () => listTeacherOptions().then((list) => list.map((t) => ({ id: t.teacherProfileId, name: t.fullName }))),
-    PAYOUTS.map((p) => ({ id: p.teacherId, name: p.teacherName }))
-  );
-
-  // Sentinel for the centre-wide default rate card (PDF: "tutor payout rules" — one
-  // baseline card pays every teacher without their own rates).
-  const DEFAULT_CARD = "__default";
-
-  function openRateDialog(teacherId?: string) {
-    setRateTeacherId(teacherId ?? DEFAULT_CARD);
-    setRateSaved(false);
-    setRateOpen(true);
-  }
-
-  // Prefill the dialog with the teacher's current rates + penalty (latest effective row
-  // per duration), so editing starts from what's live instead of hardcoded defaults.
-  useEffect(() => {
-    if (!rateOpen || !rateTeacherId || !apiEnabled()) return;
-    let cancelled = false;
-    const wantDefault = rateTeacherId === DEFAULT_CARD;
-    // The default card's rows carry a null teacherProfileId, so fetch all and filter.
-    (wantDefault ? listPayoutRates() : listPayoutRates(rateTeacherId))
-      .then((allRows) => {
-        if (cancelled) return;
-        const rows = allRows.filter((r) => (wantDefault ? r.teacherProfileId === null : r.teacherProfileId === rateTeacherId));
-        setRates((prev) => {
-          const next = { ...prev };
-          for (const duration of [30, 45, 60] as const) {
-            // Rows arrive newest-effective first per duration
-            const current = rows.find((r) => r.durationMinutes === duration);
-            if (current) next[duration] = current.ratePerSession;
-          }
-          return next;
-        });
-        const latest = rows[0];
-        if (latest) setPenaltyPercent(latest.teacherNoShowPenaltyPercent ?? 100);
-      })
-      .catch(() => {
-        /* keep defaults if rates can't load */
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rateOpen, rateTeacherId]);
-
-  function handleSaveRates() {
-    if (!apiEnabled() || !rateTeacherId) {
-      setRateSaved(true);
-      return;
-    }
-    const today = new Date().toISOString().slice(0, 10);
-    Promise.all(
-      ([30, 45, 60] as const).map((duration) =>
-        savePayoutRate({
-          teacherProfileId: rateTeacherId === DEFAULT_CARD ? undefined : rateTeacherId,
-          durationMinutes: duration,
-          ratePerSession: rates[duration],
-          teacherNoShowPenaltyPercent: penaltyPercent,
-          effectiveFrom: today,
-        })
-      )
-    ).then(() => setRateSaved(true));
-  }
 
   const totals = useMemo(() => {
     const thisMonth = payouts.filter((p) => p.month === "July 2026");
@@ -196,26 +110,8 @@ export default function AdminPayouts() {
           </Badge>
         ),
       },
-      {
-        key: "actions",
-        header: "",
-        render: (row) => (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              openRateDialog(row.teacherId);
-            }}
-          >
-            <Settings2 className="h-3.5 w-3.5" />
-            Configure Rate
-          </Button>
-        ),
-      },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [teacherOptions]
+    []
   );
 
   return (
@@ -223,11 +119,13 @@ export default function AdminPayouts() {
       <PageHeader
         eyebrow="Payroll"
         title="Teacher Payouts"
-        description="Monthly payout calculation, per-duration rate configuration, and payment history."
+        description="Monthly payout calculation from each teacher's rate card, and payment history. Rate cards (and the no-show penalty) are configured in Settings & Branding → Payroll."
         actions={
-          <Button size="sm" onClick={() => openRateDialog()}>
-            <Settings2 className="h-4 w-4" />
-            Configure Rates
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/admin/settings?tab=payroll">
+              <Settings2 className="h-4 w-4" />
+              Configure Rates
+            </Link>
           </Button>
         }
       />
@@ -246,75 +144,6 @@ export default function AdminPayouts() {
           searchPlaceholder="Search by teacher name…"
         />
       </div>
-
-      <Dialog open={rateOpen} onOpenChange={setRateOpen}>
-        <DialogContent>
-          {rateOpen && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Configure Rates &amp; No-Show Penalty</DialogTitle>
-                <DialogDescription>
-                  Set per-session payout rates by class duration.
-                  {!apiEnabled() && " This is a mock form — no data is persisted."}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4">
-                <div className="grid gap-1.5">
-                  <Label>Teacher</Label>
-                  <Select value={rateTeacherId} onValueChange={setRateTeacherId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a teacher" />
-                    </SelectTrigger>
-                    {/* The default card pays any teacher without rates of their own */}
-                    <SelectContent>
-                      <SelectItem value={DEFAULT_CARD}>All teachers (default rate card)</SelectItem>
-                      {teacherOptions.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {([30, 45, 60] as const).map((duration) => (
-                  <div key={duration} className="grid gap-1.5">
-                    <Label htmlFor={`rate-${duration}`}>{duration}-minute session rate (₹)</Label>
-                    <Input
-                      id={`rate-${duration}`}
-                      type="number"
-                      value={rates[duration]}
-                      onChange={(e) => setRates((prev) => ({ ...prev, [duration]: Number(e.target.value) }))}
-                    />
-                  </div>
-                ))}
-                <div className="grid gap-1.5">
-                  <Label htmlFor="noshow-penalty">No-show penalty (% of session rate)</Label>
-                  <Input
-                    id="noshow-penalty"
-                    type="number"
-                    min={0}
-                    max={300}
-                    value={penaltyPercent}
-                    onChange={(e) => setPenaltyPercent(Number(e.target.value))}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Deducted when a session is marked teacher no-show: 100 deducts the full session rate, 0 disables the deduction.
-                  </p>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setRateOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSaveRates} disabled={!rateTeacherId}>
-                  {rateSaved ? <CheckCircle2 className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
-                  {rateSaved ? "Rates Saved" : "Save Rates"}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

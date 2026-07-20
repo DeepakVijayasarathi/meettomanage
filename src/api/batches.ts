@@ -89,3 +89,42 @@ export async function generateSchedule(
     body: JSON.stringify(input),
   });
 }
+
+export interface ApiBatchStudent {
+  enrollmentId: string;
+  childId: string;
+  childName: string;
+  academicLevel: string | null;
+  status: "Active" | "Completed" | "Withdrawn";
+  enrolledAtUtc: string;
+}
+
+export interface ApiUnassignedChild {
+  childId: string;
+  childName: string;
+  parentName: string;
+  academicLevel: string | null;
+}
+
+/** The batch's current student roster (WBS "Assign Students"). */
+export async function listBatchEnrollments(batchId: string): Promise<ApiBatchStudent[]> {
+  return apiFetch<ApiBatchStudent[]>(`/api/batches/${batchId}/enrollments`);
+}
+
+/** Active, approved children not yet placed in this batch — candidates for the assign picker. */
+export async function listUnassignedStudents(batchId: string): Promise<ApiUnassignedChild[]> {
+  return apiFetch<ApiUnassignedChild[]>(`/api/batches/${batchId}/unassigned-students`);
+}
+
+/** Places a child in the batch; rejected (400) once the batch is at capacity. */
+export async function assignStudentToBatch(batchId: string, childId: string): Promise<ApiBatchStudent> {
+  return apiFetch<ApiBatchStudent>(`/api/batches/${batchId}/enrollments`, {
+    method: "POST",
+    body: JSON.stringify({ childId }),
+  });
+}
+
+/** Withdraws a child from the batch, freeing a seat. */
+export async function removeStudentFromBatch(batchId: string, childId: string): Promise<void> {
+  await apiFetch<void>(`/api/batches/${batchId}/enrollments/${childId}`, { method: "DELETE" });
+}
