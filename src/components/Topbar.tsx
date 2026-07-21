@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, Search, LogOut, User, Settings } from "lucide-react";
+import { Menu, LogOut, User, Settings } from "lucide-react";
 import { AccountDialog } from "@/components/AccountDialog";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotificationPanel } from "@/components/NotificationPanel";
-import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { useSession } from "@/state/session";
 import { getInitials } from "@/lib/utils";
 
@@ -42,13 +40,7 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
 
       {title && <h2 className="hidden text-sm font-semibold text-foreground/80 md:block">{title}</h2>}
 
-      <div className="relative ml-auto hidden max-w-sm flex-1 md:block">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Search students, batches, invoices…" className="h-9 rounded-full bg-muted/60 pl-9" />
-      </div>
-
-      <div className="ml-auto flex items-center gap-2 md:ml-0">
-        <RoleSwitcher />
+      <div className="ml-auto flex items-center gap-2">
         <NotificationPanel />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
