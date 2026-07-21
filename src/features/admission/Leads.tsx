@@ -38,6 +38,8 @@ const STAGE_OPTIONS: { value: ConversionStage | "all"; label: string }[] = [
   { value: "Demo Scheduled", label: "Demo Scheduled" },
   { value: "Demo Completed", label: "Demo Completed" },
   { value: "Follow-up", label: "Follow-up" },
+  { value: "Payment Pending", label: "Payment Pending" },
+  { value: "Partially Paid", label: "Partially Paid" },
   { value: "Enrolled", label: "Enrolled" },
   { value: "Not Interested", label: "Not Interested" },
 ];
@@ -46,6 +48,8 @@ const STAGE_BADGE: Record<ConversionStage, BadgeProps["variant"]> = {
   "Demo Scheduled": "outline",
   "Demo Completed": "secondary",
   "Follow-up": "warning",
+  "Payment Pending": "warning",
+  "Partially Paid": "secondary",
   Enrolled: "success",
   "Not Interested": "destructive",
 };

@@ -96,9 +96,9 @@ export default function AdminDashboard() {
           enrollments: s.totalEnrollments,
           conversionRate: s.conversionRatePercent,
           teacherUtilization: s.teacherUtilizationSessionsPerTeacher,
-          // No attendance/renewal aggregate endpoint yet — 0, never the demo numbers
+          // No attendance aggregate endpoint yet — 0, never the demo numbers
           attendanceRate: 0,
-          renewalRate: 0,
+          renewalRate: s.renewalRatePercent,
           refundRate: s.refundRatePercent,
           batchOccupancy: s.batchOccupancyPercent,
         },

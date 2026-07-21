@@ -10,6 +10,7 @@ export interface ApiDashboardSummary {
   dormantBatches: number;
   conversionRatePercent: number;
   refundRatePercent: number;
+  renewalRatePercent: number;
   batchOccupancyPercent: number;
   teacherUtilizationSessionsPerTeacher: number;
   revenueByDepartment: { name: string; revenue: number }[];

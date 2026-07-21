@@ -10,7 +10,14 @@
  * "Today" in this mock universe is 2026-07-09.
  */
 
-export type ConversionStage = "Demo Scheduled" | "Demo Completed" | "Follow-up" | "Enrolled" | "Not Interested";
+export type ConversionStage =
+  | "Demo Scheduled"
+  | "Demo Completed"
+  | "Follow-up"
+  | "Payment Pending"
+  | "Partially Paid"
+  | "Enrolled"
+  | "Not Interested";
 export type PaymentStatus = "Pending" | "Paid" | "Partially Paid";
 export type LeadSource = "Website Enquiry" | "Referral" | "Walk-in" | "Social Media Ad" | "Phone Enquiry";
 

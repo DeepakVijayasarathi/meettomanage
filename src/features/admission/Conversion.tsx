@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarCheck2, PhoneCall, Sparkles, ThumbsDown, Trophy } from "lucide-react";
+import { CalendarCheck2, PhoneCall, PieChart, Sparkles, ThumbsDown, Trophy, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -14,13 +14,22 @@ import { useApiData } from "@/api/hooks";
 import { listDemoBookings, toApiConversionStatus, toFrontendLead, updateConversionStatus } from "@/api/demoBookings";
 import { LEADS as INITIAL_LEADS, type ConversionStage, type Lead } from "./data";
 
-type BoardStage = "Demo Completed" | "Follow-up" | "Enrolled" | "Not Interested";
+type BoardStage = "Demo Completed" | "Follow-up" | "Payment Pending" | "Partially Paid" | "Enrolled" | "Not Interested";
 
-const BOARD_STAGES: BoardStage[] = ["Demo Completed", "Follow-up", "Enrolled", "Not Interested"];
+const BOARD_STAGES: BoardStage[] = [
+  "Demo Completed",
+  "Follow-up",
+  "Payment Pending",
+  "Partially Paid",
+  "Enrolled",
+  "Not Interested",
+];
 
 const STAGE_META: Record<BoardStage, { icon: LucideIcon; color: string; description: string }> = {
   "Demo Completed": { icon: CalendarCheck2, color: CHART_PALETTE[2], description: "Demo held, awaiting next step" },
   "Follow-up": { icon: PhoneCall, color: CHART_PALETTE[6], description: "In active follow-up with the parent" },
+  "Payment Pending": { icon: Wallet, color: CHART_PALETTE[3], description: "Payment link shared, awaiting payment" },
+  "Partially Paid": { icon: PieChart, color: CHART_PALETTE[4], description: "Some payment received, balance due" },
   Enrolled: { icon: Trophy, color: "hsl(var(--success))", description: "Converted — payment received" },
   "Not Interested": { icon: ThumbsDown, color: "hsl(var(--destructive))", description: "Not proceeding for now" },
 };
@@ -41,7 +50,14 @@ export default function AdmissionConversion() {
   const leads = usingApi ? apiLeads : demoLeads;
 
   const columns = useMemo(() => {
-    const grouped: Record<BoardStage, Lead[]> = { "Demo Completed": [], "Follow-up": [], Enrolled: [], "Not Interested": [] };
+    const grouped: Record<BoardStage, Lead[]> = {
+      "Demo Completed": [],
+      "Follow-up": [],
+      "Payment Pending": [],
+      "Partially Paid": [],
+      Enrolled: [],
+      "Not Interested": [],
+    };
     for (const lead of leads) {
       if (isBoardStage(lead.conversionStage)) grouped[lead.conversionStage].push(lead);
     }
@@ -68,7 +84,7 @@ export default function AdmissionConversion() {
       {leads.length === 0 ? (
         <EmptyState icon={Sparkles} title="No leads on the board yet" description="Leads appear here once their demo is completed." />
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
           {BOARD_STAGES.map((stage) => {
             const meta = STAGE_META[stage];
             const Icon = meta.icon;

@@ -44,6 +44,7 @@ const EMPTY_SUMMARY: ApiDashboardSummary = {
   dormantBatches: 0,
   conversionRatePercent: 0,
   refundRatePercent: 0,
+  renewalRatePercent: 0,
   batchOccupancyPercent: 0,
   teacherUtilizationSessionsPerTeacher: 0,
   revenueByDepartment: [],

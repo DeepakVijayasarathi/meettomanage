@@ -6,6 +6,8 @@ export type ApiConversionStatus =
   | "DemoScheduled"
   | "DemoCompleted"
   | "FollowUpInProgress"
+  | "PaymentPending"
+  | "PartiallyPaid"
   | "Enrolled"
   | "NotInterested";
 
@@ -60,6 +62,8 @@ const STAGE_FROM_API: Record<ApiConversionStatus, ConversionStage> = {
   DemoScheduled: "Demo Scheduled",
   DemoCompleted: "Demo Completed",
   FollowUpInProgress: "Follow-up",
+  PaymentPending: "Payment Pending",
+  PartiallyPaid: "Partially Paid",
   Enrolled: "Enrolled",
   NotInterested: "Not Interested",
 };
@@ -68,6 +72,8 @@ const STAGE_TO_API: Record<ConversionStage, ApiConversionStatus> = {
   "Demo Scheduled": "DemoScheduled",
   "Demo Completed": "DemoCompleted",
   "Follow-up": "FollowUpInProgress",
+  "Payment Pending": "PaymentPending",
+  "Partially Paid": "PartiallyPaid",
   Enrolled: "Enrolled",
   "Not Interested": "NotInterested",
 };
