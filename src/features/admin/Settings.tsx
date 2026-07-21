@@ -18,6 +18,7 @@ import {
   Puzzle,
   Save,
   Settings2,
+  StickyNote,
   Trash2,
   Video,
   Wallet,
@@ -74,6 +75,9 @@ const SWATCHES = ["#1F6FE0", "#57B33B", "#17A9C9", "#F08A1D", "#8B5CF6", "#F53BA
 
 const PORTALS = ["admin", "teacher", "parent", "subadmin", "admission", "coordinator", "management", "student"] as const;
 
+/** Key the floating notes widget (FloatingNotes.tsx) reads via /api/settings/public. */
+const WIDGET_NOTES_KEY = "widgets.floatingNotes.enabledPortals";
+
 /** Every DB-backed setting the screen edits, with its category and visibility. */
 const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boolean; fallback: string }> = {
   "org.name": { category: "General", isPublic: true, fallback: "The Reader Nest" },
@@ -89,7 +93,19 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "notify.leaveRequests": { category: "Notifications", fallback: "true" },
   "notify.lowAttendance": { category: "Notifications", fallback: "false" },
   "notify.weeklyDigest": { category: "Notifications", fallback: "true" },
+  [WIDGET_NOTES_KEY]: { category: "Widgets", isPublic: true, fallback: JSON.stringify(PORTALS) },
 };
+
+/** Parses the JSON portal-key array stored under WIDGET_NOTES_KEY; malformed/missing → none enabled. */
+function parsePortalList(value: string | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 const NOTIFICATION_ROWS = [
   { key: "notify.feeReminders", label: "Fee payment reminders", description: "Get notified when a parent's fee becomes due or overdue." },
@@ -220,6 +236,9 @@ export default function AdminSettings() {
           </TabsTrigger>
           <TabsTrigger value="integrations" className="gap-1.5">
             <Plug className="h-4 w-4" /> Integrations
+          </TabsTrigger>
+          <TabsTrigger value="widgets" className="gap-1.5">
+            <StickyNote className="h-4 w-4" /> Widgets
           </TabsTrigger>
         </TabsList>
 
@@ -411,6 +430,39 @@ export default function AdminSettings() {
 
         <TabsContent value="integrations">
           <IntegrationsManager />
+        </TabsContent>
+
+        <TabsContent value="widgets">
+          <Card>
+            <CardHeader>
+              <CardTitle>Floating Notes Widget</CardTitle>
+              <CardDescription>
+                Choose which portals show the personal floating notes bubble. Each signed-in user's notes are private
+                to them — this only controls whether the widget appears at all.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-1">
+              {PORTALS.map((portal, i) => {
+                const enabledPortals = parsePortalList(values[WIDGET_NOTES_KEY]);
+                const checked = enabledPortals.includes(portal);
+                return (
+                  <div key={portal}>
+                    {i > 0 && <Separator className="my-1" />}
+                    <div className="flex items-center justify-between gap-4 py-3">
+                      <p className="text-sm font-semibold text-foreground">{portal[0].toUpperCase() + portal.slice(1)}</p>
+                      <Switch
+                        checked={checked}
+                        onCheckedChange={(next) => {
+                          const nextList = next ? [...enabledPortals, portal] : enabledPortals.filter((p) => p !== portal);
+                          setValue(WIDGET_NOTES_KEY, JSON.stringify(nextList));
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

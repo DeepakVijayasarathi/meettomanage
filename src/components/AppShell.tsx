@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
+import { FloatingNotes } from "@/components/FloatingNotes";
 import { NAV_BY_ROLE, type NavSection } from "@/lib/nav";
 import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
@@ -73,6 +74,7 @@ export function AppShell({ role, children }: AppShellProps) {
         <Topbar onMenuClick={() => setMobileOpen(true)} title={meta.label} />
         <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
+      <FloatingNotes role={role} />
     </div>
   );
 }
