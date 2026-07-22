@@ -114,6 +114,11 @@ export async function getCredentialChannels(): Promise<CredentialChannels> {
   return apiFetch<CredentialChannels>("/api/users/credential-channels");
 }
 
+/** Soft-deletes the account; excluded from all lists afterwards and its email becomes reusable. */
+export async function deleteUser(id: string): Promise<void> {
+  await apiFetch<void>(`/api/users/${id}`, { method: "DELETE" });
+}
+
 export async function createUser(request: {
   email: string;
   firstName: string;

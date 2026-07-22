@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, GraduationCap, HeartHandshake, Loader2, Mail, MessageCircle, Plus, ShieldCheck, UserCog, Users as UsersIcon } from "lucide-react";
+import { CheckCircle2, GraduationCap, HeartHandshake, Loader2, Mail, MessageCircle, Plus, ShieldCheck, Trash2, UserCog, Users as UsersIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -27,7 +28,7 @@ import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { createUser, getCredentialChannels, listStudents, listUsers, resendCredentials, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { createUser, deleteUser, getCredentialChannels, listStudents, listUsers, resendCredentials, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
 import type { ApiRole } from "@/api/types";
 import { listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
 
@@ -118,6 +119,29 @@ export default function AdminUsers() {
       setEditSaving(false);
     }
   }
+  // Delete-account confirmation from the user detail dialog.
+  const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
+  const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function handleDeleteUser() {
+    if (!deleteTarget) return;
+    if (!apiEnabled()) {
+      setBanner({ ok: true, text: "Demo mode — no account actually deleted." });
+      setDetailUser(null);
+      return;
+    }
+    try {
+      await deleteUser(deleteTarget.id);
+      setBanner({ ok: true, text: `${deleteTarget.name}'s account was deleted.` });
+      setDetailUser(null);
+      reloadParents();
+      reloadTeachers();
+      reloadStaff();
+    } catch (err) {
+      setBanner({ ok: false, text: err instanceof Error ? err.message : "Could not delete the account." });
+    }
+  }
+
   // Onboarding credential (re)send from the user detail dialog.
   const [sending, setSending] = useState<"Email" | "WhatsApp" | "Sms" | null>(null);
   const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -348,6 +372,18 @@ export default function AdminUsers() {
         </p>
       )}
 
+      {banner && (
+        <p
+          className={cn(
+            "mb-4 flex items-start gap-1.5 rounded-lg px-3 py-2 text-sm font-medium",
+            banner.ok ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"
+          )}
+        >
+          {banner.ok && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
+          {banner.text}
+        </p>
+      )}
+
       <Tabs defaultValue="parents">
         <TabsList>
           <TabsTrigger value="parents" className="gap-1.5">
@@ -505,16 +541,40 @@ export default function AdminUsers() {
                 )}
               </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDetailUser(null)}>
-                  Close
+              <DialogFooter className="sm:justify-between">
+                <Button
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setDeleteTarget(detailUser)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete Account
                 </Button>
-                <Button onClick={() => openEdit(detailUser)}>Edit Profile</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setDetailUser(null)}>
+                    Close
+                  </Button>
+                  <Button onClick={() => openEdit(detailUser)}>Edit Profile</Button>
+                </div>
               </DialogFooter>
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete this account?"
+        description={
+          deleteTarget
+            ? `${deleteTarget.name}'s account will be removed from Reader Nest. This can't be undone from the UI.`
+            : undefined
+        }
+        confirmLabel="Delete Account"
+        destructive
+        onConfirm={handleDeleteUser}
+      />
 
       {/* Edit profile dialog */}
       <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
