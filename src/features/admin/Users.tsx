@@ -28,9 +28,9 @@ import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { createUser, deleteUser, getCredentialChannels, listStudents, listUsers, resendCredentials, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { changeUserRole, createUser, deleteUser, getCredentialChannels, listStudents, listUsers, resendCredentials, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
 import type { ApiRole } from "@/api/types";
-import { listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
+import { applyRoleToUser, listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
 
 function UserAvatar({ name, color }: { name: string; color: string }) {
   return (
@@ -40,11 +40,32 @@ function UserAvatar({ name, color }: { name: string; color: string }) {
   );
 }
 
-const ADD_ROLE_TO_API: Record<string, ApiRole> = {
+interface AddUserRoleOption {
+  key: string;
+  label: string;
+  apiRole: ApiRole;
+  roleDefinitionId?: string;
+  /** The preset's slug name, used by the "apply role to an existing user" endpoint (which takes a name, not an id). */
+  presetName?: string;
+}
+
+const BASE_ADD_USER_ROLES: AddUserRoleOption[] = [
+  { key: "parent", label: "Parent", apiRole: "Parent" },
+  { key: "teacher", label: "Teacher", apiRole: "Teacher" },
+  { key: "admission", label: "Admission Team", apiRole: "AdmissionTeam" },
+  { key: "subadmin", label: "Parent Relationship Manager", apiRole: "SubAdmin" },
+];
+
+// These preset names already have a dedicated base option above (or, for "admin", can
+// never be self-service created) — skip them so the flattened list has no look-alike duplicates.
+const ROLE_PRESET_NAMES_TO_SKIP = new Set(["admin", "teacher", "parent", "admission", "sub-admin"]);
+
+const FRONTEND_ROLE_TO_API: Record<string, ApiRole> = {
   parent: "Parent",
   teacher: "Teacher",
   admission: "AdmissionTeam",
   subadmin: "SubAdmin",
+  admin: "Admin",
 };
 
 export default function AdminUsers() {
@@ -77,9 +98,10 @@ export default function AdminUsers() {
   useEffect(() => {
     setChildNotes((detailChild as StudentRow | null)?.rmNotes ?? "");
   }, [detailChild]);
-  // Edit-profile dialog (name + phone) for any user account.
+  // Edit-profile dialog (name + phone + role) for any user account.
   const [editUser, setEditUser] = useState<AppUser | null>(null);
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "" });
+  const [editRole, setEditRole] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -87,6 +109,10 @@ export default function AdminUsers() {
     const [firstName, ...rest] = u.name.trim().split(/\s+/);
     setEditForm({ firstName: firstName ?? "", lastName: rest.join(" "), phone: u.phone === "—" ? "" : u.phone });
     setEditError(null);
+    const currentOption = u.roleDefinitionId
+      ? addUserRoleOptions.find((o) => o.roleDefinitionId === u.roleDefinitionId)
+      : undefined;
+    setEditRole(currentOption?.key ?? u.role);
     setEditUser(u);
     setDetailUser(null);
   }
@@ -109,6 +135,19 @@ export default function AdminUsers() {
         lastName: editForm.lastName.trim(),
         phone: editForm.phone.trim() || undefined,
       });
+
+      // Admin accounts are untouchable through this action — the Role field is hidden for them.
+      if (editUser.role !== "admin") {
+        const selected = addUserRoleOptions.find((o) => o.key === editRole);
+        const originalApiRole = FRONTEND_ROLE_TO_API[editUser.role];
+        if (selected && selected.apiRole !== originalApiRole) {
+          await changeUserRole(editUser.id, selected.apiRole);
+        }
+        if (selected?.apiRole === "SubAdmin" && selected.presetName && selected.roleDefinitionId !== editUser.roleDefinitionId) {
+          await applyRoleToUser(editUser.id, selected.presetName);
+        }
+      }
+
       setEditUser(null);
       reloadParents();
       reloadTeachers();
@@ -155,10 +194,25 @@ export default function AdminUsers() {
   const [addName, setAddName] = useState("");
   const [addEmail, setAddEmail] = useState("");
   const [addPhone, setAddPhone] = useState("");
-  const [addRoleDefinitionId, setAddRoleDefinitionId] = useState<string>("");
   const [rolePresets, setRolePresets] = useState<ApiRolePreset[]>([]);
   const [addError, setAddError] = useState<string | null>(null);
   const [addSubmitting, setAddSubmitting] = useState(false);
+
+  // Flattened Role list: the 4 base account types plus every named role from the
+  // roles API (Academic Coordinator, Management, Student, any custom ones), so picking
+  // one directly creates that account — no separate "assign role" step needed.
+  const addUserRoleOptions = useMemo<AddUserRoleOption[]>(() => {
+    const extraPresets = rolePresets
+      .filter((role) => !ROLE_PRESET_NAMES_TO_SKIP.has(role.name))
+      .map((role) => ({
+        key: role.id,
+        label: role.displayName,
+        apiRole: "SubAdmin" as ApiRole,
+        roleDefinitionId: role.id,
+        presetName: role.name,
+      }));
+    return [...BASE_ADD_USER_ROLES, ...extraPresets];
+  }, [rolePresets]);
 
   useEffect(() => {
     if (!apiEnabled()) return;
@@ -212,6 +266,12 @@ export default function AdminUsers() {
       return;
     }
 
+    const roleOption = addUserRoleOptions.find((o) => o.key === addRole);
+    if (!roleOption) {
+      setAddError("Pick a role.");
+      return;
+    }
+
     setAddSubmitting(true);
     setAddError(null);
     try {
@@ -220,14 +280,13 @@ export default function AdminUsers() {
         firstName,
         lastName: rest.join(" "),
         phone: addPhone.trim() || undefined,
-        role: ADD_ROLE_TO_API[addRole],
-        roleDefinitionId: addRole === "subadmin" && addRoleDefinitionId ? addRoleDefinitionId : undefined,
+        role: roleOption.apiRole,
+        roleDefinitionId: roleOption.roleDefinitionId,
       });
       setAddOpen(false);
       setAddName("");
       setAddEmail("");
       setAddPhone("");
-      setAddRoleDefinitionId("");
       reloadParents();
       reloadTeachers();
       reloadStaff();
@@ -611,6 +670,27 @@ export default function AdminUsers() {
                 onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
               />
             </div>
+            {editUser?.role !== "admin" && (
+              <div className="grid gap-1.5">
+                <Label>Role</Label>
+                <Select value={editRole} onValueChange={setEditRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {addUserRoleOptions.map((option) => (
+                      <SelectItem key={option.key} value={option.key}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Changing the account type only works while there&rsquo;s no history behind it yet (e.g. a parent with no
+                  children, a teacher with no classes).
+                </p>
+              </div>
+            )}
           </div>
           {editError && <p className="text-sm font-medium text-red-600">{editError}</p>}
           <DialogFooter>
@@ -746,34 +826,14 @@ export default function AdminUsers() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="parent">Parent</SelectItem>
-                  <SelectItem value="teacher">Teacher</SelectItem>
-                  <SelectItem value="admission">Admission Team</SelectItem>
-                  <SelectItem value="subadmin">Parent Relationship Manager</SelectItem>
+                  {addUserRoleOptions.map((option) => (
+                    <SelectItem key={option.key} value={option.key}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-            {addRole === "subadmin" && rolePresets.length > 0 && (
-              <div className="grid gap-1.5">
-                <Label>Assign role (optional)</Label>
-                <Select value={addRoleDefinitionId || "__none"} onValueChange={(v) => setAddRoleDefinitionId(v === "__none" ? "" : v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none">No role — assign permissions later</SelectItem>
-                    {rolePresets.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>
-                        {role.displayName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Applies that role&rsquo;s permissions immediately and routes them there after login.
-                </p>
-              </div>
-            )}
           </div>
           {addError && <p className="text-sm font-medium text-red-600">{addError}</p>}
           <DialogFooter>

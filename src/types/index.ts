@@ -20,6 +20,8 @@ export interface AppUser {
   avatarColor: string;
   joinedOn: string;
   department?: "Phonics" | "Maths";
+  /** Assigned named role (preset) id; only meaningful for Sub Admin accounts. */
+  roleDefinitionId?: string;
 }
 
 export interface Child {

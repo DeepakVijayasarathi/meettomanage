@@ -68,6 +68,7 @@ export function toAppUser(user: ApiUser): AppUser {
     avatarColor: avatarColorFor(user.id),
     joinedOn: user.createdAtUtc.slice(0, 10),
     department: user.department ?? undefined,
+    roleDefinitionId: user.roleDefinitionId ?? undefined,
   };
 }
 
@@ -117,6 +118,14 @@ export async function getCredentialChannels(): Promise<CredentialChannels> {
 /** Soft-deletes the account; excluded from all lists afterwards and its email becomes reusable. */
 export async function deleteUser(id: string): Promise<void> {
   await apiFetch<void>(`/api/users/${id}`, { method: "DELETE" });
+}
+
+/** Converts the account to a different base type (swaps Parent/Teacher profile as needed). */
+export async function changeUserRole(id: string, role: ApiRole): Promise<ApiUser> {
+  return apiFetch<ApiUser>(`/api/users/${id}/role`, {
+    method: "PUT",
+    body: JSON.stringify({ role }),
+  });
 }
 
 export async function createUser(request: {
