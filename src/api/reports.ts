@@ -14,6 +14,8 @@ export interface ApiDashboardSummary {
   batchOccupancyPercent: number;
   teacherUtilizationSessionsPerTeacher: number;
   revenueByDepartment: { name: string; revenue: number }[];
+  /** Collected revenue by course; invoices with no resolved course roll up into "Unassigned". */
+  revenueByCourse: { name: string; revenue: number }[];
   revenueTrend: { month: string; revenue: number }[];
   enrollmentFunnel: { stage: string; value: number }[];
   /** Student attendance % per week, last 6 weeks (oldest first). */
@@ -78,8 +80,10 @@ export async function getStudentAnalytics(childId: string): Promise<ApiStudentAn
   return apiFetch<ApiStudentAnalytics>(`/api/reports/student-analytics/${childId}`);
 }
 
-/** Downloads a CSV export (attendance | revenue | payouts | conversion) with the auth token. */
-export async function downloadReportCsv(report: "attendance" | "revenue" | "payouts" | "conversion"): Promise<void> {
+/** Downloads a CSV export (attendance | revenue | payouts | conversion | performance) with the auth token. */
+export async function downloadReportCsv(
+  report: "attendance" | "revenue" | "payouts" | "conversion" | "performance"
+): Promise<void> {
   const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
   const token = getAccessToken();
   const response = await fetch(`${baseUrl}/api/reports/export/${report}`, {

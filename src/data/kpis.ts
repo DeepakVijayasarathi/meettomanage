@@ -1,3 +1,10 @@
+import { COURSES } from "@/data/courses";
+
+/** Demo-mode course-wise revenue, derived from the same mock courses the Admin/Management course tables use. */
+export const COURSE_REVENUE = COURSES.filter((c) => c.revenue > 0)
+  .map((c) => ({ course: c.name, revenue: c.revenue }))
+  .sort((a, b) => b.revenue - a.revenue);
+
 export const ADMIN_KPIS = {
   totalStudents: 312,
   activeStudents: 268,

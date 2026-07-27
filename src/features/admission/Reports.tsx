@@ -110,7 +110,7 @@ export default function AdmissionReports() {
         items.map(toFrontendInvoice).map((inv) => ({
           id: inv.id,
           childName: inv.childName,
-          parentName: "—",
+          parentName: inv.parentName,
           courseName: inv.courseName,
           department: inv.department,
           amount: inv.amount,

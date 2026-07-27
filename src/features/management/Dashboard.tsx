@@ -48,6 +48,7 @@ const EMPTY_SUMMARY: ApiDashboardSummary = {
   batchOccupancyPercent: 0,
   teacherUtilizationSessionsPerTeacher: 0,
   revenueByDepartment: [],
+  revenueByCourse: [],
   revenueTrend: [],
   enrollmentFunnel: [],
   weeklyAttendanceTrend: [],

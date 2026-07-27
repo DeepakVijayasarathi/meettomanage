@@ -21,6 +21,7 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { cn, formatCurrency, formatNumber } from "@/lib/utils";
 import { COURSES } from "@/data/courses";
 import { DEPARTMENT_REVENUE, REVENUE_TREND } from "@/data/kpis";
+import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getDashboardSummary, type ApiDashboardSummary } from "@/api/reports";
 import { listCourses, toFrontendCourse } from "@/api/courses";
@@ -50,8 +51,19 @@ export default function ManagementRevenue() {
     () => listCourses().then((list) => list.map(toFrontendCourse)),
     COURSES
   );
-  const sortedCourses = useMemo(() => [...courses].sort((a, b) => b.revenue - a.revenue), [courses]);
-  const totalRevenue = useMemo(() => courses.reduce((sum, c) => sum + c.revenue, 0), [courses]);
+  // toFrontendCourse always reports revenue: 0 (courses don't carry it); join the real
+  // per-course figure from the dashboard summary's revenueByCourse breakdown instead.
+  const { data: courseRevenueByName } = useApiData(
+    () => getDashboardSummary().then((s) => Object.fromEntries(s.revenueByCourse.map((c) => [c.name, c.revenue]))),
+    {} as Record<string, number>
+  );
+  const coursesWithRevenue = useMemo(
+    () =>
+      apiEnabled() ? courses.map((c) => ({ ...c, revenue: courseRevenueByName[c.name] ?? 0 })) : courses,
+    [courses, courseRevenueByName]
+  );
+  const sortedCourses = useMemo(() => [...coursesWithRevenue].sort((a, b) => b.revenue - a.revenue), [coursesWithRevenue]);
+  const totalRevenue = useMemo(() => coursesWithRevenue.reduce((sum, c) => sum + c.revenue, 0), [coursesWithRevenue]);
 
   const columns: DataTableColumn<Course>[] = [
     {

@@ -22,6 +22,7 @@ interface PaymentRow {
   /** Real invoice Guid; present only in API mode, needed to generate a live payment link. */
   apiId?: string;
   childName: string;
+  parentName: string;
   courseName: string;
   department: "Phonics" | "Maths";
   amount: number;
@@ -41,6 +42,7 @@ const STATUS_OPTIONS: { value: RowStatus | "all"; label: string }[] = [
 const DEMO_ROWS: PaymentRow[] = PAYMENT_LINKS.map((link) => ({
   id: link.id,
   childName: link.childName,
+  parentName: link.parentName,
   courseName: link.courseName,
   department: link.department,
   amount: link.amount,
@@ -54,6 +56,7 @@ function fromInvoice(invoice: Invoice): PaymentRow {
     id: invoice.id,
     apiId: invoice.apiId,
     childName: invoice.childName,
+    parentName: invoice.parentName,
     courseName: invoice.courseName,
     department: invoice.department,
     amount: invoice.amount,
@@ -108,10 +111,15 @@ export default function AdmissionPayments() {
     () => [
       {
         key: "child",
-        header: "Child",
+        header: "Child / Parent",
         sortable: true,
         accessor: (row) => row.childName,
-        render: (row) => <p className="font-semibold text-foreground">{row.childName}</p>,
+        render: (row) => (
+          <div>
+            <p className="font-semibold text-foreground">{row.childName}</p>
+            <p className="text-xs text-muted-foreground">{row.parentName}</p>
+          </div>
+        ),
       },
       {
         key: "course",

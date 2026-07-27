@@ -24,7 +24,7 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { formatPercent } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { getDashboardSummary, getTeacherPerformance, type ApiDashboardSummary } from "@/api/reports";
+import { downloadReportCsv, getDashboardSummary, getTeacherPerformance, type ApiDashboardSummary } from "@/api/reports";
 import {
   ATTENDANCE_TREND,
   ENROLLMENT_FUNNEL,
@@ -86,6 +86,8 @@ export default function AdminReports() {
   );
   const [toDate, setToDate] = useState(usingApi ? new Date().toISOString().slice(0, 10) : "2026-07-09");
   const [generated, setGenerated] = useState<ReportType | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const { data: summary } = useApiData<
     Pick<ApiDashboardSummary, "revenueTrend" | "enrollmentFunnel" | "weeklyAttendanceTrend">
@@ -122,13 +124,34 @@ export default function AdminReports() {
     [generated, reportType, sources]
   );
 
-  function handleExport() {
+  async function handleExport() {
+    setExportError(null);
+    const type = generated ?? reportType;
+
+    // API mode: pull the full server-side export so the CSV isn't limited to the on-screen preview.
+    if (usingApi) {
+      setExporting(true);
+      try {
+        await downloadReportCsv(type);
+      } catch {
+        setExportError("Couldn't reach the export endpoint. Showing the on-screen preview as CSV instead.");
+        downloadClientCsv(type);
+      } finally {
+        setExporting(false);
+      }
+      return;
+    }
+
+    downloadClientCsv(type);
+  }
+
+  function downloadClientCsv(type: ReportType) {
     const csv = toCsv(columns, rows);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${generated ?? reportType}-report-${fromDate}-to-${toDate}.csv`;
+    a.download = `${type}-report-${fromDate}-to-${toDate}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -212,11 +235,14 @@ export default function AdminReports() {
                   </span>
                   <p className="text-sm font-semibold text-foreground">Data Preview</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleExport}>
+                <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
                   <Download className="h-3.5 w-3.5" />
-                  Export CSV
+                  {exporting ? "Exporting…" : "Export CSV"}
                 </Button>
               </div>
+              {exportError && (
+                <p className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{exportError}</p>
+              )}
               <div className="overflow-x-auto rounded-lg border border-border">
                 <Table>
                   <TableHeader>

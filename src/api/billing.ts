@@ -13,8 +13,12 @@ export interface ApiInvoice {
   childId: string | null;
   /** Resolved child display name; null when the invoice has no child linked. */
   childName: string | null;
-  /** Resolved course/plan name via the invoice's subscription, when it has one. */
+  courseId: string | null;
+  /** Resolved course name — direct via courseId when set, else via the invoice's subscription/plan. */
   courseName: string | null;
+  /** Resolved display name for the invoicing parent — the account holder, not the child. */
+  parentName: string | null;
+  parentEmail: string | null;
   department: "Phonics" | "Maths";
   amount: number;
   amountPaid: number;
@@ -58,6 +62,7 @@ export function toFrontendInvoice(invoice: ApiInvoice): Invoice {
     issuedOn: invoice.issuedAtUtc.slice(0, 10),
     dueOn: invoice.dueDate,
     courseName: invoice.courseName ?? "—",
+    parentName: invoice.parentName ?? "—",
   };
 }
 

@@ -115,6 +115,8 @@ export interface Invoice {
   issuedOn: string;
   dueOn: string;
   courseName: string;
+  /** Resolved invoicing-parent display name; "—" when unresolved (e.g. demo mode's mock rows). */
+  parentName: string;
 }
 
 export interface TeacherPayout {

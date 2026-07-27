@@ -18,7 +18,11 @@ export interface AuditLogPage {
   pageSize: number;
 }
 
-/** Paged, newest-first audit trail (Settings:View gated) for the Audit Log screen. */
+/**
+ * Paged, newest-first audit trail for the Audit Log screen. Callers with platform-wide
+ * Settings:View (or Admin) see every actor's actions; everyone else — e.g. a Sub-Admin —
+ * is automatically scoped to their own actions only.
+ */
 export async function listAuditLogs(params?: {
   entityName?: string;
   action?: string;

@@ -40,6 +40,7 @@ import {
   ADMIN_KPIS,
   ATTENDANCE_TREND,
   BATCH_OCCUPANCY_BY_COURSE,
+  COURSE_REVENUE,
   DEPARTMENT_REVENUE,
   ENROLLMENT_FUNNEL,
   REVENUE_TREND,
@@ -108,12 +109,13 @@ export default function AdminDashboard() {
           value: d.revenue,
           color: CHART_PALETTE[(i + 3) % CHART_PALETTE.length],
         })),
+        courseRevenue: s.revenueByCourse.map((c) => ({ course: c.name, revenue: c.revenue })),
         enrollmentFunnel: s.enrollmentFunnel,
       })),
-    { kpis: ADMIN_KPIS, revenueTrend: REVENUE_TREND, departmentRevenue: DEPARTMENT_REVENUE, enrollmentFunnel: ENROLLMENT_FUNNEL },
-    { kpis: ZERO_KPIS, revenueTrend: [], departmentRevenue: [], enrollmentFunnel: [] }
+    { kpis: ADMIN_KPIS, revenueTrend: REVENUE_TREND, departmentRevenue: DEPARTMENT_REVENUE, courseRevenue: COURSE_REVENUE, enrollmentFunnel: ENROLLMENT_FUNNEL },
+    { kpis: ZERO_KPIS, revenueTrend: [], departmentRevenue: [], courseRevenue: [], enrollmentFunnel: [] }
   );
-  const { kpis, revenueTrend, departmentRevenue, enrollmentFunnel } = dashboard;
+  const { kpis, revenueTrend, departmentRevenue, courseRevenue, enrollmentFunnel } = dashboard;
   // No per-teacher utilization / attendance-trend / occupancy-by-course endpoints yet — empty charts in API mode
   const teacherUtilization = usingApi ? [] : TEACHER_UTILIZATION;
   const attendanceTrend = usingApi ? [] : ATTENDANCE_TREND;
@@ -248,6 +250,22 @@ export default function AdminDashboard() {
                 formatter={(value: string) => <span className="text-xs font-medium text-foreground">{value}</span>}
               />
             </PieChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Course Revenue" description="Collected revenue by course, all time">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={courseRevenue} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+              <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+              <YAxis type="category" dataKey="course" tickLine={false} axisLine={false} fontSize={11} width={120} />
+              <RTooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
+              <Bar dataKey="revenue" radius={[0, 6, 6, 0]} maxBarSize={22}>
+                {courseRevenue.map((_, i) => (
+                  <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
+                ))}
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
