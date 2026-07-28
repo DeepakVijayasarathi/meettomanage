@@ -1,8 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CalendarClock, List, Users } from "lucide-react";
+import { CalendarClock, List, Loader2, Plus, Users, Video } from "lucide-react";
 import { useApiData } from "@/api/hooks";
-import { listMySessions, toFrontendSession } from "@/api/sessions";
+import {
+  listMySessions,
+  listRecordings,
+  registerRecording,
+  toFrontendSession,
+  type ApiSessionRecording,
+} from "@/api/sessions";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { CalendarBoard } from "@/components/CalendarBoard";
@@ -12,6 +18,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getCourseById } from "@/data/courses";
@@ -51,6 +59,149 @@ function isJoinable(status: SessionStatus) {
   return status === "scheduled" || status === "demo";
 }
 
+const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Manual fallback for registering a session recording. Auto-recording (Jitsi/Jibri) posts
+ * here automatically when configured; this dialog lets a teacher paste a link directly —
+ * e.g. a class recorded outside the automated pipeline, or before Jibri infra is live —
+ * so the 15-day parent recording window still works without waiting on that infra.
+ */
+function RecordingsDialog({ session, onClose }: { session: ClassSession; onClose: () => void }) {
+  const [recordings, setRecordings] = useState<ApiSessionRecording[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [url, setUrl] = useState("");
+  const [minutes, setMinutes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canManage = apiEnabled() && GUID_RE.test(session.id);
+
+  useEffect(() => {
+    if (!canManage) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    listRecordings(session.id)
+      .then((items) => !cancelled && setRecordings(items))
+      .catch(() => !cancelled && setError("Couldn't load existing recordings."))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [session.id, canManage]);
+
+  async function handleAdd() {
+    if (!url.trim()) return;
+    setError(null);
+    setSaving(true);
+    try {
+      const durationSeconds = minutes.trim() ? Math.round(Number(minutes) * 60) : undefined;
+      await registerRecording(session.id, url.trim(), durationSeconds);
+      const items = await listRecordings(session.id);
+      setRecordings(items);
+      setUrl("");
+      setMinutes("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't register that recording.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Recordings — {session.title}</DialogTitle>
+          <DialogDescription>
+            {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)}. Parents can view a
+            recording for 15 days after it's registered here.
+          </DialogDescription>
+        </DialogHeader>
+
+        {!canManage ? (
+          <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+            Recording management needs a real, connected session — not available in demo mode.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-6 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </div>
+            ) : recordings.length === 0 ? (
+              <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                No recording registered yet. If this class wasn't auto-recorded, paste the link below.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {recordings.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm">
+                    <div className="min-w-0">
+                      <a
+                        href={r.storageUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 truncate font-medium text-primary hover:underline"
+                      >
+                        <Video className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{r.storageUrl}</span>
+                      </a>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {r.expiresAtUtc
+                          ? `Visible to parents until ${formatDate(r.expiresAtUtc.slice(0, 10), "long")}`
+                          : "Registered"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="grid gap-3 rounded-lg border border-dashed border-border p-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="rec-url">Recording URL</Label>
+                <Input
+                  id="rec-url"
+                  placeholder="https://…"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="rec-duration">Duration (minutes, optional)</Label>
+                <Input
+                  id="rec-duration"
+                  type="number"
+                  min={0}
+                  placeholder="45"
+                  value={minutes}
+                  onChange={(e) => setMinutes(e.target.value)}
+                  className="w-32"
+                />
+              </div>
+              {error && <p className="text-xs text-destructive">{error}</p>}
+              <Button size="sm" className="self-start" disabled={!url.trim() || saving} onClick={handleAdd}>
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                Register recording
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function TeacherMyClasses() {
   const navigate = useNavigate();
   const { data: mySessions } = useApiData(
@@ -66,6 +217,7 @@ export default function TeacherMyClasses() {
   );
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<ClassSession | null>(null);
+  const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
 
   // Real sessions launch straight into the Jitsi room; mock sessions open the demo classroom
   function startClass(session: ClassSession) {
@@ -124,9 +276,15 @@ export default function TeacherMyClasses() {
             {row.status === "demo" ? "Start Demo" : "Start Class"}
           </Button>
         ) : row.status === "completed" ? (
-          <Button asChild size="sm" variant="outline">
-            <Link to="/teacher/attendance">View record</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link to="/teacher/attendance">View record</Link>
+            </Button>
+            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setRecordingsFor(row); }}>
+              <Video className="h-3.5 w-3.5" />
+              Recording
+            </Button>
+          </div>
         ) : (
           <span className="text-xs text-muted-foreground">—</span>
         ),
@@ -213,6 +371,12 @@ export default function TeacherMyClasses() {
                 <Button variant="outline" onClick={() => setSelected(null)}>
                   Close
                 </Button>
+                {selected.status === "completed" && (
+                  <Button variant="outline" onClick={() => setRecordingsFor(selected)}>
+                    <Video className="h-3.5 w-3.5" />
+                    Recording
+                  </Button>
+                )}
                 {isJoinable(selected.status) && (
                   <Button onClick={() => startClass(selected)}>
                     {selected.status === "demo" ? "Start Demo" : "Start Class"}
@@ -223,6 +387,8 @@ export default function TeacherMyClasses() {
           )}
         </DialogContent>
       </Dialog>
+
+      {recordingsFor && <RecordingsDialog session={recordingsFor} onClose={() => setRecordingsFor(null)} />}
     </div>
   );
 }

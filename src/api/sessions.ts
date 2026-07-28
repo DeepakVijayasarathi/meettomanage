@@ -63,12 +63,30 @@ export async function getCalendarFeedUrl(): Promise<string> {
   return `${baseUrl}${url}`;
 }
 
-/** Auto session recording: registers the finished recording link against the session (15-day parent window). */
+export interface ApiSessionRecording {
+  id: string;
+  classSessionId: string;
+  storageUrl: string;
+  durationSeconds: number | null;
+  expiresAtUtc: string | null;
+  createdAtUtc: string;
+}
+
+/**
+ * Registers a recording against the session (15-day parent window). Auto-called by the
+ * live classroom when Jitsi/Jibri hands back a recording link; also exposed as a manual
+ * fallback (teacher/admin pastes a URL) for classes recorded outside the automated pipeline.
+ */
 export async function registerRecording(sessionId: string, storageUrl: string, durationSeconds?: number): Promise<void> {
   await apiFetch(`/api/sessions/${sessionId}/recordings`, {
     method: "POST",
     body: JSON.stringify({ storageUrl, durationSeconds }),
   });
+}
+
+/** Recordings already registered against a session (Admin/Teacher only). */
+export async function listRecordings(sessionId: string): Promise<ApiSessionRecording[]> {
+  return apiFetch<ApiSessionRecording[]>(`/api/sessions/${sessionId}/recordings`);
 }
 
 /** The signed-in teacher's own sessions in a ±60-day window. */
