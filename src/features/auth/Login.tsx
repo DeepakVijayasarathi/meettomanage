@@ -247,8 +247,8 @@ export default function Login() {
 
           <p className="mt-7 text-center text-sm text-brand-ink/55">
             New here?{" "}
-            <Link to="/portal-select" className="font-semibold text-brand-green hover:underline">
-              Browse all portals
+            <Link to="/" className="font-semibold text-brand-green hover:underline">
+              Explore More
             </Link>
           </p>
 

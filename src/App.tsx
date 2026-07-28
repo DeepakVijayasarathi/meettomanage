@@ -1,10 +1,11 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/AppShell";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Logo } from "@/components/Logo";
 
+const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Login = lazy(() => import("@/features/auth/Login"));
 const PortalSelect = lazy(() => import("@/features/auth/PortalSelect"));
 const ForgotPassword = lazy(() => import("@/features/auth/ForgotPassword"));
@@ -91,7 +92,7 @@ export default function App() {
       <BrowserRouter>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<MarketingHome />} />
             <Route path="/login" element={<Login />} />
             <Route path="/portal-select" element={<PortalSelect />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
