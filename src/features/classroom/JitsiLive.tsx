@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PartyPopper, PhoneOff, Sparkles } from "lucide-react";
+import { DoorOpen, PartyPopper, PhoneOff, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
@@ -68,6 +68,18 @@ export default function JitsiLive({
   const [celebrationMessage, setCelebrationMessage] = useState<string | undefined>(undefined);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const celebrateAllRef = useRef<((message?: string) => void) | null>(null);
+  const jitsiApiRef = useRef<{ executeCommand: (command: string, ...args: unknown[]) => void } | null>(null);
+  const [lobbyEnabled, setLobbyEnabled] = useState(false);
+
+  // Real waiting room: toggles Jitsi's native lobby, which then handles admit/deny
+  // through Jitsi's own UI. Only meaningful for whoever holds moderator on this
+  // deployment (self-hosted, no JWT auth configured — see docs/JITSI_ARCHITECTURE.md);
+  // the command itself is a stable, long-standing part of the Jitsi IFrame API.
+  function toggleWaitingRoom() {
+    const next = !lobbyEnabled;
+    jitsiApiRef.current?.executeCommand("toggleLobby", next);
+    setLobbyEnabled(next);
+  }
 
   // The interactive layer needs a real session id for the hub group + engagement.
   const interactive = !!sessionId && GUID_RE.test(sessionId);
@@ -133,6 +145,7 @@ export default function JitsiLive({
             DEFAULT_REMOTE_DISPLAY_NAME: "Student",
           },
         });
+        jitsiApiRef.current = api;
         api.addListener("readyToClose", () => navigate(-1));
         api.addListener("videoConferenceJoined", (payload) => {
           media.selfId = payload?.id ?? "";
@@ -176,6 +189,7 @@ export default function JitsiLive({
       cancelled = true;
       flushMedia();
       api?.dispose();
+      jitsiApiRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, mode]);
@@ -188,6 +202,18 @@ export default function JitsiLive({
           <p className="text-sm font-semibold text-white">{title ?? "Live class"}</p>
         </div>
         <div className="flex items-center gap-2">
+          {mode === "teacher" && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className={cn("gap-1.5 bg-white/10 text-white hover:bg-white/20", lobbyEnabled && "bg-brand-violet/30")}
+              onClick={toggleWaitingRoom}
+              title="New joiners wait for you to admit them"
+            >
+              <DoorOpen className="h-3.5 w-3.5" />
+              {lobbyEnabled ? "Waiting Room: On" : "Waiting Room"}
+            </Button>
+          )}
           {interactive && (
             <Button
               size="sm"

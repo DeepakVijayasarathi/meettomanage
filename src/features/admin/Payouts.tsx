@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { IndianRupee, Settings2, UsersRound, Wallet } from "lucide-react";
+import { Download, IndianRupee, Loader2, Settings2, UsersRound, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -9,16 +9,66 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PAYOUTS } from "@/data/payouts";
 import { getTeacherById } from "@/data/users";
+import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listPayouts, toFrontendPayout } from "@/api/payouts";
+import { downloadReportCsv } from "@/api/reports";
 import type { TeacherPayout } from "@/types";
 import { formatCurrency, formatNumber, getInitials } from "@/lib/utils";
+
+function toCsv(columns: string[], rows: (string | number)[][]) {
+  const lines = [columns.join(","), ...rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))];
+  return lines.join("\n");
+}
+
+function downloadCsv(filename: string, csv: string) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 export default function AdminPayouts() {
   const { data: payouts } = useApiData(
     () => listPayouts().then((items) => items.map(toFrontendPayout)),
     PAYOUTS
   );
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  async function handleExport() {
+    setExportError(null);
+    if (apiEnabled()) {
+      setExporting(true);
+      try {
+        await downloadReportCsv("payouts");
+      } catch {
+        setExportError("Couldn't reach the export endpoint. Showing the on-screen list as CSV instead.");
+        downloadCsv(
+          `payouts-${new Date().toISOString().slice(0, 10)}.csv`,
+          toCsv(
+            ["Teacher", "Month", "Sessions", "Base Amount", "Deductions", "Waiting Added", "Final Amount", "Status"],
+            payouts.map((p) => [p.teacherName, p.month, p.sessionsCompleted, p.baseAmount, p.deductions, p.waitingAmountAdded, p.finalAmount, p.status])
+          )
+        );
+      } finally {
+        setExporting(false);
+      }
+      return;
+    }
+    downloadCsv(
+      "payouts-2026-07-09.csv",
+      toCsv(
+        ["Teacher", "Month", "Sessions", "Base Amount", "Deductions", "Waiting Added", "Final Amount", "Status"],
+        payouts.map((p) => [p.teacherName, p.month, p.sessionsCompleted, p.baseAmount, p.deductions, p.waitingAmountAdded, p.finalAmount, p.status])
+      )
+    );
+  }
 
   const totals = useMemo(() => {
     const thisMonth = payouts.filter((p) => p.month === "July 2026");
@@ -121,14 +171,24 @@ export default function AdminPayouts() {
         title="Teacher Payouts"
         description="Monthly payout calculation from each teacher's rate card, and payment history. Rate cards (and the no-show penalty) are configured in Settings & Branding → Payroll."
         actions={
-          <Button size="sm" variant="outline" asChild>
-            <Link to="/admin/settings?tab=payroll">
-              <Settings2 className="h-4 w-4" />
-              Configure Rates
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="outline" onClick={handleExport} disabled={exporting}>
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {exporting ? "Exporting…" : "Export CSV"}
+            </Button>
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/admin/settings?tab=payroll">
+                <Settings2 className="h-4 w-4" />
+                Configure Rates
+              </Link>
+            </Button>
+          </div>
         }
       />
+
+      {exportError && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{exportError}</p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard label="Total Payout — July 2026" value={formatCurrency(totals.totalThisMonth)} icon={IndianRupee} tone="primary" />

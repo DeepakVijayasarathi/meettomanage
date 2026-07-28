@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { CalendarClock, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarBoard } from "@/components/CalendarBoard";
@@ -20,7 +21,8 @@ import { getChildById } from "@/data/children";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listSessions, toFrontendSession } from "@/api/sessions";
-import { createHoliday, deleteHoliday, listHolidays, type ApiHoliday } from "@/api/academicOps";
+import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
+import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import type { ClassSession } from "@/types";
 import { formatDate } from "@/lib/utils";
 
@@ -31,6 +33,16 @@ export default function AdminAcademicCalendar() {
     SESSIONS
   );
   const { data: holidays, reload: reloadHolidays } = useApiData<ApiHoliday[]>(() => listHolidays(), []);
+  const { data: approvedLeave } = useApiData<ApiLeaveRequest[]>(() => listLeave("Approved"), []);
+  // Holidays/leave are their own entities, not ClassSession rows — merged in here as
+  // synthetic "holiday"/"leave" calendar events so the colour coding actually shows them.
+  const calendarEvents = useMemo(
+    () =>
+      apiEnabled()
+        ? [...sessions, ...holidaysToCalendarEvents(holidays), ...approvedLeaveToCalendarEvents(approvedLeave)]
+        : sessions,
+    [sessions, holidays, approvedLeave]
+  );
   const [holidayDate, setHolidayDate] = useState("");
   const [holidayName, setHolidayName] = useState("");
 
@@ -53,7 +65,7 @@ export default function AdminAcademicCalendar() {
 
       <Card className="p-5">
         <CalendarBoard
-          sessions={sessions}
+          sessions={calendarEvents}
           initialMonth={apiEnabled() ? new Date() : new Date(2026, 6, 1)}
           onSessionClick={setSelected}
         />
@@ -151,8 +163,11 @@ export default function AdminAcademicCalendar() {
                 <Button variant="outline" onClick={() => setSelected(null)}>
                   Close
                 </Button>
-                <Button variant="outline">Reschedule</Button>
-                <Button variant="destructive">Cancel Session</Button>
+                {selected.status !== "holiday" && selected.status !== "leave" && (
+                  <Button variant="outline" asChild>
+                    <Link to="/admin/sessions">Manage in Sessions</Link>
+                  </Button>
+                )}
               </DialogFooter>
             </>
           )}

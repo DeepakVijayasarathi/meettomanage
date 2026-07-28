@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CalendarClock, PartyPopper, RefreshCcw, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarBoard } from "@/components/CalendarBoard";
@@ -20,6 +20,8 @@ import { getChildById } from "@/data/children";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { cancelSession, listSessions, rescheduleSession, toFrontendSession } from "@/api/sessions";
+import { listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
+import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import type { ClassSession } from "@/types";
 import { formatDate } from "@/lib/utils";
 
@@ -34,7 +36,15 @@ export default function CoordinatorCalendar() {
     SESSIONS
   );
   const [demoSessions, setDemoSessions] = useState<ClassSession[]>(SESSIONS);
-  const sessions = usingApi ? apiSessions : demoSessions;
+  const { data: holidays } = useApiData<ApiHoliday[]>(() => listHolidays(), []);
+  const { data: approvedLeave } = useApiData<ApiLeaveRequest[]>(() => listLeave("Approved"), []);
+  const sessions = useMemo(
+    () =>
+      usingApi
+        ? [...apiSessions, ...holidaysToCalendarEvents(holidays), ...approvedLeaveToCalendarEvents(approvedLeave)]
+        : demoSessions,
+    [usingApi, apiSessions, holidays, approvedLeave, demoSessions]
+  );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);

@@ -23,6 +23,8 @@ import { Label } from "@/components/ui/label";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getCourseById } from "@/data/courses";
+import { listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
+import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import { apiEnabled } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { ClassSession, SessionStatus } from "@/types";
@@ -219,6 +221,18 @@ export default function TeacherMyClasses() {
   const [selected, setSelected] = useState<ClassSession | null>(null);
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
 
+  // Calendar-only: holidays/leave aren't real classes, so they're kept out of allSessions
+  // (the list/table view) and merged in just for the calendar's colour coding.
+  const { data: holidays } = useApiData<ApiHoliday[]>(() => listHolidays(), []);
+  const { data: approvedLeave } = useApiData<ApiLeaveRequest[]>(() => listLeave("Approved"), []);
+  const calendarEvents = useMemo(
+    () =>
+      apiEnabled()
+        ? [...allSessions, ...holidaysToCalendarEvents(holidays), ...approvedLeaveToCalendarEvents(approvedLeave)]
+        : allSessions,
+    [allSessions, holidays, approvedLeave]
+  );
+
   // Real sessions launch straight into the Jitsi room; mock sessions open the demo classroom
   function startClass(session: ClassSession) {
     navigate(`/teacher/live/${session.id}`, {
@@ -337,7 +351,7 @@ export default function TeacherMyClasses() {
         </TabsContent>
 
         <TabsContent value="calendar">
-          <CalendarBoard sessions={allSessions} initialMonth={apiEnabled() ? new Date() : new Date(2026, 6, 1)} onSessionClick={(s) => setSelected(s)} />
+          <CalendarBoard sessions={calendarEvents} initialMonth={apiEnabled() ? new Date() : new Date(2026, 6, 1)} onSessionClick={(s) => setSelected(s)} />
         </TabsContent>
       </Tabs>
 
