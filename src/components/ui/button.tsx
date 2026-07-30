@@ -16,6 +16,8 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         success: "bg-success text-success-foreground hover:bg-success/90",
         soft: "bg-primary/10 text-primary hover:bg-primary/15",
+        /** Toggle chip: pair with `aria-pressed` — selected state fills with primary automatically. */
+        pill: "rounded-full border border-input bg-background text-foreground hover:bg-accent aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground",
       },
       size: {
         default: "h-10 px-4 py-2",
@@ -23,6 +25,9 @@ const buttonVariants = cva(
         lg: "h-11 rounded-lg px-6",
         icon: "h-10 w-10",
         xs: "h-7 rounded-md px-2.5 text-xs",
+        /** Compact icon button for dense toolbars (whiteboard, chat, live-class controls). */
+        iconSm: "h-7 w-7 rounded-md",
+        pill: "h-7 rounded-full px-3 text-xs",
       },
     },
     defaultVariants: {

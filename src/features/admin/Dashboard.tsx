@@ -34,6 +34,8 @@ import { KpiCard } from "@/components/KpiCard";
 import { ChartCard } from "@/components/ChartCard";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/utils";
 import {
@@ -78,7 +80,7 @@ function localDateKey(d: Date): string {
 export default function AdminDashboard() {
   const usingApi = apiEnabled();
   const todayKey = usingApi ? localDateKey(new Date()) : TODAY;
-  const { data: apiSessions } = useApiData<ClassSession[]>(
+  const { data: apiSessions, loading: sessionsLoading } = useApiData<ClassSession[]>(
     () => listSessions().then((items) => items.map(toFrontendSession)),
     []
   );
@@ -86,7 +88,7 @@ export default function AdminDashboard() {
     .filter((s) => s.date === todayKey)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
   // Live aggregates replace the mock KPI block and charts when the API is configured
-  const { data: dashboard } = useApiData(
+  const { data: dashboard, loading: dashboardLoading, error: dashboardError } = useApiData(
     () =>
       getDashboardSummary().then((s) => ({
         kpis: {
@@ -138,6 +140,8 @@ export default function AdminDashboard() {
           icon={Users}
           tone="primary"
           trend={usingApi ? undefined : { value: 6.2, label: "vs last month" }}
+          loading={dashboardLoading}
+          error={dashboardError}
         />
         <KpiCard
           label="Active Students"
@@ -145,6 +149,8 @@ export default function AdminDashboard() {
           icon={UserCheck}
           tone="success"
           trend={usingApi ? undefined : { value: 3.8, label: "vs last month" }}
+          loading={dashboardLoading}
+          error={dashboardError}
         />
         <KpiCard
           label="Revenue This Month"
@@ -152,6 +158,8 @@ export default function AdminDashboard() {
           icon={IndianRupee}
           tone="primary"
           trend={usingApi ? undefined : { value: kpis.revenueGrowth, label: "vs last month" }}
+          loading={dashboardLoading}
+          error={dashboardError}
         />
         <KpiCard
           label="New Enrollments"
@@ -159,6 +167,8 @@ export default function AdminDashboard() {
           icon={GraduationCap}
           tone="warning"
           trend={usingApi ? undefined : { value: 4.1, label: "vs last month" }}
+          loading={dashboardLoading}
+          error={dashboardError}
         />
         <KpiCard
           label="Conversion Rate"
@@ -166,6 +176,8 @@ export default function AdminDashboard() {
           icon={TrendingUp}
           tone="success"
           trend={usingApi ? undefined : { value: 2.4, label: "vs last month" }}
+          loading={dashboardLoading}
+          error={dashboardError}
         />
         <KpiCard
           label="Teacher Utilization"
@@ -173,6 +185,8 @@ export default function AdminDashboard() {
           icon={ClipboardCheck}
           tone="primary"
           trend={usingApi ? undefined : { value: -1.2, label: "vs last month" }}
+          loading={dashboardLoading}
+          error={dashboardError}
         />
         <KpiCard
           label="Attendance Rate"
@@ -180,6 +194,8 @@ export default function AdminDashboard() {
           icon={CalendarCheck2}
           tone="success"
           trend={usingApi ? undefined : { value: 1.5, label: "vs last month" }}
+          loading={dashboardLoading}
+          error={dashboardError}
         />
         <KpiCard
           label="Renewal Rate"
@@ -187,6 +203,8 @@ export default function AdminDashboard() {
           icon={RefreshCw}
           tone="warning"
           trend={usingApi ? undefined : { value: -0.8, label: "vs last month" }}
+          loading={dashboardLoading}
+          error={dashboardError}
         />
         <KpiCard
           label="Refund Rate"
@@ -194,6 +212,8 @@ export default function AdminDashboard() {
           icon={Undo2}
           tone="destructive"
           trend={usingApi ? undefined : { value: 0.4, label: "vs last month" }}
+          loading={dashboardLoading}
+          error={dashboardError}
         />
         <KpiCard
           label="Batch Occupancy"
@@ -201,12 +221,14 @@ export default function AdminDashboard() {
           icon={LayoutGrid}
           tone="neutral"
           trend={usingApi ? undefined : { value: 2.9, label: "vs last month" }}
+          loading={dashboardLoading}
+          error={dashboardError}
         />
       </div>
 
       {/* Charts grid */}
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <ChartCard title="Revenue Trend" description="Monthly revenue, last 6 months">
+        <ChartCard title="Revenue Trend" description="Monthly revenue, last 6 months" loading={dashboardLoading} error={dashboardError}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={revenueTrend} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
               <defs>
@@ -227,7 +249,7 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Department Revenue" description="Share of revenue by department">
+        <ChartCard title="Department Revenue" description="Share of revenue by department" loading={dashboardLoading} error={dashboardError}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -253,7 +275,7 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Course Revenue" description="Collected revenue by course, all time">
+        <ChartCard title="Course Revenue" description="Collected revenue by course, all time" loading={dashboardLoading} error={dashboardError}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={courseRevenue} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
@@ -269,7 +291,7 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Enrollment Funnel" description="Demo to enrollment conversion, this quarter">
+        <ChartCard title="Enrollment Funnel" description="Demo to enrollment conversion, this quarter" loading={dashboardLoading} error={dashboardError}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={enrollmentFunnel} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
@@ -331,7 +353,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Today's sessions */}
-      <div className="mt-6 rounded-xl border border-border bg-card p-5 shadow-card">
+      <Card className="mt-6 p-5">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: `${CHART_PALETTE[0]}1A`, color: CHART_PALETTE[0] }}>
@@ -347,7 +369,19 @@ export default function AdminDashboard() {
           </span>
         </div>
 
-        {todaySessions.length === 0 ? (
+        {sessionsLoading ? (
+          <div className="flex flex-col divide-y divide-border">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <Skeleton className="h-9 w-9 shrink-0 rounded-lg" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-3.5 w-40" />
+                  <Skeleton className="h-3 w-56" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : todaySessions.length === 0 ? (
           <EmptyState icon={Clock} title="No sessions today" description="There are no classes scheduled for today." />
         ) : (
           <div className="flex flex-col divide-y divide-border">
@@ -372,7 +406,7 @@ export default function AdminDashboard() {
             ))}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

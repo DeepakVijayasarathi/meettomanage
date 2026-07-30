@@ -20,6 +20,7 @@ import { FeeStatusBadge, SessionStatusBadge } from "@/components/StatusBadge";
 import { PayNowModal } from "@/components/PayNowModal";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -73,7 +74,7 @@ export default function ParentDashboard() {
   const [payOpen, setPayOpen] = useState(false);
 
   // Live overlay: the API's per-child summary and real schedule replace the mock numbers
-  const { data: apiDash } = useApiData<ApiParentDashboard | null>(() => getParentDashboard(), null, null);
+  const { data: apiDash, loading: dashLoading, error: dashError } = useApiData<ApiParentDashboard | null>(() => getParentDashboard(), null, null);
   const { data: apiSessions } = useApiData<ClassSession[]>(
     () => {
       const from = new Date(Date.now() - 60 * 86400_000).toISOString();
@@ -144,10 +145,24 @@ export default function ParentDashboard() {
   const firstName = userName !== "Guest" ? userName.split(" ")[0] : "there";
 
   if (!child) {
+    if (usingApi && dashLoading) {
+      return (
+        <div>
+          <PageHeader title="Parent Dashboard" description="Classes completed, attendance and fee status for your children." />
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            ))}
+          </div>
+        </div>
+      );
+    }
     return (
       <div>
         <PageHeader title="Parent Dashboard" description="Classes completed, attendance and fee status for your children." />
-        {awaitingForms.length > 0 ? (
+        {usingApi && dashError ? (
+          <p className="mt-6 text-sm text-destructive">Couldn&apos;t load your dashboard. Please try again shortly.</p>
+        ) : awaitingForms.length > 0 ? (
           <PendingEnrollments forms={awaitingForms} courseOptions={courseOptions} />
         ) : (
           <EmptyState
@@ -190,8 +205,8 @@ export default function ParentDashboard() {
         ) : (
           <div className="flex flex-col gap-6">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <KpiCard label="Classes Completed" value={String(child.classesCompleted)} icon={CheckCircle2} tone="success" />
-              <KpiCard label="Classes Remaining" value={String(child.classesRemaining)} icon={CalendarClock} tone="primary" />
+              <KpiCard label="Classes Completed" value={String(child.classesCompleted)} icon={CheckCircle2} tone="success" loading={usingApi && dashLoading} />
+              <KpiCard label="Classes Remaining" value={String(child.classesRemaining)} icon={CalendarClock} tone="primary" loading={usingApi && dashLoading} />
               <AttendanceCard percent={child.attendancePercent} color={child.avatarColor} />
               <FeeCard child={child} invoice={invoice} onPay={() => setPayOpen(true)} />
             </div>

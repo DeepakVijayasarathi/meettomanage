@@ -13,6 +13,7 @@ import {
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { ChartCard } from "@/components/ChartCard";
+import { Card } from "@/components/ui/card";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -50,7 +51,7 @@ interface TeacherRow {
   sessions?: number;
 }
 
-const AVATAR_FALLBACKS = ["#7C5CFF", "#0EA5E9", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6"];
+const AVATAR_FALLBACKS = ["#5E41D2", "#3895BF", "#C99337", "#309976", "#C74C4C", "#7049CB"];
 
 export default function ManagementPerformance() {
   const mockRows = useMemo<TeacherRow[]>(
@@ -248,7 +249,7 @@ export default function ManagementPerformance() {
         </ChartCard>
       </div>
 
-      <div className="mt-6 rounded-xl border border-border bg-card p-5 shadow-card">
+      <Card className="mt-6 p-5">
         <div className="mb-4 flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Gauge className="h-[18px] w-[18px]" />
@@ -266,7 +267,7 @@ export default function ManagementPerformance() {
           searchFn={(r, q) => r.teacher.name.toLowerCase().includes(q.toLowerCase())}
           pageSize={8}
         />
-      </div>
+      </Card>
     </div>
   );
 }

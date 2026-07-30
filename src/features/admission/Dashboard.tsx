@@ -18,6 +18,8 @@ import { SessionStatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/utils";
 import { SESSIONS } from "@/data/sessions";
@@ -46,16 +48,18 @@ const FUNNEL_COLORS: Record<string, string> = {
 export default function AdmissionDashboard() {
   const usingApi = apiEnabled();
   const { userName } = useSession();
-  const { data: leads } = useApiData<Lead[]>(() => listDemoBookings().then((b) => b.map(toFrontendLead)), LEADS);
-  const { data: apiSessions } = useApiData<ClassSession[]>(
+  const { data: leads, loading: leadsLoading, error: leadsError } = useApiData<Lead[]>(() => listDemoBookings().then((b) => b.map(toFrontendLead)), LEADS);
+  const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(
     () => listSessions().then((s) => s.map(toFrontendSession)),
     SESSIONS
   );
-  const { data: collectedRevenue } = useApiData<number>(
+  const { data: collectedRevenue, loading: revenueLoading, error: revenueError } = useApiData<number>(
     () => getDashboardSummary().then((s) => s.revenueCollected),
     getRevenueThisMonth(),
     0
   );
+  const kpiLoading = leadsLoading || sessionsLoading || revenueLoading;
+  const kpiError = leadsError || sessionsError || revenueError;
 
   const demoSessions = apiSessions.filter((s) => s.type === "demo");
   const demosThisWeek = demoSessions.filter((s) => s.date >= WEEK_START && s.date <= WEEK_END).length;
@@ -101,6 +105,8 @@ export default function AdmissionDashboard() {
           icon={CalendarClock}
           tone="primary"
           trend={{ value: 18, label: "vs last week" }}
+          loading={kpiLoading}
+          error={kpiError}
         />
         <KpiCard
           label="Demo → Enrollment Conversion"
@@ -108,6 +114,8 @@ export default function AdmissionDashboard() {
           icon={TrendingUp}
           tone="success"
           trend={{ value: 4.5, label: "vs last month" }}
+          loading={kpiLoading}
+          error={kpiError}
         />
         <KpiCard
           label="Pending Follow-ups"
@@ -115,6 +123,8 @@ export default function AdmissionDashboard() {
           icon={PhoneCall}
           tone="destructive"
           trend={{ value: -12, label: "vs last week" }}
+          loading={kpiLoading}
+          error={kpiError}
         />
         <KpiCard
           label="Revenue From Conversions"
@@ -122,6 +132,8 @@ export default function AdmissionDashboard() {
           icon={IndianRupee}
           tone="warning"
           trend={{ value: 9.2, label: "this month" }}
+          loading={kpiLoading}
+          error={kpiError}
         />
       </div>
 
@@ -130,6 +142,8 @@ export default function AdmissionDashboard() {
           title="Conversion Funnel"
           description="Demo Scheduled → Completed → Follow-up → Enrolled / Not Interested"
           className="lg:col-span-2"
+          loading={kpiLoading}
+          error={kpiError}
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={funnel} layout="vertical" margin={{ left: 8, right: 32, top: 8, bottom: 0 }}>
@@ -147,7 +161,7 @@ export default function AdmissionDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <div className="rounded-xl border border-border bg-card p-5">
+        <Card className="p-5">
           <div className="mb-4 flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Users2 className="h-[18px] w-[18px]" />
@@ -176,11 +190,11 @@ export default function AdmissionDashboard() {
               Open Kanban board <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
-        </div>
+        </Card>
       </div>
 
       {/* Today & upcoming demos */}
-      <div className="mt-6 rounded-xl border border-border bg-card p-5">
+      <Card className="mt-6 p-5">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: `${CHART_PALETTE[4]}1A`, color: CHART_PALETTE[4] }}>
@@ -198,7 +212,19 @@ export default function AdmissionDashboard() {
           </Button>
         </div>
 
-        {upcomingDemos.length === 0 ? (
+        {kpiLoading ? (
+          <div className="flex flex-col divide-y divide-border">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <Skeleton className="h-9 w-9 shrink-0 rounded-lg" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-3.5 w-40" />
+                  <Skeleton className="h-3 w-56" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : upcomingDemos.length === 0 ? (
           <EmptyState icon={CalendarClock} title="No demos scheduled" description="Schedule a demo class to see it appear here." />
         ) : (
           <div className="flex flex-col divide-y divide-border">
@@ -229,7 +255,7 @@ export default function AdmissionDashboard() {
             ))}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

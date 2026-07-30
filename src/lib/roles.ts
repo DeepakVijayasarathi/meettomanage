@@ -30,7 +30,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Admin",
     description: "Central command centre for academic, operational and financial control.",
     colorVar: "role-admin",
-    hex: "#1F6FE0",
+    hex: "#4475BB",
     icon: ShieldCheck,
     available: true,
     homePath: "/admin",
@@ -41,7 +41,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Relationship Manager",
     description: "Parent relationship management with permission-based operational access.",
     colorVar: "role-subadmin",
-    hex: "#0E9C8C",
+    hex: "#2A8479",
     icon: UserCog,
     available: true,
     homePath: "/subadmin",
@@ -52,7 +52,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Admission",
     description: "Demo scheduling, parent follow-up and conversion management.",
     colorVar: "role-admission",
-    hex: "#8B5CF6",
+    hex: "#7049CB",
     icon: HeartHandshake,
     available: true,
     homePath: "/admission",
@@ -63,7 +63,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Teacher",
     description: "Live class delivery, whiteboard activities and student engagement.",
     colorVar: "role-teacher",
-    hex: "#F08A1D",
+    hex: "#C88945",
     icon: GraduationCap,
     available: true,
     homePath: "/teacher",
@@ -74,7 +74,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Parent",
     description: "Single dashboard for child learning, payments and communication.",
     colorVar: "role-parent",
-    hex: "#23A455",
+    hex: "#3C8B5B",
     icon: Users,
     available: true,
     homePath: "/parent",
@@ -85,7 +85,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Student",
     description: "Interactive, measurable and child-friendly digital learning.",
     colorVar: "role-student",
-    hex: "#3B82F6",
+    hex: "#477ACC",
     icon: Sparkles,
     available: true,
     homePath: "/student",
@@ -96,7 +96,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Coordinator",
     description: "Calendar-driven coordination of sessions, teachers and batch planning.",
     colorVar: "role-coordinator",
-    hex: "#0D9488",
+    hex: "#2A847C",
     icon: CalendarRange,
     available: true,
     homePath: "/coordinator",
@@ -107,7 +107,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Management",
     description: "Executive-level insight into enrollments, revenue and performance.",
     colorVar: "role-management",
-    hex: "#7C3AED",
+    hex: "#7A4DC6",
     icon: LineChart,
     available: true,
     homePath: "/management",
@@ -125,14 +125,14 @@ export const ROLE_ORDER: Role[] = [
   "student",
 ];
 
-/** Vivid, brand-derived multi-series palette for charts, KPI icon chips and legends. */
+/** Muted, brand-derived multi-series palette for charts, KPI icon chips and legends. */
 export const CHART_PALETTE = [
-  "#1F6FE0", // blue
-  "#57B33B", // green
-  "#17A9C9", // cyan
-  "#F08A1D", // orange
-  "#8B5CF6", // violet
-  "#F53BA6", // pink
-  "#EAB308", // amber
-  "#0D9488", // teal
+  "#4475BB", // blue
+  "#639C52", // green
+  "#3993A7", // cyan
+  "#C88945", // orange
+  "#7049CB", // violet
+  "#CB4894", // pink
+  "#BF9D33", // amber
+  "#2A847C", // teal
 ];

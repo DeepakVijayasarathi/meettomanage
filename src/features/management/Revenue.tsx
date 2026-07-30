@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { ChartCard } from "@/components/ChartCard";
+import { Card } from "@/components/ui/card";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -185,7 +186,7 @@ export default function ManagementRevenue() {
         </ChartCard>
       </div>
 
-      <div className="mt-6 rounded-xl border border-border bg-card p-5 shadow-card">
+      <Card className="mt-6 p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -209,7 +210,7 @@ export default function ManagementRevenue() {
           searchFn={(c, q) => c.name.toLowerCase().includes(q.toLowerCase()) || c.category.toLowerCase().includes(q.toLowerCase())}
           pageSize={8}
         />
-      </div>
+      </Card>
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { AlertCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 interface ChartCardProps {
@@ -9,9 +11,13 @@ interface ChartCardProps {
   children: ReactNode;
   className?: string;
   height?: number;
+  /** Shows a skeleton block instead of the chart while data is in flight. */
+  loading?: boolean;
+  /** Shows an inline error instead of a chart that would otherwise render empty/zeroed. */
+  error?: string | null;
 }
 
-export function ChartCard({ title, description, action, children, className, height = 280 }: ChartCardProps) {
+export function ChartCard({ title, description, action, children, className, height = 280, loading, error }: ChartCardProps) {
   return (
     <Card className={cn("flex flex-col", className)}>
       <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
@@ -22,7 +28,16 @@ export function ChartCard({ title, description, action, children, className, hei
         {action}
       </CardHeader>
       <CardContent className="flex-auto pt-0" style={{ height }}>
-        {children}
+        {loading ? (
+          <Skeleton className="h-full w-full rounded-lg" />
+        ) : error ? (
+          <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center text-sm text-muted-foreground">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <span>Couldn&apos;t load this data.</span>
+          </div>
+        ) : (
+          children
+        )}
       </CardContent>
     </Card>
   );

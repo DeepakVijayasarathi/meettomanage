@@ -75,9 +75,9 @@ export default function SubAdminDashboard() {
   const [requestOpen, setRequestOpen] = useState(false);
   const [requested, setRequested] = useState(false);
 
-  const { data: apiBatches } = useApiData(() => listBatches().then((items) => items.map(toFrontendBatch)), []);
-  const { data: apiSessions } = useApiData(() => listSessions().then((items) => items.map(toFrontendSession)), []);
-  const { data: liveSummary } = useApiData(
+  const { data: apiBatches, loading: batchesLoading, error: batchesError } = useApiData(() => listBatches().then((items) => items.map(toFrontendBatch)), []);
+  const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData(() => listSessions().then((items) => items.map(toFrontendSession)), []);
+  const { data: liveSummary, loading: summaryLoading, error: summaryError } = useApiData(
     () =>
       getDashboardSummary().then((s) => ({
         occupancy: s.batchOccupancyPercent,
@@ -88,6 +88,8 @@ export default function SubAdminDashboard() {
     { occupancy: 0, attendance: 0 }
   );
   const liveOccupancy = liveSummary.occupancy;
+  const kpiLoading = batchesLoading || sessionsLoading || summaryLoading;
+  const kpiError = batchesError || sessionsError || summaryError;
   const { data: apiActivity } = useApiData<ActivityRow[]>(
     () =>
       listAuditLogs({ page: 1, pageSize: 5 }).then((page) =>
@@ -226,14 +228,18 @@ export default function SubAdminDashboard() {
           icon={Layers}
           tone="primary"
           trend={usingApi ? undefined : { value: 2.1, label: "vs last month" }}
+          loading={kpiLoading}
+          error={kpiError}
         />
-        <KpiCard label="Sessions Today" value={String(sessionsToday)} icon={Clock} tone="warning" />
+        <KpiCard label="Sessions Today" value={String(sessionsToday)} icon={Clock} tone="warning" loading={kpiLoading} error={kpiError} />
         <KpiCard
           label="Attendance Rate"
           value={formatPercent(attendanceRate)}
           icon={CheckCircle2}
           tone="success"
           trend={usingApi ? undefined : { value: 1.5, label: "vs last month" }}
+          loading={kpiLoading}
+          error={kpiError}
         />
         <KpiCard
           label="Batch Occupancy"
@@ -241,6 +247,8 @@ export default function SubAdminDashboard() {
           icon={LayoutGrid}
           tone="neutral"
           trend={usingApi ? undefined : { value: 2.9, label: "vs last month" }}
+          loading={kpiLoading}
+          error={kpiError}
         />
       </div>
 

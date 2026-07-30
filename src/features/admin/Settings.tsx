@@ -71,7 +71,7 @@ import {
 import { listPayoutRates, savePayoutRate, type ApiPayoutRate } from "@/api/payouts";
 import { listTeacherOptions } from "@/api/batches";
 
-const SWATCHES = ["#1F6FE0", "#57B33B", "#17A9C9", "#F08A1D", "#8B5CF6", "#F53BA6", "#EAB308", "#0D9488"];
+const SWATCHES = CHART_PALETTE;
 
 const PORTALS = ["admin", "teacher", "parent", "subadmin", "admission", "coordinator", "management", "student"] as const;
 
@@ -87,8 +87,8 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "org.timezone": { category: "General", fallback: "Asia/Kolkata (GMT +5:30)" },
   "brand.name": { category: "Branding", isPublic: true, fallback: "The Reader Nest" },
   "brand.logoUrl": { category: "Branding", isPublic: true, fallback: "" },
-  "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#1F6FE0" },
-  "brand.accentColor": { category: "Branding", isPublic: true, fallback: "#57B33B" },
+  "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#4475BB" },
+  "brand.accentColor": { category: "Branding", isPublic: true, fallback: "#639C52" },
   "notify.feeReminders": { category: "Notifications", fallback: "true" },
   "notify.leaveRequests": { category: "Notifications", fallback: "true" },
   "notify.lowAttendance": { category: "Notifications", fallback: "false" },
@@ -191,7 +191,7 @@ export default function AdminSettings() {
       ...getBrand(),
       name: values["brand.name"] || "The Reader Nest",
       logoUrl: values["brand.logoUrl"] || undefined,
-      primaryHsl: hexToHslTriple(values["brand.primaryColor"] || "#1F6FE0"),
+      primaryHsl: hexToHslTriple(values["brand.primaryColor"] || "#4475BB"),
     });
 
     setSaved(true);

@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { AlertCircle, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 interface KpiCardProps {
@@ -10,6 +11,10 @@ interface KpiCardProps {
   trend?: { value: number; label?: string };
   tone?: "primary" | "success" | "warning" | "destructive" | "neutral";
   className?: string;
+  /** Shows skeleton placeholders instead of the (possibly still-zeroed) value while a fetch is in flight. */
+  loading?: boolean;
+  /** Shows an inline error instead of a value that would otherwise look like real zero data. */
+  error?: string | null;
 }
 
 const TONE_STYLES: Record<NonNullable<KpiCardProps["tone"]>, string> = {
@@ -20,8 +25,44 @@ const TONE_STYLES: Record<NonNullable<KpiCardProps["tone"]>, string> = {
   neutral: "bg-muted text-muted-foreground",
 };
 
-export function KpiCard({ label, value, icon: Icon, trend, tone = "primary", className }: KpiCardProps) {
+export function KpiCard({ label, value, icon: Icon, trend, tone = "primary", className, loading, error }: KpiCardProps) {
   const positive = trend ? trend.value >= 0 : true;
+
+  if (loading) {
+    return (
+      <Card className={cn("p-5", className)}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-2.5">
+            <Skeleton className="h-3.5 w-20" />
+            <Skeleton className="h-6 w-16" />
+          </div>
+          {Icon && <Skeleton className="h-10 w-10 shrink-0 rounded-xl" />}
+        </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className={cn("p-5", className)}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-muted-foreground sm:text-sm">{label}</p>
+            <p className="mt-1.5 flex items-center gap-1.5 text-sm font-semibold text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              Couldn&apos;t load
+            </p>
+          </div>
+          {Icon && (
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+              <Icon className="h-5 w-5" />
+            </span>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card className={cn("group p-5 transition-shadow hover:shadow-pop", className)}>
       <div className="flex items-start justify-between gap-3">

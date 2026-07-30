@@ -181,7 +181,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
           email: checkout.prefillEmail ?? undefined,
           contact: checkout.prefillContact ?? undefined,
         },
-        theme: { color: "#57B33B" },
+        theme: { color: "#639C52" },
         handler: (response: RazorpaySuccessResponse) => {
           void settleInline(response);
         },

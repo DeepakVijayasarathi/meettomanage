@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";
 import { ChartCard } from "@/components/ChartCard";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/utils";
 import { ADMIN_KPIS, DEPARTMENT_REVENUE, ENROLLMENT_FUNNEL, REVENUE_TREND } from "@/data/kpis";
@@ -71,7 +72,7 @@ const DEMO_SUMMARY: ApiDashboardSummary = {
 
 export default function ManagementDashboard() {
   const { userName } = useSession();
-  const { data: summary } = useApiData<ApiDashboardSummary>(() => getDashboardSummary(), DEMO_SUMMARY, EMPTY_SUMMARY);
+  const { data: summary, loading, error } = useApiData<ApiDashboardSummary>(() => getDashboardSummary(), DEMO_SUMMARY, EMPTY_SUMMARY);
   const departmentRevenue = summary.revenueByDepartment.map((d, i) => ({
     department: d.name,
     value: d.revenue,
@@ -95,6 +96,8 @@ export default function ManagementDashboard() {
           icon={Users}
           tone="primary"
           trend={{ value: summary.activeStudents, label: "active now" }}
+          loading={loading}
+          error={error}
         />
         <KpiCard
           label="Revenue Collected"
@@ -102,6 +105,8 @@ export default function ManagementDashboard() {
           icon={IndianRupee}
           tone="success"
           trend={{ value: summary.revenuePending, label: "still pending" }}
+          loading={loading}
+          error={error}
         />
         <KpiCard
           label="Conversion Rate"
@@ -109,6 +114,8 @@ export default function ManagementDashboard() {
           icon={TrendingUp}
           tone="neutral"
           trend={{ value: summary.totalEnrollments, label: "active enrollments" }}
+          loading={loading}
+          error={error}
         />
         <KpiCard
           label="Batch Occupancy"
@@ -116,6 +123,8 @@ export default function ManagementDashboard() {
           icon={RefreshCw}
           tone="warning"
           trend={{ value: summary.activeBatches, label: "active batches" }}
+          loading={loading}
+          error={error}
         />
       </div>
 
@@ -126,6 +135,8 @@ export default function ManagementDashboard() {
           description="Monthly revenue, last 6 months"
           className="lg:col-span-2"
           height={320}
+          loading={loading}
+          error={error}
         >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={summary.revenueTrend} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
@@ -147,7 +158,7 @@ export default function ManagementDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Revenue by Department" description="Share of this term's revenue" height={320}>
+        <ChartCard title="Revenue by Department" description="Share of this term's revenue" height={320} loading={loading} error={error}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -178,6 +189,8 @@ export default function ManagementDashboard() {
           description="From demo booked to enrolled, this quarter"
           className="lg:col-span-3"
           height={260}
+          loading={loading}
+          error={error}
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={summary.enrollmentFunnel} layout="vertical" margin={{ left: 8, right: 32, top: 8, bottom: 0 }}>
@@ -195,12 +208,21 @@ export default function ManagementDashboard() {
         </ChartCard>
       </div>
 
-      <p className="mt-6 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-        {formatCurrency(summary.revenueCollected)} collected to date with {formatCurrency(summary.revenuePending)} still pending, and the
-        business is currently converting {formatPercent(summary.conversionRatePercent)} of demos into paid enrollments across{" "}
-        {summary.activeBatches} active batches at {formatPercent(summary.batchOccupancyPercent)} occupancy. Deeper cuts by course, teacher
-        and batch are one click away in Revenue and Performance.
-      </p>
+      {loading ? (
+        <div className="mt-6 max-w-3xl space-y-2">
+          <Skeleton className="h-3.5 w-full" />
+          <Skeleton className="h-3.5 w-2/3" />
+        </div>
+      ) : error ? (
+        <p className="mt-6 max-w-3xl text-sm leading-relaxed text-destructive">Couldn&apos;t load the executive summary.</p>
+      ) : (
+        <p className="mt-6 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+          {formatCurrency(summary.revenueCollected)} collected to date with {formatCurrency(summary.revenuePending)} still pending, and the
+          business is currently converting {formatPercent(summary.conversionRatePercent)} of demos into paid enrollments across{" "}
+          {summary.activeBatches} active batches at {formatPercent(summary.batchOccupancyPercent)} occupancy. Deeper cuts by course, teacher
+          and batch are one click away in Revenue and Performance.
+        </p>
+      )}
     </div>
   );
 }

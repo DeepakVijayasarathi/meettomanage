@@ -15,9 +15,9 @@ import type { Role } from "@/types";
 
 // Colour-matched to the logo's own cast: the blue boy, the pink girl, the green nest.
 const TRUST_CHIPS = [
-  { icon: Video, label: "Live Classes", hex: "#5B93E0" },
-  { icon: CalendarCheck2, label: "Attendance", hex: "#F53BA6" },
-  { icon: Wallet, label: "Billing", hex: "#57B33B" },
+  { icon: Video, label: "Live Classes", hex: "#5882BB" },
+  { icon: CalendarCheck2, label: "Attendance", hex: "#CB4894" },
+  { icon: Wallet, label: "Billing", hex: "#639C52" },
 ];
 
 function GoogleIcon() {

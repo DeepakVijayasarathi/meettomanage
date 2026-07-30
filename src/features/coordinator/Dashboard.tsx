@@ -19,6 +19,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { SESSIONS } from "@/data/sessions";
 import { LEAVE_REQUESTS } from "@/data/leaves";
@@ -49,8 +50,10 @@ export default function CoordinatorDashboard() {
   const firstName = userName.split(" ")[0] ?? userName;
 
   const usingApi = apiEnabled();
-  const { data: apiSessions } = useApiData<ClassSession[]>(() => listSessions().then((s) => s.map(toFrontendSession)), SESSIONS);
-  const { data: apiLeaves } = useApiData<LeaveRequest[]>(() => listLeave().then((l) => l.map(toFrontendLeave)), LEAVE_REQUESTS);
+  const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(() => listSessions().then((s) => s.map(toFrontendSession)), SESSIONS);
+  const { data: apiLeaves, loading: leavesLoading, error: leavesError } = useApiData<LeaveRequest[]>(() => listLeave().then((l) => l.map(toFrontendLeave)), LEAVE_REQUESTS);
+  const kpiLoading = usingApi && (sessionsLoading || leavesLoading);
+  const kpiError = sessionsError || leavesError;
 
   const sessions = usingApi ? apiSessions : SESSIONS;
   const leaves = usingApi ? apiLeaves : LEAVE_REQUESTS;
@@ -107,10 +110,10 @@ export default function CoordinatorDashboard() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Sessions Today" value={String(todaySessions.length)} icon={CalendarClock} tone="primary" />
-        <KpiCard label="Demos Today" value={String(demosToday.length)} icon={Sparkles} tone="success" />
-        <KpiCard label="Teachers on Leave Today" value={String(teachersOnLeaveToday)} icon={CalendarOff} tone="neutral" />
-        <KpiCard label="No-Shows This Week" value={String(noShowsThisWeek.length)} icon={CircleSlash} tone="destructive" />
+        <KpiCard label="Sessions Today" value={String(todaySessions.length)} icon={CalendarClock} tone="primary" loading={kpiLoading} error={kpiError} />
+        <KpiCard label="Demos Today" value={String(demosToday.length)} icon={Sparkles} tone="success" loading={kpiLoading} error={kpiError} />
+        <KpiCard label="Teachers on Leave Today" value={String(teachersOnLeaveToday)} icon={CalendarOff} tone="neutral" loading={kpiLoading} error={kpiError} />
+        <KpiCard label="No-Shows This Week" value={String(noShowsThisWeek.length)} icon={CircleSlash} tone="destructive" loading={kpiLoading} error={kpiError} />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -120,7 +123,13 @@ export default function CoordinatorDashboard() {
             <CardDescription>{formatDate(TODAY, "long")}</CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            {todaySessions.length === 0 ? (
+            {kpiLoading ? (
+              <div className="flex flex-col gap-3">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-[68px] w-full rounded-xl" />
+                ))}
+              </div>
+            ) : todaySessions.length === 0 ? (
               <EmptyState icon={CalendarClock} title="No sessions today" description="There are no classes scheduled for today." />
             ) : (
               <div className="flex flex-col gap-3">
