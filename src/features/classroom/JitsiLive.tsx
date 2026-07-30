@@ -139,10 +139,33 @@ export default function JitsiLive({
             prejoinConfig: { enabled: false },
             startWithAudioMuted: mode === "student",
             disableDeepLinking: true,
+            // Don't let the browser suggest/remember this room outside our own scheduling flow.
+            doNotStoreRoom: true,
           },
           interfaceConfigOverwrite: {
             SHOW_JITSI_WATERMARK: false,
             DEFAULT_REMOTE_DISPLAY_NAME: "Student",
+            // Video-tile letterbox before a camera loads, matched to our own dark panel color.
+            DEFAULT_BACKGROUND: "#161B33",
+            MOBILE_APP_PROMO: false,
+            HIDE_INVITE_MORE_HEADER: true,
+            // Curated for a small tutoring classroom — drop enterprise features (livestream,
+            // shared video/audio, security/profile, dial-in, stats) that don't apply here.
+            // Jitsi still hides moderator-only entries (recording, mute-everyone) from students.
+            TOOLBAR_BUTTONS: [
+              "microphone",
+              "camera",
+              "desktop",
+              "chat",
+              "raisehand",
+              "tileview",
+              "videobackgroundblur",
+              "recording",
+              "mute-everyone",
+              "fullscreen",
+              "settings",
+              "hangup",
+            ],
           },
         });
         jitsiApiRef.current = api;
@@ -150,6 +173,8 @@ export default function JitsiLive({
         api.addListener("videoConferenceJoined", (payload) => {
           media.selfId = payload?.id ?? "";
           media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
+          // A small class reads better as a grid of faces than one spotlighted speaker.
+          api?.executeCommand("setTileView", true);
           if (mode === "teacher") {
             // Auto session recording: starts when the host joins; requires Jibri
             // on the Jitsi deployment (no-op on deployments without it).
@@ -196,7 +221,7 @@ export default function JitsiLive({
 
   return (
     <div className="flex h-screen flex-col bg-brand-ink">
-      <header className="flex items-center justify-between px-4 py-2">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black/20 px-4 py-2.5">
         <div className="flex items-center gap-3">
           <Logo showWordmark={false} imgClassName="h-8 w-8" />
           <p className="text-sm font-semibold text-white">{title ?? "Live class"}</p>
@@ -204,9 +229,10 @@ export default function JitsiLive({
         <div className="flex items-center gap-2">
           {mode === "teacher" && (
             <Button
-              size="sm"
+              size="pill"
               variant="secondary"
-              className={cn("gap-1.5 bg-white/10 text-white hover:bg-white/20", lobbyEnabled && "bg-brand-violet/30")}
+              aria-pressed={lobbyEnabled}
+              className="gap-1.5 border border-white/10 bg-white/10 text-white hover:bg-white/20 aria-pressed:border-transparent aria-pressed:bg-brand-violet aria-pressed:text-white"
               onClick={toggleWaitingRoom}
               title="New joiners wait for you to admit them"
             >
@@ -216,15 +242,16 @@ export default function JitsiLive({
           )}
           {interactive && (
             <Button
-              size="sm"
+              size="pill"
               variant="secondary"
-              className={cn("gap-1.5 bg-white/10 text-white hover:bg-white/20", panelOpen && "bg-brand-violet/30")}
+              aria-pressed={panelOpen}
+              className="gap-1.5 border border-white/10 bg-white/10 text-white hover:bg-white/20 aria-pressed:border-transparent aria-pressed:bg-brand-violet aria-pressed:text-white"
               onClick={() => setPanelOpen((o) => !o)}
             >
               <Sparkles className="h-3.5 w-3.5" /> Interactive
             </Button>
           )}
-          <Button size="sm" variant="destructive" onClick={() => navigate(-1)}>
+          <Button size="sm" variant="destructive" className="gap-1.5 rounded-full" onClick={() => navigate(-1)}>
             <PhoneOff className="h-4 w-4" />
             Leave
           </Button>
@@ -235,8 +262,28 @@ export default function JitsiLive({
           <p className="rounded-lg bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">{error}</p>
         </div>
       ) : (
-        <div className="relative flex min-h-0 flex-1 flex-col md:flex-row">
-          <div ref={containerRef} className="min-h-0 min-w-0 flex-1" />
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          <div className="relative min-h-0 min-w-0 flex-1">
+            <div ref={containerRef} className="h-full w-full" />
+            <GamificationOverlay
+              celebrating={celebrating}
+              onCelebrationEnd={() => {
+                setCelebrating(false);
+                setCelebrationMessage(undefined);
+              }}
+              leaderboard={leaderboard}
+              message={celebrationMessage}
+            />
+            {mode === "teacher" && interactive && (
+              <button
+                title="Send a celebration to the class"
+                onClick={() => (celebrateAllRef.current ?? celebrate)("Great job, everyone! 🎉")}
+                className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy/95 text-white backdrop-blur transition-transform hover:scale-110"
+              >
+                <PartyPopper className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           {interactive && (
             <aside className={cn("min-h-0 w-full shrink-0 border-t border-white/10 md:w-[380px] md:border-l md:border-t-0", !panelOpen && "hidden")}>
               <InteractivePanel
@@ -250,24 +297,6 @@ export default function JitsiLive({
                 }}
               />
             </aside>
-          )}
-          <GamificationOverlay
-            celebrating={celebrating}
-            onCelebrationEnd={() => {
-              setCelebrating(false);
-              setCelebrationMessage(undefined);
-            }}
-            leaderboard={leaderboard}
-            message={celebrationMessage}
-          />
-          {mode === "teacher" && interactive && (
-            <button
-              title="Send a celebration to the class"
-              onClick={() => (celebrateAllRef.current ?? celebrate)("Great job, everyone! 🎉")}
-              className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-[#12162B]/95 text-white backdrop-blur transition-transform hover:scale-110"
-            >
-              <PartyPopper className="h-4 w-4" />
-            </button>
           )}
         </div>
       )}

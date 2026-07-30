@@ -181,7 +181,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-950 text-foreground">
       {/* Minimal header — this screen renders outside the portal AppShell */}
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-r from-[#0D1024] via-[#161B33] to-[#0D1024] px-4 py-2.5 text-white">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-r from-brand-navyDark via-brand-navy to-brand-navyDark px-4 py-2.5 text-white">
         <div className="flex min-w-0 items-center gap-3">
           <span className="relative flex h-2.5 w-2.5 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
@@ -262,7 +262,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
                 const student = participants.find((p) => p.role === "student");
                 celebrate(`Happy Birthday${student ? `, ${student.name.split(" ")[0]}` : ""}! 🎂`);
               }}
-              className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-[#12162B]/95 text-lg backdrop-blur transition-transform hover:scale-110"
+              className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy/95 text-lg backdrop-blur transition-transform hover:scale-110"
             >
               🎂
             </button>
@@ -317,7 +317,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
 
         {/* Right panel — docked, dark, never a popup: Jitsi keeps chat/participants/polls as tabs in one side panel */}
         {rightOpen && (
-          <aside className="flex w-[320px] shrink-0 flex-col border-l border-white/10 bg-[#12162B]">
+          <aside className="flex w-[320px] shrink-0 flex-col border-l border-white/10 bg-brand-navy">
             <Tabs value={rightTab} onValueChange={(v) => setRightTab(v as RightTab)} className="flex h-full min-h-0 flex-col">
               <div className="shrink-0 border-b border-white/10 p-2">
                 <TabsList className="w-full bg-white/5">

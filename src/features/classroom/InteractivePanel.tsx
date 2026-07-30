@@ -159,7 +159,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
   const canDraw = mode === "teacher" || boardAllowed;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#12162B]">
+    <div className="flex h-full min-h-0 flex-col bg-brand-navy">
       <Tabs value={tab} onValueChange={(v) => setTab(v as PanelTab)} className="flex h-full min-h-0 flex-col">
         <div className="shrink-0 border-b border-white/10 p-2">
           <TabsList className="w-full bg-white/5">
