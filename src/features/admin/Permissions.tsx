@@ -279,8 +279,9 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
                 {presets.length > 0 && (
                   <Select value="" onValueChange={applyPreset}>
                     <SelectTrigger className="h-9 w-40">
-                      <span className="flex items-center gap-1.5 text-xs font-semibold">
-                        <Wand2 className="h-3.5 w-3.5" /> Apply preset…
+                      <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold">
+                        <Wand2 className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">Apply preset…</span>
                       </span>
                     </SelectTrigger>
                     <SelectContent>
