@@ -111,7 +111,7 @@ function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
   } else if (stroke.tool === "text") {
     const p = stroke.points[0];
     if (!p) return;
-    ctx.font = `600 ${Math.max(16, stroke.width * 5)}px "Plus Jakarta Sans", sans-serif`;
+    ctx.font = `600 ${Math.max(16, stroke.width * 5)}px "Inter", sans-serif`;
     ctx.textBaseline = "top";
     ctx.fillText(stroke.text ?? "", p.x, p.y);
   } else if (stroke.tool === "sticky") {
@@ -129,7 +129,7 @@ function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
     ctx.roundRect(p.x, p.y, noteW, noteH, 8);
     ctx.fill();
     ctx.restore();
-    ctx.font = '500 13px "Plus Jakarta Sans", sans-serif';
+    ctx.font = '500 13px "Inter", sans-serif';
     ctx.textBaseline = "top";
     ctx.fillStyle = "#0F172A";
     lines.forEach((line, i) => ctx.fillText(line, p.x + 10, p.y + 12 + i * 18, noteW - 20));

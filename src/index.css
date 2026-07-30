@@ -114,7 +114,7 @@
 
 @layer utilities {
   .font-display {
-    font-family: "Baloo 2", "Plus Jakarta Sans", system-ui, sans-serif;
+    font-family: "Inter", system-ui, sans-serif;
   }
   .text-balance {
     text-wrap: balance;

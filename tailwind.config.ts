@@ -12,8 +12,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Plus Jakarta Sans", "Inter", "system-ui", "sans-serif"],
-        display: ["Baloo 2", "Plus Jakarta Sans", "system-ui", "sans-serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        display: ["Inter", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -116,6 +116,7 @@ export default {
         "slide-up": { from: { opacity: "0", transform: "translateY(6px)" }, to: { opacity: "1", transform: "translateY(0)" } },
         "pop-in": { "0%": { opacity: "0", transform: "scale(0.9)" }, "100%": { opacity: "1", transform: "scale(1)" } },
         confetti: { "0%": { transform: "translateY(0) rotate(0)", opacity: "1" }, "100%": { transform: "translateY(120px) rotate(240deg)", opacity: "0" } },
+        "page-in": { from: { opacity: "0", transform: "translateY(8px)" }, to: { opacity: "1", transform: "translateY(0)" } },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -124,6 +125,7 @@ export default {
         "slide-up": "slide-up 0.3s ease-out",
         "pop-in": "pop-in 0.2s cubic-bezier(0.16,1,0.3,1)",
         confetti: "confetti 1.4s ease-in forwards",
+        "page-in": "page-in 0.28s cubic-bezier(0.16,1,0.3,1)",
       },
     },
   },
