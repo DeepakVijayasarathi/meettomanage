@@ -87,8 +87,8 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "org.timezone": { category: "General", fallback: "Asia/Kolkata (GMT +5:30)" },
   "brand.name": { category: "Branding", isPublic: true, fallback: "The Reader Nest" },
   "brand.logoUrl": { category: "Branding", isPublic: true, fallback: "" },
-  "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#4475BB" },
-  "brand.accentColor": { category: "Branding", isPublic: true, fallback: "#639C52" },
+  "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#1F6FE0" },
+  "brand.accentColor": { category: "Branding", isPublic: true, fallback: "#57B33B" },
   "notify.feeReminders": { category: "Notifications", fallback: "true" },
   "notify.leaveRequests": { category: "Notifications", fallback: "true" },
   "notify.lowAttendance": { category: "Notifications", fallback: "false" },
@@ -191,7 +191,7 @@ export default function AdminSettings() {
       ...getBrand(),
       name: values["brand.name"] || "The Reader Nest",
       logoUrl: values["brand.logoUrl"] || undefined,
-      primaryHsl: hexToHslTriple(values["brand.primaryColor"] || "#4475BB"),
+      primaryHsl: hexToHslTriple(values["brand.primaryColor"] || "#1F6FE0"),
     });
 
     setSaved(true);

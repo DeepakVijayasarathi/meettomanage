@@ -46,7 +46,7 @@ function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
     name: typeof answers.childName === "string" && answers.childName ? answers.childName : "(child name pending)",
     age,
     grade: typeof answers.grade === "string" ? answers.grade : "—",
-    avatarColor: "#7049CB",
+    avatarColor: "#7c5cff",
     courseId: typeof answers.courseInterest === "string" ? answers.courseInterest : "",
     batchId: "",
     classesCompleted: 0,

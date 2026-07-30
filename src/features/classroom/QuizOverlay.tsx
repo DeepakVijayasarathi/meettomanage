@@ -200,7 +200,7 @@ export default function QuizOverlay({
             </Button>
           )}
           {mode === "teacher" && phase === "revealed" && (
-            <Button size="sm" className="gap-1 !bg-brand-violet hover:!bg-[#745CD6]" onClick={nextQuestion}>
+            <Button size="sm" className="gap-1 !bg-brand-violet hover:!bg-[#6a4de0]" onClick={nextQuestion}>
               Next <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           )}

@@ -51,7 +51,7 @@ interface TeacherRow {
   sessions?: number;
 }
 
-const AVATAR_FALLBACKS = ["#5E41D2", "#3895BF", "#C99337", "#309976", "#C74C4C", "#7049CB"];
+const AVATAR_FALLBACKS = ["#7C5CFF", "#0EA5E9", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6"];
 
 export default function ManagementPerformance() {
   const mockRows = useMemo<TeacherRow[]>(
