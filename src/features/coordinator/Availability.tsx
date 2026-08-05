@@ -273,7 +273,7 @@ export default function CoordinatorAvailability() {
       </Card>
 
       <div className="mt-6">
-        <h2 className="mb-3 text-base font-bold text-foreground">Teacher Leave Overview</h2>
+        <h2 className="mb-3 text-base font-semibold text-foreground">Teacher Leave Overview</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teacherRoster.map((teacher) => {
             const upcomingApproved = leaves

@@ -212,7 +212,7 @@ export default function ParentDashboard() {
             </div>
 
             <div className="grid gap-6 lg:grid-cols-5">
-              <Card className="lg:col-span-3">
+              <Card className="min-w-0 lg:col-span-3">
                 <CardHeader>
                   <CardTitle>Upcoming Classes</CardTitle>
                   <CardDescription>{child.name.split(" ")[0]}'s next sessions</CardDescription>
@@ -226,7 +226,7 @@ export default function ParentDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="lg:col-span-2">
+              <Card className="min-w-0 lg:col-span-2">
                 <CardHeader>
                   <CardTitle>Recent Activity</CardTitle>
                   <CardDescription>Latest completed sessions</CardDescription>

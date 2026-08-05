@@ -44,7 +44,7 @@ export default function AdmissionDemoFeedback() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/15 text-success">
             <ClipboardCheck className="h-4 w-4" />
           </span>
-          <h2 className="text-base font-bold text-foreground">Submitted ({submitted.length})</h2>
+          <h2 className="text-base font-semibold text-foreground">Submitted ({submitted.length})</h2>
         </div>
 
         {submitted.length === 0 ? (
@@ -102,7 +102,7 @@ export default function AdmissionDemoFeedback() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/20 text-warning-foreground">
             <Clock className="h-4 w-4" />
           </span>
-          <h2 className="text-base font-bold text-foreground">Awaiting Teacher Feedback ({pending.length})</h2>
+          <h2 className="text-base font-semibold text-foreground">Awaiting Teacher Feedback ({pending.length})</h2>
         </div>
 
         {pending.length === 0 ? (

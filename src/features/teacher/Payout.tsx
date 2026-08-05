@@ -121,7 +121,7 @@ export default function TeacherPayout() {
           </Card>
 
           <div className="mt-6">
-            <h2 className="mb-3 text-base font-bold text-foreground">Payout History</h2>
+            <h2 className="mb-3 text-base font-semibold text-foreground">Payout History</h2>
             <DataTable data={payouts} columns={columns} rowKey={(row) => row.id} searchPlaceholder="Search by month…" pageSize={12} />
           </div>
         </>

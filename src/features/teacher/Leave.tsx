@@ -251,7 +251,7 @@ export default function TeacherLeave() {
       </Card>
 
       <div className="mt-6">
-        <h2 className="mb-3 text-base font-bold text-foreground">Leave History</h2>
+        <h2 className="mb-3 text-base font-semibold text-foreground">Leave History</h2>
         {leaves.length === 0 ? (
           <EmptyState icon={Clock} title="No leave requests yet" description="Your submitted leave requests will appear here." />
         ) : (
