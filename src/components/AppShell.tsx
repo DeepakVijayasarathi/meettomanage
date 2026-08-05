@@ -9,6 +9,7 @@ import { useSession } from "@/state/session";
 import { hexToHslTriple } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { getMyMenu, toNavSections } from "@/api/menus";
+import { listSuspensions } from "@/api/billing";
 import type { Role } from "@/types";
 
 interface AppShellProps {
@@ -30,14 +31,29 @@ export function AppShell({ role, children }: AppShellProps) {
   // DB-maintained, role-permission-filtered sidebar: /api/menus/mine returns the
   // signed-in user's portal items minus any their assigned role can't view. The
   // static NAV_BY_ROLE stays as the demo-mode / loading / error fallback.
+  //
+  // MenuItem rows are static (no live count column), so a nav badge like Fee
+  // Suspension's "accounts needing attention" number — a static "2" in the demo
+  // mock — has to be patched on after the fact. Fetched alongside the menu itself
+  // (not a separate effect keyed off apiSections) so patching it can never retrigger
+  // its own effect and loop.
   const [apiSections, setApiSections] = useState<NavSection[] | null>(null);
   useEffect(() => {
     setApiSections(null);
     if (!apiEnabled()) return;
     let cancelled = false;
-    getMyMenu()
-      .then((items) => {
-        if (!cancelled && items.length > 0) setApiSections(toNavSections(items));
+    Promise.all([getMyMenu(), role === "admin" ? listSuspensions("Active") : Promise.resolve(null)])
+      .then(([items, activeSuspensions]) => {
+        if (cancelled || items.length === 0) return;
+        const sections = toNavSections(items);
+        if (activeSuspensions && activeSuspensions.length > 0) {
+          for (const section of sections) {
+            for (const item of section.items) {
+              if (item.to === "/admin/fee-suspension") item.badge = String(activeSuspensions.length);
+            }
+          }
+        }
+        setApiSections(sections);
       })
       .catch(() => {
         /* keep static nav */
@@ -73,7 +89,10 @@ export function AppShell({ role, children }: AppShellProps) {
       />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <Topbar onMenuClick={() => setMobileOpen(true)} title={meta.label} />
-        <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
+        {/* pb-24 (not py-6's default) reserves clearance below the last row of content so the
+            fixed FloatingNotes button (bottom-6 right-6, 48px) never sits on top of — and steals
+            clicks from — bottom-right page chrome like DataTable's pagination controls. */}
+        <main className="min-w-0 flex-1 overflow-x-hidden px-4 pb-24 pt-6 sm:px-6 lg:px-8">
           <PageTransition>{children}</PageTransition>
         </main>
       </div>

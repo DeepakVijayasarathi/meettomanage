@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import JitsiLive from "./JitsiLive";
 import { HelpCircle, LogOut, MessageSquare, PanelRightClose, PanelRightOpen, Sparkles, Users } from "lucide-react";
 import { SESSIONS } from "@/data/sessions";
@@ -37,13 +38,28 @@ export default function LiveClassroom({ mode }: { mode: "teacher" | "student" })
   const location = useLocation();
   const navigate = useNavigate();
   const { sessionId } = useParams();
+  const { activeChildId, children } = useSession();
+
+  // A parent joins the classroom on their child's behalf — the Jitsi participant
+  // name (and engagement attribution) should read as the student, not the parent
+  // account. Teachers keep their own account name.
+  const studentDisplayName =
+    mode === "student" ? children.find((c) => c.id === activeChildId)?.name : undefined;
 
   // Real sessions launched from an API-backed dashboard carry their Jitsi room
   // via route state; the interactive mock stays for demo mode and design work.
   const launch = location.state as { room?: string; title?: string } | null;
   if (apiEnabled()) {
     if (launch?.room) {
-      return <JitsiLive room={launch.room} title={launch.title} mode={mode} sessionId={sessionId} />;
+      return (
+        <JitsiLive
+          room={launch.room}
+          title={launch.title}
+          mode={mode}
+          sessionId={sessionId}
+          displayName={studentDisplayName}
+        />
+      );
     }
     // No launch context (e.g. a pasted URL): never fall back to the mock classroom
     // with fabricated participants — send the user back to start the class properly.

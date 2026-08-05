@@ -328,7 +328,10 @@ function UpcomingRow({ session }: { session: ClassSession }) {
         <SessionStatusBadge status={session.status} />
         {joinable ? (
           <Button size="sm" asChild>
-            <Link to={`/parent/live/${session.id}`}>
+            <Link
+              to={`/parent/live/${session.id}`}
+              state={session.meetingRoomId ? { room: session.meetingRoomId, title: session.title } : undefined}
+            >
               <Video className="h-3.5 w-3.5" /> Join
             </Link>
           </Button>

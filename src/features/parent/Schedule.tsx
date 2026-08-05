@@ -154,7 +154,10 @@ export default function ParentSchedule() {
                 <SessionStatusBadge status={selected.status} />
                 {isJoinable(selected) ? (
                   <Button asChild size="sm">
-                    <Link to={`/parent/live/${selected.id}`}>
+                    <Link
+                      to={`/parent/live/${selected.id}`}
+                      state={selected.meetingRoomId ? { room: selected.meetingRoomId, title: selected.title } : undefined}
+                    >
                       <Video className="h-3.5 w-3.5" /> Join Class
                     </Link>
                   </Button>
@@ -184,7 +187,10 @@ function ScheduleRow({ session }: { session: ClassSession }) {
         <SessionStatusBadge status={session.status} />
         {joinable ? (
           <Button size="sm" asChild>
-            <Link to={`/parent/live/${session.id}`}>
+            <Link
+              to={`/parent/live/${session.id}`}
+              state={session.meetingRoomId ? { room: session.meetingRoomId, title: session.title } : undefined}
+            >
               <Video className="h-3.5 w-3.5" /> Join
             </Link>
           </Button>
