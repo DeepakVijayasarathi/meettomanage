@@ -115,7 +115,7 @@ export default function QuizOverlay({
             <span
               className={cn(
                 "flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold",
-                timeLeft <= 5 ? "bg-destructive/20 text-red-300" : "bg-white/10 text-white/80"
+                timeLeft <= 5 ? "bg-destructive/20 text-destructive" : "bg-white/10 text-white/80"
               )}
             >
               <Timer className="h-3.5 w-3.5" /> {timeLeft}s
@@ -154,7 +154,7 @@ export default function QuizOverlay({
                 {opt}
               </span>
               {showResult && isCorrect && <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-green" />}
-              {showResult && !isCorrect && isSelected && <XCircle className="h-4 w-4 shrink-0 text-red-300" />}
+              {showResult && !isCorrect && isSelected && <XCircle className="h-4 w-4 shrink-0 text-destructive" />}
               {!showResult && (
                 <span className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-white/10">
                   <span
@@ -174,7 +174,7 @@ export default function QuizOverlay({
               const count = displayCounts[i];
               return (
                 <div key={opt} className="flex items-center gap-2 text-xs">
-                  <span className="w-16 shrink-0 truncate font-medium text-white/70">{opt}</span>
+                  <span className="w-24 shrink-0 truncate font-medium text-white/70" title={opt}>{opt}</span>
                   <span className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
                     <span
                       className={cn("block h-full rounded-full", i === question.correctIndex ? "bg-brand-green" : "bg-white/30")}

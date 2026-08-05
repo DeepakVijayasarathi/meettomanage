@@ -243,7 +243,7 @@ function ResourceCard({
         </span>
         {badge && <Badge variant={badgeVariant === "warning" ? "warning" : "muted"}>{badge}</Badge>}
       </div>
-      <p className="mt-3 text-sm font-semibold text-foreground">{resource.title}</p>
+      <p className="mt-3 line-clamp-2 text-sm font-semibold text-foreground">{resource.title}</p>
       <p className="mt-1 text-xs text-muted-foreground">
         {resource.courseCategory} · {formatDate(resource.uploadedOn, "short")}
         {resource.sizeLabel ? ` · ${resource.sizeLabel}` : ""}

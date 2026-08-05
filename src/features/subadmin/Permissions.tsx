@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useSession } from "@/state/session";
 import { getInitials, formatDate, cn } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
@@ -23,12 +24,6 @@ import {
 } from "./data";
 
 const ADMIN_CONTACT = "Ananya Rao";
-
-const LEVEL_BADGE = {
-  full: "bg-success/15 text-success",
-  view: "bg-primary/10 text-primary",
-  none: "bg-muted text-muted-foreground",
-};
 
 /** Live view: does the signed-in user's own claim set (from login/`/api/auth/me`) grant this? */
 function isGranted(permissions: string[], role: string | null, module: PermissionModuleName, action: string): boolean {
@@ -73,9 +68,9 @@ export default function SubAdminPermissions() {
               <p className="text-sm font-semibold text-foreground">{userName}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", LEVEL_BADGE.full)}>{fullCount} full access</span>
-              <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", LEVEL_BADGE.view)}>{viewOnlyCount} view only</span>
-              <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", LEVEL_BADGE.none)}>{noAccessCount} no access</span>
+              <Badge variant="success">{fullCount} full access</Badge>
+              <Badge>{viewOnlyCount} view only</Badge>
+              <Badge variant="muted">{noAccessCount} no access</Badge>
             </div>
           </CardContent>
         </Card>
@@ -202,15 +197,9 @@ export default function SubAdminPermissions() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", LEVEL_BADGE.full)}>
-              {FULL_ACCESS_MODULES.length} full access
-            </span>
-            <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", LEVEL_BADGE.view)}>
-              {VIEW_ONLY_MODULES.length} view only
-            </span>
-            <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", LEVEL_BADGE.none)}>
-              {NO_ACCESS_MODULES.length} no access
-            </span>
+            <Badge variant="success">{FULL_ACCESS_MODULES.length} full access</Badge>
+            <Badge>{VIEW_ONLY_MODULES.length} view only</Badge>
+            <Badge variant="muted">{NO_ACCESS_MODULES.length} no access</Badge>
           </div>
         </CardContent>
       </Card>

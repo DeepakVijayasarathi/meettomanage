@@ -338,7 +338,7 @@ export default function AdminPaymentMapping() {
             <p
               className={cn(
                 "mt-3 rounded-lg px-3 py-2 text-xs font-medium",
-                result.ok ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"
+                result.ok ? "bg-success/10 text-success" : "bg-warning/10 text-warning-foreground"
               )}
             >
               {result.message}

@@ -426,7 +426,7 @@ export default function AdminUsers() {
       />
 
       {apiEnabled() && parentsError && (
-        <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not reach the API ({parentsError}) — showing demo data.
         </p>
       )}
@@ -435,7 +435,7 @@ export default function AdminUsers() {
         <p
           className={cn(
             "mb-4 flex items-start gap-1.5 rounded-lg px-3 py-2 text-sm font-medium",
-            banner.ok ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"
+            banner.ok ? "bg-success/10 text-success" : "bg-warning/10 text-warning-foreground"
           )}
         >
           {banner.ok && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
@@ -591,7 +591,7 @@ export default function AdminUsers() {
                   <p
                     className={cn(
                       "mt-3 flex items-start gap-1.5 rounded-lg px-3 py-2 text-xs font-medium",
-                      sendResult.ok ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"
+                      sendResult.ok ? "bg-success/10 text-success" : "bg-warning/10 text-warning-foreground"
                     )}
                   >
                     {sendResult.ok && <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
@@ -692,7 +692,7 @@ export default function AdminUsers() {
               </div>
             )}
           </div>
-          {editError && <p className="text-sm font-medium text-red-600">{editError}</p>}
+          {editError && <p className="text-sm font-medium text-destructive">{editError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditUser(null)}>
               Cancel
@@ -835,7 +835,7 @@ export default function AdminUsers() {
               </Select>
             </div>
           </div>
-          {addError && <p className="text-sm font-medium text-red-600">{addError}</p>}
+          {addError && <p className="text-sm font-medium text-destructive">{addError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>
               Cancel

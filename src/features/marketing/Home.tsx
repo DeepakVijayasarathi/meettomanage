@@ -154,7 +154,7 @@ export default function MarketingHome() {
             </span>
             <div className="leading-tight">
               <p className="text-sm font-bold text-brand-ink">Live &amp; Running</p>
-              <p className="text-[11px] text-brand-ink/50">Classes in session right now</p>
+              <p className="text-xs text-brand-ink/50">Classes in session right now</p>
             </div>
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function MarketingHome() {
                 <Link
                   key={r}
                   to="/portal-select"
-                  className="group flex flex-col gap-3 rounded-2xl border border-brand-ink/10 bg-white p-5 transition-all hover:-translate-y-1 hover:shadow-pop"
+                  className="group flex flex-col gap-3 rounded-2xl border border-brand-ink/10 bg-white p-5 transition-all hover:-translate-y-1 hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <span
                     className="flex h-11 w-11 items-center justify-center rounded-xl text-white"
@@ -227,7 +227,7 @@ export default function MarketingHome() {
                     <h3 className="text-sm font-bold text-brand-ink">{meta.label}</h3>
                     <p className="mt-1 text-xs leading-relaxed text-brand-ink/55">{meta.description}</p>
                   </div>
-                  <span className="mt-auto flex items-center gap-1 text-xs font-semibold text-brand-green opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="mt-auto flex items-center gap-1 text-xs font-semibold text-brand-green opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                     Explore <ArrowRight className="h-3.5 w-3.5" />
                   </span>
                 </Link>

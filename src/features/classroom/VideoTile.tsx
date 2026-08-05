@@ -25,13 +25,13 @@ export default function VideoTile({ participant, canDrawBoard, className }: Vide
         <div
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(circle at 28% 22%, ${avatarColor}59, transparent 60%), linear-gradient(150deg, ${avatarColor}30, #0b1020 78%)`,
+            background: `radial-gradient(circle at 28% 22%, ${avatarColor}59, transparent 60%), linear-gradient(150deg, ${avatarColor}30, #0D1024 78%)`,
           }}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.06),transparent_55%)]" />
         </div>
       ) : (
-        <div className="absolute inset-0 bg-slate-900" />
+        <div className="absolute inset-0 bg-brand-navyDark" />
       )}
 
       <div

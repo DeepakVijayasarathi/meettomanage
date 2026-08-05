@@ -15,7 +15,7 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
-import { cn, formatDate, getInitials } from "@/lib/utils";
+import { formatDate, getInitials } from "@/lib/utils";
 import type { ClassSession } from "@/types";
 
 const TEACHER_ID = "t-1";
@@ -116,7 +116,7 @@ export default function TeacherAttendance() {
             const child = getChildById(id);
             return (
               <Avatar key={id} className="h-7 w-7 border-2 border-card">
-                <AvatarFallback style={{ backgroundColor: `${child?.avatarColor ?? "#999"}26`, color: child?.avatarColor ?? "#666" }} className="text-[10px]">
+                <AvatarFallback style={{ backgroundColor: `${child?.avatarColor ?? "hsl(var(--muted-foreground))"}26`, color: child?.avatarColor ?? "hsl(var(--muted-foreground))" }} className="text-[10px]">
                   {child ? getInitials(child.name) : "?"}
                 </AvatarFallback>
               </Avatar>
@@ -231,7 +231,7 @@ export default function TeacherAttendance() {
                     <div key={record.childId} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
                       <div className="flex items-center gap-2.5">
                         <Avatar className="h-8 w-8">
-                          <AvatarFallback style={{ backgroundColor: `${child?.avatarColor ?? "#999"}26`, color: child?.avatarColor ?? "#666" }}>
+                          <AvatarFallback style={{ backgroundColor: `${child?.avatarColor ?? "hsl(var(--muted-foreground))"}26`, color: child?.avatarColor ?? "hsl(var(--muted-foreground))" }}>
                             {child ? getInitials(child.name) : "?"}
                           </AvatarFallback>
                         </Avatar>
@@ -240,15 +240,10 @@ export default function TeacherAttendance() {
                           {record.note && <p className="text-xs text-muted-foreground">{record.note}</p>}
                         </div>
                       </div>
-                      <span
-                        className={cn(
-                          "flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                          record.present ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive"
-                        )}
-                      >
+                      <Badge variant={record.present ? "success" : "destructive"}>
                         {record.present ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
                         {record.present ? "Present" : "Absent"}
-                      </span>
+                      </Badge>
                     </div>
                   );
                 })}

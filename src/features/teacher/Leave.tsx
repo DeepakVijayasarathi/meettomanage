@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -52,11 +53,11 @@ function hoursBetween(a: Date, b: Date) {
   return (a.getTime() - b.getTime()) / (1000 * 60 * 60);
 }
 
-const LEAVE_STATUS_STYLE: Record<LeaveRequest["status"], string> = {
-  pending: "bg-warning/20 text-warning-foreground",
-  approved: "bg-success/15 text-success",
-  rejected: "bg-destructive/10 text-destructive",
-  blocked: "bg-destructive/15 text-destructive",
+const LEAVE_STATUS_VARIANT: Record<LeaveRequest["status"], "warning" | "success" | "destructive"> = {
+  pending: "warning",
+  approved: "success",
+  rejected: "destructive",
+  blocked: "destructive",
 };
 
 const LEAVE_STATUS_LABEL: Record<LeaveRequest["status"], string> = {
@@ -67,7 +68,7 @@ const LEAVE_STATUS_LABEL: Record<LeaveRequest["status"], string> = {
 };
 
 function LeaveStatusBadge({ status }: { status: LeaveRequest["status"] }) {
-  return <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold", LEAVE_STATUS_STYLE[status])}>{LEAVE_STATUS_LABEL[status]}</span>;
+  return <Badge variant={LEAVE_STATUS_VARIANT[status]}>{LEAVE_STATUS_LABEL[status]}</Badge>;
 }
 
 export default function TeacherLeave() {

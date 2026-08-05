@@ -77,10 +77,10 @@ export default function ParticipantsPanel({
                       {getInitials(g.name)}
                     </div>
                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">{g.name}</span>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-white/60 hover:bg-white/10 hover:text-white" title="Deny" onClick={() => onDenyGuest?.(g.id)}>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-white/60 hover:bg-white/10 hover:text-white" title="Deny" aria-label={`Deny ${g.name}`} onClick={() => onDenyGuest?.(g.id)}>
                       <X className="h-3.5 w-3.5" />
                     </Button>
-                    <Button size="icon" className="h-7 w-7 !bg-brand-green hover:!bg-brand-greenDark" title="Admit" onClick={() => onAdmitGuest?.(g.id)}>
+                    <Button size="icon" className="h-7 w-7 !bg-brand-green hover:!bg-brand-greenDark" title="Admit" aria-label={`Admit ${g.name}`} onClick={() => onAdmitGuest?.(g.id)}>
                       <Check className="h-3.5 w-3.5" />
                     </Button>
                   </li>
@@ -124,6 +124,7 @@ export default function ParticipantsPanel({
                       variant="ghost"
                       className="h-7 w-7 text-white/70 hover:bg-white/10 hover:text-white"
                       title={p.micOn ? "Mute" : "Unmute"}
+                      aria-label={`${p.micOn ? "Mute" : "Unmute"} ${p.name}`}
                       onClick={() => onToggleMic(p.id)}
                     >
                       {p.micOn ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5 text-destructive" />}
@@ -133,6 +134,7 @@ export default function ParticipantsPanel({
                       variant="ghost"
                       className="h-7 w-7 text-white/70 hover:bg-white/10 hover:text-white"
                       title={p.camOn ? "Disable video" : "Enable video"}
+                      aria-label={`${p.camOn ? "Disable" : "Enable"} video for ${p.name}`}
                       onClick={() => onToggleCam(p.id)}
                     >
                       {p.camOn ? <Video className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5 text-destructive" />}
@@ -142,6 +144,7 @@ export default function ParticipantsPanel({
                       variant="ghost"
                       className={cn("h-7 w-7 text-white/70 hover:bg-white/10 hover:text-white", boardAccess[p.id] && "bg-brand-violet/20 text-brand-violet")}
                       title={boardAccess[p.id] ? "Revoke whiteboard access" : "Give whiteboard access"}
+                      aria-label={`${boardAccess[p.id] ? "Revoke" : "Give"} whiteboard access for ${p.name}`}
                       onClick={() => onToggleBoardAccess(p.id)}
                     >
                       <PenSquare className={cn("h-3.5 w-3.5", boardAccess[p.id] && "text-brand-violet")} />

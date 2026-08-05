@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -337,7 +338,7 @@ export default function AdminSettings() {
                         key={hex}
                         onClick={() => setValue("brand.primaryColor", hex)}
                         className={cn(
-                          "h-7 w-7 rounded-full border-2 transition-transform hover:scale-110",
+                          "h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                           brandColor === hex ? "border-foreground" : "border-transparent"
                         )}
                         style={{ backgroundColor: hex }}
@@ -368,7 +369,7 @@ export default function AdminSettings() {
                         key={hex}
                         onClick={() => setValue("brand.accentColor", hex)}
                         className={cn(
-                          "h-7 w-7 rounded-full border-2 transition-transform hover:scale-110",
+                          "h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                           accentColor === hex ? "border-foreground" : "border-transparent"
                         )}
                         style={{ backgroundColor: hex }}
@@ -605,7 +606,7 @@ function MenuManager() {
         </div>
       </CardHeader>
       <CardContent>
-        {error && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{error}</p>}
+        {error && <p className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         {form && (
           <div className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -675,58 +676,58 @@ function MenuManager() {
         )}
 
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[720px] text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/40">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Section</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Label</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Path</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Order</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">Active</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table className="min-w-[720px]">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Section</TableHead>
+                <TableHead>Label</TableHead>
+                <TableHead>Path</TableHead>
+                <TableHead className="text-center">Order</TableHead>
+                <TableHead className="text-center">Active</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {items.map((item) => {
                 const Icon = resolveMenuIcon(item.icon);
                 return (
-                  <tr key={item.id} className={cn("border-b border-border last:border-0 hover:bg-muted/30", !item.isActive && "opacity-50")}>
-                    <td className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{item.section ?? "—"}</td>
-                    <td className="px-4 py-3">
+                  <TableRow key={item.id} className={cn(!item.isActive && "opacity-50")}>
+                    <TableCell className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{item.section ?? "—"}</TableCell>
+                    <TableCell>
                       <span className="flex items-center gap-2 font-medium text-foreground">
                         <Icon className="h-4 w-4 text-muted-foreground" />
                         {item.label}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{item.path}</td>
-                    <td className="px-4 py-3 text-center text-xs text-muted-foreground">
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{item.path}</TableCell>
+                    <TableCell className="text-center text-xs text-muted-foreground">
                       {item.sectionOrder}.{item.sortOrder}
-                    </td>
-                    <td className="px-4 py-3 text-center">
+                    </TableCell>
+                    <TableCell className="text-center">
                       <Switch checked={item.isActive} onCheckedChange={() => toggleActive(item)} disabled={busy} />
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => startEdit(item)}>
+                        <Button variant="ghost" size="sm" onClick={() => startEdit(item)} aria-label={`Edit ${item.label}`}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => remove(item)} disabled={busy}>
+                        <Button variant="ghost" size="sm" onClick={() => remove(item)} disabled={busy} aria-label={`Delete ${item.label}`}>
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
               {items.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                <TableRow>
+                  <TableCell colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
                     No menu items configured for this portal yet.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
           Changes take effect the next time a portal sidebar loads. The frontend falls back to its built-in navigation if a portal has no items.
@@ -886,7 +887,7 @@ function PayoutRatesManager() {
         </Button>
       </CardHeader>
       <CardContent>
-        {error && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{error}</p>}
+        {error && <p className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         {!loaded ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
@@ -1238,7 +1239,7 @@ export function IntegrationsManager() {
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {error && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{error}</p>}
+        {error && <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         {form && (
           <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2">

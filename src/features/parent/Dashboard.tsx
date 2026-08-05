@@ -423,7 +423,7 @@ function PendingEnrollments({
               <Badge variant={rejected ? "destructive" : "warning"}>{rejected ? "Needs changes" : "Pending approval"}</Badge>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
+            <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
               <PendingValue label="Date of birth" value={text("dob") === "—" ? "—" : formatDate(text("dob"))} />
               <PendingValue label="Grade" value={text("grade")} />
               <PendingValue label="School" value={text("schoolName")} />

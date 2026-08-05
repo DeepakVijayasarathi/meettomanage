@@ -244,7 +244,7 @@ export default function CoordinatorAvailability() {
                   <div className="flex items-start gap-3">
                     <span
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                      style={{ backgroundColor: teacherRoster.find((t) => t.id === leave.teacherId)?.avatarColor ?? "#94A3B8" }}
+                      style={{ backgroundColor: teacherRoster.find((t) => t.id === leave.teacherId)?.avatarColor ?? "hsl(var(--muted-foreground))" }}
                     >
                       {getInitials(leave.teacherName)}
                     </span>

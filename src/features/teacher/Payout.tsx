@@ -5,6 +5,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { getPayoutsForTeacher } from "@/data/payouts";
 import { useApiData } from "@/api/hooks";
 import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
@@ -78,14 +79,9 @@ export default function TeacherPayout() {
       accessor: (row) => row.status,
       sortable: true,
       render: (row) => (
-        <span
-          className={cn(
-            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
-            row.status === "paid" ? "bg-success/15 text-success" : "bg-warning/20 text-warning-foreground"
-          )}
-        >
+        <Badge variant={row.status === "paid" ? "success" : "warning"}>
           {row.status === "paid" ? "Paid" : "Calculated"}
-        </span>
+        </Badge>
       ),
     },
   ];

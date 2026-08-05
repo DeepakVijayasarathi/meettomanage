@@ -17,7 +17,7 @@ import { Card } from "@/components/ui/card";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatPercent, getInitials } from "@/lib/utils";
 import { ADMIN_KPIS, BATCH_OCCUPANCY_BY_COURSE, TEACHER_UTILIZATION } from "@/data/kpis";
 import { TEACHERS } from "@/data/users";
 import { getPayoutsForTeacher } from "@/data/payouts";
@@ -51,7 +51,7 @@ interface TeacherRow {
   sessions?: number;
 }
 
-const AVATAR_FALLBACKS = ["#7C5CFF", "#0EA5E9", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6"];
+const AVATAR_FALLBACKS = CHART_PALETTE;
 
 export default function ManagementPerformance() {
   const mockRows = useMemo<TeacherRow[]>(
@@ -124,10 +124,7 @@ export default function ManagementPerformance() {
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
             style={{ backgroundColor: r.teacher.avatarColor }}
           >
-            {r.teacher.name
-              .split(" ")
-              .map((p) => p[0])
-              .join("")}
+            {getInitials(r.teacher.name)}
           </span>
           <div>
             <p className="font-semibold text-foreground">{r.teacher.name}</p>

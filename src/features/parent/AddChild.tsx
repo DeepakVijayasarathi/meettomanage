@@ -76,15 +76,15 @@ export default function ParentAddChild() {
                     return (
                       <Card key={child.childId} className="p-5">
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
                             <span
-                              className="flex h-11 w-11 items-center justify-center rounded-xl text-sm font-bold"
+                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
                               style={{ backgroundColor: `${color}22`, color }}
                             >
                               {getInitials(child.name)}
                             </span>
-                            <div>
-                              <p className="font-semibold text-foreground">{child.name}</p>
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold text-foreground">{child.name}</p>
                               <p className="text-xs text-muted-foreground">{child.academicLevel ?? "Level not set yet"}</p>
                             </div>
                           </div>
@@ -138,17 +138,17 @@ export default function ParentAddChild() {
                         className={cn("p-5", rejected ? "border-destructive/40 bg-destructive/5" : "border-warning/40 bg-warning/5")}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
                             <span
                               className={cn(
-                                "flex h-11 w-11 items-center justify-center rounded-xl",
+                                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
                                 rejected ? "bg-destructive/10 text-destructive" : "bg-warning/20 text-warning-foreground"
                               )}
                             >
                               <Clock3 className="h-5 w-5" />
                             </span>
-                            <div>
-                              <p className="font-semibold text-foreground">{name}</p>
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold text-foreground">{name}</p>
                               <p className="text-xs text-muted-foreground">
                                 Submitted {pendingForm.submittedAtUtc ? formatDate(pendingForm.submittedAtUtc, "long") : "—"}
                               </p>

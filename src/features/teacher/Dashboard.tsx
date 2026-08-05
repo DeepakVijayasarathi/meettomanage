@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { getBatchById, BATCHES } from "@/data/batches";
 import { getCourseById } from "@/data/courses";
@@ -31,7 +32,7 @@ import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
 import { listMyDemoBookings, toAwaitingFeedback } from "@/api/demoBookings";
 import { CHART_PALETTE } from "@/lib/roles";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import type { ClassSession, DemoFeedback, SessionStatus, TeacherPayout } from "@/types";
 
 const TEACHER_ID = "t-1";
@@ -250,14 +251,9 @@ export default function TeacherDashboard() {
                     <p className="text-2xl font-bold tracking-tight text-foreground">{formatCurrency(latestPayout.finalAmount)}</p>
                     <p className="text-xs text-muted-foreground">Final amount</p>
                   </div>
-                  <span
-                    className={cn(
-                      "rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                      latestPayout.status === "paid" ? "bg-success/15 text-success" : "bg-warning/20 text-warning-foreground"
-                    )}
-                  >
+                  <Badge variant={latestPayout.status === "paid" ? "success" : "warning"}>
                     {latestPayout.status === "paid" ? "Paid" : "Calculated"}
-                  </span>
+                  </Badge>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-lg bg-muted/50 p-3">

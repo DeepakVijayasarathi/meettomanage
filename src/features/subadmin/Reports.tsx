@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ChartCard } from "@/components/ChartCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -64,10 +65,10 @@ function download(filename: string, csv: string) {
 }
 
 const STATUS_LABEL: Record<Batch["status"], string> = { active: "Active", dormant: "Dormant", upcoming: "Upcoming" };
-const STATUS_CLASS: Record<Batch["status"], string> = {
-  active: "bg-success/15 text-success",
-  dormant: "bg-muted text-muted-foreground",
-  upcoming: "bg-warning/20 text-warning-foreground",
+const STATUS_VARIANT: Record<Batch["status"], "success" | "muted" | "warning"> = {
+  active: "success",
+  dormant: "muted",
+  upcoming: "warning",
 };
 
 const BATCH_COLUMNS: DataTableColumn<BatchRow>[] = [
@@ -88,7 +89,7 @@ const BATCH_COLUMNS: DataTableColumn<BatchRow>[] = [
   {
     key: "status",
     header: "Status",
-    render: (r) => <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_CLASS[r.status]}`}>{STATUS_LABEL[r.status]}</span>,
+    render: (r) => <Badge variant={STATUS_VARIANT[r.status]}>{STATUS_LABEL[r.status]}</Badge>,
     accessor: (r) => r.status,
     sortable: true,
   },

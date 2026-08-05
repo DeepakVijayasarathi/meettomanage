@@ -220,7 +220,7 @@ export default function JitsiLive({
   }, [room, mode]);
 
   return (
-    <div className="flex h-screen flex-col bg-brand-ink">
+    <div className="flex h-screen flex-col bg-brand-navyDark">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black/20 px-4 py-2.5">
         <div className="flex items-center gap-3">
           <Logo showWordmark={false} imgClassName="h-8 w-8" />
@@ -259,7 +259,7 @@ export default function JitsiLive({
       </header>
       {error ? (
         <div className="flex flex-1 items-center justify-center">
-          <p className="rounded-lg bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300">{error}</p>
+          <p className="rounded-lg bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">{error}</p>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
@@ -277,8 +277,9 @@ export default function JitsiLive({
             {mode === "teacher" && interactive && (
               <button
                 title="Send a celebration to the class"
+                aria-label="Send a celebration to the class"
                 onClick={() => (celebrateAllRef.current ?? celebrate)("Great job, everyone! 🎉")}
-                className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy/95 text-white backdrop-blur transition-transform hover:scale-110"
+                className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy/95 text-white backdrop-blur transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <PartyPopper className="h-4 w-4" />
               </button>

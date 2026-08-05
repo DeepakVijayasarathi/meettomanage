@@ -328,9 +328,11 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               <button
                 key={id}
                 title={label}
+                aria-label={label}
+                aria-pressed={tool === id}
                 onClick={() => setTool(id)}
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+                  "flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   tool === id ? "bg-card text-primary shadow-soft" : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -344,9 +346,11 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               <button
                 key={sw}
                 title={sw}
+                aria-label={`Use ${sw} ink color`}
+                aria-pressed={color === sw}
                 onClick={() => setColor(sw)}
                 className={cn(
-                  "h-6 w-6 rounded-full border-2 transition-transform",
+                  "h-6 w-6 rounded-full border-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                   color === sw ? "scale-110 border-primary" : "border-transparent"
                 )}
                 style={{ backgroundColor: sw }}
@@ -359,9 +363,11 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               <button
                 key={w}
                 title={`${w}px`}
+                aria-label={`Stroke width ${w}px`}
+                aria-pressed={strokeWidth === w}
                 onClick={() => setStrokeWidth(w)}
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+                  "flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   strokeWidth === w ? "bg-card shadow-soft" : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -383,7 +389,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
           </Button>
 
           <div className="ml-auto flex items-center gap-1">
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setPageIndex((i) => Math.max(0, i - 1))} disabled={pageIndex === 0}>
+            <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Previous page" onClick={() => setPageIndex((i) => Math.max(0, i - 1))} disabled={pageIndex === 0}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
@@ -393,16 +399,17 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               size="icon"
               variant="ghost"
               className="h-8 w-8"
+              aria-label="Next page"
               onClick={() => setPageIndex((i) => Math.min(pages.length - 1, i + 1))}
               disabled={pageIndex === pages.length - 1}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-8 w-8" title="Add page" onClick={addPage}>
+            <Button size="icon" variant="ghost" className="h-8 w-8" title="Add page" aria-label="Add page" onClick={addPage}>
               <Plus className="h-4 w-4" />
             </Button>
             {pages.length > 1 && (
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="Delete page" onClick={removePage}>
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="Delete page" aria-label="Delete page" onClick={removePage}>
                 <X className="h-4 w-4" />
               </Button>
             )}

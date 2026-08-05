@@ -110,6 +110,7 @@ export default function ParentBilling() {
               size="sm"
               variant="outline"
               title="Download invoice"
+              aria-label="Download invoice"
               onClick={() => downloadParentInvoice(r.apiId!, r.id).catch(() => undefined)}
             >
               <Download className="h-3.5 w-3.5" />
