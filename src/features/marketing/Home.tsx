@@ -5,7 +5,6 @@ import {
   BookOpen,
   CalendarCheck2,
   CheckCircle2,
-  GraduationCap,
   HeartHandshake,
   MessageSquare,
   PenTool,
