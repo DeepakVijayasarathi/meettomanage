@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
 import { postEngagement } from "@/api/engagement";
-import { registerRecording } from "@/api/sessions";
+import { getClassroomSettings, registerRecording } from "@/api/sessions";
 import { cn } from "@/lib/utils";
 import InteractivePanel from "./InteractivePanel";
 import GamificationOverlay from "./GamificationOverlay";
@@ -53,15 +53,20 @@ export default function JitsiLive({
   title,
   mode,
   sessionId,
+  displayName,
 }: {
   room: string;
   title?: string;
   mode: "teacher" | "student";
   sessionId?: string;
+  /** Overrides the Jitsi participant name — e.g. the student's own name when a parent
+   *  is joining on their child's behalf, rather than the parent account's name. */
+  displayName?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { userName } = useSession();
+  const { userName: accountName } = useSession();
+  const userName = displayName || accountName;
   const [error, setError] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [celebrating, setCelebrating] = useState(false);
@@ -70,6 +75,22 @@ export default function JitsiLive({
   const celebrateAllRef = useRef<((message?: string) => void) | null>(null);
   const jitsiApiRef = useRef<{ executeCommand: (command: string, ...args: unknown[]) => void } | null>(null);
   const [lobbyEnabled, setLobbyEnabled] = useState(false);
+  // Defaults true (today's unconditional behaviour) until the real Settings value loads,
+  // and stays true if the request fails — so a slow/offline check never silently disables
+  // recording for a teacher who already relies on it.
+  const autoRecordRef = useRef(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    getClassroomSettings()
+      .then((settings) => {
+        if (!cancelled) autoRecordRef.current = settings.autoRecordEnabled;
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Real waiting room: toggles Jitsi's native lobby, which then handles admit/deny
   // through Jitsi's own UI. Only meaningful for whoever holds moderator on this
@@ -175,9 +196,11 @@ export default function JitsiLive({
           media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
           // A small class reads better as a grid of faces than one spotlighted speaker.
           api?.executeCommand("setTileView", true);
-          if (mode === "teacher") {
+          if (mode === "teacher" && autoRecordRef.current) {
             // Auto session recording: starts when the host joins; requires Jibri
-            // on the Jitsi deployment (no-op on deployments without it).
+            // on the Jitsi deployment (no-op on deployments without it). Admin can
+            // turn this off in Settings → Integrations → Jitsi Meet ("autoRecord"),
+            // which leaves recording to the manual fallback on teacher My Classes.
             api?.executeCommand("startRecording", { mode: "file" });
           }
         });

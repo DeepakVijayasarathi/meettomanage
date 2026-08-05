@@ -103,7 +103,10 @@ export default function StudentDashboard() {
             </div>
             <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
               <Button size="lg" asChild className="w-full sm:w-auto">
-                <Link to={`/parent/live/${todaySession.id}`}>
+                <Link
+                  to={`/parent/live/${todaySession.id}`}
+                  state={todaySession.meetingRoomId ? { room: todaySession.meetingRoomId, title: todaySession.title } : undefined}
+                >
                   <Video className="h-4 w-4" />
                   Join Class
                 </Link>

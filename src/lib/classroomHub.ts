@@ -38,6 +38,7 @@ export interface ClassroomHubEvents {
  */
 export class ClassroomHubClient {
   private connection: HubConnection | null = null;
+  private disposed = false;
   private readonly sessionId: string;
 
   constructor(sessionId: string) {
@@ -71,10 +72,29 @@ export class ClassroomHubClient {
       connection.invoke("JoinSession", this.sessionId, displayName).catch(() => undefined);
     });
 
+    // Exposed immediately (before start()/JoinSession even resolve), not only on success.
+    // React StrictMode (dev) mounts, cleans up and remounts every component once — the
+    // cleanup's disconnect() can fire while this connect() is still mid-flight. If
+    // `this.connection` stayed unset until after a successful join, that early disconnect()
+    // found nothing to stop, so the first (StrictMode-discarded) connection kept connecting
+    // and joined the room anyway, orphaned — leaving a duplicate "ghost" participant beside
+    // the real one until the server's own connection-timeout eventually cleaned it up.
+    this.connection = connection;
+
     try {
       await connection.start();
+      if (this.disposed) {
+        await connection.stop().catch(() => undefined);
+        return false;
+      }
       await connection.invoke("JoinSession", this.sessionId, displayName);
-      this.connection = connection;
+      if (this.disposed) {
+        // Joined after disconnect() already ran and moved on — leave immediately
+        // rather than linger in the roster as a duplicate of a later connection.
+        await connection.invoke("LeaveSession", this.sessionId).catch(() => undefined);
+        await connection.stop().catch(() => undefined);
+        return false;
+      }
       return true;
     } catch {
       // Hub unavailable — the classroom still works, just without real-time sync.
@@ -124,6 +144,7 @@ export class ClassroomHubClient {
   }
 
   async disconnect(): Promise<void> {
+    this.disposed = true;
     const connection = this.connection;
     this.connection = null;
     if (!connection) return;

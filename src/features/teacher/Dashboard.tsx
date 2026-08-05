@@ -221,7 +221,12 @@ export default function TeacherDashboard() {
                         <SessionStatusBadge status={session.status} />
                         {joinable ? (
                           <Button asChild size="sm">
-                            <Link to={`/teacher/live/${session.id}`}>{session.status === "demo" ? "Start Demo" : "Start Class"}</Link>
+                            <Link
+                              to={`/teacher/live/${session.id}`}
+                              state={session.meetingRoomId ? { room: session.meetingRoomId, title: session.title } : undefined}
+                            >
+                              {session.status === "demo" ? "Start Demo" : "Start Class"}
+                            </Link>
                           </Button>
                         ) : (
                           <Button size="sm" variant="outline" disabled>

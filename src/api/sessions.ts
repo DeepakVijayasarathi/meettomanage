@@ -89,6 +89,21 @@ export async function listRecordings(sessionId: string): Promise<ApiSessionRecor
   return apiFetch<ApiSessionRecording[]>(`/api/sessions/${sessionId}/recordings`);
 }
 
+export interface ApiClassroomSettings {
+  domain: string;
+  autoRecordEnabled: boolean;
+}
+
+/**
+ * Non-secret Jitsi settings for whoever is about to join a live class. `autoRecordEnabled`
+ * is admin-managed via Settings → Integrations → Jitsi Meet ("autoRecord" config field) —
+ * on means the classroom auto-starts recording when the host joins, off means recording is
+ * left to the manual "Recording" fallback on teacher My Classes (registerRecording above).
+ */
+export async function getClassroomSettings(): Promise<ApiClassroomSettings> {
+  return apiFetch<ApiClassroomSettings>("/api/sessions/classroom-settings");
+}
+
 /** The signed-in teacher's own sessions in a ±60-day window. */
 export async function listMySessions(): Promise<ApiClassSession[]> {
   const from = new Date(Date.now() - 60 * 86400_000).toISOString();
