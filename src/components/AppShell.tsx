@@ -92,7 +92,7 @@ export function AppShell({ role, children }: AppShellProps) {
         {/* pb-24 (not py-6's default) reserves clearance below the last row of content so the
             fixed FloatingNotes button (bottom-6 right-6, 48px) never sits on top of — and steals
             clicks from — bottom-right page chrome like DataTable's pagination controls. */}
-        <main className="min-w-0 flex-1 overflow-x-hidden px-4 pb-24 pt-6 sm:px-6 lg:px-8">
+        <main className="app-content-glow min-w-0 flex-1 overflow-x-hidden px-4 pb-24 pt-6 sm:px-6 lg:px-8">
           <PageTransition>{children}</PageTransition>
         </main>
       </div>

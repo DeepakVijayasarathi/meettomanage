@@ -116,6 +116,10 @@
   .font-display {
     font-family: "Inter", system-ui, sans-serif;
   }
+  /* Soft role-tinted glow behind page content; --primary is repointed per portal in AppShell. */
+  .app-content-glow {
+    background-image: radial-gradient(ellipse 60% 50% at 50% -10%, hsl(var(--primary) / 0.07), transparent 70%);
+  }
   .text-balance {
     text-wrap: balance;
   }
