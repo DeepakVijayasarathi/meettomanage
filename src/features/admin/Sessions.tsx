@@ -44,7 +44,7 @@ function toUtcIso(date: string, time: string): string {
 
 export default function AdminSessions() {
   const usingApi = apiEnabled();
-  const { data: apiSessions, reload } = useApiData<ClassSession[]>(
+  const { data: apiSessions, error: sessionsError, reload } = useApiData<ClassSession[]>(
     () => listSessions().then((items) => items.map(toFrontendSession)),
     []
   );
@@ -267,6 +267,15 @@ export default function AdminSessions() {
           </Button>
         }
       />
+
+      {usingApi && sessionsError && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          Could not load the session calendar ({sessionsError}) — the schedule below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </p>
+      )}
 
       {banner && (
         <div

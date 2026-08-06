@@ -34,7 +34,7 @@ function downloadCsv(filename: string, csv: string) {
 }
 
 export default function AdminPayouts() {
-  const { data: payouts } = useApiData(
+  const { data: payouts, error: payoutsError, reload: reloadPayouts } = useApiData(
     () => listPayouts().then((items) => items.map(toFrontendPayout)),
     PAYOUTS
   );
@@ -185,6 +185,15 @@ export default function AdminPayouts() {
           </div>
         }
       />
+
+      {apiEnabled() && payoutsError && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
+          Could not load payouts ({payoutsError}) — the totals below don't reflect real data.{" "}
+          <button type="button" className="underline" onClick={() => reloadPayouts()}>
+            Retry
+          </button>
+        </p>
+      )}
 
       {exportError && (
         <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{exportError}</p>

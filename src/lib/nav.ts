@@ -101,7 +101,11 @@ export const TEACHER_NAV: NavSection[] = [
     title: "Teaching",
     items: [
       { label: "My Classes", to: "/teacher/classes", icon: CalendarClock },
-      { label: "Live Classroom", to: "/teacher/live/s-1", icon: Video },
+      // No fixed session id can ever be right here — "Start Class" on My Classes is the
+      // one entry point that knows which session/room to join (see MyClasses.tsx's
+      // startClass()); this used to hardcode a demo-mode-only mock id ("s-1") that always
+      // 404'd in API mode ("This class link can't be opened directly").
+      { label: "Live Classroom", to: "/teacher/classes", icon: Video },
       { label: "Attendance & Records", to: "/teacher/attendance", icon: ClipboardList },
       { label: "Demo Feedback", to: "/teacher/demo-feedback", icon: ClipboardCheck, badge: "1" },
     ],

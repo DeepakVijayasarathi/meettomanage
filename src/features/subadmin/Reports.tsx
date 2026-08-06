@@ -22,6 +22,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatPercent } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
+import { EmptyState } from "@/components/EmptyState";
 import { useApiData } from "@/api/hooks";
 import { listBatches, toFrontendBatch } from "@/api/batches";
 import { getDashboardSummary } from "@/api/reports";
@@ -98,6 +100,7 @@ const BATCH_COLUMNS: DataTableColumn<BatchRow>[] = [
 export default function SubAdminReports() {
   const [tab, setTab] = useState<ReportKey>("attendance");
   const usingApi = apiEnabled();
+  const { hasPermission } = useSession();
   const reportDate = usingApi ? new Date().toISOString().slice(0, 10) : "2026-07-09";
 
   // Live roster from the batches API; the demo roster only renders without a backend.
@@ -146,6 +149,28 @@ export default function SubAdminReports() {
         ["Batch", "Course", "Teacher", "Enrolled", "Capacity", "Occupancy %", "Status"],
         batchRows.map((r) => [r.name, r.courseName, r.teacherName, r.enrolled, r.capacity, r.occupancy, STATUS_LABEL[r.status]])
       )
+    );
+  }
+
+  // GET /api/reports/dashboard-summary requires ReportsAnalytics:View — without it every
+  // fetch on this screen 403s and useApiData silently falls back to empty/mock data with no
+  // explanation, so a restricted Sub Admin would otherwise see a blank/broken report screen
+  // instead of a clear "no access" state (hasPermission always passes in demo mode, matching
+  // the backend's own "no live enforcement without an API" behavior).
+  if (!hasPermission("ReportsAnalytics", "View")) {
+    return (
+      <div>
+        <PageHeader
+          eyebrow="Delegated Work"
+          title="Assigned Reports"
+          description="Reports are scoped to the modules you have view access to."
+        />
+        <EmptyState
+          icon={Lock}
+          title="No access to Reports & Analytics"
+          description="Ask your Admin to grant Reports & Analytics access from Roles & Permissions if you need to view these reports."
+        />
+      </div>
     );
   }
 

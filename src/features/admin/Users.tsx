@@ -124,6 +124,7 @@ export default function AdminUsers() {
       return;
     }
     if (!apiEnabled()) {
+      setBanner({ ok: true, text: "Demo mode — no account actually updated." });
       setEditUser(null);
       return;
     }
@@ -256,6 +257,7 @@ export default function AdminUsers() {
 
   async function handleCreateUser() {
     if (!apiEnabled()) {
+      setBanner({ ok: true, text: "Demo mode — no account actually created." });
       setAddOpen(false);
       return;
     }
