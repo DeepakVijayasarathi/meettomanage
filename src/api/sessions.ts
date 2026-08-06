@@ -104,6 +104,24 @@ export async function getClassroomSettings(): Promise<ApiClassroomSettings> {
   return apiFetch<ApiClassroomSettings>("/api/sessions/classroom-settings");
 }
 
+export interface ApiJitsiJoin {
+  room: string;
+  domain: string;
+  /** Null until an admin configures the "jitsi" integration's appId/appSecret. */
+  token: string | null;
+}
+
+/**
+ * Authorizes the caller for this exact session (same check as the classroom SignalR hub:
+ * Admin, the assigned teacher, or a parent with a child enrolled in the session's batch)
+ * and returns a signed, room-scoped join token when the deployment is configured for one.
+ * Call this right before joining rather than trusting a room name carried in route state —
+ * defense in depth, and the only source of a usable token.
+ */
+export async function getJitsiJoin(sessionId: string): Promise<ApiJitsiJoin> {
+  return apiFetch<ApiJitsiJoin>(`/api/sessions/${sessionId}/jitsi-join`);
+}
+
 /** The signed-in teacher's own sessions in a ±60-day window. */
 export async function listMySessions(): Promise<ApiClassSession[]> {
   const from = new Date(Date.now() - 60 * 86400_000).toISOString();

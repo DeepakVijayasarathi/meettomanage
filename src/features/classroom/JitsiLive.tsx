@@ -5,15 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
 import { postEngagement } from "@/api/engagement";
-import { getClassroomSettings, registerRecording } from "@/api/sessions";
+import { getClassroomSettings, getJitsiJoin, registerRecording } from "@/api/sessions";
 import { cn } from "@/lib/utils";
 import InteractivePanel from "./InteractivePanel";
 import GamificationOverlay from "./GamificationOverlay";
 import type { LeaderboardEntry } from "./classroomData";
 
-// Loaded from the Jitsi deployment at runtime (see docs/JITSI_ARCHITECTURE.md);
-// meet.jit.si for development, the self-hosted domain in production.
-const JITSI_DOMAIN = (import.meta.env.VITE_JITSI_DOMAIN as string | undefined) ?? "meet.jit.si";
+// Fallback only — used for demo-mode/mock sessions and if the authorized
+// /jitsi-join lookup fails. Real sessions get their domain from that endpoint
+// instead, since it must match whatever's configured on the "jitsi" integration.
+const JITSI_DOMAIN_FALLBACK = (import.meta.env.VITE_JITSI_DOMAIN as string | undefined) ?? "meet.jit.si";
 
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -27,19 +28,23 @@ declare global {
   }
 }
 
-let scriptPromise: Promise<void> | null = null;
+const scriptPromises = new Map<string, Promise<void>>();
 
-function loadJitsiScript(): Promise<void> {
+function loadJitsiScript(domain: string): Promise<void> {
   if (window.JitsiMeetExternalAPI) return Promise.resolve();
-  scriptPromise ??= new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = `https://${JITSI_DOMAIN}/external_api.js`;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Could not load the Jitsi Meet API."));
-    document.head.appendChild(script);
-  });
-  return scriptPromise;
+  let promise = scriptPromises.get(domain);
+  if (!promise) {
+    promise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = `https://${domain}/external_api.js`;
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Could not load the Jitsi Meet API."));
+      document.head.appendChild(script);
+    });
+    scriptPromises.set(domain, promise);
+  }
+  return promise;
 }
 
 /**
@@ -147,91 +152,113 @@ export default function JitsiLive({
       media.camMs = 0;
     };
 
-    loadJitsiScript()
-      .then(() => {
-        if (cancelled || !containerRef.current || !window.JitsiMeetExternalAPI) return;
-        api = new window.JitsiMeetExternalAPI(JITSI_DOMAIN, {
-          roomName: room,
-          parentNode: containerRef.current,
-          width: "100%",
-          height: "100%",
-          userInfo: { displayName: userName },
-          configOverwrite: {
-            prejoinConfig: { enabled: false },
-            startWithAudioMuted: mode === "student",
-            disableDeepLinking: true,
-            // Don't let the browser suggest/remember this room outside our own scheduling flow.
-            doNotStoreRoom: true,
-          },
-          interfaceConfigOverwrite: {
-            SHOW_JITSI_WATERMARK: false,
-            DEFAULT_REMOTE_DISPLAY_NAME: "Student",
-            // Video-tile letterbox before a camera loads, matched to our own dark panel color.
-            DEFAULT_BACKGROUND: "#161B33",
-            MOBILE_APP_PROMO: false,
-            HIDE_INVITE_MORE_HEADER: true,
-            // Curated for a small tutoring classroom — drop enterprise features (livestream,
-            // shared video/audio, security/profile, dial-in, stats) that don't apply here.
-            // Jitsi still hides moderator-only entries (recording, mute-everyone) from students.
-            TOOLBAR_BUTTONS: [
-              "microphone",
-              "camera",
-              "desktop",
-              "chat",
-              "raisehand",
-              "tileview",
-              "videobackgroundblur",
-              "recording",
-              "mute-everyone",
-              "fullscreen",
-              "settings",
-              "hangup",
-            ],
-          },
-        });
-        jitsiApiRef.current = api;
-        api.addListener("readyToClose", () => navigate(-1));
-        api.addListener("videoConferenceJoined", (payload) => {
-          media.selfId = payload?.id ?? "";
-          media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
-          // A small class reads better as a grid of faces than one spotlighted speaker.
-          api?.executeCommand("setTileView", true);
-          if (mode === "teacher" && autoRecordRef.current) {
-            // Auto session recording: starts when the host joins; requires Jibri
-            // on the Jitsi deployment (no-op on deployments without it). Admin can
-            // turn this off in Settings → Integrations → Jitsi Meet ("autoRecord"),
-            // which leaves recording to the manual fallback on teacher My Classes.
-            api?.executeCommand("startRecording", { mode: "file" });
-          }
-        });
-        // Auto recording registration: when the deployment publishes the recording
-        // link, file it against the session (drives the 15-day parent window).
-        api.addListener("recordingLinkAvailable", (payload) => {
-          if (mode === "teacher" && interactive && payload?.link) {
-            registerRecording(sessionId!, payload.link).catch(() => undefined);
-          }
-        });
-        api.addListener("dominantSpeakerChanged", (payload) => {
-          const now = Date.now();
-          if (payload?.id === media.selfId) {
-            media.talkSince ||= now;
-          } else if (media.talkSince) {
-            media.talkMs += now - media.talkSince;
-            media.talkSince = 0;
-          }
-        });
-        api.addListener("videoMuteStatusChanged", (payload) => {
-          const now = Date.now();
-          if (payload?.muted && media.camSince) {
-            media.camMs += now - media.camSince;
-            media.camSince = 0;
-          } else if (payload?.muted === false) {
-            media.camSince ||= now;
-          }
-        });
-        api.addListener("videoConferenceLeft", () => flushMedia());
-      })
-      .catch((err: Error) => setError(err.message));
+    async function init() {
+      // Re-authorize right before joining rather than trusting the room name carried in
+      // route state: this is also the only source of a signed join token, so a forwarded
+      // link with no valid session/child relationship never gets past this call once the
+      // Jitsi deployment enforces token verification (see docs/JITSI_ARCHITECTURE.md). A
+      // failed/skipped lookup (demo mode, offline) falls back to the room passed in — the
+      // classroom SignalR hub's own JoinSession still gates the interactive layer.
+      let joinRoom = room;
+      let joinDomain = JITSI_DOMAIN_FALLBACK;
+      let joinToken: string | undefined;
+      if (interactive) {
+        try {
+          const join = await getJitsiJoin(sessionId!);
+          joinRoom = join.room;
+          joinDomain = join.domain;
+          joinToken = join.token ?? undefined;
+        } catch {
+          /* fall back to the route-state room below */
+        }
+      }
+
+      await loadJitsiScript(joinDomain);
+      if (cancelled || !containerRef.current || !window.JitsiMeetExternalAPI) return;
+      api = new window.JitsiMeetExternalAPI(joinDomain, {
+        roomName: joinRoom,
+        jwt: joinToken,
+        parentNode: containerRef.current,
+        width: "100%",
+        height: "100%",
+        userInfo: { displayName: userName },
+        configOverwrite: {
+          prejoinConfig: { enabled: false },
+          startWithAudioMuted: mode === "student",
+          disableDeepLinking: true,
+          // Don't let the browser suggest/remember this room outside our own scheduling flow.
+          doNotStoreRoom: true,
+        },
+        interfaceConfigOverwrite: {
+          SHOW_JITSI_WATERMARK: false,
+          DEFAULT_REMOTE_DISPLAY_NAME: "Student",
+          // Video-tile letterbox before a camera loads, matched to our own dark panel color.
+          DEFAULT_BACKGROUND: "#161B33",
+          MOBILE_APP_PROMO: false,
+          HIDE_INVITE_MORE_HEADER: true,
+          // Curated for a small tutoring classroom — drop enterprise features (livestream,
+          // shared video/audio, security/profile, dial-in, stats) that don't apply here.
+          // Jitsi still hides moderator-only entries (recording, mute-everyone) from students.
+          TOOLBAR_BUTTONS: [
+            "microphone",
+            "camera",
+            "desktop",
+            "chat",
+            "raisehand",
+            "tileview",
+            "videobackgroundblur",
+            "recording",
+            "mute-everyone",
+            "fullscreen",
+            "settings",
+            "hangup",
+          ],
+        },
+      });
+      jitsiApiRef.current = api;
+      api.addListener("readyToClose", () => navigate(-1));
+      api.addListener("videoConferenceJoined", (payload) => {
+        media.selfId = payload?.id ?? "";
+        media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
+        // A small class reads better as a grid of faces than one spotlighted speaker.
+        api?.executeCommand("setTileView", true);
+        if (mode === "teacher" && autoRecordRef.current) {
+          // Auto session recording: starts when the host joins; requires Jibri
+          // on the Jitsi deployment (no-op on deployments without it). Admin can
+          // turn this off in Settings → Integrations → Jitsi Meet ("autoRecord"),
+          // which leaves recording to the manual fallback on teacher My Classes.
+          api?.executeCommand("startRecording", { mode: "file" });
+        }
+      });
+      // Auto recording registration: when the deployment publishes the recording
+      // link, file it against the session (drives the 15-day parent window).
+      api.addListener("recordingLinkAvailable", (payload) => {
+        if (mode === "teacher" && interactive && payload?.link) {
+          registerRecording(sessionId!, payload.link).catch(() => undefined);
+        }
+      });
+      api.addListener("dominantSpeakerChanged", (payload) => {
+        const now = Date.now();
+        if (payload?.id === media.selfId) {
+          media.talkSince ||= now;
+        } else if (media.talkSince) {
+          media.talkMs += now - media.talkSince;
+          media.talkSince = 0;
+        }
+      });
+      api.addListener("videoMuteStatusChanged", (payload) => {
+        const now = Date.now();
+        if (payload?.muted && media.camSince) {
+          media.camMs += now - media.camSince;
+          media.camSince = 0;
+        } else if (payload?.muted === false) {
+          media.camSince ||= now;
+        }
+      });
+      api.addListener("videoConferenceLeft", () => flushMedia());
+    }
+
+    init().catch((err: Error) => setError(err.message));
 
     return () => {
       cancelled = true;
