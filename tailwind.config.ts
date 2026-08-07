@@ -79,7 +79,7 @@ export default {
         role: {
           admin: "#1F6FE0",
           subadmin: "#0E9C8C",
-          admission: "#8B5CF6",
+          admission: "#8356E7", // kept in sync with ROLE_META.admission.hex in src/lib/roles.ts
           teacher: "#F08A1D",
           parent: "#23A455",
           student: "#3B82F6",

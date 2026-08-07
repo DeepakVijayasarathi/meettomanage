@@ -36,7 +36,12 @@ export function ChartCard({ title, description, action, children, className, hei
             <span>Couldn&apos;t load this data.</span>
           </div>
         ) : (
-          children
+          // Charts render as bare SVG with no inherent text alternative — this at
+          // least names the graphic for a screen-reader user (not a full data-table
+          // equivalent, which would need a bespoke summary per chart).
+          <div className="h-full w-full" role="img" aria-label={description ? `${title}. ${description}` : `${title} chart`}>
+            {children}
+          </div>
         )}
       </CardContent>
     </Card>

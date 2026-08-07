@@ -182,7 +182,6 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, selfName]);
 
   if (!session) {

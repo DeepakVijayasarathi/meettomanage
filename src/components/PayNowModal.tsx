@@ -366,6 +366,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
                   <button
                     key={m.id}
                     onClick={() => setMethod(m.id)}
+                    aria-pressed={method === m.id}
                     className={cn(
                       "flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center text-xs font-semibold transition-colors",
                       method === m.id ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/50"

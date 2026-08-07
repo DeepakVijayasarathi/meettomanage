@@ -13,7 +13,11 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 32% 12%;
 
-    --primary: 191 79% 44%;
+    /* L lowered from 44% to 32% — the previous value only cleared 2.81:1 contrast
+       against white primary-foreground text (WCAG AA requires 4.5:1 for body-size
+       text); this is the app's default button variant, so it affected nearly every
+       primary CTA (Sign in, Pay Now, Save, Confirm, ...) across every portal. */
+    --primary: 191 79% 32%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 191 55% 94%;
@@ -36,7 +40,7 @@
 
     --border: 214 20% 89%;
     --input: 214 20% 89%;
-    --ring: 191 79% 44%;
+    --ring: 191 79% 32%;
 
     --radius: 0.85rem;
 

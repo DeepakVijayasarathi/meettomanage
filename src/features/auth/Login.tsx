@@ -107,7 +107,7 @@ export default function Login() {
               </span>
             ))}
           </div>
-          <p className="mt-6 text-xs font-medium text-brand-ink/45">© 2026 The Reader Nest. All rights reserved.</p>
+          <p className="mt-6 text-xs font-medium text-brand-ink/70">© 2026 The Reader Nest. All rights reserved.</p>
         </div>
       </div>
 
@@ -119,7 +119,7 @@ export default function Login() {
             <h1 className="font-display mt-2 text-2xl font-extrabold tracking-tight text-brand-ink sm:text-3xl lg:mt-0">
               Welcome back
             </h1>
-            <p className="mt-1.5 text-sm text-brand-ink/55">Sign in to your account and continue</p>
+            <p className="mt-1.5 text-sm text-brand-ink/70">Sign in to your account and continue</p>
           </div>
 
           <Button
@@ -134,13 +134,13 @@ export default function Login() {
 
           <div className="mt-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-brand-ink/10" />
-            <span className="text-xs font-medium text-brand-ink/40">or sign in with email</span>
+            <span className="text-xs font-medium text-brand-ink/70">or sign in with email</span>
             <div className="h-px flex-1 bg-brand-ink/10" />
           </div>
 
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/50">
+              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
                 Email
               </Label>
               <div className="relative">
@@ -148,6 +148,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="username"
                   placeholder="you@readernest.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -158,7 +159,7 @@ export default function Login() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wide text-brand-ink/50">
+              <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
                 Password
               </Label>
               <div className="relative">
@@ -166,6 +167,7 @@ export default function Login() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -185,7 +187,7 @@ export default function Login() {
 
             {!apiEnabled() && (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="portal" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/50">
+                <Label htmlFor="portal" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/70">
                   <Sparkles className="h-3 w-3 text-brand-amber" /> Preview as (demo)
                 </Label>
                 <Select value={role} onValueChange={(v) => setRole(v as Role)}>
@@ -207,7 +209,10 @@ export default function Login() {
             )}
 
             {error && (
-              <p className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2.5 text-sm font-medium text-destructive">
+              <p
+                role="alert"
+                className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2.5 text-sm font-medium text-destructive"
+              >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 {error}
               </p>
@@ -246,7 +251,7 @@ export default function Login() {
             </Button>
           </form>
 
-          <p className="mt-7 text-center text-sm text-brand-ink/55">
+          <p className="mt-7 text-center text-sm text-brand-ink/70">
             New here?{" "}
             <Link to="/" className="font-semibold text-brand-green hover:underline">
               Explore More
@@ -254,7 +259,7 @@ export default function Login() {
           </p>
 
           {!apiEnabled() && (
-            <p className="mt-6 text-center text-xs text-brand-ink/40">
+            <p className="mt-6 text-center text-xs text-brand-ink/70">
               This is a demo build with mock data — no credentials are verified.
             </p>
           )}

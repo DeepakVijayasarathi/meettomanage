@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -137,31 +137,34 @@ export default function TeacherLeave() {
     setReason("");
   }
 
-  const columns: DataTableColumn<LeaveRequest>[] = [
-    {
-      key: "date",
-      header: "Date",
-      accessor: (row) => row.date,
-      sortable: true,
-      render: (row) => <span className="text-sm">{formatDate(row.date, "long")}</span>,
-    },
-    { key: "session", header: "Session", render: (row) => <span className="text-sm text-foreground">{row.session}</span> },
-    { key: "reason", header: "Reason", render: (row) => <span className="text-sm text-muted-foreground">{row.reason}</span> },
-    {
-      key: "hours",
-      header: "Notice Given",
-      accessor: (row) => row.hoursBeforeSession,
-      sortable: true,
-      render: (row) => <span className="text-sm">{row.hoursBeforeSession}h before</span>,
-    },
-    {
-      key: "status",
-      header: "Status",
-      accessor: (row) => row.status,
-      sortable: true,
-      render: (row) => <LeaveStatusBadge status={row.status} />,
-    },
-  ];
+  const columns: DataTableColumn<LeaveRequest>[] = useMemo(
+    () => [
+      {
+        key: "date",
+        header: "Date",
+        accessor: (row) => row.date,
+        sortable: true,
+        render: (row) => <span className="text-sm">{formatDate(row.date, "long")}</span>,
+      },
+      { key: "session", header: "Session", render: (row) => <span className="text-sm text-foreground">{row.session}</span> },
+      { key: "reason", header: "Reason", render: (row) => <span className="text-sm text-muted-foreground">{row.reason}</span> },
+      {
+        key: "hours",
+        header: "Notice Given",
+        accessor: (row) => row.hoursBeforeSession,
+        sortable: true,
+        render: (row) => <span className="text-sm">{row.hoursBeforeSession}h before</span>,
+      },
+      {
+        key: "status",
+        header: "Status",
+        accessor: (row) => row.status,
+        sortable: true,
+        render: (row) => <LeaveStatusBadge status={row.status} />,
+      },
+    ],
+    []
+  );
 
   return (
     <div>

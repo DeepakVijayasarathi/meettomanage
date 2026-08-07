@@ -20,5 +20,11 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Typecheck & build
         run: npm run build
+
+      - name: Test
+        run: npm run test -- --run

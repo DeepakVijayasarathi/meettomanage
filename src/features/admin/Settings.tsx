@@ -1118,7 +1118,6 @@ export function IntegrationsManager() {
 
   useEffect(() => {
     void reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function startEdit(integration: ApiIntegration) {

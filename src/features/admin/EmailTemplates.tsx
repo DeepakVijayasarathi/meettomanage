@@ -108,7 +108,6 @@ export default function EmailTemplates() {
 
   useEffect(() => {
     void reload(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selected = templates.find((t) => t.id === selectedId) ?? null;

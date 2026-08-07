@@ -21,7 +21,7 @@ import {
 import { BATCHES } from "@/data/batches";
 import { COURSES, getCourseById } from "@/data/courses";
 import { getTeacherById, TEACHERS } from "@/data/users";
-import type { Batch, BatchStatus } from "@/types";
+import type { BatchStatus } from "@/types";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";

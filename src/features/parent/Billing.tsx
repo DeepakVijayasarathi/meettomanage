@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, CreditCard, Download, ReceiptText, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
@@ -35,10 +35,10 @@ export default function ParentBilling() {
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null);
   const [payOpen, setPayOpen] = useState(false);
 
-  function openPayModal(invoice: Invoice) {
+  const openPayModal = useCallback((invoice: Invoice) => {
     setPayInvoice(invoice);
     setPayOpen(true);
-  }
+  }, []);
 
   // The suspended child's name for the banner: real children in API mode, mock in demo.
   const suspendedChild = apiEnabled()
@@ -54,7 +54,8 @@ export default function ParentBilling() {
   const totalPaid = paid.reduce((sum, i) => sum + i.amount, 0);
   const nextDue = [...outstanding].sort((a, b) => +new Date(a.dueOn) - +new Date(b.dueOn))[0];
 
-  const columns: DataTableColumn<Invoice>[] = [
+  const columns: DataTableColumn<Invoice>[] = useMemo(
+    () => [
     {
       key: "id",
       header: "Invoice",
@@ -119,7 +120,9 @@ export default function ParentBilling() {
         </div>
       ),
     },
-  ];
+    ],
+    [openPayModal]
+  );
 
   return (
     <div>

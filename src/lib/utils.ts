@@ -83,3 +83,30 @@ export function hexToHslTriple(hex: string): string {
 
   return `${h.toFixed(1)} ${(s * 100).toFixed(1)}% ${(l * 100).toFixed(1)}%`;
 }
+
+function relativeLuminance(hex: string): number {
+  const clean = hex.replace("#", "");
+  const channels = [0, 2, 4].map((i) => parseInt(clean.substring(i, i + 2), 16) / 255);
+  const [r, g, b] = channels.map((c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrastRatio(hexA: string, hexB: string): number {
+  const [l1, l2] = [relativeLuminance(hexA), relativeLuminance(hexB)];
+  const [lighter, darker] = l1 > l2 ? [l1, l2] : [l2, l1];
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
+ * Buttons/badges tinted with a per-role accent color (see AppShell's accentStyle)
+ * hardcoded white text underneath — fine for some roles (e.g. admin blue) but as low
+ * as 2.51:1 for others (e.g. teacher orange), well under WCAG AA's 4.5:1 minimum for
+ * button-label text. Picks whichever of white or the app's dark navy ink actually
+ * contrasts better against the given accent color, instead of assuming white always works.
+ */
+export function pickAccentForegroundHsl(hex: string): string {
+  const white = "#FFFFFF";
+  const navy = "#161B33";
+  const chosen = contrastRatio(hex, white) >= contrastRatio(hex, navy) ? white : navy;
+  return hexToHslTriple(chosen);
+}

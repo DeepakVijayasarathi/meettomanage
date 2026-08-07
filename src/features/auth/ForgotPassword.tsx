@@ -41,7 +41,7 @@ export default function ForgotPassword() {
                 <Label htmlFor="email">Email address</Label>
                 <div className="relative">
                   <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="email" type="email" placeholder="you@readernest.com" className="pl-9" required />
+                  <Input id="email" type="email" autoComplete="username" placeholder="you@readernest.com" className="pl-9" required />
                 </div>
               </div>
               <Button type="submit" className="w-full">
