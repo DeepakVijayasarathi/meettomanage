@@ -17,7 +17,6 @@ import {
   Plug,
   ClipboardCheck,
   Settings,
-  Video,
   ClipboardList,
   CalendarOff,
   Banknote,
@@ -100,12 +99,14 @@ export const TEACHER_NAV: NavSection[] = [
   {
     title: "Teaching",
     items: [
+      // "Live Classroom" used to be a separate nav item here, hardcoding a demo-mode-only
+      // mock session id ("s-1") that always 404'd in real API mode. No fixed session id can
+      // ever be right for a permanent sidebar link — "Start Class" on My Classes is the one
+      // entry point that actually knows which session/room to join (see MyClasses.tsx's
+      // startClass()) — so rather than point a second item at this same screen (which
+      // produced a duplicate-key warning and a confusing "two links, one destination" UI),
+      // My Classes is the only entry point now.
       { label: "My Classes", to: "/teacher/classes", icon: CalendarClock },
-      // No fixed session id can ever be right here — "Start Class" on My Classes is the
-      // one entry point that knows which session/room to join (see MyClasses.tsx's
-      // startClass()); this used to hardcode a demo-mode-only mock id ("s-1") that always
-      // 404'd in API mode ("This class link can't be opened directly").
-      { label: "Live Classroom", to: "/teacher/classes", icon: Video },
       { label: "Attendance & Records", to: "/teacher/attendance", icon: ClipboardList },
       { label: "Demo Feedback", to: "/teacher/demo-feedback", icon: ClipboardCheck, badge: "1" },
     ],
