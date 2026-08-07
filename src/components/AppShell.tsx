@@ -104,7 +104,16 @@ export function AppShell({ role, children }: AppShellProps) {
         {/* pb-24 (not py-6's default) reserves clearance below the last row of content so the
             fixed FloatingNotes button (bottom-6 right-6, 48px) never sits on top of — and steals
             clicks from — bottom-right page chrome like DataTable's pagination controls. */}
-        <main id="main-content" className="app-content-glow min-w-0 flex-1 overflow-x-hidden px-4 pb-24 pt-6 sm:px-6 lg:px-8">
+        {/* tabIndex={-1}: without it the browser scrolls the skip link's target into view
+            but doesn't move keyboard focus there (falls back to <body>) — confirmed by
+            actually pressing Tab then Enter on the skip link and checking
+            document.activeElement. -1 keeps it out of the normal tab order (only reachable
+            via the skip link itself) while still being a valid focus target. */}
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="app-content-glow min-w-0 flex-1 overflow-x-hidden px-4 pb-24 pt-6 sm:px-6 lg:px-8 focus:outline-none"
+        >
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
