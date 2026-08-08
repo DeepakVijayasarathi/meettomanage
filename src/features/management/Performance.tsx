@@ -169,8 +169,8 @@ export default function ManagementPerformance() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-foreground">{formatCurrency(r.payout.finalAmount)}</span>
-              <Badge variant={r.payout.status === "paid" ? "success" : "warning"}>
-                {r.payout.status === "paid" ? "Paid" : "Calculated"}
+              <Badge variant={r.payout.status === "paid" ? "success" : r.payout.status === "finalized" ? "default" : "warning"}>
+                {r.payout.status === "paid" ? "Paid" : r.payout.status === "finalized" ? "Finalized" : "Pending"}
               </Badge>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">{r.payout.month}</p>

@@ -256,8 +256,8 @@ export default function TeacherDashboard() {
                     <p className="text-2xl font-bold tracking-tight text-foreground">{formatCurrency(latestPayout.finalAmount)}</p>
                     <p className="text-xs text-muted-foreground">Final amount</p>
                   </div>
-                  <Badge variant={latestPayout.status === "paid" ? "success" : "warning"}>
-                    {latestPayout.status === "paid" ? "Paid" : "Calculated"}
+                  <Badge variant={latestPayout.status === "paid" ? "success" : latestPayout.status === "finalized" ? "default" : "warning"}>
+                    {latestPayout.status === "paid" ? "Paid" : latestPayout.status === "finalized" ? "Finalized" : "Pending"}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
