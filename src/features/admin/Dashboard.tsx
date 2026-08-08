@@ -307,7 +307,12 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Teacher Utilization" description="Sessions delivered vs. capacity, by teacher">
+        <ChartCard
+          title="Teacher Utilization"
+          description="Sessions delivered vs. capacity, by teacher"
+          empty={teacherUtilization.length === 0}
+          emptyMessage={usingApi ? "Per-teacher utilization isn't available yet." : "No data yet."}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={teacherUtilization} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -323,7 +328,12 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Attendance Trend" description="Weekly attendance rate, this month">
+        <ChartCard
+          title="Attendance Trend"
+          description="Weekly attendance rate, this month"
+          empty={attendanceTrend.length === 0}
+          emptyMessage={usingApi ? "Weekly attendance trend isn't available yet." : "No data yet."}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={attendanceTrend} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -335,7 +345,12 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Batch Occupancy by Course" description="Fill rate across active batches">
+        <ChartCard
+          title="Batch Occupancy by Course"
+          description="Fill rate across active batches"
+          empty={batchOccupancyByCourse.length === 0}
+          emptyMessage={usingApi ? "Occupancy by course isn't available yet." : "No data yet."}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={batchOccupancyByCourse} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
