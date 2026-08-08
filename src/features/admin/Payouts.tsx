@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Download, IndianRupee, Loader2, Settings2, UsersRound, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -101,8 +102,10 @@ export default function AdminPayouts() {
     );
   }
 
+  const currentMonthLabel = format(new Date(), "MMMM yyyy");
+
   const totals = useMemo(() => {
-    const thisMonth = payouts.filter((p) => p.month === "July 2026");
+    const thisMonth = payouts.filter((p) => p.month === currentMonthLabel);
     const paidCount = payouts.filter((p) => p.status === "paid").length;
     const pendingCount = payouts.filter((p) => p.status === "pending").length;
     return {
@@ -110,7 +113,7 @@ export default function AdminPayouts() {
       teachersPaid: paidCount,
       pendingCalculations: pendingCount,
     };
-  }, [payouts]);
+  }, [payouts, currentMonthLabel]);
 
   const columns: DataTableColumn<TeacherPayout>[] = useMemo(
     () => [
@@ -278,7 +281,7 @@ export default function AdminPayouts() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Total Payout — July 2026" value={formatCurrency(totals.totalThisMonth)} icon={IndianRupee} tone="primary" />
+        <KpiCard label={`Total Payout — ${currentMonthLabel}`} value={formatCurrency(totals.totalThisMonth)} icon={IndianRupee} tone="primary" />
         <KpiCard label="Teachers Paid" value={formatNumber(totals.teachersPaid)} icon={UsersRound} tone="success" />
         <KpiCard label="Pending Calculations" value={formatNumber(totals.pendingCalculations)} icon={Wallet} tone="warning" />
       </div>
