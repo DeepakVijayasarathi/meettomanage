@@ -113,15 +113,24 @@ export default function AdminDashboard() {
         })),
         courseRevenue: s.revenueByCourse.map((c) => ({ course: c.name, revenue: c.revenue })),
         enrollmentFunnel: s.enrollmentFunnel,
+        attendanceTrend: s.weeklyAttendanceTrend,
+        batchOccupancyByCourse: s.batchOccupancyByCourse,
       })),
-    { kpis: ADMIN_KPIS, revenueTrend: REVENUE_TREND, departmentRevenue: DEPARTMENT_REVENUE, courseRevenue: COURSE_REVENUE, enrollmentFunnel: ENROLLMENT_FUNNEL },
-    { kpis: ZERO_KPIS, revenueTrend: [], departmentRevenue: [], courseRevenue: [], enrollmentFunnel: [] }
+    {
+      kpis: ADMIN_KPIS,
+      revenueTrend: REVENUE_TREND,
+      departmentRevenue: DEPARTMENT_REVENUE,
+      courseRevenue: COURSE_REVENUE,
+      enrollmentFunnel: ENROLLMENT_FUNNEL,
+      attendanceTrend: ATTENDANCE_TREND,
+      batchOccupancyByCourse: BATCH_OCCUPANCY_BY_COURSE,
+    },
+    { kpis: ZERO_KPIS, revenueTrend: [], departmentRevenue: [], courseRevenue: [], enrollmentFunnel: [], attendanceTrend: [], batchOccupancyByCourse: [] }
   );
-  const { kpis, revenueTrend, departmentRevenue, courseRevenue, enrollmentFunnel } = dashboard;
-  // No per-teacher utilization / attendance-trend / occupancy-by-course endpoints yet — empty charts in API mode
+  const { kpis, revenueTrend, departmentRevenue, courseRevenue, enrollmentFunnel, attendanceTrend, batchOccupancyByCourse } = dashboard;
+  // No per-teacher breakdown endpoint yet (only the aggregate sessions-per-teacher
+  // KPI above) — empty chart in API mode.
   const teacherUtilization = usingApi ? [] : TEACHER_UTILIZATION;
-  const attendanceTrend = usingApi ? [] : ATTENDANCE_TREND;
-  const batchOccupancyByCourse = usingApi ? [] : BATCH_OCCUPANCY_BY_COURSE;
 
   return (
     <div>
@@ -332,7 +341,6 @@ export default function AdminDashboard() {
           title="Attendance Trend"
           description="Weekly attendance rate, this month"
           empty={attendanceTrend.length === 0}
-          emptyMessage={usingApi ? "Weekly attendance trend isn't available yet." : "No data yet."}
         >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={attendanceTrend} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
@@ -349,7 +357,6 @@ export default function AdminDashboard() {
           title="Batch Occupancy by Course"
           description="Fill rate across active batches"
           empty={batchOccupancyByCourse.length === 0}
-          emptyMessage={usingApi ? "Occupancy by course isn't available yet." : "No data yet."}
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={batchOccupancyByCourse} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
