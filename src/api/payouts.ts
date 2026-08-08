@@ -70,7 +70,11 @@ export function toFrontendPayout(payout: ApiPayout): TeacherPayout {
     deductions,
     waitingAmountAdded: waiting,
     finalAmount: payout.totalAmount,
-    status: payout.status === "Paid" ? "paid" : "calculated",
+    // Was collapsing Pending and Finalized into the same "calculated" label — the one
+    // distinction that actually matters for the finalize/mark-paid workflow below,
+    // since a Pending payout can still change (more sessions may complete this month)
+    // while a Finalized one is locked and just waiting to be paid.
+    status: payout.status === "Paid" ? "paid" : payout.status === "Finalized" ? "finalized" : "pending",
   };
 }
 

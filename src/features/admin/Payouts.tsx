@@ -1,17 +1,18 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Download, IndianRupee, Loader2, Settings2, UsersRound, Wallet } from "lucide-react";
+import { CheckCircle2, Download, IndianRupee, Loader2, Settings2, UsersRound, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PAYOUTS } from "@/data/payouts";
 import { getTeacherById } from "@/data/users";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listPayouts, toFrontendPayout } from "@/api/payouts";
+import { finalizePayout, listPayouts, markPayoutPaid, toFrontendPayout } from "@/api/payouts";
 import { downloadReportCsv } from "@/api/reports";
 import type { TeacherPayout } from "@/types";
 import { formatCurrency, formatNumber, getInitials } from "@/lib/utils";
@@ -40,6 +41,36 @@ export default function AdminPayouts() {
   );
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  // Finalize/mark-paid: the API client (finalizePayout/markPayoutPaid) and backend
+  // (PayoutService.FinalizeAsync/MarkPaidAsync, already tested) existed with no UI
+  // anywhere calling them — this table was purely read-only, so a payout could never
+  // actually be finalized or paid from the app itself.
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<{ payout: TeacherPayout; action: "finalize" | "mark-paid" } | null>(null);
+
+  async function runPayoutAction() {
+    if (!confirmTarget) return;
+    const { payout, action } = confirmTarget;
+    if (!apiEnabled()) {
+      setActionError(`Demo mode — no payout actually ${action === "finalize" ? "finalized" : "marked paid"}.`);
+      setConfirmTarget(null);
+      return;
+    }
+    setBusyId(payout.id);
+    setActionError(null);
+    try {
+      if (action === "finalize") await finalizePayout(payout.id);
+      else await markPayoutPaid(payout.id);
+      await reloadPayouts();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : `Could not ${action === "finalize" ? "finalize" : "mark paid"} this payout.`);
+    } finally {
+      setBusyId(null);
+      setConfirmTarget(null);
+    }
+  }
 
   async function handleExport() {
     setExportError(null);
@@ -73,7 +104,7 @@ export default function AdminPayouts() {
   const totals = useMemo(() => {
     const thisMonth = payouts.filter((p) => p.month === "July 2026");
     const paidCount = payouts.filter((p) => p.status === "paid").length;
-    const pendingCount = payouts.filter((p) => p.status === "calculated").length;
+    const pendingCount = payouts.filter((p) => p.status === "pending").length;
     return {
       totalThisMonth: thisMonth.reduce((sum, p) => sum + p.finalAmount, 0),
       teachersPaid: paidCount,
@@ -155,13 +186,56 @@ export default function AdminPayouts() {
         sortable: true,
         accessor: (row) => row.status,
         render: (row) => (
-          <Badge variant={row.status === "paid" ? "success" : "warning"} className="capitalize">
+          <Badge
+            variant={row.status === "paid" ? "success" : row.status === "finalized" ? "default" : "warning"}
+            className="capitalize"
+          >
             {row.status}
           </Badge>
         ),
       },
+      {
+        key: "actions",
+        header: "",
+        render: (row) => {
+          if (row.status === "pending") {
+            return (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busyId === row.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setConfirmTarget({ payout: row, action: "finalize" });
+                }}
+              >
+                {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
+              </Button>
+            );
+          }
+          if (row.status === "finalized") {
+            return (
+              <Button
+                size="sm"
+                disabled={busyId === row.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setConfirmTarget({ payout: row, action: "mark-paid" });
+                }}
+              >
+                {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Mark Paid"}
+              </Button>
+            );
+          }
+          return (
+            <span className="inline-flex items-center gap-1 text-xs text-success">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Paid
+            </span>
+          );
+        },
+      },
     ],
-    []
+    [busyId]
   );
 
   return (
@@ -199,6 +273,10 @@ export default function AdminPayouts() {
         <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{exportError}</p>
       )}
 
+      {actionError && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{actionError}</p>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard label="Total Payout — July 2026" value={formatCurrency(totals.totalThisMonth)} icon={IndianRupee} tone="primary" />
         <KpiCard label="Teachers Paid" value={formatNumber(totals.teachersPaid)} icon={UsersRound} tone="success" />
@@ -213,6 +291,21 @@ export default function AdminPayouts() {
           searchPlaceholder="Search by teacher name…"
         />
       </div>
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        onOpenChange={(open) => !open && setConfirmTarget(null)}
+        title={confirmTarget?.action === "finalize" ? "Finalize this payout?" : "Mark this payout as paid?"}
+        description={
+          confirmTarget?.action === "finalize"
+            ? `Locks ${confirmTarget.payout.teacherName}'s ${confirmTarget.payout.month} amount (${formatCurrency(confirmTarget.payout.finalAmount)}) — no more sessions will be added to it.`
+            : confirmTarget
+              ? `Confirms ${confirmTarget.payout.teacherName}'s ${confirmTarget.payout.month} payout (${formatCurrency(confirmTarget.payout.finalAmount)}) was paid and emails their salary slip.`
+              : undefined
+        }
+        confirmLabel={confirmTarget?.action === "finalize" ? "Finalize" : "Mark Paid"}
+        onConfirm={runPayoutAction}
+      />
     </div>
   );
 }

@@ -79,8 +79,8 @@ export default function TeacherPayout() {
       accessor: (row) => row.status,
       sortable: true,
       render: (row) => (
-        <Badge variant={row.status === "paid" ? "success" : "warning"}>
-          {row.status === "paid" ? "Paid" : "Calculated"}
+        <Badge variant={row.status === "paid" ? "success" : row.status === "finalized" ? "default" : "warning"}>
+          {row.status === "paid" ? "Paid" : row.status === "finalized" ? "Finalized" : "Pending"}
         </Badge>
       ),
     },
