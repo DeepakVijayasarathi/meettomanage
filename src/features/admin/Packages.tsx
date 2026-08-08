@@ -223,6 +223,10 @@ export default function AdminPackages() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   async function handleRenew(sub: ApiSubscription) {
+    if (!live) {
+      setActionError("Demo mode — no subscription actually renewed.");
+      return;
+    }
     setActionError(null);
     try {
       await renewSubscription(sub.id);
@@ -233,6 +237,10 @@ export default function AdminPackages() {
   }
 
   async function handleCancel(sub: ApiSubscription) {
+    if (!live) {
+      setActionError("Demo mode — no subscription actually cancelled.");
+      return;
+    }
     setActionError(null);
     try {
       await cancelSubscription(sub.id);
