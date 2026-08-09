@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, GraduationCap, Loader2, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, BookOpen, CheckCircle2, GraduationCap, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ const EMPTY_FORM = { parentName: "", parentEmail: "", parentPhone: "", childName
 export default function Store() {
   const brand = useBrand();
   const live = apiEnabled();
-  const { data: plans, loading } = useApiData<ApiStorePlan[]>(() => listStorePlans(), DEMO_PLANS);
+  const { data: plans, loading, error: plansError, reload: reloadPlans } = useApiData<ApiStorePlan[]>(() => listStorePlans(), DEMO_PLANS);
 
   const [selectedPlan, setSelectedPlan] = useState<ApiStorePlan | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -114,6 +114,16 @@ export default function Store() {
         {loading ? (
           <div className="flex justify-center py-16 text-brand-ink/50">
             <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : plansError ? (
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+            </span>
+            <p className="text-sm font-medium text-brand-ink">Couldn't load courses right now.</p>
+            <Button variant="outline" onClick={() => reloadPlans()}>
+              Try again
+            </Button>
           </div>
         ) : plans.length === 0 ? (
           <EmptyState icon={BookOpen} title="No courses open for enrollment right now" description="Check back soon, or sign in if you already have an account." />

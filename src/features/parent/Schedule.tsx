@@ -39,7 +39,7 @@ export default function ParentSchedule() {
       : undefined;
   const [selected, setSelected] = useState<ClassSession | null>(null);
 
-  const { data: apiSessions } = useApiData<ClassSession[]>(
+  const { data: apiSessions, error: sessionsError, reload: reloadSessions } = useApiData<ClassSession[]>(
     () => {
       const from = new Date(Date.now() - 60 * 86400_000).toISOString();
       const to = new Date(Date.now() + 60 * 86400_000).toISOString();
@@ -87,6 +87,15 @@ export default function ParentSchedule() {
             </p>
           </div>
         </Card>
+      )}
+
+      {usingApi && sessionsError && (
+        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+          Could not load the schedule ({sessionsError}).{" "}
+          <button type="button" className="underline" onClick={() => reloadSessions()}>
+            Retry
+          </button>
+        </p>
       )}
 
       {!child ? (

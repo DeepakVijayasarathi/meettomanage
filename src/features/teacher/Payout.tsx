@@ -7,6 +7,7 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getPayoutsForTeacher } from "@/data/payouts";
+import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
 import { useSession } from "@/state/session";
@@ -21,7 +22,7 @@ function parseMonth(month: string) {
 
 export default function TeacherPayout() {
   const { userName } = useSession();
-  const { data: fetchedPayouts } = useApiData(
+  const { data: fetchedPayouts, error: payoutsError, reload: reloadPayouts } = useApiData(
     () => listMyPayouts().then((items) => items.map(toFrontendPayout)),
     getPayoutsForTeacher(TEACHER_ID)
   );
@@ -94,8 +95,19 @@ export default function TeacherPayout() {
         eyebrow="My Account"
       />
 
+      {apiEnabled() && payoutsError && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+          Could not load your payout history ({payoutsError}).{" "}
+          <button type="button" className="underline" onClick={() => reloadPayouts()}>
+            Retry
+          </button>
+        </p>
+      )}
+
       {payouts.length === 0 ? (
-        <EmptyState icon={Wallet} title="No payout records yet" description="Your payout history will appear here once your first month is processed." />
+        payoutsError ? null : (
+          <EmptyState icon={Wallet} title="No payout records yet" description="Your payout history will appear here once your first month is processed." />
+        )
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -45,7 +45,7 @@ export default function ParentResources() {
   const [preview, setPreview] = useState<Resource | null>(null);
 
   // Admin-granted resources; the endpoint itself blocks access while fee-suspended
-  const { data: apiResources } = useApiData<Resource[]>(
+  const { data: apiResources, error: resourcesError, reload: reloadResources } = useApiData<Resource[]>(
     () => getParentResources().then((items) => items.map(toFrontendResource)),
     []
   );
@@ -99,6 +99,15 @@ export default function ParentResources() {
             </p>
           </div>
         </Card>
+      )}
+
+      {usingApi && resourcesError && (
+        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+          Could not load resources ({resourcesError}).{" "}
+          <button type="button" className="underline" onClick={() => reloadResources()}>
+            Retry
+          </button>
+        </p>
       )}
 
       {!child ? (
