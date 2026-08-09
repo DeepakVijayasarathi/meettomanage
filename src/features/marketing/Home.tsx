@@ -88,6 +88,9 @@ export default function MarketingHome() {
           <Logo />
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" className="hidden sm:inline-flex">
+              <Link to="/store">Browse Courses</Link>
+            </Button>
+            <Button asChild variant="ghost" className="hidden sm:inline-flex">
               <Link to="/portal-select">Explore Portals</Link>
             </Button>
             <Button asChild className="!bg-brand-green !text-white hover:!bg-brand-greenDark">

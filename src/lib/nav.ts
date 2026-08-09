@@ -33,6 +33,7 @@ import {
   FileBarChart,
   FileText,
   ScrollText,
+  ShoppingBag,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -67,6 +68,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Users", to: "/admin/users", icon: Users },
       { label: "Roles & Permissions", to: "/admin/permissions", icon: ShieldCheck },
       { label: "Enrollment Review", to: "/admin/enrollments", icon: ClipboardCheck },
+      { label: "Store Inquiries", to: "/admin/store-inquiries", icon: ShoppingBag },
     ],
   },
   {

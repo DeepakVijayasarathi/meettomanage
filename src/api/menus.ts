@@ -30,6 +30,7 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
   TrendingUp,
   UserPlus,
@@ -104,6 +105,7 @@ export const MENU_ICONS: Record<string, LucideIcon> = {
   FileBarChart,
   FileText,
   ScrollText,
+  ShoppingBag,
   Sparkles,
 };
 
