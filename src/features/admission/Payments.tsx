@@ -26,9 +26,16 @@ interface PaymentRow {
   courseName: string;
   department: "Phonics" | "Maths";
   amount: number;
+  /** Settled so far; only known in API mode — the demo mock has no partial-payment figure. */
+  amountPaid?: number;
   status: RowStatus;
   issuedOn: string;
   dueOn: string;
+}
+
+/** Balance due — falls back to the full amount when amountPaid isn't known (demo mode). */
+function balanceOf(row: PaymentRow): number {
+  return row.amountPaid !== undefined ? row.amount - row.amountPaid : row.amount;
 }
 
 const STATUS_OPTIONS: { value: RowStatus | "all"; label: string }[] = [
@@ -60,6 +67,7 @@ function fromInvoice(invoice: Invoice): PaymentRow {
     courseName: invoice.courseName,
     department: invoice.department,
     amount: invoice.amount,
+    amountPaid: invoice.amountPaid,
     status: invoice.status,
     issuedOn: invoice.issuedOn,
     dueOn: invoice.dueOn,
@@ -83,7 +91,9 @@ export default function AdmissionPayments() {
 
   const totals = useMemo(() => {
     const paid = rows.filter((r) => r.status === "paid").reduce((s, r) => s + r.amount, 0);
-    const outstanding = rows.filter((r) => r.status !== "paid").reduce((s, r) => s + r.amount, 0);
+    // Balance due, not the full invoice total — a partially-paid row previously counted
+    // its whole amount as outstanding, overstating real receivables.
+    const outstanding = rows.filter((r) => r.status !== "paid").reduce((s, r) => s + balanceOf(r), 0);
     const partial = rows.filter((r) => r.status === "partial").length;
     return { paid, outstanding, partial, total: rows.length };
   }, [rows]);
@@ -137,6 +147,21 @@ export default function AdmissionPayments() {
         sortable: true,
         accessor: (row) => row.amount,
         render: (row) => <span className="text-sm font-semibold text-foreground">{formatCurrency(row.amount)}</span>,
+      },
+      {
+        key: "balance",
+        header: "Paid / Balance",
+        sortable: true,
+        accessor: (row) => balanceOf(row),
+        render: (row) =>
+          row.amountPaid === undefined ? (
+            <span className="text-xs text-muted-foreground">—</span>
+          ) : (
+            <div className="text-xs">
+              <p className="text-muted-foreground">Paid {formatCurrency(row.amountPaid)}</p>
+              <p className="font-semibold text-foreground">Balance {formatCurrency(balanceOf(row))}</p>
+            </div>
+          ),
       },
       {
         key: "status",

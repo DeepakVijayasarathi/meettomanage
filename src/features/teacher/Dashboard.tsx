@@ -19,6 +19,7 @@ import { SessionStatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { getBatchById, BATCHES } from "@/data/batches";
 import { getCourseById } from "@/data/courses";
@@ -33,6 +34,7 @@ import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
 import { listMyDemoBookings, toAwaitingFeedback } from "@/api/demoBookings";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { isJoinable, joinHint } from "@/features/parent/utils";
 import type { ClassSession, DemoFeedback, SessionStatus, TeacherPayout } from "@/types";
 
 const TEACHER_ID = "t-1";
@@ -198,7 +200,7 @@ export default function TeacherDashboard() {
               <div className="flex flex-col gap-3">
                 {todaysSessions.map((session, i) => {
                   const hex = CHART_PALETTE[i % CHART_PALETTE.length];
-                  const joinable = session.status === "scheduled" || session.status === "demo";
+                  const joinable = isJoinable(session);
                   return (
                     <div
                       key={session.id}
@@ -230,9 +232,16 @@ export default function TeacherDashboard() {
                             </Link>
                           </Button>
                         ) : (
-                          <Button size="sm" variant="outline" disabled>
-                            Not joinable
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button size="sm" variant="outline" disabled>
+                                  Not joinable
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{joinHint(session)}</TooltipContent>
+                          </Tooltip>
                         )}
                       </div>
                     </div>

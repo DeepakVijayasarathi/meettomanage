@@ -13,11 +13,11 @@ import {
   MessageCircle,
   Palette,
   Pencil,
-  Plug,
   Plus,
   Puzzle,
   Save,
   Settings2,
+  ShieldAlert,
   StickyNote,
   Trash2,
   Video,
@@ -44,6 +44,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/EmptyState";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { cn, formatCurrency, hexToHslTriple } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
@@ -130,6 +131,16 @@ const EMPTY_MENU_FORM: SaveMenuItemRequest = {
   isActive: true,
 };
 
+/**
+ * Menus, Payroll and Integrations each manage and persist their own state as you
+ * edit — the header "Save Changes" button doesn't touch them. It used to appear
+ * on every tab regardless, so saving a menu label (already auto-saved) and then
+ * clicking the header button implied a save that had nothing to do with what
+ * was just changed. Gating it to only the tabs it actually affects keeps there
+ * from ever being two different, contradictory ideas of "saved" on screen.
+ */
+const HEADER_SAVE_TABS = new Set(["general", "branding", "notifications", "widgets"]);
+
 export default function AdminSettings() {
   const [values, setValues] = useState<Record<string, string>>(defaultValues);
   const [saved, setSaved] = useState(false);
@@ -209,17 +220,21 @@ export default function AdminSettings() {
         title="Settings & Branding"
         description="White-label branding, domain, notification preferences, sidebar menus, teacher payout rates and integrations — stored in the database."
         actions={
-          <Button onClick={saveAll} disabled={saving}>
-            {saved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-            {saving ? "Saving…" : saved ? "Saved!" : "Save Changes"}
-          </Button>
+          HEADER_SAVE_TABS.has(activeTab) ? (
+            <Button onClick={saveAll} disabled={saving}>
+              {saved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+              {saving ? "Saving…" : saved ? "Saved!" : "Save Changes"}
+            </Button>
+          ) : (
+            <p className="text-xs text-muted-foreground">This tab saves each change automatically.</p>
+          )
         }
       />
 
       {error && <p className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>}
 
       <Tabs value={activeTab} onValueChange={changeTab}>
-        <TabsList>
+        <TabsList className="h-auto flex-wrap justify-start gap-y-1.5">
           <TabsTrigger value="general" className="gap-1.5">
             <Building2 className="h-4 w-4" /> General
           </TabsTrigger>
@@ -229,19 +244,24 @@ export default function AdminSettings() {
           <TabsTrigger value="notifications" className="gap-1.5">
             <Bell className="h-4 w-4" /> Notifications
           </TabsTrigger>
+          <TabsTrigger value="widgets" className="gap-1.5">
+            <StickyNote className="h-4 w-4" /> Widgets
+          </TabsTrigger>
+          <span className="mx-1 h-6 w-px shrink-0 self-center bg-border" aria-hidden />
           <TabsTrigger value="menus" className="gap-1.5">
             <ListTree className="h-4 w-4" /> Menus
           </TabsTrigger>
           <TabsTrigger value="payroll" className="gap-1.5">
-            <Wallet className="h-4 w-4" /> Payroll
+            <ShieldAlert className="h-3.5 w-3.5 text-warning" /> Payroll
           </TabsTrigger>
           <TabsTrigger value="integrations" className="gap-1.5">
-            <Plug className="h-4 w-4" /> Integrations
-          </TabsTrigger>
-          <TabsTrigger value="widgets" className="gap-1.5">
-            <StickyNote className="h-4 w-4" /> Widgets
+            <ShieldAlert className="h-3.5 w-3.5 text-warning" /> Integrations
           </TabsTrigger>
         </TabsList>
+        <p className="mb-4 mt-2 text-xs text-muted-foreground">
+          <ShieldAlert className="mr-1 inline h-3 w-3 align-[-1px] text-warning" />
+          Payroll and Integrations hold live payout rates and payment-gateway credentials — double-check before changing them.
+        </p>
 
         <TabsContent value="general">
           <Card>
@@ -478,6 +498,7 @@ function MenuManager() {
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<SaveMenuItemRequest | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ApiMenuItem | null>(null);
 
   const iconNames = useMemo(() => Object.keys(MENU_ICONS).sort(), []);
 
@@ -711,7 +732,7 @@ function MenuManager() {
                         <Button variant="ghost" size="sm" onClick={() => startEdit(item)} aria-label={`Edit ${item.label}`}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => remove(item)} disabled={busy} aria-label={`Delete ${item.label}`}>
+                        <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(item)} disabled={busy} aria-label={`Delete ${item.label}`}>
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       </div>
@@ -733,6 +754,15 @@ function MenuManager() {
           Changes take effect the next time a portal sidebar loads. The frontend falls back to its built-in navigation if a portal has no items.
         </p>
       </CardContent>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title={`Delete "${deleteTarget?.label}"?`}
+        description="This removes it from every sidebar it appears on immediately. If nothing else covers that path, it becomes unreachable from navigation until re-added."
+        confirmLabel="Delete Item"
+        destructive
+        onConfirm={() => (deleteTarget ? remove(deleteTarget) : undefined)}
+      />
     </Card>
   );
 }
@@ -1103,6 +1133,7 @@ export function IntegrationsManager() {
   const [form, setForm] = useState<SaveIntegrationRequest | null>(null);
   const [configRows, setConfigRows] = useState<ConfigRow[]>([]);
   const [revealedRows, setRevealedRows] = useState<Set<number>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<ApiIntegration | null>(null);
 
   async function reload() {
     if (!apiEnabled()) return;
@@ -1406,7 +1437,7 @@ export function IntegrationsManager() {
                           <Pencil className="h-3.5 w-3.5" /> Configure
                         </Button>
                         {!integration.isSystem && (
-                          <Button variant="ghost" size="sm" onClick={() => remove(integration)} disabled={busy}>
+                          <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(integration)} disabled={busy}>
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
                         )}
@@ -1419,6 +1450,19 @@ export function IntegrationsManager() {
           );
         })}
       </CardContent>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title={`Delete "${deleteTarget?.name}"?`}
+        description={
+          deleteTarget?.isEnabled
+            ? "This integration is currently enabled — anything using it (payments, notifications, meeting links) stops working immediately. This can't be undone."
+            : "This can't be undone."
+        }
+        confirmLabel="Delete Integration"
+        destructive
+        onConfirm={() => (deleteTarget ? remove(deleteTarget) : undefined)}
+      />
     </Card>
   );
 }

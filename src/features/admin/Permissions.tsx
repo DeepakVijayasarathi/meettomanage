@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Plus, RotateCcw, Save, ShieldCheck, Trash2, UserCog, Wand2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -110,6 +111,12 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [presets, setPresets] = useState<ApiRole[]>([]);
+  // The last matrix actually confirmed on the server for each sub-admin — set on load
+  // and after a successful save. Reset restores *this*, never the demo generator below,
+  // once the API is live: it used to fall through to defaultPermissions() unconditionally,
+  // which meant "Reset" could silently replace a real relationship manager's access grants
+  // with randomly-generated demo values if a real admin ever clicked it by mistake.
+  const [serverMatrices, setServerMatrices] = useState<Record<string, ApiPermission[]>>({});
 
   // Re-anchor once the real sub-admin list arrives (fallback mock ids like
   // "sa-1" won't be present in it), and seed a fresh matrix for anyone new.
@@ -135,7 +142,11 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
     let cancelled = false;
     getPermissions(activeId)
       .then((permissions) => {
-        if (!cancelled) setMatrices((prev) => ({ ...prev, [activeId]: expandPermissions(permissions) }));
+        if (!cancelled) {
+          const expanded = expandPermissions(permissions);
+          setMatrices((prev) => ({ ...prev, [activeId]: expanded }));
+          setServerMatrices((prev) => ({ ...prev, [activeId]: expanded }));
+        }
         setLoadError(null);
       })
       .catch((err: unknown) => {
@@ -189,6 +200,15 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
   }
 
   function resetProfile() {
+    if (apiEnabled()) {
+      // Restore the last-confirmed server state, undoing unsaved edits — never
+      // fabricate new grants once real permissions are in play. If it hasn't
+      // loaded yet (e.g. the initial fetch is still in flight or failed), do
+      // nothing rather than guess.
+      const server = serverMatrices[activeId];
+      if (server) setMatrices((prev) => ({ ...prev, [activeId]: server }));
+      return;
+    }
     const idx = subAdmins.findIndex((s) => s.id === activeId);
     setMatrices((prev) => ({ ...prev, [activeId]: defaultPermissions(idx) }));
   }
@@ -220,6 +240,7 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
     setSaving(true);
     try {
       await setPermissions(activeId, toSparsePermissions(matrix));
+      setServerMatrices((prev) => ({ ...prev, [activeId]: matrix }));
       setSavedTick(Date.now());
       setTimeout(() => setSavedTick(null), 2200);
     } catch (err) {
@@ -347,6 +368,7 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
   const [error, setError] = useState<string | null>(null);
   const [savedTick, setSavedTick] = useState<number | null>(null);
   const [subadminRoutes, setSubadminRoutes] = useState<ApiMenuItem[]>([]);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   async function reload(selectId?: string | null) {
     try {
@@ -607,7 +629,7 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
             <div className="mt-4 flex items-center justify-between">
               <div>
                 {selectedRole && !isNew && !selectedRole.isSystem && (
-                  <Button variant="outline" size="sm" onClick={remove} disabled={busy}>
+                  <Button variant="outline" size="sm" onClick={() => setDeleteConfirmOpen(true)} disabled={busy}>
                     <Trash2 className="h-3.5 w-3.5 text-destructive" /> Delete Role
                   </Button>
                 )}
@@ -627,6 +649,15 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
           <p className="py-8 text-center text-sm text-muted-foreground">No roles configured yet. Create the first one.</p>
         )}
       </CardContent>
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title={`Delete "${selectedRole?.displayName}"?`}
+        description="This can't be undone. The server blocks the delete if anyone is currently assigned this role, so this only removes an unused preset."
+        confirmLabel="Delete Role"
+        destructive
+        onConfirm={remove}
+      />
     </Card>
   );
 }

@@ -32,6 +32,14 @@ export interface ClassroomHubEvents {
 }
 
 /**
+ * "connected" — live sync is up. "reconnecting" — SignalR is mid-retry after a
+ * drop (whiteboard/quiz ops sent during this window are silently lost, since
+ * `send()` no-ops while disconnected). "disconnected" — no live sync at all,
+ * either never connected or reconnection gave up.
+ */
+export type ClassroomHubState = "connected" | "reconnecting" | "disconnected";
+
+/**
  * Live-classroom hub client: joins the session group and exposes typed send/on
  * wrappers over the SignalR connection. All sends are safe no-ops while
  * disconnected so a hub outage never breaks the class (Jitsi carries the call).
@@ -45,7 +53,11 @@ export class ClassroomHubClient {
     this.sessionId = sessionId;
   }
 
-  async connect(displayName: string, handlers: Partial<ClassroomHubEvents>): Promise<boolean> {
+  async connect(
+    displayName: string,
+    handlers: Partial<ClassroomHubEvents>,
+    onStateChange?: (state: ClassroomHubState) => void
+  ): Promise<boolean> {
     if (!apiEnabled()) return false;
     const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -67,9 +79,16 @@ export class ClassroomHubClient {
     if (handlers.celebrate) connection.on("Celebrate", handlers.celebrate);
     if (handlers.boardAccess) connection.on("BoardAccess", handlers.boardAccess);
 
+    // SignalR's own retry loop — surface it so the UI can stop pretending sync
+    // is healthy the instant it isn't, instead of only knowing "connected" once
+    // at startup and never again.
+    connection.onreconnecting(() => onStateChange?.("reconnecting"));
+    connection.onclose(() => onStateChange?.("disconnected"));
+
     // Re-join the session group after an automatic reconnect (new connection id).
     connection.onreconnected(() => {
       connection.invoke("JoinSession", this.sessionId, displayName).catch(() => undefined);
+      onStateChange?.("connected");
     });
 
     // Exposed immediately (before start()/JoinSession even resolve), not only on success.
@@ -95,9 +114,11 @@ export class ClassroomHubClient {
         await connection.stop().catch(() => undefined);
         return false;
       }
+      onStateChange?.("connected");
       return true;
     } catch {
       // Hub unavailable — the classroom still works, just without real-time sync.
+      onStateChange?.("disconnected");
       return false;
     }
   }

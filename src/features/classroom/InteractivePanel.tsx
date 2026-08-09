@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
-import { ClassroomHubClient, type HubParticipant } from "@/lib/classroomHub";
+import { ClassroomHubClient, type ClassroomHubState, type HubParticipant } from "@/lib/classroomHub";
 import { postEngagement } from "@/api/engagement";
 import { getLeaderboard, postAward } from "@/api/gamification";
 import Whiteboard, { type BoardOp } from "./Whiteboard";
@@ -33,7 +33,7 @@ interface InteractivePanelProps {
  */
 export default function InteractivePanel({ sessionId, mode, displayName, onCelebrate, onLeaderboard, onReady }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
-  const [connected, setConnected] = useState(false);
+  const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [roster, setRoster] = useState<HubParticipant[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [quizActive, setQuizActive] = useState(false);
@@ -78,10 +78,12 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         },
         celebrate: (message) => onCelebrate(message ?? undefined),
         boardAccess: (allowed) => setBoardAllowed(allowed),
+      }, (state) => {
+        if (!disposed) setHubState(state);
       })
       .then((ok) => {
         if (disposed) return;
-        setConnected(ok);
+        setHubState(ok ? "connected" : "disconnected");
         // Broadcast when connected (the hub echoes back to the sender); local-only otherwise.
         onReady?.((message) => {
           if (client.connected) client.celebrate(message);
@@ -176,7 +178,13 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
               <Users className="h-3.5 w-3.5" /> {roster.length || ""}
             </TabsTrigger>
           </TabsList>
-          {!connected && (
+          {hubState === "reconnecting" && (
+            <p className="mt-1.5 flex items-center gap-1.5 px-1 text-[10px] text-brand-amber">
+              <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-brand-amber" />
+              Reconnecting live sync — board and quiz updates sent right now may not reach everyone.
+            </p>
+          )}
+          {hubState === "disconnected" && (
             <p className="mt-1.5 px-1 text-[10px] text-brand-amber/80">
               Live sync unavailable — working locally. The class call is unaffected.
             </p>

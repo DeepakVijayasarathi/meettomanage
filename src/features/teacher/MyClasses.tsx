@@ -17,6 +17,7 @@ import { SessionStatusBadge } from "@/components/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +28,13 @@ import { listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import { apiEnabled } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
+import { isJoinable, joinHint } from "@/features/parent/utils";
 import type { ClassSession, SessionStatus } from "@/types";
+
+/** Status-eligible for live class, independent of whether the join window is open yet. */
+function isJoinableStatus(status: SessionStatus) {
+  return status === "scheduled" || status === "demo";
+}
 
 const TEACHER_ID = "t-1";
 
@@ -55,10 +62,6 @@ function sessionSubtitle(session: ClassSession) {
   if (session.courseId) return getCourseById(session.courseId)?.name ?? "General session";
   if (session.type === "demo") return "Demo class";
   return "General session";
-}
-
-function isJoinable(status: SessionStatus) {
-  return status === "scheduled" || status === "demo";
 }
 
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -293,7 +296,7 @@ export default function TeacherMyClasses() {
       key: "action",
       header: "Action",
       render: (row) =>
-        isJoinable(row.status) ? (
+        isJoinable(row) ? (
           <Button size="sm" onClick={(e) => { e.stopPropagation(); startClass(row); }}>
             {row.status === "demo" ? "Start Demo" : "Start Class"}
           </Button>
@@ -307,6 +310,17 @@ export default function TeacherMyClasses() {
               Recording
             </Button>
           </div>
+        ) : isJoinableStatus(row.status) ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span onClick={(e) => e.stopPropagation()}>
+                <Button size="sm" variant="outline" disabled>
+                  {row.status === "demo" ? "Start Demo" : "Start Class"}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{joinHint(row)}</TooltipContent>
+          </Tooltip>
         ) : (
           <span className="text-xs text-muted-foreground">—</span>
         ),
@@ -401,10 +415,23 @@ export default function TeacherMyClasses() {
                     Recording
                   </Button>
                 )}
-                {isJoinable(selected.status) && (
+                {isJoinable(selected) ? (
                   <Button onClick={() => startClass(selected)}>
                     {selected.status === "demo" ? "Start Demo" : "Start Class"}
                   </Button>
+                ) : (
+                  isJoinableStatus(selected.status) && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button variant="outline" disabled>
+                            {selected.status === "demo" ? "Start Demo" : "Start Class"}
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>{joinHint(selected)}</TooltipContent>
+                    </Tooltip>
+                  )
                 )}
               </DialogFooter>
             </>

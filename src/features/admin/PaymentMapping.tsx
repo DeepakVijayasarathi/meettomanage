@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PARENTS } from "@/data/users";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -141,6 +142,8 @@ export default function AdminPaymentMapping() {
   const [editActive, setEditActive] = useState(true);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [editConfirmOpen, setEditConfirmOpen] = useState(false);
+  const [mappingConfirmOpen, setMappingConfirmOpen] = useState(false);
 
   function openEdit(account: ApiPaymentAccount) {
     setEditAccount(account);
@@ -276,7 +279,7 @@ export default function AdminPaymentMapping() {
                 <Button variant="outline" onClick={() => setEditAccount(null)}>
                   Cancel
                 </Button>
-                <Button onClick={saveAccountEdit} disabled={editSaving || !editName.trim() || !editRef.trim()}>
+                <Button onClick={() => setEditConfirmOpen(true)} disabled={editSaving || !editName.trim() || !editRef.trim()}>
                   {editSaving ? "Saving…" : "Save account"}
                 </Button>
               </DialogFooter>
@@ -284,6 +287,16 @@ export default function AdminPaymentMapping() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={editConfirmOpen}
+        onOpenChange={setEditConfirmOpen}
+        title={`Change how ${editAccount?.department} charges get routed?`}
+        description={`Every new payment for this department will go through ${editProvider} (${editRef.trim()}) from now on. Existing transactions are unaffected.`}
+        confirmLabel="Save account"
+        destructive
+        onConfirm={saveAccountEdit}
+      />
 
       <Card className="mt-6">
         <CardHeader className="flex-row items-center gap-3 space-y-0">
@@ -328,7 +341,11 @@ export default function AdminPaymentMapping() {
               </Select>
             </div>
             <div className="flex items-end">
-              <Button className="w-full" onClick={saveMapping} disabled={saving || !effectiveParent || !effectiveAccount}>
+              <Button
+                className="w-full"
+                onClick={() => (apiEnabled() ? setMappingConfirmOpen(true) : saveMapping())}
+                disabled={saving || !effectiveParent || !effectiveAccount}
+              >
                 <Landmark className="h-4 w-4" />
                 {saving ? "Saving…" : "Save Mapping"}
               </Button>
@@ -346,6 +363,16 @@ export default function AdminPaymentMapping() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={mappingConfirmOpen}
+        onOpenChange={setMappingConfirmOpen}
+        title="Reroute this parent's payments?"
+        description={`${parents.find((p) => p.id === effectiveParent)?.name ?? "This parent"}'s future payments will route to ${accounts.find((a) => a.id === effectiveAccount)?.name ?? "the selected account"} instead of wherever they're routed today.`}
+        confirmLabel="Save Mapping"
+        destructive
+        onConfirm={saveMapping}
+      />
     </div>
   );
 }

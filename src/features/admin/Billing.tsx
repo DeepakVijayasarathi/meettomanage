@@ -33,6 +33,7 @@ import {
 } from "@/api/billing";
 import { CashConfirmationsPanel } from "@/components/CashConfirmationsPanel";
 import { RefundRequestsPanel } from "@/components/RefundRequestsPanel";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useSession } from "@/state/session";
 import type { Invoice } from "@/types";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
@@ -69,6 +70,7 @@ export default function AdminBilling() {
   const [payMethod, setPayMethod] = useState<ApiPaymentMethod>("Cash");
   const [saving, setSaving] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+  const [payConfirmOpen, setPayConfirmOpen] = useState(false);
 
   // Payment history + refund request state for the open invoice
   const [transactions, setTransactions] = useState<ApiPaymentTransaction[]>([]);
@@ -151,6 +153,20 @@ export default function AdminBilling() {
     } finally {
       setRefundSubmitting(false);
     }
+  }
+
+  function reviewPayment() {
+    const amount = Number(payAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPayError("Enter a valid amount.");
+      return;
+    }
+    if (amount > balanceDue) {
+      setPayError(`Amount exceeds the balance due (${formatCurrency(balanceDue)}).`);
+      return;
+    }
+    setPayError(null);
+    setPayConfirmOpen(true);
   }
 
   async function submitPayment() {
@@ -469,7 +485,7 @@ export default function AdminBilling() {
                 </Button>
                 {live && detail.apiId && detail.status !== "paid" ? (
                   recording ? (
-                    <Button onClick={submitPayment} disabled={saving}>
+                    <Button onClick={reviewPayment} disabled={saving}>
                       {saving ? "Recording…" : "Confirm payment"}
                     </Button>
                   ) : (
@@ -489,6 +505,16 @@ export default function AdminBilling() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={payConfirmOpen}
+        onOpenChange={setPayConfirmOpen}
+        title="Record this payment?"
+        description={`${formatCurrency(Number(payAmount) || 0)} via ${payMethod} will be applied to ${detail?.id ?? "this invoice"} immediately, updating the balance and the parent's dashboard. This can't be undone from here.`}
+        confirmLabel="Record payment"
+        destructive
+        onConfirm={submitPayment}
+      />
     </div>
   );
 }

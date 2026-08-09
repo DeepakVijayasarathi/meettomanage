@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { DoorOpen, PartyPopper, PhoneOff, Sparkles } from "lucide-react";
+import { DoorOpen, PartyPopper, PhoneOff, Sparkles, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
 import { postEngagement } from "@/api/engagement";
@@ -22,7 +23,10 @@ declare global {
   interface Window {
     JitsiMeetExternalAPI?: new (domain: string, options: Record<string, unknown>) => {
       dispose: () => void;
-      addListener: (event: string, listener: (payload: { id?: string; muted?: boolean; link?: string }) => void) => void;
+      addListener: (
+        event: string,
+        listener: (payload: { id?: string; muted?: boolean; link?: string; on?: boolean }) => void
+      ) => void;
       executeCommand: (command: string, ...args: unknown[]) => void;
     };
   }
@@ -80,6 +84,9 @@ export default function JitsiLive({
   const celebrateAllRef = useRef<((message?: string) => void) | null>(null);
   const jitsiApiRef = useRef<{ executeCommand: (command: string, ...args: unknown[]) => void } | null>(null);
   const [lobbyEnabled, setLobbyEnabled] = useState(false);
+  const [callDegraded, setCallDegraded] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   // Defaults true (today's unconditional behaviour) until the real Settings value loads,
   // and stays true if the request fails — so a slow/offline check never silently disables
   // recording for a teacher who already relies on it.
@@ -119,7 +126,10 @@ export default function JitsiLive({
     let api:
       | {
           dispose: () => void;
-          addListener: (event: string, listener: (payload: { id?: string; muted?: boolean; link?: string }) => void) => void;
+          addListener: (
+            event: string,
+            listener: (payload: { id?: string; muted?: boolean; link?: string; on?: boolean }) => void
+          ) => void;
           executeCommand: (command: string, ...args: unknown[]) => void;
         }
       | undefined;
@@ -256,6 +266,11 @@ export default function JitsiLive({
         }
       });
       api.addListener("videoConferenceLeft", () => flushMedia());
+      // Jitsi's own signal for a dropped media/XMPP connection mid-call — the video
+      // tiles freeze silently otherwise, with nothing in our own chrome saying why.
+      api.addListener("connectionInterrupted", () => setCallDegraded(true));
+      api.addListener("connectionRestored", () => setCallDegraded(false));
+      api.addListener("recordingStatusChanged", (payload) => setRecording(!!payload?.on));
     }
 
     init().catch((err: Error) => setError(err.message));
@@ -275,6 +290,16 @@ export default function JitsiLive({
         <div className="flex items-center gap-3">
           <Logo showWordmark={false} imgClassName="h-8 w-8" />
           <p className="text-sm font-semibold text-white">{title ?? "Live class"}</p>
+          {recording && (
+            <span className="flex items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-300">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" /> Rec
+            </span>
+          )}
+          {callDegraded && (
+            <span className="flex items-center gap-1.5 rounded-full bg-brand-amber/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-brand-amber">
+              <WifiOff className="h-3 w-3" /> Reconnecting…
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {mode === "teacher" && (
@@ -301,12 +326,25 @@ export default function JitsiLive({
               <Sparkles className="h-3.5 w-3.5" /> Interactive
             </Button>
           )}
-          <Button size="sm" variant="destructive" className="gap-1.5 rounded-full" onClick={() => navigate(-1)}>
+          <Button size="sm" variant="destructive" className="gap-1.5 rounded-full" onClick={() => setLeaveConfirmOpen(true)}>
             <PhoneOff className="h-4 w-4" />
             Leave
           </Button>
         </div>
       </header>
+      <ConfirmDialog
+        open={leaveConfirmOpen}
+        onOpenChange={setLeaveConfirmOpen}
+        title="Leave the class?"
+        description={
+          mode === "teacher"
+            ? "The whiteboard, quiz and roster controls will pause for your students until you rejoin. You can rejoin any time from My Classes."
+            : "You can rejoin any time before the class ends."
+        }
+        confirmLabel="Leave"
+        destructive
+        onConfirm={() => navigate(-1)}
+      />
       {error ? (
         <div className="flex flex-1 items-center justify-center">
           <p className="rounded-lg bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">{error}</p>
