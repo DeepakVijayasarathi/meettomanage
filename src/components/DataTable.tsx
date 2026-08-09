@@ -98,49 +98,94 @@ export function DataTable<T>({
       {sorted.length === 0 ? (
         <EmptyState icon={Search} title={emptyTitle} description={emptyDescription} />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                {columns.map((col) => (
-                  <TableHead key={col.key} className={col.headClassName}>
-                    {col.sortable ? (
-                      <button
-                        type="button"
-                        onClick={() => toggleSort(col.key)}
-                        className="inline-flex items-center gap-1 hover:text-foreground"
-                      >
-                        {col.header}
-                        {sort?.key === col.key ? (
-                          sort.dir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
-                        ) : (
-                          <ArrowUpDown className="h-3.5 w-3.5 opacity-40" />
-                        )}
-                      </button>
-                    ) : (
-                      col.header
-                    )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageRows.map((row) => (
-                <TableRow
+        <>
+          {/* Mobile: a horizontally-scrolling table is unusable on a phone (every column but
+              the first two ends up hidden off-screen with no affordance to reach it) — below
+              sm, each row becomes a card instead. Column defs are reused as-is (header + render),
+              so every DataTable consumer gets this for free with no per-screen change. */}
+          <div className="flex flex-col gap-3 sm:hidden">
+            {pageRows.map((row) => {
+              const [primary, ...rest] = columns;
+              // An actions column conventionally has no header text (e.g. header: "") —
+              // give it its own row at the bottom instead of a blank ": value" label.
+              const detailCols = rest.filter((c) => c.header);
+              const actionCols = rest.filter((c) => !c.header);
+              return (
+                <div
                   key={rowKey(row)}
                   onClick={() => onRowClick?.(row)}
-                  className={cn(onRowClick && "cursor-pointer")}
+                  className={cn(
+                    "rounded-xl border border-border bg-card p-4",
+                    onRowClick && "cursor-pointer active:bg-muted/40"
+                  )}
                 >
+                  {primary && <div className={cn("text-sm", primary.className)}>{primary.render(row)}</div>}
+                  {detailCols.length > 0 && (
+                    <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-border pt-3">
+                      {detailCols.map((col) => (
+                        <div key={col.key} className="min-w-0">
+                          <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{col.header}</dt>
+                          <dd className={cn("mt-0.5 text-sm", col.className)}>{col.render(row)}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                  {actionCols.length > 0 && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3" onClick={(e) => e.stopPropagation()}>
+                      {actionCols.map((col) => (
+                        <div key={col.key}>{col.render(row)}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-border sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
                   {columns.map((col) => (
-                    <TableCell key={col.key} className={col.className}>
-                      {col.render(row)}
-                    </TableCell>
+                    <TableHead key={col.key} className={col.headClassName}>
+                      {col.sortable ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleSort(col.key)}
+                          className="inline-flex items-center gap-1 hover:text-foreground"
+                        >
+                          {col.header}
+                          {sort?.key === col.key ? (
+                            sort.dir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                          ) : (
+                            <ArrowUpDown className="h-3.5 w-3.5 opacity-40" />
+                          )}
+                        </button>
+                      ) : (
+                        col.header
+                      )}
+                    </TableHead>
                   ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {pageRows.map((row) => (
+                  <TableRow
+                    key={rowKey(row)}
+                    onClick={() => onRowClick?.(row)}
+                    className={cn(onRowClick && "cursor-pointer")}
+                  >
+                    {columns.map((col) => (
+                      <TableCell key={col.key} className={col.className}>
+                        {col.render(row)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       {sorted.length > 0 && (
