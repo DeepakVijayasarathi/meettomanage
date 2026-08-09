@@ -15,6 +15,24 @@ function getContext(): AudioContext | null {
   }
 }
 
+const MUTE_KEY = "readernest.classroom.soundsMuted";
+
+export function isSoundMuted(): boolean {
+  try {
+    return localStorage.getItem(MUTE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function setSoundMuted(muted: boolean): void {
+  try {
+    localStorage.setItem(MUTE_KEY, String(muted));
+  } catch {
+    /* private browsing / storage disabled — mute just won't persist across reloads */
+  }
+}
+
 /** One clap: a short burst of filtered noise. */
 function clapAt(ctx: AudioContext, at: number) {
   const duration = 0.12;
@@ -49,6 +67,7 @@ function dholAt(ctx: AudioContext, at: number, high: boolean) {
 }
 
 export function playClapping() {
+  if (isSoundMuted()) return;
   const ctx = getContext();
   if (!ctx) return;
   const start = ctx.currentTime + 0.02;
@@ -56,6 +75,7 @@ export function playClapping() {
 }
 
 export function playDhol() {
+  if (isSoundMuted()) return;
   const ctx = getContext();
   if (!ctx) return;
   const start = ctx.currentTime + 0.02;
@@ -67,6 +87,7 @@ export function playDhol() {
 
 /** Celebration moment: dhol roll + clapping together. */
 export function playCelebration() {
+  if (isSoundMuted()) return;
   playDhol();
   setTimeout(playClapping, 200);
 }

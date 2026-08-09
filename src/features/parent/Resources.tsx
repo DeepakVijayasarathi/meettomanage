@@ -18,7 +18,7 @@ import { downloadResource, toFrontendResource } from "@/api/resources";
 import { getParentResources } from "@/api/parentPortal";
 import { cn, formatDate } from "@/lib/utils";
 import type { Resource } from "@/types";
-import { findRecordingSession, recordingExpiryLabel } from "./utils";
+import { findRecordingSession, recordingExpiryFromUpload, recordingExpiryLabel } from "./utils";
 
 type Tone = "primary" | "success" | "warning" | "neutral";
 
@@ -184,8 +184,7 @@ export default function ParentResources() {
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {recordings.map((r) => {
-                  const session = findRecordingSession(r);
-                  const info = recordingExpiryLabel(session);
+                  const info = usingApi ? recordingExpiryFromUpload(r) : recordingExpiryLabel(findRecordingSession(r));
                   return (
                     <ResourceCard
                       key={r.id}

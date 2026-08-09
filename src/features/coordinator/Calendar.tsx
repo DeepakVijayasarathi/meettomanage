@@ -57,14 +57,19 @@ export default function CoordinatorCalendar() {
     setDemoSessions((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
   }
 
+  /** The exact date/time doReschedule will move the session to — shown before the coordinator confirms. */
+  function nextRescheduleSlot(session: ClassSession): Date {
+    const start = new Date(`${session.date}T${session.startTime}:00`);
+    return new Date(start.getTime() + 7 * 86400_000);
+  }
+
   async function doReschedule(session: ClassSession) {
     if (!usingApi) {
       localStatus(session.id, "rescheduled");
       return;
     }
     // Coordinator "reschedule" pushes the session one week forward at the same slot.
-    const start = new Date(`${session.date}T${session.startTime}:00`);
-    const newStart = new Date(start.getTime() + 7 * 86400_000);
+    const newStart = nextRescheduleSlot(session);
     const newEnd = new Date(newStart.getTime() + session.duration * 60000);
     await rescheduleSession(session.id, newStart.toISOString(), newEnd.toISOString());
     reload();
@@ -169,7 +174,11 @@ export default function CoordinatorCalendar() {
         open={rescheduleOpen}
         onOpenChange={setRescheduleOpen}
         title="Reschedule this session?"
-        description={selected ? `"${selected.title}" will be marked as rescheduled on the calendar. The teacher and parents will be notified to confirm the new slot.` : undefined}
+        description={
+          selected
+            ? `"${selected.title}" moves to ${formatDate(nextRescheduleSlot(selected).toISOString().slice(0, 10), "long")} at ${nextRescheduleSlot(selected).toTimeString().slice(0, 5)} — one week from its current slot. The teacher and parents will be notified to confirm.`
+            : undefined
+        }
         confirmLabel="Mark Rescheduled"
         onConfirm={() => {
           if (!selected) return;
@@ -181,7 +190,11 @@ export default function CoordinatorCalendar() {
         open={holidayOpen}
         onOpenChange={setHolidayOpen}
         title="Mark this slot as a holiday?"
-        description={selected ? `"${selected.title}" will be converted to a holiday block. Any assigned students and the teacher will be freed from this slot.` : undefined}
+        description={
+          selected
+            ? `"${selected.title}" will be recorded as Cancelled — there's no separate "Holiday" status yet, so this is how a holiday shows up on reports too. Any assigned students and the teacher will be freed from this slot.`
+            : undefined
+        }
         confirmLabel="Mark Holiday"
         onConfirm={() => {
           if (!selected) return;

@@ -24,6 +24,37 @@ import { cn, formatDate } from "@/lib/utils";
 import type { ClassSession } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, recordingExpiryLabel } from "./utils";
 
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function formatTimeLabel(time: string) {
+  const [h, m] = time.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+/**
+ * API mode has no separate "batch" entity on the client — but the recurring pattern
+ * (which weekdays, what time) is fully derivable from the child's own scheduled
+ * sessions, so the "when does class normally happen" summary doesn't need a new
+ * endpoint. Only counts status "scheduled" — one-off demos/reschedules shouldn't
+ * skew the pattern.
+ */
+function recurringPatternLabel(sessions: ClassSession[]): string | undefined {
+  const recurring = sessions.filter((s) => s.status === "scheduled");
+  if (recurring.length === 0) return undefined;
+
+  const weekdays = new Set<number>();
+  const timeCounts = new Map<string, number>();
+  for (const s of recurring) {
+    weekdays.add(new Date(`${s.date}T00:00:00`).getDay());
+    timeCounts.set(s.startTime, (timeCounts.get(s.startTime) ?? 0) + 1);
+  }
+  const mostCommonTime = [...timeCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  const dayLabels = [...weekdays].sort((a, b) => a - b).map((d) => WEEKDAY_LABELS[d]);
+  return `${dayLabels.join(", ")} · ${formatTimeLabel(mostCommonTime)}`;
+}
+
 export default function ParentSchedule() {
   const { activeChildId, enrolledChildIds, children: sessionChildren } = useSession();
   const usingApi = apiEnabled();
@@ -64,6 +95,7 @@ export default function ParentSchedule() {
 
   const isEnrolled = usingApi ? (sessionChild?.enrollmentComplete ?? false) : mockChild ? enrolledChildIds.includes(mockChild.id) : false;
   const batch = !usingApi && mockChild ? getBatchById(mockChild.batchId) : undefined;
+  const recurringPattern = useMemo(() => (usingApi ? recurringPatternLabel(sessions) : undefined), [usingApi, sessions]);
 
   return (
     <div>
@@ -105,6 +137,11 @@ export default function ParentSchedule() {
           {batch && (
             <p className="text-sm text-muted-foreground">
               Batch: <span className="font-semibold text-foreground">{batch.name}</span> · {batch.schedule}
+            </p>
+          )}
+          {recurringPattern && (
+            <p className="text-sm text-muted-foreground">
+              Regular class days: <span className="font-semibold text-foreground">{recurringPattern}</span>
             </p>
           )}
 

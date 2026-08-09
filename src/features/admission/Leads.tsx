@@ -83,6 +83,7 @@ export default function AdmissionLeads() {
   const [justLogged, setJustLogged] = useState<string | null>(null);
   const [loggingFollowUp, setLoggingFollowUp] = useState(false);
   const [followUpError, setFollowUpError] = useState<string | null>(null);
+  const [newStage, setNewStage] = useState<ConversionStage>("Demo Scheduled");
 
   const filtered = useMemo(
     () => (stageFilter === "all" ? leads : leads.filter((l) => l.conversionStage === stageFilter)),
@@ -94,6 +95,7 @@ export default function AdmissionLeads() {
     setNoteText("");
     setNextFollowUp(lead.nextFollowUpOn ?? "");
     setFollowUpError(null);
+    setNewStage(lead.conversionStage);
   }
 
   async function handleLogFollowUp() {
@@ -105,7 +107,7 @@ export default function AdmissionLeads() {
       setLoggingFollowUp(true);
       setFollowUpError(null);
       try {
-        await updateConversionStatus(activeLead.id, toApiConversionStatus(activeLead.conversionStage), combined);
+        await updateConversionStatus(activeLead.id, toApiConversionStatus(newStage), combined);
         reload();
         setJustLogged(activeLead.childName);
         setTimeout(() => setJustLogged(null), 4000);
@@ -129,7 +131,13 @@ export default function AdmissionLeads() {
     setLeads((prev) =>
       prev.map((l) =>
         l.id === activeLead.id
-          ? { ...l, notes: [...l.notes, newNote], lastContactedOn: today, nextFollowUpOn: nextFollowUp || l.nextFollowUpOn }
+          ? {
+              ...l,
+              notes: [...l.notes, newNote],
+              lastContactedOn: today,
+              nextFollowUpOn: nextFollowUp || l.nextFollowUpOn,
+              conversionStage: newStage,
+            }
           : l
       )
     );
@@ -341,9 +349,26 @@ export default function AdmissionLeads() {
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="nextFollowUp">Next follow-up date</Label>
-                <Input id="nextFollowUp" type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} className="w-48" />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="nextFollowUp">Next follow-up date</Label>
+                  <Input id="nextFollowUp" type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Move to stage</Label>
+                  <Select value={newStage} onValueChange={(v) => setNewStage(v as ConversionStage)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STAGE_OPTIONS.filter((o) => o.value !== "all").map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {followUpError && <p className="text-sm font-medium text-destructive">{followUpError}</p>}

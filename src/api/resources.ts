@@ -40,7 +40,9 @@ export function toFrontendResource(resource: ApiResource): Resource {
     batchId: resource.batchId ?? undefined,
     uploadedOn: resource.createdAtUtc.slice(0, 10),
     downloadable: resource.isDownloadable,
-    visibleToParents: true,
+    // Real visibility is per-parent (ResourceAccess grants), not one flag on the
+    // resource — leaving this undefined rather than claiming a value we don't have.
+    visibleToParents: undefined,
     sizeLabel: formatSize(resource.fileSizeBytes),
   };
 }
@@ -129,6 +131,14 @@ export async function downloadResource(id: string, fallbackName: string): Promis
   anchor.download = fallbackName;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+/** Admin console: toggle whether a resource is downloadable (books stay view-only server-side regardless). */
+export async function updateResource(id: string, isDownloadable: boolean): Promise<ApiResource> {
+  return apiFetch<ApiResource>(`/api/resources/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ isDownloadable }),
+  });
 }
 
 export async function grantResourceAccess(

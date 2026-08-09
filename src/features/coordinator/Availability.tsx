@@ -177,7 +177,10 @@ export default function CoordinatorAvailability() {
             ))}
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-border">
+          {/* Desktop: the full week-by-teacher grid. A 7-day-wide table has no honest
+              mobile form, so narrow viewports get a genuinely different layout below
+              rather than the same table squeezed into a horizontal-scroll strip. */}
+          <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -221,6 +224,45 @@ export default function CoordinatorAvailability() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile: one card per teacher, day tiles wrap instead of scrolling sideways. */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {activeTeachers.map((teacher) => (
+              <div key={teacher.id} className="rounded-xl border border-border p-3">
+                <div className="mb-2.5 flex items-center gap-2.5">
+                  <span
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                    style={{ backgroundColor: teacher.avatarColor }}
+                  >
+                    {getInitials(teacher.name)}
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{teacher.name}</p>
+                    <p className="text-xs text-muted-foreground">{teacher.department}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7">
+                  {weekDays.map((d) => {
+                    const dateKey = format(d, "yyyy-MM-dd");
+                    const state = getDayState(teacher.id, dateKey);
+                    return (
+                      <div key={dateKey} className="flex flex-col items-center gap-1">
+                        <span className="text-[10px] font-medium text-muted-foreground">{format(d, "EEE d")}</span>
+                        <span
+                          className={cn(
+                            "flex w-full items-center justify-center rounded-md px-1 py-1 text-center text-[10px] font-semibold leading-tight",
+                            DAY_STATE_STYLE[state]
+                          )}
+                        >
+                          {DAY_STATE_LABEL[state]}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

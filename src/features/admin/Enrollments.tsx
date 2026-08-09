@@ -181,14 +181,67 @@ export default function AdminEnrollments() {
     setDetail(null);
   }
 
+  /** Turns a camelCase/snake_case form key into a readable label, e.g. "childName" -> "Child name". */
+  function labelizeKey(key: string): string {
+    const spaced = key.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim();
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  }
+
+  function escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  /**
+   * "Download as PDF" used to just save the raw answers JSON — a non-technical
+   * admissions staffer can't do anything with that. This opens a formatted,
+   * printable summary and triggers the browser's print dialog, where "Save as
+   * PDF" is a native destination — a real PDF without adding a PDF-generation
+   * dependency for one screen.
+   */
   function handleDownload(row: EnrollmentRow) {
-    const blob = new Blob([row.formJson ?? JSON.stringify(row, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `enrollment-${row.name.replace(/[^a-z0-9]+/gi, "-")}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    let answers: Record<string, unknown> = {};
+    try {
+      answers = row.formJson ? (JSON.parse(row.formJson) as Record<string, unknown>) : {};
+    } catch {
+      /* fall back to an empty answer set below */
+    }
+    const printWindow = window.open("", "_blank", "width=800,height=1000");
+    if (!printWindow) return;
+
+    const rowsHtml = Object.entries(answers)
+      .filter(([, value]) => value !== null && value !== undefined && value !== "")
+      .map(([key, value]) => `<tr><th>${escapeHtml(labelizeKey(key))}</th><td>${escapeHtml(String(value))}</td></tr>`)
+      .join("");
+
+    printWindow.document.write(`<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Enrollment — ${escapeHtml(row.name)}</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; color: #1a1a1a; margin: 40px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p.sub { color: #666; margin-top: 0; margin-bottom: 24px; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #e5e5e5; font-size: 13px; vertical-align: top; }
+  th { width: 220px; color: #555; font-weight: 600; }
+  @media print { body { margin: 20px; } }
+</style>
+</head>
+<body>
+  <h1>Enrollment form — ${escapeHtml(row.name)}</h1>
+  <p class="sub">Parent: ${escapeHtml(row.parentName ?? "—")} · Generated ${escapeHtml(new Date().toLocaleDateString())}</p>
+  <table>${rowsHtml || `<tr><td colspan="2">No form answers on file.</td></tr>`}</table>
+</body>
+</html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   }
 
   const columns: DataTableColumn<EnrollmentRow>[] = useMemo(
@@ -340,7 +393,7 @@ export default function AdminEnrollments() {
                 </Button>
                 <Button variant="outline" onClick={() => handleDownload(detail)}>
                   <Download className="h-4 w-4" />
-                  Download
+                  Print / Save PDF
                 </Button>
                 <Button variant="outline" disabled={isComplete(detail)} onClick={() => openEdit(detail)}>
                   <FileEdit className="h-4 w-4" />

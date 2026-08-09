@@ -168,7 +168,12 @@ export interface Resource {
   batchId?: string;
   uploadedOn: string;
   downloadable: boolean;
-  visibleToParents: boolean;
+  /**
+   * Demo mode: a real, editable flag on the mock data. API mode: visibility is
+   * actually granted per parent (ResourceAccess), not a single yes/no for the
+   * resource — undefined here means "ask the grants API," not "not visible."
+   */
+  visibleToParents?: boolean;
   sizeLabel?: string;
 }
 

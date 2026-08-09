@@ -89,6 +89,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifyNote, setVerifyNote] = useState<string | null>(null);
+  const [blockedUrl, setBlockedUrl] = useState<string | null>(null);
   const liveFlow = apiEnabled() && !!invoiceId;
 
   // Load enabled payment gateways (+ Cash) each time the popup opens.
@@ -113,6 +114,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
 
   async function handlePay() {
     setError(null);
+    setBlockedUrl(null);
     setStatus("processing");
 
     if (!liveFlow) {
@@ -143,7 +145,15 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
       }
       setResultMessage(result.message);
       if (result.mode === "redirect" && result.url) {
-        window.open(result.url, "_blank", "noopener");
+        const win = window.open(result.url, "_blank", "noopener");
+        if (!win) {
+          // Popup blockers return null/undefined silently — without this check the modal
+          // just said "we're waiting for you in the other tab" for a tab that never opened.
+          setBlockedUrl(result.url);
+          setStatus("idle");
+          setError("Your browser blocked the payment window. Allow popups for this site, or use the link below.");
+          return;
+        }
         setStatus("redirect");
       } else {
         setStatus("cash");
@@ -380,6 +390,17 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
               )}
             </div>
             {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+            {blockedUrl && (
+              <a
+                href={blockedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setBlockedUrl(null)}
+                className="text-center text-sm font-semibold text-primary underline underline-offset-2 hover:no-underline"
+              >
+                Open payment page →
+              </a>
+            )}
             <Button className="w-full" onClick={handlePay} disabled={status === "processing" || !method}>
               {status === "processing" ? "Processing…" : `Pay ${formatCurrency(amount)}`}
             </Button>

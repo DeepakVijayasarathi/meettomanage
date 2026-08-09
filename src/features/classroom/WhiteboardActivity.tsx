@@ -89,19 +89,36 @@ function Complete({ message }: { message: string }) {
   );
 }
 
+/**
+ * Pointer-events based drag & drop — native HTML5 DnD (draggable/onDragStart/onDrop)
+ * has no touch equivalent and simply never fires on a tablet, which is this app's
+ * plausible primary student device. Pointer events fire uniformly for mouse, touch
+ * and pen, matching the pattern Whiteboard.tsx's own canvas already uses.
+ */
 function DragDropActivity({ onComplete }: { onComplete?: () => void }) {
   const [matched, setMatched] = useState<Record<string, boolean>>({});
   const [shake, setShake] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const [overLetter, setOverLetter] = useState<string | null>(null);
+  // Click/keyboard alternative to the pointer drag below — select a fruit, then
+  // pick its letter. Same underlying match logic, so both paths stay in sync.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const allMatched = ITEMS.every((item) => matched[item.id]);
+  const draggingItem = ITEMS.find((i) => i.id === draggingId);
 
   useEffect(() => {
     if (allMatched) onComplete?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allMatched]);
 
-  function handleDrop(e: React.DragEvent<HTMLDivElement>, letter: string) {
-    e.preventDefault();
-    const itemId = e.dataTransfer.getData("text/plain");
+  function resolveDropLetter(clientX: number, clientY: number): string | null {
+    const el = document.elementFromPoint(clientX, clientY);
+    return el?.closest<HTMLElement>("[data-drop-letter]")?.dataset.dropLetter ?? null;
+  }
+
+  function attemptMatch(itemId: string, letter: string | null) {
+    if (!letter) return;
     const item = ITEMS.find((i) => i.id === itemId);
     if (!item || matched[itemId]) return;
     if (item.letter === letter) {
@@ -112,41 +129,99 @@ function DragDropActivity({ onComplete }: { onComplete?: () => void }) {
     }
   }
 
+  function handlePointerDown(e: React.PointerEvent<HTMLButtonElement>, itemId: string) {
+    if (matched[itemId]) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDraggingId(itemId);
+    setDragPos({ x: e.clientX, y: e.clientY });
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLButtonElement>) {
+    if (!draggingId) return;
+    setDragPos({ x: e.clientX, y: e.clientY });
+    setOverLetter(resolveDropLetter(e.clientX, e.clientY));
+  }
+
+  function endDrag(e: React.PointerEvent<HTMLButtonElement>) {
+    if (!draggingId) return;
+    attemptMatch(draggingId, resolveDropLetter(e.clientX, e.clientY));
+    setDraggingId(null);
+    setDragPos(null);
+    setOverLetter(null);
+  }
+
+  function selectForKeyboard(itemId: string) {
+    setSelectedId((prev) => (prev === itemId ? null : itemId));
+  }
+
+  function chooseLetter(letter: string) {
+    if (!selectedId) return;
+    attemptMatch(selectedId, letter);
+    setSelectedId(null);
+  }
+
   if (allMatched) return <Complete message="All matched — great job!" />;
 
   return (
     <>
-      <p className="mb-3 text-sm font-semibold">🎯 Drag the fruit to its matching first letter</p>
+      <p className="mb-3 text-sm font-semibold">
+        🎯 Drag the fruit to its matching first letter — or tap a fruit, then tap its letter
+      </p>
       <div className="mb-4 flex flex-wrap justify-center gap-3">
         {ITEMS.filter((item) => !matched[item.id]).map((item) => (
-          <div
+          <button
             key={item.id}
-            draggable
-            onDragStart={(e) => e.dataTransfer.setData("text/plain", item.id)}
+            type="button"
+            onPointerDown={(e) => handlePointerDown(e, item.id)}
+            onPointerMove={handlePointerMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            onClick={() => selectForKeyboard(item.id)}
+            aria-pressed={selectedId === item.id}
+            aria-label={`${item.emoji} fruit, starts with ${item.letter}`}
             className={cn(
-              "cursor-grab select-none rounded-xl bg-muted p-2.5 text-3xl leading-none transition active:cursor-grabbing",
+              "touch-none select-none rounded-xl bg-muted p-2.5 text-3xl leading-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing",
+              draggingId === item.id ? "cursor-grabbing opacity-30" : "cursor-grab",
+              selectedId === item.id && "ring-2 ring-primary scale-110",
               shake === item.id && "animate-[wiggle_0.45s_ease-in-out] ring-2 ring-destructive"
             )}
           >
             {item.emoji}
-          </div>
+          </button>
         ))}
       </div>
       <div className="flex flex-wrap justify-center gap-3">
         {ITEMS.map((item) => (
-          <div
+          <button
             key={item.letter}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => handleDrop(e, item.letter)}
+            type="button"
+            data-drop-letter={item.letter}
+            onClick={() => chooseLetter(item.letter)}
+            disabled={matched[item.id]}
+            aria-label={`Letter ${item.letter}${matched[item.id] ? `, matched with ${item.emoji}` : ""}`}
             className={cn(
-              "flex h-14 w-14 items-center justify-center rounded-xl border-2 border-dashed text-lg font-bold transition-colors",
-              matched[item.id] ? "border-success bg-success/10 text-success" : "border-border text-muted-foreground"
+              "flex h-14 w-14 items-center justify-center rounded-xl border-2 border-dashed text-lg font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              matched[item.id]
+                ? "border-success bg-success/10 text-success"
+                : overLetter === item.letter
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:border-primary"
             )}
           >
             {matched[item.id] ? item.emoji : item.letter}
-          </div>
+          </button>
         ))}
       </div>
+
+      {draggingItem && dragPos && (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed z-50 text-4xl leading-none drop-shadow-lg"
+          style={{ left: dragPos.x - 22, top: dragPos.y - 22 }}
+        >
+          {draggingItem.emoji}
+        </div>
+      )}
     </>
   );
 }

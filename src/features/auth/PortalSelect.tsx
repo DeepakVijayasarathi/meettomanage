@@ -25,8 +25,7 @@ export default function PortalSelect() {
           <Logo className="mb-6" />
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Choose a portal to explore</h1>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-            The Reader Nest ships as eight role-based portals on one platform. Admin, Teacher and Parent are fully built
-            in this release — the rest are staged next.
+            The Reader Nest ships as eight role-based portals on one platform, all live in this release.
           </p>
         </div>
 

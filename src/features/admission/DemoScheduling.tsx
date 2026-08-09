@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarPlus, CheckCircle2, Trash2, UserPlus, Users2 } from "lucide-react";
+import { CalendarPlus, CheckCircle2, ChevronDown, ChevronUp, Trash2, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
@@ -128,6 +128,9 @@ export default function AdmissionDemoScheduling() {
   const [teacherId, setTeacherId] = useState("");
   const [notes, setNotes] = useState("");
   const [justScheduled, setJustScheduled] = useState<string | null>(null);
+  // Collapsed by default: this screen is visited many times a day mainly to check/update
+  // existing demos, so the demo list — not the creation form — should be what's in view.
+  const [formOpen, setFormOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<DemoRow | null>(null);
   const [completeTarget, setCompleteTarget] = useState<DemoRow | null>(null);
 
@@ -162,6 +165,7 @@ export default function AdmissionDemoScheduling() {
     setTime("16:00");
     setTeacherId("");
     setNotes("");
+    setFormOpen(false);
   }
 
   function handleSchedule() {
@@ -349,6 +353,11 @@ export default function AdmissionDemoScheduling() {
         description="Book flexible, one-time demo classes — invite more than one parent or guardian to join the same session."
       />
 
+      <p className="mb-5 text-xs text-muted-foreground">
+        Demo fee: <span className="font-semibold text-foreground">₹50 per demo</span>, rising to{" "}
+        <span className="font-semibold text-foreground">₹100</span> once the lead is enrolled.
+      </p>
+
       {justScheduled && (
         <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
           <CheckCircle2 className="h-4 w-4" />
@@ -357,12 +366,34 @@ export default function AdmissionDemoScheduling() {
       )}
 
       <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarPlus className="h-[18px] w-[18px] text-primary" /> Schedule a Demo
-          </CardTitle>
-          <CardDescription>One demo class can be shared with multiple parents/guardians — add as many as you need.</CardDescription>
+        <CardHeader
+          role="button"
+          tabIndex={0}
+          onClick={() => setFormOpen((o) => !o)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setFormOpen((o) => !o);
+            }
+          }}
+          className="cursor-pointer flex-row items-center justify-between space-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarPlus className="h-[18px] w-[18px] text-primary" /> Schedule a Demo
+            </CardTitle>
+            <CardDescription>One demo class can be shared with multiple parents/guardians — add as many as you need.</CardDescription>
+          </div>
+          {formOpen ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
         </CardHeader>
+        {!formOpen && (
+          <CardContent>
+            <Button size="sm" onClick={() => setFormOpen(true)}>
+              <CalendarPlus className="h-3.5 w-3.5" /> New Demo
+            </Button>
+          </CardContent>
+        )}
+        {formOpen && (
         <CardContent className="flex flex-col gap-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="flex flex-col gap-1.5 sm:col-span-2">
@@ -496,6 +527,7 @@ export default function AdmissionDemoScheduling() {
             </Button>
           </div>
         </CardContent>
+        )}
       </Card>
 
       <DataTable

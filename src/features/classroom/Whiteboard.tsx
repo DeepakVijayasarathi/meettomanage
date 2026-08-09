@@ -13,11 +13,13 @@ import {
   Type,
   ChevronLeft,
   ChevronRight,
+  Undo2,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import WhiteboardActivity from "./WhiteboardActivity";
 
 type ToolId = "pen" | "eraser" | "rectangle" | "circle" | "line" | "text" | "sticky" | "pan";
@@ -155,6 +157,8 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   const [color, setColor] = useState(CHART_PALETTE[0]);
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [showActivity, setShowActivity] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [lastCleared, setLastCleared] = useState<{ pageIndex: number; strokes: Stroke[] } | null>(null);
   const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string; sticky?: boolean } | null>(null);
   // Infinite canvas: strokes live in world coordinates; the view pans over them
   const [viewOffset, setViewOffset] = useState<Point>({ x: 0, y: 0 });
@@ -250,6 +254,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     const finished = draftRef.current;
     draftRef.current = null;
     setPages((prev) => prev.map((p, i) => (i === pageIndex ? { ...p, strokes: [...p.strokes, finished] } : p)));
+    setLastCleared(null);
     onBoardOp?.({ kind: "stroke", pageIndex, stroke: finished });
     onInteraction?.();
   }
@@ -267,6 +272,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
         text: textDraft.value,
       };
       setPages((prev) => prev.map((p, i) => (i === pageIndex ? { ...p, strokes: [...p.strokes, stroke] } : p)));
+      setLastCleared(null);
       onBoardOp?.({ kind: "stroke", pageIndex, stroke });
       onInteraction?.();
     }
@@ -274,8 +280,20 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   }
 
   function clearBoard() {
+    setLastCleared({ pageIndex, strokes: currentPage.strokes });
     setPages((prev) => prev.map((p, i) => (i === pageIndex ? { ...p, strokes: [] } : p)));
     onBoardOp?.({ kind: "clear", pageIndex });
+  }
+
+  /**
+   * One-level, local-only undo for the page that was just cleared — "Clear" wiped
+   * every stroke with a single click and no way back; this restores it. Local-only
+   * (not broadcast) since it just un-does what this device already sent.
+   */
+  function undoClear() {
+    if (!lastCleared) return;
+    setPages((prev) => prev.map((p, i) => (i === lastCleared.pageIndex ? { ...p, strokes: lastCleared.strokes } : p)));
+    setLastCleared(null);
   }
 
   function addPage() {
@@ -376,9 +394,14 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
             ))}
           </div>
 
-          <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={clearBoard}>
+          <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={() => setClearConfirmOpen(true)}>
             <Trash2 className="h-3.5 w-3.5" /> Clear
           </Button>
+          {lastCleared && lastCleared.pageIndex === pageIndex && (
+            <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={undoClear}>
+              <Undo2 className="h-3.5 w-3.5" /> Undo clear
+            </Button>
+          )}
           <Button
             size="sm"
             variant={showActivity ? "soft" : "ghost"}
@@ -463,6 +486,16 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
           />
         )}
       </div>
+
+      <ConfirmDialog
+        open={clearConfirmOpen}
+        onOpenChange={setClearConfirmOpen}
+        title="Clear this page?"
+        description={`This wipes every stroke on page ${pageIndex + 1} for the class. You can undo it right after, but not once you draw something new.`}
+        confirmLabel="Clear"
+        destructive
+        onConfirm={clearBoard}
+      />
     </div>
   );
 }

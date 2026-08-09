@@ -36,7 +36,8 @@ interface ViewResource {
   batchName: string;
   uploadedOn: string;
   downloadable: boolean;
-  visibleToParents: boolean;
+  /** API mode: visibility is granted per parent, not one flag — undefined means "managed per parent," not hidden. */
+  visibleToParents?: boolean;
   sizeLabel?: string;
 }
 
@@ -78,8 +79,9 @@ function apiToView(r: ApiResource): ViewResource {
     batchName: r.batchName ?? "General",
     uploadedOn: r.createdAtUtc.slice(0, 10),
     downloadable: r.isDownloadable,
-    // Teacher-owned resources are surfaced to the teacher regardless of parent visibility
-    visibleToParents: true,
+    // Real visibility is granted per parent (admin's Resource Access grants), not one
+    // flag on the resource — leave unknown here rather than claim every parent sees it.
+    visibleToParents: undefined,
     sizeLabel: formatSize(r.fileSizeBytes),
   };
 }
@@ -347,10 +349,16 @@ export default function TeacherResources() {
                 <CardContent className="flex flex-1 flex-col justify-between gap-3 pt-0">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge variant="outline">{meta.label}</Badge>
-                    <Badge variant={resource.visibleToParents ? "success" : "muted"} className="gap-1">
-                      {resource.visibleToParents ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                      {resource.visibleToParents ? "Visible to parents" : "Hidden from parents"}
-                    </Badge>
+                    {resource.visibleToParents === undefined ? (
+                      <Badge variant="outline" className="gap-1">
+                        <Eye className="h-3 w-3" /> Visibility managed by admin
+                      </Badge>
+                    ) : (
+                      <Badge variant={resource.visibleToParents ? "success" : "muted"} className="gap-1">
+                        {resource.visibleToParents ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                        {resource.visibleToParents ? "Visible to parents" : "Hidden from parents"}
+                      </Badge>
+                    )}
                     <Badge variant={resource.downloadable ? "secondary" : "muted"}>{resource.downloadable ? "Downloadable" : "View only"}</Badge>
                   </div>
 

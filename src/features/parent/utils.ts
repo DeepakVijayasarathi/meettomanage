@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, differenceInMinutes, format, subDays } from "date-fns";
+import { addDays, differenceInCalendarDays, differenceInMinutes, format, subDays } from "date-fns";
 import type { ClassSession, Resource } from "@/types";
 import { SESSIONS } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
@@ -70,10 +70,26 @@ export function findRecordingSession(resource: Resource): ClassSession | undefin
   );
 }
 
-export function recordingExpiryLabel(session: ClassSession | undefined): { label: string; expired: boolean } {
-  if (!session?.recordingExpiresOn) return { label: "Expiry unknown", expired: false };
-  const days = daysUntil(session.recordingExpiresOn);
+function expiryLabelFor(expiresOn: string | undefined): { label: string; expired: boolean } {
+  if (!expiresOn) return { label: "Expiry unknown", expired: false };
+  const days = daysUntil(expiresOn);
   if (days < 0) return { label: "Expired", expired: true };
   if (days === 0) return { label: "Expires today", expired: false };
   return { label: `Expires in ${days} day${days === 1 ? "" : "s"}`, expired: false };
+}
+
+export function recordingExpiryLabel(session: ClassSession | undefined): { label: string; expired: boolean } {
+  return expiryLabelFor(session?.recordingExpiresOn);
+}
+
+/**
+ * API mode: recording-type Resources have no dedicated expiry field, but they do
+ * carry a real upload date (uploadedOn, from the API's createdAtUtc) — enforce the
+ * same "15 days after class" policy the Recordings tab already advertises, rather
+ * than showing "Expiry unknown" and letting every recording stay watchable forever.
+ */
+export function recordingExpiryFromUpload(resource: Resource): { label: string; expired: boolean } {
+  if (!resource.uploadedOn) return { label: "Expiry unknown", expired: false };
+  const expiresOn = format(addDays(new Date(`${resource.uploadedOn}T00:00:00`), 15), "yyyy-MM-dd");
+  return expiryLabelFor(expiresOn);
 }

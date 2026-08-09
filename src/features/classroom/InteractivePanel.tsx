@@ -38,6 +38,9 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [quizActive, setQuizActive] = useState(false);
   const [syncedIndex, setSyncedIndex] = useState<number | null>(null);
+  // Real per-option answer counts for the current question, built from the hub's own
+  // QuizAnswer broadcasts — replaces a formula that fabricated plausible-looking numbers.
+  const [quizTally, setQuizTally] = useState<Record<number, number[]>>({});
   // Students draw only when the teacher grants access; teachers always can.
   const [boardAllowed, setBoardAllowed] = useState(false);
   const [grantedIds, setGrantedIds] = useState<Set<string>>(new Set());
@@ -64,8 +67,17 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         quizStarted: (questionIndex) => {
           setSyncedIndex(questionIndex);
           setQuizActive(true);
+          // Fresh tally for this question, even on a relaunch of the same index.
+          setQuizTally((prev) => ({ ...prev, [questionIndex]: [] }));
         },
         quizEnded: () => setQuizActive(false),
+        quizAnswer: (_name, questionIndex, selectedIndex) => {
+          setQuizTally((prev) => {
+            const counts = [...(prev[questionIndex] ?? [])];
+            counts[selectedIndex] = (counts[selectedIndex] ?? 0) + 1;
+            return { ...prev, [questionIndex]: counts };
+          });
+        },
         leaderboard: (entries) => {
           const mapped: LeaderboardEntry[] = entries.map((entry, i) => ({
             id: entry.name,
@@ -225,9 +237,10 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                 active={quizActive}
                 mode={mode}
                 syncedIndex={mode === "student" ? syncedIndex : undefined}
+                liveTally={syncedIndex != null ? quizTally[syncedIndex] : undefined}
                 onLaunchQuestion={(index) => hubRef.current?.startQuiz(index)}
-                onAnswered={(questionIndex, correct) => {
-                  hubRef.current?.answerQuiz(questionIndex, correct);
+                onAnswered={(questionIndex, selectedIndex, correct) => {
+                  hubRef.current?.answerQuiz(questionIndex, selectedIndex, correct);
                   postEngagement(sessionId, displayName, "QuizAttempt");
                   // Durable record: stars persist beyond the class (milestones auto-granted server-side)
                   if (correct) postAward(sessionId, displayName, "Star");

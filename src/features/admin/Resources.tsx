@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, ClipboardList, Upload, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -20,7 +21,7 @@ import { RESOURCES } from "@/data/resources";
 import { BATCHES } from "@/data/batches";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listResources, toFrontendResource, uploadResource, type ApiResourceType } from "@/api/resources";
+import { listResources, toFrontendResource, updateResource, uploadResource, type ApiResourceType } from "@/api/resources";
 import type { Resource } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -76,9 +77,33 @@ export default function AdminResources() {
     }
   }
 
+  const [downloadBusyId, setDownloadBusyId] = useState<string | null>(null);
+  const [toggleError, setToggleError] = useState<string | null>(null);
+
+  /** Demo mode only — a local, unpersisted flip. Live mode's Downloadable column uses toggleDownloadable instead. */
   function toggleField(id: string, field: "downloadable" | "visibleToParents") {
     setResources((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: !r[field] } : r)));
   }
+
+  const toggleDownloadable = useCallback(
+    async (row: Resource) => {
+      if (!apiEnabled()) {
+        toggleField(row.id, "downloadable");
+        return;
+      }
+      setToggleError(null);
+      setDownloadBusyId(row.id);
+      try {
+        await updateResource(row.id, !row.downloadable);
+        reload();
+      } catch (err) {
+        setToggleError(err instanceof Error ? err.message : "Could not update this resource.");
+      } finally {
+        setDownloadBusyId(null);
+      }
+    },
+    [reload]
+  );
 
   const columns: DataTableColumn<Resource>[] = useMemo(
     () => [
@@ -128,18 +153,30 @@ export default function AdminResources() {
         key: "downloadable",
         header: "Downloadable",
         render: (row) => (
-          <Switch checked={row.downloadable} onCheckedChange={() => toggleField(row.id, "downloadable")} />
+          <Switch
+            checked={row.downloadable}
+            disabled={downloadBusyId === row.id}
+            onCheckedChange={() => toggleDownloadable(row)}
+          />
         ),
       },
       {
         key: "visibleToParents",
         header: "Visible to Parents",
-        render: (row) => (
-          <Switch checked={row.visibleToParents} onCheckedChange={() => toggleField(row.id, "visibleToParents")} />
-        ),
+        render: (row) =>
+          apiEnabled() ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-xs text-muted-foreground underline decoration-dotted">Per parent</span>
+              </TooltipTrigger>
+              <TooltipContent>Visibility is granted per parent, not a single on/off for the resource. Per-parent grant management isn't in this screen yet.</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Switch checked={row.visibleToParents ?? false} onCheckedChange={() => toggleField(row.id, "visibleToParents")} />
+          ),
       },
     ],
-    []
+    [downloadBusyId, toggleDownloadable]
   );
 
   return (
@@ -155,6 +192,8 @@ export default function AdminResources() {
           </Button>
         }
       />
+
+      {toggleError && <p className="mb-4 text-sm font-medium text-destructive">{toggleError}</p>}
 
       <DataTable
         data={resources}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket, X } from "lucide-react";
+import { CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
@@ -126,6 +126,7 @@ export default function AdminBatches() {
     COURSES.map((c) => ({ id: c.id, name: c.name }))
   );
 
+  const [query, setQuery] = useState("");
   const [detail, setDetail] = useState<DisplayBatch | null>(null);
   const [teacherAssignment, setTeacherAssignment] = useState<string>("");
   const [saved, setSaved] = useState(false);
@@ -254,11 +255,21 @@ export default function AdminBatches() {
     }
   }
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return batchData.mapped;
+    return batchData.mapped.filter((b) => {
+      const courseName = (apiEnabled() ? b.courseName : getCourseById(b.courseId)?.name) ?? "";
+      const teacherName = (apiEnabled() ? b.teacherName : getTeacherById(b.teacherId)?.name) ?? "";
+      return `${b.name} ${courseName} ${teacherName}`.toLowerCase().includes(q);
+    });
+  }, [batchData, query]);
+
   const grouped = useMemo(() => {
     const map: Record<BatchStatus, DisplayBatch[]> = { active: [], dormant: [], upcoming: [] };
-    batchData.mapped.forEach((b) => map[b.status].push(b));
+    filtered.forEach((b) => map[b.status].push(b));
     return map;
-  }, [batchData]);
+  }, [filtered]);
 
   function openDetail(b: DisplayBatch) {
     setDetail(b);
@@ -320,6 +331,16 @@ export default function AdminBatches() {
           </Button>
         </div>
       )}
+
+      <div className="relative mb-5 max-w-sm">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search batches by name, course or teacher…"
+          className="pl-9"
+        />
+      </div>
 
       <Tabs defaultValue="active">
         <TabsList>

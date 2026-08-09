@@ -90,39 +90,43 @@ export default function ManagementDashboard() {
 
       {/* Hero KPI row — the handful of numbers a board actually asks about */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/*
+          These four don't have a real prior-period figure to compare against, so they
+          don't use KpiCard's `trend` slot — that always renders as a signed percentage
+          with an up/down arrow, which turned plain counts/currency into nonsense like
+          "▲ 45000% still pending". The supporting number is folded into the value
+          string instead, the same way ManagementPerformance's Active Teachers card
+          already does ("x / y") rather than faking a trend.
+        */}
         <KpiCard
           label="Total Students"
-          value={formatNumber(summary.totalStudents)}
+          value={`${formatNumber(summary.totalStudents)} · ${formatNumber(summary.activeStudents)} active`}
           icon={Users}
           tone="primary"
-          trend={{ value: summary.activeStudents, label: "active now" }}
           loading={loading}
           error={error}
         />
         <KpiCard
           label="Revenue Collected"
-          value={formatCurrency(summary.revenueCollected)}
+          value={`${formatCurrency(summary.revenueCollected)} · ${formatCurrency(summary.revenuePending)} pending`}
           icon={IndianRupee}
           tone="success"
-          trend={{ value: summary.revenuePending, label: "still pending" }}
           loading={loading}
           error={error}
         />
         <KpiCard
           label="Conversion Rate"
-          value={formatPercent(summary.conversionRatePercent)}
+          value={`${formatPercent(summary.conversionRatePercent)} · ${formatNumber(summary.totalEnrollments)} enrollments`}
           icon={TrendingUp}
           tone="neutral"
-          trend={{ value: summary.totalEnrollments, label: "active enrollments" }}
           loading={loading}
           error={error}
         />
         <KpiCard
           label="Batch Occupancy"
-          value={formatPercent(summary.batchOccupancyPercent)}
+          value={`${formatPercent(summary.batchOccupancyPercent)} · ${formatNumber(summary.activeBatches)} batches`}
           icon={RefreshCw}
           tone="warning"
-          trend={{ value: summary.activeBatches, label: "active batches" }}
           loading={loading}
           error={error}
         />

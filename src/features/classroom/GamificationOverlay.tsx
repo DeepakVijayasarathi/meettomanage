@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Star, Trophy } from "lucide-react";
+import { ChevronDown, ChevronUp, Star, Trophy, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
-import { playCelebration } from "@/lib/sounds";
+import { isSoundMuted, playCelebration, setSoundMuted } from "@/lib/sounds";
 import type { LeaderboardEntry } from "./classroomData";
 
 interface GamificationOverlayProps {
@@ -32,24 +32,45 @@ function badgeFor(stars: number) {
 
 export default function GamificationOverlay({ celebrating, onCelebrationEnd, leaderboard, message }: GamificationOverlayProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [muted, setMuted] = useState(() => isSoundMuted());
+  const [reducedMotion, setReducedMotion] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
 
-  // Dhol + clapping accompany every celebration moment
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => setReducedMotion(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  function toggleMuted() {
+    const next = !muted;
+    setMuted(next);
+    setSoundMuted(next);
+  }
+
+  // Dhol + clapping accompany every celebration moment (skipped if muted, via playCelebration itself)
   useEffect(() => {
     if (celebrating) playCelebration();
   }, [celebrating]);
 
+  // Skipping confetti generation entirely (not just hiding it with CSS) for
+  // prefers-reduced-motion — the celebration banner alone still confirms the moment.
   const pieces = useMemo(
     () =>
-      Array.from({ length: 36 }, (_, i) => ({
-        id: i,
-        left: Math.random() * 100,
-        delay: Math.random() * 0.5,
-        duration: 1.1 + Math.random() * 0.9,
-        color: CHART_PALETTE[i % CHART_PALETTE.length],
-        size: 6 + Math.random() * 8,
-      })),
+      reducedMotion
+        ? []
+        : Array.from({ length: 36 }, (_, i) => ({
+            id: i,
+            left: Math.random() * 100,
+            delay: Math.random() * 0.5,
+            duration: 1.1 + Math.random() * 0.9,
+            color: CHART_PALETTE[i % CHART_PALETTE.length],
+            size: 6 + Math.random() * 8,
+          })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [celebrating]
+    [celebrating, reducedMotion]
   );
 
   useEffect(() => {
@@ -79,7 +100,12 @@ export default function GamificationOverlay({ celebrating, onCelebrationEnd, lea
             />
           ))}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="animate-pop-in rounded-2xl border border-white/10 bg-brand-navy/95 px-7 py-5 text-center backdrop-blur">
+            <div
+              className={cn(
+                "rounded-2xl border border-white/10 bg-brand-navy/95 px-7 py-5 text-center backdrop-blur",
+                !reducedMotion && "animate-pop-in"
+              )}
+            >
               <p className="font-display text-xl font-bold text-white sm:text-2xl">{message ?? "Great job! 🎉"}</p>
             </div>
           </div>
@@ -92,16 +118,26 @@ export default function GamificationOverlay({ celebrating, onCelebrationEnd, lea
           collapsed && "h-11"
         )}
       >
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          aria-label={collapsed ? "Expand leaderboard" : "Collapse leaderboard"}
-          className="flex w-full items-center justify-between px-3 py-2.5 text-left text-white/40 hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
-            <Trophy className="h-4 w-4 text-brand-amber" /> Leaderboard
-          </span>
-          {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center justify-between px-3 py-2.5 text-white/40">
+          <button
+            onClick={() => setCollapsed((c) => !c)}
+            aria-label={collapsed ? "Expand leaderboard" : "Collapse leaderboard"}
+            className="flex flex-1 items-center justify-between text-left hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
+              <Trophy className="h-4 w-4 text-brand-amber" /> Leaderboard
+            </span>
+            {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={toggleMuted}
+            aria-label={muted ? "Unmute celebration sounds" : "Mute celebration sounds"}
+            title={muted ? "Unmute celebration sounds" : "Mute celebration sounds"}
+            className="ml-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+          </button>
+        </div>
         <ul className="space-y-1 px-2 pb-2.5">
           {sorted.slice(0, 5).map((entry, i) => (
             <li

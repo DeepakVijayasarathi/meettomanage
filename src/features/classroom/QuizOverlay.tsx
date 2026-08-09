@@ -14,7 +14,9 @@ interface QuizOverlayProps {
   /** Real-time sync: teacher advanced to a question — broadcast it to the class. */
   onLaunchQuestion?: (index: number) => void;
   /** Real-time sync: this participant answered — feeds the live leaderboard. */
-  onAnswered?: (questionIndex: number, correct: boolean) => void;
+  onAnswered?: (questionIndex: number, selectedIndex: number, correct: boolean) => void;
+  /** Real per-option answer counts for the current question, from the hub's own broadcasts. */
+  liveTally?: number[];
 }
 
 const QUESTION_SECONDS = 15;
@@ -26,6 +28,7 @@ export default function QuizOverlay({
   syncedIndex,
   onLaunchQuestion,
   onAnswered,
+  liveTally,
 }: QuizOverlayProps) {
   const [qIndex, setQIndex] = useState(0);
   const [phase, setPhase] = useState<"countdown" | "revealed">("countdown");
@@ -36,12 +39,13 @@ export default function QuizOverlay({
 
   const question = QUIZ_BANK[qIndex % QUIZ_BANK.length];
 
+  // Real counts from the hub's QuizAnswer broadcasts — zero-filled (not fabricated)
+  // when nothing has come through yet, e.g. hub disconnected or no one's answered.
   const optionCounts = useMemo(
-    () => question.options.map((_, i) => (((qIndex + 1) * 7 + i * 13) % 6) + 1),
-    [qIndex, question]
+    () => question.options.map((_, i) => liveTally?.[i] ?? 0),
+    [question, liveTally]
   );
-  const displayCounts = optionCounts.map((c, i) => (selected === i ? c + 1 : c));
-  const maxCount = Math.max(...displayCounts, 1);
+  const maxCount = Math.max(...optionCounts, 1);
 
   useEffect(() => {
     if (!active) return;
@@ -67,7 +71,7 @@ export default function QuizOverlay({
     if (selected === null) return;
     const isCorrect = selected === question.correctIndex;
     setScore((s) => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
-    onAnswered?.(qIndex, isCorrect);
+    onAnswered?.(qIndex, selected, isCorrect);
     if (isCorrect) onCorrectAnswer();
   }, [phase, selected, question, onCorrectAnswer, onAnswered, qIndex]);
 
@@ -171,7 +175,7 @@ export default function QuizOverlay({
           <div className="space-y-2 rounded-xl bg-white/5 p-3">
             <p className="text-[11px] font-semibold text-white/50">Live response tally</p>
             {question.options.map((opt, i) => {
-              const count = displayCounts[i];
+              const count = optionCounts[i];
               return (
                 <div key={opt} className="flex items-center gap-2 text-xs">
                   <span className="w-24 shrink-0 truncate font-medium text-white/70" title={opt}>{opt}</span>

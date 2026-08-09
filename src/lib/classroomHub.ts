@@ -25,7 +25,7 @@ export interface ClassroomHubEvents {
   chat: (author: string, text: string) => void;
   quizStarted: (questionIndex: number) => void;
   quizEnded: () => void;
-  quizAnswer: (name: string, questionIndex: number, correct: boolean) => void;
+  quizAnswer: (name: string, questionIndex: number, selectedIndex: number, correct: boolean) => void;
   leaderboard: (entries: HubLeaderboardEntry[]) => void;
   celebrate: (message: string | null) => void;
   boardAccess: (allowed: boolean) => void;
@@ -148,8 +148,8 @@ export class ClassroomHubClient {
     this.send("EndQuiz");
   }
 
-  answerQuiz(questionIndex: number, correct: boolean): void {
-    this.send("AnswerQuiz", questionIndex, correct);
+  answerQuiz(questionIndex: number, selectedIndex: number, correct: boolean): void {
+    this.send("AnswerQuiz", questionIndex, selectedIndex, correct);
   }
 
   celebrate(message?: string): void {

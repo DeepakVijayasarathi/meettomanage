@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { INVOICES } from "@/data/invoices";
 import { getParentById } from "@/data/users";
 import { useApiData } from "@/api/hooks";
@@ -291,29 +292,37 @@ export default function AdminBilling() {
         <KpiCard label="Overdue Invoices" value={`${formatNumber(totals.overdueCount)} · ${formatCurrency(totals.overdueAmount)}`} icon={AlertTriangle} tone="destructive" />
       </div>
 
-      <div className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Pending Cash Confirmations
-        </h2>
-        <CashConfirmationsPanel />
-      </div>
+      <Tabs defaultValue="action" className="mt-8">
+        <TabsList>
+          <TabsTrigger value="action">Needs Your Action</TabsTrigger>
+          <TabsTrigger value="invoices">All Invoices</TabsTrigger>
+        </TabsList>
 
-      <div className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Pending Refund Requests
-        </h2>
-        <RefundRequestsPanel />
-      </div>
+        <TabsContent value="action" className="flex flex-col gap-8">
+          <div>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Pending Cash Confirmations
+            </h2>
+            <CashConfirmationsPanel />
+          </div>
+          <div>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Pending Refund Requests
+            </h2>
+            <RefundRequestsPanel />
+          </div>
+        </TabsContent>
 
-      <div className="mt-8">
-        <DataTable
-          data={invoices}
-          columns={columns}
-          rowKey={(row) => row.id}
-          searchPlaceholder="Search invoices by ID or student…"
-          onRowClick={openDetail}
-        />
-      </div>
+        <TabsContent value="invoices">
+          <DataTable
+            data={invoices}
+            columns={columns}
+            rowKey={(row) => row.id}
+            searchPlaceholder="Search invoices by ID or student…"
+            onRowClick={openDetail}
+          />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>
         <DialogContent>
@@ -331,8 +340,8 @@ export default function AdminBilling() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
-                  {/* API invoices don't resolve a parent name yet; never borrow one from the mocks */}
-                  <p className="mt-1 font-medium text-foreground">{live ? "—" : getParentById(detail.parentId)?.name ?? "—"}</p>
+                  {/* The API resolves this via Invoice.ParentProfile.User — never borrow a name from the mocks in live mode */}
+                  <p className="mt-1 font-medium text-foreground">{live ? detail.parentName : getParentById(detail.parentId)?.name ?? "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Department</p>

@@ -193,7 +193,7 @@ export default function TeacherAttendance() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Sessions Delivered" value={String(completed.length)} icon={ClipboardList} tone="primary" />
-        <KpiCard label="Average Attendance" value={`${avgAttendance}%`} icon={CheckCircle2} tone="success" />
+        <KpiCard label="Average Attendance" value={avgAttendance ? `${avgAttendance}%` : "—"} icon={CheckCircle2} tone="success" />
         <KpiCard label="Students Taught" value={String(uniqueStudents)} icon={Users} tone="warning" />
         <KpiCard label="Recordings Available" value={`${recordingsAvailable}/${completed.length}`} icon={Video} tone="neutral" />
       </div>
