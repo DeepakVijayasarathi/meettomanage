@@ -48,6 +48,7 @@ export default function AdmissionConversion() {
   );
   const [demoLeads, setDemoLeads] = useState<Lead[]>(() => INITIAL_LEADS);
   const leads = usingApi ? apiLeads : demoLeads;
+  const [moveError, setMoveError] = useState<string | null>(null);
 
   const columns = useMemo(() => {
     const grouped: Record<BoardStage, Lead[]> = {
@@ -66,8 +67,13 @@ export default function AdmissionConversion() {
 
   async function moveLead(leadId: string, stage: BoardStage) {
     if (usingApi) {
-      await updateConversionStatus(leadId, toApiConversionStatus(stage));
-      reload();
+      setMoveError(null);
+      try {
+        await updateConversionStatus(leadId, toApiConversionStatus(stage));
+        reload();
+      } catch (err) {
+        setMoveError(err instanceof Error ? err.message : "Couldn't move this lead. Please try again.");
+      }
       return;
     }
     setDemoLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, conversionStage: stage } : l)));
@@ -80,6 +86,10 @@ export default function AdmissionConversion() {
         title="Conversion Board"
         description="Move leads through the pipeline as conversations progress. Drag isn't required — use the move menu on each card."
       />
+
+      {moveError && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">{moveError}</p>
+      )}
 
       {leads.length === 0 ? (
         <EmptyState icon={Sparkles} title="No leads on the board yet" description="Leads appear here once their demo is completed." />

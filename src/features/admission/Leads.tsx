@@ -81,6 +81,8 @@ export default function AdmissionLeads() {
   const [noteText, setNoteText] = useState("");
   const [nextFollowUp, setNextFollowUp] = useState("");
   const [justLogged, setJustLogged] = useState<string | null>(null);
+  const [loggingFollowUp, setLoggingFollowUp] = useState(false);
+  const [followUpError, setFollowUpError] = useState<string | null>(null);
 
   const filtered = useMemo(
     () => (stageFilter === "all" ? leads : leads.filter((l) => l.conversionStage === stageFilter)),
@@ -91,22 +93,28 @@ export default function AdmissionLeads() {
     setActiveLead(lead);
     setNoteText("");
     setNextFollowUp(lead.nextFollowUpOn ?? "");
+    setFollowUpError(null);
   }
 
-  function handleLogFollowUp() {
+  async function handleLogFollowUp() {
     if (!activeLead || !noteText.trim()) return;
 
     if (apiEnabled()) {
       // The API keeps one running notes field per booking; append and persist
       const combined = [...activeLead.notes.map((n) => n.note), noteText.trim()].join("\n");
-      updateConversionStatus(activeLead.id, toApiConversionStatus(activeLead.conversionStage), combined)
-        .then(() => {
-          reload();
-          setJustLogged(activeLead.childName);
-          setTimeout(() => setJustLogged(null), 4000);
-        })
-        .catch(() => setJustLogged(null));
-      setActiveLead(null);
+      setLoggingFollowUp(true);
+      setFollowUpError(null);
+      try {
+        await updateConversionStatus(activeLead.id, toApiConversionStatus(activeLead.conversionStage), combined);
+        reload();
+        setJustLogged(activeLead.childName);
+        setTimeout(() => setJustLogged(null), 4000);
+        setActiveLead(null);
+      } catch (err) {
+        setFollowUpError(err instanceof Error ? err.message : "Couldn't save this follow-up. Please try again.");
+      } finally {
+        setLoggingFollowUp(false);
+      }
       return;
     }
 
@@ -338,12 +346,14 @@ export default function AdmissionLeads() {
                 <Input id="nextFollowUp" type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} className="w-48" />
               </div>
 
+              {followUpError && <p className="text-sm font-medium text-destructive">{followUpError}</p>}
+
               <DialogFooter>
-                <Button variant="outline" onClick={() => setActiveLead(null)}>
+                <Button variant="outline" onClick={() => setActiveLead(null)} disabled={loggingFollowUp}>
                   Close
                 </Button>
-                <Button disabled={!noteText.trim()} onClick={handleLogFollowUp}>
-                  <MessageSquarePlus className="h-4 w-4" /> Save follow-up
+                <Button disabled={!noteText.trim() || loggingFollowUp} onClick={handleLogFollowUp}>
+                  <MessageSquarePlus className="h-4 w-4" /> {loggingFollowUp ? "Saving…" : "Save follow-up"}
                 </Button>
               </DialogFooter>
             </>
