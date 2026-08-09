@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { apiEnabled } from "@/lib/api";
@@ -28,6 +29,7 @@ import { getChildById } from "@/data/children";
 import { getSessionsForChild } from "@/data/sessions";
 import { getResourcesForBatch } from "@/data/resources";
 import { LEADERBOARD_SEED } from "@/features/classroom/classroomData";
+import { isJoinable, joinHint } from "@/features/parent/utils";
 import { formatDate } from "@/lib/utils";
 
 const CHILD_ID = "c-1";
@@ -102,15 +104,29 @@ export default function StudentDashboard() {
               </div>
             </div>
             <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-              <Button size="lg" asChild className="w-full sm:w-auto">
-                <Link
-                  to={`/parent/live/${todaySession.id}`}
-                  state={todaySession.meetingRoomId ? { room: todaySession.meetingRoomId, title: todaySession.title } : undefined}
-                >
-                  <Video className="h-4 w-4" />
-                  Join Class
-                </Link>
-              </Button>
+              {isJoinable(todaySession) ? (
+                <Button size="lg" asChild className="w-full sm:w-auto">
+                  <Link
+                    to={`/parent/live/${todaySession.id}`}
+                    state={todaySession.meetingRoomId ? { room: todaySession.meetingRoomId, title: todaySession.title } : undefined}
+                  >
+                    <Video className="h-4 w-4" />
+                    Join Class
+                  </Link>
+                </Button>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="w-full sm:w-auto">
+                      <Button size="lg" variant="outline" disabled className="w-full sm:w-auto">
+                        <Video className="h-4 w-4" />
+                        Join Class
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{joinHint(todaySession)}</TooltipContent>
+                </Tooltip>
+              )}
               <p className="text-center text-xs text-muted-foreground sm:text-right">You can join 10 minutes before it starts</p>
             </div>
           </div>
@@ -410,12 +426,26 @@ function ApiStudentDashboard() {
               </div>
             </div>
             <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-              <Button size="lg" asChild className="w-full sm:w-auto">
-                <Link to="/parent/schedule">
-                  <Video className="h-4 w-4" />
-                  Join from Schedule
-                </Link>
-              </Button>
+              {isJoinable(todaySession) ? (
+                <Button size="lg" asChild className="w-full sm:w-auto">
+                  <Link to="/parent/schedule">
+                    <Video className="h-4 w-4" />
+                    Join from Schedule
+                  </Link>
+                </Button>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="w-full sm:w-auto">
+                      <Button size="lg" variant="outline" disabled className="w-full sm:w-auto">
+                        <Video className="h-4 w-4" />
+                        Join from Schedule
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{joinHint(todaySession)}</TooltipContent>
+                </Tooltip>
+              )}
               <p className="text-center text-xs text-muted-foreground sm:text-right">You can join 10 minutes before it starts</p>
             </div>
           </div>

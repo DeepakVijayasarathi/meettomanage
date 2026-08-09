@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search } fr
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/EmptyState";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,17 @@ interface DataTableProps<T> {
   pageSize?: number;
   emptyTitle?: string;
   emptyDescription?: string;
+  /**
+   * Opt-in row selection for bulk actions — off by default, so every existing
+   * DataTable consumer is unaffected unless it passes these. The selection set is
+   * owned by the caller (keyed by rowKey) so each screen decides what "bulk action"
+   * means for its own data; DataTable only renders the checkboxes and the toolbar slot.
+   */
+  selectable?: boolean;
+  selectedKeys?: Set<string>;
+  onSelectionChange?: (keys: Set<string>) => void;
+  /** Rendered in the toolbar row whenever at least one row is selected. */
+  bulkActions?: ReactNode;
 }
 
 export function DataTable<T>({
@@ -40,10 +52,32 @@ export function DataTable<T>({
   pageSize = 8,
   emptyTitle = "No records found",
   emptyDescription = "Try adjusting your search or filters.",
+  selectable,
+  selectedKeys,
+  onSelectionChange,
+  bulkActions,
 }: DataTableProps<T>) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const [page, setPage] = useState(1);
+  const selection = selectedKeys ?? new Set<string>();
+
+  function toggleRow(key: string, checked: boolean) {
+    const next = new Set(selection);
+    if (checked) next.add(key);
+    else next.delete(key);
+    onSelectionChange?.(next);
+  }
+
+  function toggleAllOnPage(rows: T[], checked: boolean) {
+    const next = new Set(selection);
+    for (const row of rows) {
+      const key = rowKey(row);
+      if (checked) next.add(key);
+      else next.delete(key);
+    }
+    onSelectionChange?.(next);
+  }
 
   const filtered = useMemo(() => {
     if (!query) return data;
@@ -92,7 +126,21 @@ export function DataTable<T>({
             className="pl-9"
           />
         </div>
-        {toolbar && <div className="flex flex-wrap items-center gap-2">{toolbar}</div>}
+        {(toolbar || (selectable && selection.size > 0)) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {selectable && selection.size > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg bg-accent px-3 py-1.5">
+                <span className="text-xs font-semibold text-accent-foreground">{selection.size} selected</span>
+                {bulkActions}
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => onSelectionChange?.(new Set())}>
+                  Clear
+                </Button>
+              </div>
+            ) : (
+              toolbar
+            )}
+          </div>
+        )}
       </div>
 
       {sorted.length === 0 ? (
@@ -119,7 +167,18 @@ export function DataTable<T>({
                     onRowClick && "cursor-pointer active:bg-muted/40"
                   )}
                 >
-                  {primary && <div className={cn("text-sm", primary.className)}>{primary.render(row)}</div>}
+                  <div className="flex items-start gap-2">
+                    {selectable && (
+                      <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          aria-label="Select row"
+                          checked={selection.has(rowKey(row))}
+                          onCheckedChange={(checked) => toggleRow(rowKey(row), checked === true)}
+                        />
+                      </div>
+                    )}
+                    {primary && <div className={cn("min-w-0 flex-1 text-sm", primary.className)}>{primary.render(row)}</div>}
+                  </div>
                   {detailCols.length > 0 && (
                     <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-border pt-3">
                       {detailCols.map((col) => (
@@ -146,6 +205,15 @@ export function DataTable<T>({
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
+                  {selectable && (
+                    <TableHead className="w-10">
+                      <Checkbox
+                        aria-label="Select all rows on this page"
+                        checked={pageRows.length > 0 && pageRows.every((row) => selection.has(rowKey(row)))}
+                        onCheckedChange={(checked) => toggleAllOnPage(pageRows, checked === true)}
+                      />
+                    </TableHead>
+                  )}
                   {columns.map((col) => (
                     <TableHead key={col.key} className={col.headClassName}>
                       {col.sortable ? (
@@ -175,6 +243,15 @@ export function DataTable<T>({
                     onClick={() => onRowClick?.(row)}
                     className={cn(onRowClick && "cursor-pointer")}
                   >
+                    {selectable && (
+                      <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          aria-label={`Select row`}
+                          checked={selection.has(rowKey(row))}
+                          onCheckedChange={(checked) => toggleRow(rowKey(row), checked === true)}
+                        />
+                      </TableCell>
+                    )}
                     {columns.map((col) => (
                       <TableCell key={col.key} className={col.className}>
                         {col.render(row)}

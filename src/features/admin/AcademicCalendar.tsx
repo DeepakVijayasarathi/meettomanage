@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SessionStatusBadge } from "@/components/StatusBadge";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +50,7 @@ export default function AdminAcademicCalendar() {
   const [savingHoliday, setSavingHoliday] = useState(false);
   const [holidayError, setHolidayError] = useState<string | null>(null);
   const [deletingHolidayId, setDeletingHolidayId] = useState<string | null>(null);
+  const [holidayDeleteTarget, setHolidayDeleteTarget] = useState<ApiHoliday | null>(null);
 
   async function handleAddHoliday() {
     if (!holidayDate || !holidayName.trim()) return;
@@ -126,8 +128,10 @@ export default function AdminAcademicCalendar() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      aria-label={`Remove holiday: ${h.name}`}
+                      title={`Remove holiday: ${h.name}`}
                       disabled={deletingHolidayId === h.id}
-                      onClick={() => handleDeleteHoliday(h.id)}
+                      onClick={() => setHolidayDeleteTarget(h)}
                     >
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
@@ -199,6 +203,19 @@ export default function AdminAcademicCalendar() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!holidayDeleteTarget}
+        onOpenChange={(open) => !open && setHolidayDeleteTarget(null)}
+        title={`Remove "${holidayDeleteTarget?.name}"?`}
+        description={holidayDeleteTarget ? `${formatDate(holidayDeleteTarget.date)} will no longer be marked as a holiday on the calendar.` : undefined}
+        confirmLabel="Remove"
+        destructive
+        onConfirm={() => {
+          if (!holidayDeleteTarget) return;
+          return handleDeleteHoliday(holidayDeleteTarget.id).then(() => setHolidayDeleteTarget(null));
+        }}
+      />
     </div>
   );
 }

@@ -232,6 +232,36 @@ export default function AdminUsers() {
   // Clear any previous send result whenever a different user's dialog opens.
   useEffect(() => setSendResult(null), [detailUser]);
 
+  // Bulk resend — shared by the Parents and Teachers tabs (both list AppUser rows).
+  const [selectedParentIds, setSelectedParentIds] = useState<Set<string>>(new Set());
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<Set<string>>(new Set());
+  const [bulkConfirmIds, setBulkConfirmIds] = useState<string[] | null>(null);
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkResult, setBulkResult] = useState<string | null>(null);
+
+  async function handleBulkResend(ids: string[]) {
+    if (!apiEnabled()) {
+      setBulkResult(`Demo mode — no email actually sent to ${ids.length} user(s).`);
+      return;
+    }
+    setBulkSending(true);
+    setBulkResult(null);
+    let succeeded = 0;
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await resendCredentials(id, "Email");
+        succeeded++;
+      } catch {
+        failed++;
+      }
+    }
+    setBulkResult(failed === 0 ? `Sent to all ${succeeded} selected user(s).` : `Sent to ${succeeded}, failed for ${failed}.`);
+    setBulkSending(false);
+    setSelectedParentIds(new Set());
+    setSelectedTeacherIds(new Set());
+  }
+
   async function handleResend(channel: "Email" | "WhatsApp" | "Sms") {
     if (!detailUser) return;
     if (!apiEnabled()) {
@@ -445,6 +475,13 @@ export default function AdminUsers() {
         </p>
       )}
 
+      {bulkResult && (
+        <p className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          {bulkResult}
+        </p>
+      )}
+
       <Tabs defaultValue="parents">
         <TabsList>
           <TabsTrigger value="parents" className="gap-1.5">
@@ -468,6 +505,14 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search parents by name or email…"
             onRowClick={(row) => setDetailUser(row)}
+            selectable
+            selectedKeys={selectedParentIds}
+            onSelectionChange={setSelectedParentIds}
+            bulkActions={
+              <Button size="sm" className="h-7 px-2 text-xs" disabled={bulkSending} onClick={() => setBulkConfirmIds([...selectedParentIds])}>
+                <Mail className="h-3 w-3" /> Resend credentials
+              </Button>
+            }
           />
         </TabsContent>
 
@@ -488,6 +533,14 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search teachers by name or email…"
             onRowClick={(row) => setDetailUser(row)}
+            selectable
+            selectedKeys={selectedTeacherIds}
+            onSelectionChange={setSelectedTeacherIds}
+            bulkActions={
+              <Button size="sm" className="h-7 px-2 text-xs" disabled={bulkSending} onClick={() => setBulkConfirmIds([...selectedTeacherIds])}>
+                <Mail className="h-3 w-3" /> Resend credentials
+              </Button>
+            }
           />
         </TabsContent>
 
@@ -635,6 +688,19 @@ export default function AdminUsers() {
         confirmLabel="Delete Account"
         destructive
         onConfirm={handleDeleteUser}
+      />
+
+      <ConfirmDialog
+        open={!!bulkConfirmIds}
+        onOpenChange={(open) => !open && setBulkConfirmIds(null)}
+        title={`Resend credentials to ${bulkConfirmIds?.length ?? 0} user(s)?`}
+        description="Each person gets a new temporary PIN and their previous one stops working. Use this for a batch of accounts that all need a credentials reset — not routinely."
+        confirmLabel="Send"
+        destructive
+        onConfirm={() => {
+          if (!bulkConfirmIds) return;
+          return handleBulkResend(bulkConfirmIds).then(() => setBulkConfirmIds(null));
+        }}
       />
 
       {/* Edit profile dialog */}

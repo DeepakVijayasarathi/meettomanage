@@ -17,7 +17,7 @@ import { Card } from "@/components/ui/card";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatPercent, getInitials } from "@/lib/utils";
+import { cn, formatCurrency, formatPercent, getInitials } from "@/lib/utils";
 import { ADMIN_KPIS, BATCH_OCCUPANCY_BY_COURSE, TEACHER_UTILIZATION } from "@/data/kpis";
 import { TEACHERS } from "@/data/users";
 import { getPayoutsForTeacher } from "@/data/payouts";
@@ -140,13 +140,19 @@ export default function ManagementPerformance() {
       sortable: true,
       render: (r) => {
         if (r.utilization === undefined) return <span className="text-xs text-muted-foreground">No data</span>;
-        const tone = r.utilization >= 85 ? "bg-success" : r.utilization >= 65 ? "bg-primary" : "bg-warning";
+        // A fourth, critical tier for severely underutilized teachers — previously the
+        // same amber "warning" covered both "a bit light this month" and "barely
+        // teaching," which buries the cases most likely to need a staffing decision.
+        const tone =
+          r.utilization >= 85 ? "bg-success" : r.utilization >= 65 ? "bg-primary" : r.utilization >= 40 ? "bg-warning" : "bg-destructive";
         return (
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
               <div className={`h-full rounded-full ${tone}`} style={{ width: `${r.utilization}%` }} />
             </div>
-            <span className="w-9 shrink-0 text-xs font-semibold text-foreground">{r.utilization}%</span>
+            <span className={cn("w-9 shrink-0 text-xs font-semibold", r.utilization < 40 ? "text-destructive" : "text-foreground")}>
+              {r.utilization}%
+            </span>
           </div>
         );
       },

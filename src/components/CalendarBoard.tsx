@@ -55,13 +55,27 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold tracking-tight">{format(cursor, "MMMM yyyy")}</h3>
         <div className="flex items-center gap-1.5">
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCursor((c) => subMonths(c, 1))}>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            aria-label="Previous month"
+            title="Previous month"
+            onClick={() => setCursor((c) => subMonths(c, 1))}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="sm" className="h-8" onClick={() => setCursor(new Date())}>
             Today
           </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCursor((c) => addMonths(c, 1))}>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            aria-label="Next month"
+            title="Next month"
+            onClick={() => setCursor((c) => addMonths(c, 1))}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
