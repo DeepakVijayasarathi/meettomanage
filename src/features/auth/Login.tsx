@@ -108,18 +108,30 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-brand-cream lg:grid lg:grid-cols-[2fr_1fr]">
-      {/* Left — the illustration lives on the same cream canvas as the page, framed like a photo on a wall */}
+      {/* Left — a composed brand panel on the same cream canvas as the page (no stock photo) */}
       <div className="hidden flex-col justify-center gap-10 p-10 lg:flex">
         <div className="relative mx-auto w-full max-w-3xl">
-          <div className="absolute -left-5 -top-5 z-10 flex h-16 w-16 -rotate-6 items-center justify-center rounded-full bg-white p-2 ring-1 ring-brand-ink/10">
-            <img src="/logo.png" alt="" className="h-full w-full object-contain" />
-          </div>
-          <div className="overflow-hidden rounded-[28px] ring-4 ring-white">
-            <img
-              src="/login.png"
-              alt="Two children reading together at The Reader Nest"
-              className="aspect-[16/11] w-full object-cover"
-            />
+          <div className="relative aspect-[16/11] w-full overflow-hidden rounded-[28px] bg-gradient-to-br from-[#EAF3FF] via-brand-cream to-[#FDECF6] ring-4 ring-white">
+            {/* Soft washes in the same three hues as the trust chips below — brand colour, not a generic gradient. */}
+            <div className="pointer-events-none absolute -left-20 -top-24 h-72 w-72 rounded-full bg-[#5B93E0]/25 blur-[80px]" />
+            <div className="pointer-events-none absolute -bottom-24 -right-16 h-80 w-80 rounded-full bg-[#F53BA6]/20 blur-[90px]" />
+            <div className="pointer-events-none absolute bottom-0 left-1/4 h-56 w-56 rounded-full bg-[#57B33B]/20 blur-[80px]" />
+
+            <div className="relative flex h-full flex-col items-center justify-center gap-5 px-14 text-center">
+              <div className="flex h-24 w-24 items-center justify-center rounded-[26px] bg-white shadow-lg ring-1 ring-brand-ink/5">
+                <img src="/logo.png" alt="" className="h-16 w-16 object-contain" />
+              </div>
+              <div>
+                <p className="font-display text-[13px] font-bold uppercase tracking-[0.3em] text-brand-green">
+                  Read &middot; Write &middot; Speak
+                </p>
+                <h2 className="font-display mt-3 text-4xl font-extrabold leading-[1.08] tracking-tight text-brand-ink xl:text-5xl">
+                  Learning today,
+                  <br />
+                  leading tomorrow.
+                </h2>
+              </div>
+            </div>
           </div>
         </div>
 
