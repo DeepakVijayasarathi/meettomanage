@@ -31,6 +31,8 @@ import {
   TrendingUp,
   Gauge,
   FileBarChart,
+  FileText,
+  ScrollText,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -86,6 +88,8 @@ export const ADMIN_NAV: NavSection[] = [
     items: [
       { label: "Reports & Analytics", to: "/admin/reports", icon: BarChart3 },
       { label: "Bulk Email", to: "/admin/bulk-email", icon: Mail },
+      { label: "Email Templates", to: "/admin/email-templates", icon: FileText },
+      { label: "Progress Reports", to: "/admin/progress-reports", icon: ScrollText },
     ],
   },
   {
