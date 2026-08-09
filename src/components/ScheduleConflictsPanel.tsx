@@ -31,9 +31,11 @@ interface AttentionItem {
 export function ScheduleConflictsPanel() {
   const { data: sessions } = useApiData<ClassSession[]>(() => listSessions().then((s) => s.map(toFrontendSession)), SESSIONS);
   const { data: leaves } = useApiData<LeaveRequest[]>(() => listLeave().then((l) => l.map(toFrontendLeave)), LEAVE_REQUESTS);
-  const now = apiEnabled() ? new Date() : new Date("2026-07-09T12:00:00");
-
   const items = useMemo(() => {
+    // Computed inside the memo (not as a render-scoped variable) so `new Date()`
+    // creating a fresh object identity every render doesn't defeat this useMemo —
+    // it was previously in the dependency array, forcing a recompute every render.
+    const now = apiEnabled() ? new Date() : new Date("2026-07-09T12:00:00");
     const out: AttentionItem[] = [];
     const weekStart = startOfWeek(now);
     const weekEnd = endOfWeek(now);
@@ -87,7 +89,7 @@ export function ScheduleConflictsPanel() {
       });
 
     return out;
-  }, [sessions, leaves, now]);
+  }, [sessions, leaves]);
 
   return (
     <Card>

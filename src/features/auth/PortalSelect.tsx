@@ -1,4 +1,4 @@
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Badge } from "@/components/ui/badge";
@@ -36,12 +36,21 @@ export default function PortalSelect() {
             return (
               <Card
                 key={r}
+                role="button"
+                tabIndex={0}
                 onClick={() => {
                   setRole(r);
                   navigate(meta.homePath);
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setRole(r);
+                    navigate(meta.homePath);
+                  }
+                }}
                 className={cn(
-                  "group flex cursor-pointer flex-col gap-4 p-5 transition-all hover:-translate-y-0.5 hover:shadow-pop"
+                  "group flex cursor-pointer flex-col gap-4 p-5 transition-all hover:-translate-y-0.5 hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 )}
               >
                 <div className="flex items-center justify-between">
@@ -63,7 +72,7 @@ export default function PortalSelect() {
                   <h3 className="font-semibold text-foreground">{meta.label}</h3>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{meta.description}</p>
                 </div>
-                <span className="mt-auto flex items-center gap-1 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="mt-auto flex items-center gap-1 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                   Enter portal <ArrowRight className="h-3.5 w-3.5" />
                 </span>
               </Card>
@@ -72,7 +81,7 @@ export default function PortalSelect() {
         </div>
 
         <p className="mt-10 text-center text-xs text-muted-foreground">
-          Prefer signing in normally? <a href="/login" className="font-semibold text-primary hover:underline">Back to login</a>
+          Prefer signing in normally? <Link to="/login" className="font-semibold text-primary hover:underline">Back to login</Link>
         </p>
       </div>
     </div>

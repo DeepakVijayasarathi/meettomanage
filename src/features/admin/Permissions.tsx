@@ -318,7 +318,7 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
                   : "Click a module name to toggle every action in that row. Changes are local to this session and are not persisted."}
               </p>
               {apiEnabled() && loadError && (
-                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{loadError}</p>
+                <p className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{loadError}</p>
               )}
             </CardContent>
           </Card>
@@ -515,7 +515,7 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
         </Button>
       </CardHeader>
       <CardContent>
-        {error && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{error}</p>}
+        {error && <p className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         <div className="mb-4 flex flex-wrap gap-2">
           {roles.map((role) => (
@@ -523,7 +523,7 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
               key={role.id}
               onClick={() => selectRole(role)}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 selectedId === role.id && !isNew
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"

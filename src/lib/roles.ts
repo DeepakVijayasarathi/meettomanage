@@ -52,7 +52,12 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Admission",
     description: "Demo scheduling, parent follow-up and conversion management.",
     colorVar: "role-admission",
-    hex: "#8B5CF6",
+    // Nudged from #8B5CF6 (barely perceptible: R 0x8B->0x83, G 0x5C->0x56, B 0xF6->0xE7) —
+    // the original only reached 4.23:1 against white button text, and against dark navy
+    // text it was worse (4.00:1); neither cleared WCAG AA's 4.5:1 minimum for either choice,
+    // so unlike the other 7 role colors (fixed via AppShell picking whichever of white/navy
+    // text contrasts best), this one needed the color itself adjusted.
+    hex: "#8356E7",
     icon: HeartHandshake,
     available: true,
     homePath: "/admission",

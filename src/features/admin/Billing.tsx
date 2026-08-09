@@ -42,7 +42,7 @@ const DEPARTMENT_COLOR: Record<Invoice["department"], string> = {
 };
 
 export default function AdminBilling() {
-  const { data: invoices, reload } = useApiData(
+  const { data: invoices, error: invoicesError, reload } = useApiData(
     () => listInvoices().then((items) => items.map(toFrontendInvoice)),
     INVOICES
   );
@@ -174,6 +174,15 @@ export default function AdminBilling() {
         title="Billing & Finance"
         description="Track packages, invoices, receipts and refunds across every parent account."
       />
+
+      {live && invoicesError && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          Could not load invoices ({invoicesError}) — the table below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard label="Total Revenue Collected" value={formatCurrency(totals.totalRevenue)} icon={IndianRupee} tone="success" />

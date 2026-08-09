@@ -182,7 +182,6 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, selfName]);
 
   if (!session) {
@@ -200,8 +199,8 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-r from-brand-navyDark via-brand-navy to-brand-navyDark px-4 py-2.5 text-white">
         <div className="flex min-w-0 items-center gap-3">
           <span className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive" />
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-bold leading-tight">{session.title}</p>
@@ -213,8 +212,8 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
 
         <div className="flex items-center gap-3">
           {recording && (
-            <span className="flex items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-1 text-xs font-semibold text-red-300">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" /> REC
+            <span className="flex items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-xs font-semibold text-destructive">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-destructive" /> REC
             </span>
           )}
           <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold tabular-nums text-white/85">
@@ -255,9 +254,9 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
       </header>
 
       {/* Body */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         {/* Stage */}
-        <div className="relative flex-1 bg-slate-950">
+        <div className="relative min-h-0 min-w-0 flex-1 bg-slate-950">
           {stageView === "video" ? (
             <VideoStage participants={participants} boardAccess={boardAccess} />
           ) : (
@@ -274,11 +273,12 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
           {mode === "teacher" && (
             <button
               title="Birthday celebration"
+              aria-label="Send a birthday celebration"
               onClick={() => {
                 const student = participants.find((p) => p.role === "student");
                 celebrate(`Happy Birthday${student ? `, ${student.name.split(" ")[0]}` : ""}! 🎂`);
               }}
-              className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy/95 text-lg backdrop-blur transition-transform hover:scale-110"
+              className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy/95 text-lg backdrop-blur transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               🎂
             </button>
@@ -333,7 +333,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
 
         {/* Right panel — docked, dark, never a popup: Jitsi keeps chat/participants/polls as tabs in one side panel */}
         {rightOpen && (
-          <aside className="flex w-[320px] shrink-0 flex-col border-l border-white/10 bg-brand-navy">
+          <aside className="flex min-h-0 w-full shrink-0 flex-col border-t border-white/10 bg-brand-navy md:w-[320px] md:border-l md:border-t-0">
             <Tabs value={rightTab} onValueChange={(v) => setRightTab(v as RightTab)} className="flex h-full min-h-0 flex-col">
               <div className="shrink-0 border-b border-white/10 p-2">
                 <TabsList className="w-full bg-white/5">

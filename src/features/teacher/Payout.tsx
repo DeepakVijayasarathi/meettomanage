@@ -5,6 +5,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { getPayoutsForTeacher } from "@/data/payouts";
 import { useApiData } from "@/api/hooks";
 import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
@@ -78,14 +79,9 @@ export default function TeacherPayout() {
       accessor: (row) => row.status,
       sortable: true,
       render: (row) => (
-        <span
-          className={cn(
-            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
-            row.status === "paid" ? "bg-success/15 text-success" : "bg-warning/20 text-warning-foreground"
-          )}
-        >
-          {row.status === "paid" ? "Paid" : "Calculated"}
-        </span>
+        <Badge variant={row.status === "paid" ? "success" : row.status === "finalized" ? "default" : "warning"}>
+          {row.status === "paid" ? "Paid" : row.status === "finalized" ? "Finalized" : "Pending"}
+        </Badge>
       ),
     },
   ];
@@ -125,7 +121,7 @@ export default function TeacherPayout() {
           </Card>
 
           <div className="mt-6">
-            <h2 className="mb-3 text-base font-bold text-foreground">Payout History</h2>
+            <h2 className="mb-3 text-base font-semibold text-foreground">Payout History</h2>
             <DataTable data={payouts} columns={columns} rowKey={(row) => row.id} searchPlaceholder="Search by month…" pageSize={12} />
           </div>
         </>

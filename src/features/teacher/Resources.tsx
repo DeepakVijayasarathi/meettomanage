@@ -272,19 +272,16 @@ export default function TeacherResources() {
                     <Label>Visible to batches</Label>
                     <div className="flex flex-wrap gap-1.5">
                       {batchOptions.map((b) => (
-                        <button
+                        <Button
                           key={b.id}
                           type="button"
+                          variant="pill"
+                          size="pill"
+                          aria-pressed={selectedBatchIds.includes(b.id)}
                           onClick={() => toggleBatch(b.id)}
-                          className={cn(
-                            "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-                            selectedBatchIds.includes(b.id)
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border text-muted-foreground hover:bg-muted/50"
-                          )}
                         >
                           {b.name}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground">Pick one or more batches — the material shows only to those batches.</p>

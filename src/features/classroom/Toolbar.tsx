@@ -61,6 +61,7 @@ function ToolbarButton({
           variant={danger ? "destructive" : active ? "default" : "secondary"}
           className={cn("h-11 w-11 rounded-full", !danger && !active && "bg-white/10 text-white hover:bg-white/20")}
           onClick={onClick}
+          aria-label={label}
         >
           {children}
         </Button>
@@ -138,7 +139,7 @@ export default function Toolbar({
 
         {mode === "teacher" && (
           <ToolbarButton label={recording ? "Stop recording" : "Start recording"} active={recording} onClick={onToggleRecording}>
-            <Circle className={cn("h-5 w-5", recording && "fill-current text-red-400")} />
+            <Circle className={cn("h-5 w-5", recording && "fill-current text-destructive")} />
           </ToolbarButton>
         )}
 
@@ -154,7 +155,7 @@ export default function Toolbar({
           </ToolbarButton>
         )}
 
-        <Button size="icon" variant="destructive" className="h-11 w-11 rounded-full" onClick={onLeave} title="Leave class">
+        <Button size="icon" variant="destructive" className="h-11 w-11 rounded-full" onClick={onLeave} title="Leave class" aria-label="Leave class">
           <PhoneOff className="h-5 w-5" />
         </Button>
       </div>

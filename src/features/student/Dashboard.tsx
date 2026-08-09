@@ -222,7 +222,7 @@ export default function StudentDashboard() {
                     {entry.name} {isMe && <span className="text-primary">(You)</span>}
                   </p>
                   <span className="flex items-center gap-1 text-sm font-bold text-foreground">
-                    {entry.stars} <Star className="h-3.5 w-3.5 fill-current text-amber-400" />
+                    {entry.stars} <Star className="h-3.5 w-3.5 fill-current text-brand-amber" />
                   </span>
                 </div>
               );
@@ -532,7 +532,7 @@ function ApiStudentDashboard() {
                       {entry.participantName} {isMe && <span className="text-primary">(You)</span>}
                     </p>
                     <span className="flex items-center gap-1 text-sm font-bold text-foreground">
-                      {entry.stars} <Star className="h-3.5 w-3.5 fill-current text-amber-400" />
+                      {entry.stars} <Star className="h-3.5 w-3.5 fill-current text-brand-amber" />
                     </span>
                   </div>
                 );

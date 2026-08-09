@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
-import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, Sparkles, Video, CalendarCheck2, Wallet } from "lucide-react";
+import { AlertCircle, ArrowRight, Loader2, Lock, Mail, Sparkles, Video, CalendarCheck2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,19 +31,54 @@ function GoogleIcon() {
   );
 }
 
+const PIN_LENGTH = 4;
+// Scoped to this page only (not the global `font-display` mapping, which stays Inter
+// everywhere else) — a warmer, rounder headline face for the two big greeting moments.
+const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
+
 export default function Login() {
   const [role, setRole] = useState<Role>("admin");
-  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState(apiEnabled() ? "" : "demo@readernest.com");
-  const [password, setPassword] = useState(apiEnabled() ? "" : "demo-password");
+  const [pin, setPin] = useState<string[]>(apiEnabled() ? Array(PIN_LENGTH).fill("") : ["1", "2", "3", "4"]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setRole: setSessionRole, setUserName, setPermissions, setHomePath } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
+  const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
   // Where RequireAuth bounced the visitor from, so login lands them back there.
   // Their portal home stays the fallback; a cross-role path re-bounces harmlessly.
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+
+  function setDigit(index: number, raw: string) {
+    const digit = raw.replace(/\D/g, "").slice(-1);
+    setPin((prev) => {
+      const next = [...prev];
+      next[index] = digit;
+      return next;
+    });
+    if (digit && index < PIN_LENGTH - 1) {
+      pinRefs.current[index + 1]?.focus();
+    }
+  }
+
+  function handlePinKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && !pin[index] && index > 0) {
+      pinRefs.current[index - 1]?.focus();
+    }
+  }
+
+  function handlePinPaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, PIN_LENGTH).split("");
+    if (digits.length === 0) return;
+    e.preventDefault();
+    setPin((prev) => {
+      const next = [...prev];
+      digits.forEach((d, i) => (next[i] = d));
+      return next;
+    });
+    pinRefs.current[Math.min(digits.length, PIN_LENGTH - 1)]?.focus();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,7 +94,7 @@ export default function Login() {
     setSubmitting(true);
     setError(null);
     try {
-      const response = await login(email, password);
+      const response = await login(email, pin.join(""));
       const frontendRole = toFrontendRole(response.user.role);
       const homePath = response.defaultRoute || ROLE_META[frontendRole].homePath;
       setSessionRole(frontendRole);
@@ -76,18 +111,52 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-brand-cream lg:grid lg:grid-cols-[2fr_1fr]">
-      {/* Left — the illustration lives on the same cream canvas as the page, framed like a photo on a wall */}
+      {/* Left — a composed brand panel on the same cream canvas as the page (no stock photo) */}
       <div className="hidden flex-col justify-center gap-10 p-10 lg:flex">
         <div className="relative mx-auto w-full max-w-3xl">
-          <div className="absolute -left-5 -top-5 z-10 flex h-16 w-16 -rotate-6 items-center justify-center rounded-full bg-white p-2 ring-1 ring-brand-ink/10">
-            <img src="/logo.png" alt="" className="h-full w-full object-contain" />
-          </div>
-          <div className="overflow-hidden rounded-[28px] ring-4 ring-white">
-            <img
-              src="/login.png"
-              alt="Two children reading together at The Reader Nest"
-              className="aspect-[16/11] w-full object-cover"
-            />
+          <div className="relative aspect-[16/11] w-full overflow-hidden rounded-[28px] bg-gradient-to-br from-[#EAF3FF] via-brand-cream to-[#FDECF6] ring-4 ring-white">
+            {/* Soft washes in the same three hues as the trust chips below — brand colour, not a generic gradient. */}
+            <div className="pointer-events-none absolute -left-20 -top-24 h-72 w-72 rounded-full bg-[#5B93E0]/25 blur-[80px]" />
+            <div className="pointer-events-none absolute -bottom-24 -right-16 h-80 w-80 rounded-full bg-[#F53BA6]/20 blur-[90px]" />
+            <div className="pointer-events-none absolute bottom-0 left-1/4 h-56 w-56 rounded-full bg-[#57B33B]/20 blur-[80px]" />
+
+            {/* A few small accents, not a busy scene — restraint was the whole point of the redesign. */}
+            <span className="pointer-events-none absolute left-[18%] top-[22%] h-2.5 w-2.5 rounded-full bg-[#5B93E0]/50" />
+            <span className="pointer-events-none absolute right-[20%] top-[32%] h-1.5 w-1.5 rounded-full bg-[#F53BA6]/60" />
+            <span className="pointer-events-none absolute bottom-[24%] right-[26%] h-2 w-2 rounded-full bg-[#57B33B]/50" />
+            <svg
+              className="pointer-events-none absolute left-[12%] bottom-[20%] h-16 w-16 text-brand-green/25"
+              viewBox="0 0 64 64"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 32c8-14 20-14 28 0s20 14 28 0"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeDasharray="0.5 8"
+              />
+            </svg>
+
+            <div className="relative flex h-full flex-col items-center justify-center gap-5 px-14 text-center">
+              <div className="flex h-24 w-24 items-center justify-center rounded-[26px] bg-white shadow-lg ring-1 ring-brand-ink/5">
+                <img src="/logo.png" alt="" className="h-16 w-16 object-contain" />
+              </div>
+              <div>
+                <p className="font-display text-[13px] font-bold uppercase tracking-[0.3em] text-brand-green">
+                  Read &middot; Write &middot; Speak
+                </p>
+                <h2
+                  style={{ fontFamily: HEADLINE_FONT }}
+                  className="mt-3 text-4xl font-semibold leading-[1.1] tracking-tight text-brand-ink xl:text-5xl"
+                >
+                  Learning today,
+                  <br />
+                  leading tomorrow.
+                </h2>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -107,19 +176,22 @@ export default function Login() {
               </span>
             ))}
           </div>
-          <p className="mt-6 text-xs font-medium text-brand-ink/45">© 2026 The Reader Nest. All rights reserved.</p>
+          <p className="mt-6 text-xs font-medium text-brand-ink/70">© 2026 The Reader Nest. All rights reserved.</p>
         </div>
       </div>
 
       {/* Right — sign-in card, floating on the same cream canvas */}
       <div className="flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm rounded-3xl border border-brand-ink/10 bg-white p-8">
+        <div className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-[0_24px_70px_-24px_rgba(43,32,20,0.22)] ring-1 ring-brand-ink/[0.04]">
           <div className="flex flex-col items-center text-center">
             <img src="/logo.png" alt="The Reader Nest" className="h-14 w-14 object-contain lg:hidden" />
-            <h1 className="font-display mt-2 text-2xl font-extrabold tracking-tight text-brand-ink sm:text-3xl lg:mt-0">
+            <h1
+              style={{ fontFamily: HEADLINE_FONT }}
+              className="mt-2 text-[1.7rem] font-semibold tracking-tight text-brand-ink sm:text-3xl lg:mt-0"
+            >
               Welcome back
             </h1>
-            <p className="mt-1.5 text-sm text-brand-ink/55">Sign in to your account and continue</p>
+            <p className="mt-1.5 text-sm text-brand-ink/70">Sign in to your account and continue</p>
           </div>
 
           <Button
@@ -134,13 +206,13 @@ export default function Login() {
 
           <div className="mt-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-brand-ink/10" />
-            <span className="text-xs font-medium text-brand-ink/40">or sign in with email</span>
+            <span className="text-xs font-medium text-brand-ink/70">or sign in with email</span>
             <div className="h-px flex-1 bg-brand-ink/10" />
           </div>
 
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/50">
+              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
                 Email
               </Label>
               <div className="relative">
@@ -148,6 +220,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="username"
                   placeholder="you@readernest.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -158,33 +231,38 @@ export default function Login() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wide text-brand-ink/50">
-                Password
+              <Label htmlFor="pin-0" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/70">
+                <Lock className="h-3 w-3" /> PIN
               </Label>
-              <div className="relative">
-                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-ink/35" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 pl-9 pr-9"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-ink/35 hover:text-brand-ink"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+              <div className="flex gap-2.5">
+                {pin.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => {
+                      pinRefs.current[i] = el;
+                    }}
+                    id={`pin-${i}`}
+                    type="password"
+                    inputMode="numeric"
+                    pattern="\d*"
+                    maxLength={1}
+                    autoComplete={i === 0 ? "current-password" : "off"}
+                    value={digit}
+                    onChange={(e) => setDigit(i, e.target.value)}
+                    onKeyDown={(e) => handlePinKeyDown(i, e)}
+                    onFocus={(e) => e.target.select()}
+                    onPaste={handlePinPaste}
+                    required
+                    aria-label={`PIN digit ${i + 1} of ${PIN_LENGTH}`}
+                    className="h-14 w-full rounded-xl border border-brand-ink/15 bg-brand-cream/40 text-center text-xl font-bold text-brand-ink transition-colors focus-visible:border-brand-green focus-visible:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/30"
+                  />
+                ))}
               </div>
             </div>
 
             {!apiEnabled() && (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="portal" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/50">
+                <Label htmlFor="portal" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/70">
                   <Sparkles className="h-3 w-3 text-brand-amber" /> Preview as (demo)
                 </Label>
                 <Select value={role} onValueChange={(v) => setRole(v as Role)}>
@@ -206,7 +284,10 @@ export default function Login() {
             )}
 
             {error && (
-              <p className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700">
+              <p
+                role="alert"
+                className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2.5 text-sm font-medium text-destructive"
+              >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 {error}
               </p>
@@ -218,7 +299,7 @@ export default function Login() {
                 Remember me
               </label>
               <Link to="/forgot-password" className="text-sm font-semibold text-brand-green hover:underline">
-                Forgot password?
+                Forgot your PIN?
               </Link>
             </div>
 
@@ -245,7 +326,7 @@ export default function Login() {
             </Button>
           </form>
 
-          <p className="mt-7 text-center text-sm text-brand-ink/55">
+          <p className="mt-7 text-center text-sm text-brand-ink/70">
             New here?{" "}
             <Link to="/" className="font-semibold text-brand-green hover:underline">
               Explore More
@@ -253,7 +334,7 @@ export default function Login() {
           </p>
 
           {!apiEnabled() && (
-            <p className="mt-6 text-center text-xs text-brand-ink/40">
+            <p className="mt-6 text-center text-xs text-brand-ink/70">
               This is a demo build with mock data — no credentials are verified.
             </p>
           )}

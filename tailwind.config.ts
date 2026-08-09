@@ -79,7 +79,7 @@ export default {
         role: {
           admin: "#1F6FE0",
           subadmin: "#0E9C8C",
-          admission: "#8B5CF6",
+          admission: "#8356E7", // kept in sync with ROLE_META.admission.hex in src/lib/roles.ts
           teacher: "#F08A1D",
           parent: "#23A455",
           student: "#3B82F6",
@@ -117,6 +117,7 @@ export default {
         "pop-in": { "0%": { opacity: "0", transform: "scale(0.9)" }, "100%": { opacity: "1", transform: "scale(1)" } },
         confetti: { "0%": { transform: "translateY(0) rotate(0)", opacity: "1" }, "100%": { transform: "translateY(120px) rotate(240deg)", opacity: "0" } },
         "page-in": { from: { opacity: "0", transform: "translateY(8px)" }, to: { opacity: "1", transform: "translateY(0)" } },
+        shimmer: { from: { transform: "translateX(-100%)" }, to: { transform: "translateX(100%)" } },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -126,6 +127,7 @@ export default {
         "pop-in": "pop-in 0.2s cubic-bezier(0.16,1,0.3,1)",
         confetti: "confetti 1.4s ease-in forwards",
         "page-in": "page-in 0.28s cubic-bezier(0.16,1,0.3,1)",
+        shimmer: "shimmer 1.8s ease-in-out infinite",
       },
     },
   },

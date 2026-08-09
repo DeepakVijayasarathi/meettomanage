@@ -177,7 +177,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
             </TabsTrigger>
           </TabsList>
           {!connected && (
-            <p className="mt-1.5 px-1 text-[10px] text-amber-300/80">
+            <p className="mt-1.5 px-1 text-[10px] text-brand-amber/80">
               Live sync unavailable — working locally. The class call is unaffected.
             </p>
           )}
@@ -249,8 +249,8 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                     {entry.name.slice(0, 1).toUpperCase()}
                   </span>
                   <span className="flex-1 truncate text-sm font-semibold text-white">{entry.name}</span>
-                  <span className="flex items-center gap-1 text-xs font-bold text-amber-300">
-                    <Star className="h-3.5 w-3.5 fill-amber-300" /> {entry.stars}
+                  <span className="flex items-center gap-1 text-xs font-bold text-brand-amber">
+                    <Star className="h-3.5 w-3.5 fill-brand-amber" /> {entry.stars}
                   </span>
                 </li>
               ))}

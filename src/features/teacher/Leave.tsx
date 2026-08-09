@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -52,11 +53,11 @@ function hoursBetween(a: Date, b: Date) {
   return (a.getTime() - b.getTime()) / (1000 * 60 * 60);
 }
 
-const LEAVE_STATUS_STYLE: Record<LeaveRequest["status"], string> = {
-  pending: "bg-warning/20 text-warning-foreground",
-  approved: "bg-success/15 text-success",
-  rejected: "bg-destructive/10 text-destructive",
-  blocked: "bg-destructive/15 text-destructive",
+const LEAVE_STATUS_VARIANT: Record<LeaveRequest["status"], "warning" | "success" | "destructive"> = {
+  pending: "warning",
+  approved: "success",
+  rejected: "destructive",
+  blocked: "destructive",
 };
 
 const LEAVE_STATUS_LABEL: Record<LeaveRequest["status"], string> = {
@@ -67,7 +68,7 @@ const LEAVE_STATUS_LABEL: Record<LeaveRequest["status"], string> = {
 };
 
 function LeaveStatusBadge({ status }: { status: LeaveRequest["status"] }) {
-  return <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold", LEAVE_STATUS_STYLE[status])}>{LEAVE_STATUS_LABEL[status]}</span>;
+  return <Badge variant={LEAVE_STATUS_VARIANT[status]}>{LEAVE_STATUS_LABEL[status]}</Badge>;
 }
 
 export default function TeacherLeave() {
@@ -136,31 +137,34 @@ export default function TeacherLeave() {
     setReason("");
   }
 
-  const columns: DataTableColumn<LeaveRequest>[] = [
-    {
-      key: "date",
-      header: "Date",
-      accessor: (row) => row.date,
-      sortable: true,
-      render: (row) => <span className="text-sm">{formatDate(row.date, "long")}</span>,
-    },
-    { key: "session", header: "Session", render: (row) => <span className="text-sm text-foreground">{row.session}</span> },
-    { key: "reason", header: "Reason", render: (row) => <span className="text-sm text-muted-foreground">{row.reason}</span> },
-    {
-      key: "hours",
-      header: "Notice Given",
-      accessor: (row) => row.hoursBeforeSession,
-      sortable: true,
-      render: (row) => <span className="text-sm">{row.hoursBeforeSession}h before</span>,
-    },
-    {
-      key: "status",
-      header: "Status",
-      accessor: (row) => row.status,
-      sortable: true,
-      render: (row) => <LeaveStatusBadge status={row.status} />,
-    },
-  ];
+  const columns: DataTableColumn<LeaveRequest>[] = useMemo(
+    () => [
+      {
+        key: "date",
+        header: "Date",
+        accessor: (row) => row.date,
+        sortable: true,
+        render: (row) => <span className="text-sm">{formatDate(row.date, "long")}</span>,
+      },
+      { key: "session", header: "Session", render: (row) => <span className="text-sm text-foreground">{row.session}</span> },
+      { key: "reason", header: "Reason", render: (row) => <span className="text-sm text-muted-foreground">{row.reason}</span> },
+      {
+        key: "hours",
+        header: "Notice Given",
+        accessor: (row) => row.hoursBeforeSession,
+        sortable: true,
+        render: (row) => <span className="text-sm">{row.hoursBeforeSession}h before</span>,
+      },
+      {
+        key: "status",
+        header: "Status",
+        accessor: (row) => row.status,
+        sortable: true,
+        render: (row) => <LeaveStatusBadge status={row.status} />,
+      },
+    ],
+    []
+  );
 
   return (
     <div>
@@ -250,7 +254,7 @@ export default function TeacherLeave() {
       </Card>
 
       <div className="mt-6">
-        <h2 className="mb-3 text-base font-bold text-foreground">Leave History</h2>
+        <h2 className="mb-3 text-base font-semibold text-foreground">Leave History</h2>
         {leaves.length === 0 ? (
           <EmptyState icon={Clock} title="No leave requests yet" description="Your submitted leave requests will appear here." />
         ) : (

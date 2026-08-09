@@ -183,7 +183,7 @@ export default function AdminCourses() {
       />
 
       {apiEnabled() && apiError && (
-        <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not reach the API ({apiError}) — showing demo data.
         </p>
       )}
@@ -261,7 +261,7 @@ export default function AdminCourses() {
               </div>
             </div>
           </div>
-          {saveError && <p className="text-sm font-medium text-red-600">{saveError}</p>}
+          {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               Cancel

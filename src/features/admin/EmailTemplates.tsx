@@ -108,7 +108,6 @@ export default function EmailTemplates() {
 
   useEffect(() => {
     void reload(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selected = templates.find((t) => t.id === selectedId) ?? null;
@@ -195,7 +194,7 @@ export default function EmailTemplates() {
         description="Design the Subject and HTML body every automated system email sends from — changes apply the next time that email fires."
       />
 
-      {error && <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{error}</p>}
+      {error && <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
       {loaded && templates.length === 0 ? (
         <EmptyState icon={Mail} title="No email templates yet" description="Templates are seeded automatically when the API starts." />
@@ -218,7 +217,7 @@ export default function EmailTemplates() {
                         key={t.id}
                         onClick={() => setSelectedId(t.id)}
                         className={cn(
-                          "flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
+                          "flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           t.id === selectedId ? "bg-primary/10 font-semibold text-primary" : "text-foreground hover:bg-muted/60"
                         )}
                       >
@@ -262,7 +261,7 @@ export default function EmailTemplates() {
                         key={p}
                         type="button"
                         onClick={() => insertPlaceholder(p)}
-                        className="rounded-full border border-border bg-card px-2 py-0.5 font-mono text-[11px] text-foreground hover:border-primary hover:text-primary"
+                        className="rounded-full border border-border bg-card px-2 py-0.5 font-mono text-[11px] text-foreground hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         {`{{${p}}}`}
                       </button>

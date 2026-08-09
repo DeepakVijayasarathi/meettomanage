@@ -129,7 +129,8 @@ export interface TeacherPayout {
   deductions: number;
   waitingAmountAdded: number;
   finalAmount: number;
-  status: "calculated" | "paid";
+  /** pending: still accruing, amount can change. finalized: locked, awaiting payment. paid: done. */
+  status: "pending" | "finalized" | "paid";
 }
 
 export interface LeaveRequest {

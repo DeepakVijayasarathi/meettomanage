@@ -50,8 +50,9 @@ export default function WhiteboardActivity({ onClose, onAllMatched }: Whiteboard
             <button
               key={m.id}
               onClick={() => setMode(m.id)}
+              aria-pressed={mode === m.id}
               className={cn(
-                "rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors",
+                "rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 mode === m.id ? "bg-card text-primary shadow-soft" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -59,7 +60,11 @@ export default function WhiteboardActivity({ onClose, onAllMatched }: Whiteboard
             </button>
           ))}
         </div>
-        <button onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+        <button
+          onClick={onClose}
+          aria-label="Close activity"
+          className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -180,8 +185,9 @@ function TagMatchActivity({ onComplete }: { onComplete?: () => void }) {
           <button
             key={item.id}
             onClick={() => setSelectedEmoji(item.id)}
+            aria-pressed={selectedEmoji === item.id}
             className={cn(
-              "rounded-xl bg-muted p-2.5 text-3xl leading-none transition",
+              "rounded-xl bg-muted p-2.5 text-3xl leading-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               selectedEmoji === item.id && "ring-2 ring-primary scale-110"
             )}
           >
@@ -196,7 +202,7 @@ function TagMatchActivity({ onComplete }: { onComplete?: () => void }) {
             onClick={() => tagLetter(item.letter)}
             disabled={paired[item.id]}
             className={cn(
-              "flex h-14 w-14 items-center justify-center rounded-xl border-2 text-lg font-bold transition-colors",
+              "flex h-14 w-14 items-center justify-center rounded-xl border-2 text-lg font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               paired[item.id]
                 ? "border-success bg-success/10 text-success"
                 : "border-dashed border-border text-muted-foreground hover:border-primary",
@@ -245,7 +251,7 @@ function HotspotActivity({ onComplete }: { onComplete?: () => void }) {
             key={spot.id}
             onClick={() => clickSpot(spot.id, spot.isTarget)}
             className={cn(
-              "rounded-xl bg-muted p-2.5 text-3xl leading-none transition",
+              "rounded-xl bg-muted p-2.5 text-3xl leading-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               found[spot.id] && "bg-success/15 ring-2 ring-success",
               shake === spot.id && "animate-[wiggle_0.45s_ease-in-out] ring-2 ring-destructive"
             )}

@@ -45,13 +45,24 @@ export default function AdminFeeSuspension() {
     return INVOICES.find((i) => i.childName === child.name && (i.status === "overdue" || i.status === "partial"));
   }
 
-  const { data: suspensions, reload: reloadSuspensions } = useApiData<ApiFeeSuspension[]>(
+  const { data: suspensions, error: suspensionsError, reload: reloadSuspensions } = useApiData<ApiFeeSuspension[]>(
     () => listSuspensions("Active"),
     []
   );
+  const [liftingId, setLiftingId] = useState<string | null>(null);
+  const [liftError, setLiftError] = useState<string | null>(null);
 
-  function handleLift(suspension: ApiFeeSuspension) {
-    liftSuspension(suspension.id).then(() => reloadSuspensions());
+  async function handleLift(suspension: ApiFeeSuspension) {
+    setLiftingId(suspension.id);
+    setLiftError(null);
+    try {
+      await liftSuspension(suspension.id);
+      await reloadSuspensions();
+    } catch (err) {
+      setLiftError(err instanceof Error ? err.message : "Could not restore access. Try again.");
+    } finally {
+      setLiftingId(null);
+    }
   }
 
   // API mode: real suspensions created by the overdue automation, lifted here or by payment
@@ -63,6 +74,18 @@ export default function AdminFeeSuspension() {
           title="Fee Suspension"
           description="Accounts suspended by the fee-overdue automation. Access restores automatically on payment, or manually here."
         />
+
+        {suspensionsError && (
+          <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+            Could not load suspended accounts ({suspensionsError}).{" "}
+            <button type="button" className="underline" onClick={() => reloadSuspensions()}>
+              Retry
+            </button>
+          </p>
+        )}
+        {liftError && (
+          <p className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{liftError}</p>
+        )}
 
         {suspensions.length === 0 ? (
           <EmptyState icon={ShieldOff} title="No suspended accounts" description="Every account is currently in good standing." />
@@ -85,9 +108,9 @@ export default function AdminFeeSuspension() {
                   </div>
                   <div className="flex items-center gap-4">
                     <FeeStatusBadge status="suspended" />
-                    <Button variant="outline" onClick={() => handleLift(suspension)}>
+                    <Button variant="outline" disabled={liftingId === suspension.id} onClick={() => handleLift(suspension)}>
                       <Undo2 className="h-4 w-4" />
-                      Restore Access
+                      {liftingId === suspension.id ? "Restoring…" : "Restore Access"}
                     </Button>
                   </div>
                 </CardContent>

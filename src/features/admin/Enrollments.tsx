@@ -117,7 +117,7 @@ export default function AdminEnrollments() {
   async function handleSaveEdit() {
     if (!editRow) return;
     // Merge edits back into the original answers so client-defined fields are preserved.
-    let answers: Record<string, unknown> = {};
+    let answers: Record<string, unknown>;
     try {
       answers = editRow.formJson ? (JSON.parse(editRow.formJson) as Record<string, unknown>) : {};
     } catch {

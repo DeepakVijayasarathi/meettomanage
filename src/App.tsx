@@ -6,6 +6,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { Logo } from "@/components/Logo";
 
 const MarketingHome = lazy(() => import("@/features/marketing/Home"));
+const Store = lazy(() => import("@/features/marketing/Store"));
 const Login = lazy(() => import("@/features/auth/Login"));
 const PortalSelect = lazy(() => import("@/features/auth/PortalSelect"));
 const ForgotPassword = lazy(() => import("@/features/auth/ForgotPassword"));
@@ -27,7 +28,9 @@ const AdminFeeSuspension = lazy(() => import("@/features/admin/FeeSuspension"));
 const AdminReports = lazy(() => import("@/features/admin/Reports"));
 const AdminBulkEmail = lazy(() => import("@/features/admin/BulkEmail"));
 const AdminEmailTemplates = lazy(() => import("@/features/admin/EmailTemplates"));
+const AdminProgressReports = lazy(() => import("@/features/admin/ProgressReports"));
 const AdminEnrollments = lazy(() => import("@/features/admin/Enrollments"));
+const AdminStoreInquiries = lazy(() => import("@/features/admin/StoreInquiries"));
 const AdminSettings = lazy(() => import("@/features/admin/Settings"));
 
 const TeacherDashboard = lazy(() => import("@/features/teacher/Dashboard"));
@@ -93,6 +96,7 @@ export default function App() {
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<MarketingHome />} />
+            <Route path="/store" element={<Store />} />
             <Route path="/login" element={<Login />} />
             <Route path="/portal-select" element={<PortalSelect />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -132,7 +136,9 @@ export default function App() {
               <Route path="reports" element={<AdminReports />} />
               <Route path="bulk-email" element={<AdminBulkEmail />} />
               <Route path="email-templates" element={<AdminEmailTemplates />} />
+              <Route path="progress-reports" element={<AdminProgressReports />} />
               <Route path="enrollments" element={<AdminEnrollments />} />
+              <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
 

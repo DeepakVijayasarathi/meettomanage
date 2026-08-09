@@ -391,6 +391,7 @@ export default function AdmissionDemoScheduling() {
                   <div key={idx} className="grid grid-cols-[1fr_auto] gap-3 rounded-lg border border-border bg-muted/30 p-3">
                     <Input
                       placeholder={`Child ${idx + 2} name`}
+                      aria-label={`Child ${idx + 2} name`}
                       value={name}
                       onChange={(e) =>
                         setExtraChildren((prev) => prev.map((n, i) => (i === idx ? e.target.value : n)))
@@ -402,6 +403,7 @@ export default function AdmissionDemoScheduling() {
                       size="icon"
                       className="justify-self-end text-destructive hover:text-destructive"
                       onClick={() => setExtraChildren((prev) => prev.filter((_, i) => i !== idx))}
+                      aria-label="Remove this child"
                     >
                       ×
                     </Button>
@@ -423,9 +425,9 @@ export default function AdmissionDemoScheduling() {
             <div className="flex flex-col gap-3">
               {parents.map((p, idx) => (
                 <div key={p.id} className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
-                  <Input placeholder={`Parent/guardian ${idx + 1} name`} value={p.name} onChange={(e) => updateParent(p.id, "name", e.target.value)} />
-                  <Input placeholder="Phone number" value={p.phone} onChange={(e) => updateParent(p.id, "phone", e.target.value)} />
-                  <Input placeholder="Email address" value={p.email} onChange={(e) => updateParent(p.id, "email", e.target.value)} />
+                  <Input placeholder={`Parent/guardian ${idx + 1} name`} aria-label={`Parent/guardian ${idx + 1} name`} value={p.name} onChange={(e) => updateParent(p.id, "name", e.target.value)} />
+                  <Input placeholder="Phone number" aria-label={`Parent/guardian ${idx + 1} phone number`} value={p.phone} onChange={(e) => updateParent(p.id, "phone", e.target.value)} />
+                  <Input placeholder="Email address" aria-label={`Parent/guardian ${idx + 1} email address`} value={p.email} onChange={(e) => updateParent(p.id, "email", e.target.value)} />
                   <Button
                     type="button"
                     variant="ghost"
@@ -434,6 +436,7 @@ export default function AdmissionDemoScheduling() {
                     disabled={parents.length === 1}
                     onClick={() => removeParent(p.id)}
                     title="Remove this parent/guardian"
+                    aria-label="Remove this parent/guardian"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

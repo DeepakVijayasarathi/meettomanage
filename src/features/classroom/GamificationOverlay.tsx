@@ -14,7 +14,7 @@ interface GamificationOverlayProps {
 }
 
 const MEDAL_STYLES = [
-  "bg-amber-400 text-amber-950",
+  "bg-brand-amber text-amber-950",
   "bg-slate-300 text-slate-800",
   "bg-orange-300 text-orange-900",
 ];
@@ -63,7 +63,7 @@ export default function GamificationOverlay({ celebrating, onCelebrationEnd, lea
   return (
     <>
       {celebrating && (
-        <div className="pointer-events-none fixed inset-0 z-[70] overflow-hidden">
+        <div className="pointer-events-none fixed inset-0 z-40 overflow-hidden">
           {pieces.map((p) => (
             <span
               key={p.id}
@@ -94,7 +94,8 @@ export default function GamificationOverlay({ celebrating, onCelebrationEnd, lea
       >
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="flex w-full items-center justify-between px-3 py-2.5 text-left text-white/40 hover:text-white/70"
+          aria-label={collapsed ? "Expand leaderboard" : "Collapse leaderboard"}
+          className="flex w-full items-center justify-between px-3 py-2.5 text-left text-white/40 hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
             <Trophy className="h-4 w-4 text-brand-amber" /> Leaderboard

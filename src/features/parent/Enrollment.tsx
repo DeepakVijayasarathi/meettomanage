@@ -446,26 +446,23 @@ export default function ParentEnrollment() {
                   </Select>
                 </Field>
 
-                <div className="flex flex-col gap-1.5">
-                  <Label>Preferred class days</Label>
+                <fieldset className="flex flex-col gap-1.5">
+                  <legend className="text-sm font-medium leading-none text-foreground/90">Preferred class days</legend>
                   <div className="flex flex-wrap gap-1.5">
                     {DAYS.map((d) => (
-                      <button
+                      <Button
                         key={d}
                         type="button"
+                        variant="pill"
+                        size="pill"
+                        aria-pressed={form.preferredDays.includes(d)}
                         onClick={() => toggleDay(d)}
-                        className={cn(
-                          "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-                          form.preferredDays.includes(d)
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:bg-muted/50"
-                        )}
                       >
                         {d}
-                      </button>
+                      </Button>
                     ))}
                   </div>
-                </div>
+                </fieldset>
 
                 <Field label="Preferred time slot" htmlFor="preferredTime">
                   <Select value={form.preferredTime} onValueChange={(v) => update("preferredTime", v)}>

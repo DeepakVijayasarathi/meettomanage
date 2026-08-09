@@ -244,7 +244,7 @@ export default function CoordinatorAvailability() {
                   <div className="flex items-start gap-3">
                     <span
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                      style={{ backgroundColor: teacherRoster.find((t) => t.id === leave.teacherId)?.avatarColor ?? "#94A3B8" }}
+                      style={{ backgroundColor: teacherRoster.find((t) => t.id === leave.teacherId)?.avatarColor ?? "hsl(var(--muted-foreground))" }}
                     >
                       {getInitials(leave.teacherName)}
                     </span>
@@ -273,7 +273,7 @@ export default function CoordinatorAvailability() {
       </Card>
 
       <div className="mt-6">
-        <h2 className="mb-3 text-base font-bold text-foreground">Teacher Leave Overview</h2>
+        <h2 className="mb-3 text-base font-semibold text-foreground">Teacher Leave Overview</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teacherRoster.map((teacher) => {
             const upcomingApproved = leaves

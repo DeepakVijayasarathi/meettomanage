@@ -113,15 +113,24 @@ export default function AdminDashboard() {
         })),
         courseRevenue: s.revenueByCourse.map((c) => ({ course: c.name, revenue: c.revenue })),
         enrollmentFunnel: s.enrollmentFunnel,
+        attendanceTrend: s.weeklyAttendanceTrend,
+        batchOccupancyByCourse: s.batchOccupancyByCourse,
       })),
-    { kpis: ADMIN_KPIS, revenueTrend: REVENUE_TREND, departmentRevenue: DEPARTMENT_REVENUE, courseRevenue: COURSE_REVENUE, enrollmentFunnel: ENROLLMENT_FUNNEL },
-    { kpis: ZERO_KPIS, revenueTrend: [], departmentRevenue: [], courseRevenue: [], enrollmentFunnel: [] }
+    {
+      kpis: ADMIN_KPIS,
+      revenueTrend: REVENUE_TREND,
+      departmentRevenue: DEPARTMENT_REVENUE,
+      courseRevenue: COURSE_REVENUE,
+      enrollmentFunnel: ENROLLMENT_FUNNEL,
+      attendanceTrend: ATTENDANCE_TREND,
+      batchOccupancyByCourse: BATCH_OCCUPANCY_BY_COURSE,
+    },
+    { kpis: ZERO_KPIS, revenueTrend: [], departmentRevenue: [], courseRevenue: [], enrollmentFunnel: [], attendanceTrend: [], batchOccupancyByCourse: [] }
   );
-  const { kpis, revenueTrend, departmentRevenue, courseRevenue, enrollmentFunnel } = dashboard;
-  // No per-teacher utilization / attendance-trend / occupancy-by-course endpoints yet — empty charts in API mode
+  const { kpis, revenueTrend, departmentRevenue, courseRevenue, enrollmentFunnel, attendanceTrend, batchOccupancyByCourse } = dashboard;
+  // No per-teacher breakdown endpoint yet (only the aggregate sessions-per-teacher
+  // KPI above) — empty chart in API mode.
   const teacherUtilization = usingApi ? [] : TEACHER_UTILIZATION;
-  const attendanceTrend = usingApi ? [] : ATTENDANCE_TREND;
-  const batchOccupancyByCourse = usingApi ? [] : BATCH_OCCUPANCY_BY_COURSE;
 
   return (
     <div>
@@ -307,7 +316,12 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Teacher Utilization" description="Sessions delivered vs. capacity, by teacher">
+        <ChartCard
+          title="Teacher Utilization"
+          description="Sessions delivered vs. capacity, by teacher"
+          empty={teacherUtilization.length === 0}
+          emptyMessage={usingApi ? "Per-teacher utilization isn't available yet." : "No data yet."}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={teacherUtilization} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -323,7 +337,11 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Attendance Trend" description="Weekly attendance rate, this month">
+        <ChartCard
+          title="Attendance Trend"
+          description="Weekly attendance rate, this month"
+          empty={attendanceTrend.length === 0}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={attendanceTrend} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -335,7 +353,11 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Batch Occupancy by Course" description="Fill rate across active batches">
+        <ChartCard
+          title="Batch Occupancy by Course"
+          description="Fill rate across active batches"
+          empty={batchOccupancyByCourse.length === 0}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={batchOccupancyByCourse} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />

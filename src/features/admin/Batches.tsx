@@ -21,9 +21,9 @@ import {
 import { BATCHES } from "@/data/batches";
 import { COURSES, getCourseById } from "@/data/courses";
 import { getTeacherById, TEACHERS } from "@/data/users";
-import type { Batch, BatchStatus } from "@/types";
+import type { BatchStatus } from "@/types";
 import { CHART_PALETTE } from "@/lib/roles";
-import { cn, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
@@ -454,7 +454,8 @@ export default function AdminBatches() {
                               onClick={() => handleRemoveStudent(s.childId)}
                               disabled={removingId === s.childId}
                               title="Remove from batch"
-                              className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                              aria-label={`Remove ${s.childName} from batch`}
+                              className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -493,21 +494,18 @@ export default function AdminBatches() {
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {WEEKDAYS.map((d) => (
-                    <button
+                    <Button
                       key={d.value}
                       type="button"
+                      variant="pill"
+                      size="pill"
+                      aria-pressed={genDays.includes(d.value)}
                       onClick={() =>
                         setGenDays((prev) => (prev.includes(d.value) ? prev.filter((v) => v !== d.value) : [...prev, d.value]))
                       }
-                      className={cn(
-                        "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-                        genDays.includes(d.value)
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:bg-muted/50"
-                      )}
                     >
                       {d.label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 <Button
@@ -521,7 +519,7 @@ export default function AdminBatches() {
                 {genResult && <p className="mt-2 text-xs font-medium text-foreground">{genResult}</p>}
               </div>
 
-              {saveError && <p className="text-sm font-medium text-red-600">{saveError}</p>}
+              {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDetail(null)}>
                   Close

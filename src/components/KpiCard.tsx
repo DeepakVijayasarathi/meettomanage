@@ -18,11 +18,11 @@ interface KpiCardProps {
 }
 
 const TONE_STYLES: Record<NonNullable<KpiCardProps["tone"]>, string> = {
-  primary: "bg-primary/10 text-primary",
-  success: "bg-success/15 text-success",
-  warning: "bg-warning/20 text-warning-foreground",
-  destructive: "bg-destructive/10 text-destructive",
-  neutral: "bg-muted text-muted-foreground",
+  primary: "bg-primary/10 text-primary ring-4 ring-primary/5",
+  success: "bg-success/15 text-success ring-4 ring-success/5",
+  warning: "bg-warning/20 text-warning-foreground ring-4 ring-warning/10",
+  destructive: "bg-destructive/10 text-destructive ring-4 ring-destructive/5",
+  neutral: "bg-muted text-muted-foreground ring-4 ring-muted",
 };
 
 export function KpiCard({ label, value, icon: Icon, trend, tone = "primary", className, loading, error }: KpiCardProps) {
@@ -54,7 +54,7 @@ export function KpiCard({ label, value, icon: Icon, trend, tone = "primary", cla
             </p>
           </div>
           {Icon && (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive ring-4 ring-destructive/5">
               <Icon className="h-5 w-5" />
             </span>
           )}

@@ -6,7 +6,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { NAV_BY_ROLE, type NavSection } from "@/lib/nav";
 import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
-import { hexToHslTriple } from "@/lib/utils";
+import { hexToHslTriple, pickAccentForegroundHsl } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { getMyMenu, toNavSections } from "@/api/menus";
 import { listSuspensions } from "@/api/billing";
@@ -79,10 +79,22 @@ export function AppShell({ role, children }: AppShellProps) {
   const accentStyle: CSSProperties = {
     "--primary": hexToHslTriple(meta.hex),
     "--ring": hexToHslTriple(meta.hex),
+    // Not every role's accent color reaches 4.5:1 against hardcoded white button text
+    // (teacher's orange was 2.51:1) — pick whichever of white/dark-navy actually works.
+    "--primary-foreground": pickAccentForegroundHsl(meta.hex),
   } as CSSProperties;
 
   return (
     <div className="flex min-h-screen bg-background" style={accentStyle}>
+      {/* Visually hidden until focused — first tab stop on every page, so a keyboard user
+          doesn't have to tab through the entire sidebar (10-20+ links) on every navigation
+          just to reach the page content. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground focus:shadow-lg"
+      >
+        Skip to content
+      </a>
       <Sidebar
         sections={apiSections ?? NAV_BY_ROLE[role]}
         roleLabel={meta.label}
@@ -97,7 +109,16 @@ export function AppShell({ role, children }: AppShellProps) {
         {/* pb-24 (not py-6's default) reserves clearance below the last row of content so the
             fixed FloatingNotes button (bottom-6 right-6, 48px) never sits on top of — and steals
             clicks from — bottom-right page chrome like DataTable's pagination controls. */}
-        <main className="min-w-0 flex-1 overflow-x-hidden px-4 pb-24 pt-6 sm:px-6 lg:px-8">
+        {/* tabIndex={-1}: without it the browser scrolls the skip link's target into view
+            but doesn't move keyboard focus there (falls back to <body>) — confirmed by
+            actually pressing Tab then Enter on the skip link and checking
+            document.activeElement. -1 keeps it out of the normal tab order (only reachable
+            via the skip link itself) while still being a valid focus target. */}
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="app-content-glow min-w-0 flex-1 overflow-x-hidden px-4 pb-24 pt-6 sm:px-6 lg:px-8 focus:outline-none"
+        >
           <PageTransition>{children}</PageTransition>
         </main>
       </div>

@@ -96,8 +96,9 @@ export default function ChatPanel({ mode, messages, onSend, presetText, onConsum
             <button
               key={emoji}
               onClick={() => react(emoji)}
-              className="rounded-lg px-2 py-1 text-base transition-transform hover:scale-125 hover:bg-white/10 active:scale-95"
+              className="rounded-lg px-2 py-1 text-base transition-transform hover:scale-125 hover:bg-white/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               title="Send reaction"
+              aria-label={`Send ${emoji} reaction`}
             >
               {emoji}
             </button>
@@ -114,7 +115,7 @@ export default function ChatPanel({ mode, messages, onSend, presetText, onConsum
             placeholder={mode === "teacher" ? "Message the class…" : "Say something…"}
             className="h-9 border-white/10 bg-white/5 text-sm text-white placeholder:text-white/40 focus-visible:ring-white/30"
           />
-          <Button size="icon" className="h-9 w-9 shrink-0 !bg-brand-green hover:!bg-brand-greenDark" onClick={send} disabled={!draft.trim()}>
+          <Button size="icon" className="h-9 w-9 shrink-0 !bg-brand-green hover:!bg-brand-greenDark" onClick={send} disabled={!draft.trim()} aria-label="Send message">
             <Send className="h-4 w-4" />
           </Button>
         </div>

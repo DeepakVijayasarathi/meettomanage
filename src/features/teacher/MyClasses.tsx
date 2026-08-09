@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CalendarClock, List, Loader2, Plus, Users, Video } from "lucide-react";
 import { useApiData } from "@/api/hooks";
@@ -234,15 +234,23 @@ export default function TeacherMyClasses() {
   );
 
   // Real sessions launch straight into the Jitsi room; mock sessions open the demo classroom
-  function startClass(session: ClassSession) {
-    navigate(`/teacher/live/${session.id}`, {
-      state: session.meetingRoomId ? { room: session.meetingRoomId, title: session.title } : undefined,
-    });
-  }
+  const startClass = useCallback(
+    (session: ClassSession) => {
+      navigate(`/teacher/live/${session.id}`, {
+        state: session.meetingRoomId ? { room: session.meetingRoomId, title: session.title } : undefined,
+      });
+    },
+    [navigate]
+  );
 
   const filtered = statusFilter === "all" ? allSessions : allSessions.filter((s) => s.status === statusFilter);
 
-  const columns: DataTableColumn<ClassSession>[] = [
+  // Filter-select/dialog-open state changes re-render this component on nearly every
+  // interaction; without this the columns array was rebuilt each time, defeating
+  // DataTable's internal useMemo (it re-sorts/re-filters the whole dataset on any
+  // prop identity change, not just when the actual data changes).
+  const columns: DataTableColumn<ClassSession>[] = useMemo(
+    () => [
     {
       key: "title",
       header: "Class",
@@ -303,7 +311,9 @@ export default function TeacherMyClasses() {
           <span className="text-xs text-muted-foreground">—</span>
         ),
     },
-  ];
+    ],
+    [startClass]
+  );
 
   return (
     <div>

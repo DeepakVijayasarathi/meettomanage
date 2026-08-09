@@ -124,6 +124,7 @@ export default function AdminUsers() {
       return;
     }
     if (!apiEnabled()) {
+      setBanner({ ok: true, text: "Demo mode — no account actually updated." });
       setEditUser(null);
       return;
     }
@@ -244,8 +245,8 @@ export default function AdminUsers() {
       setSendResult({
         ok: true,
         message: channel === "Email"
-          ? `Welcome email with a new temporary password sent to ${detailUser.email}.`
-          : `Welcome ${channel === "Sms" ? "SMS" : "WhatsApp"} with a new temporary password sent to ${detailUser.phone}.`,
+          ? `Welcome email with a new temporary PIN sent to ${detailUser.email}.`
+          : `Welcome ${channel === "Sms" ? "SMS" : "WhatsApp"} with a new temporary PIN sent to ${detailUser.phone}.`,
       });
     } catch (err) {
       setSendResult({ ok: false, message: err instanceof Error ? err.message : `Could not send the ${channel} message.` });
@@ -256,6 +257,7 @@ export default function AdminUsers() {
 
   async function handleCreateUser() {
     if (!apiEnabled()) {
+      setBanner({ ok: true, text: "Demo mode — no account actually created." });
       setAddOpen(false);
       return;
     }
@@ -426,7 +428,7 @@ export default function AdminUsers() {
       />
 
       {apiEnabled() && parentsError && (
-        <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not reach the API ({parentsError}) — showing demo data.
         </p>
       )}
@@ -435,7 +437,7 @@ export default function AdminUsers() {
         <p
           className={cn(
             "mb-4 flex items-start gap-1.5 rounded-lg px-3 py-2 text-sm font-medium",
-            banner.ok ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"
+            banner.ok ? "bg-success/10 text-success" : "bg-warning/10 text-warning-foreground"
           )}
         >
           {banner.ok && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
@@ -541,12 +543,12 @@ export default function AdminUsers() {
                 )}
               </div>
 
-              {/* Onboarding: (re)send the welcome message + a fresh temporary password.
+              {/* Onboarding: (re)send the welcome message + a fresh temporary PIN.
                   Each button appears only when its channel is switched on in Settings → Integrations. */}
               <div className="mt-2 rounded-xl border border-border bg-muted/30 p-4">
                 <p className="text-sm font-semibold text-foreground">Onboarding &amp; access</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Send this {detailUser.role === "parent" ? "parent" : "user"} their login and a new temporary password so they can sign in
+                  Send this {detailUser.role === "parent" ? "parent" : "user"} their login and a new temporary PIN so they can sign in
                   {detailUser.role === "parent" ? " and enrol their child." : "."}
                 </p>
                 {channels.email || channels.whatsApp || channels.sms ? (
@@ -591,7 +593,7 @@ export default function AdminUsers() {
                   <p
                     className={cn(
                       "mt-3 flex items-start gap-1.5 rounded-lg px-3 py-2 text-xs font-medium",
-                      sendResult.ok ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"
+                      sendResult.ok ? "bg-success/10 text-success" : "bg-warning/10 text-warning-foreground"
                     )}
                   >
                     {sendResult.ok && <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
@@ -692,7 +694,7 @@ export default function AdminUsers() {
               </div>
             )}
           </div>
-          {editError && <p className="text-sm font-medium text-red-600">{editError}</p>}
+          {editError && <p className="text-sm font-medium text-destructive">{editError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditUser(null)}>
               Cancel
@@ -835,7 +837,7 @@ export default function AdminUsers() {
               </Select>
             </div>
           </div>
-          {addError && <p className="text-sm font-medium text-red-600">{addError}</p>}
+          {addError && <p className="text-sm font-medium text-destructive">{addError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>
               Cancel

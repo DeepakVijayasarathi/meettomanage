@@ -139,7 +139,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
 
   // Load the signed-in parent's real children so the switcher + parent screens

@@ -2,17 +2,12 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { endOfWeek, isWithinInterval, parseISO, startOfWeek } from "date-fns";
 import {
-  AlertTriangle,
   ArrowRight,
   CalendarClock,
   CalendarOff,
   CircleSlash,
-  Clock,
-  ShieldAlert,
   Sparkles,
-  UserX,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";

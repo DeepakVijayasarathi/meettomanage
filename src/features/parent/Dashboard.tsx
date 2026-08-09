@@ -212,7 +212,7 @@ export default function ParentDashboard() {
             </div>
 
             <div className="grid gap-6 lg:grid-cols-5">
-              <Card className="lg:col-span-3">
+              <Card className="min-w-0 lg:col-span-3">
                 <CardHeader>
                   <CardTitle>Upcoming Classes</CardTitle>
                   <CardDescription>{child.name.split(" ")[0]}'s next sessions</CardDescription>
@@ -226,7 +226,7 @@ export default function ParentDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="lg:col-span-2">
+              <Card className="min-w-0 lg:col-span-2">
                 <CardHeader>
                   <CardTitle>Recent Activity</CardTitle>
                   <CardDescription>Latest completed sessions</CardDescription>
@@ -426,7 +426,7 @@ function PendingEnrollments({
               <Badge variant={rejected ? "destructive" : "warning"}>{rejected ? "Needs changes" : "Pending approval"}</Badge>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
+            <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
               <PendingValue label="Date of birth" value={text("dob") === "—" ? "—" : formatDate(text("dob"))} />
               <PendingValue label="Grade" value={text("grade")} />
               <PendingValue label="School" value={text("schoolName")} />

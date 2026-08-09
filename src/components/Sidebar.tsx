@@ -27,7 +27,11 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
       >
         <div className={cn("flex items-center px-5 py-5", collapsed ? "justify-center" : "justify-between")}>
           <Logo variant="light" showWordmark={!collapsed} />
-          <button onClick={onClose} className="rounded-md p-1 text-sidebar-foreground/70 hover:bg-white/10 lg:hidden">
+          <button
+            onClick={onClose}
+            aria-label="Close menu"
+            className="rounded-md p-1 text-sidebar-foreground/70 hover:bg-white/10 lg:hidden"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -43,7 +47,7 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
           {sections.map((section, idx) => (
             <div key={idx} className="mb-4">
               {section.title && !collapsed && (
-                <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-wider text-sidebar-foreground/40">{section.title}</p>
+                <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-wider text-sidebar-foreground/60">{section.title}</p>
               )}
               <div className={cn("flex flex-col gap-0.5", collapsed && "items-center")}>
                 {section.items.map((item) => (
@@ -86,6 +90,7 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
         <button
           onClick={onToggleCollapse}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
             "mb-3 hidden items-center gap-2 rounded-lg text-xs font-semibold text-sidebar-foreground/60 transition-colors hover:bg-white/5 hover:text-sidebar-foreground lg:flex",
             collapsed ? "mx-auto h-11 w-11 justify-center" : "mx-3 justify-start px-3 py-2"

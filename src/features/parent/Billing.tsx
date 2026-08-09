@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, CreditCard, Download, ReceiptText, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
@@ -23,7 +23,7 @@ const PARENT_ID = "p-1";
 export default function ParentBilling() {
   const { children } = useSession();
   const mockChildren = getChildrenByParent(PARENT_ID);
-  const { data: invoices, reload: reloadInvoices } = useApiData(
+  const { data: invoices, error: invoicesError, reload: reloadInvoices } = useApiData(
     () => getParentInvoices().then((items) => items.map(toFrontendInvoice)),
     getInvoicesForParent(PARENT_ID)
   );
@@ -35,10 +35,10 @@ export default function ParentBilling() {
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null);
   const [payOpen, setPayOpen] = useState(false);
 
-  function openPayModal(invoice: Invoice) {
+  const openPayModal = useCallback((invoice: Invoice) => {
     setPayInvoice(invoice);
     setPayOpen(true);
-  }
+  }, []);
 
   // The suspended child's name for the banner: real children in API mode, mock in demo.
   const suspendedChild = apiEnabled()
@@ -54,7 +54,8 @@ export default function ParentBilling() {
   const totalPaid = paid.reduce((sum, i) => sum + i.amount, 0);
   const nextDue = [...outstanding].sort((a, b) => +new Date(a.dueOn) - +new Date(b.dueOn))[0];
 
-  const columns: DataTableColumn<Invoice>[] = [
+  const columns: DataTableColumn<Invoice>[] = useMemo(
+    () => [
     {
       key: "id",
       header: "Invoice",
@@ -110,6 +111,7 @@ export default function ParentBilling() {
               size="sm"
               variant="outline"
               title="Download invoice"
+              aria-label="Download invoice"
               onClick={() => downloadParentInvoice(r.apiId!, r.id).catch(() => undefined)}
             >
               <Download className="h-3.5 w-3.5" />
@@ -118,11 +120,22 @@ export default function ParentBilling() {
         </div>
       ),
     },
-  ];
+    ],
+    [openPayModal]
+  );
 
   return (
     <div>
       <PageHeader title="Payments &amp; Billing" description="Invoices, receipts and secure Pay Now checkout for your family." />
+
+      {apiEnabled() && invoicesError && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          Could not load your invoices ({invoicesError}).{" "}
+          <button type="button" className="underline" onClick={() => reloadInvoices()}>
+            Retry
+          </button>
+        </p>
+      )}
 
       {suspendedChild && (
         <Card className="mb-6 border-destructive/40 bg-destructive/5 p-4">

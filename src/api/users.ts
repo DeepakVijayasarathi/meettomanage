@@ -86,7 +86,7 @@ export async function listUsers(params: {
   return apiFetch<PagedResult<ApiUser>>(`/api/users?${query}`);
 }
 
-/** Regenerates the account's temp password and (re)sends the onboarding welcome message over the chosen channel. */
+/** Regenerates the account's temp PIN and (re)sends the onboarding welcome message over the chosen channel. */
 export async function resendCredentials(userId: string, channel: "Email" | "WhatsApp" | "Sms"): Promise<void> {
   await apiFetch<void>(`/api/users/${userId}/resend-credentials`, {
     method: "POST",

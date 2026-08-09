@@ -15,6 +15,7 @@ import {
   ClipboardList,
   CreditCard,
   FileBarChart,
+  FileText,
   FolderOpen,
   Gauge,
   History,
@@ -26,8 +27,10 @@ import {
   Mail,
   Plug,
   Receipt,
+  ScrollText,
   Settings,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
   TrendingUp,
   UserPlus,
@@ -100,6 +103,9 @@ export const MENU_ICONS: Record<string, LucideIcon> = {
   TrendingUp,
   Gauge,
   FileBarChart,
+  FileText,
+  ScrollText,
+  ShoppingBag,
   Sparkles,
 };
 
