@@ -81,7 +81,9 @@ export default function Store() {
     <div className="min-h-screen bg-brand-cream text-brand-ink">
       <header className="sticky top-0 z-30 border-b border-brand-ink/10 bg-brand-cream/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Logo />
+          <Link to="/" aria-label={`${brand.name} home`}>
+            <Logo />
+          </Link>
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" className="hidden sm:inline-flex">
               <Link to="/">
