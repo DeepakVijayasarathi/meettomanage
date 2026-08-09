@@ -84,7 +84,7 @@ describe("apiFetch", () => {
     expect(window.location.assign).toHaveBeenCalledWith("/login");
   });
 
-  it("on a 401 from /api/auth/login, does NOT clear session or redirect (a wrong password is a normal 401 there)", async () => {
+  it("on a 401 from /api/auth/login, does NOT clear session or redirect (a wrong PIN is a normal 401 there)", async () => {
     // No token stored — this mirrors a login attempt, where the 401-implies-expired-session
     // logic must not fire (there's no session to expire, and login already shows its own error).
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: "Invalid credentials." }, 401));

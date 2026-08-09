@@ -245,8 +245,8 @@ export default function AdminUsers() {
       setSendResult({
         ok: true,
         message: channel === "Email"
-          ? `Welcome email with a new temporary password sent to ${detailUser.email}.`
-          : `Welcome ${channel === "Sms" ? "SMS" : "WhatsApp"} with a new temporary password sent to ${detailUser.phone}.`,
+          ? `Welcome email with a new temporary PIN sent to ${detailUser.email}.`
+          : `Welcome ${channel === "Sms" ? "SMS" : "WhatsApp"} with a new temporary PIN sent to ${detailUser.phone}.`,
       });
     } catch (err) {
       setSendResult({ ok: false, message: err instanceof Error ? err.message : `Could not send the ${channel} message.` });
@@ -543,12 +543,12 @@ export default function AdminUsers() {
                 )}
               </div>
 
-              {/* Onboarding: (re)send the welcome message + a fresh temporary password.
+              {/* Onboarding: (re)send the welcome message + a fresh temporary PIN.
                   Each button appears only when its channel is switched on in Settings → Integrations. */}
               <div className="mt-2 rounded-xl border border-border bg-muted/30 p-4">
                 <p className="text-sm font-semibold text-foreground">Onboarding &amp; access</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Send this {detailUser.role === "parent" ? "parent" : "user"} their login and a new temporary password so they can sign in
+                  Send this {detailUser.role === "parent" ? "parent" : "user"} their login and a new temporary PIN so they can sign in
                   {detailUser.role === "parent" ? " and enrol their child." : "."}
                 </p>
                 {channels.email || channels.whatsApp || channels.sms ? (

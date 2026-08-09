@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
-import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, Sparkles, Video, CalendarCheck2, Wallet } from "lucide-react";
+import { AlertCircle, ArrowRight, Loader2, Lock, Mail, Sparkles, Video, CalendarCheck2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,19 +31,51 @@ function GoogleIcon() {
   );
 }
 
+const PIN_LENGTH = 4;
+
 export default function Login() {
   const [role, setRole] = useState<Role>("admin");
-  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState(apiEnabled() ? "" : "demo@readernest.com");
-  const [password, setPassword] = useState(apiEnabled() ? "" : "demo-password");
+  const [pin, setPin] = useState<string[]>(apiEnabled() ? Array(PIN_LENGTH).fill("") : ["1", "2", "3", "4"]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setRole: setSessionRole, setUserName, setPermissions, setHomePath } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
+  const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
   // Where RequireAuth bounced the visitor from, so login lands them back there.
   // Their portal home stays the fallback; a cross-role path re-bounces harmlessly.
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+
+  function setDigit(index: number, raw: string) {
+    const digit = raw.replace(/\D/g, "").slice(-1);
+    setPin((prev) => {
+      const next = [...prev];
+      next[index] = digit;
+      return next;
+    });
+    if (digit && index < PIN_LENGTH - 1) {
+      pinRefs.current[index + 1]?.focus();
+    }
+  }
+
+  function handlePinKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && !pin[index] && index > 0) {
+      pinRefs.current[index - 1]?.focus();
+    }
+  }
+
+  function handlePinPaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, PIN_LENGTH).split("");
+    if (digits.length === 0) return;
+    e.preventDefault();
+    setPin((prev) => {
+      const next = [...prev];
+      digits.forEach((d, i) => (next[i] = d));
+      return next;
+    });
+    pinRefs.current[Math.min(digits.length, PIN_LENGTH - 1)]?.focus();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,7 +91,7 @@ export default function Login() {
     setSubmitting(true);
     setError(null);
     try {
-      const response = await login(email, password);
+      const response = await login(email, pin.join(""));
       const frontendRole = toFrontendRole(response.user.role);
       const homePath = response.defaultRoute || ROLE_META[frontendRole].homePath;
       setSessionRole(frontendRole);
@@ -159,29 +191,32 @@ export default function Login() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
-                Password
+              <Label htmlFor="pin-0" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/70">
+                <Lock className="h-3 w-3" /> PIN
               </Label>
-              <div className="relative">
-                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-ink/35" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 pl-9 pr-9"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md text-brand-ink/35 hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+              <div className="flex gap-2.5">
+                {pin.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => {
+                      pinRefs.current[i] = el;
+                    }}
+                    id={`pin-${i}`}
+                    type="password"
+                    inputMode="numeric"
+                    pattern="\d*"
+                    maxLength={1}
+                    autoComplete={i === 0 ? "current-password" : "off"}
+                    value={digit}
+                    onChange={(e) => setDigit(i, e.target.value)}
+                    onKeyDown={(e) => handlePinKeyDown(i, e)}
+                    onFocus={(e) => e.target.select()}
+                    onPaste={handlePinPaste}
+                    required
+                    aria-label={`PIN digit ${i + 1} of ${PIN_LENGTH}`}
+                    className="h-12 w-full rounded-xl border border-brand-ink/15 text-center text-lg font-bold text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                ))}
               </div>
             </div>
 
@@ -224,7 +259,7 @@ export default function Login() {
                 Remember me
               </label>
               <Link to="/forgot-password" className="text-sm font-semibold text-brand-green hover:underline">
-                Forgot password?
+                Forgot your PIN?
               </Link>
             </div>
 
