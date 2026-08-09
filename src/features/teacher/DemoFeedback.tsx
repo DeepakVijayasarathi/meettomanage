@@ -69,6 +69,8 @@ export default function TeacherDemoFeedback() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [justSubmitted, setJustSubmitted] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!justSubmitted) return;
@@ -82,6 +84,7 @@ export default function TeacherDemoFeedback() {
 
   function openForm(feedback: DemoFeedback) {
     setActiveId(feedback.id);
+    setSubmitError(null);
     setForm({
       academicLevel: feedback.academicLevel,
       strengths: feedback.strengths,
@@ -98,24 +101,31 @@ export default function TeacherDemoFeedback() {
     form.improvementAreas.trim().length > 0 &&
     form.recommendedCourse.trim().length > 0;
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!active || !isValid) return;
 
     if (apiEnabled()) {
-      // The pending card's id is the demo booking id
-      submitDemoFeedback(active.id, {
-        academicLevel: form.academicLevel.trim(),
-        strengths: form.strengths.trim(),
-        improvementAreas: form.improvementAreas.trim(),
-        recommendedCourseId: courseOptions.find((c) => c.name === form.recommendedCourse)?.id,
-        suggestedBatchType: form.suggestedBatchType === "1:1" ? "Individual" : "Group",
-        remarks: form.remarks.trim() || undefined,
-      }).then(() => {
+      setSubmitting(true);
+      setSubmitError(null);
+      try {
+        // The pending card's id is the demo booking id
+        await submitDemoFeedback(active.id, {
+          academicLevel: form.academicLevel.trim(),
+          strengths: form.strengths.trim(),
+          improvementAreas: form.improvementAreas.trim(),
+          recommendedCourseId: courseOptions.find((c) => c.name === form.recommendedCourse)?.id,
+          suggestedBatchType: form.suggestedBatchType === "1:1" ? "Individual" : "Group",
+          remarks: form.remarks.trim() || undefined,
+        });
         reload();
         setJustSubmitted(active.childName);
-      });
-      setActiveId(null);
-      setForm(EMPTY_FORM);
+        setActiveId(null);
+        setForm(EMPTY_FORM);
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : "Couldn't submit this feedback. Please try again.");
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
 
@@ -326,14 +336,15 @@ export default function TeacherDemoFeedback() {
                     Fields marked <span className="text-destructive">*</span> are required before you can submit.
                   </p>
                 )}
+                {submitError && <p className="text-sm font-medium text-destructive">{submitError}</p>}
               </div>
 
               <DialogFooter>
-                <Button variant="outline" onClick={() => setActiveId(null)}>
+                <Button variant="outline" onClick={() => setActiveId(null)} disabled={submitting}>
                   Cancel
                 </Button>
-                <Button disabled={!isValid} onClick={handleSubmit}>
-                  Submit Feedback
+                <Button disabled={!isValid || submitting} onClick={handleSubmit}>
+                  {submitting ? "Submitting…" : "Submit Feedback"}
                 </Button>
               </DialogFooter>
             </>
