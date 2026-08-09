@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate, Navigate, Link } from "react-router-dom";
 import { AlertCircle, ArrowRight, Loader2, Lock, Mail, Sparkles, Video, CalendarCheck2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useSession } from "@/state/session";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, getAccessToken } from "@/lib/api";
 import { login } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
 import type { Role } from "@/types";
@@ -42,13 +42,29 @@ export default function Login() {
   const [pin, setPin] = useState<string[]>(apiEnabled() ? Array(PIN_LENGTH).fill("") : ["1", "2", "3", "4"]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setRole: setSessionRole, setUserName, setPermissions, setHomePath } = useSession();
+  const {
+    role: sessionRole,
+    homePath: sessionHomePath,
+    setRole: setSessionRole,
+    setUserName,
+    setPermissions,
+    setHomePath,
+  } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
   const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
   // Where RequireAuth bounced the visitor from, so login lands them back there.
   // Their portal home stays the fallback; a cross-role path re-bounces harmlessly.
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+
+  // Mirrors RequireAuth's own check: a visitor who's already signed in (valid
+  // session role, and a real API token when a backend is configured) shouldn't
+  // see the login form again just because they hit /login directly — back
+  // button, a stale bookmark, or the portal-select "back to portals" bounce in
+  // production. Send them straight to where they already are.
+  if (sessionRole && (!apiEnabled() || getAccessToken())) {
+    return <Navigate to={sessionHomePath ?? ROLE_META[sessionRole].homePath} replace />;
+  }
 
   function setDigit(index: number, raw: string) {
     const digit = raw.replace(/\D/g, "").slice(-1);
