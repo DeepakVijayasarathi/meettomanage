@@ -32,6 +32,9 @@ function GoogleIcon() {
 }
 
 const PIN_LENGTH = 4;
+// Scoped to this page only (not the global `font-display` mapping, which stays Inter
+// everywhere else) — a warmer, rounder headline face for the two big greeting moments.
+const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
 
 export default function Login() {
   const [role, setRole] = useState<Role>("admin");
@@ -117,6 +120,25 @@ export default function Login() {
             <div className="pointer-events-none absolute -bottom-24 -right-16 h-80 w-80 rounded-full bg-[#F53BA6]/20 blur-[90px]" />
             <div className="pointer-events-none absolute bottom-0 left-1/4 h-56 w-56 rounded-full bg-[#57B33B]/20 blur-[80px]" />
 
+            {/* A few small accents, not a busy scene — restraint was the whole point of the redesign. */}
+            <span className="pointer-events-none absolute left-[18%] top-[22%] h-2.5 w-2.5 rounded-full bg-[#5B93E0]/50" />
+            <span className="pointer-events-none absolute right-[20%] top-[32%] h-1.5 w-1.5 rounded-full bg-[#F53BA6]/60" />
+            <span className="pointer-events-none absolute bottom-[24%] right-[26%] h-2 w-2 rounded-full bg-[#57B33B]/50" />
+            <svg
+              className="pointer-events-none absolute left-[12%] bottom-[20%] h-16 w-16 text-brand-green/25"
+              viewBox="0 0 64 64"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 32c8-14 20-14 28 0s20 14 28 0"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeDasharray="0.5 8"
+              />
+            </svg>
+
             <div className="relative flex h-full flex-col items-center justify-center gap-5 px-14 text-center">
               <div className="flex h-24 w-24 items-center justify-center rounded-[26px] bg-white shadow-lg ring-1 ring-brand-ink/5">
                 <img src="/logo.png" alt="" className="h-16 w-16 object-contain" />
@@ -125,7 +147,10 @@ export default function Login() {
                 <p className="font-display text-[13px] font-bold uppercase tracking-[0.3em] text-brand-green">
                   Read &middot; Write &middot; Speak
                 </p>
-                <h2 className="font-display mt-3 text-4xl font-extrabold leading-[1.08] tracking-tight text-brand-ink xl:text-5xl">
+                <h2
+                  style={{ fontFamily: HEADLINE_FONT }}
+                  className="mt-3 text-4xl font-semibold leading-[1.1] tracking-tight text-brand-ink xl:text-5xl"
+                >
                   Learning today,
                   <br />
                   leading tomorrow.
@@ -157,10 +182,13 @@ export default function Login() {
 
       {/* Right — sign-in card, floating on the same cream canvas */}
       <div className="flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm rounded-3xl border border-brand-ink/10 bg-white p-8">
+        <div className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-[0_24px_70px_-24px_rgba(43,32,20,0.22)] ring-1 ring-brand-ink/[0.04]">
           <div className="flex flex-col items-center text-center">
             <img src="/logo.png" alt="The Reader Nest" className="h-14 w-14 object-contain lg:hidden" />
-            <h1 className="font-display mt-2 text-2xl font-extrabold tracking-tight text-brand-ink sm:text-3xl lg:mt-0">
+            <h1
+              style={{ fontFamily: HEADLINE_FONT }}
+              className="mt-2 text-[1.7rem] font-semibold tracking-tight text-brand-ink sm:text-3xl lg:mt-0"
+            >
               Welcome back
             </h1>
             <p className="mt-1.5 text-sm text-brand-ink/70">Sign in to your account and continue</p>
@@ -226,7 +254,7 @@ export default function Login() {
                     onPaste={handlePinPaste}
                     required
                     aria-label={`PIN digit ${i + 1} of ${PIN_LENGTH}`}
-                    className="h-12 w-full rounded-xl border border-brand-ink/15 text-center text-lg font-bold text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="h-14 w-full rounded-xl border border-brand-ink/15 bg-brand-cream/40 text-center text-xl font-bold text-brand-ink transition-colors focus-visible:border-brand-green focus-visible:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/30"
                   />
                 ))}
               </div>
