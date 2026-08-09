@@ -10,6 +10,7 @@ const Store = lazy(() => import("@/features/marketing/Store"));
 const Login = lazy(() => import("@/features/auth/Login"));
 const PortalSelect = lazy(() => import("@/features/auth/PortalSelect"));
 const ForgotPassword = lazy(() => import("@/features/auth/ForgotPassword"));
+const ResetPin = lazy(() => import("@/features/auth/ResetPin"));
 const NotFound = lazy(() => import("@/features/auth/NotFound"));
 
 const AdminDashboard = lazy(() => import("@/features/admin/Dashboard"));
@@ -100,6 +101,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/portal-select" element={<PortalSelect />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-pin" element={<ResetPin />} />
 
             {/* Immersive, full-screen classroom — rendered outside the portal shell */}
             <Route

@@ -1,18 +1,29 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertCircle, ArrowLeft, ArrowRight, BookOpen, CheckCircle2, GraduationCap, Loader2, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  CalendarClock,
+  CheckCircle2,
+  GraduationCap,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/EmptyState";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/lib/branding";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listStorePlans, submitStoreInquiry, type ApiStorePlan } from "@/api/store";
+import { bookStoreDemo, listStorePlans, submitStoreInquiry, type ApiStorePlan } from "@/api/store";
 import { formatCurrency } from "@/lib/utils";
 
 const DEMO_PLANS: ApiStorePlan[] = [
@@ -30,6 +41,22 @@ const BILLING_LABEL: Record<ApiStorePlan["billingCycle"], string> = {
 
 const EMPTY_FORM = { parentName: "", parentEmail: "", parentPhone: "", childName: "", childAge: "", notes: "" };
 
+const EMPTY_DEMO_FORM = {
+  parentName: "",
+  parentEmail: "",
+  parentPhone: "",
+  childName: "",
+  childAge: "",
+  department: "none",
+  preferredStart: "",
+};
+
+/** yyyy-MM-ddTHH:mm in the visitor's own timezone, for a datetime-local input's min/max/value. */
+function toLocalInputValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export default function Store() {
   const brand = useBrand();
   const live = apiEnabled();
@@ -41,11 +68,61 @@ export default function Store() {
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
+  // Book-a-demo dialog — separate from the per-plan enroll dialog above, since a demo
+  // isn't tied to any specific paid plan.
+  const [demoOpen, setDemoOpen] = useState(false);
+  const [demoForm, setDemoForm] = useState(EMPTY_DEMO_FORM);
+  const [demoSubmitting, setDemoSubmitting] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
+  const [demoConfirmed, setDemoConfirmed] = useState<string | null>(null);
+
+  const demoMinStart = toLocalInputValue(new Date(Date.now() + 2 * 3_600_000 + 10 * 60_000)); // 2h + a small buffer
+  const demoMaxStart = toLocalInputValue(new Date(Date.now() + 29 * 86_400_000));
+
   function openEnroll(plan: ApiStorePlan) {
     setSelectedPlan(plan);
     setForm(EMPTY_FORM);
     setError(null);
     setSubmitted(false);
+  }
+
+  function openDemoBooking() {
+    setDemoOpen(true);
+    setDemoForm(EMPTY_DEMO_FORM);
+    setDemoError(null);
+    setDemoConfirmed(null);
+  }
+
+  async function handleDemoSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!demoForm.preferredStart) {
+      setDemoError("Pick a date and time for the demo.");
+      return;
+    }
+
+    if (!live) {
+      setDemoConfirmed(new Date(demoForm.preferredStart).toLocaleString());
+      return;
+    }
+
+    setDemoSubmitting(true);
+    setDemoError(null);
+    try {
+      const confirmation = await bookStoreDemo({
+        parentName: demoForm.parentName,
+        parentEmail: demoForm.parentEmail,
+        parentPhone: demoForm.parentPhone,
+        childName: demoForm.childName,
+        childAge: demoForm.childAge ? Number(demoForm.childAge) : undefined,
+        department: demoForm.department === "none" ? undefined : (demoForm.department as "Phonics" | "Maths"),
+        preferredStartAtUtc: new Date(demoForm.preferredStart).toISOString(),
+      });
+      setDemoConfirmed(new Date(confirmation.scheduledStartAtUtc).toLocaleString());
+    } catch (err) {
+      setDemoError(err instanceof Error ? err.message : "Couldn't book that slot. Please try again.");
+    } finally {
+      setDemoSubmitting(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -110,6 +187,13 @@ export default function Store() {
           Browse our current courses below. Tell us a little about your child and our team will reach out within a
           day to complete enrollment and set up the first session.
         </p>
+        <Button
+          size="lg"
+          onClick={openDemoBooking}
+          className="mt-6 !bg-brand-navy !text-white hover:!bg-brand-navyDark"
+        >
+          <CalendarClock className="h-4 w-4" /> Book a Free Demo
+        </Button>
       </section>
 
       <section className="mx-auto max-w-6xl px-6 pb-20">
@@ -209,6 +293,129 @@ export default function Store() {
                 {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
                 <Button type="submit" disabled={submitting} className="mt-1 w-full !bg-brand-green !text-white hover:!bg-brand-greenDark">
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Enquiry"}
+                </Button>
+              </form>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={demoOpen} onOpenChange={setDemoOpen}>
+        <DialogContent className="max-w-md">
+          {demoConfirmed ? (
+            <div className="flex flex-col items-center py-4 text-center">
+              <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-success/15 text-success">
+                <CheckCircle2 className="h-6 w-6" />
+              </span>
+              <h2 className="text-lg font-bold">Demo booked!</h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                {live
+                  ? `See you on ${demoConfirmed}. A confirmation with the join link is on its way to your email.`
+                  : `Demo mode — "booked" for ${demoConfirmed}, but nothing was actually scheduled.`}
+              </p>
+              <Button className="mt-6 !bg-brand-green !text-white hover:!bg-brand-greenDark" onClick={() => setDemoOpen(false)}>
+                Done
+              </Button>
+            </div>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Book a free demo class</DialogTitle>
+                <DialogDescription>
+                  Pick a time that works for you — we'll match you with a teacher and send the join link by email.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleDemoSubmit} className="flex flex-col gap-3.5">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="demoParentName">Your name</Label>
+                  <Input
+                    id="demoParentName"
+                    required
+                    value={demoForm.parentName}
+                    onChange={(e) => setDemoForm((f) => ({ ...f, parentName: e.target.value }))}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="demoParentEmail">Email</Label>
+                    <Input
+                      id="demoParentEmail"
+                      type="email"
+                      required
+                      value={demoForm.parentEmail}
+                      onChange={(e) => setDemoForm((f) => ({ ...f, parentEmail: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="demoParentPhone">Phone</Label>
+                    <Input
+                      id="demoParentPhone"
+                      type="tel"
+                      required
+                      value={demoForm.parentPhone}
+                      onChange={(e) => setDemoForm((f) => ({ ...f, parentPhone: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="demoChildName">Child's name</Label>
+                    <Input
+                      id="demoChildName"
+                      required
+                      value={demoForm.childName}
+                      onChange={(e) => setDemoForm((f) => ({ ...f, childName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="demoChildAge">Child's age</Label>
+                    <Input
+                      id="demoChildAge"
+                      type="number"
+                      min={1}
+                      max={25}
+                      value={demoForm.childAge}
+                      onChange={(e) => setDemoForm((f) => ({ ...f, childAge: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Subject (optional)</Label>
+                  <Select value={demoForm.department} onValueChange={(v) => setDemoForm((f) => ({ ...f, department: v }))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No preference</SelectItem>
+                      <SelectItem value="Phonics">Phonics</SelectItem>
+                      <SelectItem value="Maths">Maths</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="demoStart">Preferred date &amp; time</Label>
+                  <Input
+                    id="demoStart"
+                    type="datetime-local"
+                    required
+                    min={demoMinStart}
+                    max={demoMaxStart}
+                    value={demoForm.preferredStart}
+                    onChange={(e) => setDemoForm((f) => ({ ...f, preferredStart: e.target.value }))}
+                  />
+                  <p className="text-xs text-brand-ink/50">At least 2 hours from now, within the next month.</p>
+                </div>
+                {demoError && (
+                  <p role="alert" className="text-sm font-medium text-destructive">
+                    {demoError}
+                  </p>
+                )}
+                <Button
+                  type="submit"
+                  disabled={demoSubmitting}
+                  className="mt-1 w-full !bg-brand-navy !text-white hover:!bg-brand-navyDark"
+                >
+                  {demoSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Book Demo"}
                 </Button>
               </form>
             </>

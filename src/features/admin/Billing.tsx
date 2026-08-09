@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { AlertTriangle, Download, FileText, IndianRupee, TimerReset } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Download, FileText, IndianRupee, TimerReset, Undo2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -16,13 +16,24 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { INVOICES } from "@/data/invoices";
 import { getParentById } from "@/data/users";
 import { useApiData } from "@/api/hooks";
 import { apiEnabled } from "@/lib/api";
-import { listInvoices, recordPayment, toFrontendInvoice, type ApiPaymentMethod } from "@/api/billing";
+import {
+  listInvoiceTransactions,
+  listInvoices,
+  recordPayment,
+  requestRefund,
+  toFrontendInvoice,
+  type ApiPaymentMethod,
+  type ApiPaymentTransaction,
+} from "@/api/billing";
 import { CashConfirmationsPanel } from "@/components/CashConfirmationsPanel";
+import { RefundRequestsPanel } from "@/components/RefundRequestsPanel";
+import { useSession } from "@/state/session";
 import type { Invoice } from "@/types";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -47,6 +58,8 @@ export default function AdminBilling() {
     INVOICES
   );
   const live = apiEnabled();
+  const { hasPermission } = useSession();
+  const canRequestRefund = hasPermission("BillingFinance", "Create");
   const [detail, setDetail] = useState<Invoice | null>(null);
   const [downloaded, setDownloaded] = useState(false);
 
@@ -57,6 +70,16 @@ export default function AdminBilling() {
   const [saving, setSaving] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
 
+  // Payment history + refund request state for the open invoice
+  const [transactions, setTransactions] = useState<ApiPaymentTransaction[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [refundTargetId, setRefundTargetId] = useState<string | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
+  const [refundError, setRefundError] = useState<string | null>(null);
+  const [refundBanner, setRefundBanner] = useState<string | null>(null);
+
   const balanceDue = detail ? detail.amount - (detail.amountPaid ?? 0) : 0;
 
   function openDetail(row: Invoice) {
@@ -66,6 +89,68 @@ export default function AdminBilling() {
     setPayError(null);
     setPayMethod("Cash");
     setPayAmount(String(row.amount - (row.amountPaid ?? 0)));
+    setTransactions([]);
+    setRefundTargetId(null);
+    setRefundError(null);
+    setRefundBanner(null);
+  }
+
+  useEffect(() => {
+    if (!live || !detail?.apiId) return;
+    let cancelled = false;
+    setTransactionsLoading(true);
+    listInvoiceTransactions(detail.apiId)
+      .then((items) => {
+        if (!cancelled) setTransactions(items);
+      })
+      .catch(() => {
+        /* payment history just stays empty — the invoice detail itself still works */
+      })
+      .finally(() => {
+        if (!cancelled) setTransactionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [live, detail?.apiId]);
+
+  function openRefundForm(transaction: ApiPaymentTransaction) {
+    setRefundTargetId(transaction.id);
+    setRefundAmount(String(transaction.amount - transaction.alreadyRefunded));
+    setRefundReason("");
+    setRefundError(null);
+  }
+
+  async function submitRefund() {
+    if (!refundTargetId || !detail?.apiId) return;
+    const amount = Number(refundAmount);
+    const target = transactions.find((t) => t.id === refundTargetId);
+    const refundable = target ? target.amount - target.alreadyRefunded : 0;
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setRefundError("Enter a valid amount.");
+      return;
+    }
+    if (amount > refundable) {
+      setRefundError(`Amount exceeds what's left to refund on this payment (${formatCurrency(refundable)}).`);
+      return;
+    }
+    if (!refundReason.trim()) {
+      setRefundError("A reason is required.");
+      return;
+    }
+    setRefundSubmitting(true);
+    setRefundError(null);
+    try {
+      await requestRefund({ paymentTransactionId: refundTargetId, amount, reason: refundReason.trim() });
+      setRefundBanner(`Refund of ${formatCurrency(amount)} requested — awaiting approval.`);
+      setRefundTargetId(null);
+      const items = await listInvoiceTransactions(detail.apiId);
+      setTransactions(items);
+    } catch (e) {
+      setRefundError(e instanceof Error ? e.message : "Couldn't request this refund.");
+    } finally {
+      setRefundSubmitting(false);
+    }
   }
 
   async function submitPayment() {
@@ -198,6 +283,13 @@ export default function AdminBilling() {
       </div>
 
       <div className="mt-8">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Pending Refund Requests
+        </h2>
+        <RefundRequestsPanel />
+      </div>
+
+      <div className="mt-8">
         <DataTable
           data={invoices}
           columns={columns}
@@ -253,6 +345,84 @@ export default function AdminBilling() {
                   <p className="mt-1 font-medium text-foreground">{formatCurrency(balanceDue)}</p>
                 </div>
               </div>
+
+              {live && detail.apiId && (transactionsLoading || transactions.length > 0) && (
+                <div className="mt-4 flex flex-col gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payments</p>
+                  {transactionsLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading payment history…</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {transactions.map((t) => {
+                        const refundable = t.amount - t.alreadyRefunded;
+                        return (
+                          <div
+                            key={t.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm"
+                          >
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {formatCurrency(t.amount)}
+                                {t.method ? ` · ${t.method}` : ""}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {t.paidAtUtc ? formatDate(t.paidAtUtc.slice(0, 10)) : "—"}
+                                {t.receiptNumber ? ` · ${t.receiptNumber}` : ""}
+                                {t.alreadyRefunded > 0 ? ` · ${formatCurrency(t.alreadyRefunded)} refunded` : ""}
+                              </p>
+                            </div>
+                            {canRequestRefund && refundable > 0 && refundTargetId !== t.id && (
+                              <Button size="sm" variant="outline" onClick={() => openRefundForm(t)}>
+                                <Undo2 className="h-3.5 w-3.5" />
+                                Refund
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {refundTargetId && (
+                    <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/40 p-4">
+                      <p className="text-sm font-semibold text-foreground">Request refund</p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="flex flex-col gap-1.5">
+                          <Label htmlFor="refund-amount">Amount</Label>
+                          <Input
+                            id="refund-amount"
+                            type="number"
+                            min="0"
+                            value={refundAmount}
+                            onChange={(e) => setRefundAmount(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="refund-reason">Reason</Label>
+                        <Textarea
+                          id="refund-reason"
+                          rows={2}
+                          value={refundReason}
+                          onChange={(e) => setRefundReason(e.target.value)}
+                          placeholder="Why is this being refunded?"
+                        />
+                      </div>
+                      {refundError && <p className="text-sm font-medium text-destructive">{refundError}</p>}
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" disabled={refundSubmitting} onClick={submitRefund}>
+                          {refundSubmitting ? "Requesting…" : "Submit refund request"}
+                        </Button>
+                        <Button size="sm" variant="ghost" disabled={refundSubmitting} onClick={() => setRefundTargetId(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {refundBanner && <p className="text-sm font-medium text-success">{refundBanner}</p>}
+                </div>
+              )}
 
               {recording && (
                 <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-muted/40 p-4">

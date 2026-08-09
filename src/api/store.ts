@@ -44,6 +44,33 @@ export async function submitStoreInquiry(input: {
   return apiFetch<ApiStoreInquiry>("/api/store/inquiries", { method: "POST", body: JSON.stringify(input) });
 }
 
+export interface ApiStoreDemoBookingConfirmation {
+  id: string;
+  scheduledStartAtUtc: string;
+  scheduledEndAtUtc: string;
+}
+
+/**
+ * Public — no login required. Always auto-assigns a teacher; a visitor never
+ * picks who runs the demo. The backend rejects a slot under 2 hours out or
+ * more than 30 days away — surface those as the plain validation errors they are.
+ */
+export async function bookStoreDemo(input: {
+  parentName: string;
+  parentEmail: string;
+  parentPhone: string;
+  childName: string;
+  childAge?: number;
+  department?: "Phonics" | "Maths";
+  /** ISO datetime the visitor picked. */
+  preferredStartAtUtc: string;
+}): Promise<ApiStoreDemoBookingConfirmation> {
+  return apiFetch<ApiStoreDemoBookingConfirmation>("/api/store/demo-bookings", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 /** Admin — the follow-up queue. */
 export async function listStoreInquiries(status?: ApiStoreInquiryStatus): Promise<ApiStoreInquiry[]> {
   const query = status ? `?status=${status}` : "";

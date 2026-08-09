@@ -1,20 +1,104 @@
+import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ShieldQuestion } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Mail, ShieldQuestion } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { apiEnabled } from "@/lib/api";
+import { requestPinReset } from "@/api/auth";
 
 export default function ForgotPassword() {
+  const live = apiEnabled();
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await requestPinReset(email.trim());
+      // Always the same message on success, regardless of whether the address
+      // actually has an account — the UI must never leak that distinction.
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't send the reset link. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-6">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 text-center shadow-card">
         <Logo className="mb-6 justify-center" />
-        <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <ShieldQuestion className="h-6 w-6" />
-        </span>
-        <h2 className="text-lg font-bold tracking-tight sm:text-xl">Forgot your PIN?</h2>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          PIN resets are handled by an administrator, not by email. Contact your school's admin team and ask them to
-          resend your login PIN — it'll arrive at the email address on your account.
-        </p>
+
+        {!live ? (
+          <>
+            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <ShieldQuestion className="h-6 w-6" />
+            </span>
+            <h2 className="text-lg font-bold tracking-tight sm:text-xl">Forgot your PIN?</h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Demo mode — connect the API (VITE_API_BASE_URL) to try the real self-service reset flow.
+            </p>
+          </>
+        ) : sent ? (
+          <>
+            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success/15 text-success">
+              <CheckCircle2 className="h-6 w-6" />
+            </span>
+            <h2 className="text-lg font-bold tracking-tight sm:text-xl">Check your email</h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              If <strong className="text-foreground">{email.trim()}</strong> has an account with us, a reset link is on
+              its way — it expires in 30 minutes and works once.
+            </p>
+          </>
+        ) : (
+          <>
+            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <ShieldQuestion className="h-6 w-6" />
+            </span>
+            <h2 className="text-lg font-bold tracking-tight sm:text-xl">Forgot your PIN?</h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Enter the email on your account and we'll send you a link to set a new PIN.
+            </p>
+            <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3 text-left">
+              <div className="grid gap-1.5">
+                <Label htmlFor="forgot-email">Email</Label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    required
+                    autoFocus
+                    className="pl-9"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+              {error && (
+                <p role="alert" className="text-sm font-medium text-destructive">
+                  {error}
+                </p>
+              )}
+              <Button type="submit" disabled={submitting || !email.trim()} className="mt-1">
+                {submitting ? "Sending…" : "Send reset link"}
+              </Button>
+            </form>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Staff accounts can also ask an admin to resend credentials directly.
+            </p>
+          </>
+        )}
+
         <Link
           to="/login"
           className="mt-6 flex items-center justify-center gap-1.5 text-sm font-semibold text-primary hover:underline"

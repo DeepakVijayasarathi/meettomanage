@@ -269,3 +269,53 @@ export async function rejectCashIntent(transactionId: string, reason?: string): 
     body: JSON.stringify({ reason }),
   });
 }
+
+/** One successful payment on an invoice — the unit a refund is requested against. */
+export interface ApiPaymentTransaction {
+  id: string;
+  amount: number;
+  status: string;
+  method: string | null;
+  paidAtUtc: string | null;
+  receiptNumber: string | null;
+  /** Already requested/processed against this transaction (rejected refunds don't count). */
+  alreadyRefunded: number;
+}
+
+export async function listInvoiceTransactions(invoiceId: string): Promise<ApiPaymentTransaction[]> {
+  return apiFetch<ApiPaymentTransaction[]>(`/api/invoices/${invoiceId}/transactions`);
+}
+
+export type ApiRefundStatus = "Requested" | "Approved" | "Rejected" | "Processed";
+
+export interface ApiRefund {
+  id: string;
+  paymentTransactionId: string;
+  invoiceNumber: string | null;
+  amount: number;
+  reason: string;
+  status: ApiRefundStatus;
+  processedAtUtc: string | null;
+  gatewayRefundId: string | null;
+}
+
+/** Every refund request, newest first — Requested ones are the review queue. */
+export async function listRefunds(): Promise<ApiRefund[]> {
+  return apiFetch<ApiRefund[]>("/api/invoices/refunds");
+}
+
+export async function requestRefund(input: {
+  paymentTransactionId: string;
+  amount: number;
+  reason: string;
+}): Promise<ApiRefund> {
+  return apiFetch<ApiRefund>("/api/invoices/refunds", { method: "POST", body: JSON.stringify(input) });
+}
+
+/** Approve disburses through the original gateway (or is a no-op record for cash); reject just closes the request. */
+export async function reviewRefund(id: string, approve: boolean): Promise<ApiRefund> {
+  return apiFetch<ApiRefund>(`/api/invoices/refunds/${id}/review`, {
+    method: "POST",
+    body: JSON.stringify({ approve }),
+  });
+}
