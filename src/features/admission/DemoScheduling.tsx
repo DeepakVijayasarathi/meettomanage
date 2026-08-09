@@ -17,7 +17,7 @@ import { LEADS } from "./data";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
-import { createDemoBooking, listDemoBookings, type ApiDemoBooking } from "@/api/demoBookings";
+import { createDemoBooking, listDemoBookings, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
 import { formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import type { SessionStatus } from "@/types";
@@ -515,6 +515,12 @@ export default function AdmissionDemoScheduling() {
         confirmLabel="Mark Completed"
         onConfirm={() => {
           if (!completeTarget) return;
+          if (apiEnabled()) {
+            updateConversionStatus(completeTarget.id, "DemoCompleted")
+              .then(() => reloadRows())
+              .catch((err: Error) => setJustScheduled(`Error: ${err.message}`));
+            return;
+          }
           setRows((prev) => prev.map((r) => (r.id === completeTarget.id ? { ...r, status: "completed" } : r)));
         }}
       />
@@ -528,6 +534,12 @@ export default function AdmissionDemoScheduling() {
         destructive
         onConfirm={() => {
           if (!cancelTarget) return;
+          if (apiEnabled()) {
+            updateConversionStatus(cancelTarget.id, "NotInterested")
+              .then(() => reloadRows())
+              .catch((err: Error) => setJustScheduled(`Error: ${err.message}`));
+            return;
+          }
           setRows((prev) => prev.map((r) => (r.id === cancelTarget.id ? { ...r, status: "cancelled" } : r)));
         }}
       />

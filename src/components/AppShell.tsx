@@ -64,6 +64,11 @@ export function AppShell({ role, children }: AppShellProps) {
   }, [role]);
 
   useEffect(() => {
+    // The Student View reuses AppShell purely for its themed "preview" shell —
+    // there is no separate Student login, the signed-in account is always a
+    // Parent. Syncing role here would overwrite the real session role and break
+    // anything gated on it (e.g. the parent's-children fetch in SessionProvider).
+    if (role === "student") return;
     setRole(role);
   }, [role, setRole]);
 
