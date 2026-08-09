@@ -111,7 +111,7 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
 }
 
 export default function AdminBatches() {
-  const { data: batchData, reload } = useApiData<{ raw: ApiBatch[]; mapped: DisplayBatch[] }>(
+  const { data: batchData, error: batchError, reload } = useApiData<{ raw: ApiBatch[]; mapped: DisplayBatch[] }>(
     async () => {
       const raw = await listBatches();
       return { raw, mapped: raw.map(toFrontendBatch) };
@@ -310,6 +310,15 @@ export default function AdminBatches() {
 
       {banner && (
         <div className="mb-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">{banner}</div>
+      )}
+
+      {apiEnabled() && batchError && (
+        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+          <span>Couldn't load batches: {batchError}. The list below may be incomplete.</span>
+          <Button variant="outline" size="sm" onClick={reload}>
+            Retry
+          </Button>
+        </div>
       )}
 
       <Tabs defaultValue="active">
