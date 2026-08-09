@@ -34,10 +34,25 @@ export default function ParentBilling() {
   );
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null);
   const [payOpen, setPayOpen] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const openPayModal = useCallback((invoice: Invoice) => {
     setPayInvoice(invoice);
     setPayOpen(true);
+  }, []);
+
+  const handleDownload = useCallback(async (invoice: Invoice) => {
+    if (!invoice.apiId) return;
+    setDownloadingId(invoice.id);
+    setDownloadError(null);
+    try {
+      await downloadParentInvoice(invoice.apiId, invoice.id);
+    } catch {
+      setDownloadError(`Couldn't download ${invoice.id}. Please try again.`);
+    } finally {
+      setDownloadingId(null);
+    }
   }, []);
 
   // The suspended child's name for the banner: real children in API mode, mock in demo.
@@ -112,7 +127,8 @@ export default function ParentBilling() {
               variant="outline"
               title="Download invoice"
               aria-label="Download invoice"
-              onClick={() => downloadParentInvoice(r.apiId!, r.id).catch(() => undefined)}
+              disabled={downloadingId === r.id}
+              onClick={() => handleDownload(r)}
             >
               <Download className="h-3.5 w-3.5" />
             </Button>
@@ -121,7 +137,7 @@ export default function ParentBilling() {
       ),
     },
     ],
-    [openPayModal]
+    [openPayModal, downloadingId, handleDownload]
   );
 
   return (
@@ -135,6 +151,10 @@ export default function ParentBilling() {
             Retry
           </button>
         </p>
+      )}
+
+      {downloadError && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">{downloadError}</p>
       )}
 
       {suspendedChild && (

@@ -43,6 +43,8 @@ export default function ParentResources() {
       : undefined;
   const isEnrolled = usingApi ? (sessionChild?.enrollmentComplete ?? false) : mockChild ? enrolledChildIds.includes(mockChild.id) : false;
   const [preview, setPreview] = useState<Resource | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Admin-granted resources; the endpoint itself blocks access while fee-suspended
   const { data: apiResources, error: resourcesError, reload: reloadResources } = useApiData<Resource[]>(
@@ -63,9 +65,17 @@ export default function ParentResources() {
   const worksheets = resources.filter((r) => r.type === "worksheet");
   const recordings = resources.filter((r) => r.type === "recording");
 
-  function handleDownload(resource: Resource) {
+  async function handleDownload(resource: Resource) {
     if (apiEnabled()) {
-      downloadResource(resource.id, resource.title);
+      setDownloadingId(resource.id);
+      setDownloadError(null);
+      try {
+        await downloadResource(resource.id, resource.title);
+      } catch {
+        setDownloadError(`Couldn't download "${resource.title}". Please try again.`);
+      } finally {
+        setDownloadingId(null);
+      }
       return;
     }
     const blob = new Blob(
@@ -108,6 +118,10 @@ export default function ParentResources() {
             Retry
           </button>
         </p>
+      )}
+
+      {downloadError && (
+        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{downloadError}</p>
       )}
 
       {!child ? (
@@ -154,8 +168,8 @@ export default function ParentResources() {
                     icon={FileText}
                     tone="success"
                     action={
-                      <Button size="sm" className="w-full" onClick={() => handleDownload(r)}>
-                        <Download className="h-3.5 w-3.5" /> Download
+                      <Button size="sm" className="w-full" disabled={downloadingId === r.id} onClick={() => handleDownload(r)}>
+                        <Download className="h-3.5 w-3.5" /> {downloadingId === r.id ? "Downloading…" : "Download"}
                       </Button>
                     }
                   />
