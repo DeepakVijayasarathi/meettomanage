@@ -279,7 +279,10 @@ export default function AdminPaymentMapping() {
                 <Button variant="outline" onClick={() => setEditAccount(null)}>
                   Cancel
                 </Button>
-                <Button onClick={() => setEditConfirmOpen(true)} disabled={editSaving || !editName.trim() || !editRef.trim()}>
+                <Button
+                  onClick={() => (apiEnabled() ? setEditConfirmOpen(true) : saveAccountEdit())}
+                  disabled={editSaving || !editName.trim() || !editRef.trim()}
+                >
                   {editSaving ? "Saving…" : "Save account"}
                 </Button>
               </DialogFooter>
