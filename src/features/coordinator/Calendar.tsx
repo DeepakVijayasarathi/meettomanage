@@ -173,8 +173,7 @@ export default function CoordinatorCalendar() {
         confirmLabel="Mark Rescheduled"
         onConfirm={() => {
           if (!selected) return;
-          void doReschedule(selected);
-          setSelectedId(null);
+          return doReschedule(selected).then(() => setSelectedId(null));
         }}
       />
 
@@ -186,8 +185,7 @@ export default function CoordinatorCalendar() {
         confirmLabel="Mark Holiday"
         onConfirm={() => {
           if (!selected) return;
-          void doHoliday(selected);
-          setSelectedId(null);
+          return doHoliday(selected).then(() => setSelectedId(null));
         }}
       />
     </div>

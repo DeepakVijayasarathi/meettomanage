@@ -90,8 +90,7 @@ export default function CoordinatorAvailability() {
 
   function decide(target: LeaveRequest, approve: boolean) {
     if (apiEnabled()) {
-      reviewLeave(target.id, approve).then(reload);
-      return;
+      return reviewLeave(target.id, approve).then(() => reload());
     }
     setLeaves((prev) => prev.map((l) => (l.id === target.id ? { ...l, status: approve ? "approved" : "rejected" } : l)));
   }
@@ -326,7 +325,7 @@ export default function CoordinatorAvailability() {
         confirmLabel="Approve"
         onConfirm={() => {
           if (!approveTarget) return;
-          decide(approveTarget, true);
+          return decide(approveTarget, true);
         }}
       />
 
@@ -339,7 +338,7 @@ export default function CoordinatorAvailability() {
         destructive
         onConfirm={() => {
           if (!rejectTarget) return;
-          decide(rejectTarget, false);
+          return decide(rejectTarget, false);
         }}
       />
     </div>

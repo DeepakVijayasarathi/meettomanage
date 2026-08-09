@@ -323,7 +323,7 @@ export default function CoordinatorScheduling() {
         confirmLabel="Reschedule"
         onConfirm={() => {
           if (!rescheduleTarget) return;
-          void doReschedule(rescheduleTarget);
+          return doReschedule(rescheduleTarget);
         }}
       />
 
@@ -336,7 +336,7 @@ export default function CoordinatorScheduling() {
         destructive
         onConfirm={() => {
           if (!cancelTarget) return;
-          void doCancel(cancelTarget);
+          return doCancel(cancelTarget);
         }}
       />
 
