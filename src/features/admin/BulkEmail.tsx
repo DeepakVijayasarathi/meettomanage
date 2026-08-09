@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Mail, Send, Users2 } from "lucide-react";
+import { CheckCircle2, Loader2, Mail, Send, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,6 +34,8 @@ export default function AdminBulkEmail() {
   const [body, setBody] = useState("");
   const [sent, setSent] = useState(false);
   const [sentCount, setSentCount] = useState<number | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const usingApi = apiEnabled();
   const activeStudents = useMemo(() => CHILDREN.filter((c) => c.enrollmentComplete), []);
@@ -64,21 +66,29 @@ export default function AdminBulkEmail() {
     return CHILDREN.filter((c) => c.batchId === batchId).length;
   }, [scope, batchId, activeStudents, sentCount, usingApi, apiCount]);
 
-  function handleSend() {
-    if (apiEnabled()) {
-      sendBulkEmail({ subject, body, batchId: scope === "batch" ? batchId : undefined }).then((result) => {
-        setSentCount(result.recipientCount);
-        setSent(true);
-      });
+  async function handleSend() {
+    if (!apiEnabled()) {
+      setSent(true);
       return;
     }
-    setSent(true);
+    setSending(true);
+    setSendError(null);
+    try {
+      const result = await sendBulkEmail({ subject, body, batchId: scope === "batch" ? batchId : undefined });
+      setSentCount(result.recipientCount);
+      setSent(true);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Couldn't send the email. Please try again.");
+    } finally {
+      setSending(false);
+    }
   }
 
   function handleComposeAnother() {
     setSent(false);
     setSubject("");
     setBody("");
+    setSendError(null);
   }
 
   if (sent) {
@@ -168,11 +178,12 @@ export default function AdminBulkEmail() {
                   </>
                 )}
               </p>
-              <Button disabled={!subject.trim() || !body.trim()} onClick={handleSend}>
-                <Send className="h-4 w-4" />
-                Send
+              <Button disabled={!subject.trim() || !body.trim() || sending} onClick={handleSend}>
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {sending ? "Sending…" : "Send"}
               </Button>
             </div>
+            {sendError && <p className="text-sm font-medium text-destructive">{sendError}</p>}
           </CardContent>
         </Card>
 

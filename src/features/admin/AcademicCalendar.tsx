@@ -46,14 +46,37 @@ export default function AdminAcademicCalendar() {
   );
   const [holidayDate, setHolidayDate] = useState("");
   const [holidayName, setHolidayName] = useState("");
+  const [savingHoliday, setSavingHoliday] = useState(false);
+  const [holidayError, setHolidayError] = useState<string | null>(null);
+  const [deletingHolidayId, setDeletingHolidayId] = useState<string | null>(null);
 
-  function handleAddHoliday() {
+  async function handleAddHoliday() {
     if (!holidayDate || !holidayName.trim()) return;
-    createHoliday({ date: holidayDate, name: holidayName.trim() }).then(() => {
+    setSavingHoliday(true);
+    setHolidayError(null);
+    try {
+      await createHoliday({ date: holidayDate, name: holidayName.trim() });
       setHolidayDate("");
       setHolidayName("");
       reloadHolidays();
-    });
+    } catch (err) {
+      setHolidayError(err instanceof Error ? err.message : "Could not add the holiday.");
+    } finally {
+      setSavingHoliday(false);
+    }
+  }
+
+  async function handleDeleteHoliday(id: string) {
+    setDeletingHolidayId(id);
+    setHolidayError(null);
+    try {
+      await deleteHoliday(id);
+      reloadHolidays();
+    } catch (err) {
+      setHolidayError(err instanceof Error ? err.message : "Could not remove the holiday.");
+    } finally {
+      setDeletingHolidayId(null);
+    }
   }
 
   return (
@@ -88,10 +111,11 @@ export default function AdminAcademicCalendar() {
                 <Label htmlFor="holiday-name">Name</Label>
                 <Input id="holiday-name" value={holidayName} onChange={(e) => setHolidayName(e.target.value)} placeholder="e.g. Diwali" className="w-56" />
               </div>
-              <Button onClick={handleAddHoliday} disabled={!holidayDate || !holidayName.trim()}>
-                <Plus className="h-4 w-4" /> Add Holiday
+              <Button onClick={handleAddHoliday} disabled={savingHoliday || !holidayDate || !holidayName.trim()}>
+                <Plus className="h-4 w-4" /> {savingHoliday ? "Adding…" : "Add Holiday"}
               </Button>
             </div>
+            {holidayError && <p className="text-sm font-medium text-destructive">{holidayError}</p>}
             {holidays.length > 0 && (
               <ul className="flex flex-col divide-y divide-border">
                 {holidays.map((h) => (
@@ -102,7 +126,8 @@ export default function AdminAcademicCalendar() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => deleteHoliday(h.id).then(reloadHolidays)}
+                      disabled={deletingHolidayId === h.id}
+                      onClick={() => handleDeleteHoliday(h.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>

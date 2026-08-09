@@ -51,24 +51,29 @@ export default function AdminResources() {
   const [uploadBatch, setUploadBatch] = useState<string>(BATCHES[0].id);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  function handleUpload() {
+  async function handleUpload() {
     if (!apiEnabled() || !pendingFile) {
       setUploadOpen(false);
       return;
     }
     setUploading(true);
-    uploadResource(pendingFile, {
-      title: pendingFile.name.replace(/\.[^.]+$/, ""),
-      type: inferResourceType(pendingFile),
-      isDownloadable: inferResourceType(pendingFile) === "Worksheet",
-    })
-      .then(() => {
-        reload();
-        setUploadOpen(false);
-        setPendingFile(null);
-      })
-      .finally(() => setUploading(false));
+    setUploadError(null);
+    try {
+      await uploadResource(pendingFile, {
+        title: pendingFile.name.replace(/\.[^.]+$/, ""),
+        type: inferResourceType(pendingFile),
+        isDownloadable: inferResourceType(pendingFile) === "Worksheet",
+      });
+      reload();
+      setUploadOpen(false);
+      setPendingFile(null);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Could not upload the file.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   function toggleField(id: string, field: "downloadable" | "visibleToParents") {
@@ -162,7 +167,10 @@ export default function AdminResources() {
         open={uploadOpen}
         onOpenChange={(open) => {
           setUploadOpen(open);
-          if (!open) setPendingFile(null);
+          if (!open) {
+            setPendingFile(null);
+            setUploadError(null);
+          }
         }}
       >
         <DialogContent>
@@ -212,6 +220,8 @@ export default function AdminResources() {
               </Select>
             </div>
           </div>
+
+          {uploadError && <p className="text-sm font-medium text-destructive">{uploadError}</p>}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setUploadOpen(false)}>
