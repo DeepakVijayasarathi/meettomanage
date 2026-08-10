@@ -492,7 +492,7 @@ export default function AdminBilling() {
                 <Button variant="outline" onClick={() => setDetail(null)}>
                   Close
                 </Button>
-                {live && detail.apiId && detail.status !== "paid" ? (
+                {live && detail.apiId && detail.status !== "paid" && detail.status !== "cancelled" ? (
                   recording ? (
                     <Button onClick={reviewPayment} disabled={saving}>
                       {saving ? "Recording…" : "Confirm payment"}

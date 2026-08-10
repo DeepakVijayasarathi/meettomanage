@@ -44,6 +44,7 @@ const STATUS_OPTIONS: { value: RowStatus | "all"; label: string }[] = [
   { value: "partial", label: "Partially Paid" },
   { value: "overdue", label: "Overdue" },
   { value: "paid", label: "Paid" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 const DEMO_ROWS: PaymentRow[] = PAYMENT_LINKS.map((link) => ({
@@ -92,8 +93,11 @@ export default function AdmissionPayments() {
   const totals = useMemo(() => {
     const paid = rows.filter((r) => r.status === "paid").reduce((s, r) => s + r.amount, 0);
     // Balance due, not the full invoice total — a partially-paid row previously counted
-    // its whole amount as outstanding, overstating real receivables.
-    const outstanding = rows.filter((r) => r.status !== "paid").reduce((s, r) => s + balanceOf(r), 0);
+    // its whole amount as outstanding, overstating real receivables. Cancelled invoices
+    // aren't owed at all, so they're excluded rather than counted as outstanding.
+    const outstanding = rows
+      .filter((r) => r.status !== "paid" && r.status !== "cancelled")
+      .reduce((s, r) => s + balanceOf(r), 0);
     const partial = rows.filter((r) => r.status === "partial").length;
     return { paid, outstanding, partial, total: rows.length };
   }, [rows]);
@@ -189,7 +193,7 @@ export default function AdmissionPayments() {
           <Button
             variant="outline"
             size="sm"
-            disabled={row.status === "paid" || linkBusyId === row.id || (!apiEnabled())}
+            disabled={row.status === "paid" || row.status === "cancelled" || linkBusyId === row.id || (!apiEnabled())}
             onClick={() => handleGenerateLink(row)}
           >
             {linkBusyId === row.id ? (

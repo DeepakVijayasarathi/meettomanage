@@ -45,8 +45,7 @@ const INVOICE_STATUS_FROM_API: Record<ApiInvoiceStatus, Invoice["status"]> = {
   PartiallyPaid: "partial",
   Paid: "paid",
   Overdue: "overdue",
-  // The mock model has no cancelled state; surfaced as pending until the UI grows one
-  Cancelled: "pending",
+  Cancelled: "cancelled",
 };
 
 export function toFrontendInvoice(invoice: ApiInvoice): Invoice {

@@ -111,7 +111,7 @@ export interface Invoice {
   amount: number;
   /** Amount settled so far; balance due = amount - amountPaid. Present in API mode. */
   amountPaid?: number;
-  status: "paid" | "pending" | "overdue" | "partial";
+  status: "paid" | "pending" | "overdue" | "partial" | "cancelled";
   issuedOn: string;
   dueOn: string;
   courseName: string;

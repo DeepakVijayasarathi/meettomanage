@@ -62,7 +62,8 @@ export default function ParentBilling() {
       : undefined
     : mockChildren.find((c) => c.feeStatus === "suspended");
 
-  const outstanding = invoices.filter((i) => i.status !== "paid");
+  // Cancelled invoices are neither paid nor owed — exclude them from what's "outstanding".
+  const outstanding = invoices.filter((i) => i.status !== "paid" && i.status !== "cancelled");
   const paid = invoices.filter((i) => i.status === "paid");
   // Partial payments count only what's still owed
   const totalOutstanding = outstanding.reduce((sum, i) => sum + invoiceBalance(i), 0);
@@ -116,7 +117,7 @@ export default function ParentBilling() {
       header: "",
       render: (r) => (
         <div className="flex items-center justify-end gap-1.5">
-          {r.status !== "paid" && (
+          {r.status !== "paid" && r.status !== "cancelled" && (
             <Button size="sm" onClick={() => openPayModal(r)}>
               Pay {formatCurrency(invoiceBalance(r))}
             </Button>

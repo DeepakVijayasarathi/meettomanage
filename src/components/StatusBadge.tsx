@@ -54,6 +54,7 @@ const FEE_STATUS_VARIANT: Record<string, { label: string; className: string }> =
   suspended: { label: "Suspended", className: "bg-destructive/15 text-destructive" },
   pending: { label: "Pending", className: "bg-warning/20 text-warning-foreground" },
   partial: { label: "Partially Paid", className: "bg-role-admission/10 text-role-admission" },
+  cancelled: { label: "Cancelled", className: "bg-muted text-muted-foreground" },
 };
 
 export function FeeStatusBadge({ status }: { status: string }) {

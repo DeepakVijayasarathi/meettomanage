@@ -137,9 +137,9 @@ export default function ParentDashboard() {
     []
   );
   const invoice = apiEnabled()
-    ? apiInvoices.find((i) => i.status !== "paid")
+    ? apiInvoices.find((i) => i.status !== "paid" && i.status !== "cancelled")
     : child
-      ? getInvoicesForParent(PARENT_ID).find((i) => i.childName === child.name && i.status !== "paid")
+      ? getInvoicesForParent(PARENT_ID).find((i) => i.childName === child.name && i.status !== "paid" && i.status !== "cancelled")
       : undefined;
 
   const firstName = userName !== "Guest" ? userName.split(" ")[0] : "there";

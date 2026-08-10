@@ -11,6 +11,7 @@ export const INVOICES: Invoice[] = [
   { id: "INV-2026-1008", parentId: "p-7", childName: "Reyansh Reddy", department: "Phonics", amount: 2500, status: "partial", issuedOn: "2026-06-18", dueOn: "2026-06-28", courseName: "Phonics Foundations", parentName: "Pooja Reddy" },
   { id: "INV-2026-1009", parentId: "p-8", childName: "Sara Malhotra", department: "Phonics", amount: 2500, status: "paid", issuedOn: "2026-06-05", dueOn: "2026-06-15", courseName: "Phonics Foundations", parentName: "Arjun Malhotra" },
   { id: "INV-2026-1010", parentId: "p-1", childName: "Aarav Kapoor", department: "Phonics", amount: 2500, status: "paid", issuedOn: "2026-05-01", dueOn: "2026-05-10", courseName: "Phonics Foundations", parentName: "Rhea Kapoor" },
+  { id: "INV-2026-1011", parentId: "p-1", childName: "Diya Kapoor", department: "Phonics", amount: 2800, status: "cancelled", issuedOn: "2026-04-01", dueOn: "2026-04-10", courseName: "Reading Adventures", parentName: "Rhea Kapoor" },
 ];
 
 export function getInvoicesForParent(parentId: string) {
