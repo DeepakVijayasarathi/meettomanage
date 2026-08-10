@@ -115,7 +115,11 @@ export default function App() {
             <Route
               path="/parent/live/:sessionId"
               element={
-                <RequireAuth role="parent">
+                // also={["student"]}: the Student Experience dashboard's own "Join Class" CTA
+                // links here directly (it's the same kid-facing classroom, just reached via the
+                // /student preview instead of the parent portal) — without this a student-role
+                // session got silently bounced back to /student instead of joining.
+                <RequireAuth role="parent" also={["student"]}>
                   <LiveClassroom mode="student" />
                 </RequireAuth>
               }

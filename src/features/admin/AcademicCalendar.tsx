@@ -36,14 +36,20 @@ export default function AdminAcademicCalendar() {
   );
   const { data: holidays, reload: reloadHolidays } = useApiData<ApiHoliday[]>(() => listHolidays(), []);
   const { data: approvedLeave } = useApiData<ApiLeaveRequest[]>(() => listLeave("Approved"), []);
+  // Demo mode has no backend to persist holidays against, but the management card below
+  // should still be reachable and interactive for preview/QA purposes — mirrors how
+  // Fee Suspension and Batches stay fully clickable in demo mode with locally-held state
+  // instead of hiding the feature outright.
+  const [demoHolidays, setDemoHolidays] = useState<ApiHoliday[]>([]);
+  const visibleHolidays = apiEnabled() ? holidays : demoHolidays;
   // Holidays/leave are their own entities, not ClassSession rows — merged in here as
   // synthetic "holiday"/"leave" calendar events so the colour coding actually shows them.
   const calendarEvents = useMemo(
     () =>
       apiEnabled()
         ? [...sessions, ...holidaysToCalendarEvents(holidays), ...approvedLeaveToCalendarEvents(approvedLeave)]
-        : sessions,
-    [sessions, holidays, approvedLeave]
+        : [...sessions, ...holidaysToCalendarEvents(demoHolidays)],
+    [sessions, holidays, approvedLeave, demoHolidays]
   );
   const [holidayDate, setHolidayDate] = useState("");
   const [holidayName, setHolidayName] = useState("");
@@ -54,6 +60,16 @@ export default function AdminAcademicCalendar() {
 
   async function handleAddHoliday() {
     if (!holidayDate || !holidayName.trim()) return;
+    if (!apiEnabled()) {
+      setDemoHolidays((prev) =>
+        [...prev, { id: `demo-${Date.now()}`, date: holidayDate, name: holidayName.trim(), description: null }].sort((a, b) =>
+          a.date.localeCompare(b.date)
+        )
+      );
+      setHolidayDate("");
+      setHolidayName("");
+      return;
+    }
     setSavingHoliday(true);
     setHolidayError(null);
     try {
@@ -69,6 +85,10 @@ export default function AdminAcademicCalendar() {
   }
 
   async function handleDeleteHoliday(id: string) {
+    if (!apiEnabled()) {
+      setDemoHolidays((prev) => prev.filter((h) => h.id !== id));
+      return;
+    }
     setDeletingHolidayId(id);
     setHolidayError(null);
     try {
@@ -97,51 +117,53 @@ export default function AdminAcademicCalendar() {
         />
       </Card>
 
-      {apiEnabled() && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Holiday Calendar</CardTitle>
-            <CardDescription>Automated scheduling skips these dates when generating batch sessions.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="holiday-date">Date</Label>
-                <Input id="holiday-date" type="date" value={holidayDate} onChange={(e) => setHolidayDate(e.target.value)} className="w-44" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="holiday-name">Name</Label>
-                <Input id="holiday-name" value={holidayName} onChange={(e) => setHolidayName(e.target.value)} placeholder="e.g. Diwali" className="w-56" />
-              </div>
-              <Button onClick={handleAddHoliday} disabled={savingHoliday || !holidayDate || !holidayName.trim()}>
-                <Plus className="h-4 w-4" /> {savingHoliday ? "Adding…" : "Add Holiday"}
-              </Button>
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Holiday Calendar</CardTitle>
+          <CardDescription>
+            {apiEnabled()
+              ? "Automated scheduling skips these dates when generating batch sessions."
+              : "Demo mode — holidays are kept for this session only and aren't sent anywhere."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="holiday-date">Date</Label>
+              <Input id="holiday-date" type="date" value={holidayDate} onChange={(e) => setHolidayDate(e.target.value)} className="w-44" />
             </div>
-            {holidayError && <p className="text-sm font-medium text-destructive">{holidayError}</p>}
-            {holidays.length > 0 && (
-              <ul className="flex flex-col divide-y divide-border">
-                {holidays.map((h) => (
-                  <li key={h.id} className="flex items-center justify-between py-2 text-sm">
-                    <span className="font-medium text-foreground">
-                      {formatDate(h.date)} — {h.name}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Remove holiday: ${h.name}`}
-                      title={`Remove holiday: ${h.name}`}
-                      disabled={deletingHolidayId === h.id}
-                      onClick={() => setHolidayDeleteTarget(h)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="holiday-name">Name</Label>
+              <Input id="holiday-name" value={holidayName} onChange={(e) => setHolidayName(e.target.value)} placeholder="e.g. Diwali" className="w-56" />
+            </div>
+            <Button onClick={handleAddHoliday} disabled={savingHoliday || !holidayDate || !holidayName.trim()}>
+              <Plus className="h-4 w-4" /> {savingHoliday ? "Adding…" : "Add Holiday"}
+            </Button>
+          </div>
+          {holidayError && <p className="text-sm font-medium text-destructive">{holidayError}</p>}
+          {visibleHolidays.length > 0 && (
+            <ul className="flex flex-col divide-y divide-border">
+              {visibleHolidays.map((h) => (
+                <li key={h.id} className="flex items-center justify-between py-2 text-sm">
+                  <span className="font-medium text-foreground">
+                    {formatDate(h.date)} — {h.name}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Remove holiday: ${h.name}`}
+                    title={`Remove holiday: ${h.name}`}
+                    disabled={deletingHolidayId === h.id}
+                    onClick={() => setHolidayDeleteTarget(h)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <DialogContent>

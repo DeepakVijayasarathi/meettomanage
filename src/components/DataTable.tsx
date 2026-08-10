@@ -144,7 +144,16 @@ export function DataTable<T>({
       </div>
 
       {sorted.length === 0 ? (
-        <EmptyState icon={Search} title={emptyTitle} description={emptyDescription} />
+        // A search that simply matched nothing shouldn't reuse the page's "no data
+        // exists at all" copy (e.g. "No demos scheduled yet") — that reads as if the
+        // list is genuinely empty rather than just filtered, which is misleading once
+        // real rows exist. Only fall back to the caller's empty copy when there's no
+        // active query, i.e. the table really has no data.
+        <EmptyState
+          icon={Search}
+          title={query ? `No results for "${query}"` : emptyTitle}
+          description={query ? "Try a different search term, or clear the search to see everything." : emptyDescription}
+        />
       ) : (
         <>
           {/* Mobile: a horizontally-scrolling table is unusable on a phone (every column but
