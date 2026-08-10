@@ -211,10 +211,16 @@ export function FloatingNotes({ role }: { role: Role }) {
 
   return (
     <>
+      {/* bottom-20 on mobile (vs. the sm:bottom-6 used everywhere else on desktop): AppShell's
+          main already reserves pb-24 so this button clears the bottom of *scrollable* content,
+          but a short page — e.g. one wizard step's worth of form fields — can still end with
+          its primary button sitting right at the visible bottom-right corner with nothing to
+          scroll past. Extra clearance on mobile (the tightest viewports, where that collision
+          was actually observed) avoids covering that button/its click target. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105"
+        className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 sm:bottom-6 sm:right-6"
         aria-label={open ? "Close my notes" : "Open my notes"}
       >
         <StickyNote className="h-5 w-5" />
@@ -223,8 +229,8 @@ export function FloatingNotes({ role }: { role: Role }) {
       {open && (
         <Card
           ref={panelRef}
-          className="fixed z-50 flex flex-col overflow-hidden shadow-xl"
-          style={{ width: PANEL_WIDTH, ...(pos ? { left: pos.x, top: pos.y } : { right: 24, bottom: 88 }) }}
+          className={cn("fixed z-50 flex flex-col overflow-hidden shadow-xl", !pos && "bottom-36 right-4 sm:bottom-[88px] sm:right-6")}
+          style={{ width: PANEL_WIDTH, ...(pos ? { left: pos.x, top: pos.y } : {}) }}
         >
           <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-2">
             {/* Only this label area is a drag handle — action buttons live outside it so a

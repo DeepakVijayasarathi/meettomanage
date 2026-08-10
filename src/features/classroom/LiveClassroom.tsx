@@ -196,8 +196,8 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-950 text-foreground">
       {/* Minimal header — this screen renders outside the portal AppShell */}
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-r from-brand-navyDark via-brand-navy to-brand-navyDark px-4 py-2.5 text-white">
-        <div className="flex min-w-0 items-center gap-3">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-gradient-to-r from-brand-navyDark via-brand-navy to-brand-navyDark px-3 py-2.5 text-white sm:gap-3 sm:px-4">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <span className="relative flex h-2.5 w-2.5 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive" />
@@ -210,27 +210,33 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* shrink-0: the title above already absorbs any width pressure via its own
+            min-w-0 + truncate — these controls (timer/doubt/panel-toggle/exit) must stay
+            legible instead of splitting the squeeze with it. On mode="student", the extra
+            "Ask a doubt" button made this group wider than a 375px viewport could fit
+            alongside the title, so its label collapses to icon-only below sm. */}
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
           {recording && (
-            <span className="flex items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-xs font-semibold text-destructive">
+            <span className="flex items-center gap-1.5 rounded-full bg-destructive/15 px-2 py-1 text-xs font-semibold text-destructive sm:px-2.5">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-destructive" /> REC
             </span>
           )}
-          <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold tabular-nums text-white/85">
+          <span className="rounded-full bg-white/10 px-2 py-1 text-xs font-semibold tabular-nums text-white/85 sm:px-2.5">
             {formatElapsed(elapsed)}
           </span>
           {mode === "student" && (
             <Button
               size="sm"
               variant="secondary"
-              className="gap-1.5 bg-white/10 text-white hover:bg-white/20"
+              className="gap-1.5 bg-white/10 px-2.5 text-white hover:bg-white/20 sm:px-3"
+              aria-label="Ask a doubt"
               onClick={() => {
                 setRightOpen(true);
                 setRightTab("chat");
                 setChatPreset("I have a doubt: ");
               }}
             >
-              <HelpCircle className="h-3.5 w-3.5" /> Ask a doubt
+              <HelpCircle className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Ask a doubt</span>
             </Button>
           )}
           <Button
@@ -245,7 +251,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
           <Button
             size="sm"
             variant="destructive"
-            className="gap-1.5"
+            className="gap-1.5 px-2.5 sm:px-3"
             onClick={() => navigate(mode === "teacher" ? "/teacher" : "/parent")}
           >
             <LogOut className="h-3.5 w-3.5" /> Exit
@@ -294,7 +300,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
             message={celebrationMessage}
           />
 
-          <div className="absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
+          <div className="absolute inset-x-0 bottom-4 z-30 flex justify-center px-2 sm:px-4">
             <Toolbar
               mode={mode}
               micOn={self?.micOn ?? true}
@@ -331,9 +337,14 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
           </div>
         </div>
 
-        {/* Right panel — docked, dark, never a popup: Jitsi keeps chat/participants/polls as tabs in one side panel */}
+        {/* Right panel — docked, dark, never a popup: Jitsi keeps chat/participants/polls as tabs in one side panel.
+            Below md the body stacks (video above, panel below) instead of sitting side-by-side, so this panel
+            needs its own height cap (not shrink-0, which only constrains flex-row width) — otherwise its content
+            (search box + waiting room + full roster) claims however much height it wants and squeezes the video
+            stage down to a sliver. max-h caps it so the video stays usable and the panel scrolls internally
+            (ParticipantsPanel/ChatPanel/QuizOverlay already render their lists in a flex-1 ScrollArea). */}
         {rightOpen && (
-          <aside className="flex min-h-0 w-full shrink-0 flex-col border-t border-white/10 bg-brand-navy md:w-[320px] md:border-l md:border-t-0">
+          <aside className="flex max-h-[45vh] min-h-0 w-full flex-col border-t border-white/10 bg-brand-navy md:max-h-none md:w-[320px] md:shrink-0 md:border-l md:border-t-0">
             <Tabs value={rightTab} onValueChange={(v) => setRightTab(v as RightTab)} className="flex h-full min-h-0 flex-col">
               <div className="shrink-0 border-b border-white/10 p-2">
                 <TabsList className="w-full bg-white/5">

@@ -44,8 +44,70 @@ interface PermissionMatrixProps {
  */
 export function PermissionMatrix({ permissions, menusByModule, onToggle, onToggleRow, onToggleColumn, onToggleAll }: PermissionMatrixProps) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
-      <table className="w-full min-w-[720px] text-sm">
+    <div className="flex flex-col gap-3">
+      {/* Mobile: the desktop table's min-w-[720px] (module column + 5 action columns)
+          scrolled almost entirely off a phone screen with no visual hint it was
+          scrollable — landing on a view that showed only the module names/descriptions
+          with every actual View/Create/Edit/Delete/Approve toggle invisible off-canvas.
+          Below sm, each module becomes a card with its action checkboxes laid out inline
+          instead, mirroring DataTable's own card-view fallback. */}
+      <div className="flex flex-col gap-3 sm:hidden">
+        <div className="flex items-center gap-2.5 rounded-xl border border-border bg-muted/40 px-4 py-3">
+          <Checkbox
+            checked={triState(permissions.flatMap((p) => PERMISSION_ACTIONS.map((a) => p[a.key])))}
+            onCheckedChange={onToggleAll}
+            aria-label="Select all permissions"
+          />
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Select all modules</span>
+        </div>
+        {PERMISSION_MODULES.map((mod, mi) => {
+          const grant = permissions.find((p) => p.module === mod.value)!;
+          const menus = menusByModule?.[mod.value] ?? [];
+          return (
+            <div key={mod.value} className="rounded-xl border border-border p-4">
+              <div className="flex items-start gap-2.5">
+                <Checkbox
+                  checked={triState(PERMISSION_ACTIONS.map((a) => grant[a.key]))}
+                  onCheckedChange={() => onToggleRow(mod.value)}
+                  aria-label={`Select all ${mod.label}`}
+                  className="mt-0.5"
+                />
+                <button onClick={() => onToggleRow(mod.value)} className="min-w-0 flex-1 text-left">
+                  <span className="flex items-center gap-2.5 font-semibold text-foreground">
+                    <span
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
+                      style={{
+                        backgroundColor: `${CHART_PALETTE[mi % CHART_PALETTE.length]}1A`,
+                        color: CHART_PALETTE[mi % CHART_PALETTE.length],
+                      }}
+                    >
+                      {mod.label[0]}
+                    </span>
+                    <span className="min-w-0">{mod.label}</span>
+                  </span>
+                  <span className="mt-1 block pl-9 text-xs font-normal text-muted-foreground">
+                    {menus.length > 0 ? `Menus: ${menus.join(", ")}` : "No menu currently depends on this module"}
+                  </span>
+                </button>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-x-2 gap-y-2.5 border-t border-border pt-3">
+                {PERMISSION_ACTIONS.map((action) => (
+                  <label key={action.key} className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                    <Checkbox
+                      checked={grant[action.key]}
+                      onCheckedChange={() => onToggle(mod.value, action.key)}
+                    />
+                    {action.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-xl border border-border sm:block">
+        <table className="w-full min-w-[720px] text-sm">
         <thead>
           <tr className="border-b border-border bg-muted/40">
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -118,7 +180,8 @@ export function PermissionMatrix({ permissions, menusByModule, onToggle, onToggl
             );
           })}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }

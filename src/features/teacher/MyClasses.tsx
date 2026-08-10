@@ -294,7 +294,12 @@ export default function TeacherMyClasses() {
     },
     {
       key: "action",
-      header: "Action",
+      // Empty header (not "Action"): DataTable's mobile card view only gives an
+      // actions column its own full-width row — instead of squeezing it into a
+      // half-width grid slot where these two buttons overflowed/clipped — when
+      // the header is falsy. Matches the convention used elsewhere (e.g.
+      // parent/Billing.tsx's action column).
+      header: "",
       render: (row) =>
         isJoinable(row) ? (
           <Button size="sm" onClick={(e) => { e.stopPropagation(); startClass(row); }}>
