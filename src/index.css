@@ -24,15 +24,25 @@
     --secondary-foreground: 195 60% 22%;
 
     --muted: 212 22% 95%;
-    --muted-foreground: 215 16% 46%;
+    /* L lowered from 46% to 42% — text-muted-foreground on bg-muted (the pattern used by
+       every filter chip, DataTable column header and empty-state caption) only cleared
+       4.35:1 against --muted, just under WCAG AA's 4.5:1 for body-size text. */
+    --muted-foreground: 215 16% 42%;
 
     --accent: 210 25% 94%;
     --accent-foreground: 222 32% 14%;
 
-    --destructive: 0 72% 51%;
+    /* L lowered from 51% to 45% — text-destructive on its own bg-destructive/10 badge
+       (e.g. the "Suspended" user-status pill) only cleared 4.13:1; the darker value also
+       improves destructive-foreground (white) contrast on solid destructive buttons. */
+    --destructive: 0 72% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 106 50% 42%;
+    /* L lowered from 42% to 30% — text-success on its own bg-success/15 badge (the
+       "Active"/"Paid"/"Completed" status pill used across every portal) only cleared
+       2.78:1, badly failing WCAG AA's 4.5:1; this is the single most-reused status color
+       in the app. Darkening it also improves success-foreground (white) on solid buttons. */
+    --success: 106 50% 30%;
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;

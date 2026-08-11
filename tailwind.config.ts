@@ -67,7 +67,10 @@ export default {
           navy: "#161B33",
           navyDark: "#0D1024",
           green: "#57B33B",
-          greenDark: "#3C8A27",
+          // Darkened from #3C8A27 — that value still only cleared 4.32:1 against white
+          // (below WCAG AA's 4.5:1), the shade this token exists for readable green
+          // text/links on light backgrounds (badges, "Forgot your PIN?" / "Explore More").
+          greenDark: "#3C7A29",
           cyan: "#17A9C9",
           blue: "#5B93E0",
           pink: "#F53BA6",

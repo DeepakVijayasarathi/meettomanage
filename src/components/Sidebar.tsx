@@ -62,7 +62,11 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
                         "group relative flex items-center rounded-lg text-sm font-medium transition-colors",
                         collapsed ? "h-11 w-11 shrink-0 justify-center" : "justify-between gap-2.5 px-3 py-2",
                         isActive
-                          ? "bg-sidebar-accent text-white shadow-soft"
+                          ? // text-primary-foreground (not a hardcoded text-white) — AppShell already
+                            // computes this per-role via pickAccentForegroundHsl so light-accent roles
+                            // (teacher's orange, subadmin/coordinator's teal, parent's green) get readable
+                            // dark text here instead of white text that fails WCAG AA against their hex.
+                            "bg-sidebar-accent text-primary-foreground shadow-soft"
                           : "text-sidebar-foreground/70 hover:bg-white/5 hover:text-sidebar-foreground"
                       )
                     }

@@ -26,7 +26,18 @@ export function RefundRequestsPanel() {
 
   const pending = useMemo(() => refunds.filter((r) => r.status === "Requested"), [refunds]);
 
-  if (!apiEnabled()) return null;
+  // See CashConfirmationsPanel for why this renders an explanatory empty state
+  // instead of null — a bare null leaves the "Pending Refund Requests" heading in
+  // admin/Billing.tsx floating over blank space in demo mode.
+  if (!apiEnabled()) {
+    return (
+      <EmptyState
+        icon={Undo2}
+        title="Demo mode"
+        description="Connect the API (VITE_API_BASE_URL) to see and act on live refund requests here."
+      />
+    );
+  }
 
   async function handleReview(refund: ApiRefund, approve: boolean) {
     setError(null);

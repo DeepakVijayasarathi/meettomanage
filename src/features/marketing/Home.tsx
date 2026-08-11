@@ -110,7 +110,7 @@ export default function MarketingHome() {
           </Badge>
           <h1 className="font-display mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
             One platform for live classes,
-            <span className="text-brand-green"> admissions</span>,
+            <span className="text-brand-greenDark"> admissions</span>,
             <span className="text-brand-blue"> billing</span> and every
             <span className="text-brand-pink"> parent conversation</span>.
           </h1>

@@ -326,7 +326,9 @@ export default function AdminDashboard() {
             <BarChart data={teacherUtilization} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="teacher" tickLine={false} axisLine={false} fontSize={11} interval={0} angle={-12} textAnchor="end" height={44} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={40} />
+              {/* width bumped 40->48: at 40 the chart's -12 left margin pushed "100%"/"75%" tick
+                  labels partly past x=0, clipping their leading digit (e.g. "100%" rendered as "0%"). */}
+              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={54} />
               <RTooltip formatter={(value: number) => [`${value}%`, "Utilization"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="utilization" radius={[6, 6, 0, 0]} maxBarSize={36}>
                 {teacherUtilization.map((_, i) => (
@@ -346,7 +348,7 @@ export default function AdminDashboard() {
             <LineChart data={attendanceTrend} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="week" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis domain={[80, 100]} tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={40} />
+              <YAxis domain={[80, 100]} tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={54} />
               <RTooltip formatter={(value: number) => [`${value}%`, "Attendance"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Line type="monotone" dataKey="attendance" stroke={CHART_PALETTE[1]} strokeWidth={2.5} dot={{ r: 4, fill: CHART_PALETTE[1] }} />
             </LineChart>
@@ -362,7 +364,7 @@ export default function AdminDashboard() {
             <BarChart data={batchOccupancyByCourse} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="course" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={40} />
+              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={54} />
               <RTooltip formatter={(value: number) => [`${value}%`, "Occupancy"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="occupancy" radius={[6, 6, 0, 0]} maxBarSize={40}>
                 {batchOccupancyByCourse.map((_, i) => (

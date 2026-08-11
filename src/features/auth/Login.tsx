@@ -287,7 +287,7 @@ export default function Login() {
                 <Checkbox defaultChecked />
                 Remember me
               </label>
-              <Link to="/forgot-password" className="text-sm font-semibold text-brand-green hover:underline">
+              <Link to="/forgot-password" className="text-sm font-semibold text-brand-greenDark hover:underline">
                 Forgot your PIN?
               </Link>
             </div>
@@ -317,7 +317,7 @@ export default function Login() {
 
           <p className="mt-7 text-center text-sm text-brand-ink/70">
             New here?{" "}
-            <Link to="/" className="font-semibold text-brand-green hover:underline">
+            <Link to="/" className="font-semibold text-brand-greenDark hover:underline">
               Explore More
             </Link>
           </p>

@@ -27,7 +27,19 @@ export function CashConfirmationsPanel() {
   const { hasPermission } = useSession();
   const canApprove = hasPermission("BillingFinance", "Approve");
 
-  if (!apiEnabled()) return null;
+  // Returning null (rather than an explanatory empty state) here used to leave the
+  // "Pending Cash Confirmations" section heading in admin/Billing.tsx and
+  // admission/Payments.tsx floating over a blank gap in demo mode, which reads as a
+  // broken/incomplete section rather than an intentional demo-mode state.
+  if (!apiEnabled()) {
+    return (
+      <EmptyState
+        icon={Banknote}
+        title="Demo mode"
+        description="Connect the API (VITE_API_BASE_URL) to see and act on live cash-payment confirmations here."
+      />
+    );
+  }
 
   async function handleConfirm(intent: ApiCashIntent) {
     setError(null);
