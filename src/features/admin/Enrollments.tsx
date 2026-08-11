@@ -28,7 +28,7 @@ import type { Child } from "@/types";
 import { formatCurrency, getInitials } from "@/lib/utils";
 
 /** Mock Child rows and live enrollment-form rows share one table shape. */
-type EnrollmentRow = Child & { parentName?: string; formJson?: string; dob?: string };
+type EnrollmentRow = Child & { parentName?: string; parentPhone?: string; formJson?: string; dob?: string };
 
 function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
   let answers: Record<string, unknown> = {};
@@ -43,6 +43,7 @@ function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
     id: form.id,
     parentId: form.parentProfileId,
     parentName: form.parentName,
+    parentPhone: typeof answers.parentPhone === "string" ? answers.parentPhone : undefined,
     name: typeof answers.childName === "string" && answers.childName ? answers.childName : "(child name pending)",
     age,
     grade: typeof answers.grade === "string" ? answers.grade : "—",
@@ -274,7 +275,11 @@ export default function AdminEnrollments() {
       {
         key: "course",
         header: "Course",
-        render: (row) => <span className="text-sm text-muted-foreground">{getCourseById(row.courseId)?.name ?? "—"}</span>,
+        render: (row) => (
+          <span className="text-sm text-muted-foreground">
+            {courseOptions.find((c) => c.id === row.courseId)?.name ?? getCourseById(row.courseId)?.name ?? "—"}
+          </span>
+        ),
       },
       {
         key: "status",
@@ -287,7 +292,7 @@ export default function AdminEnrollments() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [approvedIds]
+    [approvedIds, courseOptions]
   );
 
   return (
@@ -334,15 +339,17 @@ export default function AdminEnrollments() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Course</p>
-                  <p className="mt-1 font-medium text-foreground">{getCourseById(detail.courseId)?.name ?? "—"}</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {courseOptions.find((c) => c.id === detail.courseId)?.name ?? getCourseById(detail.courseId)?.name ?? "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
-                  <p className="mt-1 font-medium text-foreground">{getParentById(detail.parentId)?.name ?? "—"}</p>
+                  <p className="mt-1 font-medium text-foreground">{detail.parentName ?? getParentById(detail.parentId)?.name ?? "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent Contact</p>
-                  <p className="mt-1 font-medium text-foreground">{getParentById(detail.parentId)?.phone ?? "—"}</p>
+                  <p className="mt-1 font-medium text-foreground">{detail.parentPhone ?? getParentById(detail.parentId)?.phone ?? "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee Status</p>
