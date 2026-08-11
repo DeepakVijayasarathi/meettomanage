@@ -44,6 +44,30 @@ import {
 } from "@/api/batches";
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
 
+const IST_OFFSET_MINUTES = 5 * 60 + 30; // India Standard Time is UTC+5:30, no DST
+
+/** Admins think in IST; the API stores/schedules in UTC. Converts a wall-clock
+ * "HH:mm" typed as IST into the equivalent UTC time-of-day, plus whether that
+ * shifted the calendar date back a day (only for classes between 12:00–05:29 AM IST). */
+function istTimeToUtc(hhmm: string): { time: string; dayShift: -1 | 0 } {
+  const [h, m] = hhmm.split(":").map(Number);
+  let totalMin = h * 60 + m - IST_OFFSET_MINUTES;
+  let dayShift: -1 | 0 = 0;
+  if (totalMin < 0) {
+    totalMin += 24 * 60;
+    dayShift = -1;
+  }
+  const uh = String(Math.floor(totalMin / 60)).padStart(2, "0");
+  const um = String(totalMin % 60).padStart(2, "0");
+  return { time: `${uh}:${um}`, dayShift };
+}
+
+function shiftDateString(dateStr: string, deltaDays: number): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + deltaDays);
+  return d.toISOString().slice(0, 10);
+}
+
 const WEEKDAYS = [
   { value: 1, label: "Mon" },
   { value: 2, label: "Tue" },
@@ -241,10 +265,15 @@ export default function AdminBatches() {
     setGenBusy(true);
     setGenResult(null);
     try {
+      // Admins type the class time in IST; the API schedules in UTC. A class between
+      // 12:00–05:29 AM IST falls on the previous UTC calendar date, so the start date
+      // and selected weekdays shift back a day together to keep the intended IST
+      // weekday correct (e.g. "every Tuesday at 12:30 AM IST" is Monday evening UTC).
+      const { time: utcTime, dayShift } = istTimeToUtc(genTime);
       const created = await generateSchedule(detail.id, {
-        startDate: genStart,
-        daysOfWeek: genDays,
-        startTimeUtc: `${genTime}:00`,
+        startDate: dayShift < 0 ? shiftDateString(genStart, dayShift) : genStart,
+        daysOfWeek: dayShift < 0 ? genDays.map((d) => (d + 6) % 7) : genDays,
+        startTimeUtc: `${utcTime}:00`,
       });
       setGenResult(`${created.length} sessions created — they now appear on the teacher's and parents' schedules.`);
       reload();
@@ -509,8 +538,14 @@ export default function AdminBatches() {
                     <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} />
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="gen-time">Class time (UTC)</Label>
+                    <Label htmlFor="gen-time">Class time (IST)</Label>
                     <Input id="gen-time" type="time" value={genTime} onChange={(e) => setGenTime(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">
+                      {(() => {
+                        const { time, dayShift } = istTimeToUtc(genTime);
+                        return `= ${time} UTC${dayShift < 0 ? " (previous day)" : ""}`;
+                      })()}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
