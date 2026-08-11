@@ -78,10 +78,14 @@ export default function ParentSchedule() {
     },
     []
   );
-  const sessions = useMemo(
-    () => (usingApi ? apiSessions : mockChild ? getSessionsForChild(mockChild.id) : []),
-    [usingApi, apiSessions, mockChild]
-  );
+  const sessions = useMemo(() => {
+    if (!usingApi) return mockChild ? getSessionsForChild(mockChild.id) : [];
+    if (!child) return [];
+    // Demo sessions aren't tied to a specific enrolled child yet (childIds is empty for
+    // them) and stay visible regardless of which child is selected; regular batch
+    // sessions are scoped to whichever of the parent's children are in that batch.
+    return apiSessions.filter((s) => s.childIds.length === 0 || s.childIds.includes(child.id));
+  }, [usingApi, apiSessions, mockChild, child]);
 
   const upcoming = useMemo(
     () => sessions.filter((s) => ["scheduled", "demo", "rescheduled"].includes(s.status)).sort(compareSessionAsc),

@@ -22,6 +22,10 @@ export interface ApiClassSession {
   meetingRoomId: string | null;
   rescheduledFromSessionId: string | null;
   cancellationReason: string | null;
+  /** Which of the calling parent's children this session belongs to — populated only by
+   * the parent-portal schedule endpoint; empty elsewhere (Admin/Teacher lists) and for
+   * demo sessions not yet tied to a specific enrolled child. */
+  childIds?: string[];
 }
 
 const STATUS_FROM_API: Record<ApiClassSession["status"], SessionStatus> = {
@@ -46,7 +50,7 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
     batchId: session.batchId ?? undefined,
     teacherId: session.teacherProfileId,
     teacherName: session.teacherName,
-    childIds: [],
+    childIds: session.childIds ?? [],
     date: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`,
     startTime: `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`,
     duration: ([30, 45, 60].includes(minutes) ? minutes : 45) as ClassSession["duration"],
