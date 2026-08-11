@@ -40,6 +40,35 @@ export function invoiceBalance(invoice: { amount: number; amountPaid?: number })
   return Math.max(0, invoice.amount - (invoice.amountPaid ?? 0));
 }
 
+/**
+ * Returns the URL only if it is safe to hand to an href/window.open, i.e. plain
+ * http(s). Links we render can be stored strings another user typed (a session
+ * recording URL, a gateway checkout link): a "javascript:" or "data:" URL there
+ * runs script in *our* origin the moment the viewer clicks it, which is enough to
+ * read their access token out of localStorage. Anything not http(s) is dropped.
+ */
+export function safeExternalUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns the path only if it navigates inside this app. Navigation targets can
+ * come from outside the code (the API's role `defaultRoute`, a persisted
+ * `trn.homePath`), and "//evil.com", "https://evil.com", "/\evil.com" or
+ * "javascript:…" all leave the origin when passed to navigate()/<Navigate to>,
+ * turning login into an off-site redirect onto a look-alike sign-in page.
+ */
+export function safeInternalPath(path: string | null | undefined): string | null {
+  if (!path) return null;
+  return /^\/(?!\/)[^\s\\]*$/.test(path) ? path : null;
+}
+
 export function initials(name: string) {
   return name
     .split(" ")

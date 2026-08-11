@@ -2,7 +2,7 @@ import { useEffect, useState, type ComponentType } from "react";
 import { Banknote, CheckCircle2, CreditCard, ExternalLink, Landmark, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, safeExternalUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import {
@@ -144,12 +144,21 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
         return;
       }
       setResultMessage(result.message);
-      if (result.mode === "redirect" && result.url) {
-        const win = window.open(result.url, "_blank", "noopener");
+      // The checkout link is opened/rendered as-is: only ever follow a plain http(s)
+      // address, so a bad gateway config can't hand back a "javascript:" URL that would
+      // run in this origin (and reach the payer's token) when they click through.
+      const checkoutUrl = result.mode === "redirect" ? safeExternalUrl(result.url) : null;
+      if (result.mode === "redirect" && !checkoutUrl) {
+        setStatus("idle");
+        setError("The payment gateway returned an invalid checkout link. Please try another method.");
+        return;
+      }
+      if (checkoutUrl) {
+        const win = window.open(checkoutUrl, "_blank", "noopener");
         if (!win) {
           // Popup blockers return null/undefined silently — without this check the modal
           // just said "we're waiting for you in the other tab" for a tab that never opened.
-          setBlockedUrl(result.url);
+          setBlockedUrl(checkoutUrl);
           setStatus("idle");
           setError("Your browser blocked the payment window. Allow popups for this site, or use the link below.");
           return;

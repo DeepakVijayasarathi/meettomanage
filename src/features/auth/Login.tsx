@@ -11,6 +11,7 @@ import { useSession } from "@/state/session";
 import { apiEnabled, getAccessToken } from "@/lib/api";
 import { login } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
+import { safeInternalPath } from "@/lib/utils";
 import type { Role } from "@/types";
 
 // Colour-matched to the logo's own cast: the blue boy, the pink girl, the green nest.
@@ -44,7 +45,9 @@ export default function Login() {
   const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
   // Where RequireAuth bounced the visitor from, so login lands them back there.
   // Their portal home stays the fallback; a cross-role path re-bounces harmlessly.
-  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+  // Sanitised because both this and the API's defaultRoute are navigate() targets:
+  // an off-origin value would turn a successful sign-in into an external redirect.
+  const from = safeInternalPath((location.state as { from?: { pathname?: string } } | null)?.from?.pathname);
 
   // Mirrors RequireAuth's own check: a visitor who's already signed in (valid
   // session role, and a real API token when a backend is configured) shouldn't
@@ -101,7 +104,7 @@ export default function Login() {
     try {
       const response = await login(email, pin.join(""));
       const frontendRole = toFrontendRole(response.user.role);
-      const homePath = response.defaultRoute || ROLE_META[frontendRole].homePath;
+      const homePath = safeInternalPath(response.defaultRoute) ?? ROLE_META[frontendRole].homePath;
       setSessionRole(frontendRole);
       setUserName(response.user.fullName);
       setPermissions(response.permissions);

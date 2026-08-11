@@ -27,7 +27,7 @@ import { getCourseById } from "@/data/courses";
 import { listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import { apiEnabled } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
+import { formatDate, safeExternalUrl } from "@/lib/utils";
 import { isJoinable, joinHint } from "@/features/parent/utils";
 import type { ClassSession, SessionStatus } from "@/types";
 
@@ -101,10 +101,18 @@ function RecordingsDialog({ session, onClose }: { session: ClassSession; onClose
   async function handleAdd() {
     if (!url.trim()) return;
     setError(null);
+    // Whatever is stored here is later rendered as a link for other staff, so refuse
+    // anything that isn't a plain http(s) address rather than storing it and blocking
+    // it only at render time.
+    const safeUrl = safeExternalUrl(url.trim());
+    if (!safeUrl) {
+      setError("Enter a full http:// or https:// link to the recording.");
+      return;
+    }
     setSaving(true);
     try {
       const durationSeconds = minutes.trim() ? Math.round(Number(minutes) * 60) : undefined;
-      await registerRecording(session.id, url.trim(), durationSeconds);
+      await registerRecording(session.id, safeUrl, durationSeconds);
       const items = await listRecordings(session.id);
       setRecordings(items);
       setUrl("");
@@ -143,18 +151,29 @@ function RecordingsDialog({ session, onClose }: { session: ClassSession; onClose
               </p>
             ) : (
               <div className="flex flex-col gap-2">
-                {recordings.map((r) => (
+                {recordings.map((r) => {
+                  // Registered links are free text (pasted here, or handed over by the Jitsi
+                  // deployment) — never turn one into a clickable href unless it is http(s).
+                  const safeUrl = safeExternalUrl(r.storageUrl);
+                  return (
                   <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm">
                     <div className="min-w-0">
-                      <a
-                        href={r.storageUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 truncate font-medium text-primary hover:underline"
-                      >
-                        <Video className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{r.storageUrl}</span>
-                      </a>
+                      {safeUrl ? (
+                        <a
+                          href={safeUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 truncate font-medium text-primary hover:underline"
+                        >
+                          <Video className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{r.storageUrl}</span>
+                        </a>
+                      ) : (
+                        <p className="flex items-center gap-1.5 truncate font-medium text-muted-foreground" title={r.storageUrl}>
+                          <Video className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">Blocked link (not a http/https address)</span>
+                        </p>
+                      )}
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {r.expiresAtUtc
                           ? `Visible to parents until ${formatDate(r.expiresAtUtc.slice(0, 10), "long")}`
@@ -162,7 +181,8 @@ function RecordingsDialog({ session, onClose }: { session: ClassSession; onClose
                       </p>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

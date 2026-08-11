@@ -5,6 +5,7 @@ import { apiEnabled, getAccessToken, setAccessToken } from "@/lib/api";
 import { getParentChildren } from "@/api/parentPortal";
 import { getCurrentUser } from "@/api/auth";
 import { checkPermission, type PermissionAction } from "@/lib/permissions";
+import { safeInternalPath } from "@/lib/utils";
 import type { PermissionModuleName } from "@/api/permissions";
 
 /** The logged-in parent's children, for the child switcher across parent screens. */
@@ -99,12 +100,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [childList, setChildList] = useState<SessionChild[]>(MOCK_SESSION_CHILDREN);
   const [homePath, setHomePathState] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem(HOME_KEY);
+    return safeInternalPath(localStorage.getItem(HOME_KEY));
   });
 
+  // homePath is a navigation target (Login and RequireAuth both <Navigate to> it) that
+  // arrives from outside the code — the role's API-configured defaultRoute, or whatever
+  // is left in localStorage. Anything that isn't an in-app path ("//evil.com",
+  // "https://…", "javascript:…") would redirect the login off-site onto a look-alike
+  // sign-in page, so it is dropped here and callers fall back to the role's own home.
   const setHomePath = (path: string | null) => {
-    setHomePathState(path);
-    if (path) localStorage.setItem(HOME_KEY, path);
+    const safe = safeInternalPath(path);
+    setHomePathState(safe);
+    if (safe) localStorage.setItem(HOME_KEY, safe);
     else localStorage.removeItem(HOME_KEY);
   };
 
