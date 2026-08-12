@@ -25,6 +25,7 @@ import { CHART_PALETTE } from "@/lib/roles";
 export default function ParentAddChild() {
   const [form, setForm] = useState({ name: "", age: "", grade: "", gender: "", courseInterest: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // API mode: the real family roster + any enrollments still under review.
   const { data: dash } = useApiData<ApiParentDashboard | null>(() => getParentDashboard(), null, null);
@@ -181,6 +182,12 @@ export default function ParentAddChild() {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    // required blocks a truly empty field but not a whitespace-only one.
+    if (!form.name.trim() || !form.grade.trim()) {
+      setError("Enter the child's name and grade.");
+      return;
+    }
+    setError(null);
     setSubmitted(true);
   }
 
@@ -283,6 +290,7 @@ export default function ParentAddChild() {
                 </SelectContent>
               </Select>
             </div>
+            {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
             <Button type="submit" className="mt-2">
               <CheckCircle2 className="h-4 w-4" /> Add child
             </Button>

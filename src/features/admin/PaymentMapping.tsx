@@ -156,6 +156,13 @@ export default function AdminPaymentMapping() {
 
   async function saveAccountEdit() {
     if (!editAccount) return;
+    // Checked before the demo-mode short-circuit: the other way round, a blank/whitespace
+    // account name closed the dialog with a success message and no error, same ordering
+    // bug already fixed in Courses.tsx and Users.tsx.
+    if (!editName.trim()) {
+      setEditError("Account name is required.");
+      return;
+    }
     if (!apiEnabled()) {
       setResult({ ok: true, message: "Demo mode — account not persisted." });
       setEditAccount(null);

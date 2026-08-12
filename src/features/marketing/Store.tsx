@@ -95,6 +95,13 @@ export default function Store() {
 
   async function handleDemoSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // The native `required` attribute blocks a truly empty field but not a whitespace-only
+    // one (" " satisfies it), which then reads back as a blank name on every screen that
+    // shows this booking.
+    if (!demoForm.parentName.trim() || !demoForm.childName.trim()) {
+      setDemoError("Enter a parent name and child name.");
+      return;
+    }
     if (!demoForm.preferredStart) {
       setDemoError("Pick a date and time for the demo.");
       return;
@@ -128,6 +135,11 @@ export default function Store() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedPlan) return;
+    // Same whitespace-only gap as the demo form above.
+    if (!form.parentName.trim() || !form.childName.trim()) {
+      setError("Enter a parent name and child name.");
+      return;
+    }
 
     if (!live) {
       setSubmitted(true);
