@@ -376,7 +376,14 @@ function ApiStudentDashboard() {
   const totalClasses = classesCompleted + classesRemaining;
   const progressPercent = totalClasses > 0 ? Math.round((classesCompleted / totalClasses) * 100) : 0;
 
-  const todaySession = todaySessions.find((s) => s.status === "scheduled" || s.status === "demo");
+  // Demo sessions aren't tied to a specific enrolled child yet (childIds is empty for
+  // them); regular batch sessions are scoped to whichever of the parent's children are
+  // in that batch — otherwise a sibling's class would show as "today's class" here.
+  const todaySession = todaySessions.find(
+    (s) =>
+      (s.status === "scheduled" || s.status === "demo") &&
+      (s.childIds.length === 0 || s.childIds.includes(activeChild.id))
+  );
 
   const sorted = [...leaderboard].sort((a, b) => b.stars - a.stars);
   const myIndex = sorted.findIndex(

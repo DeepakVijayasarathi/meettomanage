@@ -36,7 +36,10 @@ const SelectContent = React.forwardRef<
       ref={ref}
       className={cn(
         "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-pop data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 duration-150",
-        position === "popper" && "translate-y-1",
+        // Without this, the popup's own width is unconstrained — a single long item
+        // (e.g. a session's "date, time — batch name" label) stretches the whole
+        // dropdown to fit it on one line, overflowing off-screen instead of wrapping.
+        position === "popper" && "translate-y-1 w-[var(--radix-select-trigger-width)] max-w-[min(24rem,var(--radix-select-content-available-width))]",
         className
       )}
       position={position}
@@ -57,7 +60,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-pointer select-none items-center rounded-md py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full min-w-0 cursor-pointer select-none items-center rounded-md py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}
@@ -67,7 +70,9 @@ const SelectItem = React.forwardRef<
         <Check className="h-4 w-4" />
       </SelectPrimitive.ItemIndicator>
     </span>
-    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+    {/* min-w-0 lets this actually shrink/wrap inside the now width-capped popup instead
+        of forcing it wider (the classic flexbox "children won't wrap" pitfall). */}
+    <SelectPrimitive.ItemText className="min-w-0 flex-1 whitespace-normal break-words">{children}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 ));
 SelectItem.displayName = SelectPrimitive.Item.displayName;

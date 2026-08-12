@@ -107,10 +107,14 @@ export default function ParentDashboard() {
       : undefined
     : mockChild;
 
-  const sessions = useMemo(
-    () => (apiEnabled() ? apiSessions : child ? getSessionsForChild(child.id) : []),
-    [apiSessions, child]
-  );
+  const sessions = useMemo(() => {
+    if (!apiEnabled()) return child ? getSessionsForChild(child.id) : [];
+    if (!child) return [];
+    // Demo sessions aren't tied to a specific enrolled child yet (childIds is empty for
+    // them) and stay visible regardless of which child is selected; regular batch
+    // sessions are scoped to whichever of the parent's children are in that batch.
+    return apiSessions.filter((s) => s.childIds.length === 0 || s.childIds.includes(child.id));
+  }, [apiSessions, child]);
 
   const upcoming = useMemo(
     () =>
