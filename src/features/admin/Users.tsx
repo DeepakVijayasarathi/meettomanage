@@ -105,6 +105,17 @@ export default function AdminUsers() {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
+  // Opens the Add User dialog on a blank form. Reopening used to show whatever was typed
+  // the last time it was cancelled (and any error from that attempt), so a second "add"
+  // started half-filled with a previous person's details.
+  function openAddUser() {
+    setAddName("");
+    setAddEmail("");
+    setAddPhone("");
+    setAddError(null);
+    setAddOpen(true);
+  }
+
   function openEdit(u: AppUser) {
     const [firstName, ...rest] = u.name.trim().split(/\s+/);
     setEditForm({ firstName: firstName ?? "", lastName: rest.join(" "), phone: u.phone === "—" ? "" : u.phone });
@@ -286,12 +297,9 @@ export default function AdminUsers() {
   }
 
   async function handleCreateUser() {
-    if (!apiEnabled()) {
-      setBanner({ ok: true, text: "Demo mode — no account actually created." });
-      setAddOpen(false);
-      return;
-    }
-
+    // Validated before the demo-mode short-circuit (as handleUpdateUser above already
+    // does): checking it after meant an entirely blank form still closed the dialog with
+    // a green "Demo mode — no account actually created" line, which reads as a success.
     const [firstName, ...rest] = addName.trim().split(/\s+/);
     if (!firstName || !addEmail.trim()) {
       setAddError("Name and email are required.");
@@ -301,6 +309,12 @@ export default function AdminUsers() {
     const roleOption = addUserRoleOptions.find((o) => o.key === addRole);
     if (!roleOption) {
       setAddError("Pick a role.");
+      return;
+    }
+
+    if (!apiEnabled()) {
+      setBanner({ ok: true, text: "Demo mode — no account actually created." });
+      setAddOpen(false);
       return;
     }
 
@@ -450,7 +464,7 @@ export default function AdminUsers() {
         title="Users"
         description="Manage parents, students, teachers, admission team and relationship managers across the platform."
         actions={
-          <Button onClick={() => setAddOpen(true)}>
+          <Button onClick={openAddUser}>
             <Plus className="h-4 w-4" />
             Add User
           </Button>

@@ -124,6 +124,16 @@ export default function AdminReports() {
     [generated, reportType, sources]
   );
 
+  // A backwards or half-filled range still generated a report and exported a CSV named
+  // after a window that can't contain anything (revenue-report--to-2026-08-01.csv), so
+  // the file's own name promised data it could never hold. Caught before Generate.
+  const rangeError =
+    !fromDate || !toDate
+      ? "Pick both a start and an end date."
+      : fromDate > toDate
+        ? "The From date must be on or before the To date."
+        : null;
+
   async function handleExport() {
     setExportError(null);
     const type = generated ?? reportType;
@@ -191,12 +201,18 @@ export default function AdminReports() {
             <Label htmlFor="to-date">To</Label>
             <Input id="to-date" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-40" />
           </div>
-          <Button onClick={() => setGenerated(reportType)}>
+          <Button onClick={() => setGenerated(reportType)} disabled={!!rangeError}>
             <Sparkles className="h-4 w-4" />
             Generate
           </Button>
         </CardContent>
       </Card>
+
+      {rangeError && (
+        <p role="alert" className="mt-2 text-sm font-medium text-destructive">
+          {rangeError}
+        </p>
+      )}
 
       {generated && (
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">

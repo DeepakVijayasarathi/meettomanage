@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BookOpen, Plus, Users2 } from "lucide-react";
+import { BookOpen, CheckCircle2, Plus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
@@ -52,15 +52,29 @@ export default function AdminCourses() {
   const [price, setPrice] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  // Opens the dialog on a blank form — reopening it used to still hold the previous
+  // attempt's course name and price.
+  function openCreate() {
+    setName("");
+    setPrice("");
+    setSaveError(null);
+    setCreateOpen(true);
+  }
 
   async function handleCreate() {
-    if (!apiEnabled()) {
-      setCreateOpen(false);
+    // Checked before the demo-mode short-circuit: the other way round, "Create Course" on
+    // an empty form just closed the dialog with no message and no new row, which looks
+    // exactly like a course that was created and then vanished.
+    if (!name.trim()) {
+      setSaveError("Course name is required.");
       return;
     }
 
-    if (!name.trim()) {
-      setSaveError("Course name is required.");
+    if (!apiEnabled()) {
+      setNotice("Demo mode — course not persisted.");
+      setCreateOpen(false);
       return;
     }
 
@@ -175,7 +189,7 @@ export default function AdminCourses() {
         title="Courses"
         description="Manage the course catalogue, pricing, duration and enrollment across all departments."
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
             Create Course
           </Button>
@@ -185,6 +199,13 @@ export default function AdminCourses() {
       {apiEnabled() && apiError && (
         <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not reach the API ({apiError}) — showing demo data.
+        </p>
+      )}
+
+      {notice && (
+        <p className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          {notice}
         </p>
       )}
 

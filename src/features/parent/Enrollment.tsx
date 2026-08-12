@@ -558,7 +558,14 @@ function Field({
         {required && <span className="ml-0.5 text-destructive">*</span>}
       </Label>
       {children}
-      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+      {/* role="alert" so a screen reader announces the failure on Next/Submit — the
+          errors appear well below the button that triggered them and were otherwise
+          silent (matching how Login and Store already announce their errors). */}
+      {error && (
+        <p role="alert" className="text-xs font-medium text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

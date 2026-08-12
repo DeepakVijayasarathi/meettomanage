@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import { ChevronsLeft, ChevronsRight, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
@@ -15,6 +16,32 @@ interface SidebarProps {
 }
 
 export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, collapsed, onToggleCollapse }: SidebarProps) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  // onClose is an inline arrow from AppShell (new identity every render), so it's read
+  // through a ref — keeping it in the effect's deps would re-run the effect on every
+  // render and keep yanking focus back to the close button while the drawer is open.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // The mobile drawer is a modal overlay, but it's a plain <aside> rather than a Radix
+  // Dialog, so it had none of the modal behaviour: Escape did nothing, and focus stayed
+  // on the hamburger behind the overlay — tabbing walked the covered page underneath and
+  // never reached a single nav link. Handle it here instead of converting the whole
+  // sidebar to a Dialog, which would also change the always-on desktop rail.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCloseRef.current();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      if (opener?.isConnected) opener.focus();
+    };
+  }, [mobileOpen]);
+
   return (
     <>
       {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onClose} />}
@@ -28,6 +55,7 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
         <div className={cn("flex items-center px-5 py-5", collapsed ? "justify-center" : "justify-between")}>
           <Logo variant="light" showWordmark={!collapsed} />
           <button
+            ref={closeRef}
             onClick={onClose}
             aria-label="Close menu"
             className="rounded-md p-1 text-sidebar-foreground/70 hover:bg-white/10 lg:hidden"

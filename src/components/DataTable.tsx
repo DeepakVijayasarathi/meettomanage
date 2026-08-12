@@ -79,11 +79,16 @@ export function DataTable<T>({
     onSelectionChange?.(next);
   }
 
+  // Trimmed before matching: a name pasted from an email or a spreadsheet almost always
+  // carries a leading/trailing space, and an untrimmed substring match turned that into a
+  // flat "No results" for a row that is plainly on screen.
+  const trimmedQuery = query.trim();
+
   const filtered = useMemo(() => {
-    if (!query) return data;
-    if (searchFn) return data.filter((row) => searchFn(row, query));
-    return data.filter((row) => JSON.stringify(row).toLowerCase().includes(query.toLowerCase()));
-  }, [data, query, searchFn]);
+    if (!trimmedQuery) return data;
+    if (searchFn) return data.filter((row) => searchFn(row, trimmedQuery));
+    return data.filter((row) => JSON.stringify(row).toLowerCase().includes(trimmedQuery.toLowerCase()));
+  }, [data, trimmedQuery, searchFn]);
 
   const sorted = useMemo(() => {
     if (!sort) return filtered;
@@ -151,8 +156,8 @@ export function DataTable<T>({
         // active query, i.e. the table really has no data.
         <EmptyState
           icon={Search}
-          title={query ? `No results for "${query}"` : emptyTitle}
-          description={query ? "Try a different search term, or clear the search to see everything." : emptyDescription}
+          title={trimmedQuery ? `No results for "${trimmedQuery}"` : emptyTitle}
+          description={trimmedQuery ? "Try a different search term, or clear the search to see everything." : emptyDescription}
         />
       ) : (
         <>
@@ -285,7 +290,11 @@ export function DataTable<T>({
               size="icon"
               className="h-8 w-8"
               disabled={clampedPage <= 1}
-              onClick={() => setPage((p) => p - 1)}
+              // Steps from clampedPage, not the raw `page`: an external filter (a toolbar
+              // Select, not the search box) can shrink the list while `page` still points
+              // past the new last page, and decrementing that stale number landed back on
+              // the same clamped page — Previous looked broken until you clicked it twice.
+              onClick={() => setPage(clampedPage - 1)}
               aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -298,7 +307,7 @@ export function DataTable<T>({
               size="icon"
               className="h-8 w-8"
               disabled={clampedPage >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => setPage(clampedPage + 1)}
               aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />

@@ -141,6 +141,17 @@ const EMPTY_MENU_FORM: SaveMenuItemRequest = {
  */
 const HEADER_SAVE_TABS = new Set(["general", "branding", "notifications", "widgets"]);
 
+/** Every tab this screen renders — used to reject an unknown ?tab= deep link. */
+const SETTINGS_TABS = new Set([
+  "general",
+  "branding",
+  "notifications",
+  "widgets",
+  "menus",
+  "payroll",
+  "integrations",
+]);
+
 export default function AdminSettings() {
   const [values, setValues] = useState<Record<string, string>>(defaultValues);
   const [saved, setSaved] = useState(false);
@@ -148,9 +159,15 @@ export default function AdminSettings() {
   const [error, setError] = useState<string | null>(null);
 
   // Deep-linkable tabs: other screens (e.g. Teacher Payouts) can send admins straight
-  // to a specific tab via /admin/settings?tab=payroll.
+  // to a specific tab via /admin/settings?tab=payroll. The value is checked against the
+  // real tab list — an unknown one (typo, or a link from an older build) matched no
+  // TabsContent and rendered a settings page with no active tab, no panel and no Save
+  // button at all, with nothing on screen explaining why.
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") ?? "general");
+  const [activeTab, setActiveTab] = useState(() => {
+    const requested = searchParams.get("tab");
+    return requested && SETTINGS_TABS.has(requested) ? requested : "general";
+  });
   function changeTab(tab: string) {
     setActiveTab(tab);
     setSearchParams((prev) => {
