@@ -445,16 +445,24 @@ export default function AdminUsers() {
       {
         key: "role",
         header: "Role",
-        render: (row) => (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold capitalize text-foreground/80">
-            {row.role === "admission" ? "Admission Team" : "Parent Relationship Manager"}
-          </span>
-        ),
+        render: (row) => {
+          // A SubAdmin account may have a named preset applied (Management, Coordinator,
+          // etc.) — show that instead of the generic base-role label whenever one's set.
+          const presetLabel = row.roleDefinitionId
+            ? addUserRoleOptions.find((o) => o.roleDefinitionId === row.roleDefinitionId)?.label
+            : undefined;
+          const label = row.role === "admission" ? "Admission Team" : presetLabel ?? "Parent Relationship Manager";
+          return (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold capitalize text-foreground/80">
+              {label}
+            </span>
+          );
+        },
       },
       { ...userColumns[3] },
       { ...userColumns[4] },
     ],
-    [userColumns]
+    [userColumns, addUserRoleOptions]
   );
 
   return (

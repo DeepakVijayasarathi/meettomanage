@@ -2,6 +2,7 @@ import { addDays, differenceInCalendarDays, differenceInMinutes, format, subDays
 import type { ClassSession, Resource } from "@/types";
 import { SESSIONS } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
+import { istToUtcIso } from "@/lib/datetime";
 
 /**
  * Fixed "now" for this mock universe (today is 2026-07-09 per the product brief).
@@ -18,8 +19,12 @@ function now(): Date {
   return apiEnabled() ? new Date() : MOCK_NOW;
 }
 
+// session.date/startTime are IST wall-clock values (see toFrontendSession) — parse them
+// as IST rather than the viewer's own browser timezone, so join-window checks (isJoinable,
+// minutesUntilStart) are correct no matter what machine/clock this runs on. Demo mode's
+// mock SESSIONS data uses the same date/time shape, so this applies uniformly either way.
 export function sessionStart(session: ClassSession): Date {
-  return new Date(`${session.date}T${session.startTime}:00`);
+  return new Date(istToUtcIso(session.date, session.startTime));
 }
 
 export function minutesUntilStart(session: ClassSession): number {

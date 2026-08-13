@@ -19,6 +19,7 @@ import {
 import { SESSIONS } from "@/data/sessions";
 import type { ClassSession, SessionStatus } from "@/types";
 import { formatDate } from "@/lib/utils";
+import { istToUtcIso } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -36,11 +37,6 @@ const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
   { value: "holiday", label: "Holiday" },
   { value: "leave", label: "Teacher Leave" },
 ];
-
-/** Local "YYYY-MM-DDTHH:mm" from date + time inputs → UTC ISO string. */
-function toUtcIso(date: string, time: string): string {
-  return new Date(`${date}T${time}:00`).toISOString();
-}
 
 export default function AdminSessions() {
   const usingApi = apiEnabled();
@@ -103,7 +99,7 @@ export default function AdminSessions() {
     setSaving(true);
     setScheduleError(null);
     try {
-      const start = toUtcIso(newDate, newTime);
+      const start = istToUtcIso(newDate, newTime);
       const end = new Date(new Date(start).getTime() + (Number(newDuration) || 45) * 60000).toISOString();
       await scheduleSession({
         batchId: newType === "Regular" ? newBatch : undefined,
@@ -131,7 +127,7 @@ export default function AdminSessions() {
     }
     setReschedBusy(true);
     try {
-      const start = toUtcIso(reschedDate, reschedTime);
+      const start = istToUtcIso(reschedDate, reschedTime);
       const end = new Date(new Date(start).getTime() + rescheduleTarget.duration * 60000).toISOString();
       await rescheduleSession(rescheduleTarget.id, start, end);
       notify(true, `"${rescheduleTarget.title}" rescheduled to ${formatDate(reschedDate)} ${reschedTime}.`);
