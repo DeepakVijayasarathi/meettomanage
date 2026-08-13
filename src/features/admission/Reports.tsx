@@ -25,7 +25,7 @@ import { formatCurrency } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listDemoBookings, listDemoFeedback, toFrontendLead, toFrontendFeedback } from "@/api/demoBookings";
-import { listInvoices, toFrontendInvoice } from "@/api/billing";
+import { listInvoiceRows, toFrontendInvoice } from "@/api/billing";
 import { getDashboardSummary } from "@/api/reports";
 import { DEMO_FEEDBACKS } from "@/data/feedback";
 import type { DemoFeedback } from "@/types";
@@ -104,10 +104,14 @@ export default function AdmissionReports() {
     () => listDemoFeedback().then((f) => f.map(toFrontendFeedback)),
     []
   );
-  const { data: apiPayments } = useApiData<PaymentReportRow[]>(
+  // GET /api/invoices is paged; this report filters by date client-side over one page,
+  // so a long-running institution's older invoices fall outside it. totalCount is kept
+  // so the payments report can flag when it isn't looking at the whole table.
+  const { data: apiPaymentPage } = useApiData(
     () =>
-      listInvoices().then((items) =>
-        items.map(toFrontendInvoice).map((inv) => ({
+      listInvoiceRows((invoice) => {
+        const inv = toFrontendInvoice(invoice);
+        return {
           id: inv.id,
           childName: inv.childName,
           parentName: inv.parentName,
@@ -117,10 +121,13 @@ export default function AdmissionReports() {
           amountPaid: inv.amountPaid ?? 0,
           status: inv.status,
           linkSharedOn: inv.issuedOn,
-        }))
-      ),
-    []
+        } satisfies PaymentReportRow;
+      }),
+    { rows: [] as PaymentReportRow[], totalCount: 0 },
+    { rows: [] as PaymentReportRow[], totalCount: 0 }
   );
+  const apiPayments = apiPaymentPage.rows;
+  const paymentsTruncated = usingApi && apiPaymentPage.totalCount > apiPayments.length;
 
   const leads = usingApi ? apiLeads : LEADS;
   const feedbacks = usingApi ? apiFeedbacks : DEMO_FEEDBACKS;
@@ -264,6 +271,15 @@ export default function AdmissionReports() {
         <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
           <Sparkles className="h-3 w-3" /> Exporting downloads exactly what&apos;s shown above.
         </p>
+        {reportType === "payments" && paymentsTruncated && (
+          // The date filter runs over the invoice page this screen loaded, so a range
+          // reaching past the newest page would quietly under-report. Say it rather
+          // than hand someone a short report that looks complete.
+          <p className="mt-1 text-xs text-warning-foreground">
+            Drawn from the {apiPayments.length} most recent of {apiPaymentPage.totalCount} invoices — a range
+            reaching further back than those may be incomplete.
+          </p>
+        )}
       </div>
     </div>
   );

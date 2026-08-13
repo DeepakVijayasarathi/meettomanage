@@ -24,8 +24,8 @@ import { getParentById } from "@/data/users";
 import { useApiData } from "@/api/hooks";
 import { apiEnabled } from "@/lib/api";
 import {
+  listInvoiceRows,
   listInvoiceTransactions,
-  listInvoices,
   recordPayment,
   requestRefund,
   toFrontendInvoice,
@@ -55,10 +55,17 @@ const DEPARTMENT_COLOR: Record<Invoice["department"], string> = {
 };
 
 export default function AdminBilling() {
-  const { data: invoices, error: invoicesError, reload } = useApiData(
-    () => listInvoices().then((items) => items.map(toFrontendInvoice)),
-    INVOICES
+  // GET /api/invoices is paged (the table grows one row per billing cycle, forever). This
+  // screen filters, sorts and totals client-side, so it takes one full page and lets
+  // DataTable paginate that in the browser; `totalCount` is what tells us when the page
+  // no longer covers the whole table, so the KPI figures below can say so.
+  const { data: invoiceData, error: invoicesError, reload } = useApiData(
+    () => listInvoiceRows(toFrontendInvoice),
+    { rows: INVOICES, totalCount: INVOICES.length },
+    { rows: [], totalCount: 0 }
   );
+  const invoices = invoiceData.rows;
+  const truncated = invoiceData.totalCount > invoices.length;
   const live = apiEnabled();
   const { hasPermission } = useSession();
   const canRequestRefund = hasPermission("BillingFinance", "Create");
@@ -291,6 +298,17 @@ export default function AdminBilling() {
         <KpiCard label="Pending Invoices" value={`${formatNumber(totals.pendingCount)} · ${formatCurrency(totals.pendingAmount)}`} icon={TimerReset} tone="warning" />
         <KpiCard label="Overdue Invoices" value={`${formatNumber(totals.overdueCount)} · ${formatCurrency(totals.overdueAmount)}`} icon={AlertTriangle} tone="destructive" />
       </div>
+
+      {truncated && (
+        // These KPIs are summed client-side over the rows actually loaded. Once the
+        // invoice table outgrows one page they stop being whole-account figures, and a
+        // money number that quietly means something narrower than its label is worse
+        // than one that admits its scope.
+        <p className="mt-3 text-xs text-muted-foreground">
+          Showing the {formatNumber(invoices.length)} most recent of {formatNumber(invoiceData.totalCount)} invoices —
+          the totals above cover the loaded rows only.
+        </p>
+      )}
 
       <Tabs defaultValue="action" className="mt-8">
         <TabsList>

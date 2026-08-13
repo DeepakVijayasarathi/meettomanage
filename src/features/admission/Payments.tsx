@@ -9,9 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CashConfirmationsPanel } from "@/components/CashConfirmationsPanel";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listInvoices, toFrontendInvoice, createPaymentLink } from "@/api/billing";
+import { listInvoiceRows, toFrontendInvoice, createPaymentLink } from "@/api/billing";
 import type { Invoice } from "@/types";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 import { PAYMENT_LINKS } from "./data";
 
 type RowStatus = Invoice["status"];
@@ -76,10 +76,16 @@ function fromInvoice(invoice: Invoice): PaymentRow {
 }
 
 export default function AdmissionPayments() {
-  const { data: rows } = useApiData(
-    () => listInvoices().then((items) => items.map(toFrontendInvoice).map(fromInvoice)),
-    DEMO_ROWS
+  // One page of the (forever-growing) invoice table; the status filter, totals and
+  // DataTable's paging all run client-side over it. totalCount is the whole matching
+  // set server-side, which is what the "Invoices" KPI should actually count.
+  const { data: invoiceData } = useApiData(
+    () => listInvoiceRows((invoice) => fromInvoice(toFrontendInvoice(invoice))),
+    { rows: DEMO_ROWS, totalCount: DEMO_ROWS.length },
+    { rows: [], totalCount: 0 }
   );
+  const rows = invoiceData.rows;
+  const truncated = invoiceData.totalCount > rows.length;
   const [statusFilter, setStatusFilter] = useState<RowStatus | "all">("all");
   const [linkBusyId, setLinkBusyId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -99,8 +105,10 @@ export default function AdmissionPayments() {
       .filter((r) => r.status !== "paid" && r.status !== "cancelled")
       .reduce((s, r) => s + balanceOf(r), 0);
     const partial = rows.filter((r) => r.status === "partial").length;
-    return { paid, outstanding, partial, total: rows.length };
-  }, [rows]);
+    // Count comes from the server's total, not the loaded page — it's the one figure
+    // here that can stay exact once the table outgrows a page.
+    return { paid, outstanding, partial, total: invoiceData.totalCount };
+  }, [rows, invoiceData.totalCount]);
 
   async function handleGenerateLink(row: PaymentRow) {
     setError(null);
@@ -225,6 +233,15 @@ export default function AdmissionPayments() {
         <KpiCard label="Outstanding" value={formatCurrency(totals.outstanding)} icon={Wallet} tone="destructive" />
         <KpiCard label="Partially Paid" value={String(totals.partial)} icon={ListChecks} tone="warning" />
       </div>
+
+      {truncated && (
+        // Collected/Outstanding/Partially Paid are summed over the loaded page only, so
+        // say so rather than letting them read as whole-book figures.
+        <p className="mt-3 text-xs text-muted-foreground">
+          Showing the {formatNumber(rows.length)} most recent of {formatNumber(totals.total)} invoices — the
+          collection figures above cover the loaded rows only.
+        </p>
+      )}
 
       <div className="mt-8">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">

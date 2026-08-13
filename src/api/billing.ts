@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import type { PagedResult } from "./types";
 import type { Invoice } from "@/types";
 
 export type ApiInvoiceStatus = "Pending" | "PartiallyPaid" | "Paid" | "Overdue" | "Cancelled";
@@ -65,15 +66,48 @@ export function toFrontendInvoice(invoice: ApiInvoice): Invoice {
   };
 }
 
+/**
+ * The largest page GET /api/invoices will hand back (BillingService clamps to this).
+ * Invoices are the one billing table that grows forever — one row per subscription
+ * cycle — so the endpoint is paged. The screens that render it filter, sort and total
+ * client-side over one array, so they ask for a full page of this size and keep
+ * DataTable's own pagination rather than driving the server page from the table.
+ */
+export const INVOICE_PAGE_SIZE = 200;
+
 export async function listInvoices(filter?: {
   status?: ApiInvoiceStatus;
   parentProfileId?: string;
-}): Promise<ApiInvoice[]> {
+  page?: number;
+  pageSize?: number;
+}): Promise<PagedResult<ApiInvoice>> {
   const params = new URLSearchParams();
   if (filter?.status) params.set("status", filter.status);
   if (filter?.parentProfileId) params.set("parentProfileId", filter.parentProfileId);
-  const query = params.size > 0 ? `?${params}` : "";
-  return apiFetch<ApiInvoice[]>(`/api/invoices${query}`);
+  params.set("page", String(filter?.page ?? 1));
+  params.set("pageSize", String(filter?.pageSize ?? INVOICE_PAGE_SIZE));
+  return apiFetch<PagedResult<ApiInvoice>>(`/api/invoices?${params}`);
+}
+
+/** What a screen holds after one invoice fetch, in both demo and API mode. */
+export interface InvoiceRows<T> {
+  rows: T[];
+  /** Every invoice matching the filter server-side, not just the ones in `rows`. */
+  totalCount: number;
+}
+
+/**
+ * Fetches one page and maps it into the row shape a screen renders. `totalCount` comes
+ * back alongside so a screen can tell the user its client-side totals cover only the
+ * newest page — silently reporting money figures over a truncated table would be worse
+ * than the unpaged read this replaced.
+ */
+export async function listInvoiceRows<T>(
+  map: (invoice: ApiInvoice) => T,
+  filter?: { status?: ApiInvoiceStatus; parentProfileId?: string }
+): Promise<InvoiceRows<T>> {
+  const page = await listInvoices(filter);
+  return { rows: page.items.map(map), totalCount: page.totalCount };
 }
 
 export async function createInvoice(input: {

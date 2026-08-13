@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listAuditLogs } from "@/api/audit";
+import { listAuditLogs, type ApiAuditLog } from "@/api/audit";
 import { AUDIT_LOG, MODULES, MODULE_META, type AuditEntry, type SubAdminModule } from "./data";
 
 function formatTimestamp(iso: string) {
@@ -86,25 +86,49 @@ const COLUMNS: DataTableColumn<AuditEntry>[] = [
   },
 ];
 
+/** Rows per server page. The audit trail only ever grows, so it is paged at the source. */
+const PAGE_SIZE = 25;
+
+/** Rows a single CSV export pulls — one request, same ceiling the screen used to load eagerly. */
+const EXPORT_SIZE = 200;
+
+function toEntry(entry: ApiAuditLog): AuditEntry {
+  return {
+    id: entry.id,
+    module: entry.entityName as SubAdminModule,
+    action: entry.action,
+    detail: entry.actorName ? `${entry.actorName}${entry.entityId ? ` · ${entry.entityId}` : ""}` : entry.entityId ?? "—",
+    timestamp: entry.createdAtUtc,
+  };
+}
+
 export default function SubAdminAuditLog() {
   const usingApi = apiEnabled();
   const [moduleFilter, setModuleFilter] = useState<SubAdminModule | "all">("all");
+  const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
 
   // Real trail from the audit API; the scripted persona log is demo-only.
-  const { data: apiEntries } = useApiData<AuditEntry[]>(
-    () =>
-      listAuditLogs({ pageSize: 200 }).then((page) =>
-        page.items.map((entry) => ({
-          id: entry.id,
-          module: entry.entityName as SubAdminModule,
-          action: entry.action,
-          detail: entry.actorName ? `${entry.actorName}${entry.entityId ? ` · ${entry.entityId}` : ""}` : entry.entityId ?? "—",
-          timestamp: entry.createdAtUtc,
-        }))
-      ),
-    []
+  //
+  // Paged against the server rather than pulled in one big slab: the trail grows with
+  // every action anyone takes and never shrinks, so the old "fetch 200 and paginate in
+  // the browser" shape both capped how far back the screen could reach (entry 201 was
+  // simply unreachable) and would have kept growing the payload if that cap were lifted.
+  const { data: apiPage, reload } = useApiData(
+    () => listAuditLogs({ page, pageSize: PAGE_SIZE }).then((p) => ({ rows: p.items.map(toEntry), totalCount: p.totalCount })),
+    { rows: [] as AuditEntry[], totalCount: 0 },
+    { rows: [] as AuditEntry[], totalCount: 0 }
   );
-  const entries = usingApi ? apiEntries : AUDIT_LOG;
+
+  // useApiData only refetches when its version bumps, so the page change and the refetch
+  // have to be requested together; React batches both into the one render.
+  function goToPage(next: number) {
+    setPage(next);
+    reload();
+  }
+
+  const entries = usingApi ? apiPage.rows : AUDIT_LOG;
+  const totalCount = usingApi ? apiPage.totalCount : AUDIT_LOG.length;
 
   const filtered = useMemo(
     () => (moduleFilter === "all" ? entries : entries.filter((e) => e.module === moduleFilter)),
@@ -113,6 +137,29 @@ export default function SubAdminAuditLog() {
 
   const modulesTouched = useMemo(() => new Set(entries.map((e) => e.module)).size, [entries]);
   const mostRecent = entries[0];
+  // In API mode these two summarise the loaded page, not the whole trail — a distinct-module
+  // count and a "latest" can't be derived from rows the browser doesn't have.
+  const pageScope = usingApi ? " (This Page)" : "";
+
+  async function handleExport() {
+    const filename = usingApi
+      ? `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
+      : `neha-kulkarni-audit-log-2026-07-09.csv`;
+    if (!usingApi) {
+      download(filename, toCsv(filtered));
+      return;
+    }
+    // Export reaches past the visible page deliberately — a 25-row CSV of an audit trail
+    // is not what "Export CSV" means to the person clicking it.
+    setExporting(true);
+    try {
+      const p = await listAuditLogs({ page: 1, pageSize: EXPORT_SIZE });
+      const rows = p.items.map(toEntry);
+      download(filename, toCsv(moduleFilter === "all" ? rows : rows.filter((e) => e.module === moduleFilter)));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div>
@@ -123,10 +170,10 @@ export default function SubAdminAuditLog() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Total Actions Logged" value={String(entries.length)} icon={History} tone="primary" />
-        <KpiCard label="Modules Touched" value={String(modulesTouched)} icon={History} tone="success" />
+        <KpiCard label="Total Actions Logged" value={String(totalCount)} icon={History} tone="primary" />
+        <KpiCard label={`Modules Touched${pageScope}`} value={String(modulesTouched)} icon={History} tone="success" />
         <KpiCard
-          label="Most Recent Action"
+          label={`Most Recent Action${pageScope}`}
           value={mostRecent ? formatTimestamp(mostRecent.timestamp) : "—"}
           icon={History}
           tone="neutral"
@@ -143,6 +190,11 @@ export default function SubAdminAuditLog() {
             `${row.action} ${row.detail} ${row.module}`.toLowerCase().includes(query.toLowerCase())
           }
           pageSize={8}
+          // API mode pages against the server so the whole trail stays reachable; demo mode
+          // holds its scripted log in memory, where DataTable's own paging is the right tool.
+          serverPagination={
+            usingApi ? { page, pageSize: PAGE_SIZE, totalCount, onPageChange: goToPage } : undefined
+          }
           emptyTitle="No actions in this module"
           emptyDescription="Try a different module filter or clear your search."
           toolbar={
@@ -160,20 +212,9 @@ export default function SubAdminAuditLog() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  download(
-                    usingApi
-                      ? `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
-                      : `neha-kulkarni-audit-log-2026-07-09.csv`,
-                    toCsv(filtered)
-                  )
-                }
-              >
+              <Button variant="outline" size="sm" disabled={exporting} onClick={handleExport}>
                 <Download className="h-3.5 w-3.5" />
-                Export CSV
+                {exporting ? "Exporting…" : "Export CSV"}
               </Button>
             </>
           }

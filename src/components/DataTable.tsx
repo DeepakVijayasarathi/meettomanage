@@ -39,6 +39,22 @@ interface DataTableProps<T> {
   onSelectionChange?: (keys: Set<string>) => void;
   /** Rendered in the toolbar row whenever at least one row is selected. */
   bulkActions?: ReactNode;
+  /**
+   * Opt-in server-driven pagination. When passed, `data` is one already-fetched page:
+   * DataTable stops slicing it and the footer's page buttons call `onPageChange` instead
+   * of moving a local index. Everything else stays as-is, so tables that hold their whole
+   * list in memory are untouched.
+   *
+   * Search and sort still run client-side, over the page in hand — a table too large to
+   * hold in the browser is exactly the one that can't sort rows it hasn't loaded, and
+   * pretending otherwise would be worse than scoping it visibly to the current page.
+   */
+  serverPagination?: {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    onPageChange: (page: number) => void;
+  };
 }
 
 export function DataTable<T>({
@@ -56,6 +72,7 @@ export function DataTable<T>({
   selectedKeys,
   onSelectionChange,
   bulkActions,
+  serverPagination,
 }: DataTableProps<T>) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
@@ -104,9 +121,15 @@ export function DataTable<T>({
     return copy;
   }, [filtered, sort, columns]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
-  const clampedPage = Math.min(page, totalPages);
-  const pageRows = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+  const effectivePageSize = serverPagination?.pageSize ?? pageSize;
+  const totalItems = serverPagination?.totalCount ?? sorted.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / effectivePageSize));
+  // In server mode the page number is owned by the caller and `sorted` already is that
+  // page, so there is nothing left to slice locally.
+  const clampedPage = serverPagination ? serverPagination.page : Math.min(page, totalPages);
+  const pageRows = serverPagination ? sorted : sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+  const goToPage = serverPagination ? serverPagination.onPageChange : setPage;
+  const firstRowIndex = (clampedPage - 1) * effectivePageSize + 1;
 
   function toggleSort(key: string) {
     setSort((prev) => {
@@ -279,10 +302,15 @@ export function DataTable<T>({
         </>
       )}
 
-      {sorted.length > 0 && (
+      {/* In server mode the footer stays up even when the loaded page filters down to
+          nothing — otherwise a search that matches no row on page 3 would strand the
+          user there with no way back. */}
+      {(sorted.length > 0 || (serverPagination && totalItems > 0)) && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Showing {(clampedPage - 1) * pageSize + 1}–{Math.min(clampedPage * pageSize, sorted.length)} of {sorted.length}
+            {serverPagination && trimmedQuery
+              ? `Showing ${sorted.length} matching on this page`
+              : `Showing ${firstRowIndex}–${firstRowIndex + pageRows.length - 1} of ${totalItems}`}
           </span>
           <div className="flex items-center gap-1.5">
             <Button
@@ -294,7 +322,7 @@ export function DataTable<T>({
               // Select, not the search box) can shrink the list while `page` still points
               // past the new last page, and decrementing that stale number landed back on
               // the same clamped page — Previous looked broken until you clicked it twice.
-              onClick={() => setPage(clampedPage - 1)}
+              onClick={() => goToPage(clampedPage - 1)}
               aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -307,7 +335,7 @@ export function DataTable<T>({
               size="icon"
               className="h-8 w-8"
               disabled={clampedPage >= totalPages}
-              onClick={() => setPage(clampedPage + 1)}
+              onClick={() => goToPage(clampedPage + 1)}
               aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />
