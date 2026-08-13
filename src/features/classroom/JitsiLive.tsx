@@ -272,11 +272,10 @@ export default function JitsiLive({
       });
       api.addListener("videoConferenceLeft", () => flushMedia());
       api.addListener("participantJoined", (payload) => {
-        if (!payload?.id) return;
-        setParticipants((prev) => [
-          ...prev.filter((p) => p.id !== payload.id),
-          { id: payload.id, displayName: payload.displayName?.trim() || "Student" },
-        ]);
+        const id = payload?.id;
+        if (!id) return;
+        const displayName = payload.displayName?.trim() || "Student";
+        setParticipants((prev) => [...prev.filter((p) => p.id !== id), { id, displayName }]);
       });
       api.addListener("participantLeft", (payload) => {
         setParticipants((prev) => prev.filter((p) => p.id !== payload?.id));
