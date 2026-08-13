@@ -19,6 +19,7 @@ import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
 import { createDemoBooking, listDemoBookings, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
 import { formatDate, getInitials } from "@/lib/utils";
+import { istToUtcIso, utcIsoToIstDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import type { SessionStatus } from "@/types";
 
@@ -78,7 +79,7 @@ function seedRows(): DemoRow[] {
 }
 
 function bookingToRow(booking: ApiDemoBooking): DemoRow {
-  const start = booking.scheduledStartAtUtc ? new Date(booking.scheduledStartAtUtc) : null;
+  const ist = booking.scheduledStartAtUtc ? utcIsoToIstDateTime(booking.scheduledStartAtUtc) : null;
   const status: SessionStatus =
     booking.conversionStatus === "DemoScheduled" ? "demo" : booking.conversionStatus === "NotInterested" ? "cancelled" : "completed";
   const adults = booking.participants.filter((p) => !p.isChild);
@@ -97,8 +98,8 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
         email: p.email ?? "",
       })),
     ],
-    date: start ? start.toISOString().slice(0, 10) : "",
-    startTime: start ? start.toISOString().slice(11, 16) : "",
+    date: ist ? ist.date : "",
+    startTime: ist ? ist.time : "",
     teacherId: booking.teacherProfileId ?? "",
     teacherName: booking.teacherName ?? "Auto-assigned",
     status,
@@ -173,8 +174,8 @@ export default function AdmissionDemoScheduling() {
 
     if (apiEnabled()) {
       const primary = parents[0];
-      const startUtc = new Date(`${date}T${time}:00`);
-      const endUtc = new Date(startUtc.getTime() + 30 * 60_000);
+      const startUtc = istToUtcIso(date, time);
+      const endUtc = new Date(new Date(startUtc).getTime() + 30 * 60_000).toISOString();
       createDemoBooking({
         parentName: primary.name.trim(),
         parentEmail: primary.email.trim(),
@@ -182,8 +183,8 @@ export default function AdmissionDemoScheduling() {
         childName: childName.trim(),
         childAge: childAge ? Number(childAge) : undefined,
         teacherProfileId: teacherId || undefined,
-        scheduledStartAtUtc: startUtc.toISOString(),
-        scheduledEndAtUtc: endUtc.toISOString(),
+        scheduledStartAtUtc: startUtc,
+        scheduledEndAtUtc: endUtc,
         participants: [
           ...parents
             .slice(1)
@@ -485,7 +486,7 @@ export default function AdmissionDemoScheduling() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="demoTime">
-                Time <span className="text-destructive">*</span>
+                Time (IST) <span className="text-destructive">*</span>
               </Label>
               <Input id="demoTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
