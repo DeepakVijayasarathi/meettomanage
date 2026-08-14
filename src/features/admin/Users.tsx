@@ -397,8 +397,7 @@ export default function AdminUsers() {
             <div>
               <p className="font-semibold text-foreground">{row.name}</p>
               <p className="text-xs text-muted-foreground">
-                {row.grade}
-                {row.age ? ` · Age ${row.age}` : ""}
+                {[row.grade, row.age ? `Age ${row.age}` : ""].filter(Boolean).join(" · ")}
               </p>
             </div>
           </div>
@@ -805,7 +804,7 @@ export default function AdminUsers() {
                   <div>
                     <DialogTitle>{detailChild.name}</DialogTitle>
                     <DialogDescription>
-                      {detailChild.grade} · Age {detailChild.age}
+                      {[detailChild.grade, detailChild.age ? `Age ${detailChild.age}` : ""].filter(Boolean).join(" · ")}
                     </DialogDescription>
                   </div>
                 </div>
