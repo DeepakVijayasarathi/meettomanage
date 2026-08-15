@@ -42,7 +42,7 @@ export async function listStudents(): Promise<StudentRow[]> {
     parentId: s.parentProfileId,
     name: s.fullName,
     age: s.age ?? 0,
-    grade: s.academicLevel ?? "—",
+    grade: s.academicLevel ?? "",
     avatarColor: avatarColorFor(s.id),
     courseId: "",
     batchId: "",

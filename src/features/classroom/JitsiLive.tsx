@@ -25,7 +25,7 @@ declare global {
       dispose: () => void;
       addListener: (
         event: string,
-        listener: (payload: { id?: string; muted?: boolean; link?: string; on?: boolean }) => void
+        listener: (payload: { id?: string; muted?: boolean; link?: string; on?: boolean; displayName?: string }) => void
       ) => void;
       executeCommand: (command: string, ...args: unknown[]) => void;
     };
@@ -87,6 +87,11 @@ export default function JitsiLive({
   const [callDegraded, setCallDegraded] = useState(false);
   const [recording, setRecording] = useState(false);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  // Sourced from Jitsi's own participantJoined/Left events rather than the SignalR
+  // interactive-layer roster: a demo lead has no account and joins straight from the
+  // confirmation email's Jitsi link, so they never touch the app or its hub — but
+  // they're still a real participant in the call itself, which this always sees.
+  const [participants, setParticipants] = useState<{ id: string; displayName: string }[]>([]);
   // Defaults true (today's unconditional behaviour) until the real Settings value loads,
   // and stays true if the request fails — so a slow/offline check never silently disables
   // recording for a teacher who already relies on it.
@@ -128,7 +133,7 @@ export default function JitsiLive({
           dispose: () => void;
           addListener: (
             event: string,
-            listener: (payload: { id?: string; muted?: boolean; link?: string; on?: boolean }) => void
+            listener: (payload: { id?: string; muted?: boolean; link?: string; on?: boolean; displayName?: string }) => void
           ) => void;
           executeCommand: (command: string, ...args: unknown[]) => void;
         }
@@ -266,6 +271,15 @@ export default function JitsiLive({
         }
       });
       api.addListener("videoConferenceLeft", () => flushMedia());
+      api.addListener("participantJoined", (payload) => {
+        const id = payload?.id;
+        if (!id) return;
+        const displayName = payload.displayName?.trim() || "Student";
+        setParticipants((prev) => [...prev.filter((p) => p.id !== id), { id, displayName }]);
+      });
+      api.addListener("participantLeft", (payload) => {
+        setParticipants((prev) => prev.filter((p) => p.id !== payload?.id));
+      });
       // Jitsi's own signal for a dropped media/XMPP connection mid-call — the video
       // tiles freeze silently otherwise, with nothing in our own chrome saying why.
       api.addListener("connectionInterrupted", () => setCallDegraded(true));
@@ -280,6 +294,7 @@ export default function JitsiLive({
       flushMedia();
       api?.dispose();
       jitsiApiRef.current = null;
+      setParticipants([]);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, mode]);
@@ -371,6 +386,23 @@ export default function JitsiLive({
               >
                 <PartyPopper className="h-4 w-4" />
               </button>
+            )}
+            {mode === "teacher" && (
+              <div className="absolute right-3 top-3 z-20 max-w-[220px] rounded-xl bg-brand-navy/95 p-3 text-white shadow-lg backdrop-blur">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-white/60">Joined ({participants.length})</p>
+                {participants.length === 0 ? (
+                  <p className="mt-1 text-xs text-white/50">Waiting for students to join…</p>
+                ) : (
+                  <ul className="mt-1.5 flex flex-col gap-1">
+                    {participants.map((p) => (
+                      <li key={p.id} className="flex items-center gap-1.5 text-sm">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                        <span className="truncate">{p.displayName}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
           </div>
           {interactive && (

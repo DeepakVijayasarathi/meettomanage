@@ -15,6 +15,7 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listMyLeave, submitLeave, type ApiLeaveRequest } from "@/api/academicOps";
+import { istToUtcIso } from "@/lib/datetime";
 import { cn, formatDate } from "@/lib/utils";
 import type { ClassSession, LeaveRequest } from "@/types";
 
@@ -45,8 +46,11 @@ function formatTimeLabel(time: string) {
   return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
+// session.date/startTime are IST wall-clock values (see toFrontendSession) — parse them
+// as IST rather than the viewer's own browser timezone, so notice/eligibility math is
+// correct no matter what machine this is viewed from.
 function sessionDateTime(session: ClassSession) {
-  return new Date(`${session.date}T${session.startTime}:00`);
+  return new Date(istToUtcIso(session.date, session.startTime));
 }
 
 function hoursBetween(a: Date, b: Date) {
