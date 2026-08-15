@@ -130,6 +130,16 @@ export function DataTable<T>({
   const pageRows = serverPagination ? sorted : sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
   const goToPage = serverPagination ? serverPagination.onPageChange : setPage;
   const firstRowIndex = (clampedPage - 1) * effectivePageSize + 1;
+  // How many rows this server page holds when nothing has narrowed it — the full page
+  // size, or whatever is left over on the last one.
+  const serverPageFill = serverPagination
+    ? Math.min(effectivePageSize, Math.max(0, totalItems - (clampedPage - 1) * effectivePageSize))
+    : 0;
+  // A server page can be narrowed either by this table's search box or by a filter the
+  // caller already applied to `data` (a toolbar Select, say). Either way the visible rows
+  // stop being the contiguous "26–50" slice the range implies — and at zero rows the range
+  // inverts outright ("Showing 26–25 of 50"). Count what's on screen instead.
+  const narrowedPage = !!serverPagination && sorted.length !== serverPageFill;
 
   function toggleSort(key: string) {
     setSort((prev) => {
@@ -308,7 +318,7 @@ export function DataTable<T>({
       {(sorted.length > 0 || (serverPagination && totalItems > 0)) && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            {serverPagination && trimmedQuery
+            {narrowedPage
               ? `Showing ${sorted.length} matching on this page`
               : `Showing ${firstRowIndex}–${firstRowIndex + pageRows.length - 1} of ${totalItems}`}
           </span>

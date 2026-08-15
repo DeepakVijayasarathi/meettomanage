@@ -99,15 +99,18 @@ export default function AdmissionReports() {
   );
   const [toDate, setToDate] = useState(usingApi ? new Date().toISOString().slice(0, 10) : "2026-07-09");
 
-  const { data: apiLeads } = useApiData<Lead[]>(() => listDemoBookings().then((b) => b.map(toFrontendLead)), []);
-  const { data: apiFeedbacks } = useApiData<DemoFeedback[]>(
+  const { data: apiLeads, error: leadsError } = useApiData<Lead[]>(
+    () => listDemoBookings().then((b) => b.map(toFrontendLead)),
+    []
+  );
+  const { data: apiFeedbacks, error: feedbacksError } = useApiData<DemoFeedback[]>(
     () => listDemoFeedback().then((f) => f.map(toFrontendFeedback)),
     []
   );
   // GET /api/invoices is paged; this report filters by date client-side over one page,
   // so a long-running institution's older invoices fall outside it. totalCount is kept
   // so the payments report can flag when it isn't looking at the whole table.
-  const { data: apiPaymentPage } = useApiData(
+  const { data: apiPaymentPage, error: paymentsError } = useApiData(
     () =>
       listInvoiceRows((invoice) => {
         const inv = toFrontendInvoice(invoice);
@@ -128,6 +131,16 @@ export default function AdmissionReports() {
   );
   const apiPayments = apiPaymentPage.rows;
   const paymentsTruncated = usingApi && apiPaymentPage.totalCount > apiPayments.length;
+  // A report whose source fetch failed renders as "0 rows · No records in this range",
+  // which is indistinguishable from a genuinely empty range — and this screen's whole
+  // job is to be exported and acted on. Flag the failure for whichever report is showing.
+  const reportError = usingApi
+    ? reportType === "payments"
+      ? paymentsError
+      : reportType === "feedback"
+        ? feedbacksError
+        : leadsError
+    : null;
 
   const leads = usingApi ? apiLeads : LEADS;
   const feedbacks = usingApi ? apiFeedbacks : DEMO_FEEDBACKS;
@@ -259,6 +272,13 @@ export default function AdmissionReports() {
           <p className="text-sm font-semibold text-foreground">{REPORT_OPTIONS.find((o) => o.value === reportType)?.label}</p>
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">{rows.length} rows</span>
         </div>
+
+        {reportError && (
+          <p className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+            Could not load the data for this report ({reportError}) — what&apos;s below is
+            incomplete, and exporting it would be too.
+          </p>
+        )}
 
         <DataTable
           data={rows}

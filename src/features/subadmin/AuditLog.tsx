@@ -114,7 +114,7 @@ export default function SubAdminAuditLog() {
   // every action anyone takes and never shrinks, so the old "fetch 200 and paginate in
   // the browser" shape both capped how far back the screen could reach (entry 201 was
   // simply unreachable) and would have kept growing the payload if that cap were lifted.
-  const { data: apiPage, reload } = useApiData(
+  const { data: apiPage, error: loadError, reload } = useApiData(
     () => listAuditLogs({ page, pageSize: PAGE_SIZE }).then((p) => ({ rows: p.items.map(toEntry), totalCount: p.totalCount })),
     { rows: [] as AuditEntry[], totalCount: 0 },
     { rows: [] as AuditEntry[], totalCount: 0 }
@@ -168,6 +168,18 @@ export default function SubAdminAuditLog() {
         title="Audit Log"
         description="A complete, unfiltered record of the actions you've taken in this portal — timestamped and grouped by module, for transparency with your Admin."
       />
+
+      {usingApi && loadError && (
+        // A failed load leaves every figure below at zero and the table on "No actions in
+        // this module" — which reads as "you have done nothing", the opposite of what an
+        // accountability record should ever imply. Say the trail could not be read.
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          Could not load the audit trail ({loadError}) — this is not an empty log.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard label="Total Actions Logged" value={String(totalCount)} icon={History} tone="primary" />

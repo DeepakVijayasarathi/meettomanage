@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, GraduationCap, HeartHandshake, Loader2, Mail, MessageCircle, Plus, ShieldCheck, Trash2, UserCog, Users as UsersIcon } from "lucide-react";
+import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, MessageCircle, Plus, ShieldCheck, Trash2, UserCog, Users as UsersIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
@@ -28,7 +28,7 @@ import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { changeUserRole, createUser, deleteUser, getCredentialChannels, listStudents, listUsers, resendCredentials, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { changeUserRole, createUser, deleteUser, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
 import type { ApiRole } from "@/api/types";
 import { applyRoleToUser, listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
 
@@ -201,6 +201,40 @@ export default function AdminUsers() {
   const [channels, setChannels] = useState<{ email: boolean; whatsApp: boolean; sms: boolean }>(() =>
     apiEnabled() ? { email: false, whatsApp: false, sms: false } : { email: true, whatsApp: true, sms: true }
   );
+
+  // Reset PIN: generates a fresh PIN and shows it here instead of sending it anywhere —
+  // for when the admin wants to relay it themselves rather than rely on a delivery channel.
+  const [resettingPin, setResettingPin] = useState(false);
+  const [pinResult, setPinResult] = useState<{ ok: true; pin: string } | { ok: false; message: string } | null>(null);
+  const [pinCopied, setPinCopied] = useState(false);
+
+  async function handleResetPin() {
+    if (!detailUser) return;
+    setPinResult(null);
+    setPinCopied(false);
+    if (!apiEnabled()) {
+      // A plausible-looking demo PIN, not a real credential — this account's real PIN
+      // (if any) is untouched.
+      setPinResult({ ok: true, pin: String(Math.floor(1000 + Math.random() * 9000)) });
+      return;
+    }
+    setResettingPin(true);
+    try {
+      const pin = await resetPin(detailUser.id);
+      setPinResult({ ok: true, pin });
+    } catch (err) {
+      setPinResult({ ok: false, message: err instanceof Error ? err.message : "Could not reset the PIN." });
+    } finally {
+      setResettingPin(false);
+    }
+  }
+
+  async function handleCopyPin(pin: string) {
+    await navigator.clipboard?.writeText(pin).catch(() => undefined);
+    setPinCopied(true);
+    setTimeout(() => setPinCopied(false), 2000);
+  }
+
   const [addOpen, setAddOpen] = useState(false);
   const [addRole, setAddRole] = useState("parent");
   const [addName, setAddName] = useState("");
@@ -240,8 +274,12 @@ export default function AdminUsers() {
       });
   }, []);
 
-  // Clear any previous send result whenever a different user's dialog opens.
-  useEffect(() => setSendResult(null), [detailUser]);
+  // Clear any previous send/reset result whenever a different user's dialog opens — a
+  // revealed PIN especially must not linger onto the next account viewed.
+  useEffect(() => {
+    setSendResult(null);
+    setPinResult(null);
+  }, [detailUser]);
 
   // Bulk resend — shared by the Parents and Teachers tabs (both list AppUser rows).
   const [selectedParentIds, setSelectedParentIds] = useState<Set<string>>(new Set());
@@ -618,43 +656,74 @@ export default function AdminUsers() {
                   Send this {detailUser.role === "parent" ? "parent" : "user"} their login and a new temporary PIN so they can sign in
                   {detailUser.role === "parent" ? " and enrol their child." : "."}
                 </p>
-                {channels.email || channels.whatsApp || channels.sms ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {channels.email && (
-                      <Button size="sm" onClick={() => handleResend("Email")} disabled={sending !== null}>
-                        {sending === "Email" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                        Send Welcome Email
-                      </Button>
-                    )}
-                    {channels.whatsApp && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleResend("WhatsApp")}
-                        disabled={sending !== null || detailUser.phone === "—" || !detailUser.phone}
-                        title={detailUser.phone === "—" || !detailUser.phone ? "No phone number on file" : undefined}
-                      >
-                        {sending === "WhatsApp" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
-                        Send WhatsApp
-                      </Button>
-                    )}
-                    {channels.sms && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleResend("Sms")}
-                        disabled={sending !== null || detailUser.phone === "—" || !detailUser.phone}
-                        title={detailUser.phone === "—" || !detailUser.phone ? "No phone number on file" : undefined}
-                      >
-                        {sending === "Sms" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
-                        Send SMS
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    No delivery channel is enabled. Turn on Email, WhatsApp or SMS in Settings &rarr; Integrations to send credentials.
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {channels.email && (
+                    <Button size="sm" onClick={() => handleResend("Email")} disabled={sending !== null}>
+                      {sending === "Email" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                      Send Welcome Email
+                    </Button>
+                  )}
+                  {channels.whatsApp && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleResend("WhatsApp")}
+                      disabled={sending !== null || detailUser.phone === "—" || !detailUser.phone}
+                      title={detailUser.phone === "—" || !detailUser.phone ? "No phone number on file" : undefined}
+                    >
+                      {sending === "WhatsApp" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
+                      Send WhatsApp
+                    </Button>
+                  )}
+                  {channels.sms && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleResend("Sms")}
+                      disabled={sending !== null || detailUser.phone === "—" || !detailUser.phone}
+                      title={detailUser.phone === "—" || !detailUser.phone ? "No phone number on file" : undefined}
+                    >
+                      {sending === "Sms" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
+                      Send SMS
+                    </Button>
+                  )}
+                  {/* Doesn't depend on a delivery channel being configured — generates a new
+                      PIN and shows it here for the admin to relay themselves. */}
+                  <Button size="sm" variant="outline" onClick={handleResetPin} disabled={resettingPin}>
+                    {resettingPin ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+                    Reset PIN
+                  </Button>
+                </div>
+                {!(channels.email || channels.whatsApp || channels.sms) && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    No delivery channel is enabled, so Reset PIN is the only way to issue new access right now —
+                    turn on Email, WhatsApp or SMS in Settings &rarr; Integrations to send credentials directly.
                   </p>
+                )}
+                {pinResult && (
+                  pinResult.ok ? (
+                    <div className="mt-3 rounded-lg border border-success/30 bg-success/10 px-3 py-2.5">
+                      <p className="text-xs font-medium text-success">
+                        New temporary PIN for {detailUser.name} — share it with them yourself:
+                      </p>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <span className="rounded-md bg-card px-2.5 py-1 font-mono text-lg font-bold tracking-[0.3em] text-foreground">
+                          {pinResult.pin}
+                        </span>
+                        <Button size="sm" variant="outline" onClick={() => handleCopyPin(pinResult.pin)}>
+                          {pinCopied ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                          {pinCopied ? "Copied" : "Copy"}
+                        </Button>
+                      </div>
+                      <p className="mt-1.5 text-xs text-success/80">
+                        This replaces their old PIN immediately — it won&apos;t work again.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-3 flex items-start gap-1.5 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+                      {pinResult.message}
+                    </p>
+                  )
                 )}
                 {sendResult && (
                   <p

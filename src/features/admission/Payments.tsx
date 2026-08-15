@@ -79,7 +79,7 @@ export default function AdmissionPayments() {
   // One page of the (forever-growing) invoice table; the status filter, totals and
   // DataTable's paging all run client-side over it. totalCount is the whole matching
   // set server-side, which is what the "Invoices" KPI should actually count.
-  const { data: invoiceData } = useApiData(
+  const { data: invoiceData, error: invoicesError, reload } = useApiData(
     () => listInvoiceRows((invoice) => fromInvoice(toFrontendInvoice(invoice))),
     { rows: DEMO_ROWS, totalCount: DEMO_ROWS.length },
     { rows: [], totalCount: 0 }
@@ -226,6 +226,19 @@ export default function AdmissionPayments() {
         title="Payment Tracking"
         description="Generate and share payment links with parents ahead of enrollment, and track how collection is trending."
       />
+
+      {apiEnabled() && invoicesError && (
+        // Without this the screen reads "Invoices 0 · Collected ₹0 · Outstanding ₹0" after
+        // a failed fetch — collection figures of zero are a claim about money, and one
+        // nobody should make on the strength of a request that never returned.
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          Could not load invoices ({invoicesError}) — the figures and table below are not
+          your real collection position.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Invoices" value={String(totals.total)} icon={Link2} tone="primary" />

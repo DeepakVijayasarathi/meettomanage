@@ -115,6 +115,16 @@ export async function getCredentialChannels(): Promise<CredentialChannels> {
   return apiFetch<CredentialChannels>("/api/users/credential-channels");
 }
 
+/**
+ * Regenerates the account's PIN and hands it back directly instead of sending it anywhere —
+ * for an admin to read out or write down when no delivery channel currently reaches this
+ * person. Unlike resendCredentials, this doesn't depend on Email/WhatsApp/SMS being enabled.
+ */
+export async function resetPin(userId: string): Promise<string> {
+  const result = await apiFetch<{ temporaryPin: string }>(`/api/users/${userId}/reset-pin`, { method: "POST" });
+  return result.temporaryPin;
+}
+
 /** Soft-deletes the account; excluded from all lists afterwards and its email becomes reusable. */
 export async function deleteUser(id: string): Promise<void> {
   await apiFetch<void>(`/api/users/${id}`, { method: "DELETE" });
