@@ -22,6 +22,7 @@ import { BATCHES } from "@/data/batches";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listResources, toFrontendResource, updateResource, uploadResource, type ApiResourceType } from "@/api/resources";
+import { listBatches } from "@/api/batches";
 import type { Resource } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -47,15 +48,19 @@ export default function AdminResources() {
   // Access toggles stay client-side until per-resource flags land in the API
   const [resources, setResources] = useState<Resource[]>(RESOURCES);
   useEffect(() => setResources(apiResources), [apiResources]);
+  // Real batches for the upload dialog — the old mock BATCHES ids don't exist in the live
+  // DB, so picking one and sending it as BatchId would have targeted a batch that isn't there.
+  const { data: apiBatches } = useApiData(() => listBatches(), []);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadCourse, setUploadCourse] = useState<Resource["courseCategory"]>("Phonics");
-  const [uploadBatch, setUploadBatch] = useState<string>(BATCHES[0].id);
+  const [uploadBatch, setUploadBatch] = useState<string>("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   async function handleUpload() {
-    if (!apiEnabled() || !pendingFile) {
+    if (!pendingFile) return;
+    if (!apiEnabled()) {
       setUploadOpen(false);
       return;
     }
@@ -66,6 +71,8 @@ export default function AdminResources() {
         title: pendingFile.name.replace(/\.[^.]+$/, ""),
         type: inferResourceType(pendingFile),
         isDownloadable: inferResourceType(pendingFile) === "Worksheet",
+        batchId: uploadBatch || undefined,
+        courseId: apiBatches.find((b) => b.id === uploadBatch)?.courseId,
       });
       reload();
       setUploadOpen(false);
@@ -247,12 +254,13 @@ export default function AdminResources() {
               <Label>Batch</Label>
               <Select value={uploadBatch} onValueChange={setUploadBatch}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select batch" />
                 </SelectTrigger>
                 <SelectContent>
-                  {BATCHES.map((b) => (
+                  {(apiEnabled() ? apiBatches : BATCHES).map((b) => (
                     <SelectItem key={b.id} value={b.id}>
                       {b.name}
+                      {"courseName" in b ? ` · ${b.courseName}` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>

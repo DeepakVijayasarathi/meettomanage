@@ -20,6 +20,9 @@ export interface ApiCourse {
   totalSessions: number;
   department: "Phonics" | "Maths";
   isActive: boolean;
+  activeBatches: number;
+  totalEnrolled: number;
+  revenue: number;
 }
 
 export function toFrontendCourse(course: ApiCourse): Course {
@@ -30,10 +33,9 @@ export function toFrontendCourse(course: ApiCourse): Course {
     type: course.type === "Individual" ? "1:1" : "group",
     duration: course.durationMinutes as Course["duration"],
     price: course.price,
-    // Occupancy/revenue analytics arrive with the Sprint 3 dashboard work
-    activeBatches: 0,
-    totalEnrolled: 0,
-    revenue: 0,
+    activeBatches: course.activeBatches,
+    totalEnrolled: course.totalEnrolled,
+    revenue: course.revenue,
     status: course.isActive ? "active" : "archived",
   };
 }

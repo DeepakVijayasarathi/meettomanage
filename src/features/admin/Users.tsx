@@ -102,6 +102,7 @@ export default function AdminUsers() {
   const [editUser, setEditUser] = useState<AppUser | null>(null);
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "" });
   const [editRole, setEditRole] = useState("");
+  const [editDepartment, setEditDepartment] = useState<"Phonics" | "Maths">("Phonics");
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -112,6 +113,7 @@ export default function AdminUsers() {
     setAddName("");
     setAddEmail("");
     setAddPhone("");
+    setAddDepartment("Phonics");
     setAddError(null);
     setAddOpen(true);
   }
@@ -124,6 +126,7 @@ export default function AdminUsers() {
       ? addUserRoleOptions.find((o) => o.roleDefinitionId === u.roleDefinitionId)
       : undefined;
     setEditRole(currentOption?.key ?? u.role);
+    setEditDepartment(u.department === "Maths" ? "Maths" : "Phonics");
     setEditUser(u);
     setDetailUser(null);
   }
@@ -142,10 +145,14 @@ export default function AdminUsers() {
     setEditSaving(true);
     setEditError(null);
     try {
+      // Editing a teacher's own department (no role change) needs to reach this same call,
+      // since a role SWITCH to Teacher below fires before TeacherProfile even exists yet.
+      const editingTeacherInPlace = editUser.role === "teacher" && editRole === "teacher";
       await updateUser(editUser.id, {
         firstName: editForm.firstName.trim(),
         lastName: editForm.lastName.trim(),
         phone: editForm.phone.trim() || undefined,
+        department: editingTeacherInPlace ? editDepartment : undefined,
       });
 
       // Admin accounts are untouchable through this action — the Role field is hidden for them.
@@ -154,6 +161,16 @@ export default function AdminUsers() {
         const originalApiRole = FRONTEND_ROLE_TO_API[editUser.role];
         if (selected && selected.apiRole !== originalApiRole) {
           await changeUserRole(editUser.id, selected.apiRole);
+          // Switching TO Teacher creates a fresh TeacherProfile with no department yet —
+          // this second call is what actually sets it, now that the profile exists.
+          if (selected.apiRole === "Teacher") {
+            await updateUser(editUser.id, {
+              firstName: editForm.firstName.trim(),
+              lastName: editForm.lastName.trim(),
+              phone: editForm.phone.trim() || undefined,
+              department: editDepartment,
+            });
+          }
         }
         if (selected?.apiRole === "SubAdmin" && selected.presetName && selected.roleDefinitionId !== editUser.roleDefinitionId) {
           await applyRoleToUser(editUser.id, selected.presetName);
@@ -240,6 +257,7 @@ export default function AdminUsers() {
   const [addName, setAddName] = useState("");
   const [addEmail, setAddEmail] = useState("");
   const [addPhone, setAddPhone] = useState("");
+  const [addDepartment, setAddDepartment] = useState<"Phonics" | "Maths">("Phonics");
   const [rolePresets, setRolePresets] = useState<ApiRolePreset[]>([]);
   const [addError, setAddError] = useState<string | null>(null);
   const [addSubmitting, setAddSubmitting] = useState(false);
@@ -365,6 +383,7 @@ export default function AdminUsers() {
         lastName: rest.join(" "),
         phone: addPhone.trim() || undefined,
         role: roleOption.apiRole,
+        department: roleOption.apiRole === "Teacher" ? addDepartment : undefined,
         roleDefinitionId: roleOption.roleDefinitionId,
       });
       setAddOpen(false);
@@ -849,6 +868,20 @@ export default function AdminUsers() {
                 </p>
               </div>
             )}
+            {editRole === "teacher" && (
+              <div className="grid gap-1.5">
+                <Label>Department</Label>
+                <Select value={editDepartment} onValueChange={(v) => setEditDepartment(v as "Phonics" | "Maths")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Phonics">Phonics</SelectItem>
+                    <SelectItem value="Maths">Maths</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           {editError && <p className="text-sm font-medium text-destructive">{editError}</p>}
           <DialogFooter>
@@ -992,6 +1025,20 @@ export default function AdminUsers() {
                 </SelectContent>
               </Select>
             </div>
+            {addRole === "teacher" && (
+              <div className="grid gap-1.5">
+                <Label>Department</Label>
+                <Select value={addDepartment} onValueChange={(v) => setAddDepartment(v as "Phonics" | "Maths")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Phonics">Phonics</SelectItem>
+                    <SelectItem value="Maths">Maths</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           {addError && <p className="text-sm font-medium text-destructive">{addError}</p>}
           <DialogFooter>
