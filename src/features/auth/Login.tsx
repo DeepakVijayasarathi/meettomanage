@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useSession } from "@/state/session";
+import { useBrand } from "@/lib/branding";
 import { apiEnabled, getAccessToken } from "@/lib/api";
 import { login } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
@@ -27,6 +28,7 @@ const PIN_LENGTH = 4;
 const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
 
 export default function Login() {
+  const brand = useBrand();
   const [role, setRole] = useState<Role>("admin");
   const [email, setEmail] = useState(apiEnabled() ? "" : "demo@readernest.com");
   const [pin, setPin] = useState<string[]>(apiEnabled() ? Array(PIN_LENGTH).fill("") : ["1", "2", "3", "4"]);
@@ -184,7 +186,7 @@ export default function Login() {
               </span>
             ))}
           </div>
-          <p className="mt-6 text-xs font-medium text-brand-ink/70">© 2026 The Reader Nest. All rights reserved.</p>
+          <p className="mt-6 text-xs font-medium text-brand-ink/70">© 2026 {brand.name}. All rights reserved.</p>
         </div>
       </div>
 
@@ -192,7 +194,7 @@ export default function Login() {
       <div className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-[0_24px_70px_-24px_rgba(43,32,20,0.22)] ring-1 ring-brand-ink/[0.04]">
           <div className="flex flex-col items-center text-center">
-            <img src="/logo.png" alt="The Reader Nest" className="h-14 w-14 object-contain lg:hidden" />
+            <img src="/logo.png" alt={brand.name} className="h-14 w-14 object-contain lg:hidden" />
             <h1
               style={{ fontFamily: HEADLINE_FONT }}
               className="mt-2 text-[1.7rem] font-semibold tracking-tight text-brand-ink sm:text-3xl lg:mt-0"

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { formatCurrency, safeExternalUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
+import { useBrand } from "@/lib/branding";
 import {
   getPaymentMethods,
   payInvoice,
@@ -82,6 +83,7 @@ function iconForGateway(key: string): PayMethod["icon"] {
 }
 
 export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceId, onInitiated }: PayNowModalProps) {
+  const brand = useBrand();
   const [methods, setMethods] = useState<PayMethod[]>(DEMO_METHODS);
   const [method, setMethod] = useState<string>(DEMO_METHODS[0].id);
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "redirect" | "cash" | "inline">("idle");
@@ -193,7 +195,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
         order_id: checkout.orderId,
         amount: checkout.amount,
         currency: checkout.currency,
-        name: checkout.displayName ?? "The Reader Nest",
+        name: checkout.displayName ?? brand.name,
         description: checkout.description ?? invoiceLabel,
         prefill: {
           name: checkout.prefillName ?? undefined,

@@ -29,6 +29,7 @@ import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, forma
 import { ADMIN_KPIS, DEPARTMENT_REVENUE, ENROLLMENT_FUNNEL, REVENUE_TREND } from "@/data/kpis";
 import { useApiData } from "@/api/hooks";
 import { useSession } from "@/state/session";
+import { useBrand } from "@/lib/branding";
 import { getDashboardSummary, type ApiDashboardSummary } from "@/api/reports";
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -72,6 +73,7 @@ const DEMO_SUMMARY: ApiDashboardSummary = {
 
 export default function ManagementDashboard() {
   const { userName } = useSession();
+  const brand = useBrand();
   const { data: summary, loading, error } = useApiData<ApiDashboardSummary>(() => getDashboardSummary(), DEMO_SUMMARY, EMPTY_SUMMARY);
   const departmentRevenue = summary.revenueByDepartment.map((d, i) => ({
     department: d.name,
@@ -84,7 +86,7 @@ export default function ManagementDashboard() {
       <PageHeader
         eyebrow="Executive Overview"
         title={`Good to see you, ${userName.split(" ")[0]}`}
-        description={`A curated view of enrollment, revenue and retention health across The Reader Nest — as of ${formatDate(TODAY, "long")}.`}
+        description={`A curated view of enrollment, revenue and retention health across ${brand.name} — as of ${formatDate(TODAY, "long")}.`}
         actions={<PersonalMeetingButton />}
       />
 

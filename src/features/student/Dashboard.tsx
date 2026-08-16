@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { apiEnabled } from "@/lib/api";
+import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
 import { useSession } from "@/state/session";
 import { getParentDashboard, getParentResources, getParentSchedule } from "@/api/parentPortal";
@@ -44,6 +45,10 @@ const BADGES = [
 ];
 
 export default function StudentDashboard() {
+  // Called unconditionally, before the early return below, so this stays a valid hook order
+  // regardless of which branch renders.
+  const brand = useBrand();
+
   // API mode renders the real preview from the parent's own data (children,
   // schedule, leaderboard, resources); the mock learner below is demo-only.
   if (apiEnabled()) {
@@ -79,7 +84,7 @@ export default function StudentDashboard() {
       <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <p>
-          Students don&apos;t have their own login at The Reader Nest — they always learn through a parent&apos;s account. This screen is
+          Students don&apos;t have their own login at {brand.name} — they always learn through a parent&apos;s account. This screen is
           a demo of that kid-facing view, for sales calls and stakeholder walkthroughs.
         </p>
       </div>

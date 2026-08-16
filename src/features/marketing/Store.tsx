@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertCircle,
@@ -23,8 +23,8 @@ import { Logo } from "@/components/Logo";
 import { useBrand } from "@/lib/branding";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { bookStoreDemo, listStorePlans, submitStoreInquiry, type ApiStorePlan } from "@/api/store";
-import { formatCurrency } from "@/lib/utils";
+import { bookStoreDemo, listDemoAvailability, listStorePlans, submitStoreInquiry, type ApiAvailableDemoSlot, type ApiStorePlan } from "@/api/store";
+import { cn, formatCurrency } from "@/lib/utils";
 
 const DEMO_PLANS: ApiStorePlan[] = [
   { id: "pp-1", name: "Phonics Foundations — Monthly", courseName: "Phonics", billingType: "Subscription", billingCycle: "Monthly", price: 2500, sessionsIncluded: 12 },
@@ -76,8 +76,39 @@ export default function Store() {
   const [demoError, setDemoError] = useState<string | null>(null);
   const [demoConfirmed, setDemoConfirmed] = useState<string | null>(null);
 
+  // The date the visitor is browsing for a slot — separate from demoForm.preferredStart,
+  // which only gets set once they actually pick one of the real openings below.
+  const [demoDate, setDemoDate] = useState("");
+  const [availableSlots, setAvailableSlots] = useState<ApiAvailableDemoSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+
   const demoMinStart = toLocalInputValue(new Date(Date.now() + 2 * 3_600_000 + 10 * 60_000)); // 2h + a small buffer
   const demoMaxStart = toLocalInputValue(new Date(Date.now() + 29 * 86_400_000));
+
+  const demoDepartment = demoForm.department === "none" ? undefined : (demoForm.department as "Phonics" | "Maths");
+
+  const loadAvailableSlots = useCallback(
+    (date: string) => {
+      if (!date) {
+        setAvailableSlots([]);
+        return;
+      }
+      setSlotsLoading(true);
+      setSlotsError(null);
+      listDemoAvailability(date, demoDepartment)
+        .then(setAvailableSlots)
+        .catch((err) => setSlotsError(err instanceof Error ? err.message : "Couldn't load available times."))
+        .finally(() => setSlotsLoading(false));
+    },
+    [demoDepartment]
+  );
+
+  // Real openings only exist with a backend to ask — demo mode keeps the old free-text picker.
+  useEffect(() => {
+    if (!live || !demoOpen) return;
+    loadAvailableSlots(demoDate);
+  }, [live, demoOpen, demoDate, loadAvailableSlots]);
 
   function openEnroll(plan: ApiStorePlan) {
     setSelectedPlan(plan);
@@ -89,6 +120,9 @@ export default function Store() {
   function openDemoBooking() {
     setDemoOpen(true);
     setDemoForm(EMPTY_DEMO_FORM);
+    setDemoDate("");
+    setAvailableSlots([]);
+    setSlotsError(null);
     setDemoError(null);
     setDemoConfirmed(null);
   }
@@ -103,7 +137,7 @@ export default function Store() {
       return;
     }
     if (!demoForm.preferredStart) {
-      setDemoError("Pick a date and time for the demo.");
+      setDemoError(live ? "Pick one of the available times below." : "Pick a date and time for the demo.");
       return;
     }
 
@@ -127,6 +161,10 @@ export default function Store() {
       setDemoConfirmed(new Date(confirmation.scheduledStartAtUtc).toLocaleString());
     } catch (err) {
       setDemoError(err instanceof Error ? err.message : "Couldn't book that slot. Please try again.");
+      // Someone else likely just took it — clear the stale pick and refresh what's actually
+      // still open, instead of leaving a slot chip selected that no longer works.
+      setDemoForm((f) => ({ ...f, preferredStart: "" }));
+      loadAvailableSlots(demoDate);
     } finally {
       setDemoSubmitting(false);
     }
@@ -404,19 +442,76 @@ export default function Store() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="demoStart">Preferred date &amp; time</Label>
-                  <Input
-                    id="demoStart"
-                    type="datetime-local"
-                    required
-                    min={demoMinStart}
-                    max={demoMaxStart}
-                    value={demoForm.preferredStart}
-                    onChange={(e) => setDemoForm((f) => ({ ...f, preferredStart: e.target.value }))}
-                  />
-                  <p className="text-xs text-brand-ink/50">At least 2 hours from now, within the next month.</p>
-                </div>
+                {live ? (
+                  <>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="demoDate">Preferred date</Label>
+                      <Input
+                        id="demoDate"
+                        type="date"
+                        required
+                        min={demoMinStart.slice(0, 10)}
+                        max={demoMaxStart.slice(0, 10)}
+                        value={demoDate}
+                        onChange={(e) => {
+                          setDemoDate(e.target.value);
+                          setDemoForm((f) => ({ ...f, preferredStart: "" }));
+                        }}
+                      />
+                      <p className="text-xs text-brand-ink/50">At least 2 hours from now, within the next month.</p>
+                    </div>
+                    {demoDate && (
+                      <div className="grid gap-1.5">
+                        <Label>Available times</Label>
+                        {slotsLoading ? (
+                          <p className="flex items-center gap-1.5 text-xs text-brand-ink/50">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking availability…
+                          </p>
+                        ) : slotsError ? (
+                          <p className="text-xs text-destructive">{slotsError}</p>
+                        ) : availableSlots.length === 0 ? (
+                          <p className="text-xs text-brand-ink/50">No open slots that day — try another date.</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {availableSlots.map((slot) => {
+                              const slotLocal = toLocalInputValue(new Date(slot.startAtUtc));
+                              const isSelected = demoForm.preferredStart === slotLocal;
+                              return (
+                                <button
+                                  key={slot.startAtUtc}
+                                  type="button"
+                                  onClick={() => setDemoForm((f) => ({ ...f, preferredStart: slotLocal }))}
+                                  className={cn(
+                                    "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                                    isSelected
+                                      ? "border-brand-green bg-brand-green text-white"
+                                      : "border-brand-ink/15 text-brand-ink hover:border-brand-green"
+                                  )}
+                                >
+                                  {new Date(slot.startAtUtc).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="demoStart">Preferred date &amp; time</Label>
+                    <Input
+                      id="demoStart"
+                      type="datetime-local"
+                      required
+                      min={demoMinStart}
+                      max={demoMaxStart}
+                      value={demoForm.preferredStart}
+                      onChange={(e) => setDemoForm((f) => ({ ...f, preferredStart: e.target.value }))}
+                    />
+                    <p className="text-xs text-brand-ink/50">At least 2 hours from now, within the next month.</p>
+                  </div>
+                )}
                 {demoError && (
                   <p role="alert" className="text-sm font-medium text-destructive">
                     {demoError}

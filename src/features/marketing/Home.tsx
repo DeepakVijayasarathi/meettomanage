@@ -146,7 +146,7 @@ export default function MarketingHome() {
           <div className="overflow-hidden rounded-[28px] shadow-pop ring-4 ring-white">
             <img
               src="/login.png"
-              alt="Two children reading together at The Reader Nest"
+              alt={`Two children reading together at ${brand.name}`}
               className="aspect-[4/3] w-full object-cover"
             />
           </div>

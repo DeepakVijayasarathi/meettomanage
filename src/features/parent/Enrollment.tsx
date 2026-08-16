@@ -16,6 +16,7 @@ import { getChildById } from "@/data/children";
 import { COURSES } from "@/data/courses";
 import { cn } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
+import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
 import { listCourseOptions } from "@/api/courses";
 import { submitEnrollmentForm } from "@/api/parentPortal";
@@ -66,6 +67,7 @@ interface EnrollmentForm {
 }
 
 export default function ParentEnrollment() {
+  const brand = useBrand();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { activeChildId, setActiveChildId, markEnrollmentComplete, userName, children: sessionChildren } = useSession();
@@ -508,7 +510,7 @@ export default function ParentEnrollment() {
                   />
                   <span className="text-sm text-muted-foreground">
                     I confirm the details above are correct, and I consent to my child attending online classes that may be
-                    recorded for learning and quality purposes, per The Reader Nest's terms.
+                    recorded for learning and quality purposes, per {brand.name}'s terms.
                   </span>
                 </label>
                 {errors.consent && <p className="text-xs font-medium text-destructive">{errors.consent}</p>}
