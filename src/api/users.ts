@@ -96,7 +96,7 @@ export async function resendCredentials(userId: string, channel: "Email" | "What
 
 export async function updateUser(
   id: string,
-  request: { firstName: string; lastName: string; phone?: string }
+  request: { firstName: string; lastName: string; phone?: string; department?: "Phonics" | "Maths" }
 ): Promise<ApiUser> {
   return apiFetch<ApiUser>(`/api/users/${id}`, {
     method: "PUT",

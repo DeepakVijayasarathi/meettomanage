@@ -77,6 +77,15 @@ export default function AdminSessions() {
     [sessions, statusFilter]
   );
 
+  // Admin/teacher session lists never carry childIds (that's parent-portal only — see
+  // ApiClassSession.childIds), so the Students column instead reads the batch's real
+  // enrolled headcount, joined from the batches already loaded for the schedule dialog.
+  const enrolledByBatchId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const b of batches) map.set(b.id, b.enrolledCount);
+    return map;
+  }, [batches]);
+
   function notify(ok: boolean, text: string) {
     setBanner({ ok, text });
     setTimeout(() => setBanner(null), 5000);
@@ -199,13 +208,16 @@ export default function AdminSessions() {
         key: "children",
         header: "Students",
         sortable: true,
-        accessor: (row) => row.childIds.length,
-        render: (row) => (
-          <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Users2 className="h-3.5 w-3.5" />
-            {row.childIds.length || "—"}
-          </span>
-        ),
+        accessor: (row) => (row.batchId ? enrolledByBatchId.get(row.batchId) ?? 0 : row.childIds.length),
+        render: (row) => {
+          const count = row.batchId ? enrolledByBatchId.get(row.batchId) : row.childIds.length;
+          return (
+            <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Users2 className="h-3.5 w-3.5" />
+              {count || "—"}
+            </span>
+          );
+        },
       },
       {
         key: "status",
@@ -248,7 +260,7 @@ export default function AdminSessions() {
         ),
       },
     ],
-    []
+    [enrolledByBatchId]
   );
 
   return (
