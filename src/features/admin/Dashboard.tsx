@@ -37,7 +37,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent } from "@/lib/utils";
 import {
   ADMIN_KPIS,
   ATTENDANCE_TREND,
@@ -248,7 +248,7 @@ export default function AdminDashboard() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={56} />
+              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={formatCurrencyAxisTick} width={56} />
               <RTooltip
                 formatter={(value: number) => [formatCurrency(value), "Revenue"]}
                 contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }}
@@ -288,7 +288,7 @@ export default function AdminDashboard() {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={courseRevenue} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
-              <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+              <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={formatCurrencyAxisTick} />
               <YAxis type="category" dataKey="course" tickLine={false} axisLine={false} fontSize={11} width={120} />
               <RTooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="revenue" radius={[0, 6, 6, 0]} maxBarSize={22}>

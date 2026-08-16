@@ -7,6 +7,12 @@ import { cn } from "@/lib/utils";
 interface KpiCardProps {
   label: string;
   value: string;
+  /** A second, supporting figure (e.g. "312 active"), rendered smaller on its own line
+   *  below the value. Keeps every card in a row the same height regardless of whether
+   *  its value string is short — folding it into `value` with a separator instead wraps
+   *  at an unpredictable point once the combined string is long, breaking row alignment
+   *  with cards that don't wrap. */
+  detail?: string;
   icon?: LucideIcon;
   trend?: { value: number; label?: string };
   tone?: "primary" | "success" | "warning" | "destructive" | "neutral";
@@ -25,7 +31,7 @@ const TONE_STYLES: Record<NonNullable<KpiCardProps["tone"]>, string> = {
   neutral: "bg-muted text-muted-foreground ring-4 ring-muted",
 };
 
-export function KpiCard({ label, value, icon: Icon, trend, tone = "primary", className, loading, error }: KpiCardProps) {
+export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "primary", className, loading, error }: KpiCardProps) {
   const positive = trend ? trend.value >= 0 : true;
 
   if (loading) {
@@ -47,7 +53,7 @@ export function KpiCard({ label, value, icon: Icon, trend, tone = "primary", cla
       <Card className={cn("p-5", className)}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-xs font-medium text-muted-foreground sm:text-sm">{label}</p>
+            <p className="line-clamp-2 text-xs font-medium text-muted-foreground sm:text-sm">{label}</p>
             <p className="mt-1.5 flex items-center gap-1.5 text-sm font-semibold text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
               Couldn&apos;t load
@@ -67,8 +73,12 @@ export function KpiCard({ label, value, icon: Icon, trend, tone = "primary", cla
     <Card className={cn("group p-5 transition-shadow hover:shadow-pop", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-xs font-medium text-muted-foreground sm:text-sm">{label}</p>
-          <p className="mt-1.5 text-xl font-bold tracking-tight text-foreground sm:text-2xl">{value}</p>
+          {/* line-clamp-2, not truncate: a one-line ellipsis clips these titles mid-word
+              ("Demo → Enrollment Co..."). Two lines fits every title in this app without
+              growing the card for the common one-line case. */}
+          <p className="line-clamp-2 text-xs font-medium text-muted-foreground sm:text-sm">{label}</p>
+          <p className="mt-1.5 truncate text-xl font-bold tracking-tight text-foreground sm:text-2xl">{value}</p>
+          {detail && <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">{detail}</p>}
         </div>
         {Icon && (
           <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", TONE_STYLES[tone])}>

@@ -19,7 +19,7 @@ import { Card } from "@/components/ui/card";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { CHART_PALETTE } from "@/lib/roles";
-import { cn, formatCurrency, formatNumber } from "@/lib/utils";
+import { cn, formatCurrency, formatCurrencyAxisTick, formatNumber } from "@/lib/utils";
 import { COURSES } from "@/data/courses";
 import { DEPARTMENT_REVENUE, REVENUE_TREND } from "@/data/kpis";
 import { apiEnabled } from "@/lib/api";
@@ -149,7 +149,7 @@ export default function ManagementRevenue() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={56} />
+              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={formatCurrencyAxisTick} width={56} />
               <RTooltip
                 formatter={(value: number) => [formatCurrency(value), "Revenue"]}
                 contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }}

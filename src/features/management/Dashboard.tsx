@@ -25,7 +25,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { ChartCard } from "@/components/ChartCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent } from "@/lib/utils";
 import { ADMIN_KPIS, DEPARTMENT_REVENUE, ENROLLMENT_FUNNEL, REVENUE_TREND } from "@/data/kpis";
 import { useApiData } from "@/api/hooks";
 import { useSession } from "@/state/session";
@@ -94,13 +94,15 @@ export default function ManagementDashboard() {
           These four don't have a real prior-period figure to compare against, so they
           don't use KpiCard's `trend` slot — that always renders as a signed percentage
           with an up/down arrow, which turned plain counts/currency into nonsense like
-          "▲ 45000% still pending". The supporting number is folded into the value
-          string instead, the same way ManagementPerformance's Active Teachers card
-          already does ("x / y") rather than faking a trend.
+          "▲ 45000% still pending". The supporting number goes in `detail` (its own small
+          line) rather than folded into `value` with a separator — a combined string wraps
+          at an unpredictable point once it's long, leaving some cards taller than others
+          in the same row.
         */}
         <KpiCard
           label="Total Students"
-          value={`${formatNumber(summary.totalStudents)} · ${formatNumber(summary.activeStudents)} active`}
+          value={formatNumber(summary.totalStudents)}
+          detail={`${formatNumber(summary.activeStudents)} active`}
           icon={Users}
           tone="primary"
           loading={loading}
@@ -108,7 +110,8 @@ export default function ManagementDashboard() {
         />
         <KpiCard
           label="Revenue Collected"
-          value={`${formatCurrency(summary.revenueCollected)} · ${formatCurrency(summary.revenuePending)} pending`}
+          value={formatCurrency(summary.revenueCollected)}
+          detail={`${formatCurrency(summary.revenuePending)} pending`}
           icon={IndianRupee}
           tone="success"
           loading={loading}
@@ -116,7 +119,8 @@ export default function ManagementDashboard() {
         />
         <KpiCard
           label="Conversion Rate"
-          value={`${formatPercent(summary.conversionRatePercent)} · ${formatNumber(summary.totalEnrollments)} enrollments`}
+          value={formatPercent(summary.conversionRatePercent)}
+          detail={`${formatNumber(summary.totalEnrollments)} enrollments`}
           icon={TrendingUp}
           tone="neutral"
           loading={loading}
@@ -124,7 +128,8 @@ export default function ManagementDashboard() {
         />
         <KpiCard
           label="Batch Occupancy"
-          value={`${formatPercent(summary.batchOccupancyPercent)} · ${formatNumber(summary.activeBatches)} batches`}
+          value={formatPercent(summary.batchOccupancyPercent)}
+          detail={`${formatNumber(summary.activeBatches)} batches`}
           icon={RefreshCw}
           tone="warning"
           loading={loading}
@@ -152,7 +157,7 @@ export default function ManagementDashboard() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={56} />
+              <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={formatCurrencyAxisTick} width={56} />
               <RTooltip
                 formatter={(value: number) => [formatCurrency(value), "Revenue"]}
                 contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }}

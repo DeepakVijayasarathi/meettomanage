@@ -21,6 +21,19 @@ export function formatPercent(value: number, fractionDigits = 0) {
   return `${value.toFixed(fractionDigits)}%`;
 }
 
+/**
+ * Chart Y-axis currency tick label, e.g. "₹1.5k". Rounding every tick to a whole "k"
+ * (`(v/1000).toFixed(0)`) collapses distinct low-value ticks — 500 and 1000 both become
+ * "₹1k" — into duplicate gridline labels on charts whose values stay under a few
+ * thousand. Only drops to a decimal when the whole-number label would actually collide.
+ */
+export function formatCurrencyAxisTick(value: number) {
+  const thousands = value / 1000;
+  const rounded = Math.round(thousands);
+  const label = Math.abs(thousands - rounded) < 0.05 ? String(rounded) : thousands.toFixed(1);
+  return `₹${label}k`;
+}
+
 export function formatDate(value: string | Date, pattern: "short" | "long" | "time" | "datetime" = "short") {
   const date = typeof value === "string" ? new Date(value) : value;
   switch (pattern) {
