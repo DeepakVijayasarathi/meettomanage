@@ -248,7 +248,7 @@ export default function TeacherResources() {
               </DialogHeader>
 
               <div className="flex flex-col gap-4">
-                <FileDropzone label="Drag & drop or click to upload" hint="PDF, PNG, JPG, MP4 up to 25MB" onFile={(f) => setFile(f)} />
+                <FileDropzone label="Drag & drop or click to upload" onFile={(f) => setFile(f)} />
 
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="resource-title">Title</Label>

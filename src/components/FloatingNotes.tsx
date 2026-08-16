@@ -67,9 +67,18 @@ export function FloatingNotes({ role }: { role: Role }) {
       return null;
     }
   });
+  // Whatever a page reserves at its true bottom (see AppShell's main padding) only protects
+  // content once you're scrolled all the way down — a fixed-position button sits in the same
+  // screen pixels at every OTHER scroll position too, and whatever a page's own layout happens
+  // to put there gets visually covered regardless of padding. Confirmed live across mobile,
+  // tablet and desktop, on content nowhere near the end of any of those pages (a mid-scroll
+  // date on a user card, a payout figures card, a "full module access" card) — padding tuning
+  // can't fix that class of overlap, only detecting it at runtime and backing off can.
+  const [coversContent, setCoversContent] = useState(false);
 
   const dragState = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Widget visibility is a public setting (readable by any signed-in role without a
   // permission check) so every portal can gate on it without hitting Settings.View.
@@ -121,6 +130,52 @@ export function FloatingNotes({ role }: { role: Role }) {
   useEffect(() => {
     localStorage.setItem(OPEN_KEY, open ? "1" : "0");
   }, [open]);
+
+  useEffect(() => {
+    let frame: number | null = null;
+
+    function checkCollision() {
+      frame = null;
+      const button = buttonRef.current;
+      if (!button) return;
+
+      const rect = button.getBoundingClientRect();
+      const stack = document.elementsFromPoint(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2
+      );
+
+      // A leaf element with its own direct text is a reasonable stand-in for "real content"
+      // (a date, a figure, a label) without needing to know any given page's structure —
+      // generic layout wrappers (main, page/card containers) never carry text directly, only
+      // through further-nested children.
+      const covering = stack.some((el) => {
+        if (el === button || button.contains(el)) return false;
+        for (const node of el.childNodes) {
+          if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) return true;
+        }
+        return false;
+      });
+      setCoversContent(covering);
+    }
+
+    function scheduleCheck() {
+      if (frame !== null) return;
+      frame = requestAnimationFrame(checkCollision);
+    }
+
+    scheduleCheck();
+    // capture: true — scroll doesn't bubble, but a capturing listener on window still fires
+    // for scroll events on any descendant scrollable region (a dialog's own overflow-y-auto
+    // panel, a Kanban column, etc.), not just the page/window scroll itself.
+    window.addEventListener("scroll", scheduleCheck, { capture: true, passive: true });
+    window.addEventListener("resize", scheduleCheck);
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleCheck, { capture: true });
+      window.removeEventListener("resize", scheduleCheck);
+    };
+  }, [enabled, open]);
 
   function persistPos(next: { x: number; y: number }) {
     setPos(next);
@@ -213,13 +268,18 @@ export function FloatingNotes({ role }: { role: Role }) {
     <>
       {/* bottom-20 on mobile (vs. the sm:bottom-6 used everywhere else on desktop): extra
           clearance on the tightest viewports, where a page's primary action button is most
-          likely to sit right at the visible bottom-right corner. AppShell's main reserves
-          matching (and then some) bottom padding so this never sits on top of page content —
-          see the comment there for why that padding is generous rather than exact. */}
+          likely to sit right at the visible bottom-right corner. Backs off toward transparent
+          (never fully gone — still discoverable/tappable) instead of full opacity whenever the
+          collision check above finds real content under it, since no static amount of page
+          padding can protect content that isn't at the very end of the page. */}
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 sm:bottom-6 sm:right-6"
+        className={cn(
+          "fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 hover:opacity-100 sm:bottom-6 sm:right-6",
+          coversContent && !open && "opacity-30"
+        )}
         aria-label={open ? "Close my notes" : "Open my notes"}
       >
         <StickyNote className="h-5 w-5" />

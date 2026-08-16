@@ -19,7 +19,7 @@ import { getBatchById } from "@/data/batches";
 import { getChildById } from "@/data/children";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { cancelSession, listSessions, rescheduleSession, toFrontendSession } from "@/api/sessions";
+import { cancelSession, getJitsiJoin, listSessions, rescheduleSession, toFrontendSession } from "@/api/sessions";
 import { listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import type { ClassSession } from "@/types";
@@ -27,7 +27,6 @@ import { formatDate } from "@/lib/utils";
 
 const LOCKED_STATUSES: ClassSession["status"][] = ["cancelled", "completed", "holiday", "leave"];
 const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo", "rescheduled"];
-const JITSI_DOMAIN = (import.meta.env.VITE_JITSI_DOMAIN as string | undefined) ?? "meet.jit.si";
 
 export default function CoordinatorCalendar() {
   const usingApi = apiEnabled();
@@ -49,6 +48,8 @@ export default function CoordinatorCalendar() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [holidayOpen, setHolidayOpen] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
 
   const selected = selectedId ? sessions.find((s) => s.id === selectedId) ?? null : null;
   const locked = selected ? LOCKED_STATUSES.includes(selected.status) : true;
@@ -83,6 +84,28 @@ export default function CoordinatorCalendar() {
     // No session-level "holiday" state on the backend; cancelling frees the slot as the dialog states.
     await cancelSession(session.id, "Marked as holiday by coordinator");
     reload();
+  }
+
+  // A bare room URL isn't enough once the Jitsi deployment enforces token verification (see
+  // the backend's JitsiLinkBuilder doc comment) — this authorizes against the session itself
+  // and gets back a signed token, the same way the actual classroom join flow does, instead of
+  // building the link from just the room id carried in this row's own data.
+  async function joinSession(session: ClassSession) {
+    if (!usingApi) {
+      window.open(`https://meet.techmisai.com/${session.meetingRoomId}`, "_blank", "noopener");
+      return;
+    }
+    setJoining(true);
+    setJoinError(null);
+    try {
+      const join = await getJitsiJoin(session.id);
+      const url = join.token ? `https://${join.domain}/${join.room}#jwt=${join.token}` : `https://${join.domain}/${join.room}`;
+      window.open(url, "_blank", "noopener");
+    } catch (err) {
+      setJoinError(err instanceof Error ? err.message : "Couldn't join this class.");
+    } finally {
+      setJoining(false);
+    }
   }
 
   return (
@@ -156,15 +179,12 @@ export default function CoordinatorCalendar() {
                 </Button>
                 {/* Monitor-only: the coordinator can drop into any ongoing/upcoming class or demo. */}
                 {JOINABLE_STATUSES.includes(selected.status) && selected.meetingRoomId && (
-                  <Button
-                    onClick={() =>
-                      window.open(`https://${JITSI_DOMAIN}/${selected.meetingRoomId}`, "_blank", "noopener")
-                    }
-                  >
+                  <Button disabled={joining} onClick={() => joinSession(selected)}>
                     <Video className="h-4 w-4" /> Join Class
                   </Button>
                 )}
               </DialogFooter>
+              {joinError && <p className="px-6 pb-4 text-sm font-medium text-destructive">{joinError}</p>}
             </>
           )}
         </DialogContent>

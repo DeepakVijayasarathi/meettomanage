@@ -230,7 +230,6 @@ export default function AdminResources() {
 
           <FileDropzone
             label="Drag & drop a file or click to browse"
-            hint="PDF, DOCX, MP4 up to 50MB"
             onFile={(file) => setPendingFile(file)}
           />
 
