@@ -337,9 +337,18 @@ export default function SubAdminDashboard() {
               <Lock className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm font-semibold text-foreground">Need broader access?</p>
+              <p className="text-sm font-semibold text-foreground">
+                {scope.none.length > 0 ? "Need broader access?" : "Full module access"}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Billing, payouts and enrollment revenue aren't part of your delegated scope. If your work needs them, send a request to your Admin.
+                {scope.none.length > 0
+                  ? // Named from the same permission-derived scope.none the "Locked modules"
+                    // line below already reads, rather than a fixed list — this used to name
+                    // "Billing, payouts and enrollment revenue" unconditionally, even for an
+                    // account actually granted every module (contradicting the accurate line
+                    // right below it on the same card).
+                    `${scope.none.join(", ")} ${scope.none.length === 1 ? "isn't" : "aren't"} part of your delegated scope. If your work needs ${scope.none.length === 1 ? "it" : "them"}, send a request to your Admin.`
+                  : "Your account is granted every module — there's nothing left for your Admin to add."}
               </p>
             </div>
             <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -350,7 +359,7 @@ export default function SubAdminDashboard() {
               variant={requested ? "outline" : "default"}
               size="sm"
               className="mt-auto"
-              disabled={requested}
+              disabled={requested || scope.none.length === 0}
               onClick={() => setRequestOpen(true)}
             >
               <Mail className="h-3.5 w-3.5" />

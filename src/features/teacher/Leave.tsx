@@ -114,7 +114,13 @@ export default function TeacherLeave() {
       const start = sessionDateTime(selectedSession);
       const end = new Date(start.getTime() + selectedSession.duration * 60_000);
       submitLeave({ startAtUtc: start.toISOString(), endAtUtc: end.toISOString(), reason: reason.trim() })
-        .then(() => {
+        .then((created) => {
+          // Show the real, just-created row immediately rather than waiting on reloadLeaves's
+          // round trip — a GET issued right after a POST isn't guaranteed to observe it before
+          // this render, which is exactly what read as "no visible confirmation the request
+          // went through" (the banner below did show, but the history list looked unchanged).
+          // reloadLeaves() still runs to reconcile with the server's authoritative order/state.
+          setLeaves((prev) => [toFrontendLeave(created), ...prev]);
           reloadLeaves();
           setConfirmation(`Leave request for "${selectedSession.title}" submitted — pending admin approval.`);
         })

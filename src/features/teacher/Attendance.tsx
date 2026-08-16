@@ -53,13 +53,30 @@ export default function TeacherAttendance() {
   const [selected, setSelected] = useState<ClassSession | null>(null);
   const [apiRecords, setApiRecords] = useState<ApiSessionAttendance[] | null>(null);
 
-  const { data: apiCompleted } = useApiData<ClassSession[]>(
-    () =>
-      listMySessions().then((items) =>
-        items.map(toFrontendSession).filter((s) => s.status === "completed")
-      ),
-    []
+  // Completed sessions plus every one's real per-child attendance, fetched together: the
+  // KPI cards below used to fall back to session.childIds (the session's roster - who was
+  // *scheduled*, not who actually attended) because there was no aggregate endpoint. There's
+  // still no aggregate endpoint, but the per-session one (already proven correct by the
+  // summary dialog below) is fetched once per completed session and aggregated client-side -
+  // bounded by how many completed sessions this teacher actually has, not the whole table.
+  const { data: apiData } = useApiData<{ sessions: ClassSession[]; attendanceBySession: Record<string, ApiSessionAttendance[]> }>(
+    async () => {
+      const sessions = (await listMySessions().then((items) => items.map(toFrontendSession))).filter(
+        (s) => s.status === "completed"
+      );
+      const entries = await Promise.all(
+        sessions.map((s) =>
+          listAttendance(s.id)
+            .then((records) => [s.id, records] as const)
+            .catch(() => [s.id, [] as ApiSessionAttendance[]] as const)
+        )
+      );
+      return { sessions, attendanceBySession: Object.fromEntries(entries) };
+    },
+    { sessions: [], attendanceBySession: {} },
+    { sessions: [], attendanceBySession: {} }
   );
+  const apiCompleted = apiData.sessions;
   const completed = apiEnabled()
     ? [...apiCompleted].sort((a, b) => b.date.localeCompare(a.date))
     : getSessionsForTeacher(TEACHER_ID)
@@ -68,17 +85,22 @@ export default function TeacherAttendance() {
 
   function openSummary(session: ClassSession) {
     setSelected(session);
-    setApiRecords(null);
-    if (apiEnabled()) {
-      listAttendance(session.id).then(setApiRecords).catch(() => setApiRecords([]));
-    }
+    setApiRecords(apiEnabled() ? apiData.attendanceBySession[session.id] ?? [] : null);
   }
 
-  const totalPresent = completed.reduce((sum, s) => sum + (ATTENDANCE_RECORDS[s.id]?.filter((r) => r.present).length ?? s.childIds.length), 0);
-  const totalSeats = completed.reduce((sum, s) => sum + (ATTENDANCE_RECORDS[s.id]?.length ?? s.childIds.length), 0);
-  // No aggregate attendance endpoint yet — the average is demo-only, never fabricated in API mode.
-  const avgAttendance = apiEnabled() ? 0 : totalSeats > 0 ? Math.round((totalPresent / totalSeats) * 100) : 0;
-  const uniqueStudents = new Set(completed.flatMap((s) => s.childIds)).size;
+  const apiStudentRecords = apiEnabled()
+    ? completed.flatMap((s) => (apiData.attendanceBySession[s.id] ?? []).filter((r) => r.participantType === "Student"))
+    : [];
+  const totalPresent = apiEnabled()
+    ? apiStudentRecords.filter((r) => r.status === "Present").length
+    : completed.reduce((sum, s) => sum + (ATTENDANCE_RECORDS[s.id]?.filter((r) => r.present).length ?? s.childIds.length), 0);
+  const totalSeats = apiEnabled()
+    ? apiStudentRecords.length
+    : completed.reduce((sum, s) => sum + (ATTENDANCE_RECORDS[s.id]?.length ?? s.childIds.length), 0);
+  const avgAttendance = totalSeats > 0 ? Math.round((totalPresent / totalSeats) * 100) : 0;
+  const uniqueStudents = apiEnabled()
+    ? new Set(apiStudentRecords.filter((r) => r.childId).map((r) => r.childId!)).size
+    : new Set(completed.flatMap((s) => s.childIds)).size;
   const recordingsAvailable = completed.filter((s) => s.recordingAvailable).length;
 
   const columns: DataTableColumn<ClassSession>[] = [

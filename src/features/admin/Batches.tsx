@@ -125,7 +125,12 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
       </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-        <span className="text-xs text-muted-foreground">Started {formatDate(batch.startDate)}</span>
+        <span className="text-xs text-muted-foreground">
+          {/* batch.startDate is "" when no schedule has been generated yet (api/batches.ts
+              coerces the API's null to ""), which formatDate rendered as the literal text
+              "Started Invalid Date" instead of a real placeholder. */}
+          {batch.startDate ? `Started ${formatDate(batch.startDate)}` : "No sessions scheduled"}
+        </span>
         <Button variant="outline" size="sm" onClick={() => onOpen(batch)}>
           Manage
         </Button>
