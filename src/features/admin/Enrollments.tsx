@@ -30,6 +30,13 @@ import { formatCurrency, getInitials } from "@/lib/utils";
 /** Mock Child rows and live enrollment-form rows share one table shape. */
 type EnrollmentRow = Child & { parentName?: string; parentPhone?: string; formJson?: string; dob?: string };
 
+/** row.grade falls back to "—" when the form never answered it — rendered as a bare dash
+ * inline before "Age N" it read as a stray blank field rather than a real value. Matches
+ * the "(child name pending)" wording already used for a missing name. */
+function gradeLabel(grade: string): string {
+  return grade === "—" ? "Grade pending" : grade;
+}
+
 function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
   let answers: Record<string, unknown> = {};
   try {
@@ -260,7 +267,7 @@ export default function AdminEnrollments() {
             <div>
               <p className="font-semibold text-foreground">{row.name}</p>
               <p className="text-xs text-muted-foreground">
-                {row.grade} · Age {row.age}
+                {gradeLabel(row.grade)} · Age {row.age}
               </p>
             </div>
           </div>
@@ -277,7 +284,7 @@ export default function AdminEnrollments() {
         header: "Course",
         render: (row) => (
           <span className="text-sm text-muted-foreground">
-            {courseOptions.find((c) => c.id === row.courseId)?.name ?? getCourseById(row.courseId)?.name ?? "—"}
+            {courseOptions.find((c) => c.id === row.courseId)?.name ?? getCourseById(row.courseId)?.name ?? "Course pending"}
           </span>
         ),
       },
@@ -334,13 +341,13 @@ export default function AdminEnrollments() {
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Age / Grade</p>
                   <p className="mt-1 font-medium text-foreground">
-                    {detail.age} yrs · {detail.grade}
+                    {detail.age} yrs · {gradeLabel(detail.grade)}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Course</p>
                   <p className="mt-1 font-medium text-foreground">
-                    {courseOptions.find((c) => c.id === detail.courseId)?.name ?? getCourseById(detail.courseId)?.name ?? "—"}
+                    {courseOptions.find((c) => c.id === detail.courseId)?.name ?? getCourseById(detail.courseId)?.name ?? "Course pending"}
                   </p>
                 </div>
                 <div>
