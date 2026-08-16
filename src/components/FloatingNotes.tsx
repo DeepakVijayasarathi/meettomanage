@@ -211,12 +211,11 @@ export function FloatingNotes({ role }: { role: Role }) {
 
   return (
     <>
-      {/* bottom-20 on mobile (vs. the sm:bottom-6 used everywhere else on desktop): AppShell's
-          main already reserves pb-24 so this button clears the bottom of *scrollable* content,
-          but a short page — e.g. one wizard step's worth of form fields — can still end with
-          its primary button sitting right at the visible bottom-right corner with nothing to
-          scroll past. Extra clearance on mobile (the tightest viewports, where that collision
-          was actually observed) avoids covering that button/its click target. */}
+      {/* bottom-20 on mobile (vs. the sm:bottom-6 used everywhere else on desktop): extra
+          clearance on the tightest viewports, where a page's primary action button is most
+          likely to sit right at the visible bottom-right corner. AppShell's main reserves
+          matching (and then some) bottom padding so this never sits on top of page content —
+          see the comment there for why that padding is generous rather than exact. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

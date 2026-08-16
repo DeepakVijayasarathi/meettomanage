@@ -85,7 +85,7 @@ export function AppShell({ role, children }: AppShellProps) {
   } as CSSProperties;
 
   return (
-    <div className="flex min-h-screen bg-background" style={accentStyle}>
+    <div className="flex min-h-dvh bg-background" style={accentStyle}>
       {/* Visually hidden until focused — first tab stop on every page, so a keyboard user
           doesn't have to tab through the entire sidebar (10-20+ links) on every navigation
           just to reach the page content. */}
@@ -104,14 +104,16 @@ export function AppShell({ role, children }: AppShellProps) {
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
       />
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+      <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
         <Topbar onMenuClick={() => setMobileOpen(true)} title={meta.label} />
         {/* Reserves clearance below the last row of content so the fixed FloatingNotes button
             never sits on top of — and steals clicks from — bottom-right page chrome like
-            DataTable's pagination controls. Matches FloatingNotes' own responsive position
-            (bottom-20 + 48px tall = 128px on mobile, bottom-6 + 48px = 72px from sm: up) with a
-            little headroom — a plain pb-24 (96px) undershot the mobile footprint by 32px, which
-            is exactly the sliver that was covering table cells / summary figures on small screens. */}
+            DataTable's pagination controls. FloatingNotes' own footprint is bottom-20 + 48px
+            tall = 128px on mobile, bottom-6 + 48px = 72px from sm: up; padding here sits well
+            past both (176px / 112px) rather than the tightest value that clears the math —
+            mobile browsers resize the *visual* viewport as their address bar shows/hides, and
+            min-h-dvh below (not min-h-screen/100vh) tracks that on the shell itself, but this
+            padding keeps deliberate slack on top of that for the same reason. */}
         {/* tabIndex={-1}: without it the browser scrolls the skip link's target into view
             but doesn't move keyboard focus there (falls back to <body>) — confirmed by
             actually pressing Tab then Enter on the skip link and checking
@@ -120,7 +122,7 @@ export function AppShell({ role, children }: AppShellProps) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="app-content-glow min-w-0 flex-1 overflow-x-hidden px-4 pb-36 pt-6 sm:px-6 sm:pb-24 lg:px-8 focus:outline-none"
+          className="app-content-glow min-w-0 flex-1 overflow-x-hidden px-4 pb-44 pt-6 sm:px-6 sm:pb-28 lg:px-8 focus:outline-none"
         >
           <PageTransition>{children}</PageTransition>
         </main>
