@@ -30,7 +30,8 @@ import { listBatches, toFrontendBatch } from "@/api/batches";
 import { listSessions, toFrontendSession } from "@/api/sessions";
 import { getDashboardSummary } from "@/api/reports";
 import { listAuditLogs } from "@/api/audit";
-import { PERMISSION_MODULES } from "@/api/permissions";
+import { PERMISSION_MODULES, type PermissionModuleName } from "@/api/permissions";
+import { listMyAccessRequests, submitAccessRequest } from "@/api/accessRequests";
 import { BATCHES } from "@/data/batches";
 import { SESSIONS } from "@/data/sessions";
 import { ADMIN_KPIS } from "@/data/kpis";
@@ -73,7 +74,14 @@ export default function SubAdminDashboard() {
   const adminContact = usingApi ? "your Admin" : `${ADMIN_CONTACT} (Admin)`;
 
   const [requestOpen, setRequestOpen] = useState(false);
-  const [requested, setRequested] = useState(false);
+  // Demo mode has no backend to persist against, so it keeps the old local-only flag;
+  // a real login tracks this from the server (see myRequests below) so it survives a reload.
+  const [requestedDemo, setRequestedDemo] = useState(false);
+  const { data: myRequests, reload: reloadMyRequests } = useApiData(() => listMyAccessRequests(), []);
+  const pendingRequest = myRequests.find((r) => r.status === "Pending");
+  // myRequests is most-recent-first, so the first non-pending entry is the latest decision.
+  const lastReviewedRequest = myRequests.find((r) => r.status !== "Pending");
+  const requestSent = usingApi ? Boolean(pendingRequest) : requestedDemo;
 
   const { data: apiBatches, loading: batchesLoading, error: batchesError } = useApiData(() => listBatches().then((items) => items.map(toFrontendBatch)), []);
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData(() => listSessions().then((items) => items.map(toFrontendSession)), []);
@@ -122,12 +130,15 @@ export default function SubAdminDashboard() {
           const has = (action: string) => permissions.includes(`${module.value}:${action}`);
           if (has("Create") || has("Edit") || has("Delete") || has("Approve")) acc.full.push(module.label);
           else if (has("View")) acc.view.push(module.label);
-          else acc.none.push(module.label);
+          else {
+            acc.none.push(module.label);
+            acc.noneValues.push(module.value);
+          }
           return acc;
         },
-        { full: [] as string[], view: [] as string[], none: [] as string[] }
+        { full: [] as string[], view: [] as string[], none: [] as string[], noneValues: [] as PermissionModuleName[] }
       )
-    : { full: [...FULL_ACCESS_MODULES], view: [...VIEW_ONLY_MODULES], none: [...NO_ACCESS_MODULES] };
+    : { full: [...FULL_ACCESS_MODULES], view: [...VIEW_ONLY_MODULES], none: [...NO_ACCESS_MODULES], noneValues: [] as PermissionModuleName[] };
   const totalModules = scope.full.length + scope.view.length + scope.none.length;
 
   const moduleCards: AssignedModuleCard[] = [
@@ -356,16 +367,29 @@ export default function SubAdminDashboard() {
               Locked modules: {scope.none.join(", ") || "None"}
             </div>
             <Button
-              variant={requested ? "outline" : "default"}
+              variant={requestSent ? "outline" : "default"}
               size="sm"
               className="mt-auto"
-              disabled={requested || scope.none.length === 0}
+              disabled={requestSent || scope.none.length === 0}
               onClick={() => setRequestOpen(true)}
             >
               <Mail className="h-3.5 w-3.5" />
-              {requested ? "Request sent" : "Request additional access"}
+              {requestSent ? "Request sent" : "Request additional access"}
             </Button>
-            {requested && (
+            {usingApi && pendingRequest && (
+              <p className="text-[11px] text-muted-foreground">
+                Sent to {adminContact} on {formatDate(pendingRequest.createdAtUtc.slice(0, 10), "long")}. Awaiting review.
+              </p>
+            )}
+            {usingApi && !pendingRequest && lastReviewedRequest && (
+              <p className="text-[11px] text-muted-foreground">
+                Last request ({lastReviewedRequest.requestedModules.join(", ")}) was{" "}
+                <strong>{lastReviewedRequest.status.toLowerCase()}</strong> on{" "}
+                {formatDate((lastReviewedRequest.reviewedAtUtc ?? lastReviewedRequest.createdAtUtc).slice(0, 10), "long")}
+                {lastReviewedRequest.reviewNote ? ` — "${lastReviewedRequest.reviewNote}"` : ""}
+              </p>
+            )}
+            {!usingApi && requestedDemo && (
               <p className="text-[11px] text-muted-foreground">
                 Sent to {adminContact} on {formatDate(new Date(nowMs).toISOString().slice(0, 10), "long")}.
               </p>
@@ -383,9 +407,19 @@ export default function SubAdminDashboard() {
         open={requestOpen}
         onOpenChange={setRequestOpen}
         title="Request additional access?"
-        description={`This notifies ${adminContact} that you're requesting broader module permissions. This is a simulated action — no email is actually sent.`}
+        description={
+          usingApi
+            ? `This notifies ${adminContact} that you're requesting access to: ${scope.none.join(", ")}.`
+            : `This notifies ${adminContact} that you're requesting broader module permissions. This is a simulated action — no email is actually sent.`
+        }
         confirmLabel="Send request"
-        onConfirm={() => setRequested(true)}
+        onConfirm={() => {
+          if (!usingApi) {
+            setRequestedDemo(true);
+            return;
+          }
+          return submitAccessRequest(scope.noneValues).then(() => reloadMyRequests());
+        }}
       />
     </div>
   );
