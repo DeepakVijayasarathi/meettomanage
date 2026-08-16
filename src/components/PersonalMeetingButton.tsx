@@ -1,14 +1,8 @@
 import { useState } from "react";
 import { Check, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiEnabled, apiFetch } from "@/lib/api";
-
-const JITSI_DOMAIN = (import.meta.env.VITE_JITSI_DOMAIN as string | undefined) ?? "meet.jit.si";
-
-async function getMyMeetingRoom(): Promise<string> {
-  const { roomId } = await apiFetch<{ roomId: string }>("/api/users/me/meeting-room");
-  return roomId;
-}
+import { apiEnabled } from "@/lib/api";
+import { buildPersonalMeetingUrl, getMyMeetingRoom } from "@/api/account";
 
 /**
  * The member's permanent personal meeting room (Zoom-style): one stable link,
@@ -24,8 +18,8 @@ export function PersonalMeetingButton() {
   async function withRoom(action: (url: string) => void) {
     setBusy(true);
     try {
-      const roomId = await getMyMeetingRoom();
-      action(`https://${JITSI_DOMAIN}/${roomId}`);
+      const room = await getMyMeetingRoom();
+      action(buildPersonalMeetingUrl(room));
     } catch {
       /* room unavailable — nothing to open */
     } finally {

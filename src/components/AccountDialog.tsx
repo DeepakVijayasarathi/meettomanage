@@ -8,10 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
-import { getMyAccount, getMyMeetingRoom, updateMyAccount } from "@/api/account";
+import { buildPersonalMeetingUrl, getMyAccount, getMyMeetingRoom, updateMyAccount } from "@/api/account";
 import { getCalendarFeedUrl } from "@/api/sessions";
 
-const JITSI_DOMAIN = (import.meta.env.VITE_JITSI_DOMAIN as string | undefined) ?? "meet.jit.si";
 const TIMEZONES = ["Asia/Kolkata", "Asia/Dubai", "Europe/London", "America/New_York", "America/Los_Angeles", "Australia/Sydney"];
 
 /**
@@ -105,7 +104,7 @@ export function AccountDialog({
 
   async function copy(kind: "meeting" | "calendar") {
     try {
-      const url = kind === "meeting" ? `https://${JITSI_DOMAIN}/${await getMyMeetingRoom()}` : await getCalendarFeedUrl();
+      const url = kind === "meeting" ? buildPersonalMeetingUrl(await getMyMeetingRoom()) : await getCalendarFeedUrl();
       await navigator.clipboard.writeText(url);
       setCopied(kind);
       setTimeout(() => setCopied(null), 2500);
