@@ -45,6 +45,29 @@ export async function getParentResources(): Promise<ApiResource[]> {
   return apiFetch<ApiResource[]>("/api/parent-portal/resources");
 }
 
+/**
+ * Grant-checked download for the signed-in parent. Not the admin-only
+ * `/api/resources/{id}/download` (that route 403s for any non-Admin/SubAdmin role) —
+ * this hits the parent-portal endpoint that actually checks the parent's own grants
+ * and batch visibility.
+ */
+export async function downloadParentResource(id: string, fallbackName: string): Promise<void> {
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  const token = getAccessToken();
+  const response = await fetch(`${baseUrl}/api/parent-portal/resources/${id}/download`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fallbackName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function getParentInvoices(): Promise<ApiInvoice[]> {
   return apiFetch<ApiInvoice[]>("/api/parent-portal/invoices");
 }

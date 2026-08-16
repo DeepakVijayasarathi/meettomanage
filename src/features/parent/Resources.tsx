@@ -14,8 +14,8 @@ import { getChildById } from "@/data/children";
 import { getResourcesForBatch } from "@/data/resources";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { downloadResource, toFrontendResource } from "@/api/resources";
-import { getParentResources } from "@/api/parentPortal";
+import { toFrontendResource } from "@/api/resources";
+import { downloadParentResource, getParentResources } from "@/api/parentPortal";
 import { cn, formatDate } from "@/lib/utils";
 import type { Resource } from "@/types";
 import { findRecordingSession, recordingExpiryFromUpload, recordingExpiryLabel } from "./utils";
@@ -70,7 +70,7 @@ export default function ParentResources() {
       setDownloadingId(resource.id);
       setDownloadError(null);
       try {
-        await downloadResource(resource.id, resource.title);
+        await downloadParentResource(resource.id, resource.title);
       } catch {
         setDownloadError(`Couldn't download "${resource.title}". Please try again.`);
       } finally {
