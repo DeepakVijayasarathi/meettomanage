@@ -10,7 +10,18 @@ interface FileDropzoneProps {
   className?: string;
 }
 
-export function FileDropzone({ label = "Drag & drop or click to upload", hint = "PDF, PNG, JPG up to 10MB", accept, onFile, className }: FileDropzoneProps) {
+/**
+ * Mirrors the backend's real allowlist (S3FileStorage.AllowedExtensions /
+ * LocalFileStorage.AllowedExtensions) and its 100MB cap (ResourcesController.MaxUploadBytes) —
+ * three different hardcoded, three different wrong hints ("PDF, PNG, JPG up to 10MB", "...25MB",
+ * "...50MB") used to understate what actually works, discouraging file types and sizes the
+ * server accepts fine. Single default here instead of a per-screen override, so there's one
+ * string to keep in sync instead of three.
+ */
+export const DEFAULT_UPLOAD_HINT =
+  "PDF, Word, PowerPoint, Excel, TXT, images (JPG/PNG/GIF/WEBP), video (MP4/WEBM/MOV), audio (MP3/WAV) or ZIP — up to 100MB";
+
+export function FileDropzone({ label = "Drag & drop or click to upload", hint = DEFAULT_UPLOAD_HINT, accept, onFile, className }: FileDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
