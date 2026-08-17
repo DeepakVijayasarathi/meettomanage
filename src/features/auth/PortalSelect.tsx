@@ -6,11 +6,13 @@ import { Card } from "@/components/ui/card";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { apiEnabled } from "@/lib/api";
+import { useBrand } from "@/lib/branding";
 import { cn } from "@/lib/utils";
 
 export default function PortalSelect() {
   const navigate = useNavigate();
   const { setRole } = useSession();
+  const brand = useBrand();
 
   // The multi-portal picker is a demo/exploration aid only. In production every
   // user signs in and is routed to the single portal their role grants.
@@ -25,7 +27,7 @@ export default function PortalSelect() {
           <Logo className="mb-6" />
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Choose a portal to explore</h1>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-            The Reader Nest ships as eight role-based portals on one platform, all live in this release.
+            {brand.name} ships as eight role-based portals on one platform, all live in this release.
           </p>
         </div>
 

@@ -266,6 +266,20 @@ export default function AdminUsers() {
   // roles API (Academic Coordinator, Management, Student, any custom ones), so picking
   // one directly creates that account — no separate "assign role" step needed.
   const addUserRoleOptions = useMemo<AddUserRoleOption[]>(() => {
+    // The base "Parent Relationship Manager" option is skipped from extraPresets below
+    // (it already has its own entry) — but wire it to the real "sub-admin" system preset
+    // once loaded, so re-selecting it on an existing user actually re-applies that preset
+    // instead of being a silent no-op. Without this, a Sub Admin whose RoleDefinitionId
+    // got stamped onto the wrong preset (e.g. by hand-editing the API) could never be
+    // reset back to the plain PRM default from this dialog.
+    const subAdminPreset = rolePresets.find((role) => role.name === "sub-admin");
+    const baseRoles = subAdminPreset
+      ? BASE_ADD_USER_ROLES.map((option) =>
+          option.key === "subadmin"
+            ? { ...option, roleDefinitionId: subAdminPreset.id, presetName: subAdminPreset.name }
+            : option
+        )
+      : BASE_ADD_USER_ROLES;
     const extraPresets = rolePresets
       .filter((role) => !ROLE_PRESET_NAMES_TO_SKIP.has(role.name))
       .map((role) => ({
@@ -275,7 +289,7 @@ export default function AdminUsers() {
         roleDefinitionId: role.id,
         presetName: role.name,
       }));
-    return [...BASE_ADD_USER_ROLES, ...extraPresets];
+    return [...baseRoles, ...extraPresets];
   }, [rolePresets]);
 
   useEffect(() => {

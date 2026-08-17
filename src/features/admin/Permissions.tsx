@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Plus, RotateCcw, Save, ShieldCheck, Trash2, UserCog, Wand2 } from "lucide-react";
+import { Check, CheckCircle2, Mail, Plus, RotateCcw, Save, ShieldCheck, Trash2, UserCog, Wand2, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PermissionMatrix, PERMISSION_ACTIONS, type PermissionActionKey } from "@/components/PermissionMatrix";
 import { SUB_ADMINS } from "@/data/users";
-import { getInitials, cn } from "@/lib/utils";
+import { getInitials, cn, formatDate } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listUsers, toAppUser } from "@/api/users";
@@ -26,6 +27,7 @@ import {
 } from "@/api/permissions";
 import { applyRoleToUser, createRole, deleteRole, listRoles, updateRole, type ApiRole } from "@/api/roles";
 import { listMenuItems, groupMenusByModule, type ApiMenuItem } from "@/api/menus";
+import { listAccessRequests, reviewAccessRequest, type ApiAccessRequest } from "@/api/accessRequests";
 
 const TOTAL_GRANTS = PERMISSION_MODULES.length * PERMISSION_ACTIONS.length;
 
@@ -54,6 +56,8 @@ export default function AdminPermissions() {
   // fetched once here and handed to both tabs so "which menus does this module control"
   // is answered identically wherever a permission matrix is edited.
   const [menusByModule, setMenusByModule] = useState<Partial<Record<PermissionModuleName, string[]>>>({});
+  const { data: accessRequests, reload: reloadAccessRequests } = useApiData(() => listAccessRequests(), []);
+  const pendingRequestCount = accessRequests.filter((r) => r.status === "Pending").length;
 
   useEffect(() => {
     if (!apiEnabled()) return;
@@ -80,6 +84,14 @@ export default function AdminPermissions() {
           <TabsTrigger value="roles" className="gap-1.5">
             <ShieldCheck className="h-4 w-4" /> Role Presets
           </TabsTrigger>
+          <TabsTrigger value="access-requests" className="gap-1.5">
+            <Mail className="h-4 w-4" /> Access Requests
+            {pendingRequestCount > 0 && (
+              <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold text-destructive-foreground">
+                {pendingRequestCount}
+              </span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="subadmins">
@@ -87,6 +99,9 @@ export default function AdminPermissions() {
         </TabsContent>
         <TabsContent value="roles">
           <RolePresets menusByModule={menusByModule} />
+        </TabsContent>
+        <TabsContent value="access-requests">
+          <AccessRequestsPanel requests={accessRequests} reload={reloadAccessRequests} />
         </TabsContent>
       </Tabs>
     </div>
@@ -657,6 +672,136 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
         confirmLabel="Delete Role"
         destructive
         onConfirm={remove}
+      />
+    </Card>
+  );
+}
+
+const MODULE_LABEL_BY_VALUE: Partial<Record<PermissionModuleName, string>> = Object.fromEntries(
+  PERMISSION_MODULES.map((m) => [m.value, m.label])
+);
+
+function moduleLabels(modules: PermissionModuleName[]): string {
+  return modules.map((m) => MODULE_LABEL_BY_VALUE[m] ?? m).join(", ");
+}
+
+const ACCESS_REQUEST_STATUS_STYLE: Record<ApiAccessRequest["status"], string> = {
+  Pending: "bg-warning/20 text-warning-foreground",
+  Approved: "bg-success/15 text-success",
+  Rejected: "bg-destructive/10 text-destructive",
+};
+
+/**
+ * Every Relationship Manager's "Request additional access" submissions. Approving/rejecting
+ * here only records the decision and notifies them — the actual module grant still happens
+ * from the "Relationship Managers" tab, same as any other permission change.
+ */
+function AccessRequestsPanel({ requests, reload }: { requests: ApiAccessRequest[]; reload: () => void }) {
+  const [approveTarget, setApproveTarget] = useState<ApiAccessRequest | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<ApiAccessRequest | null>(null);
+
+  function decide(target: ApiAccessRequest, approve: boolean) {
+    return reviewAccessRequest(target.id, approve).then(() => reload());
+  }
+
+  const pending = requests.filter((r) => r.status === "Pending");
+  const reviewed = requests.filter((r) => r.status !== "Pending").slice(0, 10);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Access Requests</CardTitle>
+        <CardDescription>Module access a Relationship Manager asked for from their dashboard.</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {pending.length === 0 ? (
+          <EmptyState icon={CheckCircle2} title="Queue is clear" description="No pending access requests right now." />
+        ) : (
+          <div className="flex flex-col gap-3">
+            {pending.map((request) => (
+              <div
+                key={request.id}
+                className="flex flex-col gap-3 rounded-xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                    {getInitials(request.requestedByName)}
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{request.requestedByName}</p>
+                    <p className="text-xs text-muted-foreground">{request.requestedByEmail}</p>
+                    <p className="mt-1 text-xs font-medium text-foreground">Wants: {moduleLabels(request.requestedModules)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Requested {formatDate(request.createdAtUtc.slice(0, 10), "long")}</p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setApproveTarget(request)}>
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setRejectTarget(request)}>
+                    <XCircle className="h-3.5 w-3.5" /> Reject
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {reviewed.length > 0 && (
+          <div className="mt-6">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">Recently reviewed</h3>
+            <div className="flex flex-col gap-2">
+              {reviewed.map((request) => (
+                <div key={request.id} className="flex flex-col gap-1 rounded-lg border border-border/60 px-3 py-2.5 text-xs sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <span className="font-medium text-foreground">{request.requestedByName}</span>
+                    <span className="text-muted-foreground"> wanted {moduleLabels(request.requestedModules)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 font-semibold", ACCESS_REQUEST_STATUS_STYLE[request.status])}>
+                      {request.status}
+                    </span>
+                    {request.reviewedByName && <span>by {request.reviewedByName}</span>}
+                    {request.reviewedAtUtc && <span>on {formatDate(request.reviewedAtUtc.slice(0, 10), "long")}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+
+      <ConfirmDialog
+        open={!!approveTarget}
+        onOpenChange={(open) => !open && setApproveTarget(null)}
+        title="Approve this access request?"
+        description={
+          approveTarget
+            ? `${approveTarget.requestedByName} will be notified that access to ${moduleLabels(approveTarget.requestedModules)} was approved. This records the decision only — grant the modules from the Relationship Managers tab.`
+            : undefined
+        }
+        confirmLabel="Approve"
+        onConfirm={() => {
+          if (!approveTarget) return;
+          return decide(approveTarget, true);
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!rejectTarget}
+        onOpenChange={(open) => !open && setRejectTarget(null)}
+        title="Reject this access request?"
+        description={
+          rejectTarget
+            ? `${rejectTarget.requestedByName} will be notified that access to ${moduleLabels(rejectTarget.requestedModules)} was rejected.`
+            : undefined
+        }
+        confirmLabel="Reject"
+        destructive
+        onConfirm={() => {
+          if (!rejectTarget) return;
+          return decide(rejectTarget, false);
+        }}
       />
     </Card>
   );

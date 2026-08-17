@@ -13,6 +13,7 @@ import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { getResourcesForBatch } from "@/data/resources";
 import { apiEnabled } from "@/lib/api";
+import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
 import { toFrontendResource } from "@/api/resources";
 import { downloadParentResource, getParentResources } from "@/api/parentPortal";
@@ -30,6 +31,7 @@ const TONE_CLASS: Record<Tone, string> = {
 };
 
 export default function ParentResources() {
+  const brand = useBrand();
   const { activeChildId, enrolledChildIds, children: sessionChildren } = useSession();
   const usingApi = apiEnabled();
   const mockChild = getChildById(activeChildId);
@@ -79,7 +81,7 @@ export default function ParentResources() {
       return;
     }
     const blob = new Blob(
-      [`${resource.title}\n\nThis is a simulated worksheet download for The Reader Nest demo.\nUploaded on ${resource.uploadedOn}.`],
+      [`${resource.title}\n\nThis is a simulated worksheet download for ${brand.name}'s demo.\nUploaded on ${resource.uploadedOn}.`],
       { type: "text/plain" }
     );
     const url = URL.createObjectURL(blob);

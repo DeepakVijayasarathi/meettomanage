@@ -71,6 +71,22 @@ export async function bookStoreDemo(input: {
   });
 }
 
+export interface ApiAvailableDemoSlot {
+  startAtUtc: string;
+  endAtUtc: string;
+}
+
+/**
+ * Public — no login required. Which 30-minute slots on `date` (yyyy-MM-dd, the visitor's
+ * own local date) still have a teacher free — lets the booking form offer real openings
+ * instead of the visitor guessing a time and hitting "no teacher available".
+ */
+export async function listDemoAvailability(date: string, department?: "Phonics" | "Maths"): Promise<ApiAvailableDemoSlot[]> {
+  const params = new URLSearchParams({ date });
+  if (department) params.set("department", department);
+  return apiFetch<ApiAvailableDemoSlot[]>(`/api/store/demo-availability?${params.toString()}`);
+}
+
 /** Admin — the follow-up queue. */
 export async function listStoreInquiries(status?: ApiStoreInquiryStatus): Promise<ApiStoreInquiry[]> {
   const query = status ? `?status=${status}` : "";

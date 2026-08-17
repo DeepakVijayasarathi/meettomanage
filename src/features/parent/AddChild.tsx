@@ -12,6 +12,7 @@ import { FeeStatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { COURSES } from "@/data/courses";
 import { apiEnabled } from "@/lib/api";
+import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
 import {
   getParentDashboard,
@@ -23,6 +24,7 @@ import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 
 export default function ParentAddChild() {
+  const brand = useBrand();
   const [form, setForm] = useState({ name: "", age: "", grade: "", gender: "", courseInterest: "" });
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -202,7 +204,7 @@ export default function ParentAddChild() {
           </span>
           <h2 className="text-lg font-bold text-foreground">{displayName} has been added!</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Welcome to The Reader Nest family. To get {form.name.trim() ? form.name.trim() : "them"} started, we just need a quick
+            Welcome to {brand.name}! To get {form.name.trim() ? form.name.trim() : "them"} started, we just need a quick
             enrollment form — grade, contact details and course interest.
           </p>
           <p className="mt-4 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
