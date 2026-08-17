@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import { utcIsoToIstDateTime } from "@/lib/datetime";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import type { ClassSession, SessionStatus } from "@/types";
 
 export interface ApiClassSession {
@@ -44,10 +44,11 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
   const start = new Date(session.scheduledStartAtUtc);
   const end = new Date(session.scheduledEndAtUtc);
   const minutes = Math.round((end.getTime() - start.getTime()) / 60000);
-  // IST, not the viewing browser's own clock — a viewer whose machine isn't set to IST
-  // (a different timezone, or a UTC-clocked test/CI box) would otherwise see class times
-  // shifted by whatever their local offset happens to be.
-  const ist = utcIsoToIstDateTime(session.scheduledStartAtUtc);
+  // The signed-in user's own timezone (getUserTimeZone), not the viewing browser's own
+  // clock — a viewer whose machine's clock isn't set to their account's chosen timezone
+  // (or a UTC-clocked test/CI box) would otherwise see class times shifted by whatever
+  // their local offset happens to be.
+  const local = utcIsoToLocalDateTime(session.scheduledStartAtUtc);
 
   return {
     id: session.id,
@@ -56,8 +57,8 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
     teacherId: session.teacherProfileId,
     teacherName: session.teacherName,
     childIds: session.childIds ?? [],
-    date: ist.date,
-    startTime: ist.time,
+    date: local.date,
+    startTime: local.time,
     duration: ([30, 45, 60].includes(minutes) ? minutes : 45) as ClassSession["duration"],
     status: session.type === "Demo" && session.status === "Scheduled" ? "demo" : STATUS_FROM_API[session.status],
     type: session.type === "Demo" ? "demo" : "group",

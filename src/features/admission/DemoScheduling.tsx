@@ -19,7 +19,7 @@ import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
 import { createDemoBooking, listDemoBookings, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
 import { formatDate, getInitials } from "@/lib/utils";
-import { istToUtcIso, utcIsoToIstDateTime } from "@/lib/datetime";
+import { getUserTimeZoneAbbreviation, localToUtcIso, utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import type { SessionStatus } from "@/types";
 
@@ -79,7 +79,7 @@ function seedRows(): DemoRow[] {
 }
 
 function bookingToRow(booking: ApiDemoBooking): DemoRow {
-  const ist = booking.scheduledStartAtUtc ? utcIsoToIstDateTime(booking.scheduledStartAtUtc) : null;
+  const ist = booking.scheduledStartAtUtc ? utcIsoToLocalDateTime(booking.scheduledStartAtUtc) : null;
   const status: SessionStatus =
     booking.conversionStatus === "DemoScheduled" ? "demo" : booking.conversionStatus === "NotInterested" ? "cancelled" : "completed";
   const adults = booking.participants.filter((p) => !p.isChild);
@@ -174,7 +174,7 @@ export default function AdmissionDemoScheduling() {
 
     if (apiEnabled()) {
       const primary = parents[0];
-      const startUtc = istToUtcIso(date, time);
+      const startUtc = localToUtcIso(date, time);
       const endUtc = new Date(new Date(startUtc).getTime() + 30 * 60_000).toISOString();
       createDemoBooking({
         parentName: primary.name.trim(),
@@ -486,7 +486,7 @@ export default function AdmissionDemoScheduling() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="demoTime">
-                Time (IST) <span className="text-destructive">*</span>
+                Time ({getUserTimeZoneAbbreviation()}) <span className="text-destructive">*</span>
               </Label>
               <Input id="demoTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </div>

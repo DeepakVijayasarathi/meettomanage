@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/api/auth";
 import { checkPermission, type PermissionAction } from "@/lib/permissions";
 import { safeInternalPath } from "@/lib/utils";
 import type { PermissionModuleName } from "@/api/permissions";
+import { getUserTimeZone, setUserTimeZone } from "@/lib/datetime";
 
 /** The logged-in parent's children, for the child switcher across parent screens. */
 export interface SessionChild {
@@ -49,6 +50,10 @@ interface SessionState {
   /** "Module:Action" claim strings from login/`/api/auth/me`; empty ([]) for Admin (implicit full access) and in demo mode. */
   permissions: string[];
   setPermissions: (permissions: string[]) => void;
+  /** IANA zone (e.g. "Asia/Kolkata") the signed-in user picked in Account settings; every
+   *  session time in the app is entered/displayed in this zone — see lib/datetime.ts. */
+  timeZoneId: string;
+  setTimeZoneId: (timeZoneId: string | null) => void;
   /** Does the current login have this permission? Admin always true; demo mode always true (nothing to gate against). */
   hasPermission: (module: PermissionModuleName, action: PermissionAction) => boolean;
 }
@@ -97,6 +102,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const raw = localStorage.getItem(PERMISSIONS_KEY);
     return raw ? (JSON.parse(raw) as string[]) : [];
   });
+  const [timeZoneId, setTimeZoneIdState] = useState<string>(() => getUserTimeZone());
   const [childList, setChildList] = useState<SessionChild[]>(MOCK_SESSION_CHILDREN);
   const [homePath, setHomePathState] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
@@ -129,8 +135,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(next));
   };
 
+  const setTimeZoneId = (next: string | null) => {
+    setTimeZoneIdState(next || getUserTimeZone());
+    setUserTimeZone(next);
+  };
+
   // Refresh permissions from the server on load so an admin's mid-session permission
-  // change (or an already-open tab) doesn't leave a stale cached grant in effect.
+  // change (or an already-open tab) doesn't leave a stale cached grant in effect. Also
+  // keeps timezone in sync the same way — a change made in Account settings from another
+  // tab/device shouldn't leave this one converting session times against a stale zone.
   useEffect(() => {
     if (!apiEnabled() || !role || !getAccessToken()) return;
     let cancelled = false;
@@ -139,6 +152,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         setPermissions(response.permissions);
         if (response.defaultRoute) setHomePath(response.defaultRoute);
+        if (response.user.timeZoneId) setTimeZoneId(response.user.timeZoneId);
       })
       .catch(() => {
         /* keep whatever was cached from login */
@@ -199,6 +213,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setPermissions([]);
         setHomePath(null);
         setAccessToken(null);
+        setTimeZoneId(null);
       },
       activeChildId,
       setActiveChildId: setActiveChildIdState,
@@ -211,13 +226,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setUserName,
       permissions,
       setPermissions,
+      timeZoneId,
+      setTimeZoneId,
       // Demo mode (no API configured) never populates permissions, so ungating everything
       // there keeps existing demo screens working rather than hiding features behind an
       // empty claim set that was never meant to gate anything outside API mode.
       hasPermission: (module, action) =>
         !apiEnabled() || checkPermission(role, permissions, module, action),
     }),
-    [role, activeChildId, enrolledChildIds, childList, apiUserName, permissions, homePath]
+    [role, activeChildId, enrolledChildIds, childList, apiUserName, permissions, homePath, timeZoneId]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

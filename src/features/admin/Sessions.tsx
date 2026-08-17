@@ -19,7 +19,7 @@ import {
 import { SESSIONS } from "@/data/sessions";
 import type { ClassSession, SessionStatus } from "@/types";
 import { formatDate } from "@/lib/utils";
-import { istToUtcIso } from "@/lib/datetime";
+import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -108,7 +108,7 @@ export default function AdminSessions() {
     setSaving(true);
     setScheduleError(null);
     try {
-      const start = istToUtcIso(newDate, newTime);
+      const start = localToUtcIso(newDate, newTime);
       const end = new Date(new Date(start).getTime() + (Number(newDuration) || 45) * 60000).toISOString();
       await scheduleSession({
         batchId: newType === "Regular" ? newBatch : undefined,
@@ -136,7 +136,7 @@ export default function AdminSessions() {
     }
     setReschedBusy(true);
     try {
-      const start = istToUtcIso(reschedDate, reschedTime);
+      const start = localToUtcIso(reschedDate, reschedTime);
       const end = new Date(new Date(start).getTime() + rescheduleTarget.duration * 60000).toISOString();
       await rescheduleSession(rescheduleTarget.id, start, end);
       notify(true, `"${rescheduleTarget.title}" rescheduled to ${formatDate(reschedDate)} ${reschedTime}.`);
@@ -393,7 +393,7 @@ export default function AdminSessions() {
                 <Input id="ns-date" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="ns-time">Start time</Label>
+                <Label htmlFor="ns-time">Start time ({getUserTimeZoneAbbreviation()})</Label>
                 <Input id="ns-time" type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
               </div>
             </div>
@@ -430,7 +430,7 @@ export default function AdminSessions() {
                   <Input id="rs-date" type="date" value={reschedDate} onChange={(e) => setReschedDate(e.target.value)} />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="rs-time">New time</Label>
+                  <Label htmlFor="rs-time">New time ({getUserTimeZoneAbbreviation()})</Label>
                   <Input id="rs-time" type="time" value={reschedTime} onChange={(e) => setReschedTime(e.target.value)} />
                 </div>
               </div>

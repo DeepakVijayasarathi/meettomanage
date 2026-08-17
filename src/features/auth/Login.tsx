@@ -41,6 +41,7 @@ export default function Login() {
     setUserName,
     setPermissions,
     setHomePath,
+    setTimeZoneId,
   } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
@@ -111,6 +112,7 @@ export default function Login() {
       setUserName(response.user.fullName);
       setPermissions(response.permissions);
       setHomePath(homePath);
+      setTimeZoneId(response.user.timeZoneId);
       navigate(from ?? homePath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed. Please try again.");
