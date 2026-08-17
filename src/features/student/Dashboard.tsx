@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import {
+  Award,
   BookOpen,
   CalendarCheck2,
   Flame,
@@ -393,6 +394,10 @@ function ApiStudentDashboard() {
   );
   const myStars = myIndex >= 0 ? sorted[myIndex].stars : 0;
   const myRank = myIndex + 1;
+  // Badges a teacher actually granted live in class (GamificationOverlay/InteractivePanel) —
+  // distinct from the fixed achievement grid below, which is derived from other stats and
+  // never reflected a teacher's own custom awards.
+  const myEarnedBadges = myIndex >= 0 ? sorted[myIndex].badges : [];
 
   const badges = [
     { label: "First Class", icon: Sparkles, earned: classesCompleted >= 1, color: "#8B5CF6" },
@@ -588,6 +593,18 @@ function ApiStudentDashboard() {
               <p className="text-xs text-muted-foreground">Collect them all by showing up and joining in!</p>
             </div>
           </div>
+          {myEarnedBadges.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2 border-b border-border pb-4">
+              {myEarnedBadges.map((label) => (
+                <span
+                  key={label}
+                  className="flex items-center gap-1.5 rounded-full bg-brand-amber/15 px-3 py-1.5 text-xs font-semibold text-brand-amber"
+                >
+                  <Award className="h-3.5 w-3.5" /> {label}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {badges.map((badge) => (
               <div
