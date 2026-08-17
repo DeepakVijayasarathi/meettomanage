@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, MessageCircle, Plus, ShieldCheck, Trash2, UserCog, Users as UsersIcon } from "lucide-react";
+import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
@@ -29,6 +29,7 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { changeUserRole, createUser, deleteUser, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
 import type { ApiRole } from "@/api/types";
 import { applyRoleToUser, listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
 
@@ -97,6 +98,31 @@ export default function AdminUsers() {
   const [savingNotes, setSavingNotes] = useState(false);
   useEffect(() => {
     setChildNotes((detailChild as StudentRow | null)?.rmNotes ?? "");
+  }, [detailChild]);
+  // Engagement/AI analytics for the open child profile — fetched on open rather than
+  // eagerly for the whole list, since it's a per-student aggregation query.
+  const [analytics, setAnalytics] = useState<ApiStudentAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  useEffect(() => {
+    if (!detailChild || !apiEnabled()) {
+      setAnalytics(null);
+      return;
+    }
+    let cancelled = false;
+    setAnalyticsLoading(true);
+    getStudentAnalytics(detailChild.id)
+      .then((data) => {
+        if (!cancelled) setAnalytics(data);
+      })
+      .catch(() => {
+        if (!cancelled) setAnalytics(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAnalyticsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [detailChild]);
   // Edit-profile dialog (name + phone + role) for any user account.
   const [editUser, setEditUser] = useState<AppUser | null>(null);
@@ -953,6 +979,59 @@ export default function AdminUsers() {
                   </div>
                 </div>
               </div>
+
+              {/* AI engagement analytics — quiz accuracy, board participation, talk-time and
+                  camera attentiveness from live-classroom signals, plus generated narrative
+                  insights. Built server-side but never surfaced anywhere until now. */}
+              {apiEnabled() && (
+                <div className="mt-4 rounded-xl border border-border bg-muted/20 p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Engagement Analytics</p>
+                  </div>
+                  {analyticsLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading…</p>
+                  ) : !analytics ? (
+                    <p className="text-sm text-muted-foreground">No engagement data yet — appears once this student has attended a live class.</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div>
+                          <p className="text-lg font-bold text-foreground">{analytics.averageEngagementScore}</p>
+                          <p className="text-xs text-muted-foreground">Engagement score</p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold text-foreground">
+                            {analytics.quizAttempts > 0 ? Math.round((100 * analytics.quizCorrect) / analytics.quizAttempts) : 0}%
+                          </p>
+                          <p className="text-xs text-muted-foreground">Quiz accuracy ({analytics.quizAttempts} attempts)</p>
+                        </div>
+                        <div>
+                          <p className="flex items-center gap-1 text-lg font-bold text-foreground">
+                            <Mic className="h-3.5 w-3.5 text-muted-foreground" /> {Math.round(analytics.talkTimeSeconds / 60)}m
+                          </p>
+                          <p className="text-xs text-muted-foreground">Talk time</p>
+                        </div>
+                        <div>
+                          <p className="flex items-center gap-1 text-lg font-bold text-foreground">
+                            <Video className="h-3.5 w-3.5 text-muted-foreground" /> {Math.round(analytics.cameraOnSeconds / 60)}m
+                          </p>
+                          <p className="text-xs text-muted-foreground">Camera on</p>
+                        </div>
+                      </div>
+                      {analytics.insights.length > 0 && (
+                        <ul className="mt-3 flex flex-col gap-1.5 border-t border-border pt-3">
+                          {analytics.insights.map((insight, i) => (
+                            <li key={i} className="text-xs text-foreground/90">
+                              {insight}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* RM special enrolment notes — visible on the profile to whoever is the RM. */}
               <div className="mt-2 flex flex-col gap-1.5">
