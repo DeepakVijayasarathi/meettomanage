@@ -76,7 +76,8 @@ export function findRecordingSession(resource: Resource): ClassSession | undefin
   );
 }
 
-function expiryLabelFor(expiresOn: string | undefined): { label: string; expired: boolean } {
+/** Shared by recordingExpiryLabel (mock ClassSession) and the real Recordings page (real SessionRecording.expiresAtUtc). */
+export function expiryLabelFor(expiresOn: string | undefined): { label: string; expired: boolean } {
   if (!expiresOn) return { label: "Expiry unknown", expired: false };
   const days = daysUntil(expiresOn);
   if (days < 0) return { label: "Expired", expired: true };
