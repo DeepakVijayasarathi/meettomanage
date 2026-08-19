@@ -35,6 +35,7 @@ import {
   ScrollText,
   ShoppingBag,
   Sparkles,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 
@@ -135,6 +136,7 @@ export const PARENT_NAV: NavSection[] = [
       { label: "Schedule & Live Class", to: "/parent/schedule", icon: CalendarClock },
       { label: "Resources & Recordings", to: "/parent/resources", icon: FolderOpen },
       { label: "Student View", to: "/student", icon: Sparkles },
+      { label: "Recordings", to: "/parent/recordings", icon: Video },
     ],
   },
   {

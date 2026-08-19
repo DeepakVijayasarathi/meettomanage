@@ -46,6 +46,7 @@ const ParentDashboard = lazy(() => import("@/features/parent/Dashboard"));
 const ParentEnrollment = lazy(() => import("@/features/parent/Enrollment"));
 const ParentSchedule = lazy(() => import("@/features/parent/Schedule"));
 const ParentResources = lazy(() => import("@/features/parent/Resources"));
+const ParentRecordings = lazy(() => import("@/features/parent/Recordings"));
 const ParentBilling = lazy(() => import("@/features/parent/Billing"));
 const ParentNotifications = lazy(() => import("@/features/parent/Notifications"));
 const ParentAddChild = lazy(() => import("@/features/parent/AddChild"));
@@ -163,6 +164,7 @@ export default function App() {
               <Route path="enrollment" element={<ParentEnrollment />} />
               <Route path="schedule" element={<ParentSchedule />} />
               <Route path="resources" element={<ParentResources />} />
+              <Route path="recordings" element={<ParentRecordings />} />
               <Route path="billing" element={<ParentBilling />} />
               <Route path="notifications" element={<ParentNotifications />} />
               <Route path="add-child" element={<ParentAddChild />} />

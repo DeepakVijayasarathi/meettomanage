@@ -466,7 +466,8 @@ export default function AdminSettings() {
           <PayoutRatesManager />
         </TabsContent>
 
-        <TabsContent value="integrations">
+        <TabsContent value="integrations" className="flex flex-col gap-6">
+          <JitsiRecordingSettings />
           <IntegrationsManager />
         </TabsContent>
 
@@ -1132,6 +1133,173 @@ const EMPTY_INTEGRATION_FORM: SaveIntegrationRequest = {
   isEnabled: false,
   config: {},
 };
+
+const EMPTY_JITSI_FORM = { domain: "", appId: "", appSecret: "", autoRecord: true };
+
+/**
+ * Purpose-built form for the one integration every class actually depends on, instead of
+ * making an admin edit "domain"/"appId"/"appSecret"/"autoRecord" as raw key-value rows in
+ * the generic editor below. Reads/writes the exact same `Integration` row (key="jitsi") via
+ * the same create/update API — this is a friendlier front end for that data, not a separate
+ * config store. autoRecord is stored as the string "true"/"false" because Integration.config
+ * is Dictionary<string,string> end to end (see JITSI_ARCHITECTURE.md / SessionService.ReadAutoRecordEnabled).
+ */
+function JitsiRecordingSettings() {
+  const [integration, setIntegration] = useState<ApiIntegration | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [form, setForm] = useState(EMPTY_JITSI_FORM);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [revealSecret, setRevealSecret] = useState(false);
+
+  async function reload() {
+    if (!apiEnabled()) return;
+    try {
+      const all = await listIntegrations();
+      const jitsi = all.find((i) => i.key.trim().toLowerCase() === "jitsi") ?? null;
+      setIntegration(jitsi);
+      setForm({
+        domain: jitsi?.config.domain ?? "",
+        appId: jitsi?.config.appId ?? "",
+        appSecret: jitsi?.config.appSecret ?? "",
+        autoRecord: jitsi ? (jitsi.config.autoRecord ?? "true") !== "false" : true,
+      });
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load Jitsi settings.");
+    } finally {
+      setLoaded(true);
+    }
+  }
+
+  useEffect(() => {
+    void reload();
+  }, []);
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const request: SaveIntegrationRequest = {
+        key: "jitsi",
+        name: integration?.name ?? "Jitsi Meet",
+        category: "VideoConferencing",
+        description: integration?.description ?? "Self-hosted Jitsi Meet for live classes and recordings.",
+        isEnabled: integration?.isEnabled ?? true,
+        config: {
+          domain: form.domain.trim(),
+          appId: form.appId.trim(),
+          appSecret: form.appSecret,
+          autoRecord: form.autoRecord ? "true" : "false",
+        },
+      };
+      if (integration) await updateIntegration(integration.id, request);
+      else await createIntegration(request);
+      await reload();
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save Jitsi settings.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!apiEnabled()) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Jitsi Meet &amp; Recording</CardTitle>
+          <CardDescription>Connect the API (VITE_API_BASE_URL) to manage the live classroom domain and auto-record.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Video className="h-4 w-4 text-primary" /> Jitsi Meet &amp; Recording
+        </CardTitle>
+        <CardDescription>
+          The self-hosted Jitsi deployment every live class and recording runs through — one place for the domain and
+          the auto-record toggle, instead of raw config rows.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {error && <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {saved && !error && <p className="rounded-lg bg-success/10 px-3 py-2 text-xs font-medium text-success">Saved.</p>}
+
+        {!loaded ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid gap-1.5 sm:col-span-2">
+              <Label>Domain</Label>
+              <Input
+                value={form.domain}
+                onChange={(e) => setForm({ ...form, domain: e.target.value })}
+                placeholder="e.g. thereadernest.co.in"
+                className="font-mono text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Bare host only, no https:// — this is where JitsiLive embeds the classroom and where Jibri (recording)
+                is deployed.
+              </p>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>App Id</Label>
+              <Input
+                value={form.appId}
+                onChange={(e) => setForm({ ...form, appId: e.target.value })}
+                placeholder="Optional — only for JWT-secured rooms"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>App Secret</Label>
+              <div className="relative">
+                <Input
+                  type={revealSecret ? "text" : "password"}
+                  value={form.appSecret}
+                  onChange={(e) => setForm({ ...form, appSecret: e.target.value })}
+                  placeholder="Optional — only for JWT-secured rooms"
+                  autoComplete="off"
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setRevealSecret((r) => !r)}
+                  className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-muted-foreground hover:text-foreground"
+                  aria-label={revealSecret ? "Hide value" : "Show value"}
+                >
+                  {revealSecret ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 sm:col-span-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Auto-record every class</p>
+                <p className="text-xs text-muted-foreground">
+                  On: recording starts automatically when the teacher joins. Off: teachers use the manual "Recording"
+                  button on My Classes instead.
+                </p>
+              </div>
+              <Switch checked={form.autoRecord} onCheckedChange={(autoRecord) => setForm({ ...form, autoRecord })} />
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <Button size="sm" onClick={save} disabled={busy || !loaded || !form.domain.trim()}>
+            <Save className="h-3.5 w-3.5" /> Save Jitsi Settings
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 /**
  * DB-backed integrations master: Email, WhatsApp, Razorpay, Cashfree, Zoom, Jitsi Meet and any
