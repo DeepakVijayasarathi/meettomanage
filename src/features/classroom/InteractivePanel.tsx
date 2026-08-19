@@ -212,6 +212,12 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
             onActivityComplete={() => {
               onCelebrate();
               postEngagement(sessionId, displayName, "ActivityCompleted");
+              // Whiteboard mini-games only fire this once every item is correctly placed —
+              // "completed" already means "correct," same as the quiz's right-answer path.
+              // Durable record first (StudentAward + server-side milestone check), then bump
+              // everyone's live leaderboard view immediately.
+              postAward(sessionId, displayName, "Star");
+              hubRef.current?.awardStar();
             }}
           />
         </TabsContent>
