@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { CalendarClock, Plus, Users2 } from "lucide-react";
+import { CalendarClock, Plus, Users2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { RecordingsDialog } from "@/components/RecordingsDialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -54,6 +55,7 @@ export default function AdminSessions() {
   const [statusFilter, setStatusFilter] = useState<SessionStatus | "all">("all");
   const [rescheduleTarget, setRescheduleTarget] = useState<ClassSession | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ClassSession | null>(null);
+  const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Schedule-session dialog
@@ -229,35 +231,48 @@ export default function AdminSessions() {
       {
         key: "actions",
         header: "Actions",
-        render: (row) => (
-          <div className="flex items-center gap-1.5">
+        render: (row) =>
+          row.status === "completed" ? (
             <Button
               variant="outline"
               size="sm"
-              disabled={row.status === "cancelled" || row.status === "completed"}
               onClick={(e) => {
                 e.stopPropagation();
-                setRescheduleTarget(row);
-                setReschedDate(row.date);
-                setReschedTime(row.startTime);
+                setRecordingsFor(row);
               }}
             >
-              Reschedule
+              <Video className="h-3.5 w-3.5" />
+              Recording
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              disabled={row.status === "cancelled" || row.status === "completed"}
-              onClick={(e) => {
-                e.stopPropagation();
-                setCancelTarget(row);
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        ),
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={row.status === "cancelled"}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRescheduleTarget(row);
+                  setReschedDate(row.date);
+                  setReschedTime(row.startTime);
+                }}
+              >
+                Reschedule
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                disabled={row.status === "cancelled"}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCancelTarget(row);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          ),
       },
     ],
     [enrolledByBatchId]
@@ -456,6 +471,8 @@ export default function AdminSessions() {
         destructive
         onConfirm={handleCancel}
       />
+
+      {recordingsFor && <RecordingsDialog session={recordingsFor} onClose={() => setRecordingsFor(null)} />}
     </div>
   );
 }
