@@ -152,6 +152,11 @@ export class ClassroomHubClient {
     this.send("AnswerQuiz", questionIndex, selectedIndex, correct);
   }
 
+  /** Live-leaderboard bump for a whiteboard mini-game completion (see postAward for the durable half). */
+  awardStar(): void {
+    this.send("AwardStar");
+  }
+
   celebrate(message?: string): void {
     this.send("Celebrate", message ?? null);
   }

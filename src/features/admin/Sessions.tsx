@@ -24,7 +24,7 @@ import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { cancelSession, listSessions, rescheduleSession, scheduleSession, toFrontendSession } from "@/api/sessions";
+import { cancelSession, listSessions, markNoShow, rescheduleSession, scheduleSession, toFrontendSession, type NoShowParty } from "@/api/sessions";
 import { listBatches, listTeacherOptions } from "@/api/batches";
 
 const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
@@ -57,6 +57,12 @@ export default function AdminSessions() {
   const [cancelTarget, setCancelTarget] = useState<ClassSession | null>(null);
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Mark no-show dialog
+  const [noShowTarget, setNoShowTarget] = useState<ClassSession | null>(null);
+  const [noShowParty, setNoShowParty] = useState<NoShowParty>("Student");
+  const [noShowNote, setNoShowNote] = useState("");
+  const [noShowBusy, setNoShowBusy] = useState(false);
 
   // Schedule-session dialog
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -148,6 +154,32 @@ export default function AdminSessions() {
       notify(false, err instanceof Error ? err.message : "Could not reschedule the session.");
     } finally {
       setReschedBusy(false);
+    }
+  }
+
+  async function handleMarkNoShow() {
+    if (!noShowTarget) return;
+    if (!usingApi) {
+      setMockSessions((prev) => prev.map((s) => (s.id === noShowTarget.id ? { ...s, status: "noshow" } : s)));
+      setNoShowTarget(null);
+      return;
+    }
+    setNoShowBusy(true);
+    try {
+      await markNoShow(noShowTarget.id, noShowParty, noShowNote.trim() || undefined);
+      notify(
+        true,
+        `"${noShowTarget.title}" marked as a ${noShowParty.toLowerCase()} no-show — the class is carried forward 7 days${
+          noShowParty === "Teacher" ? " and the payout deduction has been applied." : "."
+        }`
+      );
+      setNoShowTarget(null);
+      setNoShowNote("");
+      reload();
+    } catch (err) {
+      notify(false, err instanceof Error ? err.message : "Could not record the no-show.");
+    } finally {
+      setNoShowBusy(false);
     }
   }
 
@@ -258,6 +290,19 @@ export default function AdminSessions() {
                 }}
               >
                 Reschedule
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={row.status === "cancelled" || row.status === "noshow"}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setNoShowTarget(row);
+                  setNoShowParty("Student");
+                  setNoShowNote("");
+                }}
+              >
+                Mark No-Show
               </Button>
               <Button
                 variant="outline"
@@ -455,6 +500,54 @@ export default function AdminSessions() {
                 </Button>
                 <Button disabled={reschedBusy || !reschedDate} onClick={handleReschedule}>
                   {reschedBusy ? "Rescheduling…" : "Reschedule"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Mark no-show — accrues the payout waiting-amount/deduction and carries the class forward 7 days */}
+      <Dialog open={!!noShowTarget} onOpenChange={(open) => !open && setNoShowTarget(null)}>
+        <DialogContent className="max-w-sm">
+          {noShowTarget && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Mark a no-show</DialogTitle>
+                <DialogDescription>
+                  "{noShowTarget.title}" — the class is automatically carried forward 7 days. A student no-show adds a
+                  waiting amount to the teacher's pay; a teacher no-show applies a deduction and notifies you.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <div className="grid gap-1.5">
+                  <Label>Who didn't show up?</Label>
+                  <Select value={noShowParty} onValueChange={(v) => setNoShowParty(v as NoShowParty)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Student">Student</SelectItem>
+                      <SelectItem value="Teacher">Teacher</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="ns-note">Note (optional)</Label>
+                  <Input
+                    id="ns-note"
+                    placeholder="e.g. parent informed sick leave in advance"
+                    value={noShowNote}
+                    onChange={(e) => setNoShowNote(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setNoShowTarget(null)}>
+                  Close
+                </Button>
+                <Button variant="destructive" disabled={noShowBusy} onClick={handleMarkNoShow}>
+                  {noShowBusy ? "Recording…" : "Mark No-Show"}
                 </Button>
               </DialogFooter>
             </>

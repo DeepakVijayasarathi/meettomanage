@@ -274,7 +274,7 @@ export default function TeacherAttendance() {
               <div>
                 <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Session notes</p>
                 <p className="rounded-lg bg-muted/50 p-3 text-sm text-foreground">
-                  {(apiEnabled() ? undefined : SESSION_NOTES[selected.id]) ?? "No notes were recorded for this session."}
+                  {(apiEnabled() ? selected.summary : SESSION_NOTES[selected.id]) ?? "No notes were recorded for this session."}
                 </p>
               </div>
 

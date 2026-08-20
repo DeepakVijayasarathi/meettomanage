@@ -23,6 +23,8 @@ export interface ApiClassSession {
   meetingRoomId: string | null;
   rescheduledFromSessionId: string | null;
   cancellationReason: string | null;
+  /** Teacher's class notes, or an auto-generated one from engagement data — set on completion. */
+  summary: string | null;
   /** Which of the calling parent's children this session belongs to — populated only by
    * the parent-portal schedule endpoint; empty elsewhere (Admin/Teacher lists) and for
    * demo sessions not yet tied to a specific enrolled child. */
@@ -63,6 +65,7 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
     status: session.type === "Demo" && session.status === "Scheduled" ? "demo" : STATUS_FROM_API[session.status],
     type: session.type === "Demo" ? "demo" : "group",
     meetingRoomId: session.meetingRoomId ?? undefined,
+    summary: session.summary ?? undefined,
   };
 }
 
@@ -165,6 +168,19 @@ export async function rescheduleSession(
   return apiFetch<ApiClassSession>(`/api/sessions/${id}/reschedule`, {
     method: "POST",
     body: JSON.stringify({ scheduledStartAtUtc, scheduledEndAtUtc }),
+  });
+}
+
+export type NoShowParty = "Teacher" | "Student";
+
+/**
+ * Records a no-show: accrues the payout waiting-amount/deduction and carries the class
+ * forward 7 days (server-side, see SessionService.MarkNoShowAsync). Admin or Teacher only.
+ */
+export async function markNoShow(id: string, party: NoShowParty, note?: string): Promise<ApiClassSession> {
+  return apiFetch<ApiClassSession>(`/api/sessions/${id}/no-show`, {
+    method: "POST",
+    body: JSON.stringify({ party, note }),
   });
 }
 

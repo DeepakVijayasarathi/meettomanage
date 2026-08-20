@@ -99,6 +99,8 @@ export interface ClassSession {
   recordingExpiresOn?: string;
   /** Jitsi room id from the backend; present only on API-backed sessions. */
   meetingRoomId?: string;
+  /** Teacher's class notes, or an auto-generated one from engagement data if they left it blank — set on completion. */
+  summary?: string;
 }
 
 export interface Invoice {
