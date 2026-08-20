@@ -96,7 +96,7 @@ export default function ParentResources() {
 
   return (
     <div>
-      <PageHeader title="Resources &amp; Recordings" description="Worksheets, reading books and 15-day recording access for your child." />
+      <PageHeader title="Resources" description="Worksheets, reading books and any videos shared directly by your teacher. For class recordings, see Recordings in the sidebar." />
       <MultiChildSwitcher />
 
       {child && !isEnrolled && (
@@ -133,7 +133,7 @@ export default function ParentResources() {
           <TabsList>
             <TabsTrigger value="books">Reading Books ({books.length})</TabsTrigger>
             <TabsTrigger value="worksheets">Worksheets ({worksheets.length})</TabsTrigger>
-            <TabsTrigger value="recordings">Recordings ({recordings.length})</TabsTrigger>
+            <TabsTrigger value="recordings">Shared Videos ({recordings.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="books">
@@ -182,7 +182,7 @@ export default function ParentResources() {
 
           <TabsContent value="recordings">
             {recordings.length === 0 ? (
-              <EmptyState icon={Video} title="No recordings yet" description="Recordings stay available for 15 days after class." />
+              <EmptyState icon={Video} title="No shared videos yet" description="Videos your teacher shares directly (not your regular class recordings — see Recordings in the sidebar for those) appear here." />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {recordings.map((r) => {
