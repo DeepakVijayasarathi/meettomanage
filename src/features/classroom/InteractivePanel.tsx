@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Hand, PencilRuler, Sparkles, Star, Trophy, Users } from "lucide-react";
+import { CloudOff, Hand, Loader2, PencilRuler, Sparkles, Star, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -187,23 +187,37 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
               <Trophy className="h-3.5 w-3.5" /> Stars
             </TabsTrigger>
             <TabsTrigger value="people" className="flex-1 gap-1 text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none">
-              <Users className="h-3.5 w-3.5" /> {roster.length || ""}
+              <Users className="h-3.5 w-3.5" /> People
+              {roster.length > 0 && (
+                <span className="ml-0.5 rounded-full bg-white/15 px-1.5 py-px text-[10px] font-bold leading-tight">{roster.length}</span>
+              )}
             </TabsTrigger>
           </TabsList>
+          {/* Same chip language as JitsiLive's own "Rec"/"Reconnecting" header badges,
+              so a degraded-hub state reads as this product's status treatment, not a
+              generic warning banner. The class call itself is unaffected either way. */}
           {hubState === "reconnecting" && (
-            <p className="mt-1.5 flex items-center gap-1.5 px-1 text-[10px] text-brand-amber">
-              <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-brand-amber" />
-              Reconnecting live sync — board and quiz updates sent right now may not reach everyone.
-            </p>
+            <div className="mt-1.5 flex items-center gap-1.5 px-1">
+              <span className="flex shrink-0 items-center gap-1 rounded-full bg-brand-amber/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-amber">
+                <Loader2 className="h-3 w-3 animate-spin" /> Reconnecting
+              </span>
+              <p className="text-[10px] text-white/40">Board and quiz updates may not reach everyone yet.</p>
+            </div>
           )}
           {hubState === "disconnected" && (
-            <p className="mt-1.5 px-1 text-[10px] text-brand-amber/80">
-              Live sync unavailable — working locally. The class call is unaffected.
-            </p>
+            <div className="mt-1.5 flex items-center gap-1.5 px-1">
+              <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/60">
+                <CloudOff className="h-3 w-3" /> Working locally
+              </span>
+              <p className="text-[10px] text-white/40">Live sync is unavailable — the class call is unaffected.</p>
+            </div>
           )}
         </div>
 
-        <TabsContent value="board" className="mt-0 min-h-0 flex-1 overflow-hidden bg-white">
+        {/* Dark, same as every other tab — the whiteboard's own light "paper" canvas
+            provides the one intentional light surface inside this panel, framed by
+            Whiteboard.tsx itself, instead of the whole tab flashing white around it. */}
+        <TabsContent value="board" className="mt-0 min-h-0 flex-1 overflow-hidden bg-brand-navy">
           <Whiteboard
             canDraw={canDraw}
             onBoardOp={broadcastBoardOp}
@@ -263,14 +277,20 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         <TabsContent value="stars" className="mt-0 min-h-0 flex-1 overflow-y-auto p-3">
           {leaderboard.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-              <Trophy className="h-6 w-6 text-white/30" />
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-white/40">
+                <Trophy className="h-5 w-5" />
+              </span>
               <p className="text-sm font-semibold text-white/70">No stars yet</p>
               <p className="max-w-[220px] text-xs text-white/40">Correct quiz answers earn stars — the class leaderboard fills up live.</p>
             </div>
           ) : (
             <ol className="space-y-2">
               {leaderboard.map((entry, i) => (
-                <li key={entry.id} className="flex items-center gap-2.5 rounded-xl bg-white/5 px-3 py-2">
+                <li
+                  key={entry.id}
+                  className="flex items-center gap-2.5 rounded-xl px-3 py-2"
+                  style={{ backgroundColor: i < 3 ? `${entry.color}1F` : "rgba(255,255,255,0.05)" }}
+                >
                   <span className="w-5 text-center text-xs font-bold text-white/50">{i + 1}</span>
                   <span className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: entry.color }}>
                     {entry.name.slice(0, 1).toUpperCase()}
@@ -287,7 +307,12 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
 
         <TabsContent value="people" className="mt-0 min-h-0 flex-1 overflow-y-auto p-3">
           {roster.length === 0 ? (
-            <p className="pt-6 text-center text-xs text-white/40">No one is connected to the interactive layer yet.</p>
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-white/40">
+                <Users className="h-5 w-5" />
+              </span>
+              <p className="max-w-[220px] text-xs text-white/40">No one is connected to the interactive layer yet.</p>
+            </div>
           ) : (
             <ul className="space-y-2">
               {roster.map((participant) => (

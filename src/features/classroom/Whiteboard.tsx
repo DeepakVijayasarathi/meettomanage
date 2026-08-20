@@ -340,8 +340,11 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   return (
     <div className="flex h-full flex-col gap-2 p-3">
       {canDraw ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-2.5 py-2 shadow-soft">
-          <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
+        // Dark toolbar chrome matches the rest of the interactive panel (tabs, roster,
+        // quiz) — only the canvas below stays a light "paper" surface, so this reads
+        // as one dark product with a sheet of paper on it, not two stitched-together UIs.
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2">
+          <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1">
             {TOOLS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -351,7 +354,9 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
                 onClick={() => setTool(id)}
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  tool === id ? "bg-card text-primary shadow-soft" : "text-muted-foreground hover:text-foreground"
+                  // Violet marks "this tool is engaged," same accent used for Interactive/
+                  // board-access/quiz elsewhere in the classroom — one consistent signal.
+                  tool === id ? "bg-brand-violet text-white shadow-soft" : "text-white/60 hover:bg-white/5 hover:text-white"
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -359,7 +364,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
             ))}
           </div>
 
-          <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
+          <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1">
             {SWATCHES.map((sw) => (
               <button
                 key={sw}
@@ -368,15 +373,15 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
                 aria-pressed={color === sw}
                 onClick={() => setColor(sw)}
                 className={cn(
-                  "h-6 w-6 rounded-full border-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                  color === sw ? "scale-110 border-primary" : "border-transparent"
+                  "h-6 w-6 rounded-full border-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-brand-navy",
+                  color === sw ? "scale-110 border-white" : "border-transparent"
                 )}
                 style={{ backgroundColor: sw }}
               />
             ))}
           </div>
 
-          <div className="flex items-center gap-1 rounded-xl bg-muted p-1">
+          <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1">
             {WIDTHS.map((w) => (
               <button
                 key={w}
@@ -386,7 +391,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
                 onClick={() => setStrokeWidth(w)}
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  strokeWidth === w ? "bg-card shadow-soft" : "text-muted-foreground hover:text-foreground"
+                  strokeWidth === w ? "bg-white/15 text-white shadow-soft" : "text-white/50 hover:bg-white/5 hover:text-white/80"
                 )}
               >
                 <span className="rounded-full bg-current" style={{ width: w + 2, height: w + 2 }} />
@@ -394,60 +399,77 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
             ))}
           </div>
 
-          <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={() => setClearConfirmOpen(true)}>
+          <Button size="sm" variant="ghost" className="gap-1.5 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => setClearConfirmOpen(true)}>
             <Trash2 className="h-3.5 w-3.5" /> Clear
           </Button>
           {lastCleared && lastCleared.pageIndex === pageIndex && (
-            <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={undoClear}>
+            <Button size="sm" variant="ghost" className="gap-1.5 text-white/70 hover:bg-white/10 hover:text-white" onClick={undoClear}>
               <Undo2 className="h-3.5 w-3.5" /> Undo clear
             </Button>
           )}
           <Button
             size="sm"
-            variant={showActivity ? "soft" : "ghost"}
-            className="gap-1.5"
+            variant="ghost"
+            className={cn(
+              "gap-1.5",
+              showActivity ? "bg-brand-violet text-white hover:bg-brand-violet/90" : "text-white/70 hover:bg-white/10 hover:text-white"
+            )}
             onClick={() => setShowActivity((s) => !s)}
           >
             <Puzzle className="h-3.5 w-3.5" /> Activity
           </Button>
 
           <div className="ml-auto flex items-center gap-1">
-            <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Previous page" onClick={() => setPageIndex((i) => Math.max(0, i - 1))} disabled={pageIndex === 0}>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
+              aria-label="Previous page"
+              onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
+              disabled={pageIndex === 0}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">
+            <span className="whitespace-nowrap text-xs font-medium text-white/50">
               Page {pageIndex + 1}/{pages.length}
             </span>
             <Button
               size="icon"
               variant="ghost"
-              className="h-8 w-8"
+              className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
               aria-label="Next page"
               onClick={() => setPageIndex((i) => Math.min(pages.length - 1, i + 1))}
               disabled={pageIndex === pages.length - 1}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-8 w-8" title="Add page" aria-label="Add page" onClick={addPage}>
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white" title="Add page" aria-label="Add page" onClick={addPage}>
               <Plus className="h-4 w-4" />
             </Button>
             {pages.length > 1 && (
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="Delete page" aria-label="Delete page" onClick={removePage}>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-red-300/90 hover:bg-destructive/15 hover:text-red-200"
+                title="Delete page"
+                aria-label="Delete page"
+                onClick={removePage}
+              >
                 <X className="h-4 w-4" />
               </Button>
             )}
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-3 py-2 text-xs font-medium text-muted-foreground shadow-soft">
+        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/60">
           <span>👀 View only — ask your teacher for whiteboard access to draw</span>
-          <span>
+          <span className="text-white/40">
             Page {pageIndex + 1}/{pages.length}
           </span>
         </div>
       )}
 
-      <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-white shadow-card">
+      <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-cream shadow-pop">
         <canvas
           ref={canvasRef}
           className={cn(
@@ -474,7 +496,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
             }}
             onBlur={commitText}
             placeholder="Type…"
-            className="absolute z-10 rounded-md border border-primary bg-white px-1.5 py-0.5 text-sm text-slate-900 shadow-pop outline-none"
+            className="absolute z-10 rounded-md border border-brand-violet bg-white px-1.5 py-0.5 text-sm text-slate-900 shadow-pop outline-none"
             style={{ left: textDraft.x, top: textDraft.y, color }}
           />
         )}
