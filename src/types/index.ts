@@ -188,11 +188,6 @@ export interface NotificationItem {
   type: "info" | "success" | "warning" | "danger";
 }
 
-export interface KpiTrend {
-  label: string;
-  value: number;
-}
-
 export interface ChatMessage {
   id: string;
   author: string;

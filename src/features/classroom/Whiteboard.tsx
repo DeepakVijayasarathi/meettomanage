@@ -168,25 +168,51 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   const drawingRef = useRef(false);
   const draftRef = useRef<Stroke | null>(null);
   const panRef = useRef<{ startX: number; startY: number; origin: Point } | null>(null);
+  // Offscreen cache of this page's already-committed strokes. handlePointerMove used to call
+  // a redraw() that replayed every committed stroke from scratch on every single pointer
+  // event — fine for a fresh page, but with hundreds of strokes accumulated over a real class
+  // session that's O(strokes) canvas work per mouse-move, and it visibly degrades drawing
+  // smoothness the longer a board stays in active use. Now the committed strokes are painted
+  // here once (whenever they actually change), and the hot path just blits this bitmap plus
+  // the one in-progress stroke on top — back to O(1) per pointer event regardless of history.
+  const bgCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const currentPage = pages[pageIndex];
+
+  const redrawBackground = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    if (!bgCanvasRef.current) bgCanvasRef.current = document.createElement("canvas");
+    const bg = bgCanvasRef.current;
+    bg.width = canvas.width;
+    bg.height = canvas.height;
+    const ctx = bg.getContext("2d");
+    if (!ctx) return;
+    ctx.save();
+    ctx.translate(-viewOffset.x, -viewOffset.y);
+    for (const stroke of currentPage.strokes) drawStroke(ctx, stroke);
+    ctx.restore();
+  }, [currentPage, viewOffset]);
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.translate(-viewOffset.x, -viewOffset.y);
-    const all = draftRef.current ? [...currentPage.strokes, draftRef.current] : currentPage.strokes;
-    for (const stroke of all) drawStroke(ctx, stroke);
-    ctx.restore();
-  }, [currentPage, viewOffset]);
+    if (bgCanvasRef.current) ctx.drawImage(bgCanvasRef.current, 0, 0);
+    if (draftRef.current) {
+      ctx.save();
+      ctx.translate(-viewOffset.x, -viewOffset.y);
+      drawStroke(ctx, draftRef.current);
+      ctx.restore();
+    }
+  }, [viewOffset]);
 
-  // Re-render whenever this page's committed strokes change (page switch or new stroke).
+  // Re-render whenever this page's committed strokes change (page switch, new stroke, pan).
   useEffect(() => {
+    redrawBackground();
     redraw();
-  }, [redraw]);
+  }, [redrawBackground, redraw]);
 
   // Size the canvas to its container and redraw on resize.
   useEffect(() => {
@@ -197,13 +223,14 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
       const rect = container.getBoundingClientRect();
       canvas.width = Math.max(1, Math.floor(rect.width));
       canvas.height = Math.max(1, Math.floor(rect.height));
+      redrawBackground();
       redraw();
     };
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(container);
     return () => ro.disconnect();
-  }, [redraw]);
+  }, [redrawBackground, redraw]);
 
   function getPoint(e: React.PointerEvent<HTMLCanvasElement>): Point {
     const canvas = canvasRef.current;
