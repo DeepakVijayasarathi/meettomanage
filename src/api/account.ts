@@ -1,4 +1,5 @@
 import { apiEnabled, apiFetch } from "@/lib/api";
+import { buildJitsiJoinUrl } from "@/lib/jitsi";
 
 export interface MyAccount {
   id: string;
@@ -42,12 +43,12 @@ export async function getMyMeetingRoom(): Promise<MyMeetingRoom> {
   return apiFetch<MyMeetingRoom>("/api/users/me/meeting-room");
 }
 
-/** Mirrors the backend's JitsiLinkBuilder.BuildJoinUrl for links opened directly in a new tab
- *  (not the embedded classroom, which passes the token to the Jitsi IFrame API's own `jwt`
- *  config option instead — see JitsiLive.tsx). */
-export function buildPersonalMeetingUrl(room: MyMeetingRoom): string {
-  const url = `https://${room.domain}/${room.roomId}`;
-  return room.token ? `${url}#jwt=${room.token}` : url;
+/** `displayName` is only passed (and prejoin only skipped, see buildJitsiJoinUrl) when the
+ *  caller is the room owner starting their own room right now — not on the "copy link to
+ *  share" path, where the eventual opener's name isn't known and baking the owner's name
+ *  into a shared link would misattribute whoever actually clicks it. */
+export function buildPersonalMeetingUrl(room: MyMeetingRoom, displayName?: string): string {
+  return buildJitsiJoinUrl(room.domain, room.roomId, room.token, displayName);
 }
 
 export function isAccountApiAvailable(): boolean {
