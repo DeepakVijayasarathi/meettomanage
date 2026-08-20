@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { buildPersonalMeetingUrl, getMyMeetingRoom } from "@/api/account";
 
 /**
@@ -10,16 +11,17 @@ import { buildPersonalMeetingUrl, getMyMeetingRoom } from "@/api/account";
  * permanent URL on the clipboard to share.
  */
 export function PersonalMeetingButton() {
+  const { userName } = useSession();
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
 
   if (!apiEnabled()) return null;
 
-  async function withRoom(action: (url: string) => void) {
+  async function withRoom(action: (url: string) => void, withOwnName = false) {
     setBusy(true);
     try {
       const room = await getMyMeetingRoom();
-      action(buildPersonalMeetingUrl(room));
+      action(buildPersonalMeetingUrl(room, withOwnName ? userName : undefined));
     } catch {
       /* room unavailable — nothing to open */
     } finally {
@@ -45,7 +47,12 @@ export function PersonalMeetingButton() {
         {copied ? <Check className="h-3.5 w-3.5" /> : <Video className="h-3.5 w-3.5" />}
         {copied ? "Link copied" : "My meeting link"}
       </Button>
-      <Button size="sm" disabled={busy} title="Start your personal meeting room now" onClick={() => withRoom((url) => window.open(url, "_blank", "noopener"))}>
+      <Button
+        size="sm"
+        disabled={busy}
+        title="Start your personal meeting room now"
+        onClick={() => withRoom((url) => window.open(url, "_blank", "noopener"), true)}
+      >
         Start
       </Button>
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { DoorOpen, PartyPopper, PhoneOff, Sparkles, WifiOff } from "lucide-react";
+import { AlertTriangle, DoorOpen, PartyPopper, PhoneOff, Sparkles, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Logo } from "@/components/Logo";
@@ -126,6 +126,11 @@ export default function JitsiLive({
     setCelebrationMessage(message);
     setCelebrating(true);
   }
+
+  // Shared chip styling for the two header toggles (Waiting Room / Interactive) so
+  // both read as one family of controls instead of two independently-styled buttons.
+  const headerToggleClass =
+    "gap-1.5 border border-white/10 bg-white/10 text-white hover:bg-white/20 aria-pressed:border-transparent aria-pressed:bg-brand-violet aria-pressed:text-white";
 
   useEffect(() => {
     let api:
@@ -301,28 +306,32 @@ export default function JitsiLive({
 
   return (
     <div className="flex h-screen flex-col bg-brand-navyDark">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black/20 px-4 py-2.5">
-        <div className="flex items-center gap-3">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-brand-navyDark/60 px-4 py-2.5 backdrop-blur-sm">
+        <div className="flex min-w-0 items-center gap-3">
           <Logo showWordmark={false} imgClassName="h-8 w-8" />
-          <p className="text-sm font-semibold text-white">{title ?? "Live class"}</p>
+          <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+          </span>
+          <p className="truncate text-sm font-semibold text-white">{title ?? "Live class"}</p>
           {recording && (
-            <span className="flex items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-300">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-300">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" /> Rec
             </span>
           )}
           {callDegraded && (
-            <span className="flex items-center gap-1.5 rounded-full bg-brand-amber/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-brand-amber">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-amber/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-brand-amber">
               <WifiOff className="h-3 w-3" /> Reconnecting…
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {mode === "teacher" && (
             <Button
               size="pill"
               variant="secondary"
               aria-pressed={lobbyEnabled}
-              className="gap-1.5 border border-white/10 bg-white/10 text-white hover:bg-white/20 aria-pressed:border-transparent aria-pressed:bg-brand-violet aria-pressed:text-white"
+              className={headerToggleClass}
               onClick={toggleWaitingRoom}
               title="New joiners wait for you to admit them"
             >
@@ -331,16 +340,11 @@ export default function JitsiLive({
             </Button>
           )}
           {interactive && (
-            <Button
-              size="pill"
-              variant="secondary"
-              aria-pressed={panelOpen}
-              className="gap-1.5 border border-white/10 bg-white/10 text-white hover:bg-white/20 aria-pressed:border-transparent aria-pressed:bg-brand-violet aria-pressed:text-white"
-              onClick={() => setPanelOpen((o) => !o)}
-            >
+            <Button size="pill" variant="secondary" aria-pressed={panelOpen} className={headerToggleClass} onClick={() => setPanelOpen((o) => !o)}>
               <Sparkles className="h-3.5 w-3.5" /> Interactive
             </Button>
           )}
+          <div className="h-6 w-px bg-white/10" aria-hidden="true" />
           <Button size="sm" variant="destructive" className="gap-1.5 rounded-full" onClick={() => setLeaveConfirmOpen(true)}>
             <PhoneOff className="h-4 w-4" />
             Leave
@@ -361,8 +365,11 @@ export default function JitsiLive({
         onConfirm={() => navigate(-1)}
       />
       {error ? (
-        <div className="flex flex-1 items-center justify-center">
-          <p className="rounded-lg bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">{error}</p>
+        <div className="flex flex-1 items-center justify-center px-6">
+          <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3.5 text-sm text-red-200">
+            <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-red-300" />
+            <p className="font-medium">{error}</p>
+          </div>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
@@ -388,7 +395,7 @@ export default function JitsiLive({
               </button>
             )}
             {mode === "teacher" && (
-              <div className="absolute right-3 top-3 z-20 max-w-[220px] rounded-xl bg-brand-navy/95 p-3 text-white shadow-lg backdrop-blur">
+              <div className="absolute right-3 top-3 z-20 max-w-[220px] rounded-2xl border border-white/10 bg-brand-navy/95 p-3 text-white shadow-pop backdrop-blur">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-white/60">Joined ({participants.length})</p>
                 {participants.length === 0 ? (
                   <p className="mt-1 text-xs text-white/50">Waiting for students to join…</p>

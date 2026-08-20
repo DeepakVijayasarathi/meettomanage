@@ -82,8 +82,14 @@ export class ClassroomHubClient {
     // SignalR's own retry loop — surface it so the UI can stop pretending sync
     // is healthy the instant it isn't, instead of only knowing "connected" once
     // at startup and never again.
-    connection.onreconnecting(() => onStateChange?.("reconnecting"));
-    connection.onclose(() => onStateChange?.("disconnected"));
+    connection.onreconnecting((err) => {
+      if (err) console.warn("Classroom hub reconnecting after a drop:", err);
+      onStateChange?.("reconnecting");
+    });
+    connection.onclose((err) => {
+      if (err) console.error("Classroom hub connection closed:", err);
+      onStateChange?.("disconnected");
+    });
 
     // Re-join the session group after an automatic reconnect (new connection id).
     connection.onreconnected(() => {
@@ -116,8 +122,13 @@ export class ClassroomHubClient {
       }
       onStateChange?.("connected");
       return true;
-    } catch {
+    } catch (err) {
       // Hub unavailable — the classroom still works, just without real-time sync.
+      // Logged (not swallowed): the only way to tell "WebSocket blocked by a
+      // proxy", "negotiate timed out", "401 from a stale token" and "hub simply
+      // down" apart is this exact error — silence made every one of those look
+      // identical from the UI's "disconnected" state alone.
+      console.error("Classroom hub connection failed:", err);
       onStateChange?.("disconnected");
       return false;
     }
