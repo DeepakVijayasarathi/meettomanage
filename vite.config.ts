@@ -32,6 +32,17 @@ export default defineConfig({
           if (id.includes("@radix-ui")) {
             return "vendor-radix";
           }
+          // recharts (plus its own charting-specific dependency graph) was landing
+          // inside whichever feature chunk first imported it — Rollup's automatic
+          // splitting still isolates it into a shared chunk since many routes pull
+          // it in, but that chunk's hash changes on almost every deploy along with
+          // the app code it happens to get named after, forcing a ~375KB re-download
+          // of a large, rarely-changing chart library that most portal dashboards
+          // load on first visit. Same fix as vendor-react/vendor-radix: pin it to
+          // its own stable chunk so it only invalidates when recharts itself bumps.
+          if (/[\\/](recharts|recharts-scale|victory-vendor|react-smooth|d3-[a-z-]+)[\\/]/.test(id)) {
+            return "vendor-recharts";
+          }
         },
       },
     },
