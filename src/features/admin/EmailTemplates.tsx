@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Mail, Save, Sparkles } from "lucide-react";
+import { RichTextEditor, type RichTextEditorHandle } from "@/components/RichTextEditor";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,7 +89,8 @@ export default function EmailTemplates() {
 
   const subjectRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const lastFocused = useRef<"subject" | "body">("body");
+  const visualRef = useRef<RichTextEditorHandle>(null);
+  const lastFocused = useRef<"subject" | "body" | "visual">("visual");
 
   async function reload(keepSelection = true) {
     if (!apiEnabled()) return;
@@ -152,6 +154,8 @@ export default function EmailTemplates() {
     const placeholder = `{{${token}}}`;
     if (lastFocused.current === "subject") {
       insertAtCursor(subjectRef.current, subject, placeholder, setSubject);
+    } else if (lastFocused.current === "visual") {
+      visualRef.current?.insertText(placeholder);
     } else {
       insertAtCursor(bodyRef.current, htmlBody, placeholder, setHtmlBody);
     }
@@ -279,12 +283,23 @@ export default function EmailTemplates() {
                   />
                 </div>
 
-                <Tabs defaultValue="edit">
+                <Tabs defaultValue="visual">
                   <TabsList>
+                    <TabsTrigger value="visual">Visual Edit</TabsTrigger>
                     <TabsTrigger value="edit">Edit HTML</TabsTrigger>
                     <TabsTrigger value="preview">Preview{previewLoading && "…"}</TabsTrigger>
                     <TabsTrigger value="sample">Sample Data</TabsTrigger>
                   </TabsList>
+
+                  <TabsContent value="visual">
+                    <RichTextEditor
+                      ref={visualRef}
+                      value={htmlBody}
+                      onChange={setHtmlBody}
+                      onFocus={() => (lastFocused.current = "visual")}
+                      minHeight={360}
+                    />
+                  </TabsContent>
 
                   <TabsContent value="edit">
                     <Textarea
