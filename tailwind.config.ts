@@ -86,15 +86,39 @@ export default {
           teacher: "#F08A1D",
           parent: "#23A455",
           student: "#3B82F6",
-          coordinator: "#0D9488",
-          management: "#7C3AED",
+          // Was #0D9488 — nearly indistinguishable from subadmin's #0E9C8C (the two read
+          // as the same teal side-by-side on PortalSelect/marketing's all-8-roles grid) and
+          // literally identical to CHART_PALETTE's own teal, double-booking one hex for two
+          // unrelated meanings. Moved into the one genuinely open hue gap left in the whole
+          // palette (nothing else in brand/role/status/chart sits between teacher's orange
+          // and parent's green) — a goldenrod distinct from every other role, brand, and
+          // status color. Navy clears 5.2:1 against it (picked automatically by
+          // pickAccentForegroundHsl), same mechanism as every other role but admission.
+          coordinator: "#B8860B",
+          // Was #7C3AED — one of five near-identical purples/violets in the system (with
+          // admission's role color, brand.violet, CHART_PALETTE's violet and status.demo),
+          // and the one most exposed by it: management sits beside admission in the same
+          // all-8-roles grid (PortalSelect, marketing Home) where the two read as the same
+          // hue. Shifted into the empty ~40° gap between the blue cluster (admin/student)
+          // and the purple cluster (admission) — a distinct indigo, not "another purple."
+          management: "#4F46E5",
         },
         status: {
           scheduled: "#EAB308",
           completed: "#22C55E",
-          cancelled: "#EF4444",
+          // Was #EF4444 (Tailwind red-500) — a second, lighter red alongside --destructive's
+          // #C52020, both meaning "cancelled/danger" and both visible in the same screen
+          // (Sessions.tsx's cancelled-status dot next to its destructive-styled Cancel
+          // button/dialog). Unified to the same red so "danger" has one consistent shade.
+          cancelled: "#C52020",
           noshow: "#3B82F6",
-          demo: "#A855F7",
+          // Was #A855F7 — sat inside the same 20°-wide purple band as admission's role color
+          // (#8356E7, which --primary is repointed to app-wide on the Admission portal), so
+          // every row of DemoScheduling.tsx — where every session IS a demo — showed two
+          // slightly-off purples together. Shifted into fuchsia, clearly its own hue rather
+          // than a near-miss of the portal's own brand purple. Only ever rendered as a small
+          // status dot (see StatusBadge.tsx) — no paired foreground text to re-check.
+          demo: "#D946EF",
           rescheduled: "#F97316",
           holiday: "#94A3B8",
           leave: "#EC4899",

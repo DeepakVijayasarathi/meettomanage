@@ -101,7 +101,9 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Coordinator",
     description: "Calendar-driven coordination of sessions, teachers and batch planning.",
     colorVar: "role-coordinator",
-    hex: "#0D9488",
+    // Kept in sync with role.coordinator in tailwind.config.ts — see the comment
+    // there for why this moved off the old teal (#0D9488, collided with subadmin).
+    hex: "#B8860B",
     icon: CalendarRange,
     available: true,
     homePath: "/coordinator",
@@ -112,7 +114,9 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Management",
     description: "Executive-level insight into enrollments, revenue and performance.",
     colorVar: "role-management",
-    hex: "#7C3AED",
+    // Kept in sync with role.management in tailwind.config.ts — see the comment
+    // there for why this moved off the old violet (#7C3AED, collided with admission).
+    hex: "#4F46E5",
     icon: LineChart,
     available: true,
     homePath: "/management",

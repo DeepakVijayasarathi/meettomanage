@@ -144,7 +144,7 @@ export default function TeacherDashboard() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Today's Classes" value={String(todaysSessions.length)} icon={CalendarDays} tone="primary" loading={sessionsLoading} error={sessionsError} />
-        <KpiCard label="This Week" value={String(thisWeekSessions.length)} icon={Clock} tone="warning" loading={sessionsLoading} error={sessionsError} />
+        <KpiCard label="This Week" value={String(thisWeekSessions.length)} icon={Clock} tone="primary" loading={sessionsLoading} error={sessionsError} />
         <KpiCard
           label="Student Attendance"
           value={avgAttendance ? `${avgAttendance}%` : "—"}

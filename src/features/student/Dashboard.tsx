@@ -37,12 +37,17 @@ import { formatDate } from "@/lib/utils";
 const CHILD_ID = "c-1";
 const TODAY = "2026-07-09";
 
+// A true flame-red, not derived from CHART_PALETTE (which has no red) — the one
+// deliberate exception among these badges, since "streak" is a fire icon and
+// needs to actually read as fire, not as whichever chart color happened to be free.
+const STREAK_FLAME_RED = "#DC2626";
+
 const BADGES = [
-  { label: "Phonics Star", icon: BookOpen, earned: true, color: "#F08A1D" },
-  { label: "7-Day Streak", icon: Flame, earned: true, color: "#EF4444" },
-  { label: "Quiz Whiz", icon: Trophy, earned: true, color: "#EAB308" },
-  { label: "Reading Rocket", icon: Sparkles, earned: false, color: "#8B5CF6" },
-  { label: "Perfect Attendance", icon: CalendarCheck2, earned: false, color: "#17A9C9" },
+  { label: "Phonics Star", icon: BookOpen, earned: true, color: CHART_PALETTE[3] },
+  { label: "7-Day Streak", icon: Flame, earned: true, color: STREAK_FLAME_RED },
+  { label: "Quiz Whiz", icon: Trophy, earned: true, color: CHART_PALETTE[6] },
+  { label: "Reading Rocket", icon: Sparkles, earned: false, color: CHART_PALETTE[4] },
+  { label: "Perfect Attendance", icon: CalendarCheck2, earned: false, color: CHART_PALETTE[2] },
 ];
 
 export default function StudentDashboard() {
@@ -405,11 +410,11 @@ function ApiStudentDashboard() {
   const myEarnedBadges = myIndex >= 0 ? sorted[myIndex].badges : [];
 
   const badges = [
-    { label: "First Class", icon: Sparkles, earned: classesCompleted >= 1, color: "#8B5CF6" },
-    { label: "Reading Rocket", icon: BookOpen, earned: classesCompleted >= 10, color: "#F08A1D" },
-    { label: "Star Collector", icon: Star, earned: myStars >= 10, color: "#EAB308" },
-    { label: "Super Streak", icon: Flame, earned: attendancePercent >= 90 && classesCompleted >= 5, color: "#EF4444" },
-    { label: "Perfect Attendance", icon: CalendarCheck2, earned: attendancePercent >= 95 && classesCompleted >= 1, color: "#17A9C9" },
+    { label: "First Class", icon: Sparkles, earned: classesCompleted >= 1, color: CHART_PALETTE[4] },
+    { label: "Reading Rocket", icon: BookOpen, earned: classesCompleted >= 10, color: CHART_PALETTE[3] },
+    { label: "Star Collector", icon: Star, earned: myStars >= 10, color: CHART_PALETTE[6] },
+    { label: "Super Streak", icon: Flame, earned: attendancePercent >= 90 && classesCompleted >= 5, color: STREAK_FLAME_RED },
+    { label: "Perfect Attendance", icon: CalendarCheck2, earned: attendancePercent >= 95 && classesCompleted >= 1, color: CHART_PALETTE[2] },
   ];
 
   const ringColor = CHART_PALETTE[0];

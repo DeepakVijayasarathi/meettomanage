@@ -106,7 +106,10 @@ export default function TeacherPayout() {
 
       {payoutsLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard label="This Month Payout" value="" icon={Wallet} tone="warning" loading />
+          {/* tone has no effect while loading=true (KpiCard's skeleton branch ignores it) —
+              set to neutral rather than a hardcoded "warning" since the real card's tone
+              below is conditional on paid status, not fixed. */}
+          <KpiCard label="This Month Payout" value="" icon={Wallet} tone="neutral" loading />
           <KpiCard label="Sessions This Month" value="" icon={CalendarCheck} tone="primary" loading />
           <KpiCard label="Lifetime Payout" value="" icon={TrendingUp} tone="neutral" loading />
           <KpiCard label="Lifetime Sessions" value="" icon={Banknote} tone="success" loading />

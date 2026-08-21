@@ -113,7 +113,11 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
             {batch.enrolled} / {batch.capacity}
           </span>
         </div>
-        <Progress value={pct} className="h-2" indicatorClassName={pct >= 90 ? "bg-destructive" : pct >= 70 ? "bg-warning" : "bg-success"} />
+        {/* High fill is the good outcome (a near-full batch), matching every other
+            percentage-fill indicator in the app (management/Performance.tsx's
+            utilization bars, parent/Dashboard.tsx's progress rings) — this used to
+            run the opposite direction, reading a nearly-sold-out batch as "danger". */}
+        <Progress value={pct} className="h-2" indicatorClassName={pct >= 90 ? "bg-success" : pct >= 70 ? "bg-warning" : "bg-destructive"} />
       </div>
 
       <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">

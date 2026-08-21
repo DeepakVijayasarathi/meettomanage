@@ -253,7 +253,7 @@ export default function SubAdminDashboard() {
           loading={kpiLoading}
           error={kpiError}
         />
-        <KpiCard label="Sessions Today" value={String(sessionsToday)} icon={Clock} tone="warning" loading={kpiLoading} error={kpiError} />
+        <KpiCard label="Sessions Today" value={String(sessionsToday)} icon={Clock} tone="primary" loading={kpiLoading} error={kpiError} />
         <KpiCard
           label="Attendance Rate"
           value={formatPercent(attendanceRate)}
