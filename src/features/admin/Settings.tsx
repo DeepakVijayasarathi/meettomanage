@@ -32,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -61,6 +62,7 @@ import {
   type ApiMenuItem,
   type SaveMenuItemRequest,
 } from "@/api/menus";
+import { PERMISSION_MODULES } from "@/api/permissions";
 import {
   createIntegration,
   deleteIntegration,
@@ -129,6 +131,7 @@ const EMPTY_MENU_FORM: SaveMenuItemRequest = {
   icon: "LayoutDashboard",
   sortOrder: 0,
   isActive: true,
+  requiredModule: null,
 };
 
 /**
@@ -666,6 +669,27 @@ function MenuManager() {
               />
             </div>
             <div className="grid gap-1.5">
+              <Label>Required module</Label>
+              <Select
+                value={form.requiredModule ?? "__none"}
+                onValueChange={(v) =>
+                  setForm({ ...form, requiredModule: v === "__none" ? null : (v as SaveMenuItemRequest["requiredModule"]) })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Unassigned — visible to everyone</SelectItem>
+                  {PERMISSION_MODULES.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
               <Label>Icon</Label>
               <Select value={form.icon} onValueChange={(icon) => setForm({ ...form, icon })}>
                 <SelectTrigger>
@@ -721,6 +745,7 @@ function MenuManager() {
                 <TableHead>Section</TableHead>
                 <TableHead>Label</TableHead>
                 <TableHead>Path</TableHead>
+                <TableHead>Required Module</TableHead>
                 <TableHead className="text-center">Order</TableHead>
                 <TableHead className="text-center">Active</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -739,6 +764,15 @@ function MenuManager() {
                       </span>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">{item.path}</TableCell>
+                    <TableCell>
+                      {item.requiredModule ? (
+                        <Badge variant="secondary">
+                          {PERMISSION_MODULES.find((m) => m.value === item.requiredModule)?.label ?? item.requiredModule}
+                        </Badge>
+                      ) : (
+                        <Badge variant="muted">Unassigned — everyone</Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-center text-xs text-muted-foreground">
                       {item.sectionOrder}.{item.sortOrder}
                     </TableCell>
@@ -760,7 +794,7 @@ function MenuManager() {
               })}
               {items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
                     No menu items configured for this portal yet.
                   </TableCell>
                 </TableRow>
