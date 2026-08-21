@@ -304,7 +304,6 @@ export default function AdminPaymentMapping() {
         title={`Change how ${editAccount?.department} charges get routed?`}
         description={`Every new payment for this department will go through ${editProvider} (${editRef.trim()}) from now on. Existing transactions are unaffected.`}
         confirmLabel="Save account"
-        destructive
         onConfirm={saveAccountEdit}
       />
 
@@ -380,7 +379,6 @@ export default function AdminPaymentMapping() {
         title="Reroute this parent's payments?"
         description={`${parents.find((p) => p.id === effectiveParent)?.name ?? "This parent"}'s future payments will route to ${accounts.find((a) => a.id === effectiveAccount)?.name ?? "the selected account"} instead of wherever they're routed today.`}
         confirmLabel="Save Mapping"
-        destructive
         onConfirm={saveMapping}
       />
     </div>

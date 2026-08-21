@@ -2,6 +2,7 @@
  * Minimal typed API client. When VITE_API_BASE_URL is unset the app runs in
  * demo mode: screens keep their mock data and login skips the backend.
  */
+import { authStorage, clearAuthStorage } from "@/lib/authStorage";
 
 const BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -12,12 +13,12 @@ export function apiEnabled(): boolean {
 }
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return authStorage().getItem(TOKEN_KEY);
 }
 
 export function setAccessToken(token: string | null) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  if (token) authStorage().setItem(TOKEN_KEY, token);
+  else authStorage().removeItem(TOKEN_KEY);
 }
 
 export class ApiError extends Error {
@@ -42,10 +43,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   // An expired/revoked token means the session is no longer authenticated: clear it
   // and land on login. Auth endpoints are exempt (a wrong PIN is also a 401).
   if (response.status === 401 && token && !path.startsWith("/api/auth/")) {
-    setAccessToken(null);
-    localStorage.removeItem("trn.role");
-    localStorage.removeItem("trn.userName");
-    localStorage.removeItem("trn.permissions");
+    clearAuthStorage();
     window.location.assign("/login");
   }
 

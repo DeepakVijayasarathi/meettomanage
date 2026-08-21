@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Download, IndianRupee, PieChart as PieChartIcon, Users } from "lucide-react";
+import { AlertCircle, Download, IndianRupee, PieChart as PieChartIcon, Users } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { DEPARTMENT_REVENUE, ENROLLMENT_FUNNEL, REVENUE_TREND } from "@/data/kpis";
 import { useApiData } from "@/api/hooks";
@@ -46,9 +47,12 @@ interface SummaryCardProps {
   columns: string[];
   rows: (string | number)[][];
   filename: string;
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
-function SummaryCard({ icon: Icon, title, description, columns, rows, filename }: SummaryCardProps) {
+function SummaryCard({ icon: Icon, title, description, columns, rows, filename, loading, error, onRetry }: SummaryCardProps) {
   return (
     <Card className="flex flex-col">
       <CardContent className="flex flex-1 flex-col p-5">
@@ -58,44 +62,71 @@ function SummaryCard({ icon: Icon, title, description, columns, rows, filename }
               <Icon className="h-[18px] w-[18px]" />
             </span>
             <div>
-              <p className="text-sm font-semibold text-foreground">{title}</p>
-              <p className="text-xs text-muted-foreground">{description}</p>
+              <h3 className="text-base font-semibold text-foreground">{title}</h3>
+              <p className="text-sm text-muted-foreground">{description}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => downloadCsv(filename, columns, rows)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => downloadCsv(filename, columns, rows)}
+            disabled={loading || !!error || rows.length === 0}
+          >
             <Download className="h-3.5 w-3.5" />
             Export
           </Button>
         </div>
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                {columns.map((c) => (
-                  <TableHead key={c}>{c}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r, i) => (
-                <TableRow key={i}>
-                  {r.map((cell, j) => (
-                    <TableCell key={j} className={j > 0 ? "font-medium text-foreground" : undefined}>
-                      {cell}
-                    </TableCell>
+        {loading ? (
+          <div className="flex flex-1 flex-col gap-2 rounded-lg border border-border p-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <span>Couldn&apos;t load this summary.</span>
+            {onRetry && (
+              <button type="button" className="text-xs font-medium text-primary underline" onClick={onRetry}>
+                Retry
+              </button>
+            )}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+            <span>No data for this period.</span>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  {columns.map((c) => (
+                    <TableHead key={c}>{c}</TableHead>
                   ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r, i) => (
+                  <TableRow key={i}>
+                    {r.map((cell, j) => (
+                      <TableCell key={j} className={j > 0 ? "font-medium text-foreground" : undefined}>
+                        {cell}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
 export default function ManagementReports() {
-  const { data: summary } = useApiData(
+  const { data: summary, loading, error, reload } = useApiData(
     () => getDashboardSummary(),
     DEMO_SUMMARY as ApiDashboardSummary,
     EMPTY_SUMMARY as ApiDashboardSummary
@@ -148,6 +179,9 @@ export default function ManagementReports() {
           columns={monthlySummary.columns}
           rows={monthlySummary.rows}
           filename="monthly-business-summary.csv"
+          loading={loading}
+          error={error}
+          onRetry={reload}
         />
         <SummaryCard
           icon={PieChartIcon}
@@ -156,6 +190,9 @@ export default function ManagementReports() {
           columns={departmentComparison.columns}
           rows={departmentComparison.rows}
           filename="department-comparison.csv"
+          loading={loading}
+          error={error}
+          onRetry={reload}
         />
         <SummaryCard
           icon={Users}
@@ -164,6 +201,9 @@ export default function ManagementReports() {
           columns={funnelSummary.columns}
           rows={funnelSummary.rows}
           filename="enrollment-funnel-summary.csv"
+          loading={loading}
+          error={error}
+          onRetry={reload}
         />
       </div>
     </div>

@@ -5,6 +5,7 @@ import {
   ArrowRight,
   CalendarClock,
   CalendarDays,
+  CalendarOff,
   CheckCircle2,
   Clock,
   PartyPopper,
@@ -59,7 +60,7 @@ function sessionSubtitle(session: ClassSession) {
 
 const STATUS_ICON: Partial<Record<SessionStatus, typeof PartyPopper>> = {
   holiday: PartyPopper,
-  leave: CalendarClock,
+  leave: CalendarOff,
   demo: Sparkles,
 };
 
@@ -147,6 +148,7 @@ export default function TeacherDashboard() {
         <KpiCard
           label="Student Attendance"
           value={avgAttendance ? `${avgAttendance}%` : "—"}
+          detail={usingApi && !avgAttendance ? "Not available yet" : undefined}
           icon={Users}
           tone="success"
           trend={avgAttendance ? { value: avgAttendance - 90, label: "vs 90% target" } : undefined}

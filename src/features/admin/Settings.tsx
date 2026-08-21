@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Palette,
   Pencil,
+  Plug,
   Plus,
   Puzzle,
   Save,
@@ -272,10 +273,10 @@ export default function AdminSettings() {
             <ListTree className="h-4 w-4" /> Menus
           </TabsTrigger>
           <TabsTrigger value="payroll" className="gap-1.5">
-            <ShieldAlert className="h-3.5 w-3.5 text-warning" /> Payroll
+            <Wallet className="h-4 w-4" /> Payroll
           </TabsTrigger>
           <TabsTrigger value="integrations" className="gap-1.5">
-            <ShieldAlert className="h-3.5 w-3.5 text-warning" /> Integrations
+            <Plug className="h-4 w-4" /> Integrations
           </TabsTrigger>
         </TabsList>
         <p className="mb-4 mt-2 text-xs text-muted-foreground">

@@ -92,7 +92,7 @@ export default function ManagementPerformance() {
 
   // Live occupancy (overall + per course) from the dashboard summary; live utilization
   // averaged from the per-teacher report. Demo mode keeps the mock KPI constants.
-  const { data: liveSummary, loading: summaryLoading } = useApiData(
+  const { data: liveSummary, loading: summaryLoading, error: summaryError } = useApiData(
     () =>
       getDashboardSummary().then((s) => ({
         occupancy: s.batchOccupancyPercent,
@@ -231,7 +231,13 @@ export default function ManagementPerformance() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <ChartCard title="Teacher Utilization" description="Sessions delivered vs. capacity, by teacher" height={300}>
+        <ChartCard
+          title="Teacher Utilization"
+          description="Sessions delivered vs. capacity, by teacher"
+          height={300}
+          loading={usingApi && rowsLoading}
+          error={usingApi ? rowsError : null}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={utilizationChart} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -247,7 +253,13 @@ export default function ManagementPerformance() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Batch Occupancy by Course" description="Fill rate across active batches" height={300}>
+        <ChartCard
+          title="Batch Occupancy by Course"
+          description="Fill rate across active batches"
+          height={300}
+          loading={usingApi && summaryLoading}
+          error={usingApi ? summaryError : null}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={occupancyChart} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />

@@ -6,6 +6,8 @@ import {
   CalendarCheck2,
   CheckCircle2,
   HeartHandshake,
+  LayoutGrid,
+  Menu,
   MessageSquare,
   PenTool,
   ShieldCheck,
@@ -17,6 +19,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/Logo";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useBrand } from "@/lib/branding";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { cn } from "@/lib/utils";
@@ -111,6 +119,25 @@ export default function MarketingHome() {
                 Sign In <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="sm:hidden" aria-label="Open menu">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem asChild>
+                  <Link to="/store" className="cursor-pointer">
+                    <BookOpen /> Browse Courses
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/portal-select" className="cursor-pointer">
+                    <LayoutGrid /> Explore Portals
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -198,7 +225,7 @@ export default function MarketingHome() {
                   className={cn("flex h-11 w-11 items-center justify-center rounded-xl", f.colorClass)}
                   style={f.hex ? { backgroundColor: `${f.hex}1A`, color: f.hex } : undefined}
                 >
-                  <f.icon className="h-5.5 w-5.5" />
+                  <f.icon className="h-[22px] w-[22px]" />
                 </span>
                 <h3 className="mt-4 text-sm font-bold text-brand-ink">{f.title}</h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-brand-ink/55">{f.description}</p>
@@ -236,7 +263,7 @@ export default function MarketingHome() {
                     className="flex h-11 w-11 items-center justify-center rounded-xl text-white"
                     style={{ backgroundColor: meta.hex }}
                   >
-                    <meta.icon className="h-5.5 w-5.5" />
+                    <meta.icon className="h-[22px] w-[22px]" />
                   </span>
                   <div>
                     <h3 className="text-sm font-bold text-brand-ink">{meta.label}</h3>

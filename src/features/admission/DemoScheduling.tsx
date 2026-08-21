@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarPlus, CheckCircle2, ChevronDown, ChevronUp, Trash2, UserPlus, Users2 } from "lucide-react";
+import { AlertCircle, CalendarPlus, CheckCircle2, ChevronDown, ChevronUp, Trash2, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
@@ -129,6 +129,7 @@ export default function AdmissionDemoScheduling() {
   const [teacherId, setTeacherId] = useState("");
   const [notes, setNotes] = useState("");
   const [justScheduled, setJustScheduled] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   // Collapsed by default: this screen is visited many times a day mainly to check/update
   // existing demos, so the demo list — not the creation form — should be what's in view.
   const [formOpen, setFormOpen] = useState(false);
@@ -197,10 +198,11 @@ export default function AdmissionDemoScheduling() {
       })
         .then(() => {
           reloadRows();
+          setActionError(null);
           setJustScheduled(childName.trim());
           resetForm();
         })
-        .catch((err: Error) => setJustScheduled(`Error: ${err.message}`));
+        .catch((err: Error) => setActionError(err.message));
       return;
     }
 
@@ -221,6 +223,7 @@ export default function AdmissionDemoScheduling() {
       isNew: true,
     };
     setRows((prev) => [newRow, ...prev]);
+    setActionError(null);
     setJustScheduled(childName.trim());
     resetForm();
   }
@@ -363,6 +366,13 @@ export default function AdmissionDemoScheduling() {
         <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
           <CheckCircle2 className="h-4 w-4" />
           Demo scheduled for {justScheduled}. All invited parents/guardians will receive an invite.
+        </div>
+      )}
+
+      {actionError && (
+        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          {actionError}
         </div>
       )}
 
@@ -550,8 +560,11 @@ export default function AdmissionDemoScheduling() {
           if (!completeTarget) return;
           if (apiEnabled()) {
             updateConversionStatus(completeTarget.id, "DemoCompleted")
-              .then(() => reloadRows())
-              .catch((err: Error) => setJustScheduled(`Error: ${err.message}`));
+              .then(() => {
+                setActionError(null);
+                reloadRows();
+              })
+              .catch((err: Error) => setActionError(err.message));
             return;
           }
           setRows((prev) => prev.map((r) => (r.id === completeTarget.id ? { ...r, status: "completed" } : r)));
@@ -569,8 +582,11 @@ export default function AdmissionDemoScheduling() {
           if (!cancelTarget) return;
           if (apiEnabled()) {
             updateConversionStatus(cancelTarget.id, "NotInterested")
-              .then(() => reloadRows())
-              .catch((err: Error) => setJustScheduled(`Error: ${err.message}`));
+              .then(() => {
+                setActionError(null);
+                reloadRows();
+              })
+              .catch((err: Error) => setActionError(err.message));
             return;
           }
           setRows((prev) => prev.map((r) => (r.id === cancelTarget.id ? { ...r, status: "cancelled" } : r)));

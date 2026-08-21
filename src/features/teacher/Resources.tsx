@@ -251,7 +251,9 @@ export default function TeacherResources() {
                 <FileDropzone label="Drag & drop or click to upload" onFile={(f) => setFile(f)} />
 
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="resource-title">Title</Label>
+                  <Label htmlFor="resource-title">
+                    Title <span className="text-destructive">*</span>
+                  </Label>
                   <Input id="resource-title" placeholder="e.g. Blending Sounds Worksheet — Week 4" value={title} onChange={(e) => setTitle(e.target.value)} />
                 </div>
 
@@ -271,7 +273,9 @@ export default function TeacherResources() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label>Visible to batches</Label>
+                    <Label>
+                      Visible to batches <span className="text-destructive">*</span>
+                    </Label>
                     <div className="flex flex-wrap gap-1.5">
                       {batchOptions.map((b) => (
                         <Button
@@ -290,6 +294,9 @@ export default function TeacherResources() {
                   </div>
                 </div>
 
+                <p className="text-xs text-muted-foreground">
+                  Fields marked <span className="text-destructive">*</span> are required before you can upload.
+                </p>
                 {uploadError && <p className="text-sm font-medium text-destructive">{uploadError}</p>}
               </div>
 

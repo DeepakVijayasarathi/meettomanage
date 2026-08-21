@@ -40,8 +40,8 @@ const CATEGORY_COLOR: Record<Course["category"], string> = {
 };
 
 export default function ManagementRevenue() {
-  const { data: trend, error: trendError, reload } = useApiData(() => getDashboardSummary().then((s) => s.revenueTrend), DEMO_TREND);
-  const { data: deptRaw } = useApiData(() => getDashboardSummary().then((s) => s.revenueByDepartment), DEMO_DEPT);
+  const { data: trend, loading: trendLoading, error: trendError, reload } = useApiData(() => getDashboardSummary().then((s) => s.revenueTrend), DEMO_TREND);
+  const { data: deptRaw, loading: deptLoading, error: deptError } = useApiData(() => getDashboardSummary().then((s) => s.revenueByDepartment), DEMO_DEPT);
   const departmentRevenue = deptRaw.map((d, i) => ({
     department: d.name,
     value: d.revenue,
@@ -147,7 +147,14 @@ export default function ManagementRevenue() {
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <ChartCard title="Revenue Trend" description="Monthly revenue, last 6 months" className="lg:col-span-2" height={300}>
+        <ChartCard
+          title="Revenue Trend"
+          description="Monthly revenue, last 6 months"
+          className="lg:col-span-2"
+          height={300}
+          loading={trendLoading}
+          error={trendError}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={trend} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
               <defs>
@@ -168,7 +175,13 @@ export default function ManagementRevenue() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Revenue by Department" description="Share of this term's revenue" height={300}>
+        <ChartCard
+          title="Revenue by Department"
+          description="Share of this term's revenue"
+          height={300}
+          loading={deptLoading}
+          error={deptError}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie

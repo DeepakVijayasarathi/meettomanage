@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { useLocation, useNavigate, Navigate, Link } from "react-router-dom";
 import { AlertCircle, ArrowRight, Loader2, Lock, Mail, Sparkles, Video, CalendarCheck2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { useBrand } from "@/lib/branding";
 import { apiEnabled, getAccessToken } from "@/lib/api";
+import { getRemember, setRemember } from "@/lib/authStorage";
 import { login } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
 import { cn, safeInternalPath } from "@/lib/utils";
@@ -34,6 +35,7 @@ export default function Login() {
   const [pin, setPin] = useState<string[]>(apiEnabled() ? Array(PIN_LENGTH).fill("") : ["1", "2", "3", "4"]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState(getRemember());
   const {
     role: sessionRole,
     homePath: sessionHomePath,
@@ -93,6 +95,10 @@ export default function Login() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Decided before any session state is written, so setRole/setUserName/etc.
+    // below (and setAccessToken inside login()) all land in the right store.
+    setRemember(rememberMe);
 
     // Demo mode: no backend configured, enter as the selected preview role
     if (!apiEnabled()) {
@@ -237,7 +243,13 @@ export default function Login() {
                       pinRefs.current[i] = el;
                     }}
                     id={`pin-${i}`}
-                    type="password"
+                    // type="text" (not "password") so inputMode="numeric" reliably brings up
+                    // the numeric keypad on mobile — combining password+numeric is a known
+                    // Safari/WebView gotcha where the full keyboard shows regardless. Masked
+                    // visually instead via -webkit-text-security (Chrome/Edge/Safari; Firefox
+                    // falls back to showing the digit — a minor, non-security-critical gap for
+                    // a 4-digit login PIN, not a password).
+                    type="text"
                     inputMode="numeric"
                     pattern="\d*"
                     maxLength={1}
@@ -249,6 +261,7 @@ export default function Login() {
                     onPaste={handlePinPaste}
                     required
                     aria-label={`PIN digit ${i + 1} of ${PIN_LENGTH}`}
+                    style={{ WebkitTextSecurity: "disc" } as CSSProperties}
                     className="h-14 w-full rounded-xl border border-brand-ink/15 bg-brand-cream/40 text-center text-xl font-bold text-brand-ink transition-colors focus-visible:border-brand-green focus-visible:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/30"
                   />
                 ))}
@@ -290,7 +303,7 @@ export default function Login() {
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm font-medium text-brand-ink/70">
-                <Checkbox defaultChecked />
+                <Checkbox checked={rememberMe} onCheckedChange={(v) => setRememberMe(v === true)} />
                 Remember me
               </label>
               <Link to="/forgot-password" className="text-sm font-semibold text-brand-greenDark hover:underline">

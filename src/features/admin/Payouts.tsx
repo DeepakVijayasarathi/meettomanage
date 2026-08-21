@@ -307,6 +307,7 @@ export default function AdminPayouts() {
               : undefined
         }
         confirmLabel={confirmTarget?.action === "finalize" ? "Finalize" : "Mark Paid"}
+        destructive={confirmTarget?.action === "finalize"}
         onConfirm={runPayoutAction}
       />
     </div>

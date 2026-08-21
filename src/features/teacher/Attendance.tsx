@@ -156,8 +156,19 @@ export default function TeacherAttendance() {
       key: "attendance",
       header: "Attendance",
       render: (row) => {
-        // Live per-session detail loads in the summary dialog; no fabricated counts in API mode.
-        if (apiEnabled()) return <span className="text-sm text-muted-foreground">View summary</span>;
+        // Already fetched alongside the session list (see apiData above) — the real
+        // per-child breakdown, not a placeholder duplicating the "View summary" action.
+        if (apiEnabled()) {
+          const records = (apiData.attendanceBySession[row.id] ?? []).filter((r) => r.participantType === "Student");
+          if (records.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
+          const present = records.filter((r) => r.status === "Present").length;
+          const pct = Math.round((present / records.length) * 100);
+          return (
+            <Badge variant={pct === 100 ? "success" : pct >= 50 ? "warning" : "destructive"}>
+              {present}/{records.length} present
+            </Badge>
+          );
+        }
         const records = ATTENDANCE_RECORDS[row.id];
         if (!records) return <span className="text-sm text-muted-foreground">{row.childIds.length}/{row.childIds.length} present</span>;
         const present = records.filter((r) => r.present).length;

@@ -845,7 +845,6 @@ export default function AdminUsers() {
         title={`Resend credentials to ${bulkConfirmIds?.length ?? 0} user(s)?`}
         description="Each person gets a new temporary PIN and their previous one stops working. Use this for a batch of accounts that all need a credentials reset — not routinely."
         confirmLabel="Send"
-        destructive
         onConfirm={() => {
           if (!bulkConfirmIds) return;
           return handleBulkResend(bulkConfirmIds).then(() => setBulkConfirmIds(null));

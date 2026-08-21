@@ -359,7 +359,12 @@ export default function AdminPackages() {
         header: "",
         render: (s) =>
           s.status === "Active" ? (
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setConfirmCancel(s); }}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); setConfirmCancel(s); }}
+            >
               <XCircle className="h-3.5 w-3.5" />
               Cancel
             </Button>
@@ -669,6 +674,7 @@ export default function AdminPackages() {
             : ""
         }
         confirmLabel="Cancel subscription"
+        destructive
         onConfirm={() => {
           if (confirmCancel) void handleCancel(confirmCancel);
           setConfirmCancel(null);

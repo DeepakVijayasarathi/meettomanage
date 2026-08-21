@@ -262,7 +262,7 @@ export default function AdminSessions() {
       },
       {
         key: "actions",
-        header: "Actions",
+        header: "",
         render: (row) =>
           row.status === "completed" ? (
             <Button

@@ -539,7 +539,6 @@ export default function AdminBilling() {
         title="Record this payment?"
         description={`${formatCurrency(Number(payAmount) || 0)} via ${payMethod} will be applied to ${detail?.id ?? "this invoice"} immediately, updating the balance and the parent's dashboard. This can't be undone from here.`}
         confirmLabel="Record payment"
-        destructive
         onConfirm={submitPayment}
       />
     </div>

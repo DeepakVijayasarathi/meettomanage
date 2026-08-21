@@ -3,6 +3,7 @@ import { Banknote, Check, Lock, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -24,6 +25,9 @@ export function CashConfirmationsPanel() {
   const [amountDrafts, setAmountDrafts] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Tier 2 (plain, non-destructive confirm): this creates a financial record but is
+  // correctable if the amount is wrong, unlike an actual refund disbursement.
+  const [confirmTarget, setConfirmTarget] = useState<ApiCashIntent | null>(null);
   const { hasPermission } = useSession();
   const canApprove = hasPermission("BillingFinance", "Approve");
 
@@ -115,7 +119,7 @@ export function CashConfirmationsPanel() {
                 <Button
                   size="sm"
                   disabled={busyId === intent.transactionId}
-                  onClick={() => handleConfirm(intent)}
+                  onClick={() => setConfirmTarget(intent)}
                 >
                   <Check className="h-3.5 w-3.5" />
                   Confirm collected
@@ -144,6 +148,23 @@ export function CashConfirmationsPanel() {
           Amount defaults to what the parent declared ({intents[0] ? formatCurrency(intents[0].amount) : "—"}); type a different figure only if the cash collected differs.
         </p>
       )}
+
+      <ConfirmDialog
+        open={!!confirmTarget}
+        onOpenChange={(open) => !open && setConfirmTarget(null)}
+        title="Confirm this cash payment was collected?"
+        description={
+          confirmTarget
+            ? `Marks ${formatCurrency(
+                amountDrafts[confirmTarget.transactionId] ? Number(amountDrafts[confirmTarget.transactionId]) : confirmTarget.amount
+              )} as received from ${confirmTarget.parentName} against invoice ${confirmTarget.invoiceNumber}.`
+            : undefined
+        }
+        confirmLabel="Confirm collected"
+        onConfirm={() => {
+          if (confirmTarget) return handleConfirm(confirmTarget).then(() => setConfirmTarget(null));
+        }}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Loader2, Mail, Send, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,9 @@ export default function AdminBulkEmail() {
   const [sentCount, setSentCount] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  // The largest blast radius on the portal ("All Active Students") deserves a
+  // confirm step before it fires, even though it's not a Tier-1 financial action.
+  const [sendConfirmOpen, setSendConfirmOpen] = useState(false);
 
   const usingApi = apiEnabled();
   const activeStudents = useMemo(() => CHILDREN.filter((c) => c.enrollmentComplete), []);
@@ -178,7 +182,7 @@ export default function AdminBulkEmail() {
                   </>
                 )}
               </p>
-              <Button disabled={!subject.trim() || !body.trim() || sending} onClick={handleSend}>
+              <Button disabled={!subject.trim() || !body.trim() || sending} onClick={() => setSendConfirmOpen(true)}>
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {sending ? "Sending…" : "Send"}
               </Button>
@@ -209,6 +213,22 @@ export default function AdminBulkEmail() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={sendConfirmOpen}
+        onOpenChange={setSendConfirmOpen}
+        title="Send this email?"
+        description={
+          recipientCount !== null
+            ? `"${subject || "Untitled message"}" will be delivered to ${recipientCount} recipient${recipientCount === 1 ? "" : "s"} — ${scope === "all" ? "every active student across all batches" : "everyone in the selected batch"}. This can't be recalled once sent.`
+            : undefined
+        }
+        confirmLabel="Send"
+        onConfirm={() => {
+          setSendConfirmOpen(false);
+          return handleSend();
+        }}
+      />
     </div>
   );
 }

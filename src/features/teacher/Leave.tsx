@@ -212,7 +212,9 @@ export default function TeacherLeave() {
           ) : (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label>Upcoming Session</Label>
+                <Label>
+                  Upcoming Session <span className="text-destructive">*</span>
+                </Label>
                 <Select value={sessionId} onValueChange={setSessionId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a session" />
@@ -228,7 +230,9 @@ export default function TeacherLeave() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="reason">Reason</Label>
+                <Label htmlFor="reason">
+                  Reason <span className="text-destructive">*</span>
+                </Label>
                 <Textarea
                   id="reason"
                   placeholder="Briefly describe your reason for leave"

@@ -457,7 +457,10 @@ export default function AdminBatches() {
                 </div>
                 {apiEnabled() ? (
                   <div className="grid gap-1.5">
-                    <Label>Assign students</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Assign students</Label>
+                      <span className="text-[11px] text-muted-foreground">Saved immediately</span>
+                    </div>
                     <Select value="" onValueChange={handleAssignStudent} disabled={assigning || roster.length >= detail.capacity}>
                       <SelectTrigger>
                         <SelectValue
@@ -531,9 +534,12 @@ export default function AdminBatches() {
 
               {/* Session plan: bulk-creates every course session on the chosen weekdays (skips holidays) */}
               <div className="rounded-xl border border-border bg-muted/30 p-4">
-                <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                  <CalendarPlus className="h-4 w-4" /> Generate class schedule
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <CalendarPlus className="h-4 w-4" /> Generate class schedule
+                  </p>
+                  <span className="text-[11px] text-muted-foreground">Saved immediately</span>
+                </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Creates all of this batch's course sessions from a start date on the selected weekdays (holidays skipped).
                 </p>
@@ -581,11 +587,16 @@ export default function AdminBatches() {
               </div>
 
               {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDetail(null)}>
-                  Close
-                </Button>
-                <Button onClick={saveDetail}>{saved ? "Saved!" : "Save Changes"}</Button>
+              <DialogFooter className="items-center gap-3 sm:justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Only applies the teacher assignment above — student roster and schedule changes are already saved.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => setDetail(null)}>
+                    Close
+                  </Button>
+                  <Button onClick={saveDetail}>{saved ? "Saved!" : "Save Changes"}</Button>
+                </div>
               </DialogFooter>
             </>
           )}

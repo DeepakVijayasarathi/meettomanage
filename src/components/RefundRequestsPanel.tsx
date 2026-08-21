@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Check, Lock, Undo2, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -21,6 +22,10 @@ export function RefundRequestsPanel() {
   const { data: refunds, reload } = useApiData<ApiRefund[]>(() => listRefunds(), []);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Approving irreversibly disburses real money via the gateway (Tier 1: destructive
+  // ConfirmDialog required) — rejecting just closes the request, no money moves, so it
+  // fires directly like it always has.
+  const [approveTarget, setApproveTarget] = useState<ApiRefund | null>(null);
   const { hasPermission } = useSession();
   const canApprove = hasPermission("BillingFinance", "Approve");
 
@@ -81,7 +86,7 @@ export function RefundRequestsPanel() {
             </div>
             {canApprove ? (
               <div className="flex items-center gap-2">
-                <Button size="sm" disabled={busyId === refund.id} onClick={() => handleReview(refund, true)}>
+                <Button size="sm" disabled={busyId === refund.id} onClick={() => setApproveTarget(refund)}>
                   <Check className="h-3.5 w-3.5" />
                   Approve &amp; refund
                 </Button>
@@ -104,6 +109,22 @@ export function RefundRequestsPanel() {
           </CardContent>
         </Card>
       ))}
+
+      <ConfirmDialog
+        open={!!approveTarget}
+        onOpenChange={(open) => !open && setApproveTarget(null)}
+        title="Approve this refund?"
+        description={
+          approveTarget
+            ? `${formatCurrency(approveTarget.amount)} will be disbursed through the original payment gateway right away. This can't be undone from here.`
+            : undefined
+        }
+        confirmLabel="Approve & refund"
+        destructive
+        onConfirm={() => {
+          if (approveTarget) return handleReview(approveTarget, true).then(() => setApproveTarget(null));
+        }}
+      />
     </div>
   );
 }

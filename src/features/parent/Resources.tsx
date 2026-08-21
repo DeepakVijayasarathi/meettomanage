@@ -233,8 +233,9 @@ export default function ParentResources() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                This is a view-only preview in the demo — {preview.type === "recording" ? "recordings" : "reading books"} aren't
-                downloadable, per policy.
+                {usingApi
+                  ? `This is a view-only preview — ${preview.type === "recording" ? "recordings" : "reading books"} aren't available for download here.`
+                  : `This is a view-only preview in the demo — ${preview.type === "recording" ? "recordings" : "reading books"} aren't downloadable, per policy.`}
               </p>
             </>
           )}
