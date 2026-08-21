@@ -102,11 +102,19 @@ export default function GamificationOverlay({ celebrating, onCelebrationEnd, lea
           <div className="absolute inset-0 flex items-center justify-center">
             <div
               className={cn(
-                "rounded-2xl border border-white/10 bg-brand-navy/95 px-7 py-5 text-center backdrop-blur",
+                "flex flex-col items-center gap-3 rounded-3xl border border-white/10 bg-brand-navy/95 px-8 py-6 text-center shadow-2xl shadow-black/40 backdrop-blur",
                 !reducedMotion && "animate-pop-in"
               )}
             >
-              <p className="font-display text-xl font-bold text-white sm:text-2xl">{message ?? "Great job! 🎉"}</p>
+              <span
+                className={cn(
+                  "flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-amber to-brand-violet text-3xl leading-none",
+                  !reducedMotion && "animate-bounce"
+                )}
+              >
+                👏
+              </span>
+              <p className="font-display text-xl font-bold text-white sm:text-2xl">{message ?? "Great job, everyone!"}</p>
             </div>
           </div>
         </div>

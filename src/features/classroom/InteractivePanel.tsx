@@ -34,6 +34,7 @@ interface InteractivePanelProps {
 export default function InteractivePanel({ sessionId, mode, displayName, onCelebrate, onLeaderboard, onReady }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
+  const [hubDetail, setHubDetail] = useState<string | null>(null);
   const [roster, setRoster] = useState<HubParticipant[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [quizActive, setQuizActive] = useState(false);
@@ -90,8 +91,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         },
         celebrate: (message) => onCelebrate(message ?? undefined),
         boardAccess: (allowed) => setBoardAllowed(allowed),
-      }, (state) => {
-        if (!disposed) setHubState(state);
+      }, (state, detail) => {
+        if (!disposed) {
+          setHubState(state);
+          setHubDetail(detail ?? null);
+        }
       })
       .then((ok) => {
         if (disposed) return;
@@ -209,7 +213,9 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
               <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/60">
                 <CloudOff className="h-3 w-3" /> Working locally
               </span>
-              <p className="text-[10px] text-white/40">Live sync is unavailable — the class call is unaffected.</p>
+              <p className="text-[10px] text-white/40">
+                {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
+              </p>
             </div>
           )}
         </div>

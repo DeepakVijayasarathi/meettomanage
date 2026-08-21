@@ -8,6 +8,7 @@ import { useSession } from "@/state/session";
 import { postEngagement } from "@/api/engagement";
 import { getClassroomSettings, getJitsiJoin, registerRecording } from "@/api/sessions";
 import { cn } from "@/lib/utils";
+import { primeAudioUnlock } from "@/lib/sounds";
 import InteractivePanel from "./InteractivePanel";
 import GamificationOverlay from "./GamificationOverlay";
 import type { LeaderboardEntry } from "./classroomData";
@@ -96,6 +97,11 @@ export default function JitsiLive({
   // and stays true if the request fails — so a slow/offline check never silently disables
   // recording for a teacher who already relies on it.
   const autoRecordRef = useRef(true);
+
+  // So the celebration clap sound is ready on whichever gesture a student makes
+  // first — joining, clicking a tab — instead of waiting for one that never comes
+  // before the class's first celebration and landing silently for that student.
+  useEffect(() => primeAudioUnlock(), []);
 
   useEffect(() => {
     let cancelled = false;

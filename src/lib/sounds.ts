@@ -91,3 +91,27 @@ export function playCelebration() {
   playDhol();
   setTimeout(playClapping, 200);
 }
+
+let unlocked = false;
+
+/**
+ * Browsers only let an AudioContext actually produce sound after a user gesture
+ * on the page — `resume()` on its own is not enough without one. A celebration is
+ * broadcast over the hub and can land on a student who has only ever watched, never
+ * clicked anything, so without this their very first celebration sound is silently
+ * dropped (the AudioContext stays "suspended" forever, and playCelebration()'s
+ * try/catch never reports it). Call this once on mount to unlock audio on whatever
+ * gesture the student makes first — joining the call, clicking a tab, anything —
+ * well before the first celebration has a chance to fire.
+ */
+export function primeAudioUnlock(): () => void {
+  if (unlocked) return () => undefined;
+  const unlock = () => {
+    if (unlocked) return;
+    const ctx = getContext();
+    if (ctx && ctx.state !== "suspended") unlocked = true;
+  };
+  const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "touchstart"];
+  events.forEach((event) => window.addEventListener(event, unlock, { passive: true }));
+  return () => events.forEach((event) => window.removeEventListener(event, unlock));
+}

@@ -40,6 +40,23 @@ export interface ClassroomHubEvents {
 export type ClassroomHubState = "connected" | "reconnecting" | "disconnected";
 
 /**
+ * Turns a raw SignalR/negotiate error into a short, teacher-facing reason instead
+ * of the generic "Working locally" badge that used to hide "you don't have access
+ * to this session" behind the same wording as an actual network outage. HubException
+ * messages thrown from JoinSession (see ClassroomHub.cs) come through verbatim, so
+ * those are shown as-is; everything else is a transport/auth failure, bucketed by
+ * what SignalR's own error text says.
+ */
+function describeHubError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  if (message.includes("You do not have access to this session")) return "You don't have access to this session.";
+  if (message.includes("Invalid session id")) return "This session's id looks wrong — live sync can't attach to it.";
+  if (message.includes("Unauthorized") || message.includes("Status code '401'")) return "Your session token was rejected — try signing in again.";
+  if (message.includes("Failed to fetch") || message.includes("Failed to complete negotiation")) return "Couldn't reach the live-sync server.";
+  return message;
+}
+
+/**
  * Live-classroom hub client: joins the session group and exposes typed send/on
  * wrappers over the SignalR connection. All sends are safe no-ops while
  * disconnected so a hub outage never breaks the class (Jitsi carries the call).
@@ -56,7 +73,7 @@ export class ClassroomHubClient {
   async connect(
     displayName: string,
     handlers: Partial<ClassroomHubEvents>,
-    onStateChange?: (state: ClassroomHubState) => void
+    onStateChange?: (state: ClassroomHubState, detail?: string) => void
   ): Promise<boolean> {
     if (!apiEnabled()) return false;
     const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
@@ -88,7 +105,7 @@ export class ClassroomHubClient {
     });
     connection.onclose((err) => {
       if (err) console.error("Classroom hub connection closed:", err);
-      onStateChange?.("disconnected");
+      onStateChange?.("disconnected", err ? describeHubError(err) : undefined);
     });
 
     // Re-join the session group after an automatic reconnect (new connection id).
@@ -129,7 +146,7 @@ export class ClassroomHubClient {
       // down" apart is this exact error — silence made every one of those look
       // identical from the UI's "disconnected" state alone.
       console.error("Classroom hub connection failed:", err);
-      onStateChange?.("disconnected");
+      onStateChange?.("disconnected", describeHubError(err));
       return false;
     }
   }

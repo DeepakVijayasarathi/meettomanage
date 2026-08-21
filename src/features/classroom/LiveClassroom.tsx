@@ -17,6 +17,7 @@ import Toolbar from "./Toolbar";
 import QuizOverlay from "./QuizOverlay";
 import GamificationOverlay from "./GamificationOverlay";
 import { postEngagement } from "@/api/engagement";
+import { primeAudioUnlock } from "@/lib/sounds";
 
 type StageView = "video" | "whiteboard";
 type RightTab = "participants" | "chat" | "quiz";
@@ -114,6 +115,8 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
     const timer = setInterval(() => setElapsed((s) => s + 1), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => primeAudioUnlock(), []);
 
   const selfId = useMemo(() => {
     const role = mode === "teacher" ? "teacher" : "student";
