@@ -59,7 +59,7 @@ export default function AdminBilling() {
   // screen filters, sorts and totals client-side, so it takes one full page and lets
   // DataTable paginate that in the browser; `totalCount` is what tells us when the page
   // no longer covers the whole table, so the KPI figures below can say so.
-  const { data: invoiceData, error: invoicesError, reload } = useApiData(
+  const { data: invoiceData, loading: invoicesLoading, error: invoicesError, reload } = useApiData(
     () => listInvoiceRows(toFrontendInvoice),
     { rows: INVOICES, totalCount: INVOICES.length },
     { rows: [], totalCount: 0 }
@@ -294,9 +294,9 @@ export default function AdminBilling() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Total Revenue Collected" value={formatCurrency(totals.totalRevenue)} icon={IndianRupee} tone="success" />
-        <KpiCard label="Pending Invoices" value={`${formatNumber(totals.pendingCount)} · ${formatCurrency(totals.pendingAmount)}`} icon={TimerReset} tone="warning" />
-        <KpiCard label="Overdue Invoices" value={`${formatNumber(totals.overdueCount)} · ${formatCurrency(totals.overdueAmount)}`} icon={AlertTriangle} tone="destructive" />
+        <KpiCard label="Total Revenue Collected" value={formatCurrency(totals.totalRevenue)} icon={IndianRupee} tone="success" loading={invoicesLoading} />
+        <KpiCard label="Pending Invoices" value={`${formatNumber(totals.pendingCount)} · ${formatCurrency(totals.pendingAmount)}`} icon={TimerReset} tone="warning" loading={invoicesLoading} />
+        <KpiCard label="Overdue Invoices" value={`${formatNumber(totals.overdueCount)} · ${formatCurrency(totals.overdueAmount)}`} icon={AlertTriangle} tone="destructive" loading={invoicesLoading} />
       </div>
 
       {truncated && (

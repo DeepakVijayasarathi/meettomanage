@@ -59,7 +59,7 @@ export default function TeacherAttendance() {
   // still no aggregate endpoint, but the per-session one (already proven correct by the
   // summary dialog below) is fetched once per completed session and aggregated client-side -
   // bounded by how many completed sessions this teacher actually has, not the whole table.
-  const { data: apiData } = useApiData<{ sessions: ClassSession[]; attendanceBySession: Record<string, ApiSessionAttendance[]> }>(
+  const { data: apiData, loading: apiLoading, error: apiError, reload } = useApiData<{ sessions: ClassSession[]; attendanceBySession: Record<string, ApiSessionAttendance[]> }>(
     async () => {
       const sessions = (await listMySessions().then((items) => items.map(toFrontendSession))).filter(
         (s) => s.status === "completed"
@@ -110,8 +110,8 @@ export default function TeacherAttendance() {
       accessor: (row) => row.title,
       sortable: true,
       render: (row) => (
-        <div>
-          <p className="font-semibold text-foreground">{row.title}</p>
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-foreground">{row.title}</p>
           <p className="text-xs text-muted-foreground">{sessionSubtitle(row)}</p>
         </div>
       ),
@@ -213,11 +213,20 @@ export default function TeacherAttendance() {
         eyebrow="Teaching"
       />
 
+      {apiEnabled() && apiError && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          Could not load attendance records ({apiError}) — the list below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </p>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Sessions Delivered" value={String(completed.length)} icon={ClipboardList} tone="primary" />
-        <KpiCard label="Average Attendance" value={avgAttendance ? `${avgAttendance}%` : "—"} icon={CheckCircle2} tone="success" />
-        <KpiCard label="Students Taught" value={String(uniqueStudents)} icon={Users} tone="warning" />
-        <KpiCard label="Recordings Available" value={`${recordingsAvailable}/${completed.length}`} icon={Video} tone="neutral" />
+        <KpiCard label="Sessions Delivered" value={String(completed.length)} icon={ClipboardList} tone="primary" loading={apiLoading} />
+        <KpiCard label="Average Attendance" value={avgAttendance ? `${avgAttendance}%` : "—"} icon={CheckCircle2} tone="success" loading={apiLoading} />
+        <KpiCard label="Students Taught" value={String(uniqueStudents)} icon={Users} tone="warning" loading={apiLoading} />
+        <KpiCard label="Recordings Available" value={`${recordingsAvailable}/${completed.length}`} icon={Video} tone="neutral" loading={apiLoading} />
       </div>
 
       <div className="mt-6">

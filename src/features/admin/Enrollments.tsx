@@ -260,12 +260,12 @@ export default function AdminEnrollments() {
         sortable: true,
         accessor: (row) => row.name,
         render: (row) => (
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <Avatar className="h-9 w-9">
               <AvatarFallback style={{ backgroundColor: `${row.avatarColor}22`, color: row.avatarColor }}>{getInitials(row.name)}</AvatarFallback>
             </Avatar>
-            <div>
-              <p className="font-semibold text-foreground">{row.name}</p>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-foreground">{row.name}</p>
               <p className="text-xs text-muted-foreground">
                 {gradeLabel(row.grade)} · Age {row.age}
               </p>

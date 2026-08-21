@@ -206,15 +206,15 @@ export default function AdminSessions() {
         sortable: true,
         accessor: (row) => row.title,
         render: (row) => (
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <span
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
               style={{ backgroundColor: `${CHART_PALETTE[row.title.length % CHART_PALETTE.length]}1A`, color: CHART_PALETTE[row.title.length % CHART_PALETTE.length] }}
             >
               <CalendarClock className="h-[18px] w-[18px]" />
             </span>
-            <div>
-              <p className="font-semibold text-foreground">{row.title}</p>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-foreground">{row.title}</p>
               <p className="text-xs capitalize text-muted-foreground">{row.type} class</p>
             </div>
           </div>

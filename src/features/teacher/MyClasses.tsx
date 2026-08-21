@@ -59,7 +59,7 @@ function sessionSubtitle(session: ClassSession) {
 
 export default function TeacherMyClasses() {
   const navigate = useNavigate();
-  const { data: mySessions } = useApiData(
+  const { data: mySessions, error: sessionsError, reload } = useApiData(
     () => listMySessions().then((sessions) => sessions.map(toFrontendSession)),
     getSessionsForTeacher(TEACHER_ID)
   );
@@ -110,8 +110,8 @@ export default function TeacherMyClasses() {
       accessor: (row) => row.title,
       sortable: true,
       render: (row) => (
-        <div>
-          <p className="font-semibold text-foreground">{row.title}</p>
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-foreground">{row.title}</p>
           <p className="text-xs text-muted-foreground">
             {row.type === "1:1" ? "1:1" : row.type === "demo" ? "Demo" : "Group"} · {row.duration} min
           </p>
@@ -192,6 +192,15 @@ export default function TeacherMyClasses() {
         eyebrow="Teaching"
         actions={<CalendarSyncButton />}
       />
+
+      {apiEnabled() && sessionsError && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          Could not load your classes ({sessionsError}) — the list below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </p>
+      )}
 
       <Tabs defaultValue="list">
         <TabsList>

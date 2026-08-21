@@ -79,7 +79,7 @@ export default function AdmissionPayments() {
   // One page of the (forever-growing) invoice table; the status filter, totals and
   // DataTable's paging all run client-side over it. totalCount is the whole matching
   // set server-side, which is what the "Invoices" KPI should actually count.
-  const { data: invoiceData, error: invoicesError, reload } = useApiData(
+  const { data: invoiceData, loading: invoicesLoading, error: invoicesError, reload } = useApiData(
     () => listInvoiceRows((invoice) => fromInvoice(toFrontendInvoice(invoice))),
     { rows: DEMO_ROWS, totalCount: DEMO_ROWS.length },
     { rows: [], totalCount: 0 }
@@ -241,10 +241,10 @@ export default function AdmissionPayments() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Invoices" value={String(totals.total)} icon={Link2} tone="primary" />
-        <KpiCard label="Collected" value={formatCurrency(totals.paid)} icon={IndianRupee} tone="success" />
-        <KpiCard label="Outstanding" value={formatCurrency(totals.outstanding)} icon={Wallet} tone="destructive" />
-        <KpiCard label="Partially Paid" value={String(totals.partial)} icon={ListChecks} tone="warning" />
+        <KpiCard label="Invoices" value={String(totals.total)} icon={Link2} tone="primary" loading={invoicesLoading} />
+        <KpiCard label="Collected" value={formatCurrency(totals.paid)} icon={IndianRupee} tone="success" loading={invoicesLoading} />
+        <KpiCard label="Outstanding" value={formatCurrency(totals.outstanding)} icon={Wallet} tone="destructive" loading={invoicesLoading} />
+        <KpiCard label="Partially Paid" value={String(totals.partial)} icon={ListChecks} tone="warning" loading={invoicesLoading} />
       </div>
 
       {truncated && (

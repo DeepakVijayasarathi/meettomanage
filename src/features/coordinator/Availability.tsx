@@ -77,12 +77,14 @@ export default function CoordinatorAvailability() {
   // Real clock in API mode; the mock universe stays pinned for reproducible demos.
   const [now] = useState(() => (usingApi ? new Date() : NOW));
   const today = format(now, "yyyy-MM-dd");
-  const { data: apiLeaves, reload } = useApiData<LeaveRequest[]>(
+  const { data: apiLeaves, loading: leavesLoading, error: leavesError, reload } = useApiData<LeaveRequest[]>(
     () => listLeave().then((items) => items.map(toFrontendLeave)),
     LEAVE_REQUESTS
   );
-  const { data: apiTeachers } = useApiData(() => listTeacherOptions(), []);
-  const { data: apiHolidays } = useApiData(() => listHolidays(), []);
+  const { data: apiTeachers, loading: teachersLoading, error: teachersError } = useApiData(() => listTeacherOptions(), []);
+  const { data: apiHolidays, loading: holidaysLoading, error: holidaysError } = useApiData(() => listHolidays(), []);
+  const kpiLoading = leavesLoading || teachersLoading || holidaysLoading;
+  const loadError = leavesError || teachersError || holidaysError;
   const [leaves, setLeaves] = useState<LeaveRequest[]>(usingApi ? [] : LEAVE_REQUESTS);
   useEffect(() => setLeaves(apiLeaves), [apiLeaves]);
   const [approveTarget, setApproveTarget] = useState<LeaveRequest | null>(null);
@@ -153,11 +155,20 @@ export default function CoordinatorAvailability() {
         description="Weekly availability at a glance, plus the leave approval queue that keeps the academic calendar accurate."
       />
 
+      {usingApi && loadError && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          Could not load availability data ({loadError}) — the roster and leave queue below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </p>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Active Teachers Today" value={String(activeTeachersToday)} icon={UserCheck} tone="primary" />
-        <KpiCard label="Pending Leave Requests" value={String(pendingCount)} icon={Clock} tone="warning" />
-        <KpiCard label="Approved Leave (Upcoming)" value={String(approvedUpcomingCount)} icon={CheckCircle2} tone="success" />
-        <KpiCard label="Holidays This Month" value={String(holidaysThisMonth)} icon={PartyPopper} tone="neutral" />
+        <KpiCard label="Active Teachers Today" value={String(activeTeachersToday)} icon={UserCheck} tone="primary" loading={kpiLoading} />
+        <KpiCard label="Pending Leave Requests" value={String(pendingCount)} icon={Clock} tone="warning" loading={kpiLoading} />
+        <KpiCard label="Approved Leave (Upcoming)" value={String(approvedUpcomingCount)} icon={CheckCircle2} tone="success" loading={kpiLoading} />
+        <KpiCard label="Holidays This Month" value={String(holidaysThisMonth)} icon={PartyPopper} tone="neutral" loading={kpiLoading} />
       </div>
 
       <Card className="mt-6">
@@ -196,15 +207,15 @@ export default function CoordinatorAvailability() {
                 {activeTeachers.map((teacher) => (
                   <TableRow key={teacher.id} className="hover:bg-muted/20">
                     <TableCell className="sticky left-0 bg-card font-medium">
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex min-w-0 items-center gap-2.5">
                         <span
                           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
                           style={{ backgroundColor: teacher.avatarColor }}
                         >
                           {getInitials(teacher.name)}
                         </span>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{teacher.name}</p>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground">{teacher.name}</p>
                           <p className="text-xs text-muted-foreground">{teacher.department}</p>
                         </div>
                       </div>
@@ -230,15 +241,15 @@ export default function CoordinatorAvailability() {
           <div className="flex flex-col gap-3 md:hidden">
             {activeTeachers.map((teacher) => (
               <div key={teacher.id} className="rounded-xl border border-border p-3">
-                <div className="mb-2.5 flex items-center gap-2.5">
+                <div className="mb-2.5 flex min-w-0 items-center gap-2.5">
                   <span
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
                     style={{ backgroundColor: teacher.avatarColor }}
                   >
                     {getInitials(teacher.name)}
                   </span>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{teacher.name}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{teacher.name}</p>
                     <p className="text-xs text-muted-foreground">{teacher.department}</p>
                   </div>
                 </div>

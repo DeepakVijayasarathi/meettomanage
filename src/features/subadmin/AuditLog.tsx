@@ -114,7 +114,7 @@ export default function SubAdminAuditLog() {
   // every action anyone takes and never shrinks, so the old "fetch 200 and paginate in
   // the browser" shape both capped how far back the screen could reach (entry 201 was
   // simply unreachable) and would have kept growing the payload if that cap were lifted.
-  const { data: apiPage, error: loadError, reload } = useApiData(
+  const { data: apiPage, loading: loadLoading, error: loadError, reload } = useApiData(
     () => listAuditLogs({ page, pageSize: PAGE_SIZE }).then((p) => ({ rows: p.items.map(toEntry), totalCount: p.totalCount })),
     { rows: [] as AuditEntry[], totalCount: 0 },
     { rows: [] as AuditEntry[], totalCount: 0 }
@@ -182,13 +182,14 @@ export default function SubAdminAuditLog() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Total Actions Logged" value={String(totalCount)} icon={History} tone="primary" />
-        <KpiCard label={`Modules Touched${pageScope}`} value={String(modulesTouched)} icon={History} tone="success" />
+        <KpiCard label="Total Actions Logged" value={String(totalCount)} icon={History} tone="primary" loading={loadLoading} />
+        <KpiCard label={`Modules Touched${pageScope}`} value={String(modulesTouched)} icon={History} tone="success" loading={loadLoading} />
         <KpiCard
           label={`Most Recent Action${pageScope}`}
           value={mostRecent ? formatTimestamp(mostRecent.timestamp) : "—"}
           icon={History}
           tone="neutral"
+          loading={loadLoading}
         />
       </div>
 

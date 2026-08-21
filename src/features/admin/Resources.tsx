@@ -123,12 +123,12 @@ export default function AdminResources() {
           const meta = TYPE_META[row.type];
           const Icon = meta.icon;
           return (
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${meta.color}1A`, color: meta.color }}>
                 <Icon className="h-[18px] w-[18px]" />
               </span>
-              <div>
-                <p className="font-semibold text-foreground">{row.title}</p>
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-foreground">{row.title}</p>
                 <p className="text-xs text-muted-foreground">{row.sizeLabel ?? "Streamed content"}</p>
               </div>
             </div>

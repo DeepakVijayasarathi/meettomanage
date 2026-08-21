@@ -93,8 +93,8 @@ const EMPTY_PLAN_FORM: PlanForm = {
 export default function AdminPackages() {
   const live = apiEnabled();
 
-  const { data: plans, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
-  const { data: subscriptions, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
+  const { data: plans, loading: plansLoading, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
+  const { data: subscriptions, loading: subscriptionsLoading, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
     () => listSubscriptions(),
     DEMO_SUBSCRIPTIONS
   );
@@ -261,8 +261,8 @@ export default function AdminPackages() {
         sortable: true,
         accessor: (p) => p.name,
         render: (p) => (
-          <div>
-            <p className="font-semibold text-foreground">{p.name}</p>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-foreground">{p.name}</p>
             <p className="text-xs text-muted-foreground">
               {p.courseId ? courseNameById.get(p.courseId) ?? "Linked course" : "No course linked"}
             </p>
@@ -384,8 +384,8 @@ export default function AdminPackages() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Active Plans" value={String(activePlans.length)} icon={CreditCard} tone="primary" />
-        <KpiCard label="Active Subscriptions" value={String(activeSubscriptions.length)} icon={PlayCircle} tone="success" />
+        <KpiCard label="Active Plans" value={String(activePlans.length)} icon={CreditCard} tone="primary" loading={plansLoading} />
+        <KpiCard label="Active Subscriptions" value={String(activeSubscriptions.length)} icon={PlayCircle} tone="success" loading={subscriptionsLoading} />
         <KpiCard
           label="Next Auto-Invoice"
           value={
@@ -397,6 +397,7 @@ export default function AdminPackages() {
           }
           icon={CalendarClock}
           tone="neutral"
+          loading={subscriptionsLoading}
         />
       </div>
 

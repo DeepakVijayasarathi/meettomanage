@@ -23,7 +23,7 @@ const PARENT_ID = "p-1";
 export default function ParentBilling() {
   const { children } = useSession();
   const mockChildren = getChildrenByParent(PARENT_ID);
-  const { data: invoices, error: invoicesError, reload: reloadInvoices } = useApiData(
+  const { data: invoices, loading: invoicesLoading, error: invoicesError, reload: reloadInvoices } = useApiData(
     () => getParentInvoices().then((items) => items.map(toFrontendInvoice)),
     getInvoicesForParent(PARENT_ID)
   );
@@ -173,9 +173,9 @@ export default function ParentBilling() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <KpiCard label="Outstanding" value={formatCurrency(totalOutstanding)} icon={Wallet} tone={totalOutstanding > 0 ? "destructive" : "success"} />
-        <KpiCard label="Paid this year" value={formatCurrency(totalPaid)} icon={CheckCircle2} tone="success" />
-        <KpiCard label="Next due date" value={nextDue ? formatDate(nextDue.dueOn, "short") : "—"} icon={ReceiptText} tone="primary" />
+        <KpiCard label="Outstanding" value={formatCurrency(totalOutstanding)} icon={Wallet} tone={totalOutstanding > 0 ? "destructive" : "success"} loading={invoicesLoading} />
+        <KpiCard label="Paid this year" value={formatCurrency(totalPaid)} icon={CheckCircle2} tone="success" loading={invoicesLoading} />
+        <KpiCard label="Next due date" value={nextDue ? formatDate(nextDue.dueOn, "short") : "—"} icon={ReceiptText} tone="primary" loading={invoicesLoading} />
       </div>
 
       <Card className="mt-6">

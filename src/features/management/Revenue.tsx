@@ -40,7 +40,7 @@ const CATEGORY_COLOR: Record<Course["category"], string> = {
 };
 
 export default function ManagementRevenue() {
-  const { data: trend } = useApiData(() => getDashboardSummary().then((s) => s.revenueTrend), DEMO_TREND);
+  const { data: trend, error: trendError, reload } = useApiData(() => getDashboardSummary().then((s) => s.revenueTrend), DEMO_TREND);
   const { data: deptRaw } = useApiData(() => getDashboardSummary().then((s) => s.revenueByDepartment), DEMO_DEPT);
   const departmentRevenue = deptRaw.map((d, i) => ({
     department: d.name,
@@ -48,7 +48,7 @@ export default function ManagementRevenue() {
     color: CHART_PALETTE[(i + 3) % CHART_PALETTE.length],
   }));
 
-  const { data: courses } = useApiData(
+  const { data: courses, error: coursesError } = useApiData(
     () => listCourses().then((list) => list.map(toFrontendCourse)),
     COURSES
   );
@@ -73,8 +73,8 @@ export default function ManagementRevenue() {
       accessor: (c) => c.name,
       sortable: true,
       render: (c) => (
-        <div>
-          <p className="font-semibold text-foreground">{c.name}</p>
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-foreground">{c.name}</p>
           <p className="text-xs text-muted-foreground">
             {c.type === "1:1" ? "1:1" : c.type === "demo" ? "Demo" : "Group"} · {c.duration} min
           </p>
@@ -136,6 +136,15 @@ export default function ManagementRevenue() {
         title="Revenue & Courses"
         description="Where revenue comes from — course by course and department by department. Read-only, for strategic review; day-to-day course edits live in the Admin portal."
       />
+
+      {apiEnabled() && (trendError || coursesError) && (
+        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          Could not load revenue data ({trendError ?? coursesError}) — the charts and table below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <ChartCard title="Revenue Trend" description="Monthly revenue, last 6 months" className="lg:col-span-2" height={300}>

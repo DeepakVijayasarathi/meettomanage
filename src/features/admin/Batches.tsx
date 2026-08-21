@@ -94,12 +94,12 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
   return (
     <Card className="flex flex-col p-5 transition-shadow hover:shadow-pop">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${color}1A`, color }}>
             <Layers className="h-5 w-5" />
           </span>
-          <div>
-            <p className="font-semibold text-foreground">{batch.name}</p>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-foreground">{batch.name}</p>
             <p className="text-xs text-muted-foreground">{courseName ?? "—"}</p>
           </div>
         </div>
