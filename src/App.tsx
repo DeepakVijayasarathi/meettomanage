@@ -17,6 +17,7 @@ const AdminDashboard = lazy(() => import("@/features/admin/Dashboard"));
 const AdminUsers = lazy(() => import("@/features/admin/Users"));
 const AdminPermissions = lazy(() => import("@/features/admin/Permissions"));
 const AdminCourses = lazy(() => import("@/features/admin/Courses"));
+const AdminDepartments = lazy(() => import("@/features/admin/Departments"));
 const AdminBatches = lazy(() => import("@/features/admin/Batches"));
 const AdminAcademicCalendar = lazy(() => import("@/features/admin/AcademicCalendar"));
 const AdminSessions = lazy(() => import("@/features/admin/Sessions"));
@@ -131,6 +132,7 @@ export default function App() {
               <Route path="users" element={<AdminUsers />} />
               <Route path="permissions" element={<AdminPermissions />} />
               <Route path="courses" element={<AdminCourses />} />
+              <Route path="departments" element={<AdminDepartments />} />
               <Route path="batches" element={<AdminBatches />} />
               <Route path="calendar" element={<AdminAcademicCalendar />} />
               <Route path="sessions" element={<AdminSessions />} />

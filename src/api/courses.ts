@@ -5,7 +5,8 @@ export interface ApiCourseCategory {
   id: string;
   name: string;
   description: string | null;
-  department: "Phonics" | "Maths";
+  departmentId: string;
+  departmentName: string;
 }
 
 export interface ApiCourse {
@@ -18,7 +19,8 @@ export interface ApiCourse {
   durationMinutes: number;
   price: number;
   totalSessions: number;
-  department: "Phonics" | "Maths";
+  departmentId: string;
+  departmentName: string;
   isActive: boolean;
   activeBatches: number;
   totalEnrolled: number;
@@ -29,7 +31,7 @@ export function toFrontendCourse(course: ApiCourse): Course {
   return {
     id: course.id,
     name: course.name,
-    category: (course.categoryName || course.department) as Course["category"],
+    category: (course.categoryName || course.departmentName) as Course["category"],
     type: course.type === "Individual" ? "1:1" : "group",
     duration: course.durationMinutes as Course["duration"],
     price: course.price,
@@ -58,25 +60,27 @@ export async function listCategories(): Promise<ApiCourseCategory[]> {
   return apiFetch<ApiCourseCategory[]>("/api/courses/categories");
 }
 
-async function ensureCategory(name: string): Promise<ApiCourseCategory> {
+/** Reuses an existing category by name if one exists; otherwise creates it under the given department. */
+async function ensureCategory(name: string, departmentId: string): Promise<ApiCourseCategory> {
   const categories = await listCategories();
   const existing = categories.find((c) => c.name.toLowerCase() === name.toLowerCase());
   if (existing) return existing;
   return apiFetch<ApiCourseCategory>("/api/courses/categories", {
     method: "POST",
-    body: JSON.stringify({ name, department: name === "Maths" ? "Maths" : "Phonics" }),
+    body: JSON.stringify({ name, departmentId }),
   });
 }
 
 export async function createCourse(input: {
   name: string;
   categoryName: string;
+  departmentId: string;
   type: "1:1" | "group" | "demo";
   durationMinutes: number;
   price: number;
   totalSessions?: number;
 }): Promise<ApiCourse> {
-  const category = await ensureCategory(input.categoryName);
+  const category = await ensureCategory(input.categoryName, input.departmentId);
   return apiFetch<ApiCourse>("/api/courses", {
     method: "POST",
     body: JSON.stringify({
@@ -86,7 +90,7 @@ export async function createCourse(input: {
       durationMinutes: input.durationMinutes,
       price: input.price,
       totalSessions: input.totalSessions ?? 12,
-      department: category.department,
+      departmentId: input.departmentId,
       isActive: true,
     }),
   });

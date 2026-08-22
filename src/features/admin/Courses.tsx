@@ -22,6 +22,7 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { createCourse, listCourses, toFrontendCourse } from "@/api/courses";
+import { listDepartments, type ApiDepartment } from "@/api/departments";
 
 const CATEGORY_COLOR: Record<string, string> = {
   Phonics: CHART_PALETTE[3],
@@ -44,8 +45,10 @@ export default function AdminCourses() {
     () => listCourses().then((list) => list.map(toFrontendCourse)),
     COURSES
   );
+  const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), []);
   const [createOpen, setCreateOpen] = useState(false);
   const [category, setCategory] = useState<Course["category"]>("Phonics");
+  const [departmentId, setDepartmentId] = useState("");
   const [type, setType] = useState<Course["type"]>("group");
   const [duration, setDuration] = useState("30");
   const [name, setName] = useState("");
@@ -53,6 +56,7 @@ export default function AdminCourses() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const effectiveDepartmentId = departmentId || departments[0]?.id || "";
 
   // Opens the dialog on a blank form — reopening it used to still hold the previous
   // attempt's course name and price.
@@ -71,6 +75,10 @@ export default function AdminCourses() {
       setSaveError("Course name is required.");
       return;
     }
+    if (!effectiveDepartmentId) {
+      setSaveError("Add a department under Academics → Departments before creating a course.");
+      return;
+    }
 
     if (!apiEnabled()) {
       setNotice("Demo mode — course not persisted.");
@@ -84,6 +92,7 @@ export default function AdminCourses() {
       await createCourse({
         name: name.trim(),
         categoryName: category,
+        departmentId: effectiveDepartmentId,
         type,
         durationMinutes: Number(duration),
         price: Number(price) || 0,
@@ -245,6 +254,21 @@ export default function AdminCourses() {
                     <SelectItem value="Reading">Reading</SelectItem>
                     <SelectItem value="Writing">Writing</SelectItem>
                     <SelectItem value="Speaking">Speaking</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="course-department-select">Department</Label>
+                <Select value={effectiveDepartmentId} onValueChange={setDepartmentId}>
+                  <SelectTrigger id="course-department-select">
+                    <SelectValue placeholder="Select a department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

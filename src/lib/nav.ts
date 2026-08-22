@@ -36,6 +36,7 @@ import {
   ShoppingBag,
   Sparkles,
   Video,
+  Building2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -58,6 +59,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Academics",
     items: [
       { label: "Courses", to: "/admin/courses", icon: BookOpen },
+      { label: "Departments", to: "/admin/departments", icon: Building2 },
       { label: "Batches", to: "/admin/batches", icon: Layers },
       { label: "Academic Calendar", to: "/admin/calendar", icon: CalendarDays },
       { label: "Sessions", to: "/admin/sessions", icon: CalendarClock },
