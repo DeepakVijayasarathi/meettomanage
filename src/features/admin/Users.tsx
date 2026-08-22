@@ -576,13 +576,14 @@ export default function AdminUsers() {
       />
 
       {apiEnabled() && parentsError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not reach the API ({parentsError}) — showing demo data.
         </p>
       )}
 
       {banner && (
         <p
+          role={banner.ok ? "status" : "alert"}
           className={cn(
             "mb-4 flex items-start gap-1.5 rounded-lg px-3 py-2 text-sm font-medium",
             banner.ok ? "bg-success/10 text-success" : "bg-warning/10 text-warning-foreground"
@@ -594,7 +595,7 @@ export default function AdminUsers() {
       )}
 
       {bulkResult && (
-        <p className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
+        <p role="status" className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
           {bulkResult}
         </p>
@@ -888,9 +889,9 @@ export default function AdminUsers() {
             </div>
             {editUser?.role !== "admin" && (
               <div className="grid gap-1.5">
-                <Label>Role</Label>
+                <Label htmlFor="edit-role-select">Role</Label>
                 <Select value={editRole} onValueChange={setEditRole}>
-                  <SelectTrigger>
+                  <SelectTrigger id="edit-role-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -909,9 +910,9 @@ export default function AdminUsers() {
             )}
             {editRole === "teacher" && (
               <div className="grid gap-1.5">
-                <Label>Department</Label>
+                <Label htmlFor="edit-department-select">Department</Label>
                 <Select value={editDepartment} onValueChange={(v) => setEditDepartment(v as "Phonics" | "Maths")}>
-                  <SelectTrigger>
+                  <SelectTrigger id="edit-department-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1111,9 +1112,9 @@ export default function AdminUsers() {
               <Input id="add-phone" placeholder="+91 90000 00000" value={addPhone} onChange={(e) => setAddPhone(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
-              <Label>Role</Label>
+              <Label htmlFor="add-role-select">Role</Label>
               <Select value={addRole} onValueChange={setAddRole}>
-                <SelectTrigger>
+                <SelectTrigger id="add-role-select">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1127,9 +1128,9 @@ export default function AdminUsers() {
             </div>
             {addRole === "teacher" && (
               <div className="grid gap-1.5">
-                <Label>Department</Label>
+                <Label htmlFor="add-department-select">Department</Label>
                 <Select value={addDepartment} onValueChange={(v) => setAddDepartment(v as "Phonics" | "Maths")}>
-                  <SelectTrigger>
+                  <SelectTrigger id="add-department-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

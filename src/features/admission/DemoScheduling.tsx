@@ -373,7 +373,7 @@ export default function AdmissionDemoScheduling() {
       )}
 
       {actionError && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+        <div role="alert" className="mb-5 flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
           <AlertCircle className="h-4 w-4" />
           {actionError}
         </div>

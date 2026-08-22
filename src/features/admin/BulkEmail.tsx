@@ -139,9 +139,9 @@ export default function AdminBulkEmail() {
 
             {scope === "batch" && (
               <div className="grid gap-1.5">
-                <Label>Batch</Label>
+                <Label htmlFor="bulk-email-batch-select">Batch</Label>
                 <Select value={batchId} onValueChange={setBatchId}>
-                  <SelectTrigger>
+                  <SelectTrigger id="bulk-email-batch-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

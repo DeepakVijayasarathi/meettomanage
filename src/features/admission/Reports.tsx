@@ -274,7 +274,7 @@ export default function AdmissionReports() {
         </div>
 
         {reportError && (
-          <p className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
             Could not load the data for this report ({reportError}) — what&apos;s below is
             incomplete, and exporting it would be too.
           </p>

@@ -314,14 +314,14 @@ export default function TeacherResources() {
       />
 
       {confirmation && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
+        <div role="status" className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
           <CheckCircle2 className="h-4 w-4" />
           {confirmation}
         </div>
       )}
 
       {usingApi && error && (
-        <div className="mb-5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+        <div role="alert" className="mb-5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
           Couldn't load your resources: {error}
         </div>
       )}

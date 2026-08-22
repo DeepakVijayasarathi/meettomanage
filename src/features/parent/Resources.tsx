@@ -114,7 +114,7 @@ export default function ParentResources() {
       )}
 
       {usingApi && resourcesError && (
-        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <p role="alert" className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
           Could not load resources ({resourcesError}).{" "}
           <button type="button" className="underline" onClick={() => reloadResources()}>
             Retry
@@ -123,7 +123,7 @@ export default function ParentResources() {
       )}
 
       {downloadError && (
-        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{downloadError}</p>
+        <p role="alert" className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{downloadError}</p>
       )}
 
       {!child ? (

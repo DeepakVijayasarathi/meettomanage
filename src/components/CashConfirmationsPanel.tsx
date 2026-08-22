@@ -88,7 +88,7 @@ export function CashConfirmationsPanel() {
 
   return (
     <div className="flex flex-col gap-3">
-      {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+      {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
       {intents.map((intent) => (
         <Card key={intent.transactionId} className="border-warning/40">
           <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">

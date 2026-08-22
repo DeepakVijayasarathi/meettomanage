@@ -126,7 +126,7 @@ export default function ParentSchedule() {
       )}
 
       {usingApi && sessionsError && (
-        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <p role="alert" className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
           Could not load the schedule ({sessionsError}).{" "}
           <button type="button" className="underline" onClick={() => reloadSessions()}>
             Retry

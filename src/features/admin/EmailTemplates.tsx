@@ -198,7 +198,7 @@ export default function EmailTemplates() {
         description="Design the Subject and HTML body every automated system email sends from — changes apply the next time that email fires."
       />
 
-      {error && <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+      {error && <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
       {loaded && templates.length === 0 ? (
         <EmptyState icon={Mail} title="No email templates yet" description="Templates are seeded automatically when the API starts." />

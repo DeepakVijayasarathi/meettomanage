@@ -164,9 +164,9 @@ export default function AdminReports() {
       <Card>
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-end">
           <div className="grid flex-1 gap-1.5">
-            <Label>Report type</Label>
+            <Label htmlFor="report-type-select">Report type</Label>
             <Select value={reportType} onValueChange={(v) => setReportType(v as ReportType)}>
-              <SelectTrigger>
+              <SelectTrigger id="report-type-select">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

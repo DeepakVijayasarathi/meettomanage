@@ -252,7 +252,7 @@ export default function AdminSettings() {
         }
       />
 
-      {error && <p className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>}
+      {error && <p role="alert" className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>}
 
       <Tabs value={activeTab} onValueChange={changeTab}>
         <TabsList className="h-auto flex-wrap justify-start gap-y-1.5">
@@ -649,7 +649,7 @@ function MenuManager() {
         </div>
       </CardHeader>
       <CardContent>
-        {error && <p className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         {form && (
           <div className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -670,14 +670,14 @@ function MenuManager() {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>Required module</Label>
+              <Label htmlFor="menu-required-module-select">Required module</Label>
               <Select
                 value={form.requiredModule ?? "__none"}
                 onValueChange={(v) =>
                   setForm({ ...form, requiredModule: v === "__none" ? null : (v as SaveMenuItemRequest["requiredModule"]) })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger id="menu-required-module-select">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -691,9 +691,9 @@ function MenuManager() {
               </Select>
             </div>
             <div className="grid gap-1.5">
-              <Label>Icon</Label>
+              <Label htmlFor="menu-icon-select">Icon</Label>
               <Select value={form.icon} onValueChange={(icon) => setForm({ ...form, icon })}>
-                <SelectTrigger>
+                <SelectTrigger id="menu-icon-select">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="max-h-64">
@@ -970,7 +970,7 @@ function PayoutRatesManager() {
         </Button>
       </CardHeader>
       <CardContent>
-        {error && <p className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         {!loaded ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
@@ -1020,9 +1020,9 @@ function PayoutRatesManager() {
               </DialogHeader>
               <div className="grid gap-4">
                 <div className="grid gap-1.5">
-                  <Label>Applies to</Label>
+                  <Label htmlFor="rate-card-applies-to-select">Applies to</Label>
                   <Select value={dialogTeacherId} onValueChange={setDialogTeacherId}>
-                    <SelectTrigger>
+                    <SelectTrigger id="rate-card-applies-to-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1264,8 +1264,8 @@ function JitsiRecordingSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {error && <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
-        {saved && !error && <p className="rounded-lg bg-success/10 px-3 py-2 text-xs font-medium text-success">Saved.</p>}
+        {error && <p role="alert" className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {saved && !error && <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-xs font-medium text-success">Saved.</p>}
 
         {!loaded ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
@@ -1489,7 +1489,7 @@ export function IntegrationsManager() {
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {error && <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <p role="alert" className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         {form && (
           <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2">
@@ -1508,9 +1508,9 @@ export function IntegrationsManager() {
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. SMS Gateway" />
             </div>
             <div className="grid gap-1.5">
-              <Label>Category</Label>
+              <Label htmlFor="integration-category-select">Category</Label>
               <Select value={form.category} onValueChange={(category: IntegrationCategoryName) => setForm({ ...form, category })}>
-                <SelectTrigger>
+                <SelectTrigger id="integration-category-select">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1591,14 +1591,14 @@ export function IntegrationsManager() {
                 Fields named with "key", "secret", "token" or "password" (e.g. Razorpay's keyId/keySecret) are masked while typing.
               </p>
               {missingRequiredFields(form.key, configRows).length > 0 && (
-                <p className="mt-1.5 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+                <p role="alert" className="mt-1.5 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
                   {form.name || form.key} can't process live payments yet — missing:{" "}
                   {missingRequiredFields(form.key, configRows).join(", ")}. Parents who pick this gateway will see a
                   "not fully configured" message until these are filled in.
                 </p>
               )}
               {configFormatWarning(form.key, configRows) && (
-                <p className="mt-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                <p role="alert" className="mt-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
                   {configFormatWarning(form.key, configRows)}
                 </p>
               )}

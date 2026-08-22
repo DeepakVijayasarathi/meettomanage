@@ -248,9 +248,9 @@ export default function AdminResources() {
               used to be a second selector with no effect on the actual upload. */}
           <div className="grid grid-cols-1 gap-4">
             <div className="grid gap-1.5">
-              <Label>Batch</Label>
+              <Label htmlFor="resource-upload-batch-select">Batch</Label>
               <Select value={uploadBatch} onValueChange={setUploadBatch}>
-                <SelectTrigger>
+                <SelectTrigger id="resource-upload-batch-select">
                   <SelectValue placeholder="Select batch" />
                 </SelectTrigger>
                 <SelectContent>

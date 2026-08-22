@@ -354,7 +354,7 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
                   : "Click a module name to toggle every action in that row. Changes are local to this session and are not persisted."}
               </p>
               {apiEnabled() && loadError && (
-                <p className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{loadError}</p>
+                <p role="alert" className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{loadError}</p>
               )}
             </CardContent>
           </Card>
@@ -552,7 +552,7 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
         </Button>
       </CardHeader>
       <CardContent>
-        {error && <p className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         <div className="mb-4 flex flex-wrap gap-2">
           {roles.map((role) => (
@@ -607,12 +607,12 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label>Default landing page</Label>
+                <Label htmlFor="role-default-route-select">Default landing page</Label>
                 <Select
                   value={draft.defaultRoute || "__none"}
                   onValueChange={(v) => setDraft({ ...draft, defaultRoute: v === "__none" ? "" : v })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="role-default-route-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

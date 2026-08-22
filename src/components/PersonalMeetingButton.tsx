@@ -36,6 +36,7 @@ export function PersonalMeetingButton() {
         variant="outline"
         disabled={busy}
         title="Copy your permanent personal meeting link"
+        aria-live="polite"
         onClick={() =>
           withRoom((url) => {
             navigator.clipboard?.writeText(url).catch(() => undefined);

@@ -183,7 +183,7 @@ export default function CoordinatorCalendar() {
                   </Button>
                 )}
               </DialogFooter>
-              {joinError && <p className="px-6 pb-4 text-sm font-medium text-destructive">{joinError}</p>}
+              {joinError && <p role="alert" className="px-6 pb-4 text-sm font-medium text-destructive">{joinError}</p>}
             </>
           )}
         </DialogContent>

@@ -363,11 +363,11 @@ export default function AdminBatches() {
       />
 
       {banner && (
-        <div className="mb-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">{banner}</div>
+        <div role="status" className="mb-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">{banner}</div>
       )}
 
       {apiEnabled() && batchError && (
-        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+        <div role="alert" className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
           <span>Couldn't load batches: {batchError}. The list below may be incomplete.</span>
           <Button variant="outline" size="sm" onClick={reload}>
             Retry
@@ -444,9 +444,9 @@ export default function AdminBatches() {
 
               <div className="grid gap-4">
                 <div className="grid gap-1.5">
-                  <Label>Assign teacher</Label>
+                  <Label htmlFor="batch-assign-teacher-select">Assign teacher</Label>
                   <Select value={teacherAssignment} onValueChange={setTeacherAssignment}>
-                    <SelectTrigger>
+                    <SelectTrigger id="batch-assign-teacher-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -628,9 +628,9 @@ export default function AdminBatches() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label>Course</Label>
+                <Label htmlFor="new-batch-course-select">Course</Label>
                 <Select value={newCourse} onValueChange={setNewCourse}>
-                  <SelectTrigger>
+                  <SelectTrigger id="new-batch-course-select">
                     <SelectValue placeholder="Select course" />
                   </SelectTrigger>
                   <SelectContent>
@@ -643,9 +643,9 @@ export default function AdminBatches() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Teacher</Label>
+                <Label htmlFor="new-batch-teacher-select">Teacher</Label>
                 <Select value={newTeacher} onValueChange={setNewTeacher}>
-                  <SelectTrigger>
+                  <SelectTrigger id="new-batch-teacher-select">
                     <SelectValue placeholder="Select teacher" />
                   </SelectTrigger>
                   <SelectContent>

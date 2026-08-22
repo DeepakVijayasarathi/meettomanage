@@ -173,7 +173,7 @@ export default function SubAdminAuditLog() {
         // A failed load leaves every figure below at zero and the table on "No actions in
         // this module" — which reads as "you have done nothing", the opposite of what an
         // accountability record should ever imply. Say the trail could not be read.
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not load the audit trail ({loadError}) — this is not an empty log.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry

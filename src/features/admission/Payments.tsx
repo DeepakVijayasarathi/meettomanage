@@ -231,7 +231,7 @@ export default function AdmissionPayments() {
         // Without this the screen reads "Invoices 0 · Collected ₹0 · Outstanding ₹0" after
         // a failed fetch — collection figures of zero are a claim about money, and one
         // nobody should make on the strength of a request that never returned.
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not load invoices ({invoicesError}) — the figures and table below are not
           your real collection position.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
@@ -267,7 +267,7 @@ export default function AdmissionPayments() {
       </div>
 
       <div className="mt-8">
-        {error && <p className="mb-3 text-sm font-medium text-destructive">{error}</p>}
+        {error && <p role="alert" className="mb-3 text-sm font-medium text-destructive">{error}</p>}
         <DataTable
           data={filtered}
           columns={columns}

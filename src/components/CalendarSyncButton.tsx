@@ -27,7 +27,7 @@ export function CalendarSyncButton() {
   }
 
   return (
-    <Button size="sm" variant="outline" onClick={handleClick} disabled={state === "busy"} className="gap-1.5">
+    <Button size="sm" variant="outline" onClick={handleClick} disabled={state === "busy"} aria-live="polite" className="gap-1.5">
       {state === "copied" ? <Check className="h-3.5 w-3.5" /> : <CalendarPlus className="h-3.5 w-3.5" />}
       {state === "copied" ? "Link copied" : state === "error" ? "Copy failed" : "Calendar sync"}
     </Button>

@@ -150,7 +150,7 @@ export default function ParentBilling() {
       <PageHeader title="Payments &amp; Billing" description="Invoices, receipts and secure Pay Now checkout for your family." />
 
       {apiEnabled() && invoicesError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not load your invoices ({invoicesError}).{" "}
           <button type="button" className="underline" onClick={() => reloadInvoices()}>
             Retry
@@ -159,7 +159,7 @@ export default function ParentBilling() {
       )}
 
       {downloadError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">{downloadError}</p>
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">{downloadError}</p>
       )}
 
       {isAccountSuspended && (

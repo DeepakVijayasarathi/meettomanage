@@ -508,12 +508,12 @@ export default function AdminPackages() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label>Billing type</Label>
+                <Label htmlFor="plan-billing-type-select">Billing type</Label>
                 <Select
                   value={planForm.billingType}
                   onValueChange={(v) => setPlanForm((f) => ({ ...f, billingType: v as ApiBillingType }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="plan-billing-type-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -526,12 +526,12 @@ export default function AdminPackages() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Billing cycle</Label>
+                <Label htmlFor="plan-billing-cycle-select">Billing cycle</Label>
                 <Select
                   value={planForm.billingCycle}
                   onValueChange={(v) => setPlanForm((f) => ({ ...f, billingCycle: v as ApiBillingCycle }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="plan-billing-cycle-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -608,9 +608,9 @@ export default function AdminPackages() {
 
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label>Student</Label>
+              <Label htmlFor="subscription-student-select">Student</Label>
               <Select value={subChildId} onValueChange={setSubChildId}>
-                <SelectTrigger>
+                <SelectTrigger id="subscription-student-select">
                   <SelectValue placeholder="Pick a student" />
                 </SelectTrigger>
                 <SelectContent>
@@ -625,9 +625,9 @@ export default function AdminPackages() {
             </div>
 
             <div className="grid gap-1.5">
-              <Label>Plan</Label>
+              <Label htmlFor="subscription-plan-select">Plan</Label>
               <Select value={subPlanId} onValueChange={setSubPlanId}>
-                <SelectTrigger>
+                <SelectTrigger id="subscription-plan-select">
                   <SelectValue placeholder="Pick a plan" />
                 </SelectTrigger>
                 <SelectContent>

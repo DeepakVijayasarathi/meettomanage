@@ -197,13 +197,13 @@ export default function AdminCourses() {
       />
 
       {apiEnabled() && apiError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not reach the API ({apiError}) — showing demo data.
         </p>
       )}
 
       {notice && (
-        <p className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
+        <p role="status" className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
           {notice}
         </p>
@@ -234,9 +234,9 @@ export default function AdminCourses() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label>Category</Label>
+                <Label htmlFor="course-category-select">Category</Label>
                 <Select value={category} onValueChange={(v) => setCategory(v as Course["category"])}>
-                  <SelectTrigger>
+                  <SelectTrigger id="course-category-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -249,9 +249,9 @@ export default function AdminCourses() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Type</Label>
+                <Label htmlFor="course-type-select">Type</Label>
                 <Select value={type} onValueChange={(v) => setType(v as Course["type"])}>
-                  <SelectTrigger>
+                  <SelectTrigger id="course-type-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -264,9 +264,9 @@ export default function AdminCourses() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label>Duration</Label>
+                <Label htmlFor="course-duration-select">Duration</Label>
                 <Select value={duration} onValueChange={setDuration}>
-                  <SelectTrigger>
+                  <SelectTrigger id="course-duration-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

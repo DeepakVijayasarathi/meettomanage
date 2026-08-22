@@ -76,7 +76,7 @@ export default function AdminFeeSuspension() {
         />
 
         {suspensionsError && (
-          <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
             Could not load suspended accounts ({suspensionsError}).{" "}
             <button type="button" className="underline" onClick={() => reloadSuspensions()}>
               Retry
@@ -84,7 +84,7 @@ export default function AdminFeeSuspension() {
           </p>
         )}
         {liftError && (
-          <p className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{liftError}</p>
+          <p role="alert" className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{liftError}</p>
         )}
 
         {suspensions.length === 0 ? (

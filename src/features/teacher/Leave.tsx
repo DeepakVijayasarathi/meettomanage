@@ -194,7 +194,7 @@ export default function TeacherLeave() {
       />
 
       {confirmation && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
+        <div role="status" className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
           <CheckCircle2 className="h-4 w-4" />
           {confirmation}
         </div>
@@ -204,7 +204,7 @@ export default function TeacherLeave() {
           write its error text into the same state, which rendered inside the green
           checkmark banner and looked like the request had gone through. */}
       {submitError && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+        <div role="alert" className="mb-5 flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
           <AlertTriangle className="h-4 w-4" />
           {submitError}
         </div>
@@ -225,11 +225,11 @@ export default function TeacherLeave() {
           ) : (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label>
+                <Label htmlFor="upcomingSession">
                   Upcoming Session <span className="text-destructive">*</span>
                 </Label>
                 <Select value={sessionId} onValueChange={setSessionId}>
-                  <SelectTrigger>
+                  <SelectTrigger id="upcomingSession">
                     <SelectValue placeholder="Select a session" />
                   </SelectTrigger>
                   <SelectContent>

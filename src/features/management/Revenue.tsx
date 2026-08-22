@@ -138,7 +138,7 @@ export default function ManagementRevenue() {
       />
 
       {apiEnabled() && (trendError || coursesError) && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not load revenue data ({trendError ?? coursesError}) — the charts and table below may be incomplete.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry

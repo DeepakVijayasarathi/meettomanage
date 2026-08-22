@@ -264,7 +264,7 @@ export default function AdminPayouts() {
       />
 
       {apiEnabled() && payoutsError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
           Could not load payouts ({payoutsError}) — the totals below don't reflect real data.{" "}
           <button type="button" className="underline" onClick={() => reloadPayouts()}>
             Retry
@@ -273,11 +273,11 @@ export default function AdminPayouts() {
       )}
 
       {exportError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{exportError}</p>
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{exportError}</p>
       )}
 
       {actionError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{actionError}</p>
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{actionError}</p>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

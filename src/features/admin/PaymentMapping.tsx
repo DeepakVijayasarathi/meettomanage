@@ -247,9 +247,9 @@ export default function AdminPaymentMapping() {
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="grid gap-1.5">
-                    <Label>Gateway</Label>
+                    <Label htmlFor="acct-gateway-select">Gateway</Label>
                     <Select value={editProvider} onValueChange={setEditProvider}>
-                      <SelectTrigger>
+                      <SelectTrigger id="acct-gateway-select">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -259,9 +259,9 @@ export default function AdminPaymentMapping() {
                     </Select>
                   </div>
                   <div className="grid gap-1.5">
-                    <Label>Status</Label>
+                    <Label htmlFor="acct-status-select">Status</Label>
                     <Select value={editActive ? "active" : "inactive"} onValueChange={(v) => setEditActive(v === "active")}>
-                      <SelectTrigger>
+                      <SelectTrigger id="acct-status-select">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -320,9 +320,9 @@ export default function AdminPaymentMapping() {
         <CardContent>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="grid gap-1.5">
-              <Label>Parent</Label>
+              <Label htmlFor="mapping-parent-select">Parent</Label>
               <Select value={effectiveParent} onValueChange={setSelectedParent}>
-                <SelectTrigger>
+                <SelectTrigger id="mapping-parent-select">
                   <SelectValue placeholder="Select a parent" />
                 </SelectTrigger>
                 <SelectContent>
@@ -335,9 +335,9 @@ export default function AdminPaymentMapping() {
               </Select>
             </div>
             <div className="grid gap-1.5">
-              <Label>Department Account</Label>
+              <Label htmlFor="mapping-account-select">Department Account</Label>
               <Select value={effectiveAccount} onValueChange={setSelectedAccount}>
-                <SelectTrigger>
+                <SelectTrigger id="mapping-account-select">
                   <SelectValue placeholder="Select an account" />
                 </SelectTrigger>
                 <SelectContent>
@@ -362,6 +362,7 @@ export default function AdminPaymentMapping() {
           </div>
           {result && (
             <p
+              role={result.ok ? "status" : "alert"}
               className={cn(
                 "mt-3 rounded-lg px-3 py-2 text-xs font-medium",
                 result.ok ? "bg-success/10 text-success" : "bg-warning/10 text-warning-foreground"

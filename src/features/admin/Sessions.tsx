@@ -337,7 +337,7 @@ export default function AdminSessions() {
       />
 
       {usingApi && sessionsError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not load the session calendar ({sessionsError}) — the schedule below may be incomplete.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
@@ -347,6 +347,7 @@ export default function AdminSessions() {
 
       {banner && (
         <div
+          role={banner.ok ? "status" : "alert"}
           className={
             banner.ok
               ? "mb-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success"
@@ -390,9 +391,9 @@ export default function AdminSessions() {
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label>Type</Label>
+                <Label htmlFor="session-type-select">Type</Label>
                 <Select value={newType} onValueChange={(v) => setNewType(v as "Regular" | "Demo")}>
-                  <SelectTrigger>
+                  <SelectTrigger id="session-type-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -402,9 +403,9 @@ export default function AdminSessions() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Duration (min)</Label>
+                <Label htmlFor="session-duration-select">Duration (min)</Label>
                 <Select value={newDuration} onValueChange={setNewDuration}>
-                  <SelectTrigger>
+                  <SelectTrigger id="session-duration-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -417,9 +418,9 @@ export default function AdminSessions() {
             </div>
             {newType === "Regular" && (
               <div className="grid gap-1.5">
-                <Label>Batch</Label>
+                <Label htmlFor="session-batch-select">Batch</Label>
                 <Select value={newBatch} onValueChange={pickBatch}>
-                  <SelectTrigger>
+                  <SelectTrigger id="session-batch-select">
                     <SelectValue placeholder="Select batch" />
                   </SelectTrigger>
                   <SelectContent>
@@ -433,9 +434,9 @@ export default function AdminSessions() {
               </div>
             )}
             <div className="grid gap-1.5">
-              <Label>Teacher</Label>
+              <Label htmlFor="session-teacher-select">Teacher</Label>
               <Select value={newTeacher} onValueChange={setNewTeacher}>
-                <SelectTrigger>
+                <SelectTrigger id="session-teacher-select">
                   <SelectValue placeholder="Select teacher" />
                 </SelectTrigger>
                 <SelectContent>

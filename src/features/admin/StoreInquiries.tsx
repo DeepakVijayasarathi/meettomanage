@@ -154,7 +154,7 @@ export default function AdminStoreInquiries() {
       />
 
       {live && error && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
           Could not load store inquiries ({error}).{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
@@ -163,7 +163,7 @@ export default function AdminStoreInquiries() {
       )}
 
       {actionError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{actionError}</p>
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{actionError}</p>
       )}
 
       {inquiries.length === 0 ? (

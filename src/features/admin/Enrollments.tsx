@@ -311,7 +311,7 @@ export default function AdminEnrollments() {
       />
 
       {banner && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
+        <div role="status" className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
           <CheckCircle2 className="h-4 w-4" />
           {banner}
         </div>
@@ -372,9 +372,9 @@ export default function AdminEnrollments() {
 
               {!isComplete(detail) && apiEnabled() && activePlans.length > 0 && (
                 <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-muted/40 p-4">
-                  <Label>Billing plan on approval</Label>
+                  <Label htmlFor="approve-plan-select">Billing plan on approval</Label>
                   <Select value={approvePlanId || "__none"} onValueChange={(v) => setApprovePlanId(v === "__none" ? "" : v)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="approve-plan-select">
                       <SelectValue placeholder="No billing plan — assign later" />
                     </SelectTrigger>
                     <SelectContent>
@@ -451,9 +451,9 @@ export default function AdminEnrollments() {
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Course interest</Label>
+              <Label htmlFor="edit-course-select">Course interest</Label>
               <Select value={editCourse} onValueChange={setEditCourse}>
-                <SelectTrigger>
+                <SelectTrigger id="edit-course-select">
                   <SelectValue placeholder="Select a course" />
                 </SelectTrigger>
                 <SelectContent>
