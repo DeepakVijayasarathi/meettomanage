@@ -21,8 +21,11 @@ interface InteractivePanelProps {
   onCelebrate: (message?: string) => void;
   /** Live leaderboard for the celebration overlay. */
   onLeaderboard: (entries: LeaderboardEntry[]) => void;
-  /** Hands the host a class-wide celebrate sender (hub broadcast, local fallback). */
-  onReady?: (celebrateAll: (message?: string) => void) => void;
+  /** Hands the host a class-wide celebrate sender (hub broadcast, local fallback), and a
+   *  raise-hand sender the host can forward its own hand-raise UI (e.g. Jitsi's native
+   *  toolbar button) into — this panel owns the hub connection, so it's the only place
+   *  that can actually send "RaiseHand" and reach the rest of the class. */
+  onReady?: (senders: { celebrateAll: (message?: string) => void; raiseHand: (raised: boolean) => void }) => void;
 }
 
 /**
@@ -34,6 +37,7 @@ interface InteractivePanelProps {
 export default function InteractivePanel({ sessionId, mode, displayName, onCelebrate, onLeaderboard, onReady }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
+  const [hubDetail, setHubDetail] = useState<string | null>(null);
   const [roster, setRoster] = useState<HubParticipant[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [quizActive, setQuizActive] = useState(false);
@@ -90,16 +94,26 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         },
         celebrate: (message) => onCelebrate(message ?? undefined),
         boardAccess: (allowed) => setBoardAllowed(allowed),
-      }, (state) => {
-        if (!disposed) setHubState(state);
+      }, (state, detail) => {
+        if (!disposed) {
+          setHubState(state);
+          setHubDetail(detail ?? null);
+        }
       })
       .then((ok) => {
         if (disposed) return;
         setHubState(ok ? "connected" : "disconnected");
         // Broadcast when connected (the hub echoes back to the sender); local-only otherwise.
-        onReady?.((message) => {
-          if (client.connected) client.celebrate(message);
-          else onCelebrate(message);
+        onReady?.({
+          celebrateAll: (message) => {
+            if (client.connected) client.celebrate(message);
+            else onCelebrate(message);
+          },
+          // No local fallback here (unlike celebrateAll) — a raised hand only means
+          // anything once it's reached the roster the rest of the class actually sees.
+          raiseHand: (raised) => {
+            if (client.connected) client.raiseHand(raised);
+          },
         });
       });
 
@@ -160,6 +174,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
   }
 
   function toggleBoardAccess(participant: HubParticipant) {
+    // send() itself silently no-ops while the hub is down (see ClassroomHubClient), so
+    // without this check the button flips to "Board on" even though the grant never
+    // reached the student — the "Working locally"/"Reconnecting" chip above the roster
+    // already tells the teacher why nothing happened, so no separate error needed here.
+    if (!hubRef.current?.connected) return;
     const next = !grantedIds.has(participant.connectionId);
     setGrantedIds((prev) => {
       const set = new Set(prev);
@@ -167,7 +186,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
       else set.delete(participant.connectionId);
       return set;
     });
-    hubRef.current?.setBoardAccess(participant.connectionId, next);
+    hubRef.current.setBoardAccess(participant.connectionId, next);
   }
 
   const canDraw = mode === "teacher" || boardAllowed;
@@ -196,8 +215,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
           {/* Same chip language as JitsiLive's own "Rec"/"Reconnecting" header badges,
               so a degraded-hub state reads as this product's status treatment, not a
               generic warning banner. The class call itself is unaffected either way. */}
+          {/* role="status" on both: sync degrading (or recovering) mid-class is exactly the
+              kind of thing a screen-reader user won't notice on their own since it can
+              appear while focus is anywhere else — the roster, the whiteboard, the quiz. */}
           {hubState === "reconnecting" && (
-            <div className="mt-1.5 flex items-center gap-1.5 px-1">
+            <div className="mt-1.5 flex items-center gap-1.5 px-1" role="status">
               <span className="flex shrink-0 items-center gap-1 rounded-full bg-brand-amber/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-amber">
                 <Loader2 className="h-3 w-3 animate-spin" /> Reconnecting
               </span>
@@ -205,11 +227,13 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
             </div>
           )}
           {hubState === "disconnected" && (
-            <div className="mt-1.5 flex items-center gap-1.5 px-1">
+            <div className="mt-1.5 flex items-center gap-1.5 px-1" role="status">
               <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/60">
                 <CloudOff className="h-3 w-3" /> Working locally
               </span>
-              <p className="text-[10px] text-white/40">Live sync is unavailable — the class call is unaffected.</p>
+              <p className="text-[10px] text-white/40">
+                {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
+              </p>
             </div>
           )}
         </div>
@@ -329,7 +353,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                     <p className="truncate text-sm font-semibold text-white">{participant.name}</p>
                     <p className="text-[10px] uppercase tracking-wide text-white/40">{participant.role}</p>
                   </div>
-                  {participant.handRaised && <Hand className="h-4 w-4 text-amber-300" />}
+                  {participant.handRaised && (
+                    <span role="img" aria-label={`${participant.name} has their hand raised`} title="Hand raised">
+                      <Hand className="h-4 w-4 text-amber-300" aria-hidden="true" />
+                    </span>
+                  )}
                   {mode === "teacher" && participant.role === "student" && (
                     <Button
                       size="sm"

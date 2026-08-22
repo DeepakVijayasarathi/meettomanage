@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { useLocation, useNavigate, Navigate, Link } from "react-router-dom";
 import { AlertCircle, ArrowRight, Loader2, Lock, Mail, Sparkles, Video, CalendarCheck2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,16 +10,17 @@ import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { useBrand } from "@/lib/branding";
 import { apiEnabled, getAccessToken } from "@/lib/api";
+import { getRemember, setRemember } from "@/lib/authStorage";
 import { login } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
-import { safeInternalPath } from "@/lib/utils";
+import { cn, safeInternalPath } from "@/lib/utils";
 import type { Role } from "@/types";
 
 // Colour-matched to the logo's own cast: the blue boy, the pink girl, the green nest.
 const TRUST_CHIPS = [
-  { icon: Video, label: "Live Classes", hex: "#5B93E0" },
-  { icon: CalendarCheck2, label: "Attendance", hex: "#F53BA6" },
-  { icon: Wallet, label: "Billing", hex: "#57B33B" },
+  { icon: Video, label: "Live Classes", colorClass: "bg-brand-blue/10 text-brand-blue" },
+  { icon: CalendarCheck2, label: "Attendance", colorClass: "bg-brand-pink/10 text-brand-pink" },
+  { icon: Wallet, label: "Billing", colorClass: "bg-brand-green/10 text-brand-green" },
 ];
 
 const PIN_LENGTH = 4;
@@ -34,6 +35,7 @@ export default function Login() {
   const [pin, setPin] = useState<string[]>(apiEnabled() ? Array(PIN_LENGTH).fill("") : ["1", "2", "3", "4"]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState(getRemember());
   const {
     role: sessionRole,
     homePath: sessionHomePath,
@@ -94,6 +96,10 @@ export default function Login() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    // Decided before any session state is written, so setRole/setUserName/etc.
+    // below (and setAccessToken inside login()) all land in the right store.
+    setRemember(rememberMe);
+
     // Demo mode: no backend configured, enter as the selected preview role
     if (!apiEnabled()) {
       setSessionRole(role);
@@ -128,14 +134,14 @@ export default function Login() {
         <div className="relative mx-auto w-full max-w-3xl">
           <div className="relative aspect-[16/11] w-full overflow-hidden rounded-[28px] bg-gradient-to-br from-[#EAF3FF] via-brand-cream to-[#FDECF6] ring-4 ring-white">
             {/* Soft washes in the same three hues as the trust chips below — brand colour, not a generic gradient. */}
-            <div className="pointer-events-none absolute -left-20 -top-24 h-72 w-72 rounded-full bg-[#5B93E0]/25 blur-[80px]" />
-            <div className="pointer-events-none absolute -bottom-24 -right-16 h-80 w-80 rounded-full bg-[#F53BA6]/20 blur-[90px]" />
-            <div className="pointer-events-none absolute bottom-0 left-1/4 h-56 w-56 rounded-full bg-[#57B33B]/20 blur-[80px]" />
+            <div className="pointer-events-none absolute -left-20 -top-24 h-72 w-72 rounded-full bg-brand-blue/25 blur-[80px]" />
+            <div className="pointer-events-none absolute -bottom-24 -right-16 h-80 w-80 rounded-full bg-brand-pink/20 blur-[90px]" />
+            <div className="pointer-events-none absolute bottom-0 left-1/4 h-56 w-56 rounded-full bg-brand-green/20 blur-[80px]" />
 
             {/* A few small accents, not a busy scene — restraint was the whole point of the redesign. */}
-            <span className="pointer-events-none absolute left-[18%] top-[22%] h-2.5 w-2.5 rounded-full bg-[#5B93E0]/50" />
-            <span className="pointer-events-none absolute right-[20%] top-[32%] h-1.5 w-1.5 rounded-full bg-[#F53BA6]/60" />
-            <span className="pointer-events-none absolute bottom-[24%] right-[26%] h-2 w-2 rounded-full bg-[#57B33B]/50" />
+            <span className="pointer-events-none absolute left-[18%] top-[22%] h-2.5 w-2.5 rounded-full bg-brand-blue/50" />
+            <span className="pointer-events-none absolute right-[20%] top-[32%] h-1.5 w-1.5 rounded-full bg-brand-pink/60" />
+            <span className="pointer-events-none absolute bottom-[24%] right-[26%] h-2 w-2 rounded-full bg-brand-green/50" />
             <svg
               className="pointer-events-none absolute left-[12%] bottom-[20%] h-16 w-16 text-brand-green/25"
               viewBox="0 0 64 64"
@@ -180,8 +186,7 @@ export default function Login() {
             {TRUST_CHIPS.map((chip) => (
               <span
                 key={chip.label}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
-                style={{ backgroundColor: `${chip.hex}1F`, color: chip.hex }}
+                className={cn("flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold", chip.colorClass)}
               >
                 <chip.icon className="h-3.5 w-3.5" />
                 {chip.label}
@@ -238,7 +243,13 @@ export default function Login() {
                       pinRefs.current[i] = el;
                     }}
                     id={`pin-${i}`}
-                    type="password"
+                    // type="text" (not "password") so inputMode="numeric" reliably brings up
+                    // the numeric keypad on mobile — combining password+numeric is a known
+                    // Safari/WebView gotcha where the full keyboard shows regardless. Masked
+                    // visually instead via -webkit-text-security (Chrome/Edge/Safari; Firefox
+                    // falls back to showing the digit — a minor, non-security-critical gap for
+                    // a 4-digit login PIN, not a password).
+                    type="text"
                     inputMode="numeric"
                     pattern="\d*"
                     maxLength={1}
@@ -250,10 +261,19 @@ export default function Login() {
                     onPaste={handlePinPaste}
                     required
                     aria-label={`PIN digit ${i + 1} of ${PIN_LENGTH}`}
+                    style={{ WebkitTextSecurity: "disc" } as CSSProperties}
                     className="h-14 w-full rounded-xl border border-brand-ink/15 bg-brand-cream/40 text-center text-xl font-bold text-brand-ink transition-colors focus-visible:border-brand-green focus-visible:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/30"
                   />
                 ))}
               </div>
+              {/* Visually-hidden progress announcement — each digit box only has its own
+                  "PIN digit N of 4" label, so a screen-reader user typing has no way to
+                  know when all 4 are filled and the form is actually ready to submit. */}
+              <p className="sr-only" aria-live="polite">
+                {pin.filter(Boolean).length === PIN_LENGTH
+                  ? "PIN complete."
+                  : `${pin.filter(Boolean).length} of ${PIN_LENGTH} PIN digits entered.`}
+              </p>
             </div>
 
             {!apiEnabled() && (
@@ -291,7 +311,7 @@ export default function Login() {
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm font-medium text-brand-ink/70">
-                <Checkbox defaultChecked />
+                <Checkbox checked={rememberMe} onCheckedChange={(v) => setRememberMe(v === true)} />
                 Remember me
               </label>
               <Link to="/forgot-password" className="text-sm font-semibold text-brand-greenDark hover:underline">

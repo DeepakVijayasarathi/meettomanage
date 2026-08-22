@@ -71,7 +71,12 @@ export default function ChatPanel({ mode, messages, onSend, presetText, onConsum
       </div>
 
       <ScrollArea className="flex-1 px-3 pt-3">
-        <ul className="space-y-3 pb-2">
+        {/* role="log" + aria-live: new messages append while focus is usually elsewhere
+            (video stage, toolbar) — without this a screen-reader user only discovers
+            them by manually re-opening the chat tab. "polite" so it doesn't interrupt
+            whatever's currently being read; existing messages aren't re-announced since
+            only newly-added <li> nodes count as an "addition". */}
+        <ul className="space-y-3 pb-2" role="log" aria-live="polite" aria-relevant="additions">
           {messages.map((m) => (
             <li key={m.id} className={cn("flex flex-col gap-0.5", m.isSelf && "items-end")}>
               <div

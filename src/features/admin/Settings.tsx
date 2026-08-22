@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Palette,
   Pencil,
+  Plug,
   Plus,
   Puzzle,
   Save,
@@ -32,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -61,6 +63,7 @@ import {
   type ApiMenuItem,
   type SaveMenuItemRequest,
 } from "@/api/menus";
+import { PERMISSION_MODULES } from "@/api/permissions";
 import {
   createIntegration,
   deleteIntegration,
@@ -129,6 +132,7 @@ const EMPTY_MENU_FORM: SaveMenuItemRequest = {
   icon: "LayoutDashboard",
   sortOrder: 0,
   isActive: true,
+  requiredModule: null,
 };
 
 /**
@@ -248,7 +252,7 @@ export default function AdminSettings() {
         }
       />
 
-      {error && <p className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>}
+      {error && <p role="alert" className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>}
 
       <Tabs value={activeTab} onValueChange={changeTab}>
         <TabsList className="h-auto flex-wrap justify-start gap-y-1.5">
@@ -269,10 +273,10 @@ export default function AdminSettings() {
             <ListTree className="h-4 w-4" /> Menus
           </TabsTrigger>
           <TabsTrigger value="payroll" className="gap-1.5">
-            <ShieldAlert className="h-3.5 w-3.5 text-warning" /> Payroll
+            <Wallet className="h-4 w-4" /> Payroll
           </TabsTrigger>
           <TabsTrigger value="integrations" className="gap-1.5">
-            <ShieldAlert className="h-3.5 w-3.5 text-warning" /> Integrations
+            <Plug className="h-4 w-4" /> Integrations
           </TabsTrigger>
         </TabsList>
         <p className="mb-4 mt-2 text-xs text-muted-foreground">
@@ -645,7 +649,7 @@ function MenuManager() {
         </div>
       </CardHeader>
       <CardContent>
-        {error && <p className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         {form && (
           <div className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -666,9 +670,30 @@ function MenuManager() {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>Icon</Label>
+              <Label htmlFor="menu-required-module-select">Required module</Label>
+              <Select
+                value={form.requiredModule ?? "__none"}
+                onValueChange={(v) =>
+                  setForm({ ...form, requiredModule: v === "__none" ? null : (v as SaveMenuItemRequest["requiredModule"]) })
+                }
+              >
+                <SelectTrigger id="menu-required-module-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Unassigned — visible to everyone</SelectItem>
+                  {PERMISSION_MODULES.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="menu-icon-select">Icon</Label>
               <Select value={form.icon} onValueChange={(icon) => setForm({ ...form, icon })}>
-                <SelectTrigger>
+                <SelectTrigger id="menu-icon-select">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="max-h-64">
@@ -721,6 +746,7 @@ function MenuManager() {
                 <TableHead>Section</TableHead>
                 <TableHead>Label</TableHead>
                 <TableHead>Path</TableHead>
+                <TableHead>Required Module</TableHead>
                 <TableHead className="text-center">Order</TableHead>
                 <TableHead className="text-center">Active</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -739,6 +765,15 @@ function MenuManager() {
                       </span>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">{item.path}</TableCell>
+                    <TableCell>
+                      {item.requiredModule ? (
+                        <Badge variant="secondary">
+                          {PERMISSION_MODULES.find((m) => m.value === item.requiredModule)?.label ?? item.requiredModule}
+                        </Badge>
+                      ) : (
+                        <Badge variant="muted">Unassigned — everyone</Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-center text-xs text-muted-foreground">
                       {item.sectionOrder}.{item.sortOrder}
                     </TableCell>
@@ -760,7 +795,7 @@ function MenuManager() {
               })}
               {items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
                     No menu items configured for this portal yet.
                   </TableCell>
                 </TableRow>
@@ -935,7 +970,7 @@ function PayoutRatesManager() {
         </Button>
       </CardHeader>
       <CardContent>
-        {error && <p className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         {!loaded ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
@@ -985,9 +1020,9 @@ function PayoutRatesManager() {
               </DialogHeader>
               <div className="grid gap-4">
                 <div className="grid gap-1.5">
-                  <Label>Applies to</Label>
+                  <Label htmlFor="rate-card-applies-to-select">Applies to</Label>
                   <Select value={dialogTeacherId} onValueChange={setDialogTeacherId}>
-                    <SelectTrigger>
+                    <SelectTrigger id="rate-card-applies-to-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1229,8 +1264,8 @@ function JitsiRecordingSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {error && <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
-        {saved && !error && <p className="rounded-lg bg-success/10 px-3 py-2 text-xs font-medium text-success">Saved.</p>}
+        {error && <p role="alert" className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {saved && !error && <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-xs font-medium text-success">Saved.</p>}
 
         {!loaded ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
@@ -1454,7 +1489,7 @@ export function IntegrationsManager() {
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {error && <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <p role="alert" className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         {form && (
           <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2">
@@ -1473,9 +1508,9 @@ export function IntegrationsManager() {
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. SMS Gateway" />
             </div>
             <div className="grid gap-1.5">
-              <Label>Category</Label>
+              <Label htmlFor="integration-category-select">Category</Label>
               <Select value={form.category} onValueChange={(category: IntegrationCategoryName) => setForm({ ...form, category })}>
-                <SelectTrigger>
+                <SelectTrigger id="integration-category-select">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1556,14 +1591,14 @@ export function IntegrationsManager() {
                 Fields named with "key", "secret", "token" or "password" (e.g. Razorpay's keyId/keySecret) are masked while typing.
               </p>
               {missingRequiredFields(form.key, configRows).length > 0 && (
-                <p className="mt-1.5 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+                <p role="alert" className="mt-1.5 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
                   {form.name || form.key} can't process live payments yet — missing:{" "}
                   {missingRequiredFields(form.key, configRows).join(", ")}. Parents who pick this gateway will see a
                   "not fully configured" message until these are filled in.
                 </p>
               )}
               {configFormatWarning(form.key, configRows) && (
-                <p className="mt-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                <p role="alert" className="mt-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
                   {configFormatWarning(form.key, configRows)}
                 </p>
               )}

@@ -16,12 +16,7 @@ import { useApiData } from "@/api/hooks";
 import { finalizePayout, listPayouts, markPayoutPaid, toFrontendPayout } from "@/api/payouts";
 import { downloadReportCsv } from "@/api/reports";
 import type { TeacherPayout } from "@/types";
-import { formatCurrency, formatNumber, getInitials } from "@/lib/utils";
-
-function toCsv(columns: string[], rows: (string | number)[][]) {
-  const lines = [columns.join(","), ...rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))];
-  return lines.join("\n");
-}
+import { formatCurrency, formatNumber, getInitials, toCsv } from "@/lib/utils";
 
 function downloadCsv(filename: string, csv: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -36,7 +31,7 @@ function downloadCsv(filename: string, csv: string) {
 }
 
 export default function AdminPayouts() {
-  const { data: payouts, error: payoutsError, reload: reloadPayouts } = useApiData(
+  const { data: payouts, loading: payoutsLoading, error: payoutsError, reload: reloadPayouts } = useApiData(
     () => listPayouts().then((items) => items.map(toFrontendPayout)),
     PAYOUTS
   );
@@ -264,7 +259,7 @@ export default function AdminPayouts() {
       />
 
       {apiEnabled() && payoutsError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
           Could not load payouts ({payoutsError}) — the totals below don't reflect real data.{" "}
           <button type="button" className="underline" onClick={() => reloadPayouts()}>
             Retry
@@ -273,17 +268,17 @@ export default function AdminPayouts() {
       )}
 
       {exportError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{exportError}</p>
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{exportError}</p>
       )}
 
       {actionError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{actionError}</p>
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{actionError}</p>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label={`Total Payout — ${currentMonthLabel}`} value={formatCurrency(totals.totalThisMonth)} icon={IndianRupee} tone="primary" />
-        <KpiCard label="Teachers Paid" value={formatNumber(totals.teachersPaid)} icon={UsersRound} tone="success" />
-        <KpiCard label="Pending Calculations" value={formatNumber(totals.pendingCalculations)} icon={Wallet} tone="warning" />
+        <KpiCard label={`Total Payout — ${currentMonthLabel}`} value={formatCurrency(totals.totalThisMonth)} icon={IndianRupee} tone="primary" loading={payoutsLoading} />
+        <KpiCard label="Teachers Paid" value={formatNumber(totals.teachersPaid)} icon={UsersRound} tone="success" loading={payoutsLoading} />
+        <KpiCard label="Pending Calculations" value={formatNumber(totals.pendingCalculations)} icon={Wallet} tone="warning" loading={payoutsLoading} />
       </div>
 
       <div className="mt-6">
@@ -307,6 +302,7 @@ export default function AdminPayouts() {
               : undefined
         }
         confirmLabel={confirmTarget?.action === "finalize" ? "Finalize" : "Mark Paid"}
+        destructive={confirmTarget?.action === "finalize"}
         onConfirm={runPayoutAction}
       />
     </div>

@@ -1,4 +1,4 @@
-import { apiEnabled, apiFetch } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { buildJitsiJoinUrl } from "@/lib/jitsi";
 
 export interface MyAccount {
@@ -49,8 +49,4 @@ export async function getMyMeetingRoom(): Promise<MyMeetingRoom> {
  *  into a shared link would misattribute whoever actually clicks it. */
 export function buildPersonalMeetingUrl(room: MyMeetingRoom, displayName?: string): string {
   return buildJitsiJoinUrl(room.domain, room.roomId, room.token, displayName);
-}
-
-export function isAccountApiAvailable(): boolean {
-  return apiEnabled();
 }

@@ -94,12 +94,12 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
   return (
     <Card className="flex flex-col p-5 transition-shadow hover:shadow-pop">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${color}1A`, color }}>
             <Layers className="h-5 w-5" />
           </span>
-          <div>
-            <p className="font-semibold text-foreground">{batch.name}</p>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-foreground">{batch.name}</p>
             <p className="text-xs text-muted-foreground">{courseName ?? "—"}</p>
           </div>
         </div>
@@ -113,7 +113,11 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
             {batch.enrolled} / {batch.capacity}
           </span>
         </div>
-        <Progress value={pct} className="h-2" indicatorClassName={pct >= 90 ? "bg-destructive" : pct >= 70 ? "bg-warning" : "bg-success"} />
+        {/* High fill is the good outcome (a near-full batch), matching every other
+            percentage-fill indicator in the app (management/Performance.tsx's
+            utilization bars, parent/Dashboard.tsx's progress rings) — this used to
+            run the opposite direction, reading a nearly-sold-out batch as "danger". */}
+        <Progress value={pct} className="h-2" indicatorClassName={pct >= 90 ? "bg-success" : pct >= 70 ? "bg-warning" : "bg-destructive"} />
       </div>
 
       <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
@@ -159,6 +163,7 @@ export default function AdminBatches() {
   const [detail, setDetail] = useState<DisplayBatch | null>(null);
   const [teacherAssignment, setTeacherAssignment] = useState<string>("");
   const [saved, setSaved] = useState(false);
+  const [savingDetail, setSavingDetail] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // New-batch dialog
@@ -309,6 +314,7 @@ export default function AdminBatches() {
     setDetail(b);
     setTeacherAssignment(b.teacherId);
     setSaved(false);
+    setSavingDetail(false);
     setSaveError(null);
     setGenResult(null);
     setGenStart(b.startDate && b.startDate > new Date().toISOString().slice(0, 10) ? b.startDate : "");
@@ -330,6 +336,7 @@ export default function AdminBatches() {
     const raw = batchData.raw.find((b) => b.id === detail.id);
     if (!raw) return;
 
+    setSavingDetail(true);
     try {
       await updateBatch(raw, teacherAssignment);
       setSaved(true);
@@ -337,6 +344,8 @@ export default function AdminBatches() {
       setTimeout(() => setDetail(null), 700);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save the batch.");
+    } finally {
+      setSavingDetail(false);
     }
   }
 
@@ -354,11 +363,11 @@ export default function AdminBatches() {
       />
 
       {banner && (
-        <div className="mb-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">{banner}</div>
+        <div role="status" className="mb-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">{banner}</div>
       )}
 
       {apiEnabled() && batchError && (
-        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+        <div role="alert" className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
           <span>Couldn't load batches: {batchError}. The list below may be incomplete.</span>
           <Button variant="outline" size="sm" onClick={reload}>
             Retry
@@ -435,9 +444,9 @@ export default function AdminBatches() {
 
               <div className="grid gap-4">
                 <div className="grid gap-1.5">
-                  <Label>Assign teacher</Label>
+                  <Label htmlFor="batch-assign-teacher-select">Assign teacher</Label>
                   <Select value={teacherAssignment} onValueChange={setTeacherAssignment}>
-                    <SelectTrigger>
+                    <SelectTrigger id="batch-assign-teacher-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -457,7 +466,10 @@ export default function AdminBatches() {
                 </div>
                 {apiEnabled() ? (
                   <div className="grid gap-1.5">
-                    <Label>Assign students</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Assign students</Label>
+                      <span className="text-[11px] text-muted-foreground">Saved immediately</span>
+                    </div>
                     <Select value="" onValueChange={handleAssignStudent} disabled={assigning || roster.length >= detail.capacity}>
                       <SelectTrigger>
                         <SelectValue
@@ -531,9 +543,12 @@ export default function AdminBatches() {
 
               {/* Session plan: bulk-creates every course session on the chosen weekdays (skips holidays) */}
               <div className="rounded-xl border border-border bg-muted/30 p-4">
-                <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                  <CalendarPlus className="h-4 w-4" /> Generate class schedule
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <CalendarPlus className="h-4 w-4" /> Generate class schedule
+                  </p>
+                  <span className="text-[11px] text-muted-foreground">Saved immediately</span>
+                </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Creates all of this batch's course sessions from a start date on the selected weekdays (holidays skipped).
                 </p>
@@ -581,11 +596,18 @@ export default function AdminBatches() {
               </div>
 
               {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDetail(null)}>
-                  Close
-                </Button>
-                <Button onClick={saveDetail}>{saved ? "Saved!" : "Save Changes"}</Button>
+              <DialogFooter className="items-center gap-3 sm:justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Only applies the teacher assignment above — student roster and schedule changes are already saved.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => setDetail(null)}>
+                    Close
+                  </Button>
+                  <Button onClick={saveDetail} disabled={savingDetail}>
+                    {saved ? "Saved!" : savingDetail ? "Saving…" : "Save Changes"}
+                  </Button>
+                </div>
               </DialogFooter>
             </>
           )}
@@ -606,9 +628,9 @@ export default function AdminBatches() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label>Course</Label>
+                <Label htmlFor="new-batch-course-select">Course</Label>
                 <Select value={newCourse} onValueChange={setNewCourse}>
-                  <SelectTrigger>
+                  <SelectTrigger id="new-batch-course-select">
                     <SelectValue placeholder="Select course" />
                   </SelectTrigger>
                   <SelectContent>
@@ -621,9 +643,9 @@ export default function AdminBatches() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Teacher</Label>
+                <Label htmlFor="new-batch-teacher-select">Teacher</Label>
                 <Select value={newTeacher} onValueChange={setNewTeacher}>
-                  <SelectTrigger>
+                  <SelectTrigger id="new-batch-teacher-select">
                     <SelectValue placeholder="Select teacher" />
                   </SelectTrigger>
                   <SelectContent>

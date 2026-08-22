@@ -126,7 +126,7 @@ export default function ParentSchedule() {
       )}
 
       {usingApi && sessionsError && (
-        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <p role="alert" className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
           Could not load the schedule ({sessionsError}).{" "}
           <button type="button" className="underline" onClick={() => reloadSessions()}>
             Retry
@@ -247,7 +247,10 @@ function ScheduleRow({ session }: { session: ClassSession }) {
         ) : (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span>
+              {/* tabIndex: the Button is disabled and unreachable by keyboard on its own —
+                  without this the join-hint tooltip a mouse user sees on hover has no
+                  keyboard equivalent. */}
+              <span tabIndex={0}>
                 <Button size="sm" variant="outline" disabled>
                   <Video className="h-3.5 w-3.5" /> Join
                 </Button>

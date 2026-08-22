@@ -95,6 +95,7 @@ export default function TeacherLeave() {
   const [sessionId, setSessionId] = useState<string>("");
   const [reason, setReason] = useState("");
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!confirmation) return;
@@ -109,6 +110,7 @@ export default function TeacherLeave() {
 
   function handleSubmit() {
     if (!selectedSession || hoursBefore === null || !canSubmit) return;
+    setSubmitError(null);
 
     if (apiEnabled()) {
       const start = sessionDateTime(selectedSession);
@@ -123,6 +125,7 @@ export default function TeacherLeave() {
           // reloadLeaves() entirely and leave the list stuck on stale data until a manual
           // page reload — created but invisible.
           setConfirmation(`Leave request for "${selectedSession.title}" submitted — pending admin approval.`);
+          setSubmitError(null);
           try {
             setLeaves((prev) => [toFrontendLeave(created), ...prev]);
           } catch {
@@ -130,7 +133,7 @@ export default function TeacherLeave() {
           }
           reloadLeaves();
         })
-        .catch((err: Error) => setConfirmation(err.message));
+        .catch((err: Error) => setSubmitError(err.message));
       setSessionId("");
       setReason("");
       return;
@@ -191,9 +194,19 @@ export default function TeacherLeave() {
       />
 
       {confirmation && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
+        <div role="status" className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
           <CheckCircle2 className="h-4 w-4" />
           {confirmation}
+        </div>
+      )}
+
+      {/* Kept separate from the success banner above — a rejected submitLeave() used to
+          write its error text into the same state, which rendered inside the green
+          checkmark banner and looked like the request had gone through. */}
+      {submitError && (
+        <div role="alert" className="mb-5 flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+          <AlertTriangle className="h-4 w-4" />
+          {submitError}
         </div>
       )}
 
@@ -212,9 +225,11 @@ export default function TeacherLeave() {
           ) : (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label>Upcoming Session</Label>
+                <Label htmlFor="upcomingSession">
+                  Upcoming Session <span className="text-destructive">*</span>
+                </Label>
                 <Select value={sessionId} onValueChange={setSessionId}>
-                  <SelectTrigger>
+                  <SelectTrigger id="upcomingSession">
                     <SelectValue placeholder="Select a session" />
                   </SelectTrigger>
                   <SelectContent>
@@ -228,7 +243,9 @@ export default function TeacherLeave() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="reason">Reason</Label>
+                <Label htmlFor="reason">
+                  Reason <span className="text-destructive">*</span>
+                </Label>
                 <Textarea
                   id="reason"
                   placeholder="Briefly describe your reason for leave"

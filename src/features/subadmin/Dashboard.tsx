@@ -48,6 +48,17 @@ import {
 const TODAY = "2026-07-09";
 const ADMIN_CONTACT = "Ananya Rao";
 
+const MODULE_LABEL_BY_VALUE: Partial<Record<PermissionModuleName, string>> = Object.fromEntries(
+  PERMISSION_MODULES.map((m) => [m.value, m.label])
+);
+
+// requestedModules comes back as raw backend enum names ("BillingFinance"), not the display
+// labels ("Billing & Finance") shown everywhere else on this card — same mapping the Admin's
+// Access Requests panel already applies to the same field.
+function moduleLabels(modules: PermissionModuleName[]): string {
+  return modules.map((m) => MODULE_LABEL_BY_VALUE[m] ?? m).join(", ");
+}
+
 function timeAgo(iso: string, nowMs: number) {
   const diffMs = nowMs - new Date(iso).getTime();
   const hrs = Math.round(diffMs / 3_600_000);
@@ -242,7 +253,7 @@ export default function SubAdminDashboard() {
           loading={kpiLoading}
           error={kpiError}
         />
-        <KpiCard label="Sessions Today" value={String(sessionsToday)} icon={Clock} tone="warning" loading={kpiLoading} error={kpiError} />
+        <KpiCard label="Sessions Today" value={String(sessionsToday)} icon={Clock} tone="primary" loading={kpiLoading} error={kpiError} />
         <KpiCard
           label="Attendance Rate"
           value={formatPercent(attendanceRate)}
@@ -383,7 +394,7 @@ export default function SubAdminDashboard() {
             )}
             {usingApi && !pendingRequest && lastReviewedRequest && (
               <p className="text-[11px] text-muted-foreground">
-                Last request ({lastReviewedRequest.requestedModules.join(", ")}) was{" "}
+                Last request ({moduleLabels(lastReviewedRequest.requestedModules)}) was{" "}
                 <strong>{lastReviewedRequest.status.toLowerCase()}</strong> on{" "}
                 {formatDate((lastReviewedRequest.reviewedAtUtc ?? lastReviewedRequest.createdAtUtc).slice(0, 10), "long")}
                 {lastReviewedRequest.reviewNote ? ` — "${lastReviewedRequest.reviewNote}"` : ""}

@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Role } from "@/types";
 import { CHILDREN, getChildrenByParent } from "@/data/children";
-import { apiEnabled, getAccessToken, setAccessToken } from "@/lib/api";
+import { apiEnabled, getAccessToken } from "@/lib/api";
+import { authStorage, clearAuthStorage } from "@/lib/authStorage";
 import { getParentChildren } from "@/api/parentPortal";
 import { getCurrentUser } from "@/api/auth";
 import { checkPermission, type PermissionAction } from "@/lib/permissions";
@@ -81,7 +82,7 @@ const NAME_BY_ROLE: Record<Role, string> = {
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<Role | null>(() => {
     if (typeof window === "undefined") return null;
-    return (localStorage.getItem(ROLE_KEY) as Role | null) ?? null;
+    return (authStorage().getItem(ROLE_KEY) as Role | null) ?? null;
   });
   const [activeChildId, setActiveChildIdState] = useState<string>(() => {
     if (typeof window === "undefined") return apiEnabled() ? "" : CHILDREN[0].id;
@@ -95,18 +96,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   });
   const [apiUserName, setApiUserName] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem(NAME_KEY);
+    return authStorage().getItem(NAME_KEY);
   });
   const [permissions, setPermissionsState] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
-    const raw = localStorage.getItem(PERMISSIONS_KEY);
+    const raw = authStorage().getItem(PERMISSIONS_KEY);
     return raw ? (JSON.parse(raw) as string[]) : [];
   });
   const [timeZoneId, setTimeZoneIdState] = useState<string>(() => getUserTimeZone());
   const [childList, setChildList] = useState<SessionChild[]>(MOCK_SESSION_CHILDREN);
   const [homePath, setHomePathState] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
-    return safeInternalPath(localStorage.getItem(HOME_KEY));
+    return safeInternalPath(authStorage().getItem(HOME_KEY));
   });
 
   // homePath is a navigation target (Login and RequireAuth both <Navigate to> it) that
@@ -117,8 +118,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const setHomePath = (path: string | null) => {
     const safe = safeInternalPath(path);
     setHomePathState(safe);
-    if (safe) localStorage.setItem(HOME_KEY, safe);
-    else localStorage.removeItem(HOME_KEY);
+    if (safe) authStorage().setItem(HOME_KEY, safe);
+    else authStorage().removeItem(HOME_KEY);
   };
 
   // Persisted synchronously (not in an effect): navigating or reloading right after
@@ -126,13 +127,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // and bouncing the next full page load back to /login.
   const setRole = (next: Role | null) => {
     setRoleState(next);
-    if (next) localStorage.setItem(ROLE_KEY, next);
-    else localStorage.removeItem(ROLE_KEY);
+    if (next) authStorage().setItem(ROLE_KEY, next);
+    else authStorage().removeItem(ROLE_KEY);
   };
 
   const setPermissions = (next: string[]) => {
     setPermissionsState(next);
-    localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(next));
+    authStorage().setItem(PERMISSIONS_KEY, JSON.stringify(next));
   };
 
   const setTimeZoneId = (next: string | null) => {
@@ -197,8 +198,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const setUserName = (name: string | null) => {
     setApiUserName(name);
-    if (name) localStorage.setItem(NAME_KEY, name);
-    else localStorage.removeItem(NAME_KEY);
+    if (name) authStorage().setItem(NAME_KEY, name);
+    else authStorage().removeItem(NAME_KEY);
   };
 
   const value = useMemo<SessionState>(
@@ -208,11 +209,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       homePath,
       setHomePath,
       logout: () => {
-        setRole(null);
-        setUserName(null);
-        setPermissions([]);
-        setHomePath(null);
-        setAccessToken(null);
+        setRoleState(null);
+        setApiUserName(null);
+        setPermissionsState([]);
+        setHomePathState(null);
+        clearAuthStorage();
         setTimeZoneId(null);
       },
       activeChildId,

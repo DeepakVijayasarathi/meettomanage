@@ -16,12 +16,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { ChartCard } from "@/components/ChartCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatPercent } from "@/lib/utils";
+import { formatPercent, toCsv } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { downloadReportCsv, getDashboardSummary, getTeacherPerformance, type ApiDashboardSummary } from "@/api/reports";
@@ -73,18 +72,9 @@ function reportRows(type: ReportType, sources: ReportSources): { columns: string
   }
 }
 
-function toCsv(columns: string[], rows: (string | number)[][]) {
-  const lines = [columns.join(","), ...rows.map((r) => r.join(","))];
-  return lines.join("\n");
-}
-
 export default function AdminReports() {
   const usingApi = apiEnabled();
   const [reportType, setReportType] = useState<ReportType>("revenue");
-  const [fromDate, setFromDate] = useState(
-    usingApi ? new Date(Date.now() - 150 * 86400_000).toISOString().slice(0, 10) : "2026-02-01"
-  );
-  const [toDate, setToDate] = useState(usingApi ? new Date().toISOString().slice(0, 10) : "2026-07-09");
   const [generated, setGenerated] = useState<ReportType | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -124,16 +114,6 @@ export default function AdminReports() {
     [generated, reportType, sources]
   );
 
-  // A backwards or half-filled range still generated a report and exported a CSV named
-  // after a window that can't contain anything (revenue-report--to-2026-08-01.csv), so
-  // the file's own name promised data it could never hold. Caught before Generate.
-  const rangeError =
-    !fromDate || !toDate
-      ? "Pick both a start and an end date."
-      : fromDate > toDate
-        ? "The From date must be on or before the To date."
-        : null;
-
   async function handleExport() {
     setExportError(null);
     const type = generated ?? reportType;
@@ -161,7 +141,7 @@ export default function AdminReports() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${type}-report-${fromDate}-to-${toDate}.csv`;
+    a.download = `${type}-report-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -173,15 +153,15 @@ export default function AdminReports() {
       <PageHeader
         eyebrow="Analytics"
         title="Reports & Analytics"
-        description="Build a report by type and date range, preview it, and export the results as CSV."
+        description="Build a report by type, preview it, and export the results as CSV."
       />
 
       <Card>
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-end">
           <div className="grid flex-1 gap-1.5">
-            <Label>Report type</Label>
+            <Label htmlFor="report-type-select">Report type</Label>
             <Select value={reportType} onValueChange={(v) => setReportType(v as ReportType)}>
-              <SelectTrigger>
+              <SelectTrigger id="report-type-select">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -193,30 +173,16 @@ export default function AdminReports() {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="from-date">From</Label>
-            <Input id="from-date" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-40" />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="to-date">To</Label>
-            <Input id="to-date" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-40" />
-          </div>
-          <Button onClick={() => setGenerated(reportType)} disabled={!!rangeError}>
+          <Button onClick={() => setGenerated(reportType)}>
             <Sparkles className="h-4 w-4" />
             Generate
           </Button>
         </CardContent>
       </Card>
 
-      {rangeError && (
-        <p role="alert" className="mt-2 text-sm font-medium text-destructive">
-          {rangeError}
-        </p>
-      )}
-
       {generated && (
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <ChartCard title={REPORT_OPTIONS.find((o) => o.value === generated)?.label ?? "Report"} description={`${fromDate} → ${toDate}`}>
+          <ChartCard title={REPORT_OPTIONS.find((o) => o.value === generated)?.label ?? "Report"}>
             <ResponsiveContainer width="100%" height="100%">
               {generated === "attendance" ? (
                 <LineChart data={rows.map(([label, value]) => ({ label, value }))} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
@@ -282,7 +248,7 @@ export default function AdminReports() {
                 </Table>
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
-                Showing {rows.length} rows for the selected range. Export CSV downloads exactly what&apos;s previewed above.
+                Showing {rows.length} rows. Export CSV downloads exactly what&apos;s previewed above.
               </p>
             </CardContent>
           </Card>
@@ -292,7 +258,7 @@ export default function AdminReports() {
       {!generated && (
         <div className="mt-6">
           <p className="text-sm text-muted-foreground">
-            Select a report type and date range, then click <span className="font-semibold text-foreground">Generate</span> to see a live preview.
+            Select a report type, then click <span className="font-semibold text-foreground">Generate</span> to see a live preview.
           </p>
         </div>
       )}

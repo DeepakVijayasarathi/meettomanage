@@ -166,8 +166,14 @@ export interface Resource {
   id: string;
   title: string;
   type: "book" | "worksheet" | "recording";
-  courseCategory: Course["category"];
+  // Demo mode only, where the mock data has a real category per resource. Live-mode
+  // resources don't carry this (the API has no per-resource category), so it's undefined
+  // there — display code must fall back to batchName rather than assert a fake value.
+  courseCategory?: Course["category"];
   batchId?: string;
+  /** Live mode: the resource's linked batch name (from the API). Demo mode resolves this
+   *  from BATCHES by batchId instead — see admin/Resources.tsx. */
+  batchName?: string;
   uploadedOn: string;
   downloadable: boolean;
   /**
@@ -186,11 +192,6 @@ export interface NotificationItem {
   time: string;
   read: boolean;
   type: "info" | "success" | "warning" | "danger";
-}
-
-export interface KpiTrend {
-  label: string;
-  value: number;
 }
 
 export interface ChatMessage {

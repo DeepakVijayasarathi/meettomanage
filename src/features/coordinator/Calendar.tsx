@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarClock, PartyPopper, RefreshCcw, Video } from "lucide-react";
+import { PartyPopper, RefreshCcw, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -131,9 +131,6 @@ export default function CoordinatorCalendar() {
           {selected && (
             <>
               <DialogHeader>
-                <span className="mb-1 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <CalendarClock className="h-5 w-5" />
-                </span>
                 <DialogTitle>{selected.title}</DialogTitle>
                 <DialogDescription>
                   {formatDate(selected.date, "long")} · {selected.startTime} · {selected.duration} min
@@ -186,7 +183,7 @@ export default function CoordinatorCalendar() {
                   </Button>
                 )}
               </DialogFooter>
-              {joinError && <p className="px-6 pb-4 text-sm font-medium text-destructive">{joinError}</p>}
+              {joinError && <p role="alert" className="px-6 pb-4 text-sm font-medium text-destructive">{joinError}</p>}
             </>
           )}
         </DialogContent>

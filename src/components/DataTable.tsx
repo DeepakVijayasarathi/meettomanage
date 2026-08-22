@@ -161,6 +161,7 @@ export function DataTable<T>({
               setPage(1);
             }}
             placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder ?? "Search"}
             className="pl-9"
           />
         </div>
@@ -209,9 +210,25 @@ export function DataTable<T>({
                 <div
                   key={rowKey(row)}
                   onClick={() => onRowClick?.(row)}
+                  // A bare onClick div is mouse/pointer-only — several screens have no
+                  // separate action button and rely on the row itself as the only way in
+                  // (e.g. admin Enrollments/Users/Billing), which made those unreachable
+                  // by keyboard entirely. role="button" + tabIndex + Enter/Space closes that.
+                  role={onRowClick ? "button" : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onKeyDown={
+                    onRowClick
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onRowClick(row);
+                          }
+                        }
+                      : undefined
+                  }
                   className={cn(
                     "rounded-xl border border-border bg-card p-4",
-                    onRowClick && "cursor-pointer active:bg-muted/40"
+                    onRowClick && "cursor-pointer active:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   )}
                 >
                   <div className="flex items-start gap-2">
@@ -288,7 +305,19 @@ export function DataTable<T>({
                   <TableRow
                     key={rowKey(row)}
                     onClick={() => onRowClick?.(row)}
-                    className={cn(onRowClick && "cursor-pointer")}
+                    role={onRowClick ? "button" : undefined}
+                    tabIndex={onRowClick ? 0 : undefined}
+                    onKeyDown={
+                      onRowClick
+                        ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              onRowClick(row);
+                            }
+                          }
+                        : undefined
+                    }
+                    className={cn(onRowClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset")}
                   >
                     {selectable && (
                       <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>

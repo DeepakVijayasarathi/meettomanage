@@ -102,11 +102,25 @@ export default function GamificationOverlay({ celebrating, onCelebrationEnd, lea
           <div className="absolute inset-0 flex items-center justify-center">
             <div
               className={cn(
-                "rounded-2xl border border-white/10 bg-brand-navy/95 px-7 py-5 text-center backdrop-blur",
+                "flex flex-col items-center gap-3 rounded-3xl border border-white/10 bg-brand-navy/95 px-8 py-6 text-center shadow-2xl shadow-black/40 backdrop-blur",
                 !reducedMotion && "animate-pop-in"
               )}
             >
-              <p className="font-display text-xl font-bold text-white sm:text-2xl">{message ?? "Great job! 🎉"}</p>
+              <span
+                className={cn(
+                  "flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-amber to-brand-violet text-3xl leading-none",
+                  !reducedMotion && "animate-bounce"
+                )}
+              >
+                👏
+              </span>
+              {/* role="status": this mounts/dismisses on its own (sound + a 1.7s auto-timeout,
+                  see below) with no click to anchor a screen reader's attention — without an
+                  announcement, a celebration that isn't seen or heard (sound muted) leaves no
+                  trace at all for that user. */}
+              <p role="status" className="font-display text-xl font-bold text-white sm:text-2xl">
+                {message ?? "Great job, everyone!"}
+              </p>
             </div>
           </div>
         </div>
@@ -155,7 +169,15 @@ export default function GamificationOverlay({ celebrating, onCelebrationEnd, lea
               </span>
               <span className="flex-1 truncate font-medium text-white/85">{entry.name}</span>
               {badgeFor(entry.stars) && (
-                <span title={badgeFor(entry.stars)!.label} className="text-sm leading-none">
+                // role="img" + aria-label (not just title): a bare <span> with only a title
+                // attribute isn't focusable and many screen readers don't reliably expose
+                // title text in browse mode, so the emoji's meaning was effectively lost.
+                <span
+                  role="img"
+                  aria-label={badgeFor(entry.stars)!.label}
+                  title={badgeFor(entry.stars)!.label}
+                  className="text-sm leading-none"
+                >
                   {badgeFor(entry.stars)!.badge}
                 </span>
               )}

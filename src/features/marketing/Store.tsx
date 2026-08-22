@@ -481,6 +481,7 @@ export default function Store() {
                                   key={slot.startAtUtc}
                                   type="button"
                                   onClick={() => setDemoForm((f) => ({ ...f, preferredStart: slotLocal }))}
+                                  aria-pressed={isSelected}
                                   className={cn(
                                     "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
                                     isSelected

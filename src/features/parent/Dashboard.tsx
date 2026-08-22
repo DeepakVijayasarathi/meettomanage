@@ -136,7 +136,7 @@ export default function ParentDashboard() {
   );
 
   // Real unpaid invoice drives the fee card / Pay Now in API mode; demo keeps the mock lookup.
-  const { data: apiInvoices, reload: reloadInvoices } = useApiData<Invoice[]>(
+  const { data: apiInvoices, loading: invoicesLoading, reload: reloadInvoices } = useApiData<Invoice[]>(
     () => getParentInvoices().then((items) => items.map(toFrontendInvoice)),
     []
   );
@@ -212,7 +212,7 @@ export default function ParentDashboard() {
               <KpiCard label="Classes Completed" value={String(child.classesCompleted)} icon={CheckCircle2} tone="success" loading={usingApi && dashLoading} />
               <KpiCard label="Classes Remaining" value={String(child.classesRemaining)} icon={CalendarClock} tone="primary" loading={usingApi && dashLoading} />
               <AttendanceCard percent={child.attendancePercent} color={child.avatarColor} />
-              <FeeCard child={child} invoice={invoice} onPay={() => setPayOpen(true)} />
+              <FeeCard child={child} invoice={invoice} invoiceLoading={invoicesLoading} onPay={() => setPayOpen(true)} />
             </div>
 
             <div className="grid gap-6 lg:grid-cols-5">
@@ -287,8 +287,22 @@ function AttendanceCard({ percent, color }: { percent: number; color: string }) 
   );
 }
 
-function FeeCard({ child, invoice, onPay }: { child: Child; invoice?: Invoice; onPay: () => void }) {
+function FeeCard({
+  child,
+  invoice,
+  invoiceLoading,
+  onPay,
+}: {
+  child: Child;
+  invoice?: Invoice;
+  invoiceLoading?: boolean;
+  onPay: () => void;
+}) {
   const needsAction = child.feeStatus === "due" || child.feeStatus === "overdue" || child.feeStatus === "suspended";
+  // The invoice backing "Pay Now" comes from a separate fetch than feeStatus — until it
+  // resolves (or if it never finds a matching invoice) there's nothing to pay against,
+  // so the button must stay disabled instead of silently doing nothing when clicked.
+  const payDisabled = invoiceLoading || !invoice;
   return (
     <Card className={cn("p-5", needsAction && "border-warning/40")}>
       <div className="flex items-start justify-between gap-3">
@@ -308,8 +322,8 @@ function FeeCard({ child, invoice, onPay }: { child: Child; invoice?: Invoice; o
         </span>
       </div>
       {needsAction ? (
-        <Button size="sm" className="mt-4 w-full" onClick={onPay}>
-          Pay {invoice ? formatCurrency(invoiceBalance(invoice)) : "Now"}
+        <Button size="sm" className="mt-4 w-full" onClick={onPay} disabled={payDisabled}>
+          {invoiceLoading ? "Loading…" : `Pay ${invoice ? formatCurrency(invoiceBalance(invoice)) : "Now"}`}
         </Button>
       ) : (
         <p className="mt-4 text-xs font-medium text-success">All caught up — thank you!</p>
@@ -342,7 +356,10 @@ function UpcomingRow({ session }: { session: ClassSession }) {
         ) : (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span>
+              {/* tabIndex: the Button is disabled and unreachable by keyboard on its own —
+                  without this the join-hint tooltip a mouse user sees on hover has no
+                  keyboard equivalent. */}
+              <span tabIndex={0}>
                 <Button size="sm" variant="outline" disabled>
                   <Video className="h-3.5 w-3.5" /> Join
                 </Button>

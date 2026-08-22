@@ -291,7 +291,7 @@ export default function ParentEnrollment() {
 
       <Card className="mx-auto max-w-2xl">
         <CardHeader className="gap-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+          <div aria-live="polite" className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
             <span>
               Step {step + 1} of {STEPS.length}
             </span>

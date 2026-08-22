@@ -6,65 +6,86 @@ import {
   CalendarCheck2,
   CheckCircle2,
   HeartHandshake,
+  LayoutGrid,
+  Menu,
   MessageSquare,
   PenTool,
   ShieldCheck,
   Sparkles,
   Video,
   Wallet,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/Logo";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useBrand } from "@/lib/branding";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
+import { cn } from "@/lib/utils";
 
-const FEATURES = [
+interface FeatureItem {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  /** Literal Tailwind classes when the color matches a design-system token. */
+  colorClass?: string;
+  /** Raw hex fallback for a color with no matching token. */
+  hex?: string;
+}
+
+const FEATURES: FeatureItem[] = [
   {
     icon: Video,
-    hex: "#5B93E0",
+    colorClass: "bg-brand-blue/10 text-brand-blue",
     title: "Live Classroom",
     description: "One-click Jitsi video, screen share, chat, raise-hand and teacher controls — built for real teaching, not just meetings.",
   },
   {
     icon: PenTool,
+    // No matching design-system token for this hex — kept as a literal color.
     hex: "#8B5CF6",
     title: "Interactive Whiteboard",
     description: "Infinite, multi-page boards with drawing, drag & drop, tag & match and hotspot activities, synced live for every student.",
   },
   {
     icon: CalendarCheck2,
-    hex: "#F08A1D",
+    colorClass: "bg-role-teacher/10 text-role-teacher",
     title: "Smart Scheduling",
     description: "1:1 and group classes, conflict-free academic calendars, automatic no-show handling and intelligent rescheduling.",
   },
   {
     icon: HeartHandshake,
-    hex: "#F53BA6",
+    colorClass: "bg-brand-pink/10 text-brand-pink",
     title: "Admissions CRM",
     description: "Demo bookings, teacher feedback, follow-ups and a conversion pipeline that turns leads into enrolled families.",
   },
   {
     icon: Wallet,
-    hex: "#57B33B",
+    colorClass: "bg-brand-green/10 text-brand-green",
     title: "Billing & Payments",
     description: "Subscriptions, auto invoices, dual payment-gateway routing and automatic fee-suspension with instant restoration.",
   },
   {
     icon: BarChart3,
-    hex: "#17A9C9",
+    colorClass: "bg-brand-cyan/10 text-brand-cyan",
     title: "Analytics & AI Reports",
     description: "Engagement scores, attendance trends, teacher performance and business KPIs — all in one live dashboard.",
   },
   {
     icon: Sparkles,
-    hex: "#EAB308",
+    colorClass: "bg-status-scheduled/10 text-status-scheduled",
     title: "Gamification",
     description: "Live quizzes, stars, badges, milestones and leaderboards that make every class something kids look forward to.",
   },
   {
     icon: MessageSquare,
-    hex: "#0D9488",
+    colorClass: "bg-role-coordinator/10 text-role-coordinator",
     title: "Notifications, Built In",
     description: "Email, SMS and WhatsApp reminders, booking confirmations and payment alerts — nobody misses a class.",
   },
@@ -98,6 +119,25 @@ export default function MarketingHome() {
                 Sign In <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="sm:hidden" aria-label="Open menu">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem asChild>
+                  <Link to="/store" className="cursor-pointer">
+                    <BookOpen /> Browse Courses
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/portal-select" className="cursor-pointer">
+                    <LayoutGrid /> Explore Portals
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -182,10 +222,10 @@ export default function MarketingHome() {
                 className="group rounded-2xl border border-brand-ink/10 p-5 transition-all hover:-translate-y-1 hover:shadow-pop"
               >
                 <span
-                  className="flex h-11 w-11 items-center justify-center rounded-xl"
-                  style={{ backgroundColor: `${f.hex}1A`, color: f.hex }}
+                  className={cn("flex h-11 w-11 items-center justify-center rounded-xl", f.colorClass)}
+                  style={f.hex ? { backgroundColor: `${f.hex}1A`, color: f.hex } : undefined}
                 >
-                  <f.icon className="h-5.5 w-5.5" />
+                  <f.icon className="h-[22px] w-[22px]" />
                 </span>
                 <h3 className="mt-4 text-sm font-bold text-brand-ink">{f.title}</h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-brand-ink/55">{f.description}</p>
@@ -223,7 +263,7 @@ export default function MarketingHome() {
                     className="flex h-11 w-11 items-center justify-center rounded-xl text-white"
                     style={{ backgroundColor: meta.hex }}
                   >
-                    <meta.icon className="h-5.5 w-5.5" />
+                    <meta.icon className="h-[22px] w-[22px]" />
                   </span>
                   <div>
                     <h3 className="text-sm font-bold text-brand-ink">{meta.label}</h3>

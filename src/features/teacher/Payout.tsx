@@ -22,7 +22,7 @@ function parseMonth(month: string) {
 
 export default function TeacherPayout() {
   const { userName } = useSession();
-  const { data: fetchedPayouts, error: payoutsError, reload: reloadPayouts } = useApiData(
+  const { data: fetchedPayouts, loading: payoutsLoading, error: payoutsError, reload: reloadPayouts } = useApiData(
     () => listMyPayouts().then((items) => items.map(toFrontendPayout)),
     getPayoutsForTeacher(TEACHER_ID)
   );
@@ -96,7 +96,7 @@ export default function TeacherPayout() {
       />
 
       {apiEnabled() && payoutsError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
           Could not load your payout history ({payoutsError}).{" "}
           <button type="button" className="underline" onClick={() => reloadPayouts()}>
             Retry
@@ -104,7 +104,17 @@ export default function TeacherPayout() {
         </p>
       )}
 
-      {payouts.length === 0 ? (
+      {payoutsLoading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* tone has no effect while loading=true (KpiCard's skeleton branch ignores it) —
+              set to neutral rather than a hardcoded "warning" since the real card's tone
+              below is conditional on paid status, not fixed. */}
+          <KpiCard label="This Month Payout" value="" icon={Wallet} tone="neutral" loading />
+          <KpiCard label="Sessions This Month" value="" icon={CalendarCheck} tone="primary" loading />
+          <KpiCard label="Lifetime Payout" value="" icon={TrendingUp} tone="neutral" loading />
+          <KpiCard label="Lifetime Sessions" value="" icon={Banknote} tone="success" loading />
+        </div>
+      ) : payouts.length === 0 ? (
         payoutsError ? null : (
           <EmptyState icon={Wallet} title="No payout records yet" description="Your payout history will appear here once your first month is processed." />
         )

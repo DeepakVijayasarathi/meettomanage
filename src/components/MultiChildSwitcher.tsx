@@ -17,6 +17,7 @@ export function MultiChildSwitcher() {
           <button
             key={child.id}
             onClick={() => setActiveChildId(child.id)}
+            aria-pressed={active}
             className={cn(
               "group relative flex items-center gap-2 rounded-full border px-2 py-1.5 pr-3 text-sm font-semibold transition-colors",
               active ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground hover:bg-muted/60"

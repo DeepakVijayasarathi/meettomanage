@@ -36,6 +36,12 @@ export default function QuizOverlay({
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const scoredRef = useRef(false);
+  // Guards nextQuestion() against a fast double-click: the phase-reset effect below (which
+  // would normally hide the Next button by flipping phase away from "revealed") only runs
+  // after React re-renders, so two clicks in quick succession could otherwise both fire
+  // before that happens and broadcast two question advances from one intended click.
+  const advancingRef = useRef(false);
+  const promptRef = useRef<HTMLParagraphElement>(null);
 
   const question = QUIZ_BANK[qIndex % QUIZ_BANK.length];
 
@@ -53,6 +59,7 @@ export default function QuizOverlay({
     setTimeLeft(QUESTION_SECONDS);
     setSelected(null);
     scoredRef.current = false;
+    advancingRef.current = false;
   }, [active, qIndex]);
 
   useEffect(() => {
@@ -81,12 +88,27 @@ export default function QuizOverlay({
     setQIndex(syncedIndex);
   }, [syncedIndex]);
 
+  // The option buttons go `disabled` the instant a student answers (even before the
+  // timer runs out) and again at reveal — a disabled button drops keyboard focus to
+  // <body> with nothing to land on next. Move focus to the question prompt instead,
+  // which stays rendered (and meaningful) through both of those transitions.
+  useEffect(() => {
+    if (mode === "student" && (selected !== null || phase === "revealed")) {
+      promptRef.current?.focus();
+    }
+  }, [mode, selected, phase]);
+
   function selectOption(idx: number) {
-    if (phase !== "countdown" || selected !== null) return;
+    // Teacher's own view renders the same overlay to monitor live tallies — it must stay
+    // read-only, or clicking an option answers the teacher's own quiz under their name
+    // (broadcasts a QuizAnswer and can award them a Star on the class leaderboard).
+    if (mode !== "student" || phase !== "countdown" || selected !== null) return;
     setSelected(idx);
   }
 
   function nextQuestion() {
+    if (advancingRef.current) return;
+    advancingRef.current = true;
     setQIndex((i) => {
       const next = i + 1;
       onLaunchQuestion?.(next);
@@ -129,7 +151,9 @@ export default function QuizOverlay({
         <p className="text-xs font-medium text-white/50">
           Question {(qIndex % QUIZ_BANK.length) + 1} of {QUIZ_BANK.length}
         </p>
-        <p className="text-sm font-semibold leading-snug text-white">{question.prompt}</p>
+        <p ref={promptRef} tabIndex={-1} className="text-sm font-semibold leading-snug text-white focus:outline-none">
+          {question.prompt}
+        </p>
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto p-3">
@@ -141,7 +165,7 @@ export default function QuizOverlay({
             <button
               key={opt}
               onClick={() => selectOption(i)}
-              disabled={phase !== "countdown" || selected !== null}
+              disabled={mode !== "student" || phase !== "countdown" || selected !== null}
               className={cn(
                 "flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all",
                 !showResult && isSelected && "border-brand-violet bg-brand-violet/15 text-white",
@@ -194,8 +218,17 @@ export default function QuizOverlay({
       </div>
 
       <div className="flex shrink-0 items-center justify-between border-t border-white/10 p-3">
-        <p className="text-xs font-semibold text-white/70">
-          {mode === "teacher" ? "Class score" : "Your score"}: {score.correct}/{score.total}
+        {/* role="status" (student mode only, via aria-live semantics on the text itself):
+            updates the instant a question resolves — the one thing on this panel a
+            screen-reader user landing on the (now-focused, see the effect above) prompt
+            would actually want confirmed: did I get that right. */}
+        <p className="text-xs font-semibold text-white/70" role={mode === "student" ? "status" : undefined}>
+          {/* The teacher can no longer answer their own quiz (see selectOption above), so
+              their own score would always read 0/0 — show something real instead: how many
+              students have actually responded to this question so far. */}
+          {mode === "teacher"
+            ? `${optionCounts.reduce((a, b) => a + b, 0)} response${optionCounts.reduce((a, b) => a + b, 0) === 1 ? "" : "s"}`
+            : `Your score: ${score.correct}/${score.total}`}
         </p>
         <div className="flex gap-2">
           {mode === "teacher" && phase === "countdown" && (

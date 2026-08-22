@@ -59,7 +59,7 @@ export default function PortalSelect() {
                     className="flex h-11 w-11 items-center justify-center rounded-xl text-white"
                     style={{ backgroundColor: meta.hex }}
                   >
-                    <meta.icon className="h-5.5 w-5.5" />
+                    <meta.icon className="h-[22px] w-[22px]" />
                   </span>
                   {meta.available ? (
                     <Badge variant="success">Live</Badge>

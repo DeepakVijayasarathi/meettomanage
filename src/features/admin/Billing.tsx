@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Download, FileText, IndianRupee, TimerReset, Undo2 } from "lucide-react";
+import { AlertTriangle, FileText, IndianRupee, TimerReset, Undo2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -59,7 +59,7 @@ export default function AdminBilling() {
   // screen filters, sorts and totals client-side, so it takes one full page and lets
   // DataTable paginate that in the browser; `totalCount` is what tells us when the page
   // no longer covers the whole table, so the KPI figures below can say so.
-  const { data: invoiceData, error: invoicesError, reload } = useApiData(
+  const { data: invoiceData, loading: invoicesLoading, error: invoicesError, reload } = useApiData(
     () => listInvoiceRows(toFrontendInvoice),
     { rows: INVOICES, totalCount: INVOICES.length },
     { rows: [], totalCount: 0 }
@@ -70,7 +70,6 @@ export default function AdminBilling() {
   const { hasPermission } = useSession();
   const canRequestRefund = hasPermission("BillingFinance", "Create");
   const [detail, setDetail] = useState<Invoice | null>(null);
-  const [downloaded, setDownloaded] = useState(false);
 
   // Record-payment (incl. confirming a parent's cash intent) state
   const [recording, setRecording] = useState(false);
@@ -94,7 +93,6 @@ export default function AdminBilling() {
 
   function openDetail(row: Invoice) {
     setDetail(row);
-    setDownloaded(false);
     setRecording(false);
     setPayError(null);
     setPayMethod("Cash");
@@ -285,7 +283,7 @@ export default function AdminBilling() {
       />
 
       {live && invoicesError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not load invoices ({invoicesError}) — the table below may be incomplete.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
@@ -294,9 +292,9 @@ export default function AdminBilling() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Total Revenue Collected" value={formatCurrency(totals.totalRevenue)} icon={IndianRupee} tone="success" />
-        <KpiCard label="Pending Invoices" value={`${formatNumber(totals.pendingCount)} · ${formatCurrency(totals.pendingAmount)}`} icon={TimerReset} tone="warning" />
-        <KpiCard label="Overdue Invoices" value={`${formatNumber(totals.overdueCount)} · ${formatCurrency(totals.overdueAmount)}`} icon={AlertTriangle} tone="destructive" />
+        <KpiCard label="Total Revenue Collected" value={formatCurrency(totals.totalRevenue)} icon={IndianRupee} tone="success" loading={invoicesLoading} />
+        <KpiCard label="Pending Invoices" value={`${formatNumber(totals.pendingCount)} · ${formatCurrency(totals.pendingAmount)}`} icon={TimerReset} tone="warning" loading={invoicesLoading} />
+        <KpiCard label="Overdue Invoices" value={`${formatNumber(totals.overdueCount)} · ${formatCurrency(totals.overdueAmount)}`} icon={AlertTriangle} tone="destructive" loading={invoicesLoading} />
       </div>
 
       {truncated && (
@@ -510,7 +508,12 @@ export default function AdminBilling() {
                 <Button variant="outline" onClick={() => setDetail(null)}>
                   Close
                 </Button>
-                {live && detail.apiId && detail.status !== "paid" && detail.status !== "cancelled" ? (
+                {/* No admin-facing invoice/receipt download endpoint exists on the backend
+                    (ParentPortalController's is locked to [Authorize(Roles = "Parent")]) —
+                    this used to be a button that only ever flipped its own label to
+                    "Receipt Downloaded" without downloading anything. Removed rather than
+                    leave a control that claims to do something it can't. */}
+                {live && detail.apiId && detail.status !== "paid" && detail.status !== "cancelled" && (
                   recording ? (
                     <Button onClick={reviewPayment} disabled={saving}>
                       {saving ? "Recording…" : "Confirm payment"}
@@ -521,11 +524,6 @@ export default function AdminBilling() {
                       Record payment
                     </Button>
                   )
-                ) : (
-                  <Button onClick={() => setDownloaded(true)}>
-                    <Download className="h-4 w-4" />
-                    {downloaded ? "Receipt Downloaded" : "Download Receipt"}
-                  </Button>
                 )}
               </DialogFooter>
             </>
@@ -539,7 +537,6 @@ export default function AdminBilling() {
         title="Record this payment?"
         description={`${formatCurrency(Number(payAmount) || 0)} via ${payMethod} will be applied to ${detail?.id ?? "this invoice"} immediately, updating the balance and the parent's dashboard. This can't be undone from here.`}
         confirmLabel="Record payment"
-        destructive
         onConfirm={submitPayment}
       />
     </div>

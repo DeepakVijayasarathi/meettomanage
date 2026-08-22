@@ -144,7 +144,7 @@ export default function TeacherDemoFeedback() {
       />
 
       {justSubmitted && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
+        <div role="status" className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
           <CheckCircle2 className="h-4 w-4" />
           Feedback for {justSubmitted} submitted successfully.
         </div>
@@ -285,11 +285,11 @@ export default function TeacherDemoFeedback() {
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1.5">
-                    <Label>
+                    <Label htmlFor="recommendedCourse">
                       Recommended Course <span className="text-destructive">*</span>
                     </Label>
                     <Select value={form.recommendedCourse} onValueChange={(v) => setForm((p) => ({ ...p, recommendedCourse: v }))}>
-                      <SelectTrigger>
+                      <SelectTrigger id="recommendedCourse">
                         <SelectValue placeholder="Select a course" />
                       </SelectTrigger>
                       <SelectContent>
@@ -303,14 +303,14 @@ export default function TeacherDemoFeedback() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label>
+                    <Label htmlFor="suggestedBatchType">
                       Suggested Batch Type <span className="text-destructive">*</span>
                     </Label>
                     <Select
                       value={form.suggestedBatchType}
                       onValueChange={(v) => setForm((p) => ({ ...p, suggestedBatchType: v as CourseType }))}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="suggestedBatchType">
                         <SelectValue placeholder="Select batch type" />
                       </SelectTrigger>
                       <SelectContent>

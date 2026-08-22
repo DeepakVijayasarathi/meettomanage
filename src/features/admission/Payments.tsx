@@ -79,7 +79,7 @@ export default function AdmissionPayments() {
   // One page of the (forever-growing) invoice table; the status filter, totals and
   // DataTable's paging all run client-side over it. totalCount is the whole matching
   // set server-side, which is what the "Invoices" KPI should actually count.
-  const { data: invoiceData, error: invoicesError, reload } = useApiData(
+  const { data: invoiceData, loading: invoicesLoading, error: invoicesError, reload } = useApiData(
     () => listInvoiceRows((invoice) => fromInvoice(toFrontendInvoice(invoice))),
     { rows: DEMO_ROWS, totalCount: DEMO_ROWS.length },
     { rows: [], totalCount: 0 }
@@ -231,7 +231,7 @@ export default function AdmissionPayments() {
         // Without this the screen reads "Invoices 0 · Collected ₹0 · Outstanding ₹0" after
         // a failed fetch — collection figures of zero are a claim about money, and one
         // nobody should make on the strength of a request that never returned.
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not load invoices ({invoicesError}) — the figures and table below are not
           your real collection position.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
@@ -241,10 +241,10 @@ export default function AdmissionPayments() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Invoices" value={String(totals.total)} icon={Link2} tone="primary" />
-        <KpiCard label="Collected" value={formatCurrency(totals.paid)} icon={IndianRupee} tone="success" />
-        <KpiCard label="Outstanding" value={formatCurrency(totals.outstanding)} icon={Wallet} tone="destructive" />
-        <KpiCard label="Partially Paid" value={String(totals.partial)} icon={ListChecks} tone="warning" />
+        <KpiCard label="Invoices" value={String(totals.total)} icon={Link2} tone="primary" loading={invoicesLoading} />
+        <KpiCard label="Collected" value={formatCurrency(totals.paid)} icon={IndianRupee} tone="success" loading={invoicesLoading} />
+        <KpiCard label="Outstanding" value={formatCurrency(totals.outstanding)} icon={Wallet} tone="destructive" loading={invoicesLoading} />
+        <KpiCard label="Partially Paid" value={String(totals.partial)} icon={ListChecks} tone="warning" loading={invoicesLoading} />
       </div>
 
       {truncated && (
@@ -267,7 +267,7 @@ export default function AdmissionPayments() {
       </div>
 
       <div className="mt-8">
-        {error && <p className="mb-3 text-sm font-medium text-destructive">{error}</p>}
+        {error && <p role="alert" className="mb-3 text-sm font-medium text-destructive">{error}</p>}
         <DataTable
           data={filtered}
           columns={columns}

@@ -88,7 +88,7 @@ export default function AdmissionConversion() {
       />
 
       {moveError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">{moveError}</p>
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">{moveError}</p>
       )}
 
       {leads.length === 0 ? (

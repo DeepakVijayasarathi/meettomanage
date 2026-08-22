@@ -37,6 +37,18 @@ export function FileDropzone({ label = "Drag & drop or click to upload", hint = 
   return (
     <div
       onClick={() => inputRef.current?.click()}
+      // The real control is the hidden <input type="file"> below — without these, this
+      // div (and the file picker it opens) was unreachable by keyboard entirely, on every
+      // screen where it's the only way to attach a file (e.g. admin/teacher Resources).
+      role="button"
+      tabIndex={0}
+      aria-label={fileName ? `${fileName} selected. Click or press Enter to choose a different file.` : label}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          inputRef.current?.click();
+        }
+      }}
       onDragOver={(e) => {
         e.preventDefault();
         setDragging(true);
@@ -48,7 +60,7 @@ export function FileDropzone({ label = "Drag & drop or click to upload", hint = 
         handleFiles(e.dataTransfer.files);
       }}
       className={cn(
-        "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors",
+        "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         dragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/40",
         className
       )}

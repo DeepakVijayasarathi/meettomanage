@@ -96,7 +96,7 @@ export default function ParentResources() {
 
   return (
     <div>
-      <PageHeader title="Resources &amp; Recordings" description="Worksheets, reading books and 15-day recording access for your child." />
+      <PageHeader title="Resources" description="Worksheets, reading books and any videos shared directly by your teacher. For class recordings, see Recordings in the sidebar." />
       <MultiChildSwitcher />
 
       {child && !isEnrolled && (
@@ -114,7 +114,7 @@ export default function ParentResources() {
       )}
 
       {usingApi && resourcesError && (
-        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <p role="alert" className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
           Could not load resources ({resourcesError}).{" "}
           <button type="button" className="underline" onClick={() => reloadResources()}>
             Retry
@@ -123,7 +123,7 @@ export default function ParentResources() {
       )}
 
       {downloadError && (
-        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{downloadError}</p>
+        <p role="alert" className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{downloadError}</p>
       )}
 
       {!child ? (
@@ -133,7 +133,7 @@ export default function ParentResources() {
           <TabsList>
             <TabsTrigger value="books">Reading Books ({books.length})</TabsTrigger>
             <TabsTrigger value="worksheets">Worksheets ({worksheets.length})</TabsTrigger>
-            <TabsTrigger value="recordings">Recordings ({recordings.length})</TabsTrigger>
+            <TabsTrigger value="recordings">Shared Videos ({recordings.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="books">
@@ -182,7 +182,7 @@ export default function ParentResources() {
 
           <TabsContent value="recordings">
             {recordings.length === 0 ? (
-              <EmptyState icon={Video} title="No recordings yet" description="Recordings stay available for 15 days after class." />
+              <EmptyState icon={Video} title="No shared videos yet" description="Videos your teacher shares directly (not your regular class recordings — see Recordings in the sidebar for those) appear here." />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {recordings.map((r) => {
@@ -233,8 +233,9 @@ export default function ParentResources() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                This is a view-only preview in the demo — {preview.type === "recording" ? "recordings" : "reading books"} aren't
-                downloadable, per policy.
+                {usingApi
+                  ? `This is a view-only preview — ${preview.type === "recording" ? "recordings" : "reading books"} aren't available for download here.`
+                  : `This is a view-only preview in the demo — ${preview.type === "recording" ? "recordings" : "reading books"} aren't downloadable, per policy.`}
               </p>
             </>
           )}
@@ -269,8 +270,11 @@ function ResourceCard({
       </div>
       <p className="mt-3 line-clamp-2 text-sm font-semibold text-foreground">{resource.title}</p>
       <p className="mt-1 text-xs text-muted-foreground">
-        {resource.courseCategory} · {formatDate(resource.uploadedOn, "short")}
-        {resource.sizeLabel ? ` · ${resource.sizeLabel}` : ""}
+        {/* courseCategory is demo-mode only; live resources carry batchName instead
+            (see toFrontendResource) — omit the segment rather than show "undefined". */}
+        {[resource.courseCategory ?? resource.batchName, formatDate(resource.uploadedOn, "short"), resource.sizeLabel]
+          .filter(Boolean)
+          .join(" · ")}
       </p>
       <div className="mt-4">{action}</div>
     </Card>

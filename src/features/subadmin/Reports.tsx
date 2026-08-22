@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatPercent } from "@/lib/utils";
+import { formatPercent, toCsv } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { EmptyState } from "@/components/EmptyState";
@@ -48,11 +48,6 @@ const MOCK_BATCH_ROWS: BatchRow[] = BATCHES.map((b) => ({
   teacherName: getTeacherById(b.teacherId)?.name ?? "—",
   occupancy: Math.round((b.enrolled / b.capacity) * 100),
 }));
-
-function toCsv(columns: string[], rows: (string | number)[][]) {
-  const lines = [columns.join(","), ...rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))];
-  return lines.join("\n");
-}
 
 function download(filename: string, csv: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });

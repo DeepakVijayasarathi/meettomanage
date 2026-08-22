@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarPlus, CheckCircle2, ChevronDown, ChevronUp, Trash2, UserPlus, Users2 } from "lucide-react";
+import { AlertCircle, CalendarPlus, CheckCircle2, ChevronDown, ChevronUp, Trash2, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
@@ -129,6 +129,8 @@ export default function AdmissionDemoScheduling() {
   const [teacherId, setTeacherId] = useState("");
   const [notes, setNotes] = useState("");
   const [justScheduled, setJustScheduled] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [scheduling, setScheduling] = useState(false);
   // Collapsed by default: this screen is visited many times a day mainly to check/update
   // existing demos, so the demo list — not the creation form — should be what's in view.
   const [formOpen, setFormOpen] = useState(false);
@@ -170,9 +172,10 @@ export default function AdmissionDemoScheduling() {
   }
 
   function handleSchedule() {
-    if (!isValid) return;
+    if (!isValid || scheduling) return;
 
     if (apiEnabled()) {
+      setScheduling(true);
       const primary = parents[0];
       const startUtc = localToUtcIso(date, time);
       const endUtc = new Date(new Date(startUtc).getTime() + 30 * 60_000).toISOString();
@@ -197,10 +200,12 @@ export default function AdmissionDemoScheduling() {
       })
         .then(() => {
           reloadRows();
+          setActionError(null);
           setJustScheduled(childName.trim());
           resetForm();
         })
-        .catch((err: Error) => setJustScheduled(`Error: ${err.message}`));
+        .catch((err: Error) => setActionError(err.message))
+        .finally(() => setScheduling(false));
       return;
     }
 
@@ -221,6 +226,7 @@ export default function AdmissionDemoScheduling() {
       isNew: true,
     };
     setRows((prev) => [newRow, ...prev]);
+    setActionError(null);
     setJustScheduled(childName.trim());
     resetForm();
   }
@@ -366,10 +372,18 @@ export default function AdmissionDemoScheduling() {
         </div>
       )}
 
+      {actionError && (
+        <div role="alert" className="mb-5 flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          {actionError}
+        </div>
+      )}
+
       <Card className="mb-6">
         <CardHeader
           role="button"
           tabIndex={0}
+          aria-expanded={formOpen}
           onClick={() => setFormOpen((o) => !o)}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
@@ -523,8 +537,8 @@ export default function AdmissionDemoScheduling() {
             <Button variant="outline" onClick={resetForm}>
               Clear
             </Button>
-            <Button disabled={!isValid} onClick={handleSchedule}>
-              <CalendarPlus className="h-4 w-4" /> Schedule Demo
+            <Button disabled={!isValid || scheduling} onClick={handleSchedule}>
+              <CalendarPlus className="h-4 w-4" /> {scheduling ? "Scheduling…" : "Schedule Demo"}
             </Button>
           </div>
         </CardContent>
@@ -549,10 +563,13 @@ export default function AdmissionDemoScheduling() {
         onConfirm={() => {
           if (!completeTarget) return;
           if (apiEnabled()) {
-            updateConversionStatus(completeTarget.id, "DemoCompleted")
-              .then(() => reloadRows())
-              .catch((err: Error) => setJustScheduled(`Error: ${err.message}`));
-            return;
+            // Returned (not caught here) so ConfirmDialog's own busy/inline-error handling
+            // applies — it used to close the instant the request was fired, regardless of
+            // whether it actually succeeded, with no feedback in the dialog either way.
+            return updateConversionStatus(completeTarget.id, "DemoCompleted").then(() => {
+              setActionError(null);
+              reloadRows();
+            });
           }
           setRows((prev) => prev.map((r) => (r.id === completeTarget.id ? { ...r, status: "completed" } : r)));
         }}
@@ -568,10 +585,13 @@ export default function AdmissionDemoScheduling() {
         onConfirm={() => {
           if (!cancelTarget) return;
           if (apiEnabled()) {
-            updateConversionStatus(cancelTarget.id, "NotInterested")
-              .then(() => reloadRows())
-              .catch((err: Error) => setJustScheduled(`Error: ${err.message}`));
-            return;
+            // See the Mark Completed dialog above — returned, not caught here, so
+            // ConfirmDialog stays open with an inline error on failure instead of closing
+            // unconditionally before the request has even settled.
+            return updateConversionStatus(cancelTarget.id, "NotInterested").then(() => {
+              setActionError(null);
+              reloadRows();
+            });
           }
           setRows((prev) => prev.map((r) => (r.id === cancelTarget.id ? { ...r, status: "cancelled" } : r)));
         }}

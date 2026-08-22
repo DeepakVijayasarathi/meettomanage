@@ -176,7 +176,7 @@ export default function AdminDashboard() {
           label="New Enrollments"
           value={formatNumber(kpis.enrollments)}
           icon={GraduationCap}
-          tone="warning"
+          tone="primary"
           trend={usingApi ? undefined : { value: 4.1, label: "vs last month" }}
           loading={dashboardLoading}
           error={dashboardError}
@@ -212,7 +212,7 @@ export default function AdminDashboard() {
           label="Renewal Rate"
           value={formatPercent(kpis.renewalRate)}
           icon={RefreshCw}
-          tone="warning"
+          tone="success"
           trend={usingApi ? undefined : { value: -0.8, label: "vs last month" }}
           loading={dashboardLoading}
           error={dashboardError}

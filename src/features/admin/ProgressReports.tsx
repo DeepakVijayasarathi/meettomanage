@@ -112,6 +112,10 @@ export default function AdminProgressReports() {
     setBusy(true);
     setActionError(null);
     try {
+      // Save whatever's currently in the textarea before sending — otherwise an admin
+      // who edits and clicks Send without first clicking "Save Draft" would email
+      // whatever was last persisted (possibly stale or empty), not what's on screen.
+      await saveProgressReportContent(confirmSendId, draftContent);
       await sendProgressReport(confirmSendId);
       await reload();
     } catch (err) {
@@ -145,7 +149,7 @@ export default function AdminProgressReports() {
       />
 
       {live && error && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
           Could not load progress reports ({error}).{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
@@ -154,7 +158,7 @@ export default function AdminProgressReports() {
       )}
 
       {actionError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{actionError}</p>
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{actionError}</p>
       )}
 
       {loading ? (

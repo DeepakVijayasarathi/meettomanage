@@ -172,6 +172,7 @@ export function PermissionMatrix({ permissions, menusByModule, onToggle, onToggl
                     <Checkbox
                       checked={grant[action.key]}
                       onCheckedChange={() => onToggle(mod.value, action.key)}
+                      aria-label={`${action.label} — ${mod.label}`}
                       className={cn("mx-auto", action.key === "canView" && "opacity-90")}
                     />
                   </td>

@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DEMO_FEEDBACKS } from "@/data/feedback";
+import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listDemoBookings, listDemoFeedback, toAwaitingFeedback, toFrontendFeedback } from "@/api/demoBookings";
 import { formatDate, formatNumber } from "@/lib/utils";
 
 export default function AdmissionDemoFeedback() {
-  const { data: feedbacks } = useApiData(
+  const { data: feedbacks, loading, error, reload } = useApiData(
     () =>
       Promise.all([listDemoFeedback(), listDemoBookings("DemoScheduled")]).then(
         ([submittedItems, awaitingBookings]) => [
@@ -33,10 +34,19 @@ export default function AdmissionDemoFeedback() {
         description="Review teacher-submitted demo feedback to guide follow-up and batch placement. Feedback is submitted by teachers only — this is a read-only view for the admission team."
       />
 
+      {apiEnabled() && error && (
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          Could not load demo feedback ({error}) — the lists below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </p>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Total Demo Feedback" value={formatNumber(feedbacks.length)} icon={Users2} tone="primary" />
-        <KpiCard label="Submitted" value={formatNumber(submitted.length)} icon={ClipboardCheck} tone="success" />
-        <KpiCard label="Awaiting Teacher" value={formatNumber(pending.length)} icon={Hourglass} tone="warning" />
+        <KpiCard label="Total Demo Feedback" value={formatNumber(feedbacks.length)} icon={Users2} tone="primary" loading={loading} />
+        <KpiCard label="Submitted" value={formatNumber(submitted.length)} icon={ClipboardCheck} tone="success" loading={loading} />
+        <KpiCard label="Awaiting Teacher" value={formatNumber(pending.length)} icon={Hourglass} tone="warning" loading={loading} />
       </div>
 
       <div className="mt-8">

@@ -134,9 +134,9 @@ export const PARENT_NAV: NavSection[] = [
     title: "Learning",
     items: [
       { label: "Schedule & Live Class", to: "/parent/schedule", icon: CalendarClock },
-      { label: "Resources & Recordings", to: "/parent/resources", icon: FolderOpen },
-      { label: "Student View", to: "/student", icon: Sparkles },
+      { label: "Resources", to: "/parent/resources", icon: FolderOpen },
       { label: "Recordings", to: "/parent/recordings", icon: Video },
+      { label: "Student View", to: "/student", icon: Sparkles },
     ],
   },
   {

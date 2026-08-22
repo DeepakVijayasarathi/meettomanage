@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toCsv as toCsvEscaped } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listAuditLogs, type ApiAuditLog } from "@/api/audit";
@@ -22,13 +22,13 @@ function formatTimestamp(iso: string) {
   return `${formatDate(d, "short")}, ${formatDate(d, "time")}`;
 }
 
+// r.detail is built from actor display names, which are self-editable — delegates to
+// lib/utils's toCsv so a leading =/+/-/@ can't reach Excel as a live formula.
 function toCsv(rows: AuditEntry[]) {
-  const header = ["Timestamp", "Action", "Module", "Detail"];
-  const lines = [
-    header.join(","),
-    ...rows.map((r) => [r.timestamp, r.action, r.module, r.detail].map((v) => `"${v.replace(/"/g, '""')}"`).join(",")),
-  ];
-  return lines.join("\n");
+  return toCsvEscaped(
+    ["Timestamp", "Action", "Module", "Detail"],
+    rows.map((r) => [r.timestamp, r.action, r.module, r.detail])
+  );
 }
 
 function download(filename: string, content: string) {
@@ -114,7 +114,7 @@ export default function SubAdminAuditLog() {
   // every action anyone takes and never shrinks, so the old "fetch 200 and paginate in
   // the browser" shape both capped how far back the screen could reach (entry 201 was
   // simply unreachable) and would have kept growing the payload if that cap were lifted.
-  const { data: apiPage, error: loadError, reload } = useApiData(
+  const { data: apiPage, loading: loadLoading, error: loadError, reload } = useApiData(
     () => listAuditLogs({ page, pageSize: PAGE_SIZE }).then((p) => ({ rows: p.items.map(toEntry), totalCount: p.totalCount })),
     { rows: [] as AuditEntry[], totalCount: 0 },
     { rows: [] as AuditEntry[], totalCount: 0 }
@@ -173,7 +173,7 @@ export default function SubAdminAuditLog() {
         // A failed load leaves every figure below at zero and the table on "No actions in
         // this module" — which reads as "you have done nothing", the opposite of what an
         // accountability record should ever imply. Say the trail could not be read.
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not load the audit trail ({loadError}) — this is not an empty log.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
@@ -182,13 +182,14 @@ export default function SubAdminAuditLog() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Total Actions Logged" value={String(totalCount)} icon={History} tone="primary" />
-        <KpiCard label={`Modules Touched${pageScope}`} value={String(modulesTouched)} icon={History} tone="success" />
+        <KpiCard label="Total Actions Logged" value={String(totalCount)} icon={History} tone="primary" loading={loadLoading} />
+        <KpiCard label={`Modules Touched${pageScope}`} value={String(modulesTouched)} icon={History} tone="success" loading={loadLoading} />
         <KpiCard
           label={`Most Recent Action${pageScope}`}
           value={mostRecent ? formatTimestamp(mostRecent.timestamp) : "—"}
           icon={History}
           tone="neutral"
+          loading={loadLoading}
         />
       </div>
 

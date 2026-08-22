@@ -152,6 +152,8 @@ export default function ParentNotifications() {
   const usingApi = apiEnabled();
   const [items, setItems] = useState<ParentNotification[]>(usingApi ? [] : PARENT_NOTIFICATIONS);
   const [loaded, setLoaded] = useState(!usingApi);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
   const unreadCount = items.filter((n) => !n.read).length;
 
   // API mode: the parent's real feed (attendance, payments, reminders, reports),
@@ -159,19 +161,26 @@ export default function ParentNotifications() {
   useEffect(() => {
     if (!usingApi) return;
     let cancelled = false;
+    setLoadError(null);
     getMyNotifications(50)
       .then((feed) => {
         if (cancelled) return;
         setItems(feed.items.map(apiToParentNotification));
         setLoaded(true);
       })
-      .catch(() => {
-        if (!cancelled) setLoaded(true);
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        // Keep whatever was last loaded (don't clobber it with []) and surface the
+        // failure — otherwise a network error renders identically to "no notifications".
+        setLoadError(err instanceof Error ? err.message : "Request failed");
+        setLoaded(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [usingApi]);
+  }, [usingApi, version]);
+
+  const reload = () => setVersion((v) => v + 1);
 
   // Demo dates come from the fixed demo clock; real notifications use the real one.
   const todayIso = usingApi ? localIsoDate(new Date()) : TODAY_ISO;
@@ -212,7 +221,16 @@ export default function ParentNotifications() {
         }
       />
 
-      <Tabs defaultValue="all">
+      {usingApi && loadError && (
+        <p role="alert" className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+          Could not load notifications ({loadError}) — the list below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={reload}>
+            Retry
+          </button>
+        </p>
+      )}
+
+      <Tabs defaultValue="all" className={usingApi && loadError ? "mt-4" : undefined}>
         <TabsList>
           <TabsTrigger value="all">All ({items.length})</TabsTrigger>
           <TabsTrigger value="unread">Unread ({unreadCount})</TabsTrigger>
@@ -262,6 +280,9 @@ function NotificationRow({ item, onToggle }: { item: ParentNotification; onToggl
   return (
     <button
       onClick={onToggle}
+      // Unread status is otherwise conveyed only by bold text + a color dot + a tinted
+      // background — none of which reaches a screen reader on their own.
+      aria-label={`${item.read ? "Read" : "Unread"}: ${item.title}. ${item.description}`}
       className={cn(
         "flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors hover:bg-muted/40",
         item.read ? "border-border bg-card" : "border-primary/30 bg-primary/[0.04]"

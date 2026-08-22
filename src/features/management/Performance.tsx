@@ -65,7 +65,7 @@ export default function ManagementPerformance() {
   );
 
   // Live rows from the teacher-performance report: attendance % drives the meter
-  const { data: rows } = useApiData<TeacherRow[]>(
+  const { data: rows, loading: rowsLoading, error: rowsError, reload } = useApiData<TeacherRow[]>(
     () =>
       getTeacherPerformance().then((items) =>
         items.map((t, i) => ({
@@ -92,7 +92,7 @@ export default function ManagementPerformance() {
 
   // Live occupancy (overall + per course) from the dashboard summary; live utilization
   // averaged from the per-teacher report. Demo mode keeps the mock KPI constants.
-  const { data: liveSummary } = useApiData(
+  const { data: liveSummary, loading: summaryLoading, error: summaryError } = useApiData(
     () =>
       getDashboardSummary().then((s) => ({
         occupancy: s.batchOccupancyPercent,
@@ -119,15 +119,15 @@ export default function ManagementPerformance() {
       accessor: (r) => r.teacher.name,
       sortable: true,
       render: (r) => (
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <span
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
             style={{ backgroundColor: r.teacher.avatarColor }}
           >
             {getInitials(r.teacher.name)}
           </span>
-          <div>
-            <p className="font-semibold text-foreground">{r.teacher.name}</p>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-foreground">{r.teacher.name}</p>
             <p className="text-xs text-muted-foreground">{r.teacher.department ?? "—"}</p>
           </div>
         </div>
@@ -195,6 +195,15 @@ export default function ManagementPerformance() {
         description="How efficiently the business is running — capacity utilization and batch fill rates at a glance. Strategic visibility only; scheduling changes belong to the Coordinator and Admin portals."
       />
 
+      {usingApi && rowsError && (
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          Could not load teacher performance data ({rowsError}) — the figures below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </p>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard
           label="Avg. Teacher Utilization"
@@ -202,6 +211,7 @@ export default function ManagementPerformance() {
           icon={Gauge}
           tone="primary"
           trend={usingApi ? undefined : { value: -1.2, label: "vs last month" }}
+          loading={usingApi && rowsLoading}
         />
         <KpiCard
           label="Avg. Batch Occupancy"
@@ -209,17 +219,25 @@ export default function ManagementPerformance() {
           icon={LayoutGrid}
           tone="success"
           trend={usingApi ? undefined : { value: 2.9, label: "vs last month" }}
+          loading={usingApi && summaryLoading}
         />
         <KpiCard
           label="Active Teachers"
           value={usingApi ? String(activeTeachers) : `${activeTeachers} / ${TEACHERS.length}`}
           icon={UserCheck}
           tone="neutral"
+          loading={usingApi && rowsLoading}
         />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <ChartCard title="Teacher Utilization" description="Sessions delivered vs. capacity, by teacher" height={300}>
+        <ChartCard
+          title="Teacher Utilization"
+          description="Sessions delivered vs. capacity, by teacher"
+          height={300}
+          loading={usingApi && rowsLoading}
+          error={usingApi ? rowsError : null}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={utilizationChart} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -235,7 +253,13 @@ export default function ManagementPerformance() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Batch Occupancy by Course" description="Fill rate across active batches" height={300}>
+        <ChartCard
+          title="Batch Occupancy by Course"
+          description="Fill rate across active batches"
+          height={300}
+          loading={usingApi && summaryLoading}
+          error={usingApi ? summaryError : null}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={occupancyChart} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />

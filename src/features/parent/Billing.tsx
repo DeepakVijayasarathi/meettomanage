@@ -23,7 +23,7 @@ const PARENT_ID = "p-1";
 export default function ParentBilling() {
   const { children } = useSession();
   const mockChildren = getChildrenByParent(PARENT_ID);
-  const { data: invoices, error: invoicesError, reload: reloadInvoices } = useApiData(
+  const { data: invoices, loading: invoicesLoading, error: invoicesError, reload: reloadInvoices } = useApiData(
     () => getParentInvoices().then((items) => items.map(toFrontendInvoice)),
     getInvoicesForParent(PARENT_ID)
   );
@@ -55,12 +55,16 @@ export default function ParentBilling() {
     }
   }, []);
 
-  // The suspended child's name for the banner: real children in API mode, mock in demo.
-  const suspendedChild = apiEnabled()
+  // Suspension is computed once for the whole parent account (ParentPortalService) and
+  // applies identically to every child — never assume it's about just one of them.
+  // API mode: list every child on the account. Demo mode's mock family is single-child,
+  // so filtering by feeStatus stays accurate without needing the account-wide flag.
+  const suspendedChildNames = apiEnabled()
     ? isSuspended
-      ? children[0]
-      : undefined
-    : mockChildren.find((c) => c.feeStatus === "suspended");
+      ? children.map((c) => c.name)
+      : []
+    : mockChildren.filter((c) => c.feeStatus === "suspended").map((c) => c.name);
+  const isAccountSuspended = suspendedChildNames.length > 0;
 
   // Cancelled invoices are neither paid nor owed — exclude them from what's "outstanding".
   const outstanding = invoices.filter((i) => i.status !== "paid" && i.status !== "cancelled");
@@ -146,7 +150,7 @@ export default function ParentBilling() {
       <PageHeader title="Payments &amp; Billing" description="Invoices, receipts and secure Pay Now checkout for your family." />
 
       {apiEnabled() && invoicesError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
           Could not load your invoices ({invoicesError}).{" "}
           <button type="button" className="underline" onClick={() => reloadInvoices()}>
             Retry
@@ -155,17 +159,23 @@ export default function ParentBilling() {
       )}
 
       {downloadError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">{downloadError}</p>
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">{downloadError}</p>
       )}
 
-      {suspendedChild && (
+      {isAccountSuspended && (
         <Card className="mb-6 border-destructive/40 bg-destructive/5 p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
             <div>
-              <p className="text-sm font-semibold text-destructive">Access restricted for {suspendedChild.name}</p>
+              <p className="text-sm font-semibold text-destructive">
+                {suspendedChildNames.length > 1
+                  ? "Access is restricted across your account"
+                  : `Access restricted for ${suspendedChildNames[0]}`}
+              </p>
               <p className="mt-0.5 text-sm text-foreground/80">
-                Live classes and resources are paused until the outstanding fee is cleared. Pay now to restore full access instantly.
+                {suspendedChildNames.length > 1
+                  ? `Live classes and resources are paused for ${suspendedChildNames.join(", ")} until the outstanding fee is cleared. Pay now to restore full access instantly.`
+                  : "Live classes and resources are paused until the outstanding fee is cleared. Pay now to restore full access instantly."}
               </p>
             </div>
           </div>
@@ -173,9 +183,9 @@ export default function ParentBilling() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <KpiCard label="Outstanding" value={formatCurrency(totalOutstanding)} icon={Wallet} tone={totalOutstanding > 0 ? "destructive" : "success"} />
-        <KpiCard label="Paid this year" value={formatCurrency(totalPaid)} icon={CheckCircle2} tone="success" />
-        <KpiCard label="Next due date" value={nextDue ? formatDate(nextDue.dueOn, "short") : "—"} icon={ReceiptText} tone="primary" />
+        <KpiCard label="Outstanding" value={formatCurrency(totalOutstanding)} icon={Wallet} tone={totalOutstanding > 0 ? "destructive" : "success"} loading={invoicesLoading} />
+        <KpiCard label="Paid this year" value={formatCurrency(totalPaid)} icon={CheckCircle2} tone="success" loading={invoicesLoading} />
+        <KpiCard label="Next due date" value={nextDue ? formatDate(nextDue.dueOn, "short") : "—"} icon={ReceiptText} tone="primary" loading={invoicesLoading} />
       </div>
 
       <Card className="mt-6">

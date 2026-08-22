@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarClock, CreditCard, PackagePlus, Pencil, PlayCircle, RefreshCw, XCircle } from "lucide-react";
+import { CalendarClock, CreditCard, Loader2, PackagePlus, Pencil, PlayCircle, RefreshCw, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -93,8 +93,8 @@ const EMPTY_PLAN_FORM: PlanForm = {
 export default function AdminPackages() {
   const live = apiEnabled();
 
-  const { data: plans, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
-  const { data: subscriptions, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
+  const { data: plans, loading: plansLoading, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
+  const { data: subscriptions, loading: subscriptionsLoading, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
     () => listSubscriptions(),
     DEMO_SUBSCRIPTIONS
   );
@@ -221,6 +221,7 @@ export default function AdminPackages() {
   // ----- Renew / cancel -----
   const [confirmCancel, setConfirmCancel] = useState<ApiSubscription | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   async function handleRenew(sub: ApiSubscription) {
     if (!live) {
@@ -228,26 +229,27 @@ export default function AdminPackages() {
       return;
     }
     setActionError(null);
+    setBusyId(sub.id);
     try {
       await renewSubscription(sub.id);
       await reloadSubscriptions();
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Couldn't renew the subscription.");
+    } finally {
+      setBusyId(null);
     }
   }
 
+  // Deliberately doesn't catch its own errors — the ConfirmDialog below returns this
+  // promise directly, so a rejection surfaces as its inline error and keeps the dialog
+  // open, instead of the dialog closing immediately regardless of outcome.
   async function handleCancel(sub: ApiSubscription) {
     if (!live) {
       setActionError("Demo mode — no subscription actually cancelled.");
       return;
     }
-    setActionError(null);
-    try {
-      await cancelSubscription(sub.id);
-      await reloadSubscriptions();
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Couldn't cancel the subscription.");
-    }
+    await cancelSubscription(sub.id);
+    await reloadSubscriptions();
   }
 
   const activePlans = plans.filter((p) => p.isActive);
@@ -261,8 +263,8 @@ export default function AdminPackages() {
         sortable: true,
         accessor: (p) => p.name,
         render: (p) => (
-          <div>
-            <p className="font-semibold text-foreground">{p.name}</p>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-foreground">{p.name}</p>
             <p className="text-xs text-muted-foreground">
               {p.courseId ? courseNameById.get(p.courseId) ?? "Linked course" : "No course linked"}
             </p>
@@ -359,13 +361,23 @@ export default function AdminPackages() {
         header: "",
         render: (s) =>
           s.status === "Active" ? (
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setConfirmCancel(s); }}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); setConfirmCancel(s); }}
+            >
               <XCircle className="h-3.5 w-3.5" />
               Cancel
             </Button>
           ) : (
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); void handleRenew(s); }}>
-              <RefreshCw className="h-3.5 w-3.5" />
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busyId === s.id}
+              onClick={(e) => { e.stopPropagation(); void handleRenew(s); }}
+            >
+              {busyId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
               Renew
             </Button>
           ),
@@ -384,8 +396,8 @@ export default function AdminPackages() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Active Plans" value={String(activePlans.length)} icon={CreditCard} tone="primary" />
-        <KpiCard label="Active Subscriptions" value={String(activeSubscriptions.length)} icon={PlayCircle} tone="success" />
+        <KpiCard label="Active Plans" value={String(activePlans.length)} icon={CreditCard} tone="primary" loading={plansLoading} />
+        <KpiCard label="Active Subscriptions" value={String(activeSubscriptions.length)} icon={PlayCircle} tone="success" loading={subscriptionsLoading} />
         <KpiCard
           label="Next Auto-Invoice"
           value={
@@ -397,6 +409,7 @@ export default function AdminPackages() {
           }
           icon={CalendarClock}
           tone="neutral"
+          loading={subscriptionsLoading}
         />
       </div>
 
@@ -495,12 +508,12 @@ export default function AdminPackages() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label>Billing type</Label>
+                <Label htmlFor="plan-billing-type-select">Billing type</Label>
                 <Select
                   value={planForm.billingType}
                   onValueChange={(v) => setPlanForm((f) => ({ ...f, billingType: v as ApiBillingType }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="plan-billing-type-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -513,12 +526,12 @@ export default function AdminPackages() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Billing cycle</Label>
+                <Label htmlFor="plan-billing-cycle-select">Billing cycle</Label>
                 <Select
                   value={planForm.billingCycle}
                   onValueChange={(v) => setPlanForm((f) => ({ ...f, billingCycle: v as ApiBillingCycle }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="plan-billing-cycle-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -595,9 +608,9 @@ export default function AdminPackages() {
 
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label>Student</Label>
+              <Label htmlFor="subscription-student-select">Student</Label>
               <Select value={subChildId} onValueChange={setSubChildId}>
-                <SelectTrigger>
+                <SelectTrigger id="subscription-student-select">
                   <SelectValue placeholder="Pick a student" />
                 </SelectTrigger>
                 <SelectContent>
@@ -612,9 +625,9 @@ export default function AdminPackages() {
             </div>
 
             <div className="grid gap-1.5">
-              <Label>Plan</Label>
+              <Label htmlFor="subscription-plan-select">Plan</Label>
               <Select value={subPlanId} onValueChange={setSubPlanId}>
-                <SelectTrigger>
+                <SelectTrigger id="subscription-plan-select">
                   <SelectValue placeholder="Pick a plan" />
                 </SelectTrigger>
                 <SelectContent>
@@ -668,10 +681,8 @@ export default function AdminPackages() {
             : ""
         }
         confirmLabel="Cancel subscription"
-        onConfirm={() => {
-          if (confirmCancel) void handleCancel(confirmCancel);
-          setConfirmCancel(null);
-        }}
+        destructive
+        onConfirm={() => (confirmCancel ? handleCancel(confirmCancel) : undefined)}
       />
     </div>
   );
