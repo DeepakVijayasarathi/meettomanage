@@ -35,9 +35,10 @@ export function toFrontendResource(resource: ApiResource): Resource {
     id: resource.id,
     title: resource.title,
     type: TYPE_FROM_API[resource.type],
-    // Category display requires a course lookup; defaulted until courses are joined in
-    courseCategory: "Phonics",
+    // No per-resource category in the live API — batchName (below) is what's actually
+    // real and displayed instead; courseCategory stays undefined here rather than a lie.
     batchId: resource.batchId ?? undefined,
+    batchName: resource.batchName ?? undefined,
     uploadedOn: resource.createdAtUtc.slice(0, 10),
     downloadable: resource.isDownloadable,
     // Real visibility is per-parent (ResourceAccess grants), not one flag on the

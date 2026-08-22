@@ -163,6 +163,7 @@ export default function AdminBatches() {
   const [detail, setDetail] = useState<DisplayBatch | null>(null);
   const [teacherAssignment, setTeacherAssignment] = useState<string>("");
   const [saved, setSaved] = useState(false);
+  const [savingDetail, setSavingDetail] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // New-batch dialog
@@ -313,6 +314,7 @@ export default function AdminBatches() {
     setDetail(b);
     setTeacherAssignment(b.teacherId);
     setSaved(false);
+    setSavingDetail(false);
     setSaveError(null);
     setGenResult(null);
     setGenStart(b.startDate && b.startDate > new Date().toISOString().slice(0, 10) ? b.startDate : "");
@@ -334,6 +336,7 @@ export default function AdminBatches() {
     const raw = batchData.raw.find((b) => b.id === detail.id);
     if (!raw) return;
 
+    setSavingDetail(true);
     try {
       await updateBatch(raw, teacherAssignment);
       setSaved(true);
@@ -341,6 +344,8 @@ export default function AdminBatches() {
       setTimeout(() => setDetail(null), 700);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save the batch.");
+    } finally {
+      setSavingDetail(false);
     }
   }
 
@@ -599,7 +604,9 @@ export default function AdminBatches() {
                   <Button variant="outline" onClick={() => setDetail(null)}>
                     Close
                   </Button>
-                  <Button onClick={saveDetail}>{saved ? "Saved!" : "Save Changes"}</Button>
+                  <Button onClick={saveDetail} disabled={savingDetail}>
+                    {saved ? "Saved!" : savingDetail ? "Saving…" : "Save Changes"}
+                  </Button>
                 </div>
               </DialogFooter>
             </>

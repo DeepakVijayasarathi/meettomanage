@@ -112,6 +112,10 @@ export default function AdminProgressReports() {
     setBusy(true);
     setActionError(null);
     try {
+      // Save whatever's currently in the textarea before sending — otherwise an admin
+      // who edits and clicks Send without first clicking "Save Draft" would email
+      // whatever was last persisted (possibly stale or empty), not what's on screen.
+      await saveProgressReportContent(confirmSendId, draftContent);
       await sendProgressReport(confirmSendId);
       await reload();
     } catch (err) {

@@ -1050,9 +1050,17 @@ export default function AdminUsers() {
                   Close
                 </Button>
                 <Button
-                  disabled={savingNotes || !apiEnabled()}
+                  disabled={savingNotes}
                   onClick={async () => {
                     if (!detailChild) return;
+                    // Matches handleUpdateUser/handleCreateUser's pattern elsewhere on this
+                    // page: stay clickable in demo mode and say so via the shared banner,
+                    // rather than silently greying out with no explanation.
+                    if (!apiEnabled()) {
+                      setBanner({ ok: true, text: "Demo mode — no notes actually saved." });
+                      setDetailChild(null);
+                      return;
+                    }
                     setSavingNotes(true);
                     try {
                       await updateStudentNotes(detailChild.id, childNotes.trim());

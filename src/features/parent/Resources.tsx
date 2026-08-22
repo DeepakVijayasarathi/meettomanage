@@ -270,8 +270,11 @@ function ResourceCard({
       </div>
       <p className="mt-3 line-clamp-2 text-sm font-semibold text-foreground">{resource.title}</p>
       <p className="mt-1 text-xs text-muted-foreground">
-        {resource.courseCategory} · {formatDate(resource.uploadedOn, "short")}
-        {resource.sizeLabel ? ` · ${resource.sizeLabel}` : ""}
+        {/* courseCategory is demo-mode only; live resources carry batchName instead
+            (see toFrontendResource) — omit the segment rather than show "undefined". */}
+        {[resource.courseCategory ?? resource.batchName, formatDate(resource.uploadedOn, "short"), resource.sizeLabel]
+          .filter(Boolean)
+          .join(" · ")}
       </p>
       <div className="mt-4">{action}</div>
     </Card>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarClock, CreditCard, PackagePlus, Pencil, PlayCircle, RefreshCw, XCircle } from "lucide-react";
+import { CalendarClock, CreditCard, Loader2, PackagePlus, Pencil, PlayCircle, RefreshCw, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -221,6 +221,7 @@ export default function AdminPackages() {
   // ----- Renew / cancel -----
   const [confirmCancel, setConfirmCancel] = useState<ApiSubscription | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   async function handleRenew(sub: ApiSubscription) {
     if (!live) {
@@ -228,26 +229,27 @@ export default function AdminPackages() {
       return;
     }
     setActionError(null);
+    setBusyId(sub.id);
     try {
       await renewSubscription(sub.id);
       await reloadSubscriptions();
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Couldn't renew the subscription.");
+    } finally {
+      setBusyId(null);
     }
   }
 
+  // Deliberately doesn't catch its own errors — the ConfirmDialog below returns this
+  // promise directly, so a rejection surfaces as its inline error and keeps the dialog
+  // open, instead of the dialog closing immediately regardless of outcome.
   async function handleCancel(sub: ApiSubscription) {
     if (!live) {
       setActionError("Demo mode — no subscription actually cancelled.");
       return;
     }
-    setActionError(null);
-    try {
-      await cancelSubscription(sub.id);
-      await reloadSubscriptions();
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Couldn't cancel the subscription.");
-    }
+    await cancelSubscription(sub.id);
+    await reloadSubscriptions();
   }
 
   const activePlans = plans.filter((p) => p.isActive);
@@ -369,8 +371,13 @@ export default function AdminPackages() {
               Cancel
             </Button>
           ) : (
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); void handleRenew(s); }}>
-              <RefreshCw className="h-3.5 w-3.5" />
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busyId === s.id}
+              onClick={(e) => { e.stopPropagation(); void handleRenew(s); }}
+            >
+              {busyId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
               Renew
             </Button>
           ),
@@ -675,10 +682,7 @@ export default function AdminPackages() {
         }
         confirmLabel="Cancel subscription"
         destructive
-        onConfirm={() => {
-          if (confirmCancel) void handleCancel(confirmCancel);
-          setConfirmCancel(null);
-        }}
+        onConfirm={() => (confirmCancel ? handleCancel(confirmCancel) : undefined)}
       />
     </div>
   );

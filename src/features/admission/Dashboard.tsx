@@ -7,7 +7,6 @@ import {
   TrendingUp,
   ArrowRight,
   Users2,
-  Video,
 } from "lucide-react";
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
@@ -247,9 +246,6 @@ export default function AdmissionDashboard() {
                 <div className="flex items-center gap-2">
                   {s.date === TODAY && <Badge variant="warning">Today</Badge>}
                   <SessionStatusBadge status={s.status} />
-                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Join / view session" aria-label="Join / view session">
-                    <Video className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
             ))}

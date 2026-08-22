@@ -52,7 +52,6 @@ export default function AdminResources() {
   // DB, so picking one and sending it as BatchId would have targeted a batch that isn't there.
   const { data: apiBatches } = useApiData(() => listBatches(), []);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadCourse, setUploadCourse] = useState<Resource["courseCategory"]>("Phonics");
   const [uploadBatch, setUploadBatch] = useState<string>("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -112,6 +111,16 @@ export default function AdminResources() {
     [reload]
   );
 
+  // Same source the upload dialog's own Batch picker uses (line ~253) — one canonical
+  // lookup so the table's "Batch" column always reflects real data, in both modes.
+  const batchNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    (apiEnabled() ? apiBatches : BATCHES).forEach((b) => {
+      map.set(b.id, "courseName" in b && b.courseName ? `${b.name} · ${b.courseName}` : b.name);
+    });
+    return map;
+  }, [apiBatches]);
+
   const columns: DataTableColumn<Resource>[] = useMemo(
     () => [
       {
@@ -143,11 +152,11 @@ export default function AdminResources() {
         render: (row) => <Badge variant="outline">{TYPE_META[row.type].label}</Badge>,
       },
       {
-        key: "courseCategory",
-        header: "Course",
+        key: "batch",
+        header: "Batch",
         sortable: true,
-        accessor: (row) => row.courseCategory,
-        render: (row) => <span className="text-sm">{row.courseCategory}</span>,
+        accessor: (row) => batchNameById.get(row.batchId ?? "") ?? "",
+        render: (row) => <span className="text-sm">{row.batchId ? (batchNameById.get(row.batchId) ?? "—") : "—"}</span>,
       },
       {
         key: "uploadedOn",
@@ -183,7 +192,7 @@ export default function AdminResources() {
           ),
       },
     ],
-    [downloadBusyId, toggleDownloadable]
+    [downloadBusyId, toggleDownloadable, batchNameById]
   );
 
   return (
@@ -233,22 +242,11 @@ export default function AdminResources() {
             onFile={(file) => setPendingFile(file)}
           />
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label>Course category</Label>
-              <Select value={uploadCourse} onValueChange={(v) => setUploadCourse(v as Resource["courseCategory"])}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Phonics">Phonics</SelectItem>
-                  <SelectItem value="Maths">Maths</SelectItem>
-                  <SelectItem value="Reading">Reading</SelectItem>
-                  <SelectItem value="Writing">Writing</SelectItem>
-                  <SelectItem value="Speaking">Speaking</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* The course a resource belongs to is determined entirely by which batch it's
+              attached to (handleUpload derives courseId from the selected batch below) —
+              there's no separate, independent "category" for a resource to pick, so this
+              used to be a second selector with no effect on the actual upload. */}
+          <div className="grid grid-cols-1 gap-4">
             <div className="grid gap-1.5">
               <Label>Batch</Label>
               <Select value={uploadBatch} onValueChange={setUploadBatch}>

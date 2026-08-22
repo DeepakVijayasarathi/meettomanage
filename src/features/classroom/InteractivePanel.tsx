@@ -21,8 +21,11 @@ interface InteractivePanelProps {
   onCelebrate: (message?: string) => void;
   /** Live leaderboard for the celebration overlay. */
   onLeaderboard: (entries: LeaderboardEntry[]) => void;
-  /** Hands the host a class-wide celebrate sender (hub broadcast, local fallback). */
-  onReady?: (celebrateAll: (message?: string) => void) => void;
+  /** Hands the host a class-wide celebrate sender (hub broadcast, local fallback), and a
+   *  raise-hand sender the host can forward its own hand-raise UI (e.g. Jitsi's native
+   *  toolbar button) into — this panel owns the hub connection, so it's the only place
+   *  that can actually send "RaiseHand" and reach the rest of the class. */
+  onReady?: (senders: { celebrateAll: (message?: string) => void; raiseHand: (raised: boolean) => void }) => void;
 }
 
 /**
@@ -101,9 +104,16 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         if (disposed) return;
         setHubState(ok ? "connected" : "disconnected");
         // Broadcast when connected (the hub echoes back to the sender); local-only otherwise.
-        onReady?.((message) => {
-          if (client.connected) client.celebrate(message);
-          else onCelebrate(message);
+        onReady?.({
+          celebrateAll: (message) => {
+            if (client.connected) client.celebrate(message);
+            else onCelebrate(message);
+          },
+          // No local fallback here (unlike celebrateAll) — a raised hand only means
+          // anything once it's reached the roster the rest of the class actually sees.
+          raiseHand: (raised) => {
+            if (client.connected) client.raiseHand(raised);
+          },
         });
       });
 
@@ -164,6 +174,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
   }
 
   function toggleBoardAccess(participant: HubParticipant) {
+    // send() itself silently no-ops while the hub is down (see ClassroomHubClient), so
+    // without this check the button flips to "Board on" even though the grant never
+    // reached the student — the "Working locally"/"Reconnecting" chip above the roster
+    // already tells the teacher why nothing happened, so no separate error needed here.
+    if (!hubRef.current?.connected) return;
     const next = !grantedIds.has(participant.connectionId);
     setGrantedIds((prev) => {
       const set = new Set(prev);
@@ -171,7 +186,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
       else set.delete(participant.connectionId);
       return set;
     });
-    hubRef.current?.setBoardAccess(participant.connectionId, next);
+    hubRef.current.setBoardAccess(participant.connectionId, next);
   }
 
   const canDraw = mode === "teacher" || boardAllowed;

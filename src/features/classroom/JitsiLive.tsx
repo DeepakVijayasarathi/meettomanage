@@ -26,7 +26,7 @@ declare global {
       dispose: () => void;
       addListener: (
         event: string,
-        listener: (payload: { id?: string; muted?: boolean; link?: string; on?: boolean; displayName?: string }) => void
+        listener: (payload: { id?: string; muted?: boolean; link?: string; on?: boolean; displayName?: string; handRaised?: boolean }) => void
       ) => void;
       executeCommand: (command: string, ...args: unknown[]) => void;
     };
@@ -83,8 +83,13 @@ export default function JitsiLive({
   const [celebrationMessage, setCelebrationMessage] = useState<string | undefined>(undefined);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const celebrateAllRef = useRef<((message?: string) => void) | null>(null);
+  const raiseHandRef = useRef<((raised: boolean) => void) | null>(null);
   const jitsiApiRef = useRef<{ executeCommand: (command: string, ...args: unknown[]) => void } | null>(null);
   const [lobbyEnabled, setLobbyEnabled] = useState(false);
+  // jitsiApiRef being populated doesn't itself trigger a re-render (it's a ref) — this
+  // tracks the same fact as state so the Waiting Room button can disable itself until
+  // Jitsi has actually loaded, instead of looking clickable and silently no-oping.
+  const [jitsiReady, setJitsiReady] = useState(false);
   const [callDegraded, setCallDegraded] = useState(false);
   const [recording, setRecording] = useState(false);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
@@ -120,8 +125,9 @@ export default function JitsiLive({
   // deployment (self-hosted, no JWT auth configured — see docs/JITSI_ARCHITECTURE.md);
   // the command itself is a stable, long-standing part of the Jitsi IFrame API.
   function toggleWaitingRoom() {
+    if (!jitsiApiRef.current) return;
     const next = !lobbyEnabled;
-    jitsiApiRef.current?.executeCommand("toggleLobby", next);
+    jitsiApiRef.current.executeCommand("toggleLobby", next);
     setLobbyEnabled(next);
   }
 
@@ -144,7 +150,7 @@ export default function JitsiLive({
           dispose: () => void;
           addListener: (
             event: string,
-            listener: (payload: { id?: string; muted?: boolean; link?: string; on?: boolean; displayName?: string }) => void
+            listener: (payload: { id?: string; muted?: boolean; link?: string; on?: boolean; displayName?: string; handRaised?: boolean }) => void
           ) => void;
           executeCommand: (command: string, ...args: unknown[]) => void;
         }
@@ -242,6 +248,7 @@ export default function JitsiLive({
         },
       });
       jitsiApiRef.current = api;
+      setJitsiReady(true);
       api.addListener("readyToClose", () => navigate(-1));
       api.addListener("videoConferenceJoined", (payload) => {
         media.selfId = payload?.id ?? "";
@@ -262,6 +269,14 @@ export default function JitsiLive({
         if (mode === "teacher" && interactive && payload?.link) {
           registerRecording(sessionId!, payload.link).catch(() => undefined);
         }
+      });
+      // Forwards Jitsi's own native "raise hand" toolbar button into the classroom hub's
+      // roster, which is what actually drives the hand-raise indicator other participants
+      // see (InteractivePanel's People tab, ParticipantsPanel) — this event fires for every
+      // participant's hand-raise change, not just the local one, so it's filtered to self.
+      api.addListener("raiseHandUpdated", (payload) => {
+        if (payload?.id !== media.selfId) return;
+        raiseHandRef.current?.(!!payload?.handRaised);
       });
       api.addListener("dominantSpeakerChanged", (payload) => {
         const now = Date.now();
@@ -337,9 +352,10 @@ export default function JitsiLive({
               size="pill"
               variant="secondary"
               aria-pressed={lobbyEnabled}
+              disabled={!jitsiReady}
               className={headerToggleClass}
               onClick={toggleWaitingRoom}
-              title="New joiners wait for you to admit them"
+              title={jitsiReady ? "New joiners wait for you to admit them" : "Loading the call…"}
             >
               <DoorOpen className="h-3.5 w-3.5" />
               {lobbyEnabled ? "Waiting Room: On" : "Waiting Room"}
@@ -426,8 +442,9 @@ export default function JitsiLive({
                 displayName={userName}
                 onCelebrate={celebrate}
                 onLeaderboard={setLeaderboard}
-                onReady={(fn) => {
-                  celebrateAllRef.current = fn;
+                onReady={({ celebrateAll, raiseHand }) => {
+                  celebrateAllRef.current = celebrateAll;
+                  raiseHandRef.current = raiseHand;
                 }}
               />
             </aside>

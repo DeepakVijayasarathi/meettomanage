@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Download, FileText, IndianRupee, TimerReset, Undo2 } from "lucide-react";
+import { AlertTriangle, FileText, IndianRupee, TimerReset, Undo2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -70,7 +70,6 @@ export default function AdminBilling() {
   const { hasPermission } = useSession();
   const canRequestRefund = hasPermission("BillingFinance", "Create");
   const [detail, setDetail] = useState<Invoice | null>(null);
-  const [downloaded, setDownloaded] = useState(false);
 
   // Record-payment (incl. confirming a parent's cash intent) state
   const [recording, setRecording] = useState(false);
@@ -94,7 +93,6 @@ export default function AdminBilling() {
 
   function openDetail(row: Invoice) {
     setDetail(row);
-    setDownloaded(false);
     setRecording(false);
     setPayError(null);
     setPayMethod("Cash");
@@ -510,7 +508,12 @@ export default function AdminBilling() {
                 <Button variant="outline" onClick={() => setDetail(null)}>
                   Close
                 </Button>
-                {live && detail.apiId && detail.status !== "paid" && detail.status !== "cancelled" ? (
+                {/* No admin-facing invoice/receipt download endpoint exists on the backend
+                    (ParentPortalController's is locked to [Authorize(Roles = "Parent")]) —
+                    this used to be a button that only ever flipped its own label to
+                    "Receipt Downloaded" without downloading anything. Removed rather than
+                    leave a control that claims to do something it can't. */}
+                {live && detail.apiId && detail.status !== "paid" && detail.status !== "cancelled" && (
                   recording ? (
                     <Button onClick={reviewPayment} disabled={saving}>
                       {saving ? "Recording…" : "Confirm payment"}
@@ -521,11 +524,6 @@ export default function AdminBilling() {
                       Record payment
                     </Button>
                   )
-                ) : (
-                  <Button onClick={() => setDownloaded(true)}>
-                    <Download className="h-4 w-4" />
-                    {downloaded ? "Receipt Downloaded" : "Download Receipt"}
-                  </Button>
                 )}
               </DialogFooter>
             </>

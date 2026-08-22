@@ -152,6 +152,14 @@ interface WhiteboardProps {
 
 export default function Whiteboard({ canDraw, onActivityComplete, onInteraction, onBoardOp, subscribeBoardOps }: WhiteboardProps) {
   const [pages, setPages] = useState<Page[]>([{ id: nextId(), strokes: [] }]);
+  // Mirrors `pages` for the remote-ops subscription below, which deliberately only
+  // subscribes once ([subscribeBoardOps], not [pages]) — its closure over `pages` would
+  // otherwise go stale after the first render and never see how many pages actually
+  // exist by the time a later "removePage" op arrives.
+  const pagesRef = useRef(pages);
+  useEffect(() => {
+    pagesRef.current = pages;
+  }, [pages]);
   const [pageIndex, setPageIndex] = useState(0);
   const [tool, setTool] = useState<ToolId>("pen");
   const [color, setColor] = useState(CHART_PALETTE[0]);
@@ -357,7 +365,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
           break;
         case "removePage":
           setPages((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== op.pageIndex) : prev));
-          setPageIndex((i) => Math.max(0, Math.min(i, pages.length - 2)));
+          setPageIndex((i) => Math.max(0, Math.min(i, pagesRef.current.length - 2)));
           break;
       }
     });

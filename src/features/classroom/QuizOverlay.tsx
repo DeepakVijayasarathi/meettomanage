@@ -36,6 +36,11 @@ export default function QuizOverlay({
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const scoredRef = useRef(false);
+  // Guards nextQuestion() against a fast double-click: the phase-reset effect below (which
+  // would normally hide the Next button by flipping phase away from "revealed") only runs
+  // after React re-renders, so two clicks in quick succession could otherwise both fire
+  // before that happens and broadcast two question advances from one intended click.
+  const advancingRef = useRef(false);
 
   const question = QUIZ_BANK[qIndex % QUIZ_BANK.length];
 
@@ -53,6 +58,7 @@ export default function QuizOverlay({
     setTimeLeft(QUESTION_SECONDS);
     setSelected(null);
     scoredRef.current = false;
+    advancingRef.current = false;
   }, [active, qIndex]);
 
   useEffect(() => {
@@ -82,11 +88,16 @@ export default function QuizOverlay({
   }, [syncedIndex]);
 
   function selectOption(idx: number) {
-    if (phase !== "countdown" || selected !== null) return;
+    // Teacher's own view renders the same overlay to monitor live tallies — it must stay
+    // read-only, or clicking an option answers the teacher's own quiz under their name
+    // (broadcasts a QuizAnswer and can award them a Star on the class leaderboard).
+    if (mode !== "student" || phase !== "countdown" || selected !== null) return;
     setSelected(idx);
   }
 
   function nextQuestion() {
+    if (advancingRef.current) return;
+    advancingRef.current = true;
     setQIndex((i) => {
       const next = i + 1;
       onLaunchQuestion?.(next);
@@ -141,7 +152,7 @@ export default function QuizOverlay({
             <button
               key={opt}
               onClick={() => selectOption(i)}
-              disabled={phase !== "countdown" || selected !== null}
+              disabled={mode !== "student" || phase !== "countdown" || selected !== null}
               className={cn(
                 "flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all",
                 !showResult && isSelected && "border-brand-violet bg-brand-violet/15 text-white",
@@ -195,7 +206,12 @@ export default function QuizOverlay({
 
       <div className="flex shrink-0 items-center justify-between border-t border-white/10 p-3">
         <p className="text-xs font-semibold text-white/70">
-          {mode === "teacher" ? "Class score" : "Your score"}: {score.correct}/{score.total}
+          {/* The teacher can no longer answer their own quiz (see selectOption above), so
+              their own score would always read 0/0 — show something real instead: how many
+              students have actually responded to this question so far. */}
+          {mode === "teacher"
+            ? `${optionCounts.reduce((a, b) => a + b, 0)} response${optionCounts.reduce((a, b) => a + b, 0) === 1 ? "" : "s"}`
+            : `Your score: ${score.correct}/${score.total}`}
         </p>
         <div className="flex gap-2">
           {mode === "teacher" && phase === "countdown" && (
