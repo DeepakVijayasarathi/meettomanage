@@ -315,10 +315,14 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
                 {presets.length > 0 && (
                   <Select value="" onValueChange={applyPreset}>
                     <SelectTrigger className="h-9 w-40">
-                      <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold">
+                      {/* A direct-child <span> here would pick up SelectTrigger's
+                          `[&>span]:line-clamp-1`, which forces `display:-webkit-box`
+                          and overrides `flex`, stacking the icon above the text
+                          instead of laying them out inline. Use a div instead. */}
+                      <div className="flex min-w-0 items-center gap-1.5 text-xs font-semibold">
                         <Wand2 className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">Apply preset…</span>
-                      </span>
+                      </div>
                     </SelectTrigger>
                     <SelectContent>
                       {presets.map((p) => (
