@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toCsv as toCsvEscaped } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listAuditLogs, type ApiAuditLog } from "@/api/audit";
@@ -22,13 +22,13 @@ function formatTimestamp(iso: string) {
   return `${formatDate(d, "short")}, ${formatDate(d, "time")}`;
 }
 
+// r.detail is built from actor display names, which are self-editable — delegates to
+// lib/utils's toCsv so a leading =/+/-/@ can't reach Excel as a live formula.
 function toCsv(rows: AuditEntry[]) {
-  const header = ["Timestamp", "Action", "Module", "Detail"];
-  const lines = [
-    header.join(","),
-    ...rows.map((r) => [r.timestamp, r.action, r.module, r.detail].map((v) => `"${v.replace(/"/g, '""')}"`).join(",")),
-  ];
-  return lines.join("\n");
+  return toCsvEscaped(
+    ["Timestamp", "Action", "Module", "Detail"],
+    rows.map((r) => [r.timestamp, r.action, r.module, r.detail])
+  );
 }
 
 function download(filename: string, content: string) {

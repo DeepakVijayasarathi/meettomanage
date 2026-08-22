@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatPercent } from "@/lib/utils";
+import { formatPercent, toCsv } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { downloadReportCsv, getDashboardSummary, getTeacherPerformance, type ApiDashboardSummary } from "@/api/reports";
@@ -70,11 +70,6 @@ function reportRows(type: ReportType, sources: ReportSources): { columns: string
         rows: sources.funnel.map((d) => [d.stage, d.value]),
       };
   }
-}
-
-function toCsv(columns: string[], rows: (string | number)[][]) {
-  const lines = [columns.join(","), ...rows.map((r) => r.join(","))];
-  return lines.join("\n");
 }
 
 export default function AdminReports() {

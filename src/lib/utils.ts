@@ -152,3 +152,25 @@ export function pickAccentForegroundHsl(hex: string): string {
   const chosen = contrastRatio(hex, white) >= contrastRatio(hex, navy) ? white : navy;
   return hexToHslTriple(chosen);
 }
+
+/**
+ * Formula injection: a cell opening with =/+/-/@ is interpreted by Excel/Sheets as a
+ * formula the moment the file is opened. Several exports in this app include
+ * user/parent-editable free text (child/parent/teacher/actor names) — neutralize it
+ * with a leading apostrophe, then quote if the value itself needs it. Mirrors
+ * ReportsService.cs's own `Escape()` on the backend, which every client-side CSV
+ * export helper should match rather than reimplementing (or skipping) escaping locally.
+ */
+export function escapeCsvCell(value: string | number): string {
+  let str = String(value);
+  if (str.length > 0 && (str[0] === "=" || str[0] === "+" || str[0] === "-" || str[0] === "@")) {
+    str = "'" + str;
+  }
+  return /[",\n\r]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+/** Builds a CSV string with every cell escaped via {@link escapeCsvCell}. */
+export function toCsv(columns: string[], rows: (string | number)[][]): string {
+  const lines = [columns.map(escapeCsvCell).join(","), ...rows.map((r) => r.map(escapeCsvCell).join(","))];
+  return lines.join("\n");
+}

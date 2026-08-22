@@ -16,12 +16,7 @@ import { useApiData } from "@/api/hooks";
 import { finalizePayout, listPayouts, markPayoutPaid, toFrontendPayout } from "@/api/payouts";
 import { downloadReportCsv } from "@/api/reports";
 import type { TeacherPayout } from "@/types";
-import { formatCurrency, formatNumber, getInitials } from "@/lib/utils";
-
-function toCsv(columns: string[], rows: (string | number)[][]) {
-  const lines = [columns.join(","), ...rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))];
-  return lines.join("\n");
-}
+import { formatCurrency, formatNumber, getInitials, toCsv } from "@/lib/utils";
 
 function downloadCsv(filename: string, csv: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });

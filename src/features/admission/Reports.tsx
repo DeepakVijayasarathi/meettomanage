@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, toCsv as toCsvEscaped } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listDemoBookings, listDemoFeedback, toFrontendLead, toFrontendFeedback } from "@/api/demoBookings";
@@ -85,9 +85,11 @@ function buildReport(
   return { headers: ["Child", "Parent", "Conversion Stage", "Recommended Course", "Last Contacted", "Next Follow-up"], rows };
 }
 
+// Delegates to lib/utils's toCsv, which (unlike this file's own old copy) neutralizes
+// a leading =/+/-/@ — child/parent names here are free text entered at demo booking,
+// so a formula-injection payload in one is a real, reachable path into a staff export.
 function toCsv(headers: string[], rows: ReportRow[]) {
-  const lines = [headers.join(","), ...rows.map((r) => r.cells.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))];
-  return lines.join("\n");
+  return toCsvEscaped(headers, rows.map((r) => r.cells));
 }
 
 export default function AdmissionReports() {

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatPercent, toCsv } from "@/lib/utils";
 import { DEPARTMENT_REVENUE, ENROLLMENT_FUNNEL, REVENUE_TREND } from "@/data/kpis";
 import { useApiData } from "@/api/hooks";
 import { getDashboardSummary, type ApiDashboardSummary } from "@/api/reports";
@@ -23,10 +23,6 @@ const EMPTY_SUMMARY: Pick<ApiDashboardSummary, "revenueTrend" | "revenueByDepart
   revenueByDepartment: [],
   enrollmentFunnel: [],
 };
-
-function toCsv(columns: string[], rows: (string | number)[][]) {
-  return [columns.join(","), ...rows.map((r) => r.join(","))].join("\n");
-}
 
 function downloadCsv(filename: string, columns: string[], rows: (string | number)[][]) {
   const blob = new Blob([toCsv(columns, rows)], { type: "text/csv;charset=utf-8;" });
