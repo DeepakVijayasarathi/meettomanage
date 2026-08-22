@@ -59,8 +59,12 @@ const BASE_ADD_USER_ROLES: AddUserRoleOption[] = [
 ];
 
 // These preset names already have a dedicated base option above (or, for "admin", can
-// never be self-service created) — skip them so the flattened list has no look-alike duplicates.
-const ROLE_PRESET_NAMES_TO_SKIP = new Set(["admin", "teacher", "parent", "admission", "sub-admin"]);
+// never be self-service created) — skip them so the flattened list has no look-alike
+// duplicates. "student" is also skipped: it's a real system RoleDefinition (0 permissions,
+// DefaultRoute "/student"), but it exists only to back the Parent's own "Student View"
+// preview — assigning it to a staff account grants nothing useful and shows up as a
+// confusing "Student" badge on what's actually a Sub Admin account.
+const ROLE_PRESET_NAMES_TO_SKIP = new Set(["admin", "teacher", "parent", "admission", "sub-admin", "student"]);
 
 const FRONTEND_ROLE_TO_API: Record<string, ApiRole> = {
   parent: "Parent",
@@ -546,10 +550,18 @@ export default function AdminUsers() {
         render: (row) => {
           // A SubAdmin account may have a named preset applied (Management, Coordinator,
           // etc.) — show that instead of the generic base-role label whenever one's set.
-          const presetLabel = row.roleDefinitionId
-            ? addUserRoleOptions.find((o) => o.roleDefinitionId === row.roleDefinitionId)?.label
+          // A roleDefinitionId that doesn't resolve (e.g. a preset since excluded from this
+          // list, like "student") must NOT silently fall back to the generic label — that
+          // would misreport a zero-permission account as a full Parent Relationship Manager.
+          const preset = row.roleDefinitionId
+            ? addUserRoleOptions.find((o) => o.roleDefinitionId === row.roleDefinitionId)
             : undefined;
-          const label = row.role === "admission" ? "Admission Team" : presetLabel ?? "Parent Relationship Manager";
+          const label =
+            row.role === "admission"
+              ? "Admission Team"
+              : row.roleDefinitionId && !preset
+                ? "Custom preset"
+                : (preset?.label ?? "Parent Relationship Manager");
           return (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold capitalize text-foreground/80">
               {label}
