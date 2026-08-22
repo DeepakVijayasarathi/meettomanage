@@ -453,7 +453,7 @@ export default function AdminBatches() {
                       {apiEnabled() && teacherOptions.length > 0
                         ? teacherOptions.map((t) => (
                             <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
-                              {t.fullName} {t.department ? `· ${t.department}` : ""}
+                              {t.fullName} {t.departmentName ? `· ${t.departmentName}` : ""}
                             </SelectItem>
                           ))
                         : TEACHERS.map((t) => (
@@ -652,7 +652,7 @@ export default function AdminBatches() {
                     {apiEnabled() && teacherOptions.length > 0
                       ? teacherOptions.map((t) => (
                           <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
-                            {t.fullName} {t.department ? `· ${t.department}` : ""}
+                            {t.fullName} {t.departmentName ? `· ${t.departmentName}` : ""}
                           </SelectItem>
                         ))
                       : TEACHERS.map((t) => (

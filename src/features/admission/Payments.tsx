@@ -24,7 +24,7 @@ interface PaymentRow {
   childName: string;
   parentName: string;
   courseName: string;
-  department: "Phonics" | "Maths";
+  department: string;
   amount: number;
   /** Settled so far; only known in API mode — the demo mock has no partial-payment figure. */
   amountPaid?: number;

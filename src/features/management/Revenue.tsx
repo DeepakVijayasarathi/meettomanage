@@ -31,13 +31,23 @@ import type { Course } from "@/types";
 const DEMO_TREND = REVENUE_TREND;
 const DEMO_DEPT: ApiDashboardSummary["revenueByDepartment"] = DEPARTMENT_REVENUE.map((d) => ({ name: d.department, revenue: d.value }));
 
-const CATEGORY_COLOR: Record<Course["category"], string> = {
+// Known categories get a specific color; any other category cycles through the palette
+// by name hash, so a new admin-added one still gets a stable, distinct color instead of
+// every unknown category collapsing onto one fallback tone.
+const CATEGORY_COLOR: Record<string, string> = {
   Phonics: CHART_PALETTE[3],
   Maths: CHART_PALETTE[4],
   Reading: CHART_PALETTE[2],
   Writing: CHART_PALETTE[5],
   Speaking: CHART_PALETTE[6],
 };
+
+function colorForCategory(category: string): string {
+  if (CATEGORY_COLOR[category]) return CATEGORY_COLOR[category];
+  let hash = 0;
+  for (const char of category) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return CHART_PALETTE[hash % CHART_PALETTE.length];
+}
 
 export default function ManagementRevenue() {
   const { data: trend, loading: trendLoading, error: trendError, reload } = useApiData(() => getDashboardSummary().then((s) => s.revenueTrend), DEMO_TREND);
@@ -88,7 +98,7 @@ export default function ManagementRevenue() {
       sortable: true,
       render: (c) => (
         <Badge variant="outline" className="gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: CATEGORY_COLOR[c.category] }} />
+          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: colorForCategory(c.category) }} />
           {c.category}
         </Badge>
       ),
@@ -119,7 +129,7 @@ export default function ManagementRevenue() {
             <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full rounded-full"
-                style={{ width: `${Math.max(share, 2)}%`, backgroundColor: CATEGORY_COLOR[c.category] }}
+                style={{ width: `${Math.max(share, 2)}%`, backgroundColor: colorForCategory(c.category) }}
               />
             </div>
             <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">{share.toFixed(1)}%</span>

@@ -19,7 +19,8 @@ export interface TeacherOption {
   teacherProfileId: string;
   userId: string;
   fullName: string;
-  department: "Phonics" | "Maths" | null;
+  departmentId: string | null;
+  departmentName: string | null;
 }
 
 export type DisplayBatch = Batch & { teacherName?: string; courseName?: string };

@@ -49,10 +49,12 @@ const PAYMENT_METHODS: { value: ApiPaymentMethod; label: string }[] = [
   { value: "Other", label: "Other" },
 ];
 
-const DEPARTMENT_COLOR: Record<Invoice["department"], string> = {
+// Known departments get a specific color; any admin-added one falls back to a shared tone.
+const DEPARTMENT_COLOR: Record<string, string> = {
   Phonics: CHART_PALETTE[3],
   Maths: CHART_PALETTE[4],
 };
+const FALLBACK_DEPARTMENT_COLOR = CHART_PALETTE[1];
 
 export default function AdminBilling() {
   // GET /api/invoices is paged (the table grows one row per billing cycle, forever). This
@@ -223,7 +225,10 @@ export default function AdminBilling() {
           <div className="flex items-center gap-3">
             <span
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-              style={{ backgroundColor: `${DEPARTMENT_COLOR[row.department]}1A`, color: DEPARTMENT_COLOR[row.department] }}
+              style={{
+                backgroundColor: `${DEPARTMENT_COLOR[row.department] ?? FALLBACK_DEPARTMENT_COLOR}1A`,
+                color: DEPARTMENT_COLOR[row.department] ?? FALLBACK_DEPARTMENT_COLOR,
+              }}
             >
               <FileText className="h-[18px] w-[18px]" />
             </span>

@@ -15,7 +15,8 @@ export interface ApiUser {
   role: ApiRole;
   status: ApiUserStatus;
   timeZoneId: string;
-  department: "Phonics" | "Maths" | null;
+  departmentId: string | null;
+  departmentName: string | null;
   /** Assigned role (preset) id; only meaningful for Sub Admin accounts. */
   roleDefinitionId: string | null;
   createdAtUtc: string;

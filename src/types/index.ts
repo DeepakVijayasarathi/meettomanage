@@ -19,7 +19,8 @@ export interface AppUser {
   status: UserStatus;
   avatarColor: string;
   joinedOn: string;
-  department?: "Phonics" | "Maths";
+  department?: string;
+  departmentId?: string;
   /** Assigned named role (preset) id; only meaningful for Sub Admin accounts. */
   roleDefinitionId?: string;
 }
@@ -46,7 +47,8 @@ export type ClassDuration = 30 | 45 | 60;
 export interface Course {
   id: string;
   name: string;
-  category: "Phonics" | "Maths" | "Reading" | "Writing" | "Speaking";
+  /** Course category display name — the course's own CourseCategory, or its department when no category name applies. Any admin-defined category/department is valid, not a fixed set. */
+  category: string;
   type: CourseType;
   duration: ClassDuration;
   price: number;
@@ -109,7 +111,7 @@ export interface Invoice {
   apiId?: string;
   parentId: string;
   childName: string;
-  department: "Phonics" | "Maths";
+  department: string;
   amount: number;
   /** Amount settled so far; balance due = amount - amountPaid. Present in API mode. */
   amountPaid?: number;

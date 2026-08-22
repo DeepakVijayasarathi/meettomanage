@@ -32,6 +32,7 @@ import { changeUserRole, createUser, deleteUser, getCredentialChannels, listStud
 import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
 import type { ApiRole } from "@/api/types";
 import { applyRoleToUser, listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
+import { listDepartments, type ApiDepartment } from "@/api/departments";
 
 function UserAvatar({ name, color }: { name: string; color: string }) {
   return (
@@ -90,6 +91,7 @@ export default function AdminUsers() {
     [...ADMISSION_TEAM, ...SUB_ADMINS]
   );
   const { data: students } = useApiData<StudentRow[]>(listStudents, CHILDREN);
+  const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), []);
 
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
   const [detailChild, setDetailChild] = useState<Child | null>(null);
@@ -128,7 +130,7 @@ export default function AdminUsers() {
   const [editUser, setEditUser] = useState<AppUser | null>(null);
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "" });
   const [editRole, setEditRole] = useState("");
-  const [editDepartment, setEditDepartment] = useState<"Phonics" | "Maths">("Phonics");
+  const [editDepartment, setEditDepartment] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -139,7 +141,7 @@ export default function AdminUsers() {
     setAddName("");
     setAddEmail("");
     setAddPhone("");
-    setAddDepartment("Phonics");
+    setAddDepartment(departments[0]?.id ?? "");
     setAddError(null);
     setAddOpen(true);
   }
@@ -152,7 +154,7 @@ export default function AdminUsers() {
       ? addUserRoleOptions.find((o) => o.roleDefinitionId === u.roleDefinitionId)
       : undefined;
     setEditRole(currentOption?.key ?? u.role);
-    setEditDepartment(u.department === "Maths" ? "Maths" : "Phonics");
+    setEditDepartment(u.departmentId ?? departments[0]?.id ?? "");
     setEditUser(u);
     setDetailUser(null);
   }
@@ -178,7 +180,7 @@ export default function AdminUsers() {
         firstName: editForm.firstName.trim(),
         lastName: editForm.lastName.trim(),
         phone: editForm.phone.trim() || undefined,
-        department: editingTeacherInPlace ? editDepartment : undefined,
+        departmentId: editingTeacherInPlace ? editDepartment : undefined,
       });
 
       // Admin accounts are untouchable through this action — the Role field is hidden for them.
@@ -194,7 +196,7 @@ export default function AdminUsers() {
               firstName: editForm.firstName.trim(),
               lastName: editForm.lastName.trim(),
               phone: editForm.phone.trim() || undefined,
-              department: editDepartment,
+              departmentId: editDepartment,
             });
           }
         }
@@ -283,7 +285,7 @@ export default function AdminUsers() {
   const [addName, setAddName] = useState("");
   const [addEmail, setAddEmail] = useState("");
   const [addPhone, setAddPhone] = useState("");
-  const [addDepartment, setAddDepartment] = useState<"Phonics" | "Maths">("Phonics");
+  const [addDepartment, setAddDepartment] = useState("");
   const [rolePresets, setRolePresets] = useState<ApiRolePreset[]>([]);
   const [addError, setAddError] = useState<string | null>(null);
   const [addSubmitting, setAddSubmitting] = useState(false);
@@ -423,7 +425,7 @@ export default function AdminUsers() {
         lastName: rest.join(" "),
         phone: addPhone.trim() || undefined,
         role: roleOption.apiRole,
-        department: roleOption.apiRole === "Teacher" ? addDepartment : undefined,
+        departmentId: roleOption.apiRole === "Teacher" ? addDepartment : undefined,
         roleDefinitionId: roleOption.roleDefinitionId,
       });
       setAddOpen(false);
@@ -911,13 +913,16 @@ export default function AdminUsers() {
             {editRole === "teacher" && (
               <div className="grid gap-1.5">
                 <Label htmlFor="edit-department-select">Department</Label>
-                <Select value={editDepartment} onValueChange={(v) => setEditDepartment(v as "Phonics" | "Maths")}>
+                <Select value={editDepartment} onValueChange={setEditDepartment}>
                   <SelectTrigger id="edit-department-select">
-                    <SelectValue />
+                    <SelectValue placeholder="Select a department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Phonics">Phonics</SelectItem>
-                    <SelectItem value="Maths">Maths</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1129,13 +1134,16 @@ export default function AdminUsers() {
             {addRole === "teacher" && (
               <div className="grid gap-1.5">
                 <Label htmlFor="add-department-select">Department</Label>
-                <Select value={addDepartment} onValueChange={(v) => setAddDepartment(v as "Phonics" | "Maths")}>
+                <Select value={addDepartment} onValueChange={setAddDepartment}>
                   <SelectTrigger id="add-department-select">
-                    <SelectValue />
+                    <SelectValue placeholder="Select a department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Phonics">Phonics</SelectItem>
-                    <SelectItem value="Maths">Maths</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

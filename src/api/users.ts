@@ -67,7 +67,8 @@ export function toAppUser(user: ApiUser): AppUser {
     status: toFrontendStatus(user.status),
     avatarColor: avatarColorFor(user.id),
     joinedOn: user.createdAtUtc.slice(0, 10),
-    department: user.department ?? undefined,
+    department: user.departmentName ?? undefined,
+    departmentId: user.departmentId ?? undefined,
     roleDefinitionId: user.roleDefinitionId ?? undefined,
   };
 }
@@ -96,7 +97,7 @@ export async function resendCredentials(userId: string, channel: "Email" | "What
 
 export async function updateUser(
   id: string,
-  request: { firstName: string; lastName: string; phone?: string; department?: "Phonics" | "Maths" }
+  request: { firstName: string; lastName: string; phone?: string; departmentId?: string }
 ): Promise<ApiUser> {
   return apiFetch<ApiUser>(`/api/users/${id}`, {
     method: "PUT",
@@ -144,7 +145,7 @@ export async function createUser(request: {
   lastName: string;
   phone?: string;
   role: ApiRole;
-  department?: "Phonics" | "Maths";
+  departmentId?: string;
   /** Role preset to assign immediately; only valid when role is "SubAdmin". */
   roleDefinitionId?: string;
 }): Promise<ApiUser> {

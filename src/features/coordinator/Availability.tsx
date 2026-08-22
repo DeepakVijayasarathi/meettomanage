@@ -104,7 +104,7 @@ export default function CoordinatorAvailability() {
         ? apiTeachers.map((t, i) => ({
             id: t.teacherProfileId,
             name: t.fullName,
-            department: t.department ?? "—",
+            department: t.departmentName ?? "—",
             status: "active" as const,
             avatarColor: CHART_PALETTE[i % CHART_PALETTE.length],
           }))

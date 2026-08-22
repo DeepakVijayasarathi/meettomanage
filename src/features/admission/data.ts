@@ -58,7 +58,7 @@ export interface PaymentLink {
   childName: string;
   parentName: string;
   courseName: string;
-  department: "Phonics" | "Maths";
+  department: string;
   amount: number;
   amountPaid: number;
   status: PaymentStatus;

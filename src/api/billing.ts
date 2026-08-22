@@ -20,7 +20,8 @@ export interface ApiInvoice {
   /** Resolved display name for the invoicing parent — the account holder, not the child. */
   parentName: string | null;
   parentEmail: string | null;
-  department: "Phonics" | "Maths";
+  departmentId: string;
+  departmentName: string;
   amount: number;
   amountPaid: number;
   currency: string;
@@ -55,7 +56,7 @@ export function toFrontendInvoice(invoice: ApiInvoice): Invoice {
     apiId: invoice.id,
     parentId: invoice.parentProfileId,
     childName: invoice.childName ?? "—",
-    department: invoice.department,
+    department: invoice.departmentName,
     amount: invoice.amount,
     amountPaid: invoice.amountPaid,
     status: INVOICE_STATUS_FROM_API[invoice.status],
@@ -114,7 +115,7 @@ export async function createInvoice(input: {
   parentProfileId: string;
   childId?: string;
   subscriptionId?: string;
-  department: "Phonics" | "Maths";
+  departmentId: string;
   amount: number;
   dueDate: string;
 }): Promise<ApiInvoice> {
@@ -237,7 +238,8 @@ export interface ApiPaymentAccountTransaction {
 export interface ApiPaymentAccount {
   id: string;
   name: string;
-  department: "Phonics" | "Maths";
+  departmentId: string;
+  departmentName: string;
   gatewayProvider: string;
   gatewayAccountRef: string;
   isActive: boolean;

@@ -442,7 +442,7 @@ export default function AdminSessions() {
                 <SelectContent>
                   {teachers.map((t) => (
                     <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
-                      {t.fullName} {t.department ? `· ${t.department}` : ""}
+                      {t.fullName} {t.departmentName ? `· ${t.departmentName}` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>

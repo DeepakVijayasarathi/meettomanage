@@ -21,7 +21,7 @@ import { formatCurrency, formatNumber } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { createCourse, listCourses, toFrontendCourse } from "@/api/courses";
+import { createCourse, listCategories, listCourses, toFrontendCourse, type ApiCourseCategory } from "@/api/courses";
 import { listDepartments, type ApiDepartment } from "@/api/departments";
 
 const CATEGORY_COLOR: Record<string, string> = {
@@ -46,8 +46,9 @@ export default function AdminCourses() {
     COURSES
   );
   const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), []);
+  const { data: categories } = useApiData<ApiCourseCategory[]>(() => listCategories(), []);
   const [createOpen, setCreateOpen] = useState(false);
-  const [category, setCategory] = useState<Course["category"]>("Phonics");
+  const [category, setCategory] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [type, setType] = useState<Course["type"]>("group");
   const [duration, setDuration] = useState("30");
@@ -73,6 +74,10 @@ export default function AdminCourses() {
     // exactly like a course that was created and then vanished.
     if (!name.trim()) {
       setSaveError("Course name is required.");
+      return;
+    }
+    if (!category.trim()) {
+      setSaveError("Category is required.");
       return;
     }
     if (!effectiveDepartmentId) {
@@ -243,19 +248,22 @@ export default function AdminCourses() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="course-category-select">Category</Label>
-                <Select value={category} onValueChange={(v) => setCategory(v as Course["category"])}>
-                  <SelectTrigger id="course-category-select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Phonics">Phonics</SelectItem>
-                    <SelectItem value="Maths">Maths</SelectItem>
-                    <SelectItem value="Reading">Reading</SelectItem>
-                    <SelectItem value="Writing">Writing</SelectItem>
-                    <SelectItem value="Speaking">Speaking</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="course-category-input">Category</Label>
+                {/* Free text + suggestions instead of a fixed list: course categories are
+                    admin-defined (see ensureCategory in api/courses.ts, which reuses an
+                    existing category by name or creates one), not a closed set. */}
+                <Input
+                  id="course-category-input"
+                  list="course-category-options"
+                  placeholder="e.g. Reading, Grammar, or a new category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                />
+                <datalist id="course-category-options">
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name} />
+                  ))}
+                </datalist>
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="course-department-select">Department</Label>

@@ -23,7 +23,16 @@ import { Logo } from "@/components/Logo";
 import { useBrand } from "@/lib/branding";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { bookStoreDemo, listDemoAvailability, listStorePlans, submitStoreInquiry, type ApiAvailableDemoSlot, type ApiStorePlan } from "@/api/store";
+import {
+  bookStoreDemo,
+  listDemoAvailability,
+  listStoreDepartments,
+  listStorePlans,
+  submitStoreInquiry,
+  type ApiAvailableDemoSlot,
+  type ApiPublicDepartment,
+  type ApiStorePlan,
+} from "@/api/store";
 import { cn, formatCurrency } from "@/lib/utils";
 
 const DEMO_PLANS: ApiStorePlan[] = [
@@ -61,6 +70,7 @@ export default function Store() {
   const brand = useBrand();
   const live = apiEnabled();
   const { data: plans, loading, error: plansError, reload: reloadPlans } = useApiData<ApiStorePlan[]>(() => listStorePlans(), DEMO_PLANS);
+  const { data: departments } = useApiData<ApiPublicDepartment[]>(() => listStoreDepartments(), []);
 
   const [selectedPlan, setSelectedPlan] = useState<ApiStorePlan | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -86,7 +96,7 @@ export default function Store() {
   const demoMinStart = toLocalInputValue(new Date(Date.now() + 2 * 3_600_000 + 10 * 60_000)); // 2h + a small buffer
   const demoMaxStart = toLocalInputValue(new Date(Date.now() + 29 * 86_400_000));
 
-  const demoDepartment = demoForm.department === "none" ? undefined : (demoForm.department as "Phonics" | "Maths");
+  const demoDepartment = demoForm.department === "none" ? undefined : demoForm.department;
 
   const loadAvailableSlots = useCallback(
     (date: string) => {
@@ -155,7 +165,7 @@ export default function Store() {
         parentPhone: demoForm.parentPhone,
         childName: demoForm.childName,
         childAge: demoForm.childAge ? Number(demoForm.childAge) : undefined,
-        department: demoForm.department === "none" ? undefined : (demoForm.department as "Phonics" | "Maths"),
+        departmentId: demoForm.department === "none" ? undefined : demoForm.department,
         preferredStartAtUtc: new Date(demoForm.preferredStart).toISOString(),
       });
       setDemoConfirmed(new Date(confirmation.scheduledStartAtUtc).toLocaleString());
@@ -437,8 +447,11 @@ export default function Store() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No preference</SelectItem>
-                      <SelectItem value="Phonics">Phonics</SelectItem>
-                      <SelectItem value="Maths">Maths</SelectItem>
+                      {departments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

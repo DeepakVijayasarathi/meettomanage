@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpenText, Calculator, Landmark, Link2, Pencil, ShieldCheck } from "lucide-react";
+import { BookOpenText, Building2, Calculator, Landmark, Link2, Pencil, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -24,7 +24,8 @@ const DEMO_ACCOUNTS: ApiPaymentAccount[] = [
   {
     id: "ph",
     name: "Phonics Department Account",
-    department: "Phonics",
+    departmentId: "phonics",
+    departmentName: "Phonics",
     gatewayProvider: "Razorpay",
     gatewayAccountRef: "acc_ph0n1cs_4821",
     isActive: true,
@@ -35,7 +36,8 @@ const DEMO_ACCOUNTS: ApiPaymentAccount[] = [
   {
     id: "ma",
     name: "Maths Department Account",
-    department: "Maths",
+    departmentId: "maths",
+    departmentName: "Maths",
     gatewayProvider: "Cashfree",
     gatewayAccountRef: "acc_m4ths_7734",
     isActive: true,
@@ -45,10 +47,12 @@ const DEMO_ACCOUNTS: ApiPaymentAccount[] = [
   },
 ];
 
-const DEPT_ICON = { Phonics: BookOpenText, Maths: Calculator } as const;
+// Known departments get a fitting icon; any admin-added one falls back to Building2 —
+// not a closed set, just a nicer default for the two departments this app shipped with.
+const DEPT_ICON: Record<string, typeof BookOpenText> = { Phonics: BookOpenText, Maths: Calculator };
 
 function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount; color: string; onEdit: () => void }) {
-  const Icon = DEPT_ICON[account.department] ?? BookOpenText;
+  const Icon = DEPT_ICON[account.departmentName] ?? Building2;
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
@@ -216,7 +220,7 @@ export default function AdminPaymentMapping() {
       <PageHeader
         eyebrow="Payments Infrastructure"
         title="Payment Gateway Mapping"
-        description="Department-level payment accounts for Phonics and Maths, and parent-to-account assignment."
+        description="Department-level payment accounts, and parent-to-account assignment."
       />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -235,7 +239,7 @@ export default function AdminPaymentMapping() {
           {editAccount && (
             <>
               <DialogHeader>
-                <DialogTitle>Edit {editAccount.department} payment account</DialogTitle>
+                <DialogTitle>Edit {editAccount.departmentName} payment account</DialogTitle>
                 <DialogDescription>
                   Which gateway this department charges through. API keys live in Settings → Integrations; only the account reference is stored here.
                 </DialogDescription>
@@ -301,7 +305,7 @@ export default function AdminPaymentMapping() {
       <ConfirmDialog
         open={editConfirmOpen}
         onOpenChange={setEditConfirmOpen}
-        title={`Change how ${editAccount?.department} charges get routed?`}
+        title={`Change how ${editAccount?.departmentName} charges get routed?`}
         description={`Every new payment for this department will go through ${editProvider} (${editRef.trim()}) from now on. Existing transactions are unaffected.`}
         confirmLabel="Save account"
         onConfirm={saveAccountEdit}
@@ -343,7 +347,7 @@ export default function AdminPaymentMapping() {
                 <SelectContent>
                   {accounts.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
-                      {a.department} — {a.gatewayProvider}
+                      {a.departmentName} — {a.gatewayProvider}
                     </SelectItem>
                   ))}
                 </SelectContent>

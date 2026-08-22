@@ -28,7 +28,8 @@ export interface ApiDemoBooking {
   parentPhone: string | null;
   childName: string;
   childAge: number | null;
-  department: "Phonics" | "Maths" | null;
+  departmentId: string | null;
+  departmentName: string | null;
   conversionStatus: ApiConversionStatus;
   followUpNotes: string | null;
   scheduledStartAtUtc: string | null;
@@ -97,7 +98,7 @@ export function toFrontendLead(booking: ApiDemoBooking): Lead {
     teacherName: booking.teacherName ?? "",
     demoDate,
     demoSessionId: booking.classSessionId ?? undefined,
-    recommendedCourse: booking.department ?? "—",
+    recommendedCourse: booking.departmentName ?? "—",
     conversionStage: STAGE_FROM_API[booking.conversionStatus],
     lastContactedOn: demoDate,
     assignedTo: "",
@@ -119,7 +120,7 @@ export async function createDemoBooking(input: {
   parentPhone?: string;
   childName: string;
   childAge?: number;
-  department?: "Phonics" | "Maths";
+  departmentId?: string;
   /** Omit to auto-assign the least-loaded available teacher. */
   teacherProfileId?: string;
   scheduledStartAtUtc: string;
@@ -220,7 +221,7 @@ export function toAwaitingFeedback(booking: ApiDemoBooking): DemoFeedback {
     academicLevel: "",
     strengths: "",
     improvementAreas: "",
-    recommendedCourse: booking.department ?? "—",
+    recommendedCourse: booking.departmentName ?? "—",
     suggestedBatchType: "1:1",
     remarks: "",
     submitted: false,
