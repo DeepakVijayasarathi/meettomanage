@@ -449,6 +449,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               "gap-1.5",
               showActivity ? "bg-brand-violet text-white hover:bg-brand-violet/90" : "text-white/70 hover:bg-white/10 hover:text-white"
             )}
+            aria-pressed={showActivity}
             onClick={() => setShowActivity((s) => !s)}
           >
             <Puzzle className="h-3.5 w-3.5" /> Activity

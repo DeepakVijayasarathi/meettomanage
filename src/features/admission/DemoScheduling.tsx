@@ -383,6 +383,7 @@ export default function AdmissionDemoScheduling() {
         <CardHeader
           role="button"
           tabIndex={0}
+          aria-expanded={formOpen}
           onClick={() => setFormOpen((o) => !o)}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {

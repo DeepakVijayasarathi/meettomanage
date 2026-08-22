@@ -114,7 +114,13 @@ export default function GamificationOverlay({ celebrating, onCelebrationEnd, lea
               >
                 👏
               </span>
-              <p className="font-display text-xl font-bold text-white sm:text-2xl">{message ?? "Great job, everyone!"}</p>
+              {/* role="status": this mounts/dismisses on its own (sound + a 1.7s auto-timeout,
+                  see below) with no click to anchor a screen reader's attention — without an
+                  announcement, a celebration that isn't seen or heard (sound muted) leaves no
+                  trace at all for that user. */}
+              <p role="status" className="font-display text-xl font-bold text-white sm:text-2xl">
+                {message ?? "Great job, everyone!"}
+              </p>
             </div>
           </div>
         </div>
@@ -163,7 +169,15 @@ export default function GamificationOverlay({ celebrating, onCelebrationEnd, lea
               </span>
               <span className="flex-1 truncate font-medium text-white/85">{entry.name}</span>
               {badgeFor(entry.stars) && (
-                <span title={badgeFor(entry.stars)!.label} className="text-sm leading-none">
+                // role="img" + aria-label (not just title): a bare <span> with only a title
+                // attribute isn't focusable and many screen readers don't reliably expose
+                // title text in browse mode, so the emoji's meaning was effectively lost.
+                <span
+                  role="img"
+                  aria-label={badgeFor(entry.stars)!.label}
+                  title={badgeFor(entry.stars)!.label}
+                  className="text-sm leading-none"
+                >
                   {badgeFor(entry.stars)!.badge}
                 </span>
               )}

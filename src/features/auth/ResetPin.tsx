@@ -12,11 +12,16 @@ const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
 
 function PinBoxes({
   id,
+  label,
   values,
   onChange,
   autoFocus,
 }: {
   id: string;
+  /** Distinguishes this box's announcement from the other PinBoxes on the same page
+   *  (new PIN vs. confirm PIN) — without it, two simultaneous "PIN complete" live
+   *  regions would be ambiguous to a screen-reader user. */
+  label: string;
   values: string[];
   onChange: (next: string[]) => void;
   autoFocus?: boolean;
@@ -35,8 +40,11 @@ function PinBoxes({
     if (e.key === "Backspace" && !values[index] && index > 0) refs.current[index - 1]?.focus();
   }
 
+  const filled = values.filter(Boolean).length;
+
   return (
-    <div className="grid grid-cols-4 gap-2.5">
+    <div>
+      <div className="grid grid-cols-4 gap-2.5">
       {values.map((digit, i) => (
         <input
           key={i}
@@ -62,6 +70,10 @@ function PinBoxes({
           className="h-14 w-full rounded-xl border border-brand-ink/15 bg-brand-cream/40 text-center text-xl font-bold text-brand-ink transition-colors focus-visible:border-brand-green focus-visible:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/30"
         />
       ))}
+      </div>
+      <p className="sr-only" aria-live="polite">
+        {filled === PIN_LENGTH ? `${label} complete.` : `${filled} of ${PIN_LENGTH} ${label.toLowerCase()} digits entered.`}
+      </p>
     </div>
   );
 }
@@ -146,13 +158,13 @@ export default function ResetPin() {
                 <Label htmlFor="new-pin-0" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
                   New PIN
                 </Label>
-                <PinBoxes id="new-pin" values={pin} onChange={setPin} autoFocus />
+                <PinBoxes id="new-pin" label="New PIN" values={pin} onChange={setPin} autoFocus />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="confirm-pin-0" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
                   Confirm PIN
                 </Label>
-                <PinBoxes id="confirm-pin" values={confirmPin} onChange={setConfirmPin} />
+                <PinBoxes id="confirm-pin" label="Confirm PIN" values={confirmPin} onChange={setConfirmPin} />
               </div>
               {error && (
                 <p role="alert" className="text-sm font-medium text-destructive">

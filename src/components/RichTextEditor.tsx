@@ -19,6 +19,17 @@ import {
 import { cn } from "@/lib/utils";
 
 const TEXT_COLORS = ["#0F172A", "#DC2626", "#EA580C", "#16A34A", "#0284C7", "#7C3AED", "#FFFFFF"];
+// A hex code alone ("title=#DC2626") isn't a meaningful accessible name when announced —
+// this backs both `title` and `aria-label` with a real color word instead.
+const TEXT_COLOR_NAMES: Record<string, string> = {
+  "#0F172A": "Ink",
+  "#DC2626": "Red",
+  "#EA580C": "Orange",
+  "#16A34A": "Green",
+  "#0284C7": "Blue",
+  "#7C3AED": "Violet",
+  "#FFFFFF": "White",
+};
 
 interface ToolbarButtonProps {
   label: string;
@@ -40,6 +51,17 @@ function ToolbarButton({ label, active, onClick, children }: ToolbarButtonProps)
       onMouseDown={(e) => {
         e.preventDefault();
         onClick();
+      }}
+      // Keyboard activation (Enter/Space) never goes through mousedown at all, so
+      // without this a keyboard user tabbing to any toolbar button could type but never
+      // apply a single format — exec()'s own editorRef.focus() re-targets the editor
+      // correctly either way, and Tab-driven blur (unlike a raw pointer mousedown)
+      // doesn't collapse the selection, so this doesn't need the same preventDefault dance.
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
       }}
       className={cn(
         "flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -206,13 +228,21 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
                 <button
                   key={c}
                   type="button"
-                  title={c}
+                  title={TEXT_COLOR_NAMES[c] ?? c}
+                  aria-label={`Text color: ${TEXT_COLOR_NAMES[c] ?? c}`}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     exec("foreColor", c);
                     setColorOpen(false);
                   }}
-                  className="h-5 w-5 rounded-full border border-border transition-transform hover:scale-110"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      exec("foreColor", c);
+                      setColorOpen(false);
+                    }
+                  }}
+                  className="h-5 w-5 rounded-full border border-border transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   style={{ backgroundColor: c }}
                 />
               ))}

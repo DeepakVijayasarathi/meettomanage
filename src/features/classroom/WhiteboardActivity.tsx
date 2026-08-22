@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PartyPopper, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -81,8 +81,16 @@ export default function WhiteboardActivity({ onClose, onAllMatched }: Whiteboard
 }
 
 function Complete({ message }: { message: string }) {
+  // The button grid this replaces is gone the instant the last match completes — the
+  // button a keyboard user just activated is unmounted with it, dropping focus to
+  // <body> with no announcement of what happened. tabIndex + the focus-on-mount effect
+  // land focus here instead; role="status" announces the text to a screen reader either way.
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.focus();
+  }, []);
   return (
-    <div className="flex items-center justify-center gap-2 py-4 text-success">
+    <div ref={ref} tabIndex={-1} role="status" className="flex items-center justify-center gap-2 py-4 text-success focus:outline-none">
       <PartyPopper className="h-5 w-5" />
       <p className="text-sm font-semibold">{message}</p>
     </div>

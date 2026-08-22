@@ -356,7 +356,10 @@ function UpcomingRow({ session }: { session: ClassSession }) {
         ) : (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span>
+              {/* tabIndex: the Button is disabled and unreachable by keyboard on its own —
+                  without this the join-hint tooltip a mouse user sees on hover has no
+                  keyboard equivalent. */}
+              <span tabIndex={0}>
                 <Button size="sm" variant="outline" disabled>
                   <Video className="h-3.5 w-3.5" /> Join
                 </Button>

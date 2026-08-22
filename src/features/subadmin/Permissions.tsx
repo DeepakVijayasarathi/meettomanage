@@ -137,12 +137,20 @@ export default function SubAdminPermissions() {
                             return (
                               <td key={action} className="px-4 py-3 text-center">
                                 {granted ? (
-                                  <span className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-success/15 text-success">
-                                    <Check className="h-3.5 w-3.5" />
+                                  <span
+                                    className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-success/15 text-success"
+                                    role="img"
+                                    aria-label={`${action} granted for ${mod.label}`}
+                                  >
+                                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
                                   </span>
                                 ) : (
-                                  <span className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground/60">
-                                    <Minus className="h-3.5 w-3.5" />
+                                  <span
+                                    className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground/60"
+                                    role="img"
+                                    aria-label={`${action} not granted for ${mod.label}`}
+                                  >
+                                    <Minus className="h-3.5 w-3.5" aria-hidden="true" />
                                   </span>
                                 )}
                               </td>
@@ -265,12 +273,20 @@ export default function SubAdminPermissions() {
                           return (
                             <td key={action} className="px-4 py-3 text-center">
                               {granted ? (
-                                <span className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-success/15 text-success">
-                                  <Check className="h-3.5 w-3.5" />
+                                <span
+                                  className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-success/15 text-success"
+                                  role="img"
+                                  aria-label={`${action} granted for ${mod}`}
+                                >
+                                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
                                 </span>
                               ) : (
-                                <span className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground/60">
-                                  <Minus className="h-3.5 w-3.5" />
+                                <span
+                                  className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground/60"
+                                  role="img"
+                                  aria-label={`${action} not granted for ${mod}`}
+                                >
+                                  <Minus className="h-3.5 w-3.5" aria-hidden="true" />
                                 </span>
                               )}
                             </td>

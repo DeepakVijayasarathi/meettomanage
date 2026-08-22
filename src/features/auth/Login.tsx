@@ -266,6 +266,14 @@ export default function Login() {
                   />
                 ))}
               </div>
+              {/* Visually-hidden progress announcement — each digit box only has its own
+                  "PIN digit N of 4" label, so a screen-reader user typing has no way to
+                  know when all 4 are filled and the form is actually ready to submit. */}
+              <p className="sr-only" aria-live="polite">
+                {pin.filter(Boolean).length === PIN_LENGTH
+                  ? "PIN complete."
+                  : `${pin.filter(Boolean).length} of ${PIN_LENGTH} PIN digits entered.`}
+              </p>
             </div>
 
             {!apiEnabled() && (

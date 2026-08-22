@@ -128,7 +128,10 @@ export default function StudentDashboard() {
               ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="w-full sm:w-auto">
+                    {/* tabIndex: the Button inside is disabled (so browsers pull it out of
+                        the tab order entirely) — without this, the join-hint tooltip a
+                        mouse user gets on hover is unreachable by keyboard at all. */}
+                    <span tabIndex={0} className="w-full sm:w-auto">
                       <Button size="lg" variant="outline" disabled className="w-full sm:w-auto">
                         <Video className="h-4 w-4" />
                         Join Class
@@ -458,7 +461,10 @@ function ApiStudentDashboard() {
               ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="w-full sm:w-auto">
+                    {/* tabIndex: the Button inside is disabled (so browsers pull it out of
+                        the tab order entirely) — without this, the join-hint tooltip a
+                        mouse user gets on hover is unreachable by keyboard at all. */}
+                    <span tabIndex={0} className="w-full sm:w-auto">
                       <Button size="lg" variant="outline" disabled className="w-full sm:w-auto">
                         <Video className="h-4 w-4" />
                         Join from Schedule

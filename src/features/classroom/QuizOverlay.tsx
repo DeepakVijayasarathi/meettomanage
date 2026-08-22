@@ -41,6 +41,7 @@ export default function QuizOverlay({
   // after React re-renders, so two clicks in quick succession could otherwise both fire
   // before that happens and broadcast two question advances from one intended click.
   const advancingRef = useRef(false);
+  const promptRef = useRef<HTMLParagraphElement>(null);
 
   const question = QUIZ_BANK[qIndex % QUIZ_BANK.length];
 
@@ -86,6 +87,16 @@ export default function QuizOverlay({
     if (syncedIndex == null) return;
     setQIndex(syncedIndex);
   }, [syncedIndex]);
+
+  // The option buttons go `disabled` the instant a student answers (even before the
+  // timer runs out) and again at reveal — a disabled button drops keyboard focus to
+  // <body> with nothing to land on next. Move focus to the question prompt instead,
+  // which stays rendered (and meaningful) through both of those transitions.
+  useEffect(() => {
+    if (mode === "student" && (selected !== null || phase === "revealed")) {
+      promptRef.current?.focus();
+    }
+  }, [mode, selected, phase]);
 
   function selectOption(idx: number) {
     // Teacher's own view renders the same overlay to monitor live tallies — it must stay
@@ -140,7 +151,9 @@ export default function QuizOverlay({
         <p className="text-xs font-medium text-white/50">
           Question {(qIndex % QUIZ_BANK.length) + 1} of {QUIZ_BANK.length}
         </p>
-        <p className="text-sm font-semibold leading-snug text-white">{question.prompt}</p>
+        <p ref={promptRef} tabIndex={-1} className="text-sm font-semibold leading-snug text-white focus:outline-none">
+          {question.prompt}
+        </p>
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto p-3">
@@ -205,7 +218,11 @@ export default function QuizOverlay({
       </div>
 
       <div className="flex shrink-0 items-center justify-between border-t border-white/10 p-3">
-        <p className="text-xs font-semibold text-white/70">
+        {/* role="status" (student mode only, via aria-live semantics on the text itself):
+            updates the instant a question resolves — the one thing on this panel a
+            screen-reader user landing on the (now-focused, see the effect above) prompt
+            would actually want confirmed: did I get that right. */}
+        <p className="text-xs font-semibold text-white/70" role={mode === "student" ? "status" : undefined}>
           {/* The teacher can no longer answer their own quiz (see selectOption above), so
               their own score would always read 0/0 — show something real instead: how many
               students have actually responded to this question so far. */}

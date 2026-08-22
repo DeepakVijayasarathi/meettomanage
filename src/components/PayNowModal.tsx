@@ -325,7 +325,10 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
             </p>
           </div>
         ) : status === "success" ? (
-          <div className="flex flex-col items-center py-4 text-center">
+          // role="status" on the whole block: this replaces the "Pay ₹X" button's entire
+          // surrounding content in one swap — the button a screen-reader user just activated
+          // is gone, and without this, nothing tells them real money just moved.
+          <div className="flex flex-col items-center py-4 text-center" role="status">
             <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-success">
               <CheckCircle2 className="h-8 w-8" />
             </span>
@@ -338,7 +341,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
             </Button>
           </div>
         ) : status === "redirect" || status === "cash" ? (
-          <div className="flex flex-col items-center py-4 text-center">
+          <div className="flex flex-col items-center py-4 text-center" role="status">
             <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
               {status === "redirect" ? <ExternalLink className="h-8 w-8" /> : <Banknote className="h-8 w-8" />}
             </span>
@@ -349,7 +352,11 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
                 Paid in the checkout tab? Come back here and confirm — your invoice updates right away.
               </p>
             )}
-            {verifyNote && <p className="mt-3 text-sm font-medium text-warning">{verifyNote}</p>}
+            {verifyNote && (
+              <p role="alert" className="mt-3 text-sm font-medium text-warning">
+                {verifyNote}
+              </p>
+            )}
             {status === "redirect" ? (
               <div className="mt-6 flex w-full flex-col gap-2">
                 <Button className="w-full" onClick={() => verifyPayment(false)} disabled={verifying}>
@@ -400,7 +407,11 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
               </div>
               )}
             </div>
-            {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+            {error && (
+              <p role="alert" className="text-sm font-medium text-destructive">
+                {error}
+              </p>
+            )}
             {blockedUrl && (
               <a
                 href={blockedUrl}

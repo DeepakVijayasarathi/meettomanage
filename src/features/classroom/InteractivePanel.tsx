@@ -215,8 +215,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
           {/* Same chip language as JitsiLive's own "Rec"/"Reconnecting" header badges,
               so a degraded-hub state reads as this product's status treatment, not a
               generic warning banner. The class call itself is unaffected either way. */}
+          {/* role="status" on both: sync degrading (or recovering) mid-class is exactly the
+              kind of thing a screen-reader user won't notice on their own since it can
+              appear while focus is anywhere else — the roster, the whiteboard, the quiz. */}
           {hubState === "reconnecting" && (
-            <div className="mt-1.5 flex items-center gap-1.5 px-1">
+            <div className="mt-1.5 flex items-center gap-1.5 px-1" role="status">
               <span className="flex shrink-0 items-center gap-1 rounded-full bg-brand-amber/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-amber">
                 <Loader2 className="h-3 w-3 animate-spin" /> Reconnecting
               </span>
@@ -224,7 +227,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
             </div>
           )}
           {hubState === "disconnected" && (
-            <div className="mt-1.5 flex items-center gap-1.5 px-1">
+            <div className="mt-1.5 flex items-center gap-1.5 px-1" role="status">
               <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/60">
                 <CloudOff className="h-3 w-3" /> Working locally
               </span>
@@ -350,7 +353,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                     <p className="truncate text-sm font-semibold text-white">{participant.name}</p>
                     <p className="text-[10px] uppercase tracking-wide text-white/40">{participant.role}</p>
                   </div>
-                  {participant.handRaised && <Hand className="h-4 w-4 text-amber-300" />}
+                  {participant.handRaised && (
+                    <span role="img" aria-label={`${participant.name} has their hand raised`} title="Hand raised">
+                      <Hand className="h-4 w-4 text-amber-300" aria-hidden="true" />
+                    </span>
+                  )}
                   {mode === "teacher" && participant.role === "student" && (
                     <Button
                       size="sm"

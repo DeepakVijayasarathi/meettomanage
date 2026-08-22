@@ -133,11 +133,15 @@ export default function Toolbar({
               <Users className="h-4 w-4 sm:h-5 sm:w-5" />
             </ToolbarButton>
             <div className="relative shrink-0">
-              <ToolbarButton label="Waiting room" active={waitingRoomOpen} onClick={onToggleWaitingRoom}>
+              <ToolbarButton
+                label={waitingCount > 0 ? `Waiting room, ${waitingCount} waiting` : "Waiting room"}
+                active={waitingRoomOpen}
+                onClick={onToggleWaitingRoom}
+              >
                 <VideoOnIcon className="h-4 w-4 sm:h-5 sm:w-5" />
               </ToolbarButton>
               {waitingCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-pink text-[10px] font-bold text-white">
+                <span aria-hidden="true" className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-pink text-[10px] font-bold text-white">
                   {waitingCount}
                 </span>
               )}

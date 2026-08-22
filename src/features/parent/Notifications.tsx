@@ -280,6 +280,9 @@ function NotificationRow({ item, onToggle }: { item: ParentNotification; onToggl
   return (
     <button
       onClick={onToggle}
+      // Unread status is otherwise conveyed only by bold text + a color dot + a tinted
+      // background — none of which reaches a screen reader on their own.
+      aria-label={`${item.read ? "Read" : "Unread"}: ${item.title}. ${item.description}`}
       className={cn(
         "flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors hover:bg-muted/40",
         item.read ? "border-border bg-card" : "border-primary/30 bg-primary/[0.04]"
