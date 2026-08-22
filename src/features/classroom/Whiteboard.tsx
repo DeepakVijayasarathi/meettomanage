@@ -3,6 +3,8 @@ import {
   Circle as CircleIcon,
   Eraser,
   Hand,
+  Maximize2,
+  Minimize2,
   Minus,
   PenTool,
   Plus,
@@ -165,6 +167,19 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   const [color, setColor] = useState(CHART_PALETTE[0]);
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [showActivity, setShowActivity] = useState(false);
+  // Fills the viewport on demand — the board otherwise lives in a ~380px sidebar, cramped
+  // for detailed drawing or a big class to read from the back. The canvas's own ResizeObserver
+  // (below) picks up the new, much larger container size automatically; nothing here touches
+  // canvas pixels directly.
+  const [maximized, setMaximized] = useState(false);
+  useEffect(() => {
+    if (!maximized) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMaximized(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [maximized]);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [lastCleared, setLastCleared] = useState<{ pageIndex: number; strokes: Stroke[] } | null>(null);
   const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string; sticky?: boolean } | null>(null);
@@ -372,8 +387,22 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscribeBoardOps]);
 
+  const maximizeButton = (
+    <Button
+      size="icon"
+      variant="ghost"
+      className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
+      title={maximized ? "Shrink the board back down" : "Make the board bigger"}
+      aria-label={maximized ? "Shrink the board back down" : "Make the board bigger"}
+      aria-pressed={maximized}
+      onClick={() => setMaximized((m) => !m)}
+    >
+      {maximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+    </Button>
+  );
+
   return (
-    <div className="flex h-full flex-col gap-2 p-3">
+    <div className={cn("flex h-full flex-col gap-2 p-3", maximized && "fixed inset-0 z-40 h-screen bg-brand-navy p-4")}>
       {canDraw ? (
         // Dark toolbar chrome matches the rest of the interactive panel (tabs, roster,
         // quiz) — only the canvas below stays a light "paper" surface, so this reads
@@ -494,14 +523,19 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
                 <X className="h-4 w-4" />
               </Button>
             )}
+            <div className="ml-1 h-6 w-px bg-white/10" aria-hidden="true" />
+            {maximizeButton}
           </div>
         </div>
       ) : (
         <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/60">
           <span>👀 View only — ask your teacher for whiteboard access to draw</span>
-          <span className="text-white/40">
-            Page {pageIndex + 1}/{pages.length}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-white/40">
+              Page {pageIndex + 1}/{pages.length}
+            </span>
+            {maximizeButton}
+          </div>
         </div>
       )}
 

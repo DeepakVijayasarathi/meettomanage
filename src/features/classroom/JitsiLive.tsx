@@ -416,7 +416,11 @@ export default function JitsiLive({
                 <PartyPopper className="h-4 w-4" />
               </button>
             )}
-            {mode === "teacher" && (
+            {/* Only shown with the Interactive panel collapsed — once it's open, the People
+                tab already carries the roster (with its own live count badge), so this card
+                and that tab were rendering the same "who's here" info side by side, visually
+                overlapping the panel's own header chips in the cramped video pane. */}
+            {mode === "teacher" && (!interactive || !panelOpen) && (
               <div className="absolute right-3 top-3 z-20 max-w-[220px] rounded-2xl border border-white/10 bg-brand-navy/95 p-3 text-white shadow-pop backdrop-blur">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-white/60">Joined ({participants.length})</p>
                 {participants.length === 0 ? (

@@ -52,6 +52,11 @@ function describeHubError(err: unknown): string {
   if (message.includes("You do not have access to this session")) return "You don't have access to this session.";
   if (message.includes("Invalid session id")) return "This session's id looks wrong — live sync can't attach to it.";
   if (message.includes("Unauthorized") || message.includes("Status code '401'")) return "Your session token was rejected — try signing in again.";
+  // Transport-level: negotiate succeeded but the follow-up connect couldn't find that
+  // connection id — classically a load-balanced backend without sticky sessions routing
+  // the two requests to different instances. Raw text like "No Connection with that ID:
+  // Status code '404'" is meaningless to a teacher mid-class; the class call itself is fine.
+  if (message.includes("No Connection with that ID") || message.includes("Status code '404'")) return "Couldn't reach the live-sync server.";
   if (message.includes("Failed to fetch") || message.includes("Failed to complete negotiation")) return "Couldn't reach the live-sync server.";
   return message;
 }
