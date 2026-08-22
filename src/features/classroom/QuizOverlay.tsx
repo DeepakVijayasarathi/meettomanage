@@ -2,13 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, CheckCircle2, Sparkles, Timer, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { QUIZ_BANK } from "./classroomData";
+import type { QuizQuestion } from "./classroomData";
 
 interface QuizOverlayProps {
   /** Whether the teacher currently has a question live for the class. */
   active: boolean;
   mode: "teacher" | "student";
   onCorrectAnswer: () => void;
+  /** This class's resolved question bank — the admin-authored Quiz Bank for its course
+   *  (falling back to the department-wide set), fetched once by InteractivePanel. Empty
+   *  when nothing has been configured yet for this course/department. */
+  questions: QuizQuestion[];
   /** Real-time sync: question index pushed by the teacher via the hub (students follow it). */
   syncedIndex?: number | null;
   /** Real-time sync: teacher advanced to a question — broadcast it to the class. */
@@ -25,6 +29,7 @@ export default function QuizOverlay({
   active,
   mode,
   onCorrectAnswer,
+  questions,
   syncedIndex,
   onLaunchQuestion,
   onAnswered,
@@ -43,12 +48,14 @@ export default function QuizOverlay({
   const advancingRef = useRef(false);
   const promptRef = useRef<HTMLParagraphElement>(null);
 
-  const question = QUIZ_BANK[qIndex % QUIZ_BANK.length];
+  // Undefined when this course/department has no quiz questions configured yet (Quiz
+  // Bank) — never a crash-inducing NaN index the way `questions[qIndex % 0]` would be.
+  const question = questions.length > 0 ? questions[qIndex % questions.length] : undefined;
 
   // Real counts from the hub's QuizAnswer broadcasts — zero-filled (not fabricated)
   // when nothing has come through yet, e.g. hub disconnected or no one's answered.
   const optionCounts = useMemo(
-    () => question.options.map((_, i) => liveTally?.[i] ?? 0),
+    () => question?.options.map((_, i) => liveTally?.[i] ?? 0) ?? [],
     [question, liveTally]
   );
   const maxCount = Math.max(...optionCounts, 1);
@@ -73,7 +80,7 @@ export default function QuizOverlay({
   }, [active, phase, timeLeft]);
 
   useEffect(() => {
-    if (phase !== "revealed" || scoredRef.current) return;
+    if (phase !== "revealed" || scoredRef.current || !question) return;
     scoredRef.current = true;
     if (selected === null) return;
     const isCorrect = selected === question.correctIndex;
@@ -116,7 +123,23 @@ export default function QuizOverlay({
     });
   }
 
-  if (!active) {
+  if (questions.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-white/40">
+          <Sparkles className="h-5 w-5" />
+        </span>
+        <p className="text-sm font-semibold text-white/70">No quiz questions yet</p>
+        <p className="max-w-[220px] text-xs text-white/40">
+          {mode === "teacher"
+            ? "This course has no quiz questions configured — add some in Admin → Academics → Quiz Bank."
+            : "Your teacher hasn't set up any quiz questions for this class yet."}
+        </p>
+      </div>
+    );
+  }
+
+  if (!active || !question) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-white/40">
@@ -149,7 +172,7 @@ export default function QuizOverlay({
           )}
         </div>
         <p className="text-xs font-medium text-white/50">
-          Question {(qIndex % QUIZ_BANK.length) + 1} of {QUIZ_BANK.length}
+          Question {(qIndex % questions.length) + 1} of {questions.length}
         </p>
         <p ref={promptRef} tabIndex={-1} className="text-sm font-semibold leading-snug text-white focus:outline-none">
           {question.prompt}
