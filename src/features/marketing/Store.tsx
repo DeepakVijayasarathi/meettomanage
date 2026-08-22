@@ -34,6 +34,7 @@ import {
   type ApiStorePlan,
 } from "@/api/store";
 import { cn, formatCurrency } from "@/lib/utils";
+import { DEMO_DEPARTMENTS } from "@/data/departments";
 
 const DEMO_PLANS: ApiStorePlan[] = [
   { id: "pp-1", name: "Phonics Foundations — Monthly", courseName: "Phonics", billingType: "Subscription", billingCycle: "Monthly", price: 2500, sessionsIncluded: 12 },
@@ -70,7 +71,7 @@ export default function Store() {
   const brand = useBrand();
   const live = apiEnabled();
   const { data: plans, loading, error: plansError, reload: reloadPlans } = useApiData<ApiStorePlan[]>(() => listStorePlans(), DEMO_PLANS);
-  const { data: departments } = useApiData<ApiPublicDepartment[]>(() => listStoreDepartments(), []);
+  const { data: departments } = useApiData<ApiPublicDepartment[]>(() => listStoreDepartments(), DEMO_DEPARTMENTS);
 
   const [selectedPlan, setSelectedPlan] = useState<ApiStorePlan | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);

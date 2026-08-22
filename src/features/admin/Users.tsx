@@ -23,6 +23,7 @@ import { Progress } from "@/components/ui/progress";
 import { PARENTS, TEACHERS, ADMISSION_TEAM, SUB_ADMINS, getParentById } from "@/data/users";
 import { CHILDREN } from "@/data/children";
 import { getCourseById } from "@/data/courses";
+import { DEMO_DEPARTMENTS } from "@/data/departments";
 import type { AppUser, Child } from "@/types";
 import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -91,7 +92,7 @@ export default function AdminUsers() {
     [...ADMISSION_TEAM, ...SUB_ADMINS]
   );
   const { data: students } = useApiData<StudentRow[]>(listStudents, CHILDREN);
-  const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), []);
+  const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), DEMO_DEPARTMENTS);
 
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
   const [detailChild, setDetailChild] = useState<Child | null>(null);

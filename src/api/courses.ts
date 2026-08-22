@@ -60,10 +60,17 @@ export async function listCategories(): Promise<ApiCourseCategory[]> {
   return apiFetch<ApiCourseCategory[]>("/api/courses/categories");
 }
 
-/** Reuses an existing category by name if one exists; otherwise creates it under the given department. */
+/**
+ * Reuses an existing category by name if one exists in the SAME department; otherwise
+ * creates it under the given department. Matching by name alone (ignoring department)
+ * used to let a category name that collides across two different departments (e.g. both
+ * a "Beginners" under Phonics and one under Maths) resolve to whichever one happened to
+ * be created first — leaving the new course's own departmentId and its category's
+ * department silently out of sync.
+ */
 async function ensureCategory(name: string, departmentId: string): Promise<ApiCourseCategory> {
   const categories = await listCategories();
-  const existing = categories.find((c) => c.name.toLowerCase() === name.toLowerCase());
+  const existing = categories.find((c) => c.name.toLowerCase() === name.toLowerCase() && c.departmentId === departmentId);
   if (existing) return existing;
   return apiFetch<ApiCourseCategory>("/api/courses/categories", {
     method: "POST",

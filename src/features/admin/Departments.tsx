@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, Plus } from "lucide-react";
+import { Building2, CheckCircle2, Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
@@ -12,16 +12,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useApiData } from "@/api/hooks";
 import { apiEnabled } from "@/lib/api";
 import { listDepartments, createDepartment, updateDepartment, type ApiDepartment } from "@/api/departments";
-
-// Demo-mode fallback (used only when the API is not configured) — mirrors the two
-// departments the app has always shipped with.
-const DEMO_DEPARTMENTS: ApiDepartment[] = [
-  { id: "phonics", name: "Phonics", description: "Reading, phonics and language courses.", isActive: true },
-  { id: "maths", name: "Maths", description: "Vedic Maths, Abacus and MathsLab courses.", isActive: true },
-];
+import { DEMO_DEPARTMENTS } from "@/data/departments";
 
 export default function AdminDepartments() {
-  const { data: departments, reload } = useApiData<ApiDepartment[]>(() => listDepartments(), DEMO_DEPARTMENTS);
+  const { data: departments, error: loadError, reload } = useApiData<ApiDepartment[]>(() => listDepartments(), DEMO_DEPARTMENTS);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ApiDepartment | null>(null);
@@ -30,6 +24,7 @@ export default function AdminDepartments() {
   const [status, setStatus] = useState<"active" | "inactive">("active");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   function openAdd() {
     setEditing(null);
@@ -58,6 +53,9 @@ export default function AdminDepartments() {
       return;
     }
     if (!apiEnabled()) {
+      // Matches Courses/Users/PaymentMapping's own demo-mode messaging — a silent close
+      // here reads exactly like the department was actually saved.
+      setNotice(editing ? "Demo mode — changes not persisted." : "Demo mode — department not persisted.");
       setDialogOpen(false);
       return;
     }
@@ -124,6 +122,19 @@ export default function AdminDepartments() {
           </Button>
         }
       />
+
+      {apiEnabled() && loadError && (
+        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          Could not reach the API ({loadError}) — showing demo data.
+        </p>
+      )}
+
+      {notice && (
+        <p role="status" className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          {notice}
+        </p>
+      )}
 
       <DataTable
         data={departments}

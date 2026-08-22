@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { COURSES } from "@/data/courses";
+import { DEMO_DEPARTMENTS } from "@/data/departments";
 import type { Course } from "@/types";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -45,7 +46,7 @@ export default function AdminCourses() {
     () => listCourses().then((list) => list.map(toFrontendCourse)),
     COURSES
   );
-  const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), []);
+  const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), DEMO_DEPARTMENTS);
   const { data: categories } = useApiData<ApiCourseCategory[]>(() => listCategories(), []);
   const [createOpen, setCreateOpen] = useState(false);
   const [category, setCategory] = useState("");
@@ -64,6 +65,8 @@ export default function AdminCourses() {
   function openCreate() {
     setName("");
     setPrice("");
+    setCategory("");
+    setDepartmentId("");
     setSaveError(null);
     setCreateOpen(true);
   }
