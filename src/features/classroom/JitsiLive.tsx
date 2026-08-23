@@ -493,6 +493,20 @@ export default function JitsiLive({
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <div className="relative min-h-0 min-w-0 flex-1">
             <div ref={containerRef} className="h-full w-full" />
+            {/* The empty room otherwise reads as broken rather than expected — every
+                screenshot of this state so far has been just a lone avatar in a large dark
+                void with nothing saying that's normal. pointer-events-none + a low z-index
+                (behind the corner cards/celebrate button, but still above the Jitsi iframe)
+                keeps it purely informational, never intercepting a click meant for Jitsi's
+                own controls around/behind it. Sits low, clear of Jitsi's centered avatar and
+                its own toolbar (~64px+ tall) at the very bottom. */}
+            {mode === "teacher" && jitsiReady && participants.length === 0 && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-20 z-10 flex justify-center px-6">
+                <p className="rounded-full border border-white/10 bg-brand-navy/80 px-4 py-1.5 text-xs font-medium text-white/50 backdrop-blur">
+                  Your class is live — students will appear here as they join.
+                </p>
+              </div>
+            )}
             {mode === "teacher" && interactive && (
               <button
                 title="Send a celebration to the class"
