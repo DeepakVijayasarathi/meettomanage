@@ -508,11 +508,16 @@ export default function JitsiLive({
               </div>
             )}
             {mode === "teacher" && interactive && (
+              // Was top-3 left-3 — a corner nobody looks at once class is under way; every
+              // control a teacher actually reaches for mid-class (mic, camera, hand, chat)
+              // lives at the bottom, so this moves there too instead of being easy to miss.
+              // bottom-20 (not bottom-3) clears Jitsi's own toolbar the same way the empty-
+              // room hint above does, rather than sitting underneath/behind it.
               <button
                 title="Send a celebration to the class"
                 aria-label="Send a celebration to the class"
                 onClick={() => (celebrateAllRef.current ?? celebrate)("Great job, everyone! 🎉")}
-                className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy/95 text-white backdrop-blur transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="absolute bottom-20 left-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy/95 text-white backdrop-blur transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <PartyPopper className="h-4 w-4" />
               </button>
