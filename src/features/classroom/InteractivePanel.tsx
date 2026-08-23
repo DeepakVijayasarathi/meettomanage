@@ -240,49 +240,84 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
   const canDraw = mode === "teacher" || boardAllowed;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-brand-navy">
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Panel title bar: gives the Interactive panel its own identity (matching the
+          rounded card it now sits inside) and a persistent, always-visible hub-status
+          chip — previously that signal only appeared conditionally above the tab list,
+          in the same spot the reconnecting/disconnected text still lives below it. */}
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-white/[0.03] px-3 py-2.5">
+        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/50">
+          <Sparkles className="h-3.5 w-3.5 text-brand-violet" /> Interactive
+        </span>
+        <span
+          role="status"
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+            hubState === "connected" && "bg-brand-green/15 text-brand-green",
+            hubState === "reconnecting" && "bg-brand-amber/15 text-brand-amber",
+            hubState === "disconnected" && "bg-white/10 text-white/60"
+          )}
+        >
+          {hubState === "connected" && (
+            <>
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-green" /> Live
+            </>
+          )}
+          {hubState === "reconnecting" && (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" /> Reconnecting
+            </>
+          )}
+          {hubState === "disconnected" && (
+            <>
+              <CloudOff className="h-3 w-3" /> Working locally
+            </>
+          )}
+        </span>
+      </div>
       <Tabs value={tab} onValueChange={(v) => setTab(v as PanelTab)} className="flex h-full min-h-0 flex-col">
-        <div className="shrink-0 border-b border-white/10 p-2">
-          <TabsList className="w-full bg-white/5">
-            <TabsTrigger value="board" className="flex-1 gap-1 text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none">
+        <div className="shrink-0 border-b border-white/10 bg-white/[0.02] p-2">
+          <TabsList className="w-full gap-1 rounded-full bg-white/5 p-1">
+            <TabsTrigger
+              value="board"
+              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+            >
               <PencilRuler className="h-3.5 w-3.5" /> Board
             </TabsTrigger>
-            <TabsTrigger value="quiz" className="flex-1 gap-1 text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none">
+            <TabsTrigger
+              value="quiz"
+              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+            >
               <Sparkles className="h-3.5 w-3.5" /> Quiz
             </TabsTrigger>
-            <TabsTrigger value="stars" className="flex-1 gap-1 text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none">
+            <TabsTrigger
+              value="stars"
+              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+            >
               <Trophy className="h-3.5 w-3.5" /> Stars
             </TabsTrigger>
-            <TabsTrigger value="people" className="flex-1 gap-1 text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none">
+            <TabsTrigger
+              value="people"
+              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+            >
               <Users className="h-3.5 w-3.5" /> People
               {roster.length > 0 && (
                 <span className="ml-0.5 rounded-full bg-white/15 px-1.5 py-px text-[10px] font-bold leading-tight">{roster.length}</span>
               )}
             </TabsTrigger>
           </TabsList>
-          {/* Same chip language as JitsiLive's own "Rec"/"Reconnecting" header badges,
-              so a degraded-hub state reads as this product's status treatment, not a
-              generic warning banner. The class call itself is unaffected either way. */}
-          {/* role="status" on both: sync degrading (or recovering) mid-class is exactly the
-              kind of thing a screen-reader user won't notice on their own since it can
-              appear while focus is anywhere else — the roster, the whiteboard, the quiz. */}
+          {/* The status chip above is now the persistent signal; these keep only the
+              extra detail text (what a degraded sync actually means for the class) so
+              the two don't duplicate the same "reconnecting"/"offline" announcement. */}
           {hubState === "reconnecting" && (
-            <div className="mt-1.5 flex items-center gap-1.5 px-1" role="status">
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-brand-amber/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-amber">
-                <Loader2 className="h-3 w-3 animate-spin" /> Reconnecting
-              </span>
-              <p className="text-[10px] text-white/40">Board and quiz updates may not reach everyone yet.</p>
-            </div>
+            <p role="status" className="mt-1.5 px-1 text-[10px] text-white/40">
+              Board and quiz updates may not reach everyone yet.
+            </p>
           )}
           {hubState === "disconnected" && (
-            <div className="mt-1.5 flex items-center gap-1.5 px-1" role="status">
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/60">
-                <CloudOff className="h-3 w-3" /> Working locally
-              </span>
-              <p className="text-[10px] text-white/40">
-                {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
-              </p>
-            </div>
+            <p role="status" className="mt-1.5 px-1 text-[10px] text-white/40">
+              {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
+            </p>
           )}
         </div>
 
