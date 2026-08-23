@@ -142,7 +142,25 @@ export default {
         "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
         "slide-up": { from: { opacity: "0", transform: "translateY(6px)" }, to: { opacity: "1", transform: "translateY(0)" } },
         "pop-in": { "0%": { opacity: "0", transform: "scale(0.9)" }, "100%": { opacity: "1", transform: "scale(1)" } },
-        confetti: { "0%": { transform: "translateY(0) rotate(0)", opacity: "1" }, "100%": { transform: "translateY(120px) rotate(240deg)", opacity: "0" } },
+        confetti: {
+          "0%": { transform: "translateY(0) translateX(0) rotate(0)", opacity: "1" },
+          "55%": { transform: "translateY(160px) translateX(var(--drift, 24px)) rotate(200deg)", opacity: "1" },
+          "100%": { transform: "translateY(340px) translateX(0) rotate(420deg)", opacity: "0" },
+        },
+        // Sparks fired outward from the celebration card on entry — the radial layer
+        // that makes the moment read as a "burst" rather than confetti falling alone.
+        "spark-burst": {
+          "0%": { transform: "translate(-50%, -50%) scale(0.4)", opacity: "1" },
+          "100%": { transform: "translate(calc(-50% + var(--tx, 80px)), calc(-50% + var(--ty, -80px))) scale(1)", opacity: "0" },
+        },
+        // A punchier badge entrance than a plain fade — overshoots past full size and
+        // rotation before settling, the classic "pop" a sticker or medal gets on award.
+        "badge-pop": {
+          "0%": { transform: "scale(0.4) rotate(-25deg)", opacity: "0" },
+          "55%": { transform: "scale(1.2) rotate(10deg)", opacity: "1" },
+          "80%": { transform: "scale(0.95) rotate(-4deg)" },
+          "100%": { transform: "scale(1) rotate(0deg)", opacity: "1" },
+        },
         "page-in": { from: { opacity: "0", transform: "translateY(8px)" }, to: { opacity: "1", transform: "translateY(0)" } },
         shimmer: { from: { transform: "translateX(-100%)" }, to: { transform: "translateX(100%)" } },
       },
@@ -152,7 +170,9 @@ export default {
         "fade-in": "fade-in 0.25s ease-out",
         "slide-up": "slide-up 0.3s ease-out",
         "pop-in": "pop-in 0.2s cubic-bezier(0.16,1,0.3,1)",
-        confetti: "confetti 1.4s ease-in forwards",
+        confetti: "confetti 1.9s ease-in forwards",
+        "spark-burst": "spark-burst 0.7s cubic-bezier(0.16,1,0.3,1) forwards",
+        "badge-pop": "badge-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards",
         "page-in": "page-in 0.28s cubic-bezier(0.16,1,0.3,1)",
         shimmer: "shimmer 1.8s ease-in-out infinite",
       },
