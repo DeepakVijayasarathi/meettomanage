@@ -166,13 +166,20 @@ export default function GamificationOverlay({
             ))}
             <div
               className={cn(
-                "flex flex-col items-center gap-3 rounded-3xl border border-white/10 bg-brand-navy/95 px-8 py-6 text-center shadow-2xl shadow-black/40 backdrop-blur",
+                "relative flex flex-col items-center gap-3 overflow-hidden rounded-3xl border border-white/10 bg-brand-navy/95 px-9 py-7 text-center shadow-2xl shadow-black/50 ring-1 ring-white/10 backdrop-blur-xl",
                 !reducedMotion && "animate-pop-in"
               )}
             >
+              {/* Soft radial glow behind the emoji badge — purely decorative, ties the
+                  celebration moment to the same violet/amber accent used everywhere else
+                  a "this matters" moment appears (celebrate button, active toggles). */}
+              <div
+                className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(245,165,36,0.18),transparent_60%)]"
+                aria-hidden="true"
+              />
               <span
                 className={cn(
-                  "flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-amber to-brand-violet text-3xl leading-none",
+                  "relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-amber to-brand-violet text-3xl leading-none shadow-lg shadow-brand-violet/40",
                   !reducedMotion && "animate-badge-pop"
                 )}
               >
@@ -191,9 +198,12 @@ export default function GamificationOverlay({
       )}
 
       {showLeaderboardCard && (
+        // w-64 (was w-52) matches JitsiLive's Joined roster card — the two used to be
+        // visibly mismatched widths stacked in the same corner, which read as sloppy
+        // rather than one deliberate card family.
         <div
           className={cn(
-            "z-20 w-52 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy/95 backdrop-blur transition-[height] duration-150",
+            "z-20 w-64 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy/90 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-xl transition-[height] duration-150",
             stacked ? "shrink-0" : "absolute right-3 top-3",
             collapsed && "h-11"
           )}

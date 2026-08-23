@@ -1,5 +1,5 @@
-import { apiFetch } from "@/lib/api";
-import type { PagedResult } from "./types";
+import { apiFetch, downloadFile } from "@/lib/api";
+import type { BulkImportResult, PagedResult } from "./types";
 import type { Invoice } from "@/types";
 
 export type ApiInvoiceStatus = "Pending" | "PartiallyPaid" | "Paid" | "Overdue" | "Cancelled";
@@ -55,6 +55,7 @@ export function toFrontendInvoice(invoice: ApiInvoice): Invoice {
     id: invoice.invoiceNumber,
     apiId: invoice.id,
     parentId: invoice.parentProfileId,
+    childId: invoice.childId ?? undefined,
     childName: invoice.childName ?? "—",
     department: invoice.departmentName,
     amount: invoice.amount,
@@ -224,6 +225,18 @@ export async function createPackagePlan(input: SavePackagePlanInput): Promise<Ap
 
 export async function updatePackagePlan(id: string, input: SavePackagePlanInput): Promise<ApiPackagePlan> {
   return apiFetch<ApiPackagePlan>(`/api/package-plans/${id}`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+/** Bulk-create package plans from a .csv/.xlsx. Columns: Name, CourseName (optional),
+ *  BillingType, BillingCycle, Price, SessionsIncluded (optional), IsActive. */
+export async function bulkImportPackagePlans(file: File): Promise<BulkImportResult> {
+  const form = new FormData();
+  form.set("file", file);
+  return apiFetch<BulkImportResult>("/api/package-plans/bulk-import", { method: "POST", body: form });
+}
+
+export async function exportPackagePlans(): Promise<void> {
+  await downloadFile("/api/package-plans/export", "package-plans.csv");
 }
 
 export interface ApiPaymentAccountTransaction {
