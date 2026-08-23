@@ -417,7 +417,6 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
           break;
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscribeBoardOps]);
 
   const maximizeButton = (
