@@ -236,6 +236,10 @@ export default function JitsiLive({
           disableDeepLinking: true,
           // Don't let the browser suggest/remember this room outside our own scheduling flow.
           doNotStoreRoom: true,
+          // Without an explicit subject, Jitsi's own top bar falls back to displaying the
+          // raw room slug (an opaque, scrambled-looking id string) — this replaces it with
+          // the same class title already shown in our own header just above it.
+          subject: title ?? "Live class",
         },
         interfaceConfigOverwrite: {
           SHOW_JITSI_WATERMARK: false,
@@ -345,6 +349,21 @@ export default function JitsiLive({
       // tiles freeze silently otherwise, with nothing in our own chrome saying why.
       api.addListener("connectionInterrupted", () => setCallDegraded(true));
       api.addListener("connectionRestored", () => setCallDegraded(false));
+      // Without these, a video server/room misconfiguration (e.g. the Jitsi deployment's
+      // focus component rejecting the room outright) left the whole screen looking
+      // "normal" — just a static avatar with no call ever connecting, no explanation, and
+      // the class silently never starting. This reuses the same full-screen error state
+      // init() itself falls back to, since a failed conference makes the rest of the
+      // screen (interactive panel included) meaningless without a working call underneath.
+      api.addListener("conferenceFailed", (payload) => {
+        setError(
+          `The video call couldn't connect (${payload?.error ?? "unknown error"}). ` +
+            "Try rejoining — if this keeps happening, the video server may be down."
+        );
+      });
+      api.addListener("connectionFailed", () => {
+        setError("Couldn't reach the video server. Check your connection and try rejoining.");
+      });
       api.addListener("recordingStatusChanged", (payload) => {
         const isOn = !!payload?.on;
         setRecording(isOn);
