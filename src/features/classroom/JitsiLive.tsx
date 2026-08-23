@@ -244,6 +244,13 @@ export default function JitsiLive({
           // media never connects. The JVB sits on a public IP with the right ports
           // mapped, so relaying through it is far more likely to succeed.
           p2p: { enabled: false },
+          // Screen share reported as laggy/slow — expected consequence of the p2p:false
+          // fix above: it now competes with everyone's camera video for the same JVB
+          // uplink instead of going direct. Screen content (slides, documents) doesn't
+          // need 30fps to read; capping it trades away motion smoothness nobody needs
+          // here for a meaningfully lower, steadier bitrate, which is what actually
+          // fixes "lag" (encoder/network backlog) as opposed to visual quality.
+          desktopSharingFrameRate: { min: 5, max: 15 },
           // Don't let the browser suggest/remember this room outside our own scheduling flow.
           doNotStoreRoom: true,
           // Without an explicit subject, Jitsi's own top bar falls back to displaying the
