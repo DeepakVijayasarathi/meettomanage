@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CheckCircle2, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -91,27 +91,51 @@ export default function ParentEnrollment() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState<EnrollmentForm>({
-    childName: child?.name ?? "",
-    dob: "",
-    grade: child?.grade ?? "",
-    gender: "",
-    schoolName: "",
-    priorExperience: "",
-    parentName: userName !== "Guest" ? userName : "",
-    relationship: "",
-    parentPhone: "",
-    parentEmail: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-    address: "",
-    courseInterest: child?.courseId ?? "",
-    preferredDays: [],
-    preferredTime: "",
-    allergies: "",
-    notes: "",
-    consent: false,
-  });
+
+  // Parent/contact fields carry over between children on the same account (same
+  // parent, same address); everything else is this specific child's own answers and
+  // must start blank for each one.
+  function buildInitialForm(prev?: EnrollmentForm): EnrollmentForm {
+    return {
+      childName: child?.name ?? "",
+      dob: "",
+      grade: child?.grade ?? "",
+      gender: "",
+      schoolName: "",
+      priorExperience: "",
+      parentName: prev?.parentName || (userName !== "Guest" ? userName : ""),
+      relationship: prev?.relationship ?? "",
+      parentPhone: prev?.parentPhone ?? "",
+      parentEmail: prev?.parentEmail ?? "",
+      emergencyContactName: prev?.emergencyContactName ?? "",
+      emergencyContactPhone: prev?.emergencyContactPhone ?? "",
+      address: prev?.address ?? "",
+      courseInterest: child?.courseId ?? "",
+      preferredDays: [],
+      preferredTime: "",
+      allergies: "",
+      notes: "",
+      consent: false,
+    };
+  }
+
+  const [form, setForm] = useState<EnrollmentForm>(() => buildInitialForm());
+
+  // useState's initializer above only ever runs on this component's first mount — but
+  // switching to a different child (e.g. right after "Add Child") reuses this same
+  // route/component instance with just a new childId, not a fresh one. Without this,
+  // the form kept showing whichever child's answers were typed in first, no matter
+  // which child the URL/active-child now pointed at.
+  const previousChildIdRef = useRef(childId);
+  useEffect(() => {
+    if (previousChildIdRef.current === childId) return;
+    previousChildIdRef.current = childId;
+    setForm((prev) => buildInitialForm(prev));
+    setStep(0);
+    setErrors({});
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childId]);
 
   useEffect(() => {
     if (!submitted) return;
