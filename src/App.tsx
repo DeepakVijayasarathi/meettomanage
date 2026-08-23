@@ -43,6 +43,7 @@ const TeacherDemoFeedback = lazy(() => import("@/features/teacher/DemoFeedback")
 const TeacherLeave = lazy(() => import("@/features/teacher/Leave"));
 const TeacherPayout = lazy(() => import("@/features/teacher/Payout"));
 const TeacherResources = lazy(() => import("@/features/teacher/Resources"));
+const TeacherRecordings = lazy(() => import("@/features/teacher/Recordings"));
 
 const ParentDashboard = lazy(() => import("@/features/parent/Dashboard"));
 const ParentEnrollment = lazy(() => import("@/features/parent/Enrollment"));
@@ -157,6 +158,7 @@ export default function App() {
               <Route index element={<TeacherDashboard />} />
               <Route path="classes" element={<TeacherMyClasses />} />
               <Route path="attendance" element={<TeacherAttendance />} />
+              <Route path="recordings" element={<TeacherRecordings />} />
               <Route path="demo-feedback" element={<TeacherDemoFeedback />} />
               <Route path="leave" element={<TeacherLeave />} />
               <Route path="payout" element={<TeacherPayout />} />
