@@ -140,8 +140,15 @@ export default function ParentDashboard() {
     () => getParentInvoices().then((items) => items.map(toFrontendInvoice)),
     []
   );
+  // API mode used to take the first outstanding invoice on the whole account regardless
+  // of which child is selected — with more than one child, the Fee Card could show (or
+  // let a parent pay) a sibling's invoice while the actually-selected child's own
+  // subscription/package amount never appeared at all. Scoped by childName here, same
+  // as the demo branch below always did.
   const invoice = apiEnabled()
-    ? apiInvoices.find((i) => i.status !== "paid" && i.status !== "cancelled")
+    ? child
+      ? apiInvoices.find((i) => i.childId === child.id && i.status !== "paid" && i.status !== "cancelled")
+      : undefined
     : child
       ? getInvoicesForParent(PARENT_ID).find((i) => i.childName === child.name && i.status !== "paid" && i.status !== "cancelled")
       : undefined;

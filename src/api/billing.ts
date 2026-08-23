@@ -55,6 +55,7 @@ export function toFrontendInvoice(invoice: ApiInvoice): Invoice {
     id: invoice.invoiceNumber,
     apiId: invoice.id,
     parentId: invoice.parentProfileId,
+    childId: invoice.childId ?? undefined,
     childName: invoice.childName ?? "—",
     department: invoice.departmentName,
     amount: invoice.amount,

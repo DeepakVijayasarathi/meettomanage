@@ -44,8 +44,17 @@ export interface Stroke {
 export type BoardOp =
   | { kind: "stroke"; pageIndex: number; stroke: Stroke }
   | { kind: "clear"; pageIndex: number }
-  | { kind: "addPage" }
-  | { kind: "removePage"; pageIndex: number };
+  // Carries the new page's own index so every recipient can both grow their page list
+  // AND jump straight to it — previously this carried no index at all, so a page added
+  // by anyone other than the teacher grew the teacher's page count with nothing telling
+  // their view to actually move there (it silently stayed on whatever page they were on).
+  | { kind: "addPage"; pageIndex: number }
+  | { kind: "removePage"; pageIndex: number }
+  // Explicit page navigation, broadcast only by whoever holds board access (see canDraw
+  // below) — keeps the whole class looking at the same page of a shared board, the same
+  // way the strokes on it are already shared, instead of each viewer's "which page am I
+  // on" being silent local-only state no one else's switch ever touched.
+  | { kind: "goToPage"; pageIndex: number };
 
 interface Page {
   id: string;
@@ -347,9 +356,10 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   }
 
   function addPage() {
+    const newIndex = pages.length;
     setPages((prev) => [...prev, { id: nextId(), strokes: [] }]);
-    setPageIndex(pages.length);
-    onBoardOp?.({ kind: "addPage" });
+    setPageIndex(newIndex);
+    onBoardOp?.({ kind: "addPage", pageIndex: newIndex });
   }
 
   function removePage() {
@@ -357,6 +367,14 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     setPages((prev) => prev.filter((_, i) => i !== pageIndex));
     setPageIndex((i) => Math.max(0, i - 1));
     onBoardOp?.({ kind: "removePage", pageIndex });
+  }
+
+  /** Local page switch; also tells the rest of the class to follow along whenever the
+   *  switcher actually holds board access (a passive viewer flipping through to look at
+   *  earlier pages shouldn't yank everyone else's view with them). */
+  function goToPage(newIndex: number) {
+    setPageIndex(newIndex);
+    if (canDraw) onBoardOp?.({ kind: "goToPage", pageIndex: newIndex });
   }
 
   // Apply remote board ops from classmates (relayed through the classroom hub).
@@ -376,11 +394,26 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
           setPages((prev) => prev.map((p, i) => (i === op.pageIndex ? { ...p, strokes: [] } : p)));
           break;
         case "addPage":
-          setPages((prev) => [...prev, { id: nextId(), strokes: [] }]);
+          // Pad rather than just push one — if this client somehow missed an earlier
+          // addPage (a dropped message, joining mid-class), a single push would land the
+          // new page at the wrong index and permanently desync its page count from
+          // everyone else's. Padding to op.pageIndex always converges on the sender's count.
+          setPages((prev) => {
+            const next = [...prev];
+            while (next.length <= op.pageIndex) next.push({ id: nextId(), strokes: [] });
+            return next;
+          });
+          setPageIndex(op.pageIndex);
           break;
         case "removePage":
           setPages((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== op.pageIndex) : prev));
           setPageIndex((i) => Math.max(0, Math.min(i, pagesRef.current.length - 2)));
+          break;
+        case "goToPage":
+          // Clamp defensively: if this client's page list hasn't caught up to an addPage
+          // that's still in flight, following straight to the sender's raw index could
+          // point past the end of what's rendered here yet.
+          setPageIndex(Math.max(0, Math.min(op.pageIndex, pagesRef.current.length - 1)));
           break;
       }
     });
@@ -490,7 +523,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               variant="ghost"
               className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
               aria-label="Previous page"
-              onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
+              onClick={() => goToPage(Math.max(0, pageIndex - 1))}
               disabled={pageIndex === 0}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -503,7 +536,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               variant="ghost"
               className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
               aria-label="Next page"
-              onClick={() => setPageIndex((i) => Math.min(pages.length - 1, i + 1))}
+              onClick={() => goToPage(Math.min(pages.length - 1, pageIndex + 1))}
               disabled={pageIndex === pages.length - 1}
             >
               <ChevronRight className="h-4 w-4" />
@@ -530,10 +563,36 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
       ) : (
         <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/60">
           <span>👀 View only — ask your teacher for whiteboard access to draw</span>
-          <div className="flex items-center gap-2">
-            <span className="text-white/40">
+          <div className="flex items-center gap-1">
+            {/* Without draw access there's no Add/Remove page — but browsing between
+                pages the teacher (or another student) already created is still just
+                looking, not editing, so it stays available here too. Previously this
+                branch had no page controls at all: a student without board access had
+                no way to move off whatever page they happened to land on. */}
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 text-white/60 hover:bg-white/10 hover:text-white"
+              aria-label="Previous page"
+              onClick={() => goToPage(Math.max(0, pageIndex - 1))}
+              disabled={pageIndex === 0}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <span className="whitespace-nowrap px-0.5 text-white/40">
               Page {pageIndex + 1}/{pages.length}
             </span>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 text-white/60 hover:bg-white/10 hover:text-white"
+              aria-label="Next page"
+              onClick={() => goToPage(Math.min(pages.length - 1, pageIndex + 1))}
+              disabled={pageIndex === pages.length - 1}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+            <div className="mx-1 h-5 w-px bg-white/10" aria-hidden="true" />
             {maximizeButton}
           </div>
         </div>

@@ -110,6 +110,8 @@ export interface Invoice {
   /** Real backend invoice Guid (id above is the display invoice number); present in API mode only. */
   apiId?: string;
   parentId: string;
+  /** Real backend child Guid, when the invoice is linked to one; present in API mode only. */
+  childId?: string;
   childName: string;
   department: string;
   amount: number;
