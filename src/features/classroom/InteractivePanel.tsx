@@ -7,9 +7,10 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { ClassroomHubClient, type ClassroomHubState, type HubParticipant } from "@/lib/classroomHub";
 import { postEngagement } from "@/api/engagement";
 import { getLeaderboard, postAward } from "@/api/gamification";
+import { getQuizQuestionsForSession } from "@/api/quizQuestions";
 import Whiteboard, { type BoardOp } from "./Whiteboard";
 import QuizOverlay from "./QuizOverlay";
-import type { LeaderboardEntry } from "./classroomData";
+import type { LeaderboardEntry, QuizQuestion } from "./classroomData";
 
 type PanelTab = "board" | "quiz" | "stars" | "people";
 
@@ -42,12 +43,20 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [quizActive, setQuizActive] = useState(false);
   const [syncedIndex, setSyncedIndex] = useState<number | null>(null);
+  // This class's resolved quiz bank (this course's own questions, falling back to its
+  // department's shared ones) — replaces what used to be one hardcoded set every class
+  // shared regardless of subject. Empty until it loads, or if nothing's configured yet.
+  const [questionBank, setQuestionBank] = useState<QuizQuestion[]>([]);
   // Real per-option answer counts for the current question, built from the hub's own
   // QuizAnswer broadcasts — replaces a formula that fabricated plausible-looking numbers.
   const [quizTally, setQuizTally] = useState<Record<number, number[]>>({});
   // Students draw only when the teacher grants access; teachers always can.
   const [boardAllowed, setBoardAllowed] = useState(false);
   const [grantedIds, setGrantedIds] = useState<Set<string>>(new Set());
+  // Brief "Given!" confirmation on the button just clicked — giving a star is otherwise
+  // fire-and-forget (postAward never throws; the hub send is a no-op while disconnected),
+  // so without this the teacher has no feedback at all that the click did anything.
+  const [justAwardedId, setJustAwardedId] = useState<string | null>(null);
 
   const hubRef = useRef<ClassroomHubClient | null>(null);
   const boardHandlers = useRef(new Set<(op: BoardOp) => void>());
@@ -151,6 +160,29 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
+  // Resolved once per class: this course's own quiz questions, falling back to its
+  // department's shared set (or empty if nothing's configured — QuizOverlay shows an
+  // honest "no questions yet" state rather than crashing on an empty bank).
+  useEffect(() => {
+    let cancelled = false;
+    getQuizQuestionsForSession(sessionId)
+      .then((questions) => {
+        if (cancelled) return;
+        setQuestionBank(
+          questions.map((q) => ({
+            id: q.id,
+            prompt: q.prompt,
+            options: q.options.map((o) => o.text),
+            correctIndex: q.options.findIndex((o) => o.isCorrect),
+          }))
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
   const subscribeBoardOps = useCallback((handler: (op: BoardOp) => void) => {
     boardHandlers.current.add(handler);
     return () => {
@@ -187,6 +219,22 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
       return set;
     });
     hubRef.current.setBoardAccess(participant.connectionId, next);
+  }
+
+  /**
+   * Manual, ad-hoc star for a named student — the counterpart to the automatic
+   * quiz-correct-answer / whiteboard-mini-game-completion paths, for rewarding
+   * participation that doesn't happen to run through either of those (answered well
+   * verbally, helped a classmate, etc.). Same durable-record-then-live-bump order as
+   * every other award in this panel: postAward persists it (and auto-grants a
+   * milestone server-side if it crosses a threshold) independent of whether the hub
+   * is even connected; awardStarTo only refreshes what the class sees live right now.
+   */
+  function giveStar(participant: HubParticipant) {
+    postAward(sessionId, participant.name, "Star");
+    hubRef.current?.awardStarTo(participant.name);
+    setJustAwardedId(participant.connectionId);
+    setTimeout(() => setJustAwardedId((current) => (current === participant.connectionId ? null : current)), 1500);
   }
 
   const canDraw = mode === "teacher" || boardAllowed;
@@ -270,7 +318,13 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                     End quiz
                   </Button>
                 ) : (
-                  <Button size="sm" className="gap-1 !bg-brand-violet hover:!bg-[#6a4de0]" onClick={launchQuiz}>
+                  <Button
+                    size="sm"
+                    className="gap-1 !bg-brand-violet hover:!bg-[#6a4de0]"
+                    onClick={launchQuiz}
+                    disabled={questionBank.length === 0}
+                    title={questionBank.length === 0 ? "Add questions for this course in Admin → Quiz Bank first" : undefined}
+                  >
                     <Sparkles className="h-3.5 w-3.5" /> Launch quiz
                   </Button>
                 )}
@@ -280,6 +334,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
               <QuizOverlay
                 active={quizActive}
                 mode={mode}
+                questions={questionBank}
                 syncedIndex={mode === "student" ? syncedIndex : undefined}
                 liveTally={syncedIndex != null ? quizTally[syncedIndex] : undefined}
                 onLaunchQuestion={(index) => hubRef.current?.startQuiz(index)}
@@ -357,6 +412,24 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                     <span role="img" aria-label={`${participant.name} has their hand raised`} title="Hand raised">
                       <Hand className="h-4 w-4 text-amber-300" aria-hidden="true" />
                     </span>
+                  )}
+                  {mode === "teacher" && participant.role === "student" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={justAwardedId === participant.connectionId}
+                      className={cn(
+                        "h-7 px-2 text-[11px]",
+                        justAwardedId === participant.connectionId
+                          ? "text-brand-amber"
+                          : "text-white/50 hover:bg-white/10 hover:text-white"
+                      )}
+                      onClick={() => giveStar(participant)}
+                      title={`Give ${participant.name} a star`}
+                    >
+                      <Star className={cn("mr-1 h-3 w-3", justAwardedId === participant.connectionId && "fill-brand-amber")} />
+                      {justAwardedId === participant.connectionId ? "Given!" : "Give star"}
+                    </Button>
                   )}
                   {mode === "teacher" && participant.role === "student" && (
                     <Button
