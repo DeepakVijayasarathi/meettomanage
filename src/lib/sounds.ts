@@ -85,11 +85,74 @@ export function playDhol() {
   for (const [offset, high] of pattern) dholAt(ctx, start + offset, high);
 }
 
-/** Celebration moment: dhol roll + clapping together. */
+/**
+ * One bell-like note: a handful of decaying sine harmonics stacked together, instead of
+ * a single flat tone — this is what actually reads as "bell" rather than "beep" to the
+ * ear, since a real bell's sound is inherently that stack of overtones decaying at
+ * slightly different rates.
+ */
+function bellAt(ctx: AudioContext, at: number, freq: number, gainScale: number) {
+  const partials: Array<[number, number, number]> = [
+    [1, 0.5, 1.1],
+    [2.4, 0.28, 0.8],
+    [3.9, 0.16, 0.55],
+    [5.2, 0.09, 0.4],
+  ];
+  for (const [ratio, gainAmt, decay] of partials) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq * ratio, at);
+    gain.gain.setValueAtTime(gainAmt * gainScale, at);
+    gain.gain.exponentialRampToValueAtTime(0.001, at + decay);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(at);
+    osc.stop(at + decay + 0.05);
+  }
+}
+
+/** A quick rising arpeggio ("ta-da!") — the actual musical payoff of the celebration. */
+function chimeAt(ctx: AudioContext, at: number) {
+  const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6 — a bright major chord climbing
+  notes.forEach((freq, i) => bellAt(ctx, at + i * 0.09, freq, 0.7));
+}
+
+/** A short upward noise sweep just before the chime — the "whoosh" that sells the payoff as a single event, not four unrelated sounds landing at once. */
+function whooshAt(ctx: AudioContext, at: number) {
+  const duration = 0.35;
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    data[i] = (Math.random() * 2 - 1) * (i / data.length);
+  }
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.Q.value = 0.7;
+  filter.frequency.setValueAtTime(400, at);
+  filter.frequency.exponentialRampToValueAtTime(4000, at + duration);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.25, at);
+  gain.gain.linearRampToValueAtTime(0, at + duration);
+  source.connect(filter).connect(gain).connect(ctx.destination);
+  source.start(at);
+}
+
+/**
+ * Celebration moment: whoosh → chime → dhol roll, with clapping trailing underneath —
+ * four layers instead of the original two, timed as one event building to a payoff
+ * rather than a drum hit and a clap batch landing side by side.
+ */
 export function playCelebration() {
   if (isSoundMuted()) return;
+  const ctx = getContext();
+  if (!ctx) return;
+  const start = ctx.currentTime + 0.02;
+  whooshAt(ctx, start);
+  chimeAt(ctx, start + 0.28);
   playDhol();
-  setTimeout(playClapping, 200);
+  setTimeout(playClapping, 260);
 }
 
 let unlocked = false;
