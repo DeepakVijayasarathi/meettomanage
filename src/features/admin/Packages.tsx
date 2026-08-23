@@ -29,6 +29,8 @@ import {
   listSubscriptions,
   renewSubscription,
   updatePackagePlan,
+  bulkImportPackagePlans,
+  exportPackagePlans,
   type ApiBillingCycle,
   type ApiBillingType,
   type ApiPackagePlan,
@@ -37,6 +39,7 @@ import {
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
 import { listStudents, type StudentRow } from "@/api/users";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 
 const BILLING_TYPES: { value: ApiBillingType; label: string }[] = [
   { value: "Subscription", label: "Subscription (recurring)" },
@@ -437,10 +440,19 @@ export default function AdminPackages() {
               emptyTitle="No package plans yet"
               emptyDescription="Create a plan to define what parents are billed and how often."
               toolbar={
-                <Button onClick={openCreatePlan}>
-                  <PackagePlus className="h-4 w-4" />
-                  New plan
-                </Button>
+                <div className="flex items-center gap-2">
+                  <BulkImportExportBar
+                    entityLabel="package plans"
+                    templateColumns={["Name", "CourseName", "BillingType", "BillingCycle", "Price", "SessionsIncluded", "IsActive"]}
+                    onImport={bulkImportPackagePlans}
+                    onExport={exportPackagePlans}
+                    onImported={reloadPlans}
+                  />
+                  <Button onClick={openCreatePlan}>
+                    <PackagePlus className="h-4 w-4" />
+                    New plan
+                  </Button>
+                </div>
               }
             />
           </TabsContent>

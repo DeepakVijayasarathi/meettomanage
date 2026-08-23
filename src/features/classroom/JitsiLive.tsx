@@ -234,6 +234,14 @@ export default function JitsiLive({
           prejoinConfig: { enabled: false },
           startWithAudioMuted: mode === "student",
           disableDeepLinking: true,
+          // Force every call through the JVB media bridge instead of a direct
+          // peer-to-peer WebRTC connection. P2P has much weaker NAT traversal (no
+          // TURN fallback) than JVB-relayed media — on this self-hosted deployment
+          // that's the standard cause of "I can see their name/tile but hear and
+          // see nothing," since presence/roster still work (XMPP) while the actual
+          // media never connects. The JVB sits on a public IP with the right ports
+          // mapped, so relaying through it is far more likely to succeed.
+          p2p: { enabled: false },
           // Don't let the browser suggest/remember this room outside our own scheduling flow.
           doNotStoreRoom: true,
           // Without an explicit subject, Jitsi's own top bar falls back to displaying the

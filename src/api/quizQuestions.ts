@@ -1,4 +1,5 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, downloadFile } from "@/lib/api";
+import type { BulkImportResult } from "./types";
 
 /**
  * Admin-authored live-quiz question bank (GET/POST/PUT/DELETE /api/quiz-questions),
@@ -66,4 +67,16 @@ const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export async function getQuizQuestionsForSession(sessionId: string | undefined): Promise<ApiQuizQuestion[]> {
   if (!sessionId || !GUID_RE.test(sessionId)) return [];
   return apiFetch<ApiQuizQuestion[]>(`/api/quiz-questions/for-session/${sessionId}`);
+}
+
+/** Bulk-create quiz questions from a .csv/.xlsx. Columns: DepartmentName (required unless
+ *  CourseName is set), CourseName, Prompt, Option1..Option6 (2-6 filled), CorrectOptionNumber. */
+export async function bulkImportQuizQuestions(file: File): Promise<BulkImportResult> {
+  const form = new FormData();
+  form.set("file", file);
+  return apiFetch<BulkImportResult>("/api/quiz-questions/bulk-import", { method: "POST", body: form });
+}
+
+export async function exportQuizQuestions(): Promise<void> {
+  await downloadFile("/api/quiz-questions/export", "quiz-questions.csv");
 }

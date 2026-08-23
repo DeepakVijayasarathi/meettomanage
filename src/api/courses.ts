@@ -1,5 +1,6 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, downloadFile } from "@/lib/api";
 import type { Course } from "@/types";
+import type { BulkImportResult } from "./types";
 
 export interface ApiCourseCategory {
   id: string;
@@ -101,4 +102,16 @@ export async function createCourse(input: {
       isActive: true,
     }),
   });
+}
+
+/** Bulk-create courses from a .csv/.xlsx. Columns: DepartmentName, CategoryName, Name,
+ *  Description, Type (Individual/Group), DurationMinutes, Price, TotalSessions, IsActive. */
+export async function bulkImportCourses(file: File): Promise<BulkImportResult> {
+  const form = new FormData();
+  form.set("file", file);
+  return apiFetch<BulkImportResult>("/api/courses/bulk-import", { method: "POST", body: form });
+}
+
+export async function exportCourses(): Promise<void> {
+  await downloadFile("/api/courses/export?includeInactive=true", "courses.csv");
 }

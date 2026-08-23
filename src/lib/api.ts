@@ -62,3 +62,30 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
+
+/** Downloads a file response (a bulk-export CSV) with the auth token and saves it as `filename`. */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const token = getAccessToken();
+  const response = await fetch(`${BASE_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const problem = (await response.json()) as { detail?: string; title?: string };
+      detail = problem.detail ?? problem.title ?? detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(response.status, detail);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
