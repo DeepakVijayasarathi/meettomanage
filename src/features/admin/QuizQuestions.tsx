@@ -19,8 +19,11 @@ import {
   createQuizQuestion,
   updateQuizQuestion,
   deleteQuizQuestion,
+  bulkImportQuizQuestions,
+  exportQuizQuestions,
   type ApiQuizQuestion,
 } from "@/api/quizQuestions";
+import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 
 /** One editable option row in the dialog — a fresh id per row (not persisted) just keys the list. */
 interface DraftOption {
@@ -213,9 +216,18 @@ export default function AdminQuizQuestions() {
         title="Quiz Bank"
         description="Live-quiz questions teachers launch during class — scope one to a specific course, or leave it department-wide to share across every course in that department. A Demo class only ever draws from its department's shared questions."
         actions={
-          <Button onClick={openAdd} disabled={departments.length === 0}>
-            <Plus className="h-4 w-4" /> Add Question
-          </Button>
+          <div className="flex items-center gap-2">
+            <BulkImportExportBar
+              entityLabel="quiz questions"
+              templateColumns={["DepartmentName", "CourseName", "Prompt", "Option1", "Option2", "Option3", "Option4", "Option5", "Option6", "CorrectOptionNumber"]}
+              onImport={bulkImportQuizQuestions}
+              onExport={exportQuizQuestions}
+              onImported={reload}
+            />
+            <Button onClick={openAdd} disabled={departments.length === 0}>
+              <Plus className="h-4 w-4" /> Add Question
+            </Button>
+          </div>
         }
       />
 

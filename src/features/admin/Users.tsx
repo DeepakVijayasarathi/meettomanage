@@ -29,7 +29,8 @@ import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { changeUserRole, createUser, deleteUser, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { bulkImportStudents, bulkImportUsers, changeUserRole, createUser, deleteUser, exportStudents, exportUsers, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
 import type { ApiRole } from "@/api/types";
 import { applyRoleToUser, listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
@@ -95,7 +96,7 @@ export default function AdminUsers() {
     },
     [...ADMISSION_TEAM, ...SUB_ADMINS]
   );
-  const { data: students } = useApiData<StudentRow[]>(listStudents, CHILDREN);
+  const { data: students, reload: reloadStudents } = useApiData<StudentRow[]>(listStudents, CHILDREN);
   const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), DEMO_DEPARTMENTS);
 
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
@@ -647,6 +648,15 @@ export default function AdminUsers() {
                 <Mail className="h-3 w-3" /> Resend credentials
               </Button>
             }
+            toolbar={
+              <BulkImportExportBar
+                entityLabel="parents"
+                templateColumns={["Email", "FirstName", "LastName", "Phone"]}
+                onImport={(file) => bulkImportUsers(file, "Parent")}
+                onExport={() => exportUsers("Parent")}
+                onImported={reloadParents}
+              />
+            }
           />
         </TabsContent>
 
@@ -657,6 +667,15 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search students by name…"
             onRowClick={(row) => setDetailChild(row)}
+            toolbar={
+              <BulkImportExportBar
+                entityLabel="students"
+                templateColumns={["ParentEmail", "StudentFullName", "DateOfBirth", "AcademicLevel"]}
+                onImport={bulkImportStudents}
+                onExport={exportStudents}
+                onImported={reloadStudents}
+              />
+            }
           />
         </TabsContent>
 
@@ -674,6 +693,15 @@ export default function AdminUsers() {
               <Button size="sm" className="h-7 px-2 text-xs" disabled={bulkSending} onClick={() => setBulkConfirmIds([...selectedTeacherIds])}>
                 <Mail className="h-3 w-3" /> Resend credentials
               </Button>
+            }
+            toolbar={
+              <BulkImportExportBar
+                entityLabel="teachers"
+                templateColumns={["Email", "FirstName", "LastName", "Phone", "DepartmentName"]}
+                onImport={(file) => bulkImportUsers(file, "Teacher")}
+                onExport={() => exportUsers("Teacher")}
+                onImported={reloadTeachers}
+              />
             }
           />
         </TabsContent>

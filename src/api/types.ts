@@ -30,6 +30,20 @@ export interface PagedResult<T> {
   pageSize: number;
 }
 
+export interface BulkImportRowError {
+  rowNumber: number;
+  message: string;
+}
+
+/** Outcome of a bulk-import upload — rows are processed independently, so this always comes
+ *  back with a per-row breakdown rather than throwing on partial failure. */
+export interface BulkImportResult {
+  totalRows: number;
+  succeededCount: number;
+  failedCount: number;
+  errors: BulkImportRowError[];
+}
+
 export interface LoginResponse {
   accessToken: string;
   expiresAtUtc: string;
