@@ -493,19 +493,6 @@ export default function JitsiLive({
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <div className="relative min-h-0 min-w-0 flex-1">
             <div ref={containerRef} className="h-full w-full" />
-            <GamificationOverlay
-              celebrating={celebrating}
-              onCelebrationEnd={() => {
-                setCelebrating(false);
-                setCelebrationMessage(undefined);
-              }}
-              leaderboard={leaderboard}
-              message={celebrationMessage}
-              // Same reasoning as the "Joined" card below: once the Interactive panel is
-              // open, its own Stars tab already shows this leaderboard, so the floating
-              // card is a redundant duplicate sitting in the same corner of the video pane.
-              showLeaderboardCard={!interactive || !panelOpen}
-            />
             {mode === "teacher" && interactive && (
               <button
                 title="Send a celebration to the class"
@@ -516,27 +503,50 @@ export default function JitsiLive({
                 <PartyPopper className="h-4 w-4" />
               </button>
             )}
-            {/* Only shown with the Interactive panel collapsed — once it's open, the People
-                tab already carries the roster (with its own live count badge), so this card
-                and that tab were rendering the same "who's here" info side by side, visually
-                overlapping the panel's own header chips in the cramped video pane. */}
-            {mode === "teacher" && (!interactive || !panelOpen) && (
-              <div className="absolute right-3 top-3 z-20 max-w-[220px] rounded-2xl border border-white/10 bg-brand-navy/95 p-3 text-white shadow-pop backdrop-blur">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-white/60">Joined ({participants.length})</p>
-                {participants.length === 0 ? (
-                  <p className="mt-1 text-xs text-white/50">Waiting for students to join…</p>
-                ) : (
-                  <ul className="mt-1.5 flex flex-col gap-1">
-                    {participants.map((p) => (
-                      <li key={p.id} className="flex items-center gap-1.5 text-sm">
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
-                        <span className="truncate">{p.displayName}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
+            {/* Wraps the (now non-self-positioning) leaderboard card above it — via
+                GamificationOverlay's `stacked` prop — together with the Joined roster card
+                in one flex column, both anchored once at this single corner. Both are
+                teacher-only and share the exact same "panel closed" visibility condition,
+                so they always show or hide together; independently self-positioning at the
+                same right-3 top-3 corner used to render them directly on top of each other
+                (confirmed from a live screenshot: the leaderboard's trophy icon peeking out
+                from behind the Joined card). */}
+            <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
+              {/* The celebration confetti/banner portion of GamificationOverlay uses `fixed
+                  inset-0` internally, so mounting it inside this flex stack doesn't affect
+                  where that renders — only the leaderboard mini-card (stacked) is laid out
+                  by this wrapper, right above the Joined card it used to collide with. */}
+              <GamificationOverlay
+                celebrating={celebrating}
+                onCelebrationEnd={() => {
+                  setCelebrating(false);
+                  setCelebrationMessage(undefined);
+                }}
+                leaderboard={leaderboard}
+                message={celebrationMessage}
+                // Once the Interactive panel is open, its own Stars tab already shows this
+                // leaderboard, so the floating card would be a redundant duplicate.
+                showLeaderboardCard={!interactive || !panelOpen}
+                stacked
+              />
+              {mode === "teacher" && (!interactive || !panelOpen) && (
+                <div className="max-w-[220px] rounded-2xl border border-white/10 bg-brand-navy/95 p-3 text-white shadow-pop backdrop-blur">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-white/60">Joined ({participants.length})</p>
+                  {participants.length === 0 ? (
+                    <p className="mt-1 text-xs text-white/50">Waiting for students to join…</p>
+                  ) : (
+                    <ul className="mt-1.5 flex flex-col gap-1">
+                      {participants.map((p) => (
+                        <li key={p.id} className="flex items-center gap-1.5 text-sm">
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                          <span className="truncate">{p.displayName}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           {interactive && (
             <aside className={cn("min-h-0 w-full shrink-0 border-t border-white/10 md:w-[380px] md:border-l md:border-t-0", !panelOpen && "hidden")}>

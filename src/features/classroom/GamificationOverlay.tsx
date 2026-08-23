@@ -19,6 +19,15 @@ interface GamificationOverlayProps {
    * pane — same reasoning as the "Joined" roster card right next to it.
    */
   showLeaderboardCard: boolean;
+  /**
+   * When true, the leaderboard card gives up its own absolute top-right positioning and
+   * renders as a plain block instead — for JitsiLive, which stacks it above the "Joined"
+   * roster card in one shared flex column so the two (both teacher-only, both shown
+   * whenever the Interactive panel is closed) never land on the exact same corner and
+   * overlap. LiveClassroom's mock/demo screen has no second card to share that corner
+   * with, so it leaves this off and keeps the card self-positioned as before.
+   */
+  stacked?: boolean;
 }
 
 const MEDAL_STYLES = [
@@ -44,6 +53,7 @@ export default function GamificationOverlay({
   leaderboard,
   message,
   showLeaderboardCard,
+  stacked,
 }: GamificationOverlayProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [muted, setMuted] = useState(() => isSoundMuted());
@@ -143,7 +153,8 @@ export default function GamificationOverlay({
       {showLeaderboardCard && (
         <div
           className={cn(
-            "absolute right-3 top-3 z-20 w-52 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy/95 backdrop-blur transition-[height] duration-150",
+            "z-20 w-52 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy/95 backdrop-blur transition-[height] duration-150",
+            stacked ? "shrink-0" : "absolute right-3 top-3",
             collapsed && "h-11"
           )}
         >
