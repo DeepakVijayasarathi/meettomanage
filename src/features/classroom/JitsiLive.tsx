@@ -167,7 +167,7 @@ export default function JitsiLive({
   // Shared chip styling for the two header toggles (Waiting Room / Interactive) so
   // both read as one family of controls instead of two independently-styled buttons.
   const headerToggleClass =
-    "gap-1.5 border border-white/10 bg-white/10 text-white hover:bg-white/20 aria-pressed:border-transparent aria-pressed:bg-brand-violet aria-pressed:text-white";
+    "gap-1.5 border border-white/10 bg-white/5 text-white/90 backdrop-blur transition-colors hover:bg-white/15 hover:text-white aria-pressed:border-transparent aria-pressed:bg-brand-violet aria-pressed:text-white aria-pressed:shadow-md aria-pressed:shadow-brand-violet/30";
 
   useEffect(() => {
     let api: JitsiExternalApi | undefined;
@@ -420,16 +420,16 @@ export default function JitsiLive({
 
   return (
     <div className="flex h-screen flex-col bg-brand-navyDark">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-brand-navyDark/60 px-4 py-2.5 backdrop-blur-sm">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-b from-brand-navyDark/90 to-brand-navyDark/60 px-4 py-3 shadow-sm backdrop-blur-md">
         <div className="flex min-w-0 items-center gap-3">
           <Logo showWordmark={false} imgClassName="h-8 w-8" />
           <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
           </span>
-          <p className="truncate text-sm font-semibold text-white">{title ?? "Live class"}</p>
+          <p className="truncate text-sm font-semibold tracking-tight text-white">{title ?? "Live class"}</p>
           {recording && (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-300">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-300 ring-1 ring-inset ring-destructive/25">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" /> Rec
             </span>
           )}
@@ -460,7 +460,12 @@ export default function JitsiLive({
             </Button>
           )}
           <div className="h-6 w-px bg-white/10" aria-hidden="true" />
-          <Button size="sm" variant="destructive" className="gap-1.5 rounded-full" onClick={() => setLeaveConfirmOpen(true)}>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="gap-1.5 rounded-full shadow-md shadow-destructive/30 transition-transform hover:scale-[1.03]"
+            onClick={() => setLeaveConfirmOpen(true)}
+          >
             <PhoneOff className="h-4 w-4" />
             Leave
           </Button>
@@ -483,7 +488,7 @@ export default function JitsiLive({
           "no Jibri pool provisioned on the video server" — see docs/JITSI_ARCHITECTURE.md)
           visible instead of the teacher just never noticing the REC badge never appeared. */}
       {mode === "teacher" && recordingIssue && (
-        <div className="flex shrink-0 items-start gap-2.5 border-b border-brand-amber/20 bg-brand-amber/10 px-4 py-2.5 text-xs text-brand-amber">
+        <div className="flex shrink-0 items-start gap-2.5 border-b border-brand-amber/20 bg-brand-amber/10 px-4 py-2.5 text-xs text-brand-amber backdrop-blur-sm">
           <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5" />
           <p className="flex-1">{recordingIssue}</p>
           <button
@@ -515,7 +520,11 @@ export default function JitsiLive({
                 its own toolbar (~64px+ tall) at the very bottom. */}
             {mode === "teacher" && jitsiReady && participants.length === 0 && (
               <div className="pointer-events-none absolute inset-x-0 bottom-20 z-10 flex justify-center px-6">
-                <p className="rounded-full border border-white/10 bg-brand-navy/80 px-4 py-1.5 text-xs font-medium text-white/50 backdrop-blur">
+                <p className="flex items-center gap-2 rounded-full border border-white/10 bg-brand-navy/70 px-4 py-1.5 text-xs font-medium text-white/60 shadow-lg shadow-black/20 backdrop-blur-md">
+                  <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden="true">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-amber opacity-60" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-amber" />
+                  </span>
                   Your class is live — students will appear here as they join.
                 </p>
               </div>
@@ -530,9 +539,9 @@ export default function JitsiLive({
                 title="Send a celebration to the class"
                 aria-label="Send a celebration to the class"
                 onClick={() => (celebrateAllRef.current ?? celebrate)("Great job, everyone! 🎉")}
-                className="absolute bottom-20 left-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy/95 text-white backdrop-blur transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="absolute bottom-20 left-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-brand-amber to-brand-violet text-white shadow-lg shadow-brand-violet/30 ring-1 ring-white/20 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <PartyPopper className="h-4 w-4" />
+                <PartyPopper className="h-[18px] w-[18px]" />
               </button>
             )}
             {/* Wraps the (now non-self-positioning) leaderboard card above it — via
@@ -562,15 +571,18 @@ export default function JitsiLive({
                 stacked
               />
               {mode === "teacher" && (!interactive || !panelOpen) && (
-                <div className="max-w-[220px] rounded-2xl border border-white/10 bg-brand-navy/95 p-3 text-white shadow-pop backdrop-blur">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-white/60">Joined ({participants.length})</p>
+                <div className="max-w-[220px] rounded-2xl border border-white/10 bg-brand-navy/90 p-3 text-white shadow-xl shadow-black/30 ring-1 ring-white/5 backdrop-blur-md">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-white/50">Joined ({participants.length})</p>
                   {participants.length === 0 ? (
                     <p className="mt-1 text-xs text-white/50">Waiting for students to join…</p>
                   ) : (
-                    <ul className="mt-1.5 flex flex-col gap-1">
+                    <ul className="mt-1.5 flex flex-col gap-1.5">
                       {participants.map((p) => (
                         <li key={p.id} className="flex items-center gap-1.5 text-sm">
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                          <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden="true">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          </span>
                           <span className="truncate">{p.displayName}</span>
                         </li>
                       ))}
