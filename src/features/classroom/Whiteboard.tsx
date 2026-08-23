@@ -407,7 +407,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
         // Dark toolbar chrome matches the rest of the interactive panel (tabs, roster,
         // quiz) — only the canvas below stays a light "paper" surface, so this reads
         // as one dark product with a sheet of paper on it, not two stitched-together UIs.
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2 shadow-inner shadow-black/20 backdrop-blur-sm">
           <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1">
             {TOOLS.map(({ id, label, icon: Icon }) => (
               <button
@@ -528,7 +528,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/60">
+        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/60 shadow-inner shadow-black/20 backdrop-blur-sm">
           <span>👀 View only — ask your teacher for whiteboard access to draw</span>
           <div className="flex items-center gap-2">
             <span className="text-white/40">
@@ -539,7 +539,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
         </div>
       )}
 
-      <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-cream shadow-pop">
+      <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-cream shadow-pop ring-1 ring-black/5">
         <canvas
           ref={canvasRef}
           className={cn(
