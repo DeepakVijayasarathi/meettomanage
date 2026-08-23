@@ -63,6 +63,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Batches", to: "/admin/batches", icon: Layers },
       { label: "Academic Calendar", to: "/admin/calendar", icon: CalendarDays },
       { label: "Sessions", to: "/admin/sessions", icon: CalendarClock },
+      { label: "Quiz Bank", to: "/admin/quiz-bank", icon: Sparkles },
     ],
   },
   {

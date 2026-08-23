@@ -190,6 +190,12 @@ export class ClassroomHubClient {
     this.send("AwardStar");
   }
 
+  /** Teacher-only: live-leaderboard bump for a star manually given to a named student
+   *  (see postAward for the durable half — this only refreshes what everyone sees live). */
+  awardStarTo(participantName: string): void {
+    this.send("AwardStarToParticipant", participantName);
+  }
+
   celebrate(message?: string): void {
     this.send("Celebrate", message ?? null);
   }

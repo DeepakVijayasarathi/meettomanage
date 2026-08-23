@@ -20,16 +20,32 @@ const JITSI_DOMAIN_FALLBACK = (import.meta.env.VITE_JITSI_DOMAIN as string | und
 
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Shared by the Window global below and the local `api` variable in the effect further
+ *  down — kept as one named type so the two can never drift apart again (they used to be
+ *  two independent inline copies, and only one of them got the `error` field added). */
+type JitsiExternalApi = {
+  dispose: () => void;
+  addListener: (
+    event: string,
+    listener: (payload: {
+      id?: string;
+      muted?: boolean;
+      link?: string;
+      on?: boolean;
+      displayName?: string;
+      handRaised?: boolean;
+      // recordingStatusChanged only: Jitsi's own reason when a recording request is
+      // rejected or drops (e.g. "resource-constraint", "service-unavailable" — no Jibri
+      // free in the pool; "error" — a generic Jibri-side failure).
+      error?: string;
+    }) => void
+  ) => void;
+  executeCommand: (command: string, ...args: unknown[]) => void;
+};
+
 declare global {
   interface Window {
-    JitsiMeetExternalAPI?: new (domain: string, options: Record<string, unknown>) => {
-      dispose: () => void;
-      addListener: (
-        event: string,
-        listener: (payload: { id?: string; muted?: boolean; link?: string; on?: boolean; displayName?: string; handRaised?: boolean }) => void
-      ) => void;
-      executeCommand: (command: string, ...args: unknown[]) => void;
-    };
+    JitsiMeetExternalAPI?: new (domain: string, options: Record<string, unknown>) => JitsiExternalApi;
   }
 }
 
@@ -92,6 +108,15 @@ export default function JitsiLive({
   const [jitsiReady, setJitsiReady] = useState(false);
   const [callDegraded, setCallDegraded] = useState(false);
   const [recording, setRecording] = useState(false);
+  // Auto-recording has no success confirmation of its own — startRecording is a fire-and-
+  // forget IFrame command, so the only signals that it actually took are recordingStatusChanged
+  // (on: true) or its own reported error. Without this, a deployment with no Jibri pool (the
+  // documented "no-op until Jibri exists" state — see docs/JITSI_ARCHITECTURE.md) recorded
+  // nothing and told nobody: the teacher just never saw a REC badge, with no way to tell that
+  // apart from "recording is fine, just not showing." Null = nothing wrong (or not attempted);
+  // a string = shown as a dismissible banner with the reason, teacher-only.
+  const [recordingIssue, setRecordingIssue] = useState<string | null>(null);
+  const recordingWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   // Sourced from Jitsi's own participantJoined/Left events rather than the SignalR
   // interactive-layer roster: a demo lead has no account and joins straight from the
@@ -145,16 +170,7 @@ export default function JitsiLive({
     "gap-1.5 border border-white/10 bg-white/10 text-white hover:bg-white/20 aria-pressed:border-transparent aria-pressed:bg-brand-violet aria-pressed:text-white";
 
   useEffect(() => {
-    let api:
-      | {
-          dispose: () => void;
-          addListener: (
-            event: string,
-            listener: (payload: { id?: string; muted?: boolean; link?: string; on?: boolean; displayName?: string; handRaised?: boolean }) => void
-          ) => void;
-          executeCommand: (command: string, ...args: unknown[]) => void;
-        }
-      | undefined;
+    let api: JitsiExternalApi | undefined;
     let cancelled = false;
 
     // Talk-time & camera attentiveness: accumulated from Jitsi media signals,
@@ -261,6 +277,24 @@ export default function JitsiLive({
           // turn this off in Settings → Integrations → Jitsi Meet ("autoRecord"),
           // which leaves recording to the manual fallback on teacher My Classes.
           api?.executeCommand("startRecording", { mode: "file" });
+          // startRecording has no success callback of its own — a deployment with no
+          // Jibri pool (or one that's exhausted) either fires recordingStatusChanged
+          // with on:false + a reason, or in some configurations fires nothing back at
+          // all (Jicofo simply can't dispatch the request). Either way, if the "on"
+          // confirmation hasn't arrived within a reasonable window, treat it as failed
+          // rather than leaving the teacher to guess why no REC badge ever appeared.
+          if (recordingWatchdogRef.current) clearTimeout(recordingWatchdogRef.current);
+          recordingWatchdogRef.current = setTimeout(() => {
+            setRecording((current) => {
+              if (!current) {
+                setRecordingIssue(
+                  "Auto-recording didn't start (likely no recording capacity on the video server). " +
+                    "This class is not being recorded automatically — use the manual \"Recording\" button on My Classes if you need one."
+                );
+              }
+              return current;
+            });
+          }, 15000);
         }
       });
       // Auto recording registration: when the deployment publishes the recording
@@ -268,6 +302,7 @@ export default function JitsiLive({
       api.addListener("recordingLinkAvailable", (payload) => {
         if (mode === "teacher" && interactive && payload?.link) {
           registerRecording(sessionId!, payload.link).catch(() => undefined);
+          setRecordingIssue(null);
         }
       });
       // Forwards Jitsi's own native "raise hand" toolbar button into the classroom hub's
@@ -310,7 +345,29 @@ export default function JitsiLive({
       // tiles freeze silently otherwise, with nothing in our own chrome saying why.
       api.addListener("connectionInterrupted", () => setCallDegraded(true));
       api.addListener("connectionRestored", () => setCallDegraded(false));
-      api.addListener("recordingStatusChanged", (payload) => setRecording(!!payload?.on));
+      api.addListener("recordingStatusChanged", (payload) => {
+        const isOn = !!payload?.on;
+        setRecording(isOn);
+        if (isOn) {
+          // Confirmed running — cancel the watchdog and clear any earlier warning.
+          if (recordingWatchdogRef.current) {
+            clearTimeout(recordingWatchdogRef.current);
+            recordingWatchdogRef.current = null;
+          }
+          setRecordingIssue(null);
+        } else if (mode === "teacher" && autoRecordRef.current && payload?.error) {
+          // An explicit rejection reason arrived before the watchdog even fired —
+          // surface it immediately instead of waiting out the full timeout.
+          if (recordingWatchdogRef.current) {
+            clearTimeout(recordingWatchdogRef.current);
+            recordingWatchdogRef.current = null;
+          }
+          setRecordingIssue(
+            `Auto-recording failed to start (${payload.error}). This class is not being recorded automatically — ` +
+              'use the manual "Recording" button on My Classes if you need one.'
+          );
+        }
+      });
     }
 
     init().catch((err: Error) => setError(err.message));
@@ -321,6 +378,10 @@ export default function JitsiLive({
       api?.dispose();
       jitsiApiRef.current = null;
       setParticipants([]);
+      if (recordingWatchdogRef.current) {
+        clearTimeout(recordingWatchdogRef.current);
+        recordingWatchdogRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, mode]);
@@ -386,6 +447,22 @@ export default function JitsiLive({
         destructive
         onConfirm={() => navigate(-1)}
       />
+      {/* Teacher-only, dismissible: makes a silent auto-recording failure (most commonly
+          "no Jibri pool provisioned on the video server" — see docs/JITSI_ARCHITECTURE.md)
+          visible instead of the teacher just never noticing the REC badge never appeared. */}
+      {mode === "teacher" && recordingIssue && (
+        <div className="flex shrink-0 items-start gap-2.5 border-b border-brand-amber/20 bg-brand-amber/10 px-4 py-2.5 text-xs text-brand-amber">
+          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5" />
+          <p className="flex-1">{recordingIssue}</p>
+          <button
+            type="button"
+            onClick={() => setRecordingIssue(null)}
+            className="shrink-0 font-semibold underline decoration-brand-amber/50 underline-offset-2 hover:decoration-brand-amber"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {error ? (
         <div className="flex flex-1 items-center justify-center px-6">
           <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3.5 text-sm text-red-200">
