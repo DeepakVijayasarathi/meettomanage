@@ -33,9 +33,14 @@ export function setSoundMuted(muted: boolean): void {
   }
 }
 
-/** One clap: a short burst of filtered noise. */
-function clapAt(ctx: AudioContext, at: number) {
-  const duration = 0.12;
+/**
+ * One clap: a short burst of filtered noise. freqScale/gainScale vary per-hit so a
+ * whole round of applause isn't the exact same sound repeated — real hands landing
+ * at slightly different distances/angles each time is what a crowd actually sounds
+ * like, a single clap tone looped is what a sound effect sounds like.
+ */
+function clapAt(ctx: AudioContext, at: number, freqScale = 1, gainScale = 1) {
+  const duration = 0.1 + Math.random() * 0.04;
   const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
   const data = buffer.getChannelData(0);
   for (let i = 0; i < data.length; i++) {
@@ -45,9 +50,10 @@ function clapAt(ctx: AudioContext, at: number) {
   source.buffer = buffer;
   const filter = ctx.createBiquadFilter();
   filter.type = "bandpass";
-  filter.frequency.value = 1800;
+  filter.frequency.value = (1500 + Math.random() * 700) * freqScale;
+  filter.Q.value = 0.8 + Math.random() * 0.6;
   const gain = ctx.createGain();
-  gain.gain.value = 0.5;
+  gain.gain.value = (0.35 + Math.random() * 0.3) * gainScale;
   source.connect(filter).connect(gain).connect(ctx.destination);
   source.start(at);
 }
@@ -66,12 +72,42 @@ function dholAt(ctx: AudioContext, at: number, high: boolean) {
   osc.stop(at + 0.3);
 }
 
+/**
+ * A round of applause, not seven isolated claps: ~45 hits over 2 seconds, several
+ * "hands" clapping independently (each with its own slightly-off tempo and gain
+ * scale) rather than one metronomic sequence, following a real crowd's actual
+ * shape — quick ragged onset as people join in, a dense overlapping peak, then a
+ * gradual thin-out as it trails off instead of stopping dead.
+ */
 export function playClapping() {
   if (isSoundMuted()) return;
   const ctx = getContext();
   if (!ctx) return;
   const start = ctx.currentTime + 0.02;
-  for (let i = 0; i < 7; i++) clapAt(ctx, start + i * 0.14 + Math.random() * 0.03);
+  const totalDuration = 2.0;
+  const hitCount = 46;
+
+  // A handful of independent "clappers", each with a personal tempo/gain/pitch bias —
+  // this is what keeps 46 hits from sounding like one clap sample fired on a grid.
+  const clappers = Array.from({ length: 6 }, () => ({
+    phase: Math.random() * 0.1,
+    intervalBase: 0.09 + Math.random() * 0.05,
+    gainScale: 0.7 + Math.random() * 0.6,
+    freqScale: 0.85 + Math.random() * 0.3,
+  }));
+
+  for (let i = 0; i < hitCount; i++) {
+    const clapper = clappers[i % clappers.length];
+    // Density envelope: sparse at the very start and end, packed in the middle —
+    // an easeInOut-shaped progress curve, not a linear one, spreads hits toward
+    // the edges less and the peak more, matching how applause actually swells.
+    const progress = i / hitCount;
+    const eased = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+    const at = start + clapper.phase + eased * totalDuration + (Math.random() - 0.5) * clapper.intervalBase;
+    // Overall envelope: ramps in over the first 15%, holds, fades over the last 35%.
+    const envelope = progress < 0.15 ? progress / 0.15 : progress > 0.65 ? Math.max(0.15, 1 - (progress - 0.65) / 0.35) : 1;
+    clapAt(ctx, Math.max(start, at), clapper.freqScale, clapper.gainScale * envelope);
+  }
 }
 
 export function playDhol() {
