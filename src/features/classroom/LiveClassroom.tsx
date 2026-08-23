@@ -301,6 +301,8 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
             }}
             leaderboard={LEADERBOARD_SEED}
             message={celebrationMessage}
+            // This mock/demo classroom has no Stars tab elsewhere to duplicate — always show.
+            showLeaderboardCard
           />
 
           <div className="absolute inset-x-0 bottom-4 z-30 flex justify-center px-2 sm:px-4">

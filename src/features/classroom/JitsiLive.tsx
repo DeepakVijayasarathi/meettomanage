@@ -405,6 +405,10 @@ export default function JitsiLive({
               }}
               leaderboard={leaderboard}
               message={celebrationMessage}
+              // Same reasoning as the "Joined" card below: once the Interactive panel is
+              // open, its own Stars tab already shows this leaderboard, so the floating
+              // card is a redundant duplicate sitting in the same corner of the video pane.
+              showLeaderboardCard={!interactive || !panelOpen}
             />
             {mode === "teacher" && interactive && (
               <button
