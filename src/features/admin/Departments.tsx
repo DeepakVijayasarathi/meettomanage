@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useApiData } from "@/api/hooks";
 import { apiEnabled } from "@/lib/api";
-import { listDepartments, createDepartment, updateDepartment, type ApiDepartment } from "@/api/departments";
+import { listDepartments, createDepartment, updateDepartment, bulkImportDepartments, exportDepartments, type ApiDepartment } from "@/api/departments";
 import { DEMO_DEPARTMENTS } from "@/data/departments";
+import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 
 export default function AdminDepartments() {
   const { data: departments, error: loadError, reload } = useApiData<ApiDepartment[]>(() => listDepartments(), DEMO_DEPARTMENTS);
@@ -145,6 +146,15 @@ export default function AdminDepartments() {
           const q = query.toLowerCase();
           return d.name.toLowerCase().includes(q) || (d.description ?? "").toLowerCase().includes(q);
         }}
+        toolbar={
+          <BulkImportExportBar
+            entityLabel="departments"
+            templateColumns={["Name", "Description", "IsActive"]}
+            onImport={bulkImportDepartments}
+            onExport={exportDepartments}
+            onImported={reload}
+          />
+        }
       />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -1,4 +1,5 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, downloadFile } from "@/lib/api";
+import type { BulkImportResult } from "./types";
 
 /**
  * Business departments (Phonics, Maths, and any admin-added ones) — used to be a fixed
@@ -44,4 +45,15 @@ export async function updateDepartment(
       isActive: input.isActive,
     }),
   });
+}
+
+/** Bulk-create departments from a .csv/.xlsx. Columns: Name, Description, IsActive. */
+export async function bulkImportDepartments(file: File): Promise<BulkImportResult> {
+  const form = new FormData();
+  form.set("file", file);
+  return apiFetch<BulkImportResult>("/api/departments/bulk-import", { method: "POST", body: form });
+}
+
+export async function exportDepartments(): Promise<void> {
+  await downloadFile("/api/departments/export?includeInactive=true", "departments.csv");
 }

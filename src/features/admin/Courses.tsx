@@ -22,8 +22,9 @@ import { formatCurrency, formatNumber } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { createCourse, listCategories, listCourses, toFrontendCourse, type ApiCourseCategory } from "@/api/courses";
+import { bulkImportCourses, createCourse, exportCourses, listCategories, listCourses, toFrontendCourse, type ApiCourseCategory } from "@/api/courses";
 import { listDepartments, type ApiDepartment } from "@/api/departments";
+import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 
 const CATEGORY_COLOR: Record<string, string> = {
   Phonics: CHART_PALETTE[3],
@@ -232,6 +233,15 @@ export default function AdminCourses() {
         rowKey={(row) => row.id}
         searchPlaceholder="Search courses by name or category…"
         pageSize={8}
+        toolbar={
+          <BulkImportExportBar
+            entityLabel="courses"
+            templateColumns={["DepartmentName", "CategoryName", "Name", "Description", "Type", "DurationMinutes", "Price", "TotalSessions", "IsActive"]}
+            onImport={bulkImportCourses}
+            onExport={exportCourses}
+            onImported={reload}
+          />
+        }
       />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
