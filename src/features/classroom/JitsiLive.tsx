@@ -263,7 +263,12 @@ export default function JitsiLive({
             "mute-everyone",
             "fullscreen",
             "settings",
-            "hangup",
+            // Deliberately no "hangup" here — our own Leave button (header, top-right)
+            // is the one and only way to leave: it asks for confirmation first and lets
+            // the InteractivePanel/hub cleanup run through React's normal unmount, same
+            // as any other navigation away from this screen. Jitsi's own hangup button
+            // fires `readyToClose` straight into navigate(-1) with no confirmation at
+            // all — a second, inconsistent exit path is worse than just not having it.
           ],
         },
       });
