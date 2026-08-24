@@ -139,6 +139,11 @@ function formatAgeShort(seconds: number): string {
   return `${Math.round(seconds / 60)}m ago`;
 }
 
+/** Strips a Docker Compose / Kubernetes replica suffix ("-1", "_2") so a badge reads "jibri" instead of "jibri-1"; the raw name stays available via the badge's title attribute. */
+function serviceDisplayName(name: string): string {
+  return name.replace(/[-_]\d+$/, "") || name;
+}
+
 /** Green under 60%, amber to 85%, red beyond — same read for every resource gauge on the page. */
 function usageTone(percent: number): "success" | "warning" | "destructive" {
   if (percent >= 85) return "destructive";
@@ -321,11 +326,14 @@ function ServerCard({ server }: { server: ServerStatus }) {
         <TrendSparkline gradientId={`mem-${server.name}`} data={server.memoryHistory ?? []} label="Memory" color={CHART_PALETTE[1]} />
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile icon={TrendingUp} label="Network In" value={`${num(server.networkRxMbps).toFixed(1)} Mbps`} />
-        <StatTile icon={TrendingUp} label="Network Out" value={`${num(server.networkTxMbps).toFixed(1)} Mbps`} />
-        <StatTile icon={HardDrive} label="Disk Read" value={`${num(server.diskReadMbps).toFixed(1)} MB/s`} />
-        <StatTile icon={HardDrive} label="Disk Write" value={`${num(server.diskWriteMbps).toFixed(1)} MB/s`} />
+      <div className="mt-4 rounded-lg border border-border p-3.5">
+        <p className="mb-3 text-xs font-semibold text-foreground">Network &amp; Disk I/O</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatTile icon={TrendingUp} label="Network In" value={`${num(server.networkRxMbps).toFixed(1)} Mbps`} />
+          <StatTile icon={TrendingUp} label="Network Out" value={`${num(server.networkTxMbps).toFixed(1)} Mbps`} />
+          <StatTile icon={HardDrive} label="Disk Read" value={`${num(server.diskReadMbps).toFixed(1)} MB/s`} />
+          <StatTile icon={HardDrive} label="Disk Write" value={`${num(server.diskWriteMbps).toFixed(1)} MB/s`} />
+        </div>
       </div>
 
       {server.liveCalls && (
@@ -347,7 +355,7 @@ function ServerCard({ server }: { server: ServerStatus }) {
               {server.callQuality.jvbHealthy ? "Bridge healthy" : "Bridge unhealthy"}
             </Badge>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <StatTile
               icon={Activity}
               label="Avg RTT"
@@ -361,15 +369,15 @@ function ServerCard({ server }: { server: ServerStatus }) {
               tone={Math.max(num(server.callQuality.incomingLossPercent), num(server.callQuality.outgoingLossPercent)) > 5 ? "destructive" : Math.max(num(server.callQuality.incomingLossPercent), num(server.callQuality.outgoingLossPercent)) > 1 ? "warning" : "success"}
             />
             <StatTile
-              icon={TrendingUp}
-              label="Bitrate In/Out"
-              value={`${Math.round(num(server.callQuality.incomingBitrateKbps))} / ${Math.round(num(server.callQuality.outgoingBitrateKbps))} kbps`}
-            />
-            <StatTile
               icon={Zap}
               label="Bridge Stress"
               value={`${Math.round(num(server.callQuality.jvbStressPercent))}%`}
               tone={usageTone(num(server.callQuality.jvbStressPercent))}
+            />
+            <StatTile
+              icon={TrendingUp}
+              label="Bitrate In/Out"
+              value={`${Math.round(num(server.callQuality.incomingBitrateKbps))} / ${Math.round(num(server.callQuality.outgoingBitrateKbps))} kbps`}
             />
             <StatTile icon={Video} label="Sending Video" value={`${num(server.callQuality.endpointsSendingVideo)}`} />
             <StatTile icon={Users} label="Sending Audio" value={`${num(server.callQuality.endpointsSendingAudio)}`} />
@@ -377,17 +385,28 @@ function ServerCard({ server }: { server: ServerStatus }) {
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap gap-1.5">
-        {server.services.map((service) => (
-          <Badge key={service.name} variant={service.active ? "success" : "destructive"} className="font-mono text-[11px]">
-            <span className={cn("h-1.5 w-1.5 rounded-full", service.active ? "bg-success" : "bg-destructive")} />
-            {service.name}
-          </Badge>
-        ))}
+      <div className="mt-4 rounded-lg border border-border p-3.5">
+        <p className="mb-3 text-xs font-semibold text-foreground">Services</p>
+        <div className="flex flex-wrap gap-1.5">
+          {server.services.map((service) => (
+            <Badge key={service.name} variant={service.active ? "success" : "destructive"} className="gap-1.5 font-mono text-[11px]" title={service.name}>
+              <span className={cn("h-1.5 w-1.5 rounded-full", service.active ? "bg-success" : "bg-destructive")} />
+              {serviceDisplayName(service.name)}
+            </Badge>
+          ))}
+        </div>
       </div>
     </Card>
   );
 }
+
+/** Same tone language as KpiCard's icon chips — a stat tile is a mini KPI, not a different widget. */
+const STAT_TILE_TONE: Record<"neutral" | "success" | "warning" | "destructive", { chip: string; tile: string; value: string }> = {
+  neutral: { chip: "bg-muted text-muted-foreground", tile: "border-border", value: "text-foreground" },
+  success: { chip: "bg-success/15 text-success", tile: "border-success/20 bg-success/[0.03]", value: "text-success" },
+  warning: { chip: "bg-warning/20 text-warning-foreground", tile: "border-warning/25 bg-warning/[0.05]", value: "text-warning-foreground" },
+  destructive: { chip: "bg-destructive/10 text-destructive", tile: "border-destructive/20 bg-destructive/[0.03]", value: "text-destructive" },
+};
 
 function StatTile({
   icon: Icon,
@@ -402,16 +421,17 @@ function StatTile({
   detail?: string;
   tone?: "neutral" | "success" | "warning" | "destructive";
 }) {
-  const toneClass =
-    tone === "success" ? "text-success" : tone === "warning" ? "text-warning-foreground" : tone === "destructive" ? "text-destructive" : "text-foreground";
+  const t = STAT_TILE_TONE[tone];
   return (
-    <div className="rounded-lg border border-border p-3.5">
-      <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" />
-        {label}
+    <div className={cn("flex items-start gap-3 rounded-lg border p-3.5", t.tile)}>
+      <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", t.chip)}>
+        <Icon className="h-4 w-4" />
       </span>
-      <p className={cn("mt-1.5 text-lg font-bold tracking-tight", toneClass)}>{value}</p>
-      {detail && <p className="mt-0.5 text-[11px] text-muted-foreground">{detail}</p>}
+      <div className="min-w-0">
+        <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
+        <p className={cn("mt-0.5 truncate text-base font-bold tracking-tight", t.value)}>{value}</p>
+        {detail && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{detail}</p>}
+      </div>
     </div>
   );
 }
@@ -459,7 +479,7 @@ function DatabaseInsightsCard({ insights, loading }: { insights: DatabaseInsight
         <CardDescription>Live Postgres internals for the app database, from postgres-exporter.</CardDescription>
       </CardHeader>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatTile
           icon={Users}
           label="Connections"
@@ -468,6 +488,7 @@ function DatabaseInsightsCard({ insights, loading }: { insights: DatabaseInsight
           tone={usageTone(connectionsPercent)}
         />
         <StatTile icon={Zap} label="Cache Hit Ratio" value={`${cacheHitRatioPercent.toFixed(1)}%`} tone={cacheHitRatioPercent >= 95 ? "success" : "warning"} />
+        <StatTile icon={HardDrive} label="Database Size" value={databaseSizeMb >= 1024 ? `${(databaseSizeMb / 1024).toFixed(2)} GB` : `${Math.round(databaseSizeMb)} MB`} />
         <StatTile icon={TrendingUp} label="Commits/sec" value={commitsPerSecond.toFixed(2)} />
         <StatTile
           icon={RotateCcw}
@@ -475,13 +496,11 @@ function DatabaseInsightsCard({ insights, loading }: { insights: DatabaseInsight
           value={rollbacksPerSecond.toFixed(2)}
           tone={rollbacksPerSecond > 0.5 ? "warning" : "neutral"}
         />
-        <StatTile icon={HardDrive} label="Database Size" value={databaseSizeMb >= 1024 ? `${(databaseSizeMb / 1024).toFixed(2)} GB` : `${Math.round(databaseSizeMb)} MB`} />
-        <StatTile icon={Lock} label="Locks Held" value={`${locksHeld}`} />
         <StatTile
-          icon={AlertTriangle}
-          label="Deadlocks (total)"
-          value={`${deadlocksTotal}`}
-          tone={deadlocksTotal > 0 ? "destructive" : "success"}
+          icon={Lock}
+          label="Locks / Deadlocks"
+          value={`${locksHeld} / ${deadlocksTotal}`}
+          tone={deadlocksTotal > 0 ? "destructive" : "neutral"}
         />
       </div>
     </Card>
