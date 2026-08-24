@@ -50,6 +50,9 @@ export async function listCourses(): Promise<ApiCourse[]> {
 export interface ApiCourseOption {
   id: string;
   name: string;
+  /** Individual (1:1) courses always run a single-seat batch — the backend forces
+   *  Capacity to 1 for them regardless of what's requested (BatchService.CreateAsync). */
+  type: "Individual" | "Group";
 }
 
 /** Active courses as id/name pairs only — for role dropdowns (e.g. a teacher recommending a course), not gated behind course-management permissions. */

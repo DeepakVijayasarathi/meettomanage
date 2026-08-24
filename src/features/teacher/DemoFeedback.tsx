@@ -52,7 +52,11 @@ const EMPTY_FORM: FormState = {
 };
 
 const MOCK_FEEDBACKS = DEMO_FEEDBACKS.filter((f) => f.teacherName === TEACHER_NAME);
-const MOCK_COURSE_OPTIONS = COURSES.filter((c) => c.type !== "demo").map((c) => ({ id: c.id, name: c.name }));
+const MOCK_COURSE_OPTIONS = COURSES.filter((c) => c.type !== "demo").map((c) => ({
+  id: c.id,
+  name: c.name,
+  type: c.type === "group" ? ("Group" as const) : ("Individual" as const),
+}));
 
 export default function TeacherDemoFeedback() {
   const { data: apiFeedbacks, reload } = useApiData(
