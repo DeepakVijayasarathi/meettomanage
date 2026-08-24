@@ -37,6 +37,7 @@ import {
   Sparkles,
   Video,
   Building2,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 
@@ -100,7 +101,10 @@ export const ADMIN_NAV: NavSection[] = [
   },
   {
     title: "System",
-    items: [{ label: "Settings & Branding", to: "/admin/settings", icon: Settings }],
+    items: [
+      { label: "Settings & Branding", to: "/admin/settings", icon: Settings },
+      { label: "Server Monitoring", to: "/admin/monitoring", icon: Activity },
+    ],
   },
 ];
 

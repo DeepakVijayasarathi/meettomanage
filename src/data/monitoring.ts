@@ -1,0 +1,55 @@
+import type { MonitoringSummary } from "@/types";
+
+/** Demo-mode snapshot — a healthy, believable steady state for both production servers. */
+export const MONITORING_SUMMARY: MonitoringSummary = {
+  apiHealthy: true,
+  databaseHealthy: true,
+  databaseLatencyMs: 6.2,
+  generatedAtUtc: "2026-08-23T05:00:00Z",
+  servers: [
+    {
+      name: "Jitsi / Video",
+      hostname: "thereadernest.co.in",
+      reachable: true,
+      error: null,
+      uptimeSeconds: 41 * 3600,
+      loadAverage1m: 0.38,
+      cpuCores: 4,
+      cpuUsagePercent: 18,
+      memoryUsedPercent: 46,
+      memoryTotalMb: 8192,
+      diskUsedPercent: 31,
+      diskTotalGb: 80,
+      agentDataAgeSeconds: 22,
+      services: [
+        { name: "nginx", active: true },
+        { name: "prosody", active: true },
+        { name: "jicofo", active: true },
+        { name: "jitsi-videobridge2", active: true },
+        { name: "jibri", active: true },
+      ],
+      liveCalls: { activeConferences: 2, totalParticipants: 5 },
+    },
+    {
+      name: "App / API",
+      hostname: "thereadernest.in",
+      reachable: true,
+      error: null,
+      uptimeSeconds: 12 * 24 * 3600,
+      loadAverage1m: 0.71,
+      cpuCores: 4,
+      cpuUsagePercent: 27,
+      memoryUsedPercent: 58,
+      memoryTotalMb: 8192,
+      diskUsedPercent: 44,
+      diskTotalGb: 100,
+      agentDataAgeSeconds: 18,
+      services: [
+        { name: "api", active: true },
+        { name: "postgres", active: true },
+        { name: "nginx", active: true },
+      ],
+      liveCalls: null,
+    },
+  ],
+};

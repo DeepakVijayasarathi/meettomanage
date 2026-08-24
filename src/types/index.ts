@@ -216,3 +216,41 @@ export interface Participant {
   avatarColor: string;
   speaking?: boolean;
 }
+
+export interface MonitoredService {
+  name: string;
+  active: boolean;
+}
+
+export interface LiveCallSummary {
+  activeConferences: number;
+  totalParticipants: number;
+}
+
+export interface ServerStatus {
+  name: string;
+  hostname: string;
+  /** false means the agent itself couldn't be reached — every other field is meaningless then, not zero. */
+  reachable: boolean;
+  error?: string | null;
+  uptimeSeconds: number;
+  loadAverage1m: number;
+  cpuCores: number;
+  cpuUsagePercent: number;
+  memoryUsedPercent: number;
+  memoryTotalMb: number;
+  diskUsedPercent: number;
+  diskTotalGb: number;
+  services: MonitoredService[];
+  /** How long ago the agent last wrote its status file — large even while reachable means the agent/cron is stuck. */
+  agentDataAgeSeconds: number;
+  liveCalls: LiveCallSummary | null;
+}
+
+export interface MonitoringSummary {
+  servers: ServerStatus[];
+  apiHealthy: boolean;
+  databaseHealthy: boolean;
+  databaseLatencyMs: number;
+  generatedAtUtc: string;
+}
