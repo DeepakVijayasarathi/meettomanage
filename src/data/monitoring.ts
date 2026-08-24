@@ -1,4 +1,18 @@
-import type { MonitoringSummary } from "@/types";
+import type { MonitoringSummary, TimeSeriesPoint } from "@/types";
+
+/** Deterministic, believable-looking last-hour trend — a gentle wave around a baseline, not noise. */
+function mockHistory(baseline: number, amplitude: number): TimeSeriesPoint[] {
+  const now = Date.parse("2026-08-23T05:00:00Z");
+  const points: TimeSeriesPoint[] = [];
+  for (let i = 30; i >= 0; i--) {
+    const t = now - i * 2 * 60_000;
+    const wave = Math.sin(i / 4) * amplitude;
+    const drift = ((30 - i) / 30) * (amplitude * 0.4);
+    const value = Math.max(1, Math.min(99, baseline + wave + drift));
+    points.push({ timestamp: new Date(t).toISOString(), value: Math.round(value * 10) / 10 });
+  }
+  return points;
+}
 
 /** Demo-mode snapshot — a healthy, believable steady state for both production servers. */
 export const MONITORING_SUMMARY: MonitoringSummary = {
@@ -15,6 +29,8 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
     deadlocksTotal: 0,
     locksHeld: 12,
   },
+  concurrentClassroomUsers: 5,
+  activeClassCount: 2,
   generatedAtUtc: "2026-08-23T05:00:00Z",
   servers: [
     {
@@ -43,6 +59,19 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
         { name: "jibri", active: true },
       ],
       liveCalls: { activeConferences: 2, totalParticipants: 5 },
+      cpuHistory: mockHistory(18, 6),
+      memoryHistory: mockHistory(46, 4),
+      callQuality: {
+        averageRttMs: 38,
+        incomingLossPercent: 0.2,
+        outgoingLossPercent: 0.1,
+        incomingBitrateKbps: 850,
+        outgoingBitrateKbps: 1240,
+        endpointsSendingAudio: 4,
+        endpointsSendingVideo: 3,
+        jvbStressPercent: 12,
+        jvbHealthy: true,
+      },
     },
     {
       name: "App / API",
@@ -68,6 +97,9 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
         { name: "nginx", active: true },
       ],
       liveCalls: null,
+      cpuHistory: mockHistory(27, 8),
+      memoryHistory: mockHistory(58, 3),
+      callQuality: null,
     },
   ],
 };

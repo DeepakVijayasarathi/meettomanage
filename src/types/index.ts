@@ -227,6 +227,23 @@ export interface LiveCallSummary {
   totalParticipants: number;
 }
 
+export interface TimeSeriesPoint {
+  timestamp: string;
+  value: number;
+}
+
+export interface CallQuality {
+  averageRttMs: number;
+  incomingLossPercent: number;
+  outgoingLossPercent: number;
+  incomingBitrateKbps: number;
+  outgoingBitrateKbps: number;
+  endpointsSendingAudio: number;
+  endpointsSendingVideo: number;
+  jvbStressPercent: number;
+  jvbHealthy: boolean;
+}
+
 export interface ServerStatus {
   name: string;
   hostname: string;
@@ -249,6 +266,10 @@ export interface ServerStatus {
   /** How long ago the agent last wrote its status file — large even while reachable means the agent/cron is stuck. */
   agentDataAgeSeconds: number;
   liveCalls: LiveCallSummary | null;
+  /** Last hour, ~2-minute steps. Empty when unreachable. */
+  cpuHistory: TimeSeriesPoint[];
+  memoryHistory: TimeSeriesPoint[];
+  callQuality: CallQuality | null;
 }
 
 export interface DatabaseInsights {
@@ -268,5 +289,8 @@ export interface MonitoringSummary {
   databaseHealthy: boolean;
   databaseLatencyMs: number;
   databaseInsights: DatabaseInsights | null;
+  /** Total connections currently joined to any live class, platform-wide — distinct from a single server's own Jitsi participant count. */
+  concurrentClassroomUsers: number;
+  activeClassCount: number;
   generatedAtUtc: string;
 }
