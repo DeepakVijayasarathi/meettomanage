@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import {
   Activity,
+  AlertOctagon,
   AlertTriangle,
+  CheckCircle2,
   Cpu,
   Database,
   HardDrive,
@@ -32,7 +34,7 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getMonitoringSummary, toFrontendMonitoringSummary } from "@/api/monitoring";
 import { MONITORING_SUMMARY } from "@/data/monitoring";
-import type { DatabaseInsights, MonitoringSummary, ServerStatus, TimeSeriesPoint } from "@/types";
+import type { DatabaseInsights, MonitoringAlert, MonitoringSummary, ServerStatus, TimeSeriesPoint } from "@/types";
 
 const REFRESH_INTERVAL_MS = 20_000;
 
@@ -44,8 +46,77 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   databaseInsights: null,
   concurrentClassroomUsers: 0,
   activeClassCount: 0,
+  activeAlerts: [],
   generatedAtUtc: "",
 };
+
+/** "45m ago" / "2h ago" — how long an alert has been active. */
+function formatActiveSince(iso: string): string {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ${minutes % 60}m`;
+  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+}
+
+function AlertsBanner({ alerts, loading }: { alerts: MonitoringAlert[]; loading: boolean }) {
+  if (loading) {
+    return <Skeleton className="mb-6 h-14 w-full rounded-xl" />;
+  }
+
+  if (alerts.length === 0) {
+    return (
+      <div className="mb-6 flex items-center gap-2.5 rounded-xl border border-success/20 bg-success/5 px-4 py-3">
+        <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+        <p className="text-sm font-medium text-success">All clear — no active alerts across any monitored server.</p>
+      </div>
+    );
+  }
+
+  const critical = alerts.filter((a) => a.severity === "critical");
+  const warning = alerts.filter((a) => a.severity !== "critical");
+
+  return (
+    <div className="mb-6 overflow-hidden rounded-xl border border-destructive/30">
+      <div className="flex items-center gap-2 bg-destructive/10 px-4 py-2.5">
+        <AlertOctagon className="h-4 w-4 text-destructive" />
+        <p className="text-sm font-semibold text-destructive">
+          {alerts.length} active {alerts.length === 1 ? "alert" : "alerts"}
+          {critical.length > 0 ? ` · ${critical.length} critical` : ""}
+          {warning.length > 0 ? ` · ${warning.length} warning` : ""}
+        </p>
+      </div>
+      <div className="divide-y divide-border bg-card">
+        {alerts.map((alert, i) => (
+          <div key={`${alert.name}-${alert.instance}-${i}`} className="flex items-start gap-3 px-4 py-3">
+            {alert.severity === "critical" ? (
+              <AlertOctagon className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            ) : (
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">{alert.summary || alert.name}</p>
+                <Badge variant={alert.severity === "critical" ? "destructive" : "warning"} className="text-[10px]">
+                  {alert.severity}
+                </Badge>
+                {alert.state === "pending" && (
+                  <Badge variant="muted" className="text-[10px]">
+                    pending
+                  </Badge>
+                )}
+              </div>
+              {alert.description && <p className="mt-0.5 text-xs text-muted-foreground">{alert.description}</p>}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {alert.instance ? `${alert.instance} · ` : ""}active for {formatActiveSince(alert.activeSince)}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function formatUptime(seconds: number): string {
   if (seconds <= 0) return "—";
@@ -442,6 +513,8 @@ export default function AdminMonitoring() {
           </Button>
         }
       />
+
+      <AlertsBanner alerts={summary.activeAlerts ?? []} loading={loading && summary.servers.length === 0} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard
