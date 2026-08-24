@@ -73,6 +73,7 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
         jvbStressPercent: 12,
         jvbHealthy: true,
       },
+      diskForecast: { isFilling: false, daysUntilFull: null, trendGbPerDay: 0.3 },
     },
     {
       name: "App / API",
@@ -101,6 +102,7 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
       cpuHistory: mockHistory(27, 8),
       memoryHistory: mockHistory(58, 3),
       callQuality: null,
+      diskForecast: { isFilling: true, daysUntilFull: 46.5, trendGbPerDay: -0.9 },
     },
   ],
 };

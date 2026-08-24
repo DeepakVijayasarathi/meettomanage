@@ -16,6 +16,12 @@ export interface ApiLiveCallSummary {
   totalParticipants: number;
 }
 
+export interface ApiCapacityForecast {
+  isFilling: boolean;
+  daysUntilFull: number | null;
+  trendGbPerDay: number;
+}
+
 export interface ApiCallQuality {
   averageRttMs: number;
   incomingLossPercent: number;
@@ -51,6 +57,7 @@ export interface ApiServerStatus {
   cpuHistory: ApiTimeSeriesPoint[];
   memoryHistory: ApiTimeSeriesPoint[];
   callQuality: ApiCallQuality | null;
+  diskForecast: ApiCapacityForecast | null;
 }
 
 export interface ApiDatabaseInsights {
@@ -123,6 +130,7 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
       cpuHistory: s.cpuHistory,
       memoryHistory: s.memoryHistory,
       callQuality: s.callQuality,
+      diskForecast: s.diskForecast,
     })),
   };
 }

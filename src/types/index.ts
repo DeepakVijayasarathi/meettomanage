@@ -244,6 +244,12 @@ export interface CallQuality {
   jvbHealthy: boolean;
 }
 
+export interface CapacityForecast {
+  isFilling: boolean;
+  daysUntilFull: number | null;
+  trendGbPerDay: number;
+}
+
 export interface ServerStatus {
   name: string;
   hostname: string;
@@ -270,6 +276,7 @@ export interface ServerStatus {
   cpuHistory: TimeSeriesPoint[];
   memoryHistory: TimeSeriesPoint[];
   callQuality: CallQuality | null;
+  diskForecast: CapacityForecast | null;
 }
 
 export interface DatabaseInsights {
