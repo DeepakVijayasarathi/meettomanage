@@ -12,7 +12,12 @@ export function Logo({ className, imgClassName, showWordmark = true, variant = "
   const brand = useBrand();
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <img src={brand.logoUrl ?? "/logo.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
+      {/* logo.png is the full circular badge (arced "THE READER NEST" text + tagline) —
+          legible as print/marketing art, but every actual usage of <Logo> in the app renders
+          it well under 64px, where that ring of text is just illegible clutter and makes the
+          mark look small/off-center next to the wordmark beside it. logo-icon.png is the same
+          artwork cropped to just the nest+kids mark, which is what actually reads at icon size. */}
+      <img src={brand.logoUrl ?? "/logo-icon.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
       {showWordmark && (
         <div className="flex flex-col leading-none">
           <span
