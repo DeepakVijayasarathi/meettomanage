@@ -30,6 +30,10 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
       memoryTotalMb: 8192,
       diskUsedPercent: 31,
       diskTotalGb: 80,
+      networkRxMbps: 4.8,
+      networkTxMbps: 12.3,
+      diskReadMbps: 0.4,
+      diskWriteMbps: 1.1,
       agentDataAgeSeconds: 22,
       services: [
         { name: "nginx", active: true },
@@ -53,6 +57,10 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
       memoryTotalMb: 8192,
       diskUsedPercent: 44,
       diskTotalGb: 100,
+      networkRxMbps: 2.1,
+      networkTxMbps: 3.4,
+      diskReadMbps: 0.8,
+      diskWriteMbps: 2.6,
       agentDataAgeSeconds: 18,
       services: [
         { name: "api", active: true },
