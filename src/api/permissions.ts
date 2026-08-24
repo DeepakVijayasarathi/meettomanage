@@ -13,6 +13,7 @@ export const PERMISSION_MODULES = [
   { value: "LeaveManagement", label: "Leave Management" },
   { value: "Communication", label: "Communication" },
   { value: "Settings", label: "Settings" },
+  { value: "SystemMonitoring", label: "Server Monitoring" },
 ] as const;
 
 export type PermissionModuleName = (typeof PERMISSION_MODULES)[number]["value"];
