@@ -216,6 +216,8 @@ export async function reviewEnrollmentForm(
     childDateOfBirth?: string;
     /** Starts the child on this billing plan at approval — first invoice is issued immediately. */
     packagePlanId?: string;
+    /** Places the child on this batch's roster at approval. */
+    batchId?: string;
   }
 ): Promise<ApiEnrollmentForm> {
   return apiFetch<ApiEnrollmentForm>(`/api/enrollment-forms/${id}/review`, {
