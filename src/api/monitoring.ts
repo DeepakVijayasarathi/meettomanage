@@ -29,11 +29,23 @@ export interface ApiServerStatus {
   liveCalls: ApiLiveCallSummary | null;
 }
 
+export interface ApiDatabaseInsights {
+  activeConnections: number;
+  maxConnections: number;
+  commitsPerSecond: number;
+  rollbacksPerSecond: number;
+  cacheHitRatioPercent: number;
+  databaseSizeMb: number;
+  deadlocksTotal: number;
+  locksHeld: number;
+}
+
 export interface ApiMonitoringSummary {
   servers: ApiServerStatus[];
   apiHealthy: boolean;
   databaseHealthy: boolean;
   databaseLatencyMs: number;
+  databaseInsights: ApiDatabaseInsights | null;
   generatedAtUtc: string;
 }
 
@@ -46,6 +58,7 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
     apiHealthy: api.apiHealthy,
     databaseHealthy: api.databaseHealthy,
     databaseLatencyMs: api.databaseLatencyMs,
+    databaseInsights: api.databaseInsights,
     generatedAtUtc: api.generatedAtUtc,
     servers: api.servers.map((s) => ({
       name: s.name,

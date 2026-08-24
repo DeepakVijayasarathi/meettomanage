@@ -5,6 +5,16 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
   apiHealthy: true,
   databaseHealthy: true,
   databaseLatencyMs: 6.2,
+  databaseInsights: {
+    activeConnections: 8,
+    maxConnections: 100,
+    commitsPerSecond: 1.4,
+    rollbacksPerSecond: 0.02,
+    cacheHitRatioPercent: 99.6,
+    databaseSizeMb: 142,
+    deadlocksTotal: 0,
+    locksHeld: 12,
+  },
   generatedAtUtc: "2026-08-23T05:00:00Z",
   servers: [
     {

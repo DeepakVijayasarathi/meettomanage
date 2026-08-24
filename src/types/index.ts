@@ -247,10 +247,22 @@ export interface ServerStatus {
   liveCalls: LiveCallSummary | null;
 }
 
+export interface DatabaseInsights {
+  activeConnections: number;
+  maxConnections: number;
+  commitsPerSecond: number;
+  rollbacksPerSecond: number;
+  cacheHitRatioPercent: number;
+  databaseSizeMb: number;
+  deadlocksTotal: number;
+  locksHeld: number;
+}
+
 export interface MonitoringSummary {
   servers: ServerStatus[];
   apiHealthy: boolean;
   databaseHealthy: boolean;
   databaseLatencyMs: number;
+  databaseInsights: DatabaseInsights | null;
   generatedAtUtc: string;
 }

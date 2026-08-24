@@ -5,13 +5,17 @@ import {
   Cpu,
   Database,
   HardDrive,
+  Lock,
   MemoryStick,
   RefreshCw,
+  RotateCcw,
   Server,
+  TrendingUp,
   Users,
   Video,
   Wifi,
   WifiOff,
+  Zap,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
@@ -26,7 +30,7 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getMonitoringSummary, toFrontendMonitoringSummary } from "@/api/monitoring";
 import { MONITORING_SUMMARY } from "@/data/monitoring";
-import type { MonitoringSummary, ServerStatus } from "@/types";
+import type { DatabaseInsights, MonitoringSummary, ServerStatus } from "@/types";
 
 const REFRESH_INTERVAL_MS = 20_000;
 
@@ -35,6 +39,7 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   apiHealthy: false,
   databaseHealthy: false,
   databaseLatencyMs: 0,
+  databaseInsights: null,
   generatedAtUtc: "",
 };
 
@@ -173,6 +178,97 @@ function ServerCard({ server }: { server: ServerStatus }) {
   );
 }
 
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  tone = "neutral",
+}: {
+  icon: typeof Cpu;
+  label: string;
+  value: string;
+  detail?: string;
+  tone?: "neutral" | "success" | "warning" | "destructive";
+}) {
+  const toneClass =
+    tone === "success" ? "text-success" : tone === "warning" ? "text-warning-foreground" : tone === "destructive" ? "text-destructive" : "text-foreground";
+  return (
+    <div className="rounded-lg border border-border p-3.5">
+      <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </span>
+      <p className={cn("mt-1.5 text-lg font-bold tracking-tight", toneClass)}>{value}</p>
+      {detail && <p className="mt-0.5 text-[11px] text-muted-foreground">{detail}</p>}
+    </div>
+  );
+}
+
+function DatabaseInsightsCard({ insights, loading }: { insights: DatabaseInsights | null; loading: boolean }) {
+  if (loading) {
+    return (
+      <Card className="p-5">
+        <Skeleton className="mb-4 h-4 w-40" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
+        </div>
+      </Card>
+    );
+  }
+
+  if (!insights) {
+    return (
+      <Card className="p-5">
+        <CardHeader className="p-0 pb-4">
+          <CardTitle className="text-base">Database Insights</CardTitle>
+          <CardDescription>Postgres internals for the app database.</CardDescription>
+        </CardHeader>
+        <EmptyState icon={Database} title="No database metrics yet" description="postgres-exporter isn't reachable, or Monitoring:DatabaseName isn't configured." />
+      </Card>
+    );
+  }
+
+  const connectionsPercent = insights.maxConnections > 0 ? (insights.activeConnections / insights.maxConnections) * 100 : 0;
+
+  return (
+    <Card className="p-5">
+      <CardHeader className="p-0 pb-4">
+        <CardTitle className="text-base">Database Insights</CardTitle>
+        <CardDescription>Live Postgres internals for the app database, from postgres-exporter.</CardDescription>
+      </CardHeader>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTile
+          icon={Users}
+          label="Connections"
+          value={`${insights.activeConnections} / ${insights.maxConnections}`}
+          detail={`${Math.round(connectionsPercent)}% of pool`}
+          tone={usageTone(connectionsPercent)}
+        />
+        <StatTile icon={Zap} label="Cache Hit Ratio" value={`${insights.cacheHitRatioPercent.toFixed(1)}%`} tone={insights.cacheHitRatioPercent >= 95 ? "success" : "warning"} />
+        <StatTile icon={TrendingUp} label="Commits/sec" value={insights.commitsPerSecond.toFixed(2)} />
+        <StatTile
+          icon={RotateCcw}
+          label="Rollbacks/sec"
+          value={insights.rollbacksPerSecond.toFixed(2)}
+          tone={insights.rollbacksPerSecond > 0.5 ? "warning" : "neutral"}
+        />
+        <StatTile icon={HardDrive} label="Database Size" value={insights.databaseSizeMb >= 1024 ? `${(insights.databaseSizeMb / 1024).toFixed(2)} GB` : `${Math.round(insights.databaseSizeMb)} MB`} />
+        <StatTile icon={Lock} label="Locks Held" value={`${insights.locksHeld}`} />
+        <StatTile
+          icon={AlertTriangle}
+          label="Deadlocks (total)"
+          value={`${insights.deadlocksTotal}`}
+          tone={insights.deadlocksTotal > 0 ? "destructive" : "success"}
+        />
+      </div>
+    </Card>
+  );
+}
+
 function ServerCardSkeleton() {
   return (
     <Card className="p-5">
@@ -278,6 +374,10 @@ export default function AdminMonitoring() {
         ) : (
           summary.servers.map((server) => <ServerCard key={server.name} server={server} />)
         )}
+      </div>
+
+      <div className="mt-5">
+        <DatabaseInsightsCard insights={summary.databaseInsights} loading={loading && !summary.databaseInsights} />
       </div>
 
       {summary.generatedAtUtc && (
