@@ -24,6 +24,7 @@ import { useApiData } from "@/api/hooks";
 import { listEnrollmentForms, reviewEnrollmentForm, updateEnrollmentForm, type ApiEnrollmentForm } from "@/api/parentPortal";
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
 import { listPackagePlans, type ApiPackagePlan } from "@/api/billing";
+import { listBatches, type ApiBatch } from "@/api/batches";
 import type { Child } from "@/types";
 import { formatCurrency, getInitials } from "@/lib/utils";
 
@@ -87,7 +88,7 @@ export default function AdminEnrollments() {
 
   const { data: courseOptions } = useApiData<ApiCourseOption[]>(
     () => listCourseOptions(),
-    COURSES.map((c) => ({ id: c.id, name: c.name }))
+    COURSES.map((c) => ({ id: c.id, name: c.name, type: c.type === "group" ? ("Group" as const) : ("Individual" as const) }))
   );
 
   // Active billing plans for the approval picker; approving with one selected starts
@@ -100,11 +101,24 @@ export default function AdminEnrollments() {
   const [approving, setApproving] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
 
+  // Open batches for the approval picker; approving with one selected places the
+  // child straight on that batch's roster instead of leaving them unassigned.
+  const { data: allBatches } = useApiData<ApiBatch[]>(() => listBatches(), []);
+  const openBatches = useMemo(
+    () => allBatches.filter((b) => b.status === "Active" && b.enrolledCount < b.capacity),
+    [allBatches]
+  );
+  const [approveBatchId, setApproveBatchId] = useState<string>("");
+
   function openDetail(row: EnrollmentRow) {
     // Pre-select the plan when the child's course-of-interest has exactly one —
     // the common case approves with billing in a single click.
     const courseMatches = activePlans.filter((p) => p.courseId && p.courseId === row.courseId);
     setApprovePlanId(courseMatches.length === 1 ? courseMatches[0].id : "");
+    // Same idea for the batch: pre-select when exactly one open batch matches the
+    // child's course-of-interest.
+    const batchMatches = openBatches.filter((b) => b.courseId === row.courseId);
+    setApproveBatchId(batchMatches.length === 1 ? batchMatches[0].id : "");
     setApproveError(null);
     setDetail(row);
   }
@@ -169,13 +183,15 @@ export default function AdminEnrollments() {
           childLastName: parts.slice(1).join(" ") || undefined,
           childDateOfBirth: row.dob,
           packagePlanId: approvePlanId || undefined,
+          batchId: approveBatchId || undefined,
         });
         const plan = activePlans.find((p) => p.id === approvePlanId);
-        setBanner(
-          plan
-            ? `"${row.name}" approved — billing started on ${plan.name} (${formatCurrency(plan.price)}); the first invoice is on its way to the parent.`
-            : `"${row.name}" approved without a billing plan. Assign one from Packages & Subscriptions when ready.`
-        );
+        const batch = openBatches.find((b) => b.id === approveBatchId);
+        const billingMsg = plan
+          ? `billing started on ${plan.name} (${formatCurrency(plan.price)}); the first invoice is on its way to the parent`
+          : "no billing plan assigned yet — set one from Packages & Subscriptions when ready";
+        const batchMsg = batch ? `placed in ${batch.name}` : "not yet placed in a batch — assign one from Batches when ready";
+        setBanner(`"${row.name}" approved — ${batchMsg}; ${billingMsg}.`);
         reload();
         setDetail(null);
       } catch (e) {
@@ -395,6 +411,33 @@ export default function AdminEnrollments() {
                   </Select>
                   <p className="text-xs text-muted-foreground">
                     Starts the subscription and issues the first invoice to the parent the moment you approve.
+                  </p>
+                </div>
+              )}
+
+              {!isComplete(detail) && apiEnabled() && (
+                <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-muted/40 p-4">
+                  <Label htmlFor="approve-batch-select">Batch on approval</Label>
+                  <Select value={approveBatchId || "__none"} onValueChange={(v) => setApproveBatchId(v === "__none" ? "" : v)}>
+                    <SelectTrigger id="approve-batch-select">
+                      <SelectValue placeholder="No batch — assign later" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">No batch — assign later</SelectItem>
+                      {[...openBatches]
+                        .sort(
+                          (a, b) =>
+                            Number(b.courseId === detail.courseId) - Number(a.courseId === detail.courseId)
+                        )
+                        .map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name} — {b.courseName} ({b.enrolledCount}/{b.capacity})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Places the child on this batch's roster the moment you approve.
                   </p>
                 </div>
               )}

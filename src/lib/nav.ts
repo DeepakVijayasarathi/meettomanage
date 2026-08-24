@@ -37,6 +37,7 @@ import {
   Sparkles,
   Video,
   Building2,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 
@@ -100,7 +101,10 @@ export const ADMIN_NAV: NavSection[] = [
   },
   {
     title: "System",
-    items: [{ label: "Settings & Branding", to: "/admin/settings", icon: Settings }],
+    items: [
+      { label: "Settings & Branding", to: "/admin/settings", icon: Settings },
+      { label: "Server Monitoring", to: "/admin/monitoring", icon: Activity },
+    ],
   },
 ];
 
@@ -118,6 +122,7 @@ export const TEACHER_NAV: NavSection[] = [
       // My Classes is the only entry point now.
       { label: "My Classes", to: "/teacher/classes", icon: CalendarClock },
       { label: "Attendance & Records", to: "/teacher/attendance", icon: ClipboardList },
+      { label: "Recordings", to: "/teacher/recordings", icon: Video },
       { label: "Demo Feedback", to: "/teacher/demo-feedback", icon: ClipboardCheck, badge: "1" },
     ],
   },
