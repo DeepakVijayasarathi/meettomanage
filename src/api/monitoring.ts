@@ -6,6 +6,11 @@ export interface ApiMonitoredService {
   active: boolean;
 }
 
+export interface ApiTimeSeriesPoint {
+  timestamp: string;
+  value: number;
+}
+
 export interface ApiLiveCallSummary {
   activeConferences: number;
   totalParticipants: number;
@@ -31,6 +36,8 @@ export interface ApiServerStatus {
   services: ApiMonitoredService[];
   agentDataAgeSeconds: number;
   liveCalls: ApiLiveCallSummary | null;
+  cpuHistory: ApiTimeSeriesPoint[];
+  memoryHistory: ApiTimeSeriesPoint[];
 }
 
 export interface ApiDatabaseInsights {
@@ -50,6 +57,8 @@ export interface ApiMonitoringSummary {
   databaseHealthy: boolean;
   databaseLatencyMs: number;
   databaseInsights: ApiDatabaseInsights | null;
+  concurrentClassroomUsers: number;
+  activeClassCount: number;
   generatedAtUtc: string;
 }
 
@@ -63,6 +72,8 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
     databaseHealthy: api.databaseHealthy,
     databaseLatencyMs: api.databaseLatencyMs,
     databaseInsights: api.databaseInsights,
+    concurrentClassroomUsers: api.concurrentClassroomUsers,
+    activeClassCount: api.activeClassCount,
     generatedAtUtc: api.generatedAtUtc,
     servers: api.servers.map((s) => ({
       name: s.name,
@@ -84,6 +95,8 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
       services: s.services,
       agentDataAgeSeconds: s.agentDataAgeSeconds,
       liveCalls: s.liveCalls,
+      cpuHistory: s.cpuHistory,
+      memoryHistory: s.memoryHistory,
     })),
   };
 }

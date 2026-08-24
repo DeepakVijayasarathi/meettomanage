@@ -17,6 +17,7 @@ import {
   WifiOff,
   Zap,
 } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -26,11 +27,12 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getMonitoringSummary, toFrontendMonitoringSummary } from "@/api/monitoring";
 import { MONITORING_SUMMARY } from "@/data/monitoring";
-import type { DatabaseInsights, MonitoringSummary, ServerStatus } from "@/types";
+import type { DatabaseInsights, MonitoringSummary, ServerStatus, TimeSeriesPoint } from "@/types";
 
 const REFRESH_INTERVAL_MS = 20_000;
 
@@ -40,6 +42,8 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   databaseHealthy: false,
   databaseLatencyMs: 0,
   databaseInsights: null,
+  concurrentClassroomUsers: 0,
+  activeClassCount: 0,
   generatedAtUtc: "",
 };
 
@@ -89,6 +93,58 @@ function ResourceGauge({ icon: Icon, label, percent, detail }: { icon: typeof Cp
       </div>
       <Progress value={Math.min(100, percent)} indicatorClassName={TONE_BAR_CLASS[tone]} />
       <p className="mt-1 text-[11px] text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
+function formatSparklineTime(timestamp: string): string {
+  return new Date(timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+/**
+ * Compact last-hour trend, not a full ChartCard — this sits inside an already-dense server
+ * card, so axes/grid are dropped entirely (values are 0-100%, self-evident from the fill
+ * height) while keeping the one thing a trend line earns its space with: a real hover
+ * tooltip, not a static sparkline image.
+ */
+function TrendSparkline({ gradientId, data, label, color }: { gradientId: string; data: TimeSeriesPoint[]; label: string; color: string }) {
+  if (data.length < 2) {
+    return (
+      <div>
+        <p className="mb-1 text-xs font-medium text-muted-foreground">{label} · last hour</p>
+        <div className="flex h-[70px] items-center justify-center rounded-lg bg-muted/30 text-[11px] text-muted-foreground">Not enough data yet</div>
+      </div>
+    );
+  }
+
+  const latest = data[data.length - 1].value;
+
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between">
+        <p className="text-xs font-medium text-muted-foreground">{label} · last hour</p>
+        <p className="text-xs font-semibold text-foreground">{Math.round(latest)}%</p>
+      </div>
+      <div className="h-[70px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="timestamp" hide />
+            <YAxis domain={[0, 100]} hide />
+            <RTooltip
+              formatter={(value: number) => [`${value.toFixed(1)}%`, label]}
+              labelFormatter={(value: string) => formatSparklineTime(value)}
+              contentStyle={{ borderRadius: 10, border: "1px solid hsl(var(--border))", fontSize: 12, padding: "6px 10px" }}
+            />
+            <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2} fill={`url(#${gradientId})`} isAnimationActive={false} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -158,6 +214,11 @@ function ServerCard({ server }: { server: ServerStatus }) {
           percent={num(server.diskUsedPercent)}
           detail={`${Math.round((num(server.diskTotalGb) * num(server.diskUsedPercent)) / 100)} / ${Math.round(num(server.diskTotalGb))} GB`}
         />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <TrendSparkline gradientId={`cpu-${server.name}`} data={server.cpuHistory ?? []} label="CPU" color={CHART_PALETTE[0]} />
+        <TrendSparkline gradientId={`mem-${server.name}`} data={server.memoryHistory ?? []} label="Memory" color={CHART_PALETTE[1]} />
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -344,7 +405,16 @@ export default function AdminMonitoring() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <KpiCard
+          label="Concurrent Users"
+          value={`${num(summary.concurrentClassroomUsers)}`}
+          detail={`${num(summary.activeClassCount)} active ${num(summary.activeClassCount) === 1 ? "class" : "classes"}`}
+          icon={Users}
+          tone="primary"
+          loading={loading}
+          error={error}
+        />
         <KpiCard
           label="Servers Online"
           value={`${summary.servers.length - unreachableCount} / ${summary.servers.length}`}
