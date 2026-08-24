@@ -239,6 +239,44 @@ function ServerCard({ server }: { server: ServerStatus }) {
         </div>
       )}
 
+      {server.callQuality && (
+        <div className="mt-4 rounded-lg border border-border p-3.5">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-semibold text-foreground">Call Quality</p>
+            <Badge variant={server.callQuality.jvbHealthy ? "success" : "destructive"} className="text-[10px]">
+              {server.callQuality.jvbHealthy ? "Bridge healthy" : "Bridge unhealthy"}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatTile
+              icon={Activity}
+              label="Avg RTT"
+              value={`${Math.round(num(server.callQuality.averageRttMs))} ms`}
+              tone={num(server.callQuality.averageRttMs) > 250 ? "destructive" : num(server.callQuality.averageRttMs) > 100 ? "warning" : "success"}
+            />
+            <StatTile
+              icon={AlertTriangle}
+              label="Packet Loss In/Out"
+              value={`${num(server.callQuality.incomingLossPercent).toFixed(1)}% / ${num(server.callQuality.outgoingLossPercent).toFixed(1)}%`}
+              tone={Math.max(num(server.callQuality.incomingLossPercent), num(server.callQuality.outgoingLossPercent)) > 5 ? "destructive" : Math.max(num(server.callQuality.incomingLossPercent), num(server.callQuality.outgoingLossPercent)) > 1 ? "warning" : "success"}
+            />
+            <StatTile
+              icon={TrendingUp}
+              label="Bitrate In/Out"
+              value={`${Math.round(num(server.callQuality.incomingBitrateKbps))} / ${Math.round(num(server.callQuality.outgoingBitrateKbps))} kbps`}
+            />
+            <StatTile
+              icon={Zap}
+              label="Bridge Stress"
+              value={`${Math.round(num(server.callQuality.jvbStressPercent))}%`}
+              tone={usageTone(num(server.callQuality.jvbStressPercent))}
+            />
+            <StatTile icon={Video} label="Sending Video" value={`${num(server.callQuality.endpointsSendingVideo)}`} />
+            <StatTile icon={Users} label="Sending Audio" value={`${num(server.callQuality.endpointsSendingAudio)}`} />
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 flex flex-wrap gap-1.5">
         {server.services.map((service) => (
           <Badge key={service.name} variant={service.active ? "success" : "destructive"} className="font-mono text-[11px]">

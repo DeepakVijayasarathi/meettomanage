@@ -16,6 +16,18 @@ export interface ApiLiveCallSummary {
   totalParticipants: number;
 }
 
+export interface ApiCallQuality {
+  averageRttMs: number;
+  incomingLossPercent: number;
+  outgoingLossPercent: number;
+  incomingBitrateKbps: number;
+  outgoingBitrateKbps: number;
+  endpointsSendingAudio: number;
+  endpointsSendingVideo: number;
+  jvbStressPercent: number;
+  jvbHealthy: boolean;
+}
+
 export interface ApiServerStatus {
   name: string;
   hostname: string;
@@ -38,6 +50,7 @@ export interface ApiServerStatus {
   liveCalls: ApiLiveCallSummary | null;
   cpuHistory: ApiTimeSeriesPoint[];
   memoryHistory: ApiTimeSeriesPoint[];
+  callQuality: ApiCallQuality | null;
 }
 
 export interface ApiDatabaseInsights {
@@ -97,6 +110,7 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
       liveCalls: s.liveCalls,
       cpuHistory: s.cpuHistory,
       memoryHistory: s.memoryHistory,
+      callQuality: s.callQuality,
     })),
   };
 }

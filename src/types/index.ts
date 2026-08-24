@@ -232,6 +232,18 @@ export interface TimeSeriesPoint {
   value: number;
 }
 
+export interface CallQuality {
+  averageRttMs: number;
+  incomingLossPercent: number;
+  outgoingLossPercent: number;
+  incomingBitrateKbps: number;
+  outgoingBitrateKbps: number;
+  endpointsSendingAudio: number;
+  endpointsSendingVideo: number;
+  jvbStressPercent: number;
+  jvbHealthy: boolean;
+}
+
 export interface ServerStatus {
   name: string;
   hostname: string;
@@ -257,6 +269,7 @@ export interface ServerStatus {
   /** Last hour, ~2-minute steps. Empty when unreachable. */
   cpuHistory: TimeSeriesPoint[];
   memoryHistory: TimeSeriesPoint[];
+  callQuality: CallQuality | null;
 }
 
 export interface DatabaseInsights {

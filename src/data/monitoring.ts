@@ -61,6 +61,17 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
       liveCalls: { activeConferences: 2, totalParticipants: 5 },
       cpuHistory: mockHistory(18, 6),
       memoryHistory: mockHistory(46, 4),
+      callQuality: {
+        averageRttMs: 38,
+        incomingLossPercent: 0.2,
+        outgoingLossPercent: 0.1,
+        incomingBitrateKbps: 850,
+        outgoingBitrateKbps: 1240,
+        endpointsSendingAudio: 4,
+        endpointsSendingVideo: 3,
+        jvbStressPercent: 12,
+        jvbHealthy: true,
+      },
     },
     {
       name: "App / API",
@@ -88,6 +99,7 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
       liveCalls: null,
       cpuHistory: mockHistory(27, 8),
       memoryHistory: mockHistory(58, 3),
+      callQuality: null,
     },
   ],
 };
