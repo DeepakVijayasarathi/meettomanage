@@ -12,6 +12,7 @@ import {
   RefreshCw,
   RotateCcw,
   Server,
+  TrendingDown,
   TrendingUp,
   Users,
   Video,
@@ -34,7 +35,7 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getMonitoringSummary, toFrontendMonitoringSummary } from "@/api/monitoring";
 import { MONITORING_SUMMARY } from "@/data/monitoring";
-import type { DatabaseInsights, MonitoringAlert, MonitoringSummary, ServerStatus, TimeSeriesPoint } from "@/types";
+import type { CapacityForecast, DatabaseInsights, MonitoringAlert, MonitoringSummary, ServerStatus, TimeSeriesPoint } from "@/types";
 
 const REFRESH_INTERVAL_MS = 20_000;
 
@@ -220,6 +221,33 @@ function TrendSparkline({ gradientId, data, label, color }: { gradientId: string
   );
 }
 
+/**
+ * Prometheus's own deriv() over the last 6h, not a guess — "stable/growing" is the normal,
+ * good state for most servers, so this only escalates in tone once a real fill date exists.
+ */
+function CapacityForecastLine({ forecast }: { forecast: CapacityForecast | null }) {
+  if (!forecast) return null;
+
+  if (!forecast.isFilling || forecast.daysUntilFull === null) {
+    return (
+      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <TrendingUp className="h-3 w-3 text-success" />
+        Disk usage stable — not trending toward full.
+      </p>
+    );
+  }
+
+  const days = forecast.daysUntilFull;
+  const tone = days <= 7 ? "text-destructive" : days <= 30 ? "text-warning-foreground" : "text-muted-foreground";
+
+  return (
+    <p className={cn("mt-3 flex items-center gap-1.5 text-[11px] font-medium", tone)}>
+      <TrendingDown className="h-3 w-3" />
+      At current growth ({Math.abs(forecast.trendGbPerDay).toFixed(2)} GB/day), disk full in ~{Math.round(days)} day{Math.round(days) === 1 ? "" : "s"}.
+    </p>
+  );
+}
+
 function ServerCard({ server }: { server: ServerStatus }) {
   if (!server.reachable) {
     return (
@@ -286,6 +314,7 @@ function ServerCard({ server }: { server: ServerStatus }) {
           detail={`${Math.round((num(server.diskTotalGb) * num(server.diskUsedPercent)) / 100)} / ${Math.round(num(server.diskTotalGb))} GB`}
         />
       </div>
+      <CapacityForecastLine forecast={server.diskForecast ?? null} />
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <TrendSparkline gradientId={`cpu-${server.name}`} data={server.cpuHistory ?? []} label="CPU" color={CHART_PALETTE[0]} />
