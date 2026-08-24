@@ -181,7 +181,7 @@ export default function MarketingHome() {
 
         <div className="relative mx-auto w-full max-w-md lg:max-w-none">
           <div className="absolute -left-4 -top-4 z-10 flex h-14 w-14 -rotate-6 items-center justify-center rounded-full bg-white p-2 shadow-pop ring-1 ring-brand-ink/10">
-            <img src={brand.logoUrl ?? "/logo.png"} alt="" className="h-full w-full object-contain" />
+            <img src={brand.logoUrl ?? "/logo-icon.png"} alt="" className="h-full w-full object-contain" />
           </div>
           <div className="overflow-hidden rounded-[28px] shadow-pop ring-4 ring-white">
             <img
