@@ -53,6 +53,11 @@ function formatUptime(seconds: number): string {
   return `${minutes}m`;
 }
 
+/** Guards every numeric field the API might not send yet on a backend that's a step behind this frontend's deploy. */
+function num(value: number | undefined | null): number {
+  return typeof value === "number" ? value : 0;
+}
+
 function formatAgeShort(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)}s ago`;
   return `${Math.round(seconds / 60)}m ago`;
@@ -113,7 +118,7 @@ function ServerCard({ server }: { server: ServerStatus }) {
     );
   }
 
-  const dataStale = server.agentDataAgeSeconds > 180;
+  const dataStale = num(server.agentDataAgeSeconds) > 180;
 
   return (
     <Card className="p-5">
@@ -125,14 +130,14 @@ function ServerCard({ server }: { server: ServerStatus }) {
           <div>
             <h3 className="text-base font-semibold text-foreground">{server.name}</h3>
             <p className="text-xs text-muted-foreground">
-              {server.hostname} · up {formatUptime(server.uptimeSeconds)}
+              {server.hostname} · up {formatUptime(num(server.uptimeSeconds))}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {dataStale && (
             <Badge variant="warning" className="gap-1">
-              <AlertTriangle className="h-3 w-3" /> Stale data ({formatAgeShort(server.agentDataAgeSeconds)})
+              <AlertTriangle className="h-3 w-3" /> Stale data ({formatAgeShort(num(server.agentDataAgeSeconds))})
             </Badge>
           )}
           <Badge variant="success">Online</Badge>
@@ -140,35 +145,35 @@ function ServerCard({ server }: { server: ServerStatus }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <ResourceGauge icon={Cpu} label="CPU" percent={server.cpuUsagePercent} detail={`${server.cpuCores} cores · load ${server.loadAverage1m.toFixed(2)}`} />
+        <ResourceGauge icon={Cpu} label="CPU" percent={num(server.cpuUsagePercent)} detail={`${num(server.cpuCores)} cores · load ${num(server.loadAverage1m).toFixed(2)}`} />
         <ResourceGauge
           icon={MemoryStick}
           label="Memory"
-          percent={server.memoryUsedPercent}
-          detail={`${Math.round((server.memoryTotalMb * server.memoryUsedPercent) / 100 / 1024)} / ${Math.round(server.memoryTotalMb / 1024)} GB`}
+          percent={num(server.memoryUsedPercent)}
+          detail={`${Math.round((num(server.memoryTotalMb) * num(server.memoryUsedPercent)) / 100 / 1024)} / ${Math.round(num(server.memoryTotalMb) / 1024)} GB`}
         />
         <ResourceGauge
           icon={HardDrive}
           label="Disk"
-          percent={server.diskUsedPercent}
-          detail={`${Math.round((server.diskTotalGb * server.diskUsedPercent) / 100)} / ${Math.round(server.diskTotalGb)} GB`}
+          percent={num(server.diskUsedPercent)}
+          detail={`${Math.round((num(server.diskTotalGb) * num(server.diskUsedPercent)) / 100)} / ${Math.round(num(server.diskTotalGb))} GB`}
         />
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile icon={TrendingUp} label="Network In" value={`${server.networkRxMbps.toFixed(1)} Mbps`} />
-        <StatTile icon={TrendingUp} label="Network Out" value={`${server.networkTxMbps.toFixed(1)} Mbps`} />
-        <StatTile icon={HardDrive} label="Disk Read" value={`${server.diskReadMbps.toFixed(1)} MB/s`} />
-        <StatTile icon={HardDrive} label="Disk Write" value={`${server.diskWriteMbps.toFixed(1)} MB/s`} />
+        <StatTile icon={TrendingUp} label="Network In" value={`${num(server.networkRxMbps).toFixed(1)} Mbps`} />
+        <StatTile icon={TrendingUp} label="Network Out" value={`${num(server.networkTxMbps).toFixed(1)} Mbps`} />
+        <StatTile icon={HardDrive} label="Disk Read" value={`${num(server.diskReadMbps).toFixed(1)} MB/s`} />
+        <StatTile icon={HardDrive} label="Disk Write" value={`${num(server.diskWriteMbps).toFixed(1)} MB/s`} />
       </div>
 
       {server.liveCalls && (
         <div className="mt-4 flex items-center gap-4 rounded-lg bg-primary/5 px-3.5 py-2.5">
           <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">
-            <Video className="h-4 w-4" /> {server.liveCalls.activeConferences} live {server.liveCalls.activeConferences === 1 ? "class" : "classes"}
+            <Video className="h-4 w-4" /> {num(server.liveCalls.activeConferences)} live {num(server.liveCalls.activeConferences) === 1 ? "class" : "classes"}
           </span>
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Users className="h-4 w-4" /> {server.liveCalls.totalParticipants} participant{server.liveCalls.totalParticipants === 1 ? "" : "s"}
+            <Users className="h-4 w-4" /> {num(server.liveCalls.totalParticipants)} participant{num(server.liveCalls.totalParticipants) === 1 ? "" : "s"}
           </span>
         </div>
       )}
@@ -238,7 +243,15 @@ function DatabaseInsightsCard({ insights, loading }: { insights: DatabaseInsight
     );
   }
 
-  const connectionsPercent = insights.maxConnections > 0 ? (insights.activeConnections / insights.maxConnections) * 100 : 0;
+  const activeConnections = num(insights.activeConnections);
+  const maxConnections = num(insights.maxConnections);
+  const cacheHitRatioPercent = num(insights.cacheHitRatioPercent);
+  const commitsPerSecond = num(insights.commitsPerSecond);
+  const rollbacksPerSecond = num(insights.rollbacksPerSecond);
+  const databaseSizeMb = num(insights.databaseSizeMb);
+  const locksHeld = num(insights.locksHeld);
+  const deadlocksTotal = num(insights.deadlocksTotal);
+  const connectionsPercent = maxConnections > 0 ? (activeConnections / maxConnections) * 100 : 0;
 
   return (
     <Card className="p-5">
@@ -251,25 +264,25 @@ function DatabaseInsightsCard({ insights, loading }: { insights: DatabaseInsight
         <StatTile
           icon={Users}
           label="Connections"
-          value={`${insights.activeConnections} / ${insights.maxConnections}`}
+          value={`${activeConnections} / ${maxConnections}`}
           detail={`${Math.round(connectionsPercent)}% of pool`}
           tone={usageTone(connectionsPercent)}
         />
-        <StatTile icon={Zap} label="Cache Hit Ratio" value={`${insights.cacheHitRatioPercent.toFixed(1)}%`} tone={insights.cacheHitRatioPercent >= 95 ? "success" : "warning"} />
-        <StatTile icon={TrendingUp} label="Commits/sec" value={insights.commitsPerSecond.toFixed(2)} />
+        <StatTile icon={Zap} label="Cache Hit Ratio" value={`${cacheHitRatioPercent.toFixed(1)}%`} tone={cacheHitRatioPercent >= 95 ? "success" : "warning"} />
+        <StatTile icon={TrendingUp} label="Commits/sec" value={commitsPerSecond.toFixed(2)} />
         <StatTile
           icon={RotateCcw}
           label="Rollbacks/sec"
-          value={insights.rollbacksPerSecond.toFixed(2)}
-          tone={insights.rollbacksPerSecond > 0.5 ? "warning" : "neutral"}
+          value={rollbacksPerSecond.toFixed(2)}
+          tone={rollbacksPerSecond > 0.5 ? "warning" : "neutral"}
         />
-        <StatTile icon={HardDrive} label="Database Size" value={insights.databaseSizeMb >= 1024 ? `${(insights.databaseSizeMb / 1024).toFixed(2)} GB` : `${Math.round(insights.databaseSizeMb)} MB`} />
-        <StatTile icon={Lock} label="Locks Held" value={`${insights.locksHeld}`} />
+        <StatTile icon={HardDrive} label="Database Size" value={databaseSizeMb >= 1024 ? `${(databaseSizeMb / 1024).toFixed(2)} GB` : `${Math.round(databaseSizeMb)} MB`} />
+        <StatTile icon={Lock} label="Locks Held" value={`${locksHeld}`} />
         <StatTile
           icon={AlertTriangle}
           label="Deadlocks (total)"
-          value={`${insights.deadlocksTotal}`}
-          tone={insights.deadlocksTotal > 0 ? "destructive" : "success"}
+          value={`${deadlocksTotal}`}
+          tone={deadlocksTotal > 0 ? "destructive" : "success"}
         />
       </div>
     </Card>
@@ -351,7 +364,7 @@ export default function AdminMonitoring() {
         <KpiCard
           label="Database"
           value={summary.databaseHealthy ? "Healthy" : "Down"}
-          detail={summary.databaseHealthy ? `${summary.databaseLatencyMs.toFixed(1)} ms` : undefined}
+          detail={summary.databaseHealthy ? `${num(summary.databaseLatencyMs).toFixed(1)} ms` : undefined}
           icon={Database}
           tone={summary.databaseHealthy ? "success" : "destructive"}
           loading={loading}

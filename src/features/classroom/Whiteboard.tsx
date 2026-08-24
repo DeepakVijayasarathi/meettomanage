@@ -199,6 +199,11 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   const containerRef = useRef<HTMLDivElement>(null);
   const drawingRef = useRef(false);
   const draftRef = useRef<Stroke | null>(null);
+  // Throttles in-progress stroke broadcasts during a drag — without this, remote
+  // viewers saw nothing at all until the pen lifted (commitDraft), so a signature or
+  // any slow, deliberate stroke looked like it "popped in" all at once after a multi-
+  // second gap. ~20 sends/sec reads as live drawing without flooding the hub per pixel.
+  const lastBoardSendRef = useRef(0);
   const panRef = useRef<{ startX: number; startY: number; origin: Point } | null>(null);
   // Offscreen cache of this page's already-committed strokes. handlePointerMove used to call
   // a redraw() that replayed every committed stroke from scratch on every single pointer
@@ -304,6 +309,16 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
       draftRef.current.points = [draftRef.current.points[0], pt];
     }
     redraw();
+
+    // Broadcast the in-progress stroke (same id it'll be committed under) so remote
+    // viewers see it grow live instead of only appearing once complete. Receivers
+    // upsert by stroke.id (see the "stroke" case in the remote-op effect below), so
+    // resending the same id repeatedly with more points just extends it in place.
+    const now = performance.now();
+    if (onBoardOp && now - lastBoardSendRef.current >= 50) {
+      lastBoardSendRef.current = now;
+      onBoardOp({ kind: "stroke", pageIndex, stroke: { ...draftRef.current, points: [...draftRef.current.points] } });
+    }
   }
 
   function commitDraft() {
@@ -387,7 +402,18 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
             // Pad so an op for a page we haven't created yet still lands
             const pages = [...prev];
             while (pages.length <= op.pageIndex) pages.push({ id: nextId(), strokes: [] });
-            return pages.map((p, i) => (i === op.pageIndex ? { ...p, strokes: [...p.strokes, op.stroke] } : p));
+            return pages.map((p, i) => {
+              if (i !== op.pageIndex) return p;
+              // Upsert by id: handlePointerMove now broadcasts the same in-progress
+              // stroke repeatedly as it grows (see the throttled send there), so a
+              // later op for an id already on this page replaces it in place rather
+              // than piling up duplicate, ever-shorter copies of the same stroke.
+              const existingIndex = p.strokes.findIndex((s) => s.id === op.stroke.id);
+              if (existingIndex === -1) return { ...p, strokes: [...p.strokes, op.stroke] };
+              const strokes = [...p.strokes];
+              strokes[existingIndex] = op.stroke;
+              return { ...p, strokes };
+            });
           });
           break;
         case "clear":
