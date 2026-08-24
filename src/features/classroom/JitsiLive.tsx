@@ -257,6 +257,23 @@ export default function JitsiLive({
           // raw room slug (an opaque, scrambled-looking id string) — this replaces it with
           // the same class title already shown in our own header just above it.
           subject: title ?? "Live class",
+          // Moderator controls (mute/stop-video/stop-screenshare-for-someone-else, kick,
+          // grant moderator) belong to the teacher only — a parent or student must never
+          // see those entries on another participant's tile menu. The authoritative gate
+          // is the `moderator` claim on the signed join token (SessionService/JitsiTokenService
+          // — Teacher/Admin only, see JITSI_ARCHITECTURE.md), which prosody's token auth
+          // turns into real room affiliation once Settings → Integrations → Jitsi Meet has
+          // appId/appSecret configured. This config is a client-side backstop for that same
+          // rule: on a deployment without JWT room auth wired up yet, Jitsi's own fallback
+          // is "first participant to join becomes moderator," which could hand a parent or
+          // student full moderator controls if they happen to join first. Disabling these
+          // per this embed's own `mode` means a parent/student session never renders the
+          // controls at all, regardless of which side of that fallback it lands on.
+          disableRemoteMute: mode !== "teacher",
+          remoteVideoMenu: {
+            disableKick: mode !== "teacher",
+            disableGrantModerator: mode !== "teacher",
+          },
         },
         interfaceConfigOverwrite: {
           SHOW_JITSI_WATERMARK: false,
@@ -267,7 +284,11 @@ export default function JitsiLive({
           HIDE_INVITE_MORE_HEADER: true,
           // Curated for a small tutoring classroom — drop enterprise features (livestream,
           // shared video/audio, security/profile, dial-in, stats) that don't apply here.
-          // Jitsi still hides moderator-only entries (recording, mute-everyone) from students.
+          // "recording" and "mute-everyone" are moderator-only actions — Jitsi hides them
+          // from a genuinely non-moderator participant on its own, but (same reasoning as
+          // the remoteVideoMenu/disableRemoteMute config above) that's only reliable once
+          // JWT room auth is wired up; leaving them out of a non-teacher embed's own
+          // button list entirely is the backstop for a deployment that isn't there yet.
           TOOLBAR_BUTTONS: [
             "microphone",
             "camera",
@@ -276,8 +297,7 @@ export default function JitsiLive({
             "raisehand",
             "tileview",
             "videobackgroundblur",
-            "recording",
-            "mute-everyone",
+            ...(mode === "teacher" ? (["recording", "mute-everyone"] as const) : []),
             "fullscreen",
             "settings",
             // Deliberately no "hangup" here — our own Leave button (header, top-right)
