@@ -24,6 +24,10 @@ export interface ApiServerStatus {
   memoryTotalMb: number;
   diskUsedPercent: number;
   diskTotalGb: number;
+  networkRxMbps: number;
+  networkTxMbps: number;
+  diskReadMbps: number;
+  diskWriteMbps: number;
   services: ApiMonitoredService[];
   agentDataAgeSeconds: number;
   liveCalls: ApiLiveCallSummary | null;
@@ -73,6 +77,10 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
       memoryTotalMb: s.memoryTotalMb,
       diskUsedPercent: s.diskUsedPercent,
       diskTotalGb: s.diskTotalGb,
+      networkRxMbps: s.networkRxMbps,
+      networkTxMbps: s.networkTxMbps,
+      diskReadMbps: s.diskReadMbps,
+      diskWriteMbps: s.diskWriteMbps,
       services: s.services,
       agentDataAgeSeconds: s.agentDataAgeSeconds,
       liveCalls: s.liveCalls,

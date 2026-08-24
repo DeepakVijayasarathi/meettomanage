@@ -155,6 +155,13 @@ function ServerCard({ server }: { server: ServerStatus }) {
         />
       </div>
 
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTile icon={TrendingUp} label="Network In" value={`${server.networkRxMbps.toFixed(1)} Mbps`} />
+        <StatTile icon={TrendingUp} label="Network Out" value={`${server.networkTxMbps.toFixed(1)} Mbps`} />
+        <StatTile icon={HardDrive} label="Disk Read" value={`${server.diskReadMbps.toFixed(1)} MB/s`} />
+        <StatTile icon={HardDrive} label="Disk Write" value={`${server.diskWriteMbps.toFixed(1)} MB/s`} />
+      </div>
+
       {server.liveCalls && (
         <div className="mt-4 flex items-center gap-4 rounded-lg bg-primary/5 px-3.5 py-2.5">
           <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">

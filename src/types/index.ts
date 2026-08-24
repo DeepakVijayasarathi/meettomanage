@@ -241,6 +241,10 @@ export interface ServerStatus {
   memoryTotalMb: number;
   diskUsedPercent: number;
   diskTotalGb: number;
+  networkRxMbps: number;
+  networkTxMbps: number;
+  diskReadMbps: number;
+  diskWriteMbps: number;
   services: MonitoredService[];
   /** How long ago the agent last wrote its status file — large even while reachable means the agent/cron is stuck. */
   agentDataAgeSeconds: number;
