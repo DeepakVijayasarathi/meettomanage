@@ -1,8 +1,10 @@
 import { useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   Activity,
   AlertOctagon,
   AlertTriangle,
+  ArrowRight,
   CheckCircle2,
   Cpu,
   Database,
@@ -12,7 +14,6 @@ import {
   RefreshCw,
   RotateCcw,
   Server,
-  TrendingDown,
   TrendingUp,
   Users,
   Video,
@@ -20,13 +21,11 @@ import {
   WifiOff,
   Zap,
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -35,7 +34,18 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getMonitoringSummary, toFrontendMonitoringSummary } from "@/api/monitoring";
 import { MONITORING_SUMMARY } from "@/data/monitoring";
-import type { CapacityForecast, DatabaseInsights, MonitoringAlert, MonitoringSummary, ServerStatus, TimeSeriesPoint } from "@/types";
+import type { DatabaseInsights, MonitoringAlert, MonitoringSummary, ServerStatus } from "@/types";
+import {
+  CapacityForecastLine,
+  num,
+  ResourceGauge,
+  serviceDisplayName,
+  StatTile,
+  TrendSparkline,
+  usageTone,
+  formatAgeShort,
+  formatUptime,
+} from "./monitoringShared";
 
 const REFRESH_INTERVAL_MS = 20_000;
 
@@ -119,140 +129,6 @@ function AlertsBanner({ alerts, loading }: { alerts: MonitoringAlert[]; loading:
   );
 }
 
-function formatUptime(seconds: number): string {
-  if (seconds <= 0) return "—";
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
-}
-
-/** Guards every numeric field the API might not send yet on a backend that's a step behind this frontend's deploy. */
-function num(value: number | undefined | null): number {
-  return typeof value === "number" ? value : 0;
-}
-
-function formatAgeShort(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)}s ago`;
-  return `${Math.round(seconds / 60)}m ago`;
-}
-
-/** Strips a Docker Compose / Kubernetes replica suffix ("-1", "_2") so a badge reads "jibri" instead of "jibri-1"; the raw name stays available via the badge's title attribute. */
-function serviceDisplayName(name: string): string {
-  return name.replace(/[-_]\d+$/, "") || name;
-}
-
-/** Green under 60%, amber to 85%, red beyond — same read for every resource gauge on the page. */
-function usageTone(percent: number): "success" | "warning" | "destructive" {
-  if (percent >= 85) return "destructive";
-  if (percent >= 60) return "warning";
-  return "success";
-}
-
-const TONE_BAR_CLASS: Record<ReturnType<typeof usageTone>, string> = {
-  success: "bg-success",
-  warning: "bg-warning",
-  destructive: "bg-destructive",
-};
-
-function ResourceGauge({ icon: Icon, label, percent, detail }: { icon: typeof Cpu; label: string; percent: number; detail: string }) {
-  const tone = usageTone(percent);
-  return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between text-xs">
-        <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
-          <Icon className="h-3.5 w-3.5" />
-          {label}
-        </span>
-        <span className="font-semibold text-foreground">{Math.round(percent)}%</span>
-      </div>
-      <Progress value={Math.min(100, percent)} indicatorClassName={TONE_BAR_CLASS[tone]} />
-      <p className="mt-1 text-[11px] text-muted-foreground">{detail}</p>
-    </div>
-  );
-}
-
-function formatSparklineTime(timestamp: string): string {
-  return new Date(timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
-/**
- * Compact last-hour trend, not a full ChartCard — this sits inside an already-dense server
- * card, so axes/grid are dropped entirely (values are 0-100%, self-evident from the fill
- * height) while keeping the one thing a trend line earns its space with: a real hover
- * tooltip, not a static sparkline image.
- */
-function TrendSparkline({ gradientId, data, label, color }: { gradientId: string; data: TimeSeriesPoint[]; label: string; color: string }) {
-  if (data.length < 2) {
-    return (
-      <div>
-        <p className="mb-1 text-xs font-medium text-muted-foreground">{label} · last hour</p>
-        <div className="flex h-[70px] items-center justify-center rounded-lg bg-muted/30 text-[11px] text-muted-foreground">Not enough data yet</div>
-      </div>
-    );
-  }
-
-  const latest = data[data.length - 1].value;
-
-  return (
-    <div>
-      <div className="mb-1 flex items-baseline justify-between">
-        <p className="text-xs font-medium text-muted-foreground">{label} · last hour</p>
-        <p className="text-xs font-semibold text-foreground">{Math.round(latest)}%</p>
-      </div>
-      <div className="h-[70px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
-            <defs>
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-                <stop offset="100%" stopColor={color} stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="timestamp" hide />
-            <YAxis domain={[0, 100]} hide />
-            <RTooltip
-              formatter={(value: number) => [`${value.toFixed(1)}%`, label]}
-              labelFormatter={(value: string) => formatSparklineTime(value)}
-              contentStyle={{ borderRadius: 10, border: "1px solid hsl(var(--border))", fontSize: 12, padding: "6px 10px" }}
-            />
-            <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2} fill={`url(#${gradientId})`} isAnimationActive={false} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Prometheus's own deriv() over the last 6h, not a guess — "stable/growing" is the normal,
- * good state for most servers, so this only escalates in tone once a real fill date exists.
- */
-function CapacityForecastLine({ forecast }: { forecast: CapacityForecast | null }) {
-  if (!forecast) return null;
-
-  if (!forecast.isFilling || forecast.daysUntilFull === null) {
-    return (
-      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <TrendingUp className="h-3 w-3 text-success" />
-        Disk usage stable — not trending toward full.
-      </p>
-    );
-  }
-
-  const days = forecast.daysUntilFull;
-  const tone = days <= 7 ? "text-destructive" : days <= 30 ? "text-warning-foreground" : "text-muted-foreground";
-
-  return (
-    <p className={cn("mt-3 flex items-center gap-1.5 text-[11px] font-medium", tone)}>
-      <TrendingDown className="h-3 w-3" />
-      At current growth ({Math.abs(forecast.trendGbPerDay).toFixed(2)} GB/day), disk full in ~{Math.round(days)} day{Math.round(days) === 1 ? "" : "s"}.
-    </p>
-  );
-}
-
 function ServerCard({ server }: { server: ServerStatus }) {
   if (!server.reachable) {
     return (
@@ -267,7 +143,15 @@ function ServerCard({ server }: { server: ServerStatus }) {
               <p className="text-xs text-muted-foreground">{server.hostname || "Unknown host"}</p>
             </div>
           </div>
-          <Badge variant="destructive">Unreachable</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="destructive">Unreachable</Badge>
+            <Link
+              to={`/admin/monitoring/${encodeURIComponent(server.name)}`}
+              className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              Details <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         </div>
         <EmptyState
           icon={AlertTriangle}
@@ -301,6 +185,12 @@ function ServerCard({ server }: { server: ServerStatus }) {
             </Badge>
           )}
           <Badge variant="success">Online</Badge>
+          <Link
+            to={`/admin/monitoring/${encodeURIComponent(server.name)}`}
+            className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            Details <ArrowRight className="h-3 w-3" />
+          </Link>
         </div>
       </div>
 
@@ -397,42 +287,6 @@ function ServerCard({ server }: { server: ServerStatus }) {
         </div>
       </div>
     </Card>
-  );
-}
-
-/** Same tone language as KpiCard's icon chips — a stat tile is a mini KPI, not a different widget. */
-const STAT_TILE_TONE: Record<"neutral" | "success" | "warning" | "destructive", { chip: string; tile: string; value: string }> = {
-  neutral: { chip: "bg-muted text-muted-foreground", tile: "border-border", value: "text-foreground" },
-  success: { chip: "bg-success/15 text-success", tile: "border-success/20 bg-success/[0.03]", value: "text-success" },
-  warning: { chip: "bg-warning/20 text-warning-foreground", tile: "border-warning/25 bg-warning/[0.05]", value: "text-warning-foreground" },
-  destructive: { chip: "bg-destructive/10 text-destructive", tile: "border-destructive/20 bg-destructive/[0.03]", value: "text-destructive" },
-};
-
-function StatTile({
-  icon: Icon,
-  label,
-  value,
-  detail,
-  tone = "neutral",
-}: {
-  icon: typeof Cpu;
-  label: string;
-  value: string;
-  detail?: string;
-  tone?: "neutral" | "success" | "warning" | "destructive";
-}) {
-  const t = STAT_TILE_TONE[tone];
-  return (
-    <div className={cn("flex items-start gap-3 rounded-lg border p-3.5", t.tile)}>
-      <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", t.chip)}>
-        <Icon className="h-4 w-4" />
-      </span>
-      <div className="min-w-0">
-        <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
-        <p className={cn("mt-0.5 truncate text-base font-bold tracking-tight", t.value)}>{value}</p>
-        {detail && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{detail}</p>}
-      </div>
-    </div>
   );
 }
 
