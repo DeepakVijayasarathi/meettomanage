@@ -156,7 +156,7 @@ export default function AdminBatches() {
 
   const { data: courseOptions } = useApiData<ApiCourseOption[]>(
     () => listCourseOptions(),
-    COURSES.map((c) => ({ id: c.id, name: c.name }))
+    COURSES.map((c) => ({ id: c.id, name: c.name, type: c.type === "group" ? ("Group" as const) : ("Individual" as const) }))
   );
 
   const [query, setQuery] = useState("");
@@ -174,6 +174,23 @@ export default function AdminBatches() {
   const [newCapacity, setNewCapacity] = useState("8");
   const [newStart, setNewStart] = useState("");
   const [creating, setCreating] = useState(false);
+  // Individual (1:1) courses always run a single-seat batch — BatchService.CreateAsync
+  // forces Capacity to 1 for them server-side no matter what's submitted. Tracking the
+  // selected course's type here lets the Capacity field say so up front instead of
+  // silently overriding whatever number the admin typed (e.g. "10").
+  const newCourseIsIndividual = courseOptions.find((c) => c.id === newCourse)?.type === "Individual";
+
+  function handleNewCourseChange(courseId: string) {
+    setNewCourse(courseId);
+    const isIndividual = courseOptions.find((c) => c.id === courseId)?.type === "Individual";
+    if (isIndividual) {
+      setNewCapacity("1");
+    } else if (newCapacity === "1") {
+      // Coming back from an Individual course — "1" was forced, not chosen, so restore
+      // the usual group default rather than leaving a 1-seat group batch.
+      setNewCapacity("8");
+    }
+  }
   const [createError, setCreateError] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
 
@@ -629,14 +646,14 @@ export default function AdminBatches() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label htmlFor="new-batch-course-select">Course</Label>
-                <Select value={newCourse} onValueChange={setNewCourse}>
+                <Select value={newCourse} onValueChange={handleNewCourseChange}>
                   <SelectTrigger id="new-batch-course-select">
                     <SelectValue placeholder="Select course" />
                   </SelectTrigger>
                   <SelectContent>
                     {courseOptions.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.name}
+                        {c.name} {c.type === "Individual" ? "(1:1)" : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -667,7 +684,20 @@ export default function AdminBatches() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label htmlFor="nb-capacity">Capacity</Label>
-                <Input id="nb-capacity" type="number" min={1} max={500} value={newCapacity} onChange={(e) => setNewCapacity(e.target.value)} />
+                <Input
+                  id="nb-capacity"
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={newCapacity}
+                  disabled={newCourseIsIndividual}
+                  onChange={(e) => setNewCapacity(e.target.value)}
+                />
+                {newCourseIsIndividual && (
+                  <p className="text-xs text-muted-foreground">
+                    This is a 1:1 course — its batches always run with a single seat.
+                  </p>
+                )}
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="nb-start">Start date (optional)</Label>

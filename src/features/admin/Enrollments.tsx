@@ -88,7 +88,7 @@ export default function AdminEnrollments() {
 
   const { data: courseOptions } = useApiData<ApiCourseOption[]>(
     () => listCourseOptions(),
-    COURSES.map((c) => ({ id: c.id, name: c.name }))
+    COURSES.map((c) => ({ id: c.id, name: c.name, type: c.type === "group" ? ("Group" as const) : ("Individual" as const) }))
   );
 
   // Active billing plans for the approval picker; approving with one selected starts
