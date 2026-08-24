@@ -43,6 +43,14 @@ export interface Stroke {
 /** One synced board operation, relayed verbatim through the classroom hub. */
 export type BoardOp =
   | { kind: "stroke"; pageIndex: number; stroke: Stroke }
+  // Points added to an already-established stroke (one already delivered via a
+  // "stroke" op). Carries only the new points, not the whole growing array — a
+  // long, slow stroke sent as repeated full-array "stroke" ops would mean every
+  // later send re-transmits everything already sent before it, so total data
+  // over the stroke's lifetime grows with the square of its length instead of
+  // linearly. This is what actually keeps live-drawing traffic flat regardless
+  // of how long a single stroke runs.
+  | { kind: "strokeAppend"; pageIndex: number; strokeId: string; points: Point[] }
   | { kind: "clear"; pageIndex: number }
   // Carries the new page's own index so every recipient can both grow their page list
   // AND jump straight to it — previously this carried no index at all, so a page added
@@ -204,6 +212,12 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   // any slow, deliberate stroke looked like it "popped in" all at once after a multi-
   // second gap. ~20 sends/sec reads as live drawing without flooding the hub per pixel.
   const lastBoardSendRef = useRef(0);
+  // How many of the current stroke's points have already gone out, and whether the
+  // establishing "stroke" op has been sent yet — together these let later sends go
+  // out as small strokeAppend deltas instead of resending the whole (ever-growing)
+  // points array every throttle tick. Both reset per-stroke in handlePointerDown.
+  const sentPointCountRef = useRef(0);
+  const strokeEstablishedRef = useRef(false);
   const panRef = useRef<{ startX: number; startY: number; origin: Point } | null>(null);
   // Offscreen cache of this page's already-committed strokes. handlePointerMove used to call
   // a redraw() that replayed every committed stroke from scratch on every single pointer
@@ -292,6 +306,8 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     }
     drawingRef.current = true;
     draftRef.current = { id: nextId(), tool, points: [pt], color, width: strokeWidth };
+    sentPointCountRef.current = 0;
+    strokeEstablishedRef.current = false;
     canvasRef.current?.setPointerCapture(e.pointerId);
   }
 
@@ -310,14 +326,26 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     }
     redraw();
 
-    // Broadcast the in-progress stroke (same id it'll be committed under) so remote
-    // viewers see it grow live instead of only appearing once complete. Receivers
-    // upsert by stroke.id (see the "stroke" case in the remote-op effect below), so
-    // resending the same id repeatedly with more points just extends it in place.
+    // Broadcast the in-progress stroke so remote viewers see it grow live instead of
+    // only appearing once complete. The first send establishes the stroke (id, tool,
+    // color, width) with whatever points exist so far; every send after that carries
+    // only the points added since the last send, not the whole array again — see the
+    // BoardOp.strokeAppend comment for why that matters on a long stroke.
     const now = performance.now();
     if (onBoardOp && now - lastBoardSendRef.current >= 50) {
       lastBoardSendRef.current = now;
-      onBoardOp({ kind: "stroke", pageIndex, stroke: { ...draftRef.current, points: [...draftRef.current.points] } });
+      const allPoints = draftRef.current.points;
+      if (!strokeEstablishedRef.current) {
+        strokeEstablishedRef.current = true;
+        sentPointCountRef.current = allPoints.length;
+        onBoardOp({ kind: "stroke", pageIndex, stroke: { ...draftRef.current, points: [...allPoints] } });
+      } else {
+        const newPoints = allPoints.slice(sentPointCountRef.current);
+        if (newPoints.length > 0) {
+          sentPointCountRef.current = allPoints.length;
+          onBoardOp({ kind: "strokeAppend", pageIndex, strokeId: draftRef.current.id, points: newPoints });
+        }
+      }
     }
   }
 
@@ -329,7 +357,17 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     draftRef.current = null;
     setPages((prev) => prev.map((p, i) => (i === pageIndex ? { ...p, strokes: [...p.strokes, finished] } : p)));
     setLastCleared(null);
-    onBoardOp?.({ kind: "stroke", pageIndex, stroke: finished });
+    // Same delta logic as the throttled sends above: if the stroke was never
+    // established (a quick tap/short stroke that finished inside one throttle
+    // window), send it whole; otherwise only the tail end no send has covered yet.
+    if (!strokeEstablishedRef.current) {
+      onBoardOp?.({ kind: "stroke", pageIndex, stroke: finished });
+    } else {
+      const remaining = finished.points.slice(sentPointCountRef.current);
+      if (remaining.length > 0) {
+        onBoardOp?.({ kind: "strokeAppend", pageIndex, strokeId: finished.id, points: remaining });
+      }
+    }
     onInteraction?.();
   }
 
@@ -404,10 +442,10 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
             while (pages.length <= op.pageIndex) pages.push({ id: nextId(), strokes: [] });
             return pages.map((p, i) => {
               if (i !== op.pageIndex) return p;
-              // Upsert by id: handlePointerMove now broadcasts the same in-progress
-              // stroke repeatedly as it grows (see the throttled send there), so a
-              // later op for an id already on this page replaces it in place rather
-              // than piling up duplicate, ever-shorter copies of the same stroke.
+              // Upsert by id rather than a blind push: a "stroke" op normally only
+              // arrives once per id (the establishing send — growth after that comes
+              // as strokeAppend below), but this stays a safe no-duplicate landing
+              // spot for any resync/reconnect path that resends a known id wholesale.
               const existingIndex = p.strokes.findIndex((s) => s.id === op.stroke.id);
               if (existingIndex === -1) return { ...p, strokes: [...p.strokes, op.stroke] };
               const strokes = [...p.strokes];
@@ -415,6 +453,22 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               return { ...p, strokes };
             });
           });
+          break;
+        case "strokeAppend":
+          setPages((prev) =>
+            prev.map((p, i) => {
+              if (i !== op.pageIndex) return p;
+              const existingIndex = p.strokes.findIndex((s) => s.id === op.strokeId);
+              // The establishing "stroke" op for this id hasn't arrived yet (out-of-order
+              // delivery, or dropped) — nothing to append to, so drop this delta. The
+              // stroke will still show up complete once "stroke" lands, just without
+              // the mid-drawing animation for this one; never worth crashing over.
+              if (existingIndex === -1) return p;
+              const strokes = [...p.strokes];
+              strokes[existingIndex] = { ...strokes[existingIndex], points: [...strokes[existingIndex].points, ...op.points] };
+              return { ...p, strokes };
+            })
+          );
           break;
         case "clear":
           setPages((prev) => prev.map((p, i) => (i === op.pageIndex ? { ...p, strokes: [] } : p)));
