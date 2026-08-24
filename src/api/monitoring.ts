@@ -64,6 +64,16 @@ export interface ApiDatabaseInsights {
   locksHeld: number;
 }
 
+export interface ApiMonitoringAlert {
+  name: string;
+  severity: string;
+  summary: string;
+  description: string;
+  state: string;
+  activeSince: string;
+  instance: string | null;
+}
+
 export interface ApiMonitoringSummary {
   servers: ApiServerStatus[];
   apiHealthy: boolean;
@@ -72,6 +82,7 @@ export interface ApiMonitoringSummary {
   databaseInsights: ApiDatabaseInsights | null;
   concurrentClassroomUsers: number;
   activeClassCount: number;
+  activeAlerts: ApiMonitoringAlert[];
   generatedAtUtc: string;
 }
 
@@ -87,6 +98,7 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
     databaseInsights: api.databaseInsights,
     concurrentClassroomUsers: api.concurrentClassroomUsers,
     activeClassCount: api.activeClassCount,
+    activeAlerts: api.activeAlerts,
     generatedAtUtc: api.generatedAtUtc,
     servers: api.servers.map((s) => ({
       name: s.name,

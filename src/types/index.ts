@@ -283,6 +283,16 @@ export interface DatabaseInsights {
   locksHeld: number;
 }
 
+export interface MonitoringAlert {
+  name: string;
+  severity: string;
+  summary: string;
+  description: string;
+  state: string;
+  activeSince: string;
+  instance: string | null;
+}
+
 export interface MonitoringSummary {
   servers: ServerStatus[];
   apiHealthy: boolean;
@@ -292,5 +302,6 @@ export interface MonitoringSummary {
   /** Total connections currently joined to any live class, platform-wide — distinct from a single server's own Jitsi participant count. */
   concurrentClassroomUsers: number;
   activeClassCount: number;
+  activeAlerts: MonitoringAlert[];
   generatedAtUtc: string;
 }
