@@ -2,7 +2,6 @@ import { useEffect, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Activity,
-  AlertOctagon,
   AlertTriangle,
   ArrowLeft,
   Clock,
@@ -68,6 +67,11 @@ function formatActiveSince(iso: string): string {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ${minutes % 60}m`;
   return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+}
+
+/** "Aug 25, 2:14 PM" — the timeline's fixed anchor point, alongside the relative "active for" duration. */
+function formatAbsoluteTime(iso: string): string {
+  return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 interface MergedHistoryPoint {
@@ -181,9 +185,9 @@ export default function AdminServerDetail() {
 
   const scopedAlerts = useMemo(() => {
     if (!server) return [];
-    return (summary.activeAlerts ?? []).filter(
-      (a) => a.instance && (a.instance.includes(server.hostname) || a.instance.includes(server.name))
-    );
+    return (summary.activeAlerts ?? [])
+      .filter((a) => a.instance && (a.instance.includes(server.hostname) || a.instance.includes(server.name)))
+      .sort((a, b) => new Date(b.activeSince).getTime() - new Date(a.activeSince).getTime());
   }, [summary.activeAlerts, server]);
 
   const historyData = useMemo(() => mergeHistories(server?.cpuHistory ?? [], server?.memoryHistory ?? []), [server]);
@@ -493,34 +497,46 @@ export default function AdminServerDetail() {
           <div className="mt-5">
             <Card className="p-5">
               <CardHeader className="p-0 pb-4">
-                <CardTitle className="text-base">Alerts</CardTitle>
-                <CardDescription>Active Prometheus alerts scoped to this server.</CardDescription>
+                <CardTitle className="text-base">Alert Timeline</CardTitle>
+                <CardDescription>Active Prometheus alerts scoped to this server, most recent first.</CardDescription>
               </CardHeader>
               {scopedAlerts.length === 0 ? (
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Gauge className="h-4 w-4 text-success" /> No active alerts scoped to this server.
                 </p>
               ) : (
-                <div className="divide-y divide-border">
-                  {scopedAlerts.map((alert, i) => (
-                    <div key={`${alert.name}-${i}`} className="flex items-start gap-3 py-3">
-                      {alert.severity === "critical" ? (
-                        <AlertOctagon className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                      ) : (
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold text-foreground">{alert.summary || alert.name}</p>
-                          <Badge variant={alert.severity === "critical" ? "destructive" : "warning"} className="text-[10px]">
-                            {alert.severity}
-                          </Badge>
+                <div className="relative">
+                  <div className="absolute bottom-1 left-[7px] top-1 w-px bg-border" aria-hidden="true" />
+                  <div className="space-y-5">
+                    {scopedAlerts.map((alert, i) => (
+                      <div key={`${alert.name}-${i}`} className="relative pl-6">
+                        <span
+                          className={cn(
+                            "absolute left-0 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full ring-4 ring-card",
+                            alert.severity === "critical" ? "bg-destructive" : "bg-warning"
+                          )}
+                        />
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-foreground">{alert.summary || alert.name}</p>
+                            <Badge variant={alert.severity === "critical" ? "destructive" : "warning"} className="text-[10px]">
+                              {alert.severity}
+                            </Badge>
+                            {alert.state === "pending" && (
+                              <Badge variant="muted" className="text-[10px]">
+                                pending
+                              </Badge>
+                            )}
+                          </div>
+                          <time className="shrink-0 text-[11px] font-medium text-muted-foreground" dateTime={alert.activeSince}>
+                            {formatAbsoluteTime(alert.activeSince)}
+                          </time>
                         </div>
                         {alert.description && <p className="mt-0.5 text-xs text-muted-foreground">{alert.description}</p>}
                         <p className="mt-1 text-[11px] text-muted-foreground">active for {formatActiveSince(alert.activeSince)}</p>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
             </Card>
