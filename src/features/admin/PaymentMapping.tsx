@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpenText, Building2, Calculator, Landmark, Link2, Pencil, ShieldCheck } from "lucide-react";
+import { BookOpenText, Building2, Calculator, ChevronDown, Landmark, Link2, Pencil, ShieldCheck, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -157,6 +157,11 @@ export default function AdminPaymentMapping() {
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
   const [mappingConfirmOpen, setMappingConfirmOpen] = useState(false);
 
+  // Collapsed by default: routing is automatic (every invoice already goes to its own
+  // department's account, no per-parent setup), so this per-parent override — genuinely
+  // rare — shouldn't read as a required step just by being visible on the page.
+  const [showOverride, setShowOverride] = useState(false);
+
   function openEdit(account: ApiPaymentAccount) {
     setEditAccount(account);
     setEditName(account.name);
@@ -228,8 +233,17 @@ export default function AdminPaymentMapping() {
       <PageHeader
         eyebrow="Payments Infrastructure"
         title="Payment Gateway Mapping"
-        description="Department-level payment accounts, and parent-to-account assignment."
+        description="Where each department's invoices collect payment."
       />
+
+      <div className="mb-5 flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <p className="text-sm text-foreground">
+          <span className="font-semibold">This is automatic.</span> Every invoice already routes to its own
+          department's account below — nothing to set up per parent, and every new department inherits
+          whichever account is already configured. New parents just work.
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {accounts.map((account, i) => (
@@ -320,16 +334,26 @@ export default function AdminPaymentMapping() {
       />
 
       <Card className="mt-6">
-        <CardHeader className="flex-row items-center gap-3 space-y-0">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${CHART_PALETTE[0]}1A`, color: CHART_PALETTE[0] }}>
+        <button
+          type="button"
+          onClick={() => setShowOverride((v) => !v)}
+          aria-expanded={showOverride}
+          className="flex w-full items-center gap-3 p-5 text-left"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${CHART_PALETTE[0]}1A`, color: CHART_PALETTE[0] }}>
             <Link2 className="h-5 w-5" />
           </span>
-          <div>
-            <CardTitle>Assign Parent to Payment Account</CardTitle>
-            <CardDescription>Route a parent&apos;s future payments to a specific department account.</CardDescription>
+          <div className="flex-1">
+            <CardTitle>Override for one parent</CardTitle>
+            <CardDescription>
+              Rare — routes a specific parent's payments to a different account than their invoice's own
+              department. Most parents never need this.
+            </CardDescription>
           </div>
-        </CardHeader>
-        <CardContent>
+          <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", showOverride && "rotate-180")} />
+        </button>
+        {showOverride && (
+        <CardContent className="pt-0">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="grid gap-1.5">
               <Label htmlFor="mapping-parent-select">Parent</Label>
@@ -384,6 +408,7 @@ export default function AdminPaymentMapping() {
             </p>
           )}
         </CardContent>
+        )}
       </Card>
 
       <ConfirmDialog
