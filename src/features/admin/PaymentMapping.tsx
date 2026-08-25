@@ -63,15 +63,23 @@ function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount
           <div>
             <CardTitle>{account.name}</CardTitle>
             <CardDescription>
-              {account.gatewayProvider} · {account.gatewayAccountRef}
+              {/* A brand-new department gets this account auto-created (inactive, unwired) so
+                  it shows up here immediately instead of silently having nowhere for its
+                  invoices to route — "pending-client-decision" is that placeholder ref, not
+                  something to show an admin as if it were real gateway wiring. */}
+              {account.gatewayAccountRef === "pending-client-decision"
+                ? "Not yet configured"
+                : `${account.gatewayProvider} · ${account.gatewayAccountRef}`}
             </CardDescription>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {account.isActive && (
+          {account.isActive ? (
             <Badge variant="success" className="gap-1">
               <ShieldCheck className="h-3.5 w-3.5" /> Active
             </Badge>
+          ) : (
+            account.gatewayAccountRef === "pending-client-decision" && <Badge variant="muted">Needs setup</Badge>
           )}
           <Button size="sm" variant="ghost" onClick={onEdit} title="Edit gateway wiring">
             <Pencil className="h-3.5 w-3.5" />
