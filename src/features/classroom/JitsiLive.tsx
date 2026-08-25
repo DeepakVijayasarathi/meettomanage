@@ -325,6 +325,12 @@ export default function JitsiLive({
         media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
         // A small class reads better as a grid of faces than one spotlighted speaker.
         api?.executeCommand("setTileView", true);
+        // Auto-apply our own on-brand background as everyone's starting camera background —
+        // dynamicBrandingUrl (above) only adds it to the picker as an available *choice*;
+        // this is what actually makes it the default someone sees without picking anything,
+        // same as branding.json's src. Still just a starting point: the toolbar's own
+        // background button lets anyone turn it off or pick something else afterward.
+        api?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
         if (mode === "teacher" && autoRecordRef.current) {
           // Auto session recording: starts when the host joins; requires Jibri
           // on the Jitsi deployment (no-op on deployments without it). Admin can
