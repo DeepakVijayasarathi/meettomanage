@@ -25,9 +25,11 @@ export function formatAgeShort(seconds: number): string {
   return `${Math.round(seconds / 60)}m ago`;
 }
 
-/** Strips a Docker Compose / Kubernetes replica suffix ("-1", "_2") so a badge reads "jibri" instead of "jibri-1"; the raw name stays available via the badge's title attribute. */
+/** Strips the "docker-jitsi-meet-" compose prefix and any replica suffix ("-1", "_2") so a badge reads "jibri" instead of "docker-jitsi-meet-jibri-1"; the raw name stays available via the badge's title attribute. */
 export function serviceDisplayName(name: string): string {
-  return name.replace(/[-_]\d+$/, "") || name;
+  const withoutIndex = name.replace(/[-_]\d+$/, "");
+  const withoutPrefix = withoutIndex.replace(/^docker[-_]jitsi[-_]meet[-_]/i, "");
+  return withoutPrefix || withoutIndex || name;
 }
 
 /** Green under 60%, amber to 85%, red beyond — same read for every resource gauge on the page. */
@@ -71,9 +73,11 @@ export function StatTile({
         <Icon className="h-4 w-4" />
       </span>
       <div className="min-w-0">
-        <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
-        <p className={cn("mt-0.5 truncate text-base font-bold tracking-tight", t.value)}>{value}</p>
-        {detail && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{detail}</p>}
+        {/* line-clamp-2, not truncate: a numeric value cut off mid-string ("0.0% / 0....") hides
+            the actual reading, which defeats the point of a stat tile. Wrap instead. */}
+        <p className="line-clamp-2 text-xs font-medium text-muted-foreground">{label}</p>
+        <p className={cn("mt-0.5 break-words text-base font-bold tracking-tight", t.value)}>{value}</p>
+        {detail && <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{detail}</p>}
       </div>
     </div>
   );
