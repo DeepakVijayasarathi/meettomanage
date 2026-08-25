@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Activity,
@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Clock,
   Cpu,
+  FileText,
   Gauge,
   HardDrive,
   MemoryStick,
@@ -27,13 +28,15 @@ import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/ca
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { getMonitoringSummary, toFrontendMonitoringSummary } from "@/api/monitoring";
+import { getMonitoringSummary, getServerLogs, toFrontendMonitoringSummary, type ApiServerLogs } from "@/api/monitoring";
 import { MONITORING_SUMMARY } from "@/data/monitoring";
+import { MonitoringHubClient } from "@/lib/monitoringHub";
 import type { CallQuality, MonitoringSummary, TimeSeriesPoint } from "@/types";
 import {
   CapacityForecastLine,
@@ -162,21 +165,111 @@ function LatestDataRow({ metric, value, tone = "neutral" }: { metric: string; va
   );
 }
 
+/** On-demand, not auto-refreshed like the rest of the page — each fetch opens a live SSH connection to run `docker logs`, so it's deliberately not polled every 20s. */
+function ContainerLogsPanel({ serverName, services }: { serverName: string; services: string[] }) {
+  const [container, setContainer] = useState(services[0] ?? "");
+  const [logs, setLogs] = useState<ApiServerLogs | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (services.length === 0) return null;
+
+  const fetchLogs = async () => {
+    if (!container) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setLogs(await getServerLogs(serverName, container));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't fetch logs.");
+      setLogs(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card className="p-5">
+      <CardHeader className="p-0 pb-4">
+        <CardTitle className="text-base">Container Logs</CardTitle>
+        <CardDescription>Error-filtered docker logs tail, fetched live over SSH on request.</CardDescription>
+      </CardHeader>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={container} onValueChange={setContainer}>
+          <SelectTrigger className="w-56">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {services.map((s) => (
+              <SelectItem key={s} value={s}>
+                {serviceDisplayName(s)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading}>
+          <FileText className={cn("h-3.5 w-3.5", loading && "animate-pulse")} />
+          {loading ? "Fetching…" : "Fetch logs"}
+        </Button>
+        {logs && (
+          <span className="text-xs text-muted-foreground">
+            {logs.lines.length} line{logs.lines.length === 1 ? "" : "s"} · {new Date(logs.fetchedAtUtc).toLocaleTimeString()}
+          </span>
+        )}
+      </div>
+
+      {error && (
+        <p className="mt-3 flex items-center gap-1.5 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
+        </p>
+      )}
+
+      {logs && !error && (
+        <div className="mt-3 max-h-96 overflow-auto rounded-lg bg-muted/40 p-3">
+          {logs.lines.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No error-looking lines in the last window — clean.</p>
+          ) : (
+            <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-foreground">{logs.lines.join("\n")}</pre>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function AdminServerDetail() {
   const { serverName } = useParams<{ serverName: string }>();
   const navigate = useNavigate();
   const usingApi = apiEnabled();
-  const { data: summary, loading, error, reload } = useApiData(
+  const { data: restSummary, loading, error, reload } = useApiData(
     () => getMonitoringSummary().then(toFrontendMonitoringSummary),
     MONITORING_SUMMARY,
     EMPTY_SUMMARY
   );
+  const [liveSummary, setLiveSummary] = useState<MonitoringSummary | null>(null);
+  const [hubConnected, setHubConnected] = useState(false);
+  const summary = liveSummary ?? restSummary;
 
+  // Live push: MonitoringHub broadcasts a fresh summary on its own cycle (see
+  // MonitoringBroadcastService) instead of this page polling for one.
   useEffect(() => {
     if (!usingApi) return;
+    const client = new MonitoringHubClient();
+    client.connect(
+      (payload) => setLiveSummary(toFrontendMonitoringSummary(payload)),
+      (state) => setHubConnected(state === "connected")
+    );
+    return () => {
+      client.disconnect();
+    };
+  }, [usingApi]);
+
+  // Fallback poll — only while the live push isn't connected.
+  useEffect(() => {
+    if (!usingApi || hubConnected) return;
     const interval = setInterval(reload, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [usingApi, reload]);
+  }, [usingApi, hubConnected, reload]);
 
   const server = useMemo(
     () => summary.servers.find((s) => s.name === decodeURIComponent(serverName ?? "")),
@@ -254,6 +347,12 @@ export default function AdminServerDetail() {
             ) : (
               <Badge variant="destructive" className="gap-1">
                 <WifiOff className="h-3 w-3" /> Unreachable
+              </Badge>
+            )}
+            {hubConnected && (
+              <Badge variant="success" className="gap-1.5">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+                Live
               </Badge>
             )}
             <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
@@ -494,6 +593,12 @@ export default function AdminServerDetail() {
             </Card>
           </div>
 
+          {usingApi && (
+            <div className="mt-5">
+              <ContainerLogsPanel serverName={server.name} services={server.services.map((s) => s.name)} />
+            </div>
+          )}
+
           <div className="mt-5">
             <Card className="p-5">
               <CardHeader className="p-0 pb-4">
@@ -551,7 +656,8 @@ export default function AdminServerDetail() {
       )}
       {summary.generatedAtUtc && !error && (
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Last updated {new Date(summary.generatedAtUtc).toLocaleTimeString()} · auto-refreshes every {REFRESH_INTERVAL_MS / 1000}s
+          Last updated {new Date(summary.generatedAtUtc).toLocaleTimeString()}
+          {hubConnected ? " · live-updating" : ` · auto-refreshes every ${REFRESH_INTERVAL_MS / 1000}s`}
         </p>
       )}
     </div>

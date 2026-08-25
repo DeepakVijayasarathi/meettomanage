@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Activity,
@@ -34,6 +34,7 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getMonitoringSummary, toFrontendMonitoringSummary } from "@/api/monitoring";
 import { MONITORING_SUMMARY } from "@/data/monitoring";
+import { MonitoringHubClient } from "@/lib/monitoringHub";
 import type { DatabaseInsights, MonitoringAlert, MonitoringSummary, ServerStatus } from "@/types";
 import {
   CapacityForecastLine,
@@ -385,18 +386,36 @@ function ServerCardSkeleton() {
 
 export default function AdminMonitoring() {
   const usingApi = apiEnabled();
-  const { data: summary, loading, error, reload } = useApiData(
+  const { data: restSummary, loading, error, reload } = useApiData(
     () => getMonitoringSummary().then(toFrontendMonitoringSummary),
     MONITORING_SUMMARY,
     EMPTY_SUMMARY
   );
+  const [liveSummary, setLiveSummary] = useState<MonitoringSummary | null>(null);
+  const [hubConnected, setHubConnected] = useState(false);
+  const summary = liveSummary ?? restSummary;
 
-  // Auto-refresh: this page is meant to be left open on a screen, not re-polled by hand.
+  // Live push: MonitoringHub broadcasts a fresh summary on its own cycle (see
+  // MonitoringBroadcastService) instead of this page polling for one.
   useEffect(() => {
     if (!usingApi) return;
+    const client = new MonitoringHubClient();
+    client.connect(
+      (payload) => setLiveSummary(toFrontendMonitoringSummary(payload)),
+      (state) => setHubConnected(state === "connected")
+    );
+    return () => {
+      client.disconnect();
+    };
+  }, [usingApi]);
+
+  // Fallback poll — only while the live push isn't connected, so a blocked WebSocket or a
+  // down hub doesn't leave the page silently stale.
+  useEffect(() => {
+    if (!usingApi || hubConnected) return;
     const interval = setInterval(reload, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [usingApi, reload]);
+  }, [usingApi, hubConnected, reload]);
 
   const totalConferences = summary.servers.reduce((sum, s) => sum + (s.liveCalls?.activeConferences ?? 0), 0);
   const totalParticipants = summary.servers.reduce((sum, s) => sum + (s.liveCalls?.totalParticipants ?? 0), 0);
@@ -409,10 +428,18 @@ export default function AdminMonitoring() {
         title="Server Monitoring"
         description="Live health for every production server the platform runs on — resources, services, and active classes."
         actions={
-          <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
-            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
-            Refresh
-          </Button>
+          <>
+            {hubConnected && (
+              <Badge variant="success" className="gap-1.5">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+                Live
+              </Badge>
+            )}
+            <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
+              <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+              Refresh
+            </Button>
+          </>
         }
       />
 
@@ -485,7 +512,8 @@ export default function AdminMonitoring() {
 
       {summary.generatedAtUtc && (
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Last updated {new Date(summary.generatedAtUtc).toLocaleTimeString()} · auto-refreshes every {REFRESH_INTERVAL_MS / 1000}s
+          Last updated {new Date(summary.generatedAtUtc).toLocaleTimeString()}
+          {hubConnected ? " · live-updating" : ` · auto-refreshes every ${REFRESH_INTERVAL_MS / 1000}s`}
         </p>
       )}
     </div>

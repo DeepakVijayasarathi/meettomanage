@@ -97,6 +97,19 @@ export async function getMonitoringSummary(): Promise<ApiMonitoringSummary> {
   return apiFetch<ApiMonitoringSummary>("/api/monitoring/summary");
 }
 
+export interface ApiServerLogs {
+  server: string;
+  container: string;
+  lines: string[];
+  fetchedAtUtc: string;
+}
+
+/** Error-filtered `docker logs` tail for one container on one server, fetched over SSH server-side — see IServerLogService. */
+export async function getServerLogs(serverName: string, container: string, lines = 300): Promise<ApiServerLogs> {
+  const params = new URLSearchParams({ container, lines: String(lines) });
+  return apiFetch<ApiServerLogs>(`/api/monitoring/servers/${encodeURIComponent(serverName)}/logs?${params.toString()}`);
+}
+
 export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): MonitoringSummary {
   return {
     apiHealthy: api.apiHealthy,
