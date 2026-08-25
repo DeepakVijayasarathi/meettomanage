@@ -24,6 +24,7 @@ import { getParentById } from "@/data/users";
 import { useApiData } from "@/api/hooks";
 import { apiEnabled } from "@/lib/api";
 import {
+  downloadInvoicePdf,
   listInvoiceRows,
   listInvoiceTransactions,
   recordPayment,
@@ -72,6 +73,8 @@ export default function AdminBilling() {
   const { hasPermission } = useSession();
   const canRequestRefund = hasPermission("BillingFinance", "Create");
   const [detail, setDetail] = useState<Invoice | null>(null);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   // Record-payment (incl. confirming a parent's cash intent) state
   const [recording, setRecording] = useState(false);
@@ -160,6 +163,19 @@ export default function AdminBilling() {
       setRefundError(e instanceof Error ? e.message : "Couldn't request this refund.");
     } finally {
       setRefundSubmitting(false);
+    }
+  }
+
+  async function downloadPdf() {
+    if (!detail?.apiId) return;
+    setPdfDownloading(true);
+    setPdfError(null);
+    try {
+      await downloadInvoicePdf(detail.apiId, detail.id);
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : "Couldn't download the invoice PDF.");
+    } finally {
+      setPdfDownloading(false);
     }
   }
 
@@ -509,15 +525,22 @@ export default function AdminBilling() {
                 </div>
               )}
 
+              {pdfError && <p className="mt-2 text-sm font-medium text-destructive">{pdfError}</p>}
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDetail(null)}>
                   Close
                 </Button>
-                {/* No admin-facing invoice/receipt download endpoint exists on the backend
-                    (ParentPortalController's is locked to [Authorize(Roles = "Parent")]) —
-                    this used to be a button that only ever flipped its own label to
-                    "Receipt Downloaded" without downloading anything. Removed rather than
-                    leave a control that claims to do something it can't. */}
+                {/* Real GET /api/invoices/{id}/pdf now backs this — the org's own "Bill of
+                    Supply" template, rendered server-side (QuestPDF). An earlier version of
+                    this button had no endpoint behind it and just flipped its own label to
+                    "Receipt Downloaded" without downloading anything; this replaces that. */}
+                {live && detail.apiId && (
+                  <Button variant="outline" onClick={downloadPdf} disabled={pdfDownloading}>
+                    <FileText className="h-4 w-4" />
+                    {pdfDownloading ? "Downloading…" : "Download PDF"}
+                  </Button>
+                )}
                 {live && detail.apiId && detail.status !== "paid" && detail.status !== "cancelled" && (
                   recording ? (
                     <Button onClick={reviewPayment} disabled={saving}>

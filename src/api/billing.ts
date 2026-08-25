@@ -158,6 +158,11 @@ export async function createPaymentLink(invoiceId: string): Promise<ApiPaymentLi
   return apiFetch<ApiPaymentLink>(`/api/invoices/${invoiceId}/payment-link`, { method: "POST" });
 }
 
+/** Downloads the "Bill of Supply" PDF for one invoice, matching the org's own template. */
+export async function downloadInvoicePdf(invoiceId: string, invoiceNumber: string): Promise<void> {
+  await downloadFile(`/api/invoices/${invoiceId}/pdf`, `${invoiceNumber}.pdf`);
+}
+
 export async function listSuspensions(status?: "Active" | "Lifted"): Promise<ApiFeeSuspension[]> {
   return apiFetch<ApiFeeSuspension[]>(`/api/invoices/suspensions${status ? `?status=${status}` : ""}`);
 }
