@@ -19,7 +19,7 @@ import {
   WifiOff,
   Zap,
 } from "lucide-react";
-import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Legend, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Legend, ReferenceLine, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { ChartCard } from "@/components/ChartCard";
@@ -35,7 +35,7 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getMonitoringSummary, toFrontendMonitoringSummary } from "@/api/monitoring";
 import { MONITORING_SUMMARY } from "@/data/monitoring";
-import type { MonitoringSummary, TimeSeriesPoint } from "@/types";
+import type { CallQuality, MonitoringSummary, TimeSeriesPoint } from "@/types";
 import {
   CapacityForecastLine,
   formatAgeShort,
@@ -98,6 +98,35 @@ function summarize(data: TimeSeriesPoint[]): { min: number; avg: number; max: nu
   };
 }
 
+/** One verdict from the raw RTT/loss/stress numbers — the numbers alone don't say whether a call is actually fine. */
+function callQualityScore(cq: CallQuality): { label: string; tone: "success" | "warning" | "destructive" } {
+  const loss = Math.max(cq.incomingLossPercent, cq.outgoingLossPercent);
+  if (!cq.jvbHealthy || cq.averageRttMs > 250 || loss > 5 || cq.jvbStressPercent > 85) {
+    return { label: "Poor", tone: "destructive" };
+  }
+  if (cq.averageRttMs > 100 || loss > 1 || cq.jvbStressPercent > 60) {
+    return { label: "Fair", tone: "warning" };
+  }
+  return { label: "Excellent", tone: "success" };
+}
+
+/** Item descriptions for the Latest Data table — a Zabbix "item description" tooltip, since the raw metric names alone don't say what they measure. */
+const METRIC_DESCRIPTIONS: Record<string, string> = {
+  "CPU Usage": "Percentage of all cores currently in use, averaged over the last collection interval.",
+  "CPU Cores": "Number of logical CPU cores available to this server.",
+  "Load Average (1m)": "Unix load average over the last 1 minute — runnable processes per core; above 1.0 per core means work is queuing.",
+  "Memory Used": "Percentage of physical RAM currently in use.",
+  "Memory Total": "Total physical RAM installed on this server.",
+  "Disk Used": "Percentage of the primary disk volume currently in use.",
+  "Disk Total": "Total capacity of the primary disk volume.",
+  "Network In": "Inbound network throughput, averaged over the last collection interval.",
+  "Network Out": "Outbound network throughput, averaged over the last collection interval.",
+  "Disk Read": "Disk read throughput, averaged over the last collection interval.",
+  "Disk Write": "Disk write throughput, averaged over the last collection interval.",
+  Uptime: "Time since this server's OS was last booted.",
+  "Agent Data Age": "How long ago the monitoring agent on this server last wrote its status file.",
+};
+
 const STATUS_DOT_CLASS: Record<"success" | "warning" | "destructive" | "neutral", string> = {
   success: "bg-success",
   warning: "bg-warning",
@@ -115,7 +144,9 @@ const STATUS_LABEL: Record<"success" | "warning" | "destructive" | "neutral", st
 function LatestDataRow({ metric, value, tone = "neutral" }: { metric: string; value: string; tone?: "success" | "warning" | "destructive" | "neutral" }) {
   return (
     <TableRow>
-      <TableCell className="font-medium text-foreground">{metric}</TableCell>
+      <TableCell className="cursor-help font-medium text-foreground" title={METRIC_DESCRIPTIONS[metric]}>
+        {metric}
+      </TableCell>
       <TableCell className="font-mono text-sm tabular-nums">{value}</TableCell>
       <TableCell>
         <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -263,7 +294,11 @@ export default function AdminServerDetail() {
           )}
 
           <div className="mt-5">
-            <ChartCard title="Resource Trends" description="CPU and memory utilization, last hour" height={320}>
+            <ChartCard
+              title="Resource Trends"
+              description={`CPU and memory utilization, last hour${historyData.length >= 2 ? ` · ${historyData.length} samples` : ""}`}
+              height={320}
+            >
               {historyData.length < 2 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center text-sm text-muted-foreground">
                   <Gauge className="h-5 w-5" />
@@ -292,6 +327,20 @@ export default function AdminServerDetail() {
                     />
                     <Legend
                       formatter={(value: string) => <span className="text-xs font-medium text-foreground">{value === "cpu" ? "CPU" : "Memory"}</span>}
+                    />
+                    <ReferenceLine
+                      y={60}
+                      stroke="hsl(var(--warning))"
+                      strokeDasharray="4 4"
+                      strokeOpacity={0.6}
+                      label={{ value: "Warning (60%)", position: "insideBottomRight", fontSize: 10, fill: "hsl(var(--warning-foreground))" }}
+                    />
+                    <ReferenceLine
+                      y={85}
+                      stroke="hsl(var(--destructive))"
+                      strokeDasharray="4 4"
+                      strokeOpacity={0.6}
+                      label={{ value: "Critical (85%)", position: "insideTopRight", fontSize: 10, fill: "hsl(var(--destructive))" }}
                     />
                     <Area type="monotone" dataKey="cpu" name="cpu" stroke={CHART_PALETTE[0]} strokeWidth={2} fill="url(#detail-cpu)" connectNulls isAnimationActive={false} />
                     <Area type="monotone" dataKey="memory" name="memory" stroke={CHART_PALETTE[1]} strokeWidth={2} fill="url(#detail-mem)" connectNulls isAnimationActive={false} />
@@ -380,9 +429,12 @@ export default function AdminServerDetail() {
                     <CardTitle className="text-base">Call Quality</CardTitle>
                     <CardDescription>Live from JVB's own Prometheus endpoint.</CardDescription>
                   </div>
-                  <Badge variant={server.callQuality.jvbHealthy ? "success" : "destructive"}>
-                    {server.callQuality.jvbHealthy ? "Bridge healthy" : "Bridge unhealthy"}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={callQualityScore(server.callQuality).tone}>{callQualityScore(server.callQuality).label} quality</Badge>
+                    <Badge variant={server.callQuality.jvbHealthy ? "success" : "destructive"}>
+                      {server.callQuality.jvbHealthy ? "Bridge healthy" : "Bridge unhealthy"}
+                    </Badge>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <StatTile
