@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
+import { useBrand } from "@/lib/branding";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
@@ -77,6 +78,7 @@ const FRONTEND_ROLE_TO_API: Record<string, ApiRole> = {
 };
 
 export default function AdminUsers() {
+  const brand = useBrand();
   const {
     data: parents,
     error: parentsError,
@@ -875,7 +877,7 @@ export default function AdminUsers() {
         title="Delete this account?"
         description={
           deleteTarget
-            ? `${deleteTarget.name}'s account will be removed from Reader Nest. This can't be undone from the UI.`
+            ? `${deleteTarget.name}'s account will be removed from ${brand.name}. This can't be undone from the UI.`
             : undefined
         }
         confirmLabel="Delete Account"
