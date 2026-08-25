@@ -271,10 +271,15 @@ export async function listPaymentAccounts(): Promise<ApiPaymentAccount[]> {
   return apiFetch<ApiPaymentAccount[]>("/api/payment-accounts");
 }
 
-/** Admin edit of a department account's gateway wiring (name/provider/ref/active). */
+/**
+ * Admin edit of a department account's gateway wiring (name/provider/ref/active).
+ * applyToAllDepartments (default true server-side if omitted) syncs the same provider/ref/
+ * active onto every other department's account too — most orgs here run one gateway account
+ * for the whole business, not a distinct one per department.
+ */
 export async function updatePaymentAccount(
   id: string,
-  input: { name: string; gatewayProvider: string; gatewayAccountRef: string; isActive: boolean }
+  input: { name: string; gatewayProvider: string; gatewayAccountRef: string; isActive: boolean; applyToAllDepartments?: boolean }
 ): Promise<ApiPaymentAccount> {
   return apiFetch<ApiPaymentAccount>(`/api/payment-accounts/${id}`, {
     method: "PUT",

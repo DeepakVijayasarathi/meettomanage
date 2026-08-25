@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -152,6 +153,10 @@ export default function AdminPaymentMapping() {
   const [editProvider, setEditProvider] = useState("razorpay");
   const [editRef, setEditRef] = useState("");
   const [editActive, setEditActive] = useState(true);
+  // Pre-checked: most orgs here run one real gateway account for the whole business, so the
+  // easy default is "applies everywhere" — unchecking it is the escape hatch for a genuine
+  // per-department dual-gateway need.
+  const [editApplyToAll, setEditApplyToAll] = useState(true);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
@@ -168,6 +173,7 @@ export default function AdminPaymentMapping() {
     setEditProvider(account.gatewayProvider.toLowerCase().includes("cashfree") ? "cashfree" : "razorpay");
     setEditRef(account.gatewayAccountRef === "pending-client-decision" ? "" : account.gatewayAccountRef);
     setEditActive(account.isActive);
+    setEditApplyToAll(true);
     setEditError(null);
   }
 
@@ -193,8 +199,14 @@ export default function AdminPaymentMapping() {
         gatewayProvider: editProvider,
         gatewayAccountRef: editRef.trim(),
         isActive: editActive,
+        applyToAllDepartments: editApplyToAll,
       });
-      setResult({ ok: true, message: `${editName.trim()} now charges through ${editProvider}.` });
+      setResult({
+        ok: true,
+        message: editApplyToAll
+          ? `Every department now charges through ${editProvider}.`
+          : `${editName.trim()} now charges through ${editProvider}.`,
+      });
       setEditAccount(null);
       reloadAccounts();
     } catch (err) {
@@ -228,30 +240,53 @@ export default function AdminPaymentMapping() {
     }
   }
 
+  // Same provider+ref across every department (the normal case here, and the outcome
+  // "apply to every department" converges toward) — shown as one card instead of N
+  // identical-looking ones, since there's really only one account to think about.
+  const isOrgWide =
+    accounts.length > 1 &&
+    accounts.every(
+      (a) => a.gatewayProvider === accounts[0].gatewayProvider && a.gatewayAccountRef === accounts[0].gatewayAccountRef
+    );
+  const orgAccount: ApiPaymentAccount | null = isOrgWide
+    ? {
+        ...accounts[0],
+        name: "Organization Payment Account",
+        departmentName: "All departments",
+        isActive: accounts.every((a) => a.isActive),
+        transactionCount: accounts.reduce((sum, a) => sum + a.transactionCount, 0),
+        totalCollected: accounts.reduce((sum, a) => sum + a.totalCollected, 0),
+        recentTransactions: accounts
+          .flatMap((a) => a.recentTransactions)
+          .sort((a, b) => new Date(b.dateUtc).getTime() - new Date(a.dateUtc).getTime())
+          .slice(0, 5),
+      }
+    : null;
+
   return (
     <div>
       <PageHeader
         eyebrow="Payments Infrastructure"
         title="Payment Gateway Mapping"
-        description="Where each department's invoices collect payment."
+        description={isOrgWide ? "Where every invoice collects payment." : "Where each department's invoices collect payment."}
       />
 
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
         <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <p className="text-sm text-foreground">
-          <span className="font-semibold">This is automatic.</span> Every invoice already routes to its own
-          department's account below — nothing to set up per parent, and every new department inherits
-          whichever account is already configured. New parents just work.
+          <span className="font-semibold">This is automatic.</span> Every invoice already routes to the right
+          account below — nothing to set up per parent, and every new department inherits whichever account is
+          already configured. New parents just work.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {accounts.map((account, i) => (
+      <div className={cn("grid grid-cols-1 gap-5", !isOrgWide && "lg:grid-cols-2")}>
+        {(orgAccount ? [orgAccount] : accounts).map((account, i) => (
           <DepartmentCard
             key={account.id}
             account={account}
             color={CHART_PALETTE[(i + 3) % CHART_PALETTE.length]}
-            onEdit={() => openEdit(account)}
+            onEdit={() => openEdit(accounts[i])}
           />
         ))}
       </div>
@@ -306,6 +341,16 @@ export default function AdminPaymentMapping() {
                     onChange={(e) => setEditRef(e.target.value)}
                   />
                 </div>
+                <label className="flex items-start gap-2.5 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+                  <Checkbox checked={editApplyToAll} onCheckedChange={(v) => setEditApplyToAll(v === true)} className="mt-0.5" />
+                  <span>
+                    <span className="font-medium text-foreground">Apply to every department</span>
+                    <span className="block text-xs text-muted-foreground">
+                      One gateway account for the whole business (recommended). Uncheck only if this department
+                      genuinely needs to charge through a different account than the rest.
+                    </span>
+                  </span>
+                </label>
                 {editError && <p className="text-sm font-medium text-destructive">{editError}</p>}
               </div>
               <DialogFooter>
@@ -327,8 +372,12 @@ export default function AdminPaymentMapping() {
       <ConfirmDialog
         open={editConfirmOpen}
         onOpenChange={setEditConfirmOpen}
-        title={`Change how ${editAccount?.departmentName} charges get routed?`}
-        description={`Every new payment for this department will go through ${editProvider} (${editRef.trim()}) from now on. Existing transactions are unaffected.`}
+        title={editApplyToAll ? "Change how every department charges get routed?" : `Change how ${editAccount?.departmentName} charges get routed?`}
+        description={
+          editApplyToAll
+            ? `Every department's future payments will go through ${editProvider} (${editRef.trim()}) from now on. Existing transactions are unaffected.`
+            : `Only ${editAccount?.departmentName}'s future payments will go through ${editProvider} (${editRef.trim()}) from now on — every other department keeps its own account. Existing transactions are unaffected.`
+        }
         confirmLabel="Save account"
         onConfirm={saveAccountEdit}
       />
