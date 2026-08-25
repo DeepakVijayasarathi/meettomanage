@@ -87,6 +87,17 @@ function mergeHistories(cpu: TimeSeriesPoint[], memory: TimeSeriesPoint[]): Merg
   return Array.from(byTimestamp.values()).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
+/** Min/avg/max over a trend series — the same legend a Zabbix graph shows beneath its plot, computed client-side from the hour of history the API already sends. */
+function summarize(data: TimeSeriesPoint[]): { min: number; avg: number; max: number } | null {
+  if (data.length === 0) return null;
+  const values = data.map((p) => p.value);
+  return {
+    min: Math.min(...values),
+    max: Math.max(...values),
+    avg: values.reduce((sum, v) => sum + v, 0) / values.length,
+  };
+}
+
 const STATUS_DOT_CLASS: Record<"success" | "warning" | "destructive" | "neutral", string> = {
   success: "bg-success",
   warning: "bg-warning",
@@ -145,6 +156,8 @@ export default function AdminServerDetail() {
   }, [summary.activeAlerts, server]);
 
   const historyData = useMemo(() => mergeHistories(server?.cpuHistory ?? [], server?.memoryHistory ?? []), [server]);
+  const cpuSummary = useMemo(() => summarize(server?.cpuHistory ?? []), [server]);
+  const memorySummary = useMemo(() => summarize(server?.memoryHistory ?? []), [server]);
 
   const backLink = (
     <Link to="/admin/monitoring" className="mb-4 flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
@@ -287,6 +300,33 @@ export default function AdminServerDetail() {
               )}
             </ChartCard>
           </div>
+
+          {(cpuSummary || memorySummary) && (
+            <div className="mt-5">
+              <Card className="p-5">
+                <CardHeader className="p-0 pb-4">
+                  <CardTitle className="text-base">Last Hour Summary</CardTitle>
+                  <CardDescription>Min / average / max over the plotted window.</CardDescription>
+                </CardHeader>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {cpuSummary && (
+                    <>
+                      <StatTile icon={Cpu} label="CPU Min" value={`${Math.round(cpuSummary.min)}%`} />
+                      <StatTile icon={Cpu} label="CPU Avg" value={`${Math.round(cpuSummary.avg)}%`} tone={usageTone(cpuSummary.avg)} />
+                      <StatTile icon={Cpu} label="CPU Max" value={`${Math.round(cpuSummary.max)}%`} tone={usageTone(cpuSummary.max)} />
+                    </>
+                  )}
+                  {memorySummary && (
+                    <>
+                      <StatTile icon={MemoryStick} label="Memory Min" value={`${Math.round(memorySummary.min)}%`} />
+                      <StatTile icon={MemoryStick} label="Memory Avg" value={`${Math.round(memorySummary.avg)}%`} tone={usageTone(memorySummary.avg)} />
+                      <StatTile icon={MemoryStick} label="Memory Max" value={`${Math.round(memorySummary.max)}%`} tone={usageTone(memorySummary.max)} />
+                    </>
+                  )}
+                </div>
+              </Card>
+            </div>
+          )}
 
           <div className="mt-5">
             <Card className="p-5">
