@@ -251,6 +251,14 @@ export default function JitsiLive({
           // here for a meaningfully lower, steadier bitrate, which is what actually
           // fixes "lag" (encoder/network backlog) as opposed to visual quality.
           desktopSharingFrameRate: { min: 5, max: 15 },
+          // A curated default virtual background (our own brand navy/violet/amber gradient,
+          // offered as a preset next to Jitsi's own stock options in the camera-background
+          // picker) instead of everyone starting from Jitsi's generic defaults or having to
+          // upload their own — same idea as Google Meet's built-in background gallery.
+          // branding.json's "virtualBackgrounds" array is what actually supplies it; this
+          // config key just tells Jitsi where to fetch that JSON from. Served by the same
+          // Jitsi web container as everything else (see docker-compose.yml's web volumes).
+          dynamicBrandingUrl: "https://thereadernest.co.in/branding/branding.json",
           // Don't let the browser suggest/remember this room outside our own scheduling flow.
           doNotStoreRoom: true,
           // Without an explicit subject, Jitsi's own top bar falls back to displaying the
