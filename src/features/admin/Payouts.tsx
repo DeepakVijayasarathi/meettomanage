@@ -1,21 +1,25 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Download, IndianRupee, Loader2, Settings2, UsersRound, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, IndianRupee, Loader2, Settings2, UsersRound, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PAYOUTS } from "@/data/payouts";
 import { getTeacherById } from "@/data/users";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { finalizePayout, listPayouts, markPayoutPaid, toFrontendPayout } from "@/api/payouts";
+import { adjustPayoutItem, finalizePayout, listPayouts, markPayoutPaid, toFrontendPayout } from "@/api/payouts";
 import { downloadReportCsv } from "@/api/reports";
-import type { TeacherPayout } from "@/types";
+import type { TeacherPayout, TeacherPayoutItem } from "@/types";
 import { formatCurrency, formatNumber, getInitials, toCsv } from "@/lib/utils";
 
 function downloadCsv(filename: string, csv: string) {
@@ -45,6 +49,55 @@ export default function AdminPayouts() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<{ payout: TeacherPayout; action: "finalize" | "mark-paid" } | null>(null);
+
+  // Review flow: a payout can't finalize while any item is flagged (teacher's captured
+  // attendance fell well short of the scheduled class) — this dialog is the only way to act
+  // on that, either correcting the amount or confirming it as-is (same amount, a reason logged).
+  const [reviewPayout, setReviewPayout] = useState<TeacherPayout | null>(null);
+  const [reviewAmounts, setReviewAmounts] = useState<Record<string, string>>({});
+  const [reviewReasons, setReviewReasons] = useState<Record<string, string>>({});
+  const [reviewSavingId, setReviewSavingId] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
+  function openReview(payout: TeacherPayout) {
+    setReviewError(null);
+    const flagged = payout.items.filter((i) => i.requiresReview);
+    setReviewAmounts(Object.fromEntries(flagged.map((i) => [i.id, String(i.amount)])));
+    setReviewReasons(Object.fromEntries(flagged.map((i) => [i.id, ""])));
+    setReviewPayout(payout);
+  }
+
+  async function saveReviewItem(item: TeacherPayoutItem) {
+    if (!reviewPayout) return;
+    const reason = (reviewReasons[item.id] ?? "").trim();
+    if (!reason) {
+      setReviewError("A reason is required before saving.");
+      return;
+    }
+    const newAmount = Number(reviewAmounts[item.id]);
+    if (!Number.isFinite(newAmount)) {
+      setReviewError("Enter a valid amount.");
+      return;
+    }
+    setReviewSavingId(item.id);
+    setReviewError(null);
+    try {
+      const updated = await adjustPayoutItem(reviewPayout.id, item.id, { newAmount, reason });
+      const stillFlagged = updated.items.some((i) => i.requiresReview);
+      await reloadPayouts();
+      if (stillFlagged) {
+        setReviewPayout((prev) =>
+          prev ? { ...prev, items: prev.items.map((i) => (i.id === item.id ? { ...i, requiresReview: false, amount: newAmount } : i)) } : prev
+        );
+      } else {
+        setReviewPayout(null);
+      }
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : "Could not save this adjustment.");
+    } finally {
+      setReviewSavingId(null);
+    }
+  }
 
   async function runPayoutAction() {
     if (!confirmTarget) return;
@@ -184,18 +237,40 @@ export default function AdminPayouts() {
         sortable: true,
         accessor: (row) => row.status,
         render: (row) => (
-          <Badge
-            variant={row.status === "paid" ? "success" : row.status === "finalized" ? "default" : "warning"}
-            className="capitalize"
-          >
-            {row.status}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge
+              variant={row.status === "paid" ? "success" : row.status === "finalized" ? "default" : "warning"}
+              className="capitalize"
+            >
+              {row.status}
+            </Badge>
+            {row.requiresReview && (
+              <Badge variant="warning" className="gap-1">
+                <AlertTriangle className="h-3 w-3" /> Needs review
+              </Badge>
+            )}
+          </div>
         ),
       },
       {
         key: "actions",
         header: "",
         render: (row) => {
+          if (row.status === "pending" && row.requiresReview) {
+            return (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-warning-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openReview(row);
+                }}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" /> Review
+              </Button>
+            );
+          }
           if (row.status === "pending") {
             return (
               <Button
@@ -305,6 +380,61 @@ export default function AdminPayouts() {
         destructive={confirmTarget?.action === "finalize"}
         onConfirm={runPayoutAction}
       />
+
+      <Dialog open={reviewPayout !== null} onOpenChange={(open) => !open && setReviewPayout(null)}>
+        <DialogContent className="max-w-lg">
+          {reviewPayout && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Review {reviewPayout.teacherName}'s {reviewPayout.month} payout</DialogTitle>
+                <DialogDescription>
+                  Captured attendance for these session(s) fell well short of the scheduled class. Confirm the amount
+                  as-is or correct it — either way, a reason is logged and the flag clears once saved.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-4">
+                {reviewPayout.items.filter((i) => i.requiresReview).map((item) => (
+                  <div key={item.id} className="rounded-lg border border-border p-3">
+                    <p className="text-sm text-muted-foreground">{item.note}</p>
+                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="grid gap-1.5">
+                        <Label htmlFor={`review-amount-${item.id}`}>Amount (₹)</Label>
+                        <Input
+                          id={`review-amount-${item.id}`}
+                          type="number"
+                          value={reviewAmounts[item.id] ?? ""}
+                          onChange={(e) => setReviewAmounts((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label htmlFor={`review-reason-${item.id}`}>Reason</Label>
+                        <Textarea
+                          id={`review-reason-${item.id}`}
+                          rows={1}
+                          placeholder="e.g. connection dropped, or confirmed full amount"
+                          value={reviewReasons[item.id] ?? ""}
+                          onChange={(e) => setReviewReasons((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <Button size="sm" disabled={reviewSavingId === item.id} onClick={() => saveReviewItem(item)}>
+                        {reviewSavingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {reviewError && <p className="text-sm font-medium text-destructive">{reviewError}</p>}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setReviewPayout(null)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

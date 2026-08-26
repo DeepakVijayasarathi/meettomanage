@@ -137,6 +137,18 @@ export interface TeacherPayout {
   finalAmount: number;
   /** pending: still accruing, amount can change. finalized: locked, awaiting payment. paid: done. */
   status: "pending" | "finalized" | "paid";
+  /** True when a session's captured teacher attendance fell well short of its scheduled duration -- must be resolved (adjusted or confirmed) before this payout can be finalized. */
+  requiresReview: boolean;
+  items: TeacherPayoutItem[];
+}
+
+export interface TeacherPayoutItem {
+  id: string;
+  classSessionId: string | null;
+  type: string;
+  amount: number;
+  note: string | null;
+  requiresReview: boolean;
 }
 
 export interface LeaveRequest {
