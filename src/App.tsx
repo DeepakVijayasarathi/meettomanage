@@ -36,6 +36,7 @@ const AdminEnrollments = lazy(() => import("@/features/admin/Enrollments"));
 const AdminStoreInquiries = lazy(() => import("@/features/admin/StoreInquiries"));
 const AdminSettings = lazy(() => import("@/features/admin/Settings"));
 const AdminMonitoring = lazy(() => import("@/features/admin/Monitoring"));
+const AdminServerDetail = lazy(() => import("@/features/admin/ServerDetail"));
 
 const TeacherDashboard = lazy(() => import("@/features/teacher/Dashboard"));
 const TeacherMyClasses = lazy(() => import("@/features/teacher/MyClasses"));
@@ -154,6 +155,7 @@ export default function App() {
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="monitoring" element={<AdminMonitoring />} />
+              <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
             </Route>
 
             <Route path="/teacher" element={<RequireAuth role="teacher"><AppShell role="teacher"><Outlet /></AppShell></RequireAuth>}>

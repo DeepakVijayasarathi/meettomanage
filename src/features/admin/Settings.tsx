@@ -90,6 +90,17 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "org.supportEmail": { category: "General", fallback: "support@thereadernest.com" },
   "org.supportPhone": { category: "General", fallback: "+91 98200 00000" },
   "org.timezone": { category: "General", fallback: "Asia/Kolkata (GMT +5:30)" },
+  // Printed on every generated invoice PDF (Admin Billing → Download PDF) — these were
+  // fixed constants in the PDF generator until now; editing them here changes every
+  // invoice generated from here on, with no code change or redeploy needed.
+  "invoice.accountNumber": { category: "General", fallback: "777705999305" },
+  "invoice.ifscCode": { category: "General", fallback: "ICIC0008065" },
+  "invoice.branchName": { category: "General", fallback: "sector 17 Faridabad" },
+  "invoice.gstNumber": { category: "General", fallback: "06AWCPN6985H1Z3" },
+  "invoice.accountName": { category: "General", fallback: "THE READER NEST" },
+  "invoice.contactEmail": { category: "General", fallback: "INFO@THEREADERNEST.COM" },
+  "invoice.signatoryName": { category: "General", fallback: "Akanksha Nagar" },
+  "invoice.signatoryTitle": { category: "General", fallback: "Founder & MD" },
   "brand.name": { category: "Branding", isPublic: true, fallback: "The Reader Nest" },
   "brand.logoUrl": { category: "Branding", isPublic: true, fallback: "" },
   "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#1F6FE0" },
@@ -313,6 +324,71 @@ export default function AdminSettings() {
               <div className="grid gap-1.5 sm:col-span-2">
                 <Label htmlFor="org-timezone">Timezone</Label>
                 <Input id="org-timezone" value={values["org.timezone"]} onChange={(e) => setValue("org.timezone", e.target.value)} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Invoice Details</CardTitle>
+              <CardDescription>Bank, GST and signatory details printed on every generated invoice PDF.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-account-number">Account number</Label>
+                <Input
+                  id="invoice-account-number"
+                  value={values["invoice.accountNumber"]}
+                  onChange={(e) => setValue("invoice.accountNumber", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-ifsc">IFSC code</Label>
+                <Input id="invoice-ifsc" value={values["invoice.ifscCode"]} onChange={(e) => setValue("invoice.ifscCode", e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-branch">Branch name</Label>
+                <Input
+                  id="invoice-branch"
+                  value={values["invoice.branchName"]}
+                  onChange={(e) => setValue("invoice.branchName", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-gst">GST number</Label>
+                <Input id="invoice-gst" value={values["invoice.gstNumber"]} onChange={(e) => setValue("invoice.gstNumber", e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-account-name">Account name</Label>
+                <Input
+                  id="invoice-account-name"
+                  value={values["invoice.accountName"]}
+                  onChange={(e) => setValue("invoice.accountName", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-contact-email">Contact email (shown on invoice)</Label>
+                <Input
+                  id="invoice-contact-email"
+                  value={values["invoice.contactEmail"]}
+                  onChange={(e) => setValue("invoice.contactEmail", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-signatory-name">Signatory name</Label>
+                <Input
+                  id="invoice-signatory-name"
+                  value={values["invoice.signatoryName"]}
+                  onChange={(e) => setValue("invoice.signatoryName", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-signatory-title">Signatory title</Label>
+                <Input
+                  id="invoice-signatory-title"
+                  value={values["invoice.signatoryTitle"]}
+                  onChange={(e) => setValue("invoice.signatoryTitle", e.target.value)}
+                />
               </div>
             </CardContent>
           </Card>
