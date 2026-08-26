@@ -530,14 +530,11 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Role Presets</CardTitle>
-          <CardDescription>
-            Permission roles are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={UserCog}
+        title="Demo mode"
+        description="Permission roles are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them."
+      />
     );
   }
 

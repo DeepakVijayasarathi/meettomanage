@@ -690,14 +690,11 @@ function MenuManager() {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Sidebar Menus</CardTitle>
-          <CardDescription>
-            Menus are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode uses the built-in navigation.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={ListTree}
+        title="Demo mode"
+        description="Menus are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode uses the built-in navigation."
+      />
     );
   }
 
@@ -1022,14 +1019,11 @@ function PayoutRatesManager() {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Teacher Payout Rates</CardTitle>
-          <CardDescription>
-            Rate cards are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode has no payout data.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={Wallet}
+        title="Demo mode"
+        description="Rate cards are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode has no payout data."
+      />
     );
   }
 
@@ -1321,12 +1315,11 @@ function JitsiRecordingSettings() {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Jitsi Meet &amp; Recording</CardTitle>
-          <CardDescription>Connect the API (VITE_API_BASE_URL) to manage the live classroom domain and auto-record.</CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={Video}
+        title="Demo mode"
+        description="Connect the API (VITE_API_BASE_URL) to manage the live classroom domain and auto-record."
+      />
     );
   }
 
@@ -1537,14 +1530,11 @@ export function IntegrationsManager() {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Connected Integrations</CardTitle>
-          <CardDescription>
-            Integrations are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={Plug}
+        title="Demo mode"
+        description="Integrations are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them."
+      />
     );
   }
 
