@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -78,6 +78,53 @@ export function DataTable<T>({
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const [page, setPage] = useState(1);
   const selection = selectedKeys ?? new Set<string>();
+
+  // A wide table (many columns, or an action column with 2-3 buttons) routinely runs
+  // past the viewport on a real laptop, not just a phone — DataTable already scrolls it
+  // horizontally instead of clipping, but a plain scrollbar at the very bottom of a tall
+  // page is easy to miss entirely, silently hiding the last column's actions. These two
+  // edge fades make "there's more this way" visible at a glance, and disappear once
+  // there's nothing left to scroll to (including for a table that was never wide enough
+  // to scroll in the first place).
+  // The bordered/rounded box below is only the visual frame — the shared <Table>
+  // primitive wraps its own <table> in its own "overflow-x-auto w-full" div, so
+  // *that* inner div (found via the <table> element's parentElement, since Table
+  // only forwards a ref to the <table> itself) is the element that actually gains
+  // a scrollbar once the table's natural width exceeds it. The frame div matches
+  // it exactly in width either way, so it's still the right place to anchor the
+  // two edge-fade overlays below.
+  const frameRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [scrollShadow, setScrollShadow] = useState({ left: false, right: false });
+
+  function updateScrollShadow() {
+    const el = tableRef.current?.parentElement;
+    if (!el) return;
+    setScrollShadow({
+      left: el.scrollLeft > 1,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+    });
+  }
+
+  // Listener/observer are only ever attached once — mount-only deps are correct here.
+  useEffect(() => {
+    const el = tableRef.current?.parentElement;
+    if (!el) return;
+    updateScrollShadow();
+    el.addEventListener("scroll", updateScrollShadow, { passive: true });
+    // Two different things can change which way is scrollable: the container's own
+    // width (sidebar collapse, window resize) and the table's content width (a new
+    // page of rows, a column added/removed) — the latter doesn't touch the
+    // container's box size at all, so the <table> itself needs its own observed target too.
+    const observer = new ResizeObserver(updateScrollShadow);
+    observer.observe(el);
+    if (tableRef.current) observer.observe(tableRef.current);
+    return () => {
+      el.removeEventListener("scroll", updateScrollShadow);
+      observer.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function toggleRow(key: string, checked: boolean) {
     const next = new Set(selection);
@@ -265,8 +312,25 @@ export function DataTable<T>({
             })}
           </div>
 
-          <div className="hidden overflow-x-auto rounded-xl border border-border sm:block">
-            <Table>
+          <div ref={frameRef} className="relative hidden overflow-hidden rounded-xl border border-border sm:block">
+            {/* Edge fades: pointer-events-none so they never intercept clicks/scroll on
+                the real content underneath, and sized to roughly a column's worth of
+                width so they read as "content continues" rather than a stray line. */}
+            <div
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-background to-transparent transition-opacity duration-150",
+                scrollShadow.left ? "opacity-100" : "opacity-0"
+              )}
+            />
+            <div
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent transition-opacity duration-150",
+                scrollShadow.right ? "opacity-100" : "opacity-0"
+              )}
+            />
+            <Table ref={tableRef}>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   {selectable && (
