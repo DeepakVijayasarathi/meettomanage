@@ -18,6 +18,8 @@ export interface ApiPayoutItem {
   amount: number;
   note: string | null;
   createdAtUtc: string;
+  /** Teacher's captured attendance fell well short of the scheduled class -- needs a human look before this payout is finalized. */
+  requiresReview: boolean;
 }
 
 export interface ApiPayout {
@@ -75,6 +77,15 @@ export function toFrontendPayout(payout: ApiPayout): TeacherPayout {
     // since a Pending payout can still change (more sessions may complete this month)
     // while a Finalized one is locked and just waiting to be paid.
     status: payout.status === "Paid" ? "paid" : payout.status === "Finalized" ? "finalized" : "pending",
+    requiresReview: payout.items.some((i) => i.requiresReview),
+    items: payout.items.map((i) => ({
+      id: i.id,
+      classSessionId: i.classSessionId,
+      type: i.type,
+      amount: i.amount,
+      note: i.note,
+      requiresReview: i.requiresReview,
+    })),
   };
 }
 
@@ -102,6 +113,18 @@ export async function finalizePayout(id: string): Promise<ApiPayout> {
 
 export async function markPayoutPaid(id: string): Promise<ApiPayout> {
   return apiFetch<ApiPayout>(`/api/payouts/${id}/mark-paid`, { method: "POST" });
+}
+
+/** Corrects (or confirms as-is) one flagged line item — only while its payout is still Pending. Clears the review flag either way. */
+export async function adjustPayoutItem(
+  payoutId: string,
+  itemId: string,
+  input: { newAmount: number; reason: string }
+): Promise<ApiPayout> {
+  return apiFetch<ApiPayout>(`/api/payouts/${payoutId}/items/${itemId}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function listPayoutRates(teacherProfileId?: string): Promise<ApiPayoutRate[]> {
