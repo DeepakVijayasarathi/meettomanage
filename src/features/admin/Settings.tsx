@@ -92,15 +92,17 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "org.timezone": { category: "General", fallback: "Asia/Kolkata (GMT +5:30)" },
   // Printed on every generated invoice PDF (Admin Billing → Download PDF) — these were
   // fixed constants in the PDF generator until now; editing them here changes every
-  // invoice generated from here on, with no code change or redeploy needed.
-  "invoice.accountNumber": { category: "General", fallback: "777705999305" },
-  "invoice.ifscCode": { category: "General", fallback: "ICIC0008065" },
-  "invoice.branchName": { category: "General", fallback: "sector 17 Faridabad" },
-  "invoice.gstNumber": { category: "General", fallback: "06AWCPN6985H1Z3" },
-  "invoice.accountName": { category: "General", fallback: "THE READER NEST" },
-  "invoice.contactEmail": { category: "General", fallback: "INFO@THEREADERNEST.COM" },
-  "invoice.signatoryName": { category: "General", fallback: "Akanksha Nagar" },
-  "invoice.signatoryTitle": { category: "General", fallback: "Founder & MD" },
+  // invoice generated from here on, with no code change or redeploy needed. No fallback
+  // value here: this is real org-specific bank/GST/signatory data, which must live only
+  // in the database (set once via this screen), never hardcoded in source.
+  "invoice.accountNumber": { category: "General", fallback: "" },
+  "invoice.ifscCode": { category: "General", fallback: "" },
+  "invoice.branchName": { category: "General", fallback: "" },
+  "invoice.gstNumber": { category: "General", fallback: "" },
+  "invoice.accountName": { category: "General", fallback: "" },
+  "invoice.contactEmail": { category: "General", fallback: "" },
+  "invoice.signatoryName": { category: "General", fallback: "" },
+  "invoice.signatoryTitle": { category: "General", fallback: "" },
   "brand.name": { category: "Branding", isPublic: true, fallback: "The Reader Nest" },
   "brand.logoUrl": { category: "Branding", isPublic: true, fallback: "" },
   "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#1F6FE0" },
