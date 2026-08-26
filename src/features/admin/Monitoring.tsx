@@ -219,7 +219,12 @@ function ServerCard({ server }: { server: ServerStatus }) {
 
       <div className="mt-4 rounded-lg border border-border p-3.5">
         <p className="mb-3 text-xs font-semibold text-foreground">Network &amp; Disk I/O</p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* Deliberately always 2-up, not sm:grid-cols-4 — this card sits inside the
+            xl:grid-cols-2 server grid below, so its real width is roughly half the
+            viewport, not the viewport itself. A viewport-based sm: breakpoint here
+            fired well before there was ever four tiles' worth of room, wrapping
+            "Network In" / "12.3 Mbps" across two or three lines each. */}
+        <div className="grid grid-cols-2 gap-3">
           <StatTile icon={TrendingUp} label="Network In" value={`${num(server.networkRxMbps).toFixed(1)} Mbps`} />
           <StatTile icon={TrendingUp} label="Network Out" value={`${num(server.networkTxMbps).toFixed(1)} Mbps`} />
           <StatTile icon={HardDrive} label="Disk Read" value={`${num(server.diskReadMbps).toFixed(1)} MB/s`} />
@@ -246,7 +251,12 @@ function ServerCard({ server }: { server: ServerStatus }) {
               {server.callQuality.jvbHealthy ? "Bridge healthy" : "Bridge unhealthy"}
             </Badge>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {/* Same reasoning as Network & Disk I/O above — this card is at most ~half
+              the viewport wide once the server grid goes 2-up, so a viewport sm:
+              breakpoint wrapped "Bitrate In/Out" / "850 / 1240 kbps" mid-value. The
+              full-width ServerDetail drill-down (ServerDetail.tsx) has real room for
+              3-across and keeps its own sm:grid-cols-3 as-is. */}
+          <div className="grid grid-cols-2 gap-3">
             <StatTile
               icon={Activity}
               label="Avg RTT"
