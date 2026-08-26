@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { LucideIcon } from "lucide-react";
-import { AlertCircle, Download, IndianRupee, PieChart as PieChartIcon, Users } from "lucide-react";
+import { AlertCircle, Download, IndianRupee, Inbox, PieChart as PieChartIcon, Users } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
@@ -89,7 +89,8 @@ function SummaryCard({ icon: Icon, title, description, columns, rows, filename, 
             )}
           </div>
         ) : rows.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+          <div className="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+            <Inbox className="h-5 w-5" />
             <span>No data for this period.</span>
           </div>
         ) : (
