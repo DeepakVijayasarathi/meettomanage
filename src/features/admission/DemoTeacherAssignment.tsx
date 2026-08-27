@@ -264,7 +264,10 @@ export default function DemoTeacherAssignment() {
         </Card>
       )}
 
-      {bookingId && detailLoading && <p className="py-10 text-center text-sm text-muted-foreground">Loading booking…</p>}
+      {/* Gated on !detail, not !detailLoading -- a background refresh after a successful
+          reassignment (loadDetail again) must not unmount this whole panel and flash the
+          success banner away while it's still meant to be showing. */}
+      {bookingId && detailLoading && !detail && <p className="py-10 text-center text-sm text-muted-foreground">Loading booking…</p>}
 
       {bookingId && !detailLoading && detailError && (
         <div role="alert" className="flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
@@ -272,7 +275,7 @@ export default function DemoTeacherAssignment() {
         </div>
       )}
 
-      {bookingId && !detailLoading && !detailError && detail && (
+      {bookingId && !detailError && detail && (
         <div className="flex flex-col gap-6">
           {successMessage && (
             <div className="flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
