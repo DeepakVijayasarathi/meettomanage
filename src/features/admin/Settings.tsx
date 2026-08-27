@@ -27,6 +27,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -178,6 +179,7 @@ const SETTINGS_TABS = new Set([
 ]);
 
 export default function AdminSettings() {
+  const { toast } = useToast();
   const [values, setValues] = useState<Record<string, string>>(defaultValues);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -233,8 +235,10 @@ export default function AdminSettings() {
         }));
         await updateSettings(items);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not save settings.");
+        const message = err instanceof Error ? err.message : "Could not save settings.";
+        setError(message);
         setSaving(false);
+        toast({ variant: "error", title: "Couldn't save settings", description: message });
         return;
       }
       setSaving(false);
@@ -250,6 +254,7 @@ export default function AdminSettings() {
 
     setSaved(true);
     setTimeout(() => setSaved(false), 2200);
+    toast({ variant: "success", title: "Settings saved", description: "Your changes are live." });
   }
 
   const brandColor = values["brand.primaryColor"];
@@ -668,6 +673,7 @@ export default function AdminSettings() {
 
 /** DB-backed sidebar menu manager: per-portal item list with add/edit/delete. */
 function MenuManager() {
+  const { toast } = useToast();
   const [portal, setPortal] = useState<string>("admin");
   const [items, setItems] = useState<ApiMenuItem[]>([]);
   const [busy, setBusy] = useState(false);
@@ -733,8 +739,11 @@ function MenuManager() {
       setForm(null);
       setEditingId(null);
       await reload();
+      toast({ variant: "success", title: editingId ? "Menu item updated" : "Menu item created" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the menu item.");
+      const message = err instanceof Error ? err.message : "Could not save the menu item.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save menu item", description: message });
     } finally {
       setBusy(false);
     }
@@ -745,8 +754,11 @@ function MenuManager() {
     try {
       await deleteMenuItem(item.id);
       await reload();
+      toast({ variant: "success", title: `"${item.label}" removed` });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete the menu item.");
+      const message = err instanceof Error ? err.message : "Could not delete the menu item.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't delete menu item", description: message });
     } finally {
       setBusy(false);
     }
@@ -987,16 +999,15 @@ const DEFAULT_RATE_CARD = "__default";
 type RateCardRow = {
   key: string;
   label: string;
-  /** One flat rate per session, regardless of the class's actual length. */
   ratePerSession: number;
   penaltyPercent: number;
 };
 
-/** One summary row per card (default + each teacher). */
+/** One summary row per card (default + each teacher) -- flat rate, not per-duration. */
 function buildRateCardRows(allRates: ApiPayoutRate[]): RateCardRow[] {
   const map = new Map<string, RateCardRow>();
   // listPayoutRates() orders newest-EffectiveFrom-first within each teacher group, so
-  // the first row seen per teacher key here is always the live one.
+  // the first row seen per card here is always the live one.
   for (const rate of allRates) {
     const key = rate.teacherProfileId ?? DEFAULT_RATE_CARD;
     if (!map.has(key)) {
@@ -1008,11 +1019,12 @@ function buildRateCardRows(allRates: ApiPayoutRate[]): RateCardRow[] {
 
 /**
  * Teacher payout rate cards (WBS p.31 "tutor payout rules" / "Penalty configuration"):
- * one flat per-session rate (same regardless of how long the class actually ran) plus
- * the teacher no-show penalty. A card with no teacher is the centre-wide default that
- * pays anyone without their own card; a teacher's own card overrides it just for them.
+ * one flat per-session rate (regardless of class duration) plus the teacher no-show
+ * penalty. A card with no teacher is the centre-wide default that pays anyone without
+ * their own card; a teacher's own card overrides it for that teacher only.
  */
 function PayoutRatesManager() {
+  const { toast } = useToast();
   const [allRates, setAllRates] = useState<ApiPayoutRate[]>([]);
   const [loaded, setLoaded] = useState(!apiEnabled());
   const [error, setError] = useState<string | null>(null);
@@ -1056,13 +1068,15 @@ function PayoutRatesManager() {
   // Prefill from whatever's already loaded for this card — no extra round trip.
   useEffect(() => {
     if (!dialogOpen) return;
-    const existing = allRates.find((r) => (r.teacherProfileId ?? DEFAULT_RATE_CARD) === dialogTeacherId);
-    setRatePerSession(String(existing?.ratePerSession ?? 0));
-    setPenaltyPercent(existing?.teacherNoShowPenaltyPercent ?? 100);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogOpen, dialogTeacherId]);
+    const existing = cardRows.find((r) => r.key === dialogTeacherId);
+    setRatePerSession(existing ? String(existing.ratePerSession) : "0");
+    setPenaltyPercent(existing ? existing.penaltyPercent : 100);
+  }, [dialogOpen, dialogTeacherId, cardRows]);
 
-  const rateError = !Number.isFinite(Number(ratePerSession)) || Number(ratePerSession) < 0 ? "Rate must be zero or a positive amount." : null;
+  const rateError =
+    !Number.isFinite(Number(ratePerSession)) || Number(ratePerSession) < 0
+      ? "Rate must be zero or a positive amount."
+      : null;
 
   async function handleSave() {
     if (!apiEnabled()) {
@@ -1076,14 +1090,17 @@ function PayoutRatesManager() {
     try {
       await savePayoutRate({
         teacherProfileId: dialogTeacherId === DEFAULT_RATE_CARD ? undefined : dialogTeacherId,
-        ratePerSession: Number(ratePerSession),
+        ratePerSession: Number(ratePerSession) || 0,
         teacherNoShowPenaltyPercent: penaltyPercent,
         effectiveFrom: today,
       });
       setSaved(true);
       await reload();
+      toast({ variant: "success", title: "Rate card saved" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the rate card.");
+      const message = err instanceof Error ? err.message : "Could not save the rate card.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save the rate card", description: message });
     } finally {
       setSaving(false);
     }
@@ -1105,8 +1122,8 @@ function PayoutRatesManager() {
         <div>
           <CardTitle>Teacher Payout Rates</CardTitle>
           <CardDescription>
-            One flat rate per session, plus the teacher no-show penalty. The default card pays any teacher
-            without rates of their own; a teacher's own card overrides it just for them.
+            One flat rate per session, plus the teacher no-show penalty. The default card pays any teacher without a
+            rate of their own; a teacher's own card overrides it just for them.
           </CardDescription>
         </div>
         <Button size="sm" onClick={() => openDialog(DEFAULT_RATE_CARD)}>
@@ -1140,7 +1157,7 @@ function PayoutRatesManager() {
                       {row.key === DEFAULT_RATE_CARD ? "All teachers (default)" : row.label}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {formatCurrency(row.ratePerSession)}/session · No-show penalty {row.penaltyPercent}%
+                      {formatCurrency(row.ratePerSession)} per session · No-show penalty {row.penaltyPercent}%
                     </p>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => openDialog(row.key)}>
@@ -1327,6 +1344,7 @@ const EMPTY_JITSI_FORM = { domain: "", appId: "", appSecret: "", autoRecord: tru
  * is Dictionary<string,string> end to end (see JITSI_ARCHITECTURE.md / SessionService.ReadAutoRecordEnabled).
  */
 function JitsiRecordingSettings() {
+  const { toast } = useToast();
   const [integration, setIntegration] = useState<ApiIntegration | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [form, setForm] = useState(EMPTY_JITSI_FORM);
@@ -1381,8 +1399,11 @@ function JitsiRecordingSettings() {
       else await createIntegration(request);
       await reload();
       setSaved(true);
+      toast({ variant: "success", title: "Jitsi settings saved" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save Jitsi settings.");
+      const message = err instanceof Error ? err.message : "Could not save Jitsi settings.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save Jitsi settings", description: message });
     } finally {
       setBusy(false);
     }
