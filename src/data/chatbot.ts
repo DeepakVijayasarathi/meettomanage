@@ -125,6 +125,7 @@ export const MOCK_CHATBOT_USAGE_STATS: ApiChatbotUsageStats = {
   escalatedToTeacher: 7,
   pendingEscalations: 1,
   activeUsers: 19,
+  markedUnhelpful: 3,
   topUnansweredQuestions: [
     "Can my child switch from the Tuesday batch to the Thursday batch?",
     "Why was yesterday's class shorter than usual?",

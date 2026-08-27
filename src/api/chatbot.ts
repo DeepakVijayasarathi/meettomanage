@@ -28,6 +28,8 @@ export interface ApiChatMessage {
   sender: ChatMessageSender;
   text: string;
   matchedFaqId: string | null;
+  /** Null until rated; only meaningful on a Bot message that matched an FAQ. */
+  wasHelpful: boolean | null;
   createdAtUtc: string;
 }
 
@@ -59,6 +61,7 @@ export interface ApiChatbotUsageStats {
   escalatedToTeacher: number;
   pendingEscalations: number;
   activeUsers: number;
+  markedUnhelpful: number;
   topUnansweredQuestions: string[];
 }
 
@@ -75,6 +78,18 @@ export async function askChatbot(message: string): Promise<AskChatbotResponse> {
 /** The signed-in user's own chat history — private to them, like FloatingNotes. */
 export async function listMyChatHistory(): Promise<ApiChatMessage[]> {
   return apiFetch<ApiChatMessage[]>("/api/chatbot/history");
+}
+
+/**
+ * Rates a bot answer. Marking it unhelpful escalates the original question to a teacher —
+ * a matched FAQ isn't automatically the right answer, so this is a second escalation path
+ * alongside "nothing matched at all".
+ */
+export async function submitChatFeedback(messageId: string, helpful: boolean, originalQuestion: string): Promise<ApiChatMessage> {
+  return apiFetch<ApiChatMessage>(`/api/chatbot/messages/${messageId}/feedback`, {
+    method: "PUT",
+    body: JSON.stringify({ helpful, originalQuestion }),
+  });
 }
 
 /** All FAQs including inactive ones — admin/sub-admin FAQ management. */
