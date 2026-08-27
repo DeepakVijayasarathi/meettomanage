@@ -248,7 +248,7 @@ export default function StudentDashboard() {
                   >
                     {entry.name.charAt(0)}
                   </span>
-                  <p className="flex-1 truncate text-sm font-semibold text-foreground">
+                  <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
                     {entry.name} {isMe && <span className="text-primary">(You)</span>}
                   </p>
                   <span className="flex items-center gap-1 text-sm font-bold text-foreground">
@@ -586,7 +586,7 @@ function ApiStudentDashboard() {
                     >
                       {entry.participantName.charAt(0)}
                     </span>
-                    <p className="flex-1 truncate text-sm font-semibold text-foreground">
+                    <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
                       {entry.participantName} {isMe && <span className="text-primary">(You)</span>}
                     </p>
                     <span className="flex items-center gap-1 text-sm font-bold text-foreground">

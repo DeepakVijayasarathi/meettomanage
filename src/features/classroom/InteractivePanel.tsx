@@ -409,7 +409,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                   <span className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: entry.color }}>
                     {entry.name.slice(0, 1).toUpperCase()}
                   </span>
-                  <span className="flex-1 truncate text-sm font-semibold text-white">{entry.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{entry.name}</span>
                   <span className="flex items-center gap-1 text-xs font-bold text-brand-amber">
                     <Star className="h-3.5 w-3.5 fill-brand-amber" /> {entry.stars}
                   </span>
