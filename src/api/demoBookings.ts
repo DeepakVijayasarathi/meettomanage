@@ -33,6 +33,7 @@ export interface ApiDemoBooking {
   conversionStatus: ApiConversionStatus;
   followUpNotes: string | null;
   scheduledStartAtUtc: string | null;
+  scheduledEndAtUtc: string | null;
   meetingRoomId: string | null;
   /** Teacher conducting (or who conducted) the demo. */
   teacherProfileId: string | null;
@@ -112,6 +113,48 @@ export function toFrontendLead(booking: ApiDemoBooking): Lead {
 export async function listDemoBookings(status?: ApiConversionStatus): Promise<ApiDemoBooking[]> {
   const query = status ? `?status=${status}` : "";
   return apiFetch<ApiDemoBooking[]>(`/api/demo-bookings${query}`);
+}
+
+export async function getDemoBooking(id: string): Promise<ApiDemoBooking> {
+  return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${id}`);
+}
+
+/** One active teacher's load around a booking's slot — powers the reassignment page's availability view. */
+export interface ApiTeacherWorkload {
+  teacherProfileId: string;
+  teacherName: string;
+  departmentId: string | null;
+  departmentName: string | null;
+  /** True if this teacher already has an overlapping session at the booking's slot. */
+  isBusyAtSlot: boolean;
+  sessionsToday: number;
+  sessionsThisWeek: number;
+}
+
+export async function getDemoTeacherWorkload(bookingId: string): Promise<ApiTeacherWorkload[]> {
+  return apiFetch<ApiTeacherWorkload[]>(`/api/demo-bookings/${bookingId}/teacher-workload`);
+}
+
+/** One manual teacher reassignment on a demo booking, newest first. */
+export interface ApiDemoReassignmentHistory {
+  id: string;
+  atUtc: string;
+  actorName: string | null;
+  oldTeacherName: string | null;
+  newTeacherName: string;
+  reason: string | null;
+}
+
+export async function getDemoReassignmentHistory(bookingId: string): Promise<ApiDemoReassignmentHistory[]> {
+  return apiFetch<ApiDemoReassignmentHistory[]>(`/api/demo-bookings/${bookingId}/reassignment-history`);
+}
+
+/** Manually override the teacher assigned to a demo booking. */
+export async function reassignDemoTeacher(bookingId: string, teacherProfileId: string, reason?: string): Promise<ApiDemoBooking> {
+  return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${bookingId}/teacher`, {
+    method: "PUT",
+    body: JSON.stringify({ teacherProfileId, reason: reason || undefined }),
+  });
 }
 
 export async function createDemoBooking(input: {

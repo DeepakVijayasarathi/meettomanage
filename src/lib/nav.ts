@@ -26,6 +26,7 @@ import {
   History,
   CalendarRange,
   UserSearch,
+  UserCog,
   Link2,
   KanbanSquare,
   TrendingUp,
@@ -181,6 +182,7 @@ export const ADMISSION_NAV: NavSection[] = [
     title: "Pipeline",
     items: [
       { label: "Demo Scheduling", to: "/admission/demo-scheduling", icon: CalendarClock },
+      { label: "Teacher Assignment", to: "/admission/demo-teacher-assignment", icon: UserCog },
       { label: "Demo Feedback", to: "/admission/demo-feedback", icon: ClipboardCheck },
       { label: "Conversion Board", to: "/admission/conversion", icon: KanbanSquare },
     ],

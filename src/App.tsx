@@ -66,6 +66,7 @@ const SubAdminAuditLog = lazy(() => import("@/features/subadmin/AuditLog"));
 
 const AdmissionDashboard = lazy(() => import("@/features/admission/Dashboard"));
 const AdmissionDemoScheduling = lazy(() => import("@/features/admission/DemoScheduling"));
+const AdmissionDemoTeacherAssignment = lazy(() => import("@/features/admission/DemoTeacherAssignment"));
 const AdmissionDemoFeedback = lazy(() => import("@/features/admission/DemoFeedback"));
 const AdmissionLeads = lazy(() => import("@/features/admission/Leads"));
 const AdmissionPayments = lazy(() => import("@/features/admission/Payments"));
@@ -191,6 +192,8 @@ export default function App() {
             <Route path="/admission" element={<RequireAuth role="admission"><AppShell role="admission"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<AdmissionDashboard />} />
               <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
+              <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-teacher-assignment/:bookingId" element={<AdmissionDemoTeacherAssignment />} />
               <Route path="demo-feedback" element={<AdmissionDemoFeedback />} />
               <Route path="leads" element={<AdmissionLeads />} />
               <Route path="payments" element={<AdmissionPayments />} />

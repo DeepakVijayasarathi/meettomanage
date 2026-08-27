@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { AlertCircle, CalendarPlus, CheckCircle2, ChevronDown, ChevronUp, Trash2, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -322,6 +323,15 @@ export default function AdmissionDemoScheduling() {
         header: "Actions",
         render: (row) => (
           <div className="flex items-center gap-1.5">
+            {row.status === "demo" ? (
+              <Button asChild variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
+                <Link to={`/admission/demo-teacher-assignment/${row.id}`}>Reassign</Link>
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" disabled>
+                Reassign
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
