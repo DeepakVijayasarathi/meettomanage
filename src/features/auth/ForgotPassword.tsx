@@ -8,6 +8,9 @@ import { Label } from "@/components/ui/label";
 import { apiEnabled } from "@/lib/api";
 import { requestPinReset } from "@/api/auth";
 
+// Same headline face as Login.tsx (scoped to this page only, not the global font-display).
+const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
+
 export default function ForgotPassword() {
   const live = apiEnabled();
   const [email, setEmail] = useState("");
@@ -33,17 +36,19 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 text-center shadow-card">
+    <div className="flex min-h-screen items-center justify-center bg-brand-cream px-6">
+      <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-[0_24px_70px_-24px_rgba(43,32,20,0.22)] ring-1 ring-brand-ink/[0.04]">
         <Logo className="mb-6 justify-center" />
 
         {!live ? (
           <>
-            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-brand-green/10 text-brand-green">
               <ShieldQuestion className="h-6 w-6" />
             </span>
-            <h2 className="text-lg font-bold tracking-tight sm:text-xl">Forgot your PIN?</h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">
+            <h2 style={{ fontFamily: HEADLINE_FONT }} className="text-lg font-semibold tracking-tight text-brand-ink sm:text-xl">
+              Forgot your PIN?
+            </h2>
+            <p className="mt-1.5 text-sm text-brand-ink/70">
               Demo mode — connect the API (VITE_API_BASE_URL) to try the real self-service reset flow.
             </p>
           </>
@@ -52,32 +57,38 @@ export default function ForgotPassword() {
             <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success/15 text-success">
               <CheckCircle2 className="h-6 w-6" />
             </span>
-            <h2 className="text-lg font-bold tracking-tight sm:text-xl">Check your email</h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              If <strong className="text-foreground">{email.trim()}</strong> has an account with us, a reset link is on
+            <h2 style={{ fontFamily: HEADLINE_FONT }} className="text-lg font-semibold tracking-tight text-brand-ink sm:text-xl">
+              Check your email
+            </h2>
+            <p className="mt-1.5 text-sm text-brand-ink/70">
+              If <strong className="text-brand-ink">{email.trim()}</strong> has an account with us, a reset link is on
               its way — it expires in 30 minutes and works once.
             </p>
           </>
         ) : (
           <>
-            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-brand-green/10 text-brand-green">
               <ShieldQuestion className="h-6 w-6" />
             </span>
-            <h2 className="text-lg font-bold tracking-tight sm:text-xl">Forgot your PIN?</h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">
+            <h2 style={{ fontFamily: HEADLINE_FONT }} className="text-lg font-semibold tracking-tight text-brand-ink sm:text-xl">
+              Forgot your PIN?
+            </h2>
+            <p className="mt-1.5 text-sm text-brand-ink/70">
               Enter the email on your account and we'll send you a link to set a new PIN.
             </p>
             <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3 text-left">
               <div className="grid gap-1.5">
-                <Label htmlFor="forgot-email">Email</Label>
+                <Label htmlFor="forgot-email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
+                  Email
+                </Label>
                 <div className="relative">
-                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-ink/35" />
                   <Input
                     id="forgot-email"
                     type="email"
                     required
                     autoFocus
-                    className="pl-9"
+                    className="h-11 pl-9"
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -89,11 +100,16 @@ export default function ForgotPassword() {
                   {error}
                 </p>
               )}
-              <Button type="submit" disabled={submitting || !email.trim()} className="mt-1">
+              <Button
+                type="submit"
+                size="lg"
+                disabled={submitting || !email.trim()}
+                className="mt-1 !bg-brand-green !text-white hover:!bg-brand-greenDark"
+              >
                 {submitting ? "Sending…" : "Send reset link"}
               </Button>
             </form>
-            <p className="mt-4 text-xs text-muted-foreground">
+            <p className="mt-4 text-xs text-brand-ink/70">
               Staff accounts can also ask an admin to resend credentials directly.
             </p>
           </>
@@ -101,7 +117,7 @@ export default function ForgotPassword() {
 
         <Link
           to="/login"
-          className="mt-6 flex items-center justify-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+          className="mt-6 flex items-center justify-center gap-1.5 text-sm font-semibold text-brand-greenDark hover:underline"
         >
           <ArrowLeft className="h-4 w-4" /> Back to login
         </Link>

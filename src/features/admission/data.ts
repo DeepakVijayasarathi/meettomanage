@@ -58,7 +58,7 @@ export interface PaymentLink {
   childName: string;
   parentName: string;
   courseName: string;
-  department: "Phonics" | "Maths";
+  department: string;
   amount: number;
   amountPaid: number;
   status: PaymentStatus;
@@ -67,8 +67,6 @@ export interface PaymentLink {
   paidOn?: string;
   paymentLinkUrl: string;
 }
-
-export const ADMISSION_TEAM_NAMES = ["Priya Menon", "Farhan Ali"];
 
 export const LEADS: Lead[] = [
   {
@@ -633,14 +631,6 @@ export const CONVERSION_RATE_TREND = [
   { month: "Jun", rate: 41 },
   { month: "Jul", rate: 44 },
 ];
-
-export function getLeadById(id: string) {
-  return LEADS.find((l) => l.id === id);
-}
-
-export function getPaymentLinksForLead(leadId: string) {
-  return PAYMENT_LINKS.filter((p) => p.leadId === leadId);
-}
 
 /** Cumulative pass-through funnel derived from the current LEADS snapshot. */
 export function getConversionFunnel() {

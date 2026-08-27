@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
-import { BookOpen, CheckCircle2, Plus, Users2 } from "lucide-react";
+import { BookOpen, Plus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,12 +18,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { COURSES } from "@/data/courses";
+import { DEMO_DEPARTMENTS } from "@/data/departments";
 import type { Course } from "@/types";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { createCourse, listCourses, toFrontendCourse } from "@/api/courses";
+import { bulkImportCourses, createCourse, exportCourses, listCategories, listCourses, toFrontendCourse, type ApiCourseCategory } from "@/api/courses";
+import { listDepartments, type ApiDepartment } from "@/api/departments";
+import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 
 const CATEGORY_COLOR: Record<string, string> = {
   Phonics: CHART_PALETTE[3],
@@ -40,12 +45,16 @@ const STATUS_VARIANT: Record<Course["status"], "success" | "warning" | "muted"> 
 };
 
 export default function AdminCourses() {
+  const { toast } = useToast();
   const { data: courses, error: apiError, reload } = useApiData(
     () => listCourses().then((list) => list.map(toFrontendCourse)),
     COURSES
   );
+  const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), DEMO_DEPARTMENTS);
+  const { data: categories } = useApiData<ApiCourseCategory[]>(() => listCategories(), []);
   const [createOpen, setCreateOpen] = useState(false);
-  const [category, setCategory] = useState<Course["category"]>("Phonics");
+  const [category, setCategory] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [type, setType] = useState<Course["type"]>("group");
   const [duration, setDuration] = useState("30");
   const [name, setName] = useState("");
@@ -53,12 +62,15 @@ export default function AdminCourses() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const effectiveDepartmentId = departmentId || departments[0]?.id || "";
 
   // Opens the dialog on a blank form — reopening it used to still hold the previous
   // attempt's course name and price.
   function openCreate() {
     setName("");
     setPrice("");
+    setCategory("");
+    setDepartmentId("");
     setSaveError(null);
     setCreateOpen(true);
   }
@@ -69,6 +81,18 @@ export default function AdminCourses() {
     // exactly like a course that was created and then vanished.
     if (!name.trim()) {
       setSaveError("Course name is required.");
+      return;
+    }
+    if (!category.trim()) {
+      setSaveError("Category is required.");
+      return;
+    }
+    if (!Number.isFinite(Number(duration)) || Number(duration) <= 0) {
+      setSaveError("Duration must be a positive number of minutes.");
+      return;
+    }
+    if (!effectiveDepartmentId) {
+      setSaveError("Add a department under Academics → Departments before creating a course.");
       return;
     }
 
@@ -84,6 +108,7 @@ export default function AdminCourses() {
       await createCourse({
         name: name.trim(),
         categoryName: category,
+        departmentId: effectiveDepartmentId,
         type,
         durationMinutes: Number(duration),
         price: Number(price) || 0,
@@ -92,8 +117,11 @@ export default function AdminCourses() {
       setName("");
       setPrice("");
       reload();
+      toast({ variant: "success", title: "Course created" });
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not create the course.");
+      const message = err instanceof Error ? err.message : "Could not create the course.";
+      setSaveError(message);
+      toast({ variant: "error", title: "Couldn't create course", description: message });
     } finally {
       setSaving(false);
     }
@@ -107,7 +135,7 @@ export default function AdminCourses() {
         sortable: true,
         accessor: (row) => row.name,
         render: (row) => (
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <span
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
               style={{
@@ -117,8 +145,8 @@ export default function AdminCourses() {
             >
               <BookOpen className="h-[18px] w-[18px]" />
             </span>
-            <div>
-              <p className="font-semibold text-foreground">{row.name}</p>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-foreground">{row.name}</p>
               <p className="text-xs text-muted-foreground">{row.category}</p>
             </div>
           </div>
@@ -197,16 +225,15 @@ export default function AdminCourses() {
       />
 
       {apiEnabled() && apiError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not reach the API ({apiError}) — showing demo data.
-        </p>
+        </InlineAlert>
       )}
 
       {notice && (
-        <p className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+        <InlineAlert variant="success" className="mb-4">
           {notice}
-        </p>
+        </InlineAlert>
       )}
 
       <DataTable
@@ -215,6 +242,15 @@ export default function AdminCourses() {
         rowKey={(row) => row.id}
         searchPlaceholder="Search courses by name or category…"
         pageSize={8}
+        toolbar={
+          <BulkImportExportBar
+            entityLabel="courses"
+            templateColumns={["DepartmentName", "CategoryName", "Name", "Description", "Type", "DurationMinutes", "Price", "TotalSessions", "IsActive"]}
+            onImport={bulkImportCourses}
+            onExport={exportCourses}
+            onImported={reload}
+          />
+        }
       />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -234,24 +270,42 @@ export default function AdminCourses() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label>Category</Label>
-                <Select value={category} onValueChange={(v) => setCategory(v as Course["category"])}>
-                  <SelectTrigger>
-                    <SelectValue />
+                <Label htmlFor="course-category-input">Category</Label>
+                {/* Free text + suggestions instead of a fixed list: course categories are
+                    admin-defined (see ensureCategory in api/courses.ts, which reuses an
+                    existing category by name or creates one), not a closed set. */}
+                <Input
+                  id="course-category-input"
+                  list="course-category-options"
+                  placeholder="e.g. Reading, Grammar, or a new category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                />
+                <datalist id="course-category-options">
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name} />
+                  ))}
+                </datalist>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="course-department-select">Department</Label>
+                <Select value={effectiveDepartmentId} onValueChange={setDepartmentId}>
+                  <SelectTrigger id="course-department-select">
+                    <SelectValue placeholder="Select a department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Phonics">Phonics</SelectItem>
-                    <SelectItem value="Maths">Maths</SelectItem>
-                    <SelectItem value="Reading">Reading</SelectItem>
-                    <SelectItem value="Writing">Writing</SelectItem>
-                    <SelectItem value="Speaking">Speaking</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Type</Label>
+                <Label htmlFor="course-type-select">Type</Label>
                 <Select value={type} onValueChange={(v) => setType(v as Course["type"])}>
-                  <SelectTrigger>
+                  <SelectTrigger id="course-type-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -264,17 +318,15 @@ export default function AdminCourses() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label>Duration</Label>
-                <Select value={duration} onValueChange={setDuration}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="30">30 minutes</SelectItem>
-                    <SelectItem value="45">45 minutes</SelectItem>
-                    <SelectItem value="60">60 minutes</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="course-duration-input">Duration (min)</Label>
+                <Input
+                  id="course-duration-input"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="course-price">Price (₹)</Label>

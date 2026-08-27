@@ -103,7 +103,7 @@ export default function Toolbar({
           a 375px viewport and was clipping the mic button on one end and Leave on the
           other with no way to reach them. shrink-0 on every button keeps them from being
           squashed unevenly if the row ever does need to scroll. */}
-      <div className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-white/10 bg-slate-900/90 px-1.5 py-1.5 shadow-pop backdrop-blur sm:gap-2 sm:px-3 sm:py-2">
+      <div className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-white/10 bg-brand-navy/90 px-1.5 py-1.5 shadow-pop backdrop-blur sm:gap-2 sm:px-3 sm:py-2">
         <ToolbarButton label={micOn ? "Mute" : "Unmute"} danger={!micOn} onClick={onToggleMic}>
           {micOn ? <Mic className="h-4 w-4 sm:h-5 sm:w-5" /> : <MicOff className="h-4 w-4 sm:h-5 sm:w-5" />}
         </ToolbarButton>
@@ -133,11 +133,15 @@ export default function Toolbar({
               <Users className="h-4 w-4 sm:h-5 sm:w-5" />
             </ToolbarButton>
             <div className="relative shrink-0">
-              <ToolbarButton label="Waiting room" active={waitingRoomOpen} onClick={onToggleWaitingRoom}>
+              <ToolbarButton
+                label={waitingCount > 0 ? `Waiting room, ${waitingCount} waiting` : "Waiting room"}
+                active={waitingRoomOpen}
+                onClick={onToggleWaitingRoom}
+              >
                 <VideoOnIcon className="h-4 w-4 sm:h-5 sm:w-5" />
               </ToolbarButton>
               {waitingCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-pink text-[10px] font-bold text-white">
+                <span aria-hidden="true" className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-pink text-[10px] font-bold text-white">
                   {waitingCount}
                 </span>
               )}

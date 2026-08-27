@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, IndianRupee, Link2, ListChecks, Loader2, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { KpiCard } from "@/components/KpiCard";
 import { FeeStatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CashConfirmationsPanel } from "@/components/CashConfirmationsPanel";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -24,7 +25,7 @@ interface PaymentRow {
   childName: string;
   parentName: string;
   courseName: string;
-  department: "Phonics" | "Maths";
+  department: string;
   amount: number;
   /** Settled so far; only known in API mode — the demo mock has no partial-payment figure. */
   amountPaid?: number;
@@ -79,7 +80,7 @@ export default function AdmissionPayments() {
   // One page of the (forever-growing) invoice table; the status filter, totals and
   // DataTable's paging all run client-side over it. totalCount is the whole matching
   // set server-side, which is what the "Invoices" KPI should actually count.
-  const { data: invoiceData, error: invoicesError, reload } = useApiData(
+  const { data: invoiceData, loading: invoicesLoading, error: invoicesError, reload } = useApiData(
     () => listInvoiceRows((invoice) => fromInvoice(toFrontendInvoice(invoice))),
     { rows: DEMO_ROWS, totalCount: DEMO_ROWS.length },
     { rows: [], totalCount: 0 }
@@ -231,20 +232,20 @@ export default function AdmissionPayments() {
         // Without this the screen reads "Invoices 0 · Collected ₹0 · Outstanding ₹0" after
         // a failed fetch — collection figures of zero are a claim about money, and one
         // nobody should make on the strength of a request that never returned.
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load invoices ({invoicesError}) — the figures and table below are not
           your real collection position.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Invoices" value={String(totals.total)} icon={Link2} tone="primary" />
-        <KpiCard label="Collected" value={formatCurrency(totals.paid)} icon={IndianRupee} tone="success" />
-        <KpiCard label="Outstanding" value={formatCurrency(totals.outstanding)} icon={Wallet} tone="destructive" />
-        <KpiCard label="Partially Paid" value={String(totals.partial)} icon={ListChecks} tone="warning" />
+        <KpiCard label="Invoices" value={String(totals.total)} icon={Link2} tone="primary" loading={invoicesLoading} />
+        <KpiCard label="Collected" value={formatCurrency(totals.paid)} icon={IndianRupee} tone="success" loading={invoicesLoading} />
+        <KpiCard label="Outstanding" value={formatCurrency(totals.outstanding)} icon={Wallet} tone="destructive" loading={invoicesLoading} />
+        <KpiCard label="Partially Paid" value={String(totals.partial)} icon={ListChecks} tone="warning" loading={invoicesLoading} />
       </div>
 
       {truncated && (
@@ -267,25 +268,25 @@ export default function AdmissionPayments() {
       </div>
 
       <div className="mt-8">
-        {error && <p className="mb-3 text-sm font-medium text-destructive">{error}</p>}
+        {error && <p role="alert" className="mb-3 text-sm font-medium text-destructive">{error}</p>}
         <DataTable
           data={filtered}
           columns={columns}
           rowKey={(row) => row.id}
           searchPlaceholder="Search by child or course…"
           toolbar={
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as RowStatus | "all")}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterBar
+              filters={[
+                {
+                  key: "status",
+                  label: "Status",
+                  value: statusFilter,
+                  onChange: (v) => setStatusFilter(v as RowStatus | "all"),
+                  className: "w-48",
+                  options: STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label })),
+                },
+              ]}
+            />
           }
         />
         {!apiEnabled() && (

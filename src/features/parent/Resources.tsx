@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, BookOpen, Download, FileText, type LucideIcon, PlayCircle, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
@@ -13,6 +14,7 @@ import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { getResourcesForBatch } from "@/data/resources";
 import { apiEnabled } from "@/lib/api";
+import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
 import { toFrontendResource } from "@/api/resources";
 import { downloadParentResource, getParentResources } from "@/api/parentPortal";
@@ -30,6 +32,7 @@ const TONE_CLASS: Record<Tone, string> = {
 };
 
 export default function ParentResources() {
+  const brand = useBrand();
   const { activeChildId, enrolledChildIds, children: sessionChildren } = useSession();
   const usingApi = apiEnabled();
   const mockChild = getChildById(activeChildId);
@@ -79,7 +82,7 @@ export default function ParentResources() {
       return;
     }
     const blob = new Blob(
-      [`${resource.title}\n\nThis is a simulated worksheet download for The Reader Nest demo.\nUploaded on ${resource.uploadedOn}.`],
+      [`${resource.title}\n\nThis is a simulated worksheet download for ${brand.name}'s demo.\nUploaded on ${resource.uploadedOn}.`],
       { type: "text/plain" }
     );
     const url = URL.createObjectURL(blob);
@@ -94,7 +97,7 @@ export default function ParentResources() {
 
   return (
     <div>
-      <PageHeader title="Resources &amp; Recordings" description="Worksheets, reading books and 15-day recording access for your child." />
+      <PageHeader eyebrow="Learning" title="Resources" description="Worksheets, reading books and any videos shared directly by your teacher. For class recordings, see Recordings in the sidebar." />
       <MultiChildSwitcher />
 
       {child && !isEnrolled && (
@@ -112,17 +115,15 @@ export default function ParentResources() {
       )}
 
       {usingApi && resourcesError && (
-        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mt-4">
           Could not load resources ({resourcesError}).{" "}
           <button type="button" className="underline" onClick={() => reloadResources()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
-      {downloadError && (
-        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{downloadError}</p>
-      )}
+      {downloadError && <InlineAlert variant="warning" className="mt-4">{downloadError}</InlineAlert>}
 
       {!child ? (
         <EmptyState icon={BookOpen} title="No child selected" className="mt-6" />
@@ -131,7 +132,7 @@ export default function ParentResources() {
           <TabsList>
             <TabsTrigger value="books">Reading Books ({books.length})</TabsTrigger>
             <TabsTrigger value="worksheets">Worksheets ({worksheets.length})</TabsTrigger>
-            <TabsTrigger value="recordings">Recordings ({recordings.length})</TabsTrigger>
+            <TabsTrigger value="recordings">Shared Videos ({recordings.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="books">
@@ -180,7 +181,7 @@ export default function ParentResources() {
 
           <TabsContent value="recordings">
             {recordings.length === 0 ? (
-              <EmptyState icon={Video} title="No recordings yet" description="Recordings stay available for 15 days after class." />
+              <EmptyState icon={Video} title="No shared videos yet" description="Videos your teacher shares directly (not your regular class recordings — see Recordings in the sidebar for those) appear here." />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {recordings.map((r) => {
@@ -231,8 +232,9 @@ export default function ParentResources() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                This is a view-only preview in the demo — {preview.type === "recording" ? "recordings" : "reading books"} aren't
-                downloadable, per policy.
+                {usingApi
+                  ? `This is a view-only preview — ${preview.type === "recording" ? "recordings" : "reading books"} aren't available for download here.`
+                  : `This is a view-only preview in the demo — ${preview.type === "recording" ? "recordings" : "reading books"} aren't downloadable, per policy.`}
               </p>
             </>
           )}
@@ -267,8 +269,11 @@ function ResourceCard({
       </div>
       <p className="mt-3 line-clamp-2 text-sm font-semibold text-foreground">{resource.title}</p>
       <p className="mt-1 text-xs text-muted-foreground">
-        {resource.courseCategory} · {formatDate(resource.uploadedOn, "short")}
-        {resource.sizeLabel ? ` · ${resource.sizeLabel}` : ""}
+        {/* courseCategory is demo-mode only; live resources carry batchName instead
+            (see toFrontendResource) — omit the segment rather than show "undefined". */}
+        {[resource.courseCategory ?? resource.batchName, formatDate(resource.uploadedOn, "short"), resource.sizeLabel]
+          .filter(Boolean)
+          .join(" · ")}
       </p>
       <div className="mt-4">{action}</div>
     </Card>

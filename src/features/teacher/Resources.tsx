@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, CheckCircle2, Download, Eye, EyeOff, FileText, FolderOpen, Upload, Video } from "lucide-react";
+import { BookOpen, Download, Eye, EyeOff, FileText, FolderOpen, Upload, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { FileDropzone } from "@/components/FileDropzone";
+import { InlineAlert } from "@/components/InlineAlert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -251,7 +252,9 @@ export default function TeacherResources() {
                 <FileDropzone label="Drag & drop or click to upload" onFile={(f) => setFile(f)} />
 
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="resource-title">Title</Label>
+                  <Label htmlFor="resource-title">
+                    Title <span className="text-destructive">*</span>
+                  </Label>
                   <Input id="resource-title" placeholder="e.g. Blending Sounds Worksheet — Week 4" value={title} onChange={(e) => setTitle(e.target.value)} />
                 </div>
 
@@ -271,7 +274,9 @@ export default function TeacherResources() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label>Visible to batches</Label>
+                    <Label>
+                      Visible to batches <span className="text-destructive">*</span>
+                    </Label>
                     <div className="flex flex-wrap gap-1.5">
                       {batchOptions.map((b) => (
                         <Button
@@ -290,6 +295,9 @@ export default function TeacherResources() {
                   </div>
                 </div>
 
+                <p className="text-xs text-muted-foreground">
+                  Fields marked <span className="text-destructive">*</span> are required before you can upload.
+                </p>
                 {uploadError && <p className="text-sm font-medium text-destructive">{uploadError}</p>}
               </div>
 
@@ -307,16 +315,15 @@ export default function TeacherResources() {
       />
 
       {confirmation && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
-          <CheckCircle2 className="h-4 w-4" />
+        <InlineAlert variant="success" bordered className="mb-5">
           {confirmation}
-        </div>
+        </InlineAlert>
       )}
 
       {usingApi && error && (
-        <div className="mb-5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+        <InlineAlert variant="error" bordered className="mb-5">
           Couldn't load your resources: {error}
-        </div>
+        </InlineAlert>
       )}
 
       {usingApi && loading ? (

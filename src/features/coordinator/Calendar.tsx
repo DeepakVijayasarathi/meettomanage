@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarClock, PartyPopper, RefreshCcw, Video } from "lucide-react";
+import { PartyPopper, RefreshCcw, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -22,6 +22,8 @@ import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, rescheduleSession, toFrontendSession } from "@/api/sessions";
 import { listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
+import { buildJitsiJoinUrl } from "@/lib/jitsi";
+import { useSession } from "@/state/session";
 import type { ClassSession } from "@/types";
 import { formatDate } from "@/lib/utils";
 
@@ -30,6 +32,7 @@ const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo", "resch
 
 export default function CoordinatorCalendar() {
   const usingApi = apiEnabled();
+  const { userName } = useSession();
   const { data: apiSessions, reload } = useApiData<ClassSession[]>(
     () => listSessions().then((s) => s.map(toFrontendSession)),
     SESSIONS
@@ -99,8 +102,7 @@ export default function CoordinatorCalendar() {
     setJoinError(null);
     try {
       const join = await getJitsiJoin(session.id);
-      const url = join.token ? `https://${join.domain}/${join.room}#jwt=${join.token}` : `https://${join.domain}/${join.room}`;
-      window.open(url, "_blank", "noopener");
+      window.open(buildJitsiJoinUrl(join.domain, join.room, join.token, userName), "_blank", "noopener");
     } catch (err) {
       setJoinError(err instanceof Error ? err.message : "Couldn't join this class.");
     } finally {
@@ -129,9 +131,6 @@ export default function CoordinatorCalendar() {
           {selected && (
             <>
               <DialogHeader>
-                <span className="mb-1 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <CalendarClock className="h-5 w-5" />
-                </span>
                 <DialogTitle>{selected.title}</DialogTitle>
                 <DialogDescription>
                   {formatDate(selected.date, "long")} · {selected.startTime} · {selected.duration} min
@@ -184,7 +183,7 @@ export default function CoordinatorCalendar() {
                   </Button>
                 )}
               </DialogFooter>
-              {joinError && <p className="px-6 pb-4 text-sm font-medium text-destructive">{joinError}</p>}
+              {joinError && <p role="alert" className="px-6 pb-4 text-sm font-medium text-destructive">{joinError}</p>}
             </>
           )}
         </DialogContent>

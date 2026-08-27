@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,8 +16,8 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listMyLeave, submitLeave, type ApiLeaveRequest } from "@/api/academicOps";
-import { istToUtcIso } from "@/lib/datetime";
-import { cn, formatDate } from "@/lib/utils";
+import { localToUtcIso } from "@/lib/datetime";
+import { formatDate } from "@/lib/utils";
 import type { ClassSession, LeaveRequest } from "@/types";
 
 function toFrontendLeave(leave: ApiLeaveRequest): LeaveRequest {
@@ -46,11 +47,11 @@ function formatTimeLabel(time: string) {
   return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
-// session.date/startTime are IST wall-clock values (see toFrontendSession) — parse them
-// as IST rather than the viewer's own browser timezone, so notice/eligibility math is
-// correct no matter what machine this is viewed from.
+// session.date/startTime are the signed-in teacher's own timezone's wall-clock values
+// (see toFrontendSession) — parse them the same way rather than the browser's own
+// timezone, so notice/eligibility math is correct no matter what machine this is viewed from.
 function sessionDateTime(session: ClassSession) {
-  return new Date(istToUtcIso(session.date, session.startTime));
+  return new Date(localToUtcIso(session.date, session.startTime));
 }
 
 function hoursBetween(a: Date, b: Date) {
@@ -95,6 +96,7 @@ export default function TeacherLeave() {
   const [sessionId, setSessionId] = useState<string>("");
   const [reason, setReason] = useState("");
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!confirmation) return;
@@ -109,6 +111,7 @@ export default function TeacherLeave() {
 
   function handleSubmit() {
     if (!selectedSession || hoursBefore === null || !canSubmit) return;
+    setSubmitError(null);
 
     if (apiEnabled()) {
       const start = sessionDateTime(selectedSession);
@@ -123,6 +126,7 @@ export default function TeacherLeave() {
           // reloadLeaves() entirely and leave the list stuck on stale data until a manual
           // page reload — created but invisible.
           setConfirmation(`Leave request for "${selectedSession.title}" submitted — pending admin approval.`);
+          setSubmitError(null);
           try {
             setLeaves((prev) => [toFrontendLeave(created), ...prev]);
           } catch {
@@ -130,7 +134,7 @@ export default function TeacherLeave() {
           }
           reloadLeaves();
         })
-        .catch((err: Error) => setConfirmation(err.message));
+        .catch((err: Error) => setSubmitError(err.message));
       setSessionId("");
       setReason("");
       return;
@@ -191,10 +195,18 @@ export default function TeacherLeave() {
       />
 
       {confirmation && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
-          <CheckCircle2 className="h-4 w-4" />
+        <InlineAlert variant="success" bordered className="mb-5">
           {confirmation}
-        </div>
+        </InlineAlert>
+      )}
+
+      {/* Kept separate from the success banner above — a rejected submitLeave() used to
+          write its error text into the same state, which rendered inside the green
+          checkmark banner and looked like the request had gone through. */}
+      {submitError && (
+        <InlineAlert variant="error" bordered className="mb-5">
+          {submitError}
+        </InlineAlert>
       )}
 
       <Card>
@@ -212,9 +224,11 @@ export default function TeacherLeave() {
           ) : (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label>Upcoming Session</Label>
+                <Label htmlFor="upcomingSession">
+                  Upcoming Session <span className="text-destructive">*</span>
+                </Label>
                 <Select value={sessionId} onValueChange={setSessionId}>
-                  <SelectTrigger>
+                  <SelectTrigger id="upcomingSession">
                     <SelectValue placeholder="Select a session" />
                   </SelectTrigger>
                   <SelectContent>
@@ -228,7 +242,9 @@ export default function TeacherLeave() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="reason">Reason</Label>
+                <Label htmlFor="reason">
+                  Reason <span className="text-destructive">*</span>
+                </Label>
                 <Textarea
                   id="reason"
                   placeholder="Briefly describe your reason for leave"
@@ -238,13 +254,7 @@ export default function TeacherLeave() {
               </div>
 
               {selectedSession && hoursBefore !== null && (
-                <div
-                  className={cn(
-                    "flex items-start gap-2.5 rounded-lg border p-3 text-sm",
-                    isBlocked ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-success/30 bg-success/10 text-success"
-                  )}
-                >
-                  {isBlocked ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
+                <InlineAlert variant={isBlocked ? "error" : "success"} className="text-sm">
                   {isBlocked ? (
                     <span>
                       This session starts in <strong>{hoursBefore.toFixed(1)} hours</strong>. Leave requests must be submitted at least{" "}
@@ -256,7 +266,7 @@ export default function TeacherLeave() {
                       requirement.
                     </span>
                   )}
-                </div>
+                </InlineAlert>
               )}
 
               <div>

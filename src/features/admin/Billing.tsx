@@ -1,29 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Download, FileText, IndianRupee, TimerReset, Undo2 } from "lucide-react";
+import { AlertTriangle, FileText, IndianRupee, TimerReset, Undo2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { FeeStatusBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InvoiceDetailDialog } from "@/components/InvoiceDetailDialog";
 import { INVOICES } from "@/data/invoices";
-import { getParentById } from "@/data/users";
 import { useApiData } from "@/api/hooks";
 import { apiEnabled } from "@/lib/api";
 import {
+  downloadInvoicePdf,
   listInvoiceRows,
   listInvoiceTransactions,
   recordPayment,
@@ -49,17 +43,19 @@ const PAYMENT_METHODS: { value: ApiPaymentMethod; label: string }[] = [
   { value: "Other", label: "Other" },
 ];
 
-const DEPARTMENT_COLOR: Record<Invoice["department"], string> = {
+// Known departments get a specific color; any admin-added one falls back to a shared tone.
+const DEPARTMENT_COLOR: Record<string, string> = {
   Phonics: CHART_PALETTE[3],
   Maths: CHART_PALETTE[4],
 };
+const FALLBACK_DEPARTMENT_COLOR = CHART_PALETTE[1];
 
 export default function AdminBilling() {
   // GET /api/invoices is paged (the table grows one row per billing cycle, forever). This
   // screen filters, sorts and totals client-side, so it takes one full page and lets
   // DataTable paginate that in the browser; `totalCount` is what tells us when the page
   // no longer covers the whole table, so the KPI figures below can say so.
-  const { data: invoiceData, error: invoicesError, reload } = useApiData(
+  const { data: invoiceData, loading: invoicesLoading, error: invoicesError, reload } = useApiData(
     () => listInvoiceRows(toFrontendInvoice),
     { rows: INVOICES, totalCount: INVOICES.length },
     { rows: [], totalCount: 0 }
@@ -70,7 +66,8 @@ export default function AdminBilling() {
   const { hasPermission } = useSession();
   const canRequestRefund = hasPermission("BillingFinance", "Create");
   const [detail, setDetail] = useState<Invoice | null>(null);
-  const [downloaded, setDownloaded] = useState(false);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   // Record-payment (incl. confirming a parent's cash intent) state
   const [recording, setRecording] = useState(false);
@@ -94,7 +91,6 @@ export default function AdminBilling() {
 
   function openDetail(row: Invoice) {
     setDetail(row);
-    setDownloaded(false);
     setRecording(false);
     setPayError(null);
     setPayMethod("Cash");
@@ -163,6 +159,19 @@ export default function AdminBilling() {
     }
   }
 
+  async function downloadPdf() {
+    if (!detail?.apiId) return;
+    setPdfDownloading(true);
+    setPdfError(null);
+    try {
+      await downloadInvoicePdf(detail.apiId, detail.id);
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : "Couldn't download the invoice PDF.");
+    } finally {
+      setPdfDownloading(false);
+    }
+  }
+
   function reviewPayment() {
     const amount = Number(payAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -225,7 +234,10 @@ export default function AdminBilling() {
           <div className="flex items-center gap-3">
             <span
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-              style={{ backgroundColor: `${DEPARTMENT_COLOR[row.department]}1A`, color: DEPARTMENT_COLOR[row.department] }}
+              style={{
+                backgroundColor: `${DEPARTMENT_COLOR[row.department] ?? FALLBACK_DEPARTMENT_COLOR}1A`,
+                color: DEPARTMENT_COLOR[row.department] ?? FALLBACK_DEPARTMENT_COLOR,
+              }}
             >
               <FileText className="h-[18px] w-[18px]" />
             </span>
@@ -285,18 +297,18 @@ export default function AdminBilling() {
       />
 
       {live && invoicesError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load invoices ({invoicesError}) — the table below may be incomplete.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Total Revenue Collected" value={formatCurrency(totals.totalRevenue)} icon={IndianRupee} tone="success" />
-        <KpiCard label="Pending Invoices" value={`${formatNumber(totals.pendingCount)} · ${formatCurrency(totals.pendingAmount)}`} icon={TimerReset} tone="warning" />
-        <KpiCard label="Overdue Invoices" value={`${formatNumber(totals.overdueCount)} · ${formatCurrency(totals.overdueAmount)}`} icon={AlertTriangle} tone="destructive" />
+        <KpiCard label="Total Revenue Collected" value={formatCurrency(totals.totalRevenue)} icon={IndianRupee} tone="success" loading={invoicesLoading} />
+        <KpiCard label="Pending Invoices" value={`${formatNumber(totals.pendingCount)} · ${formatCurrency(totals.pendingAmount)}`} icon={TimerReset} tone="warning" loading={invoicesLoading} />
+        <KpiCard label="Overdue Invoices" value={`${formatNumber(totals.overdueCount)} · ${formatCurrency(totals.overdueAmount)}`} icon={AlertTriangle} tone="destructive" loading={invoicesLoading} />
       </div>
 
       {truncated && (
@@ -342,53 +354,40 @@ export default function AdminBilling() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>
-        <DialogContent>
-          {detail && (
+      <InvoiceDetailDialog
+        invoice={detail}
+        onClose={() => setDetail(null)}
+        footerActions={
+          detail && (
             <>
-              <DialogHeader>
-                <DialogTitle>{detail.id}</DialogTitle>
-                <DialogDescription>{detail.courseName}</DialogDescription>
-              </DialogHeader>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</p>
-                  <p className="mt-1 font-medium text-foreground">{detail.childName}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
-                  {/* The API resolves this via Invoice.ParentProfile.User — never borrow a name from the mocks in live mode */}
-                  <p className="mt-1 font-medium text-foreground">{live ? detail.parentName : getParentById(detail.parentId)?.name ?? "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Department</p>
-                  <p className="mt-1 font-medium text-foreground">{detail.department}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Amount</p>
-                  <p className="mt-1 font-medium text-foreground">{formatCurrency(detail.amount)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Issued On</p>
-                  <p className="mt-1 font-medium text-foreground">{formatDate(detail.issuedOn, "long")}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Due On</p>
-                  <p className="mt-1 font-medium text-foreground">{formatDate(detail.dueOn, "long")}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
-                  <div className="mt-1">
-                    <FeeStatusBadge status={detail.status} />
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Balance Due</p>
-                  <p className="mt-1 font-medium text-foreground">{formatCurrency(balanceDue)}</p>
-                </div>
-              </div>
-
+              {/* Real GET /api/invoices/{id}/pdf now backs this — the org's own "Bill of
+                  Supply" template, rendered server-side (QuestPDF). An earlier version of
+                  this button had no endpoint behind it and just flipped its own label to
+                  "Receipt Downloaded" without downloading anything; this replaces that. */}
+              {live && detail.apiId && (
+                <Button variant="outline" onClick={downloadPdf} disabled={pdfDownloading}>
+                  <FileText className="h-4 w-4" />
+                  {pdfDownloading ? "Downloading…" : "Download PDF"}
+                </Button>
+              )}
+              {live && detail.apiId && detail.status !== "paid" && detail.status !== "cancelled" && (
+                recording ? (
+                  <Button onClick={reviewPayment} disabled={saving}>
+                    {saving ? "Recording…" : "Confirm payment"}
+                  </Button>
+                ) : (
+                  <Button onClick={() => setRecording(true)}>
+                    <IndianRupee className="h-4 w-4" />
+                    Record payment
+                  </Button>
+                )
+              )}
+            </>
+          )
+        }
+      >
+        {detail && (
+          <>
               {live && detail.apiId && (transactionsLoading || transactions.length > 0) && (
                 <div className="mt-4 flex flex-col gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payments</p>
@@ -506,32 +505,10 @@ export default function AdminBilling() {
                 </div>
               )}
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDetail(null)}>
-                  Close
-                </Button>
-                {live && detail.apiId && detail.status !== "paid" && detail.status !== "cancelled" ? (
-                  recording ? (
-                    <Button onClick={reviewPayment} disabled={saving}>
-                      {saving ? "Recording…" : "Confirm payment"}
-                    </Button>
-                  ) : (
-                    <Button onClick={() => setRecording(true)}>
-                      <IndianRupee className="h-4 w-4" />
-                      Record payment
-                    </Button>
-                  )
-                ) : (
-                  <Button onClick={() => setDownloaded(true)}>
-                    <Download className="h-4 w-4" />
-                    {downloaded ? "Receipt Downloaded" : "Download Receipt"}
-                  </Button>
-                )}
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+              {pdfError && <p className="mt-2 text-sm font-medium text-destructive">{pdfError}</p>}
+          </>
+        )}
+      </InvoiceDetailDialog>
 
       <ConfirmDialog
         open={payConfirmOpen}
@@ -539,7 +516,6 @@ export default function AdminBilling() {
         title="Record this payment?"
         description={`${formatCurrency(Number(payAmount) || 0)} via ${payMethod} will be applied to ${detail?.id ?? "this invoice"} immediately, updating the balance and the parent's dashboard. This can't be undone from here.`}
         confirmLabel="Record payment"
-        destructive
         onConfirm={submitPayment}
       />
     </div>

@@ -73,7 +73,12 @@ export function NotificationPanel() {
   return (
     <Popover onOpenChange={(open) => open && load()}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="icon" className="relative h-10 w-10 rounded-full">
+        <Button
+          variant="outline"
+          size="icon"
+          className="relative h-10 w-10 rounded-full"
+          aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ""}`}
+        >
           <Bell className="h-[18px] w-[18px]" />
           {unread > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">

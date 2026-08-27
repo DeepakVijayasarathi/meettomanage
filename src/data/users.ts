@@ -32,8 +32,6 @@ export const SUB_ADMINS: AppUser[] = [
   { id: "sa-2", name: "Yash Patel", email: "yash.patel@readernest.com", phone: "+91 98300 23232", role: "subadmin", status: "active", avatarColor: "#0D9488", joinedOn: "2023-11-05" },
 ];
 
-export const ALL_USERS: AppUser[] = [...TEACHERS, ...PARENTS, ...ADMISSION_TEAM, ...SUB_ADMINS];
-
 export function getTeacherById(id: string) {
   return TEACHERS.find((t) => t.id === id);
 }

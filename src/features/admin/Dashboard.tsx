@@ -50,6 +50,7 @@ import {
 } from "@/data/kpis";
 import { SESSIONS } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
+import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
 import { getDashboardSummary } from "@/api/reports";
 import { listSessions, toFrontendSession } from "@/api/sessions";
@@ -78,6 +79,7 @@ function localDateKey(d: Date): string {
 }
 
 export default function AdminDashboard() {
+  const brand = useBrand();
   const usingApi = apiEnabled();
   const todayKey = usingApi ? localDateKey(new Date()) : TODAY;
   const { data: apiSessions, loading: sessionsLoading } = useApiData<ClassSession[]>(
@@ -137,7 +139,7 @@ export default function AdminDashboard() {
       <PageHeader
         eyebrow="Overview"
         title="Admin Dashboard"
-        description="A real-time snapshot of enrollment, revenue and academic operations across The Reader Nest."
+        description={`A real-time snapshot of enrollment, revenue and academic operations across ${brand.name}.`}
         actions={<PersonalMeetingButton />}
       />
 
@@ -174,7 +176,7 @@ export default function AdminDashboard() {
           label="New Enrollments"
           value={formatNumber(kpis.enrollments)}
           icon={GraduationCap}
-          tone="warning"
+          tone="primary"
           trend={usingApi ? undefined : { value: 4.1, label: "vs last month" }}
           loading={dashboardLoading}
           error={dashboardError}
@@ -210,7 +212,7 @@ export default function AdminDashboard() {
           label="Renewal Rate"
           value={formatPercent(kpis.renewalRate)}
           icon={RefreshCw}
-          tone="warning"
+          tone="success"
           trend={usingApi ? undefined : { value: -0.8, label: "vs last month" }}
           loading={dashboardLoading}
           error={dashboardError}

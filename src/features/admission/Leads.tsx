@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Mail, MessageSquarePlus, Phone, Sparkles } from "lucide-react";
+import { Mail, MessageSquarePlus, Phone, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
@@ -248,10 +250,9 @@ export default function AdmissionLeads() {
       />
 
       {justLogged && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
-          <CheckCircle2 className="h-4 w-4" />
+        <InlineAlert variant="success" bordered className="mb-5">
           Follow-up logged for {justLogged}.
-        </div>
+        </InlineAlert>
       )}
 
       <DataTable
@@ -261,18 +262,18 @@ export default function AdmissionLeads() {
         searchPlaceholder="Search by child, parent, phone or course…"
         onRowClick={(row) => openFollowUp(row)}
         toolbar={
-          <Select value={stageFilter} onValueChange={(v) => setStageFilter(v as ConversionStage | "all")}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STAGE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterBar
+            filters={[
+              {
+                key: "stage",
+                label: "Stage",
+                value: stageFilter,
+                onChange: (v) => setStageFilter(v as ConversionStage | "all"),
+                className: "w-48",
+                options: STAGE_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label })),
+              },
+            ]}
+          />
         }
       />
 

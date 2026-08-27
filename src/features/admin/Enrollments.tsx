@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, Download, FileEdit, GraduationCap } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,11 +25,19 @@ import { useApiData } from "@/api/hooks";
 import { listEnrollmentForms, reviewEnrollmentForm, updateEnrollmentForm, type ApiEnrollmentForm } from "@/api/parentPortal";
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
 import { listPackagePlans, type ApiPackagePlan } from "@/api/billing";
+import { listBatches, type ApiBatch } from "@/api/batches";
 import type { Child } from "@/types";
 import { formatCurrency, getInitials } from "@/lib/utils";
 
 /** Mock Child rows and live enrollment-form rows share one table shape. */
 type EnrollmentRow = Child & { parentName?: string; parentPhone?: string; formJson?: string; dob?: string };
+
+/** row.grade falls back to "—" when the form never answered it — rendered as a bare dash
+ * inline before "Age N" it read as a stray blank field rather than a real value. Matches
+ * the "(child name pending)" wording already used for a missing name. */
+function gradeLabel(grade: string): string {
+  return grade === "—" ? "Grade pending" : grade;
+}
 
 function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
   let answers: Record<string, unknown> = {};
@@ -80,7 +89,7 @@ export default function AdminEnrollments() {
 
   const { data: courseOptions } = useApiData<ApiCourseOption[]>(
     () => listCourseOptions(),
-    COURSES.map((c) => ({ id: c.id, name: c.name }))
+    COURSES.map((c) => ({ id: c.id, name: c.name, type: c.type === "group" ? ("Group" as const) : ("Individual" as const) }))
   );
 
   // Active billing plans for the approval picker; approving with one selected starts
@@ -93,11 +102,24 @@ export default function AdminEnrollments() {
   const [approving, setApproving] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
 
+  // Open batches for the approval picker; approving with one selected places the
+  // child straight on that batch's roster instead of leaving them unassigned.
+  const { data: allBatches } = useApiData<ApiBatch[]>(() => listBatches(), []);
+  const openBatches = useMemo(
+    () => allBatches.filter((b) => b.status === "Active" && b.enrolledCount < b.capacity),
+    [allBatches]
+  );
+  const [approveBatchId, setApproveBatchId] = useState<string>("");
+
   function openDetail(row: EnrollmentRow) {
     // Pre-select the plan when the child's course-of-interest has exactly one —
     // the common case approves with billing in a single click.
     const courseMatches = activePlans.filter((p) => p.courseId && p.courseId === row.courseId);
     setApprovePlanId(courseMatches.length === 1 ? courseMatches[0].id : "");
+    // Same idea for the batch: pre-select when exactly one open batch matches the
+    // child's course-of-interest.
+    const batchMatches = openBatches.filter((b) => b.courseId === row.courseId);
+    setApproveBatchId(batchMatches.length === 1 ? batchMatches[0].id : "");
     setApproveError(null);
     setDetail(row);
   }
@@ -162,13 +184,15 @@ export default function AdminEnrollments() {
           childLastName: parts.slice(1).join(" ") || undefined,
           childDateOfBirth: row.dob,
           packagePlanId: approvePlanId || undefined,
+          batchId: approveBatchId || undefined,
         });
         const plan = activePlans.find((p) => p.id === approvePlanId);
-        setBanner(
-          plan
-            ? `"${row.name}" approved — billing started on ${plan.name} (${formatCurrency(plan.price)}); the first invoice is on its way to the parent.`
-            : `"${row.name}" approved without a billing plan. Assign one from Packages & Subscriptions when ready.`
-        );
+        const batch = openBatches.find((b) => b.id === approveBatchId);
+        const billingMsg = plan
+          ? `billing started on ${plan.name} (${formatCurrency(plan.price)}); the first invoice is on its way to the parent`
+          : "no billing plan assigned yet — set one from Packages & Subscriptions when ready";
+        const batchMsg = batch ? `placed in ${batch.name}` : "not yet placed in a batch — assign one from Batches when ready";
+        setBanner(`"${row.name}" approved — ${batchMsg}; ${billingMsg}.`);
         reload();
         setDetail(null);
       } catch (e) {
@@ -253,14 +277,14 @@ export default function AdminEnrollments() {
         sortable: true,
         accessor: (row) => row.name,
         render: (row) => (
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <Avatar className="h-9 w-9">
               <AvatarFallback style={{ backgroundColor: `${row.avatarColor}22`, color: row.avatarColor }}>{getInitials(row.name)}</AvatarFallback>
             </Avatar>
-            <div>
-              <p className="font-semibold text-foreground">{row.name}</p>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-foreground">{row.name}</p>
               <p className="text-xs text-muted-foreground">
-                {row.grade} · Age {row.age}
+                {gradeLabel(row.grade)} · Age {row.age}
               </p>
             </div>
           </div>
@@ -277,7 +301,7 @@ export default function AdminEnrollments() {
         header: "Course",
         render: (row) => (
           <span className="text-sm text-muted-foreground">
-            {courseOptions.find((c) => c.id === row.courseId)?.name ?? getCourseById(row.courseId)?.name ?? "—"}
+            {courseOptions.find((c) => c.id === row.courseId)?.name ?? getCourseById(row.courseId)?.name ?? "Course pending"}
           </span>
         ),
       },
@@ -304,10 +328,9 @@ export default function AdminEnrollments() {
       />
 
       {banner && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
-          <CheckCircle2 className="h-4 w-4" />
+        <InlineAlert variant="success" bordered className="mb-5">
           {banner}
-        </div>
+        </InlineAlert>
       )}
 
       <DataTable
@@ -334,13 +357,13 @@ export default function AdminEnrollments() {
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Age / Grade</p>
                   <p className="mt-1 font-medium text-foreground">
-                    {detail.age} yrs · {detail.grade}
+                    {detail.age} yrs · {gradeLabel(detail.grade)}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Course</p>
                   <p className="mt-1 font-medium text-foreground">
-                    {courseOptions.find((c) => c.id === detail.courseId)?.name ?? getCourseById(detail.courseId)?.name ?? "—"}
+                    {courseOptions.find((c) => c.id === detail.courseId)?.name ?? getCourseById(detail.courseId)?.name ?? "Course pending"}
                   </p>
                 </div>
                 <div>
@@ -365,9 +388,9 @@ export default function AdminEnrollments() {
 
               {!isComplete(detail) && apiEnabled() && activePlans.length > 0 && (
                 <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-muted/40 p-4">
-                  <Label>Billing plan on approval</Label>
+                  <Label htmlFor="approve-plan-select">Billing plan on approval</Label>
                   <Select value={approvePlanId || "__none"} onValueChange={(v) => setApprovePlanId(v === "__none" ? "" : v)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="approve-plan-select">
                       <SelectValue placeholder="No billing plan — assign later" />
                     </SelectTrigger>
                     <SelectContent>
@@ -388,6 +411,33 @@ export default function AdminEnrollments() {
                   </Select>
                   <p className="text-xs text-muted-foreground">
                     Starts the subscription and issues the first invoice to the parent the moment you approve.
+                  </p>
+                </div>
+              )}
+
+              {!isComplete(detail) && apiEnabled() && (
+                <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-muted/40 p-4">
+                  <Label htmlFor="approve-batch-select">Batch on approval</Label>
+                  <Select value={approveBatchId || "__none"} onValueChange={(v) => setApproveBatchId(v === "__none" ? "" : v)}>
+                    <SelectTrigger id="approve-batch-select">
+                      <SelectValue placeholder="No batch — assign later" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">No batch — assign later</SelectItem>
+                      {[...openBatches]
+                        .sort(
+                          (a, b) =>
+                            Number(b.courseId === detail.courseId) - Number(a.courseId === detail.courseId)
+                        )
+                        .map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name} — {b.courseName} ({b.enrolledCount}/{b.capacity})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Places the child on this batch's roster the moment you approve.
                   </p>
                 </div>
               )}
@@ -444,9 +494,9 @@ export default function AdminEnrollments() {
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Course interest</Label>
+              <Label htmlFor="edit-course-select">Course interest</Label>
               <Select value={editCourse} onValueChange={setEditCourse}>
-                <SelectTrigger>
+                <SelectTrigger id="edit-course-select">
                   <SelectValue placeholder="Select a course" />
                 </SelectTrigger>
                 <SelectContent>

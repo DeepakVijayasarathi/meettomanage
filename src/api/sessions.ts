@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import { utcIsoToIstDateTime } from "@/lib/datetime";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import type { ClassSession, SessionStatus } from "@/types";
 
 export interface ApiClassSession {
@@ -23,6 +23,8 @@ export interface ApiClassSession {
   meetingRoomId: string | null;
   rescheduledFromSessionId: string | null;
   cancellationReason: string | null;
+  /** Teacher's class notes, or an auto-generated one from engagement data — set on completion. */
+  summary: string | null;
   /** Which of the calling parent's children this session belongs to — populated only by
    * the parent-portal schedule endpoint; empty elsewhere (Admin/Teacher lists) and for
    * demo sessions not yet tied to a specific enrolled child. */
@@ -44,10 +46,11 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
   const start = new Date(session.scheduledStartAtUtc);
   const end = new Date(session.scheduledEndAtUtc);
   const minutes = Math.round((end.getTime() - start.getTime()) / 60000);
-  // IST, not the viewing browser's own clock — a viewer whose machine isn't set to IST
-  // (a different timezone, or a UTC-clocked test/CI box) would otherwise see class times
-  // shifted by whatever their local offset happens to be.
-  const ist = utcIsoToIstDateTime(session.scheduledStartAtUtc);
+  // The signed-in user's own timezone (getUserTimeZone), not the viewing browser's own
+  // clock — a viewer whose machine's clock isn't set to their account's chosen timezone
+  // (or a UTC-clocked test/CI box) would otherwise see class times shifted by whatever
+  // their local offset happens to be.
+  const local = utcIsoToLocalDateTime(session.scheduledStartAtUtc);
 
   return {
     id: session.id,
@@ -56,12 +59,13 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
     teacherId: session.teacherProfileId,
     teacherName: session.teacherName,
     childIds: session.childIds ?? [],
-    date: ist.date,
-    startTime: ist.time,
-    duration: ([30, 45, 60].includes(minutes) ? minutes : 45) as ClassSession["duration"],
+    date: local.date,
+    startTime: local.time,
+    duration: minutes,
     status: session.type === "Demo" && session.status === "Scheduled" ? "demo" : STATUS_FROM_API[session.status],
     type: session.type === "Demo" ? "demo" : "group",
     meetingRoomId: session.meetingRoomId ?? undefined,
+    summary: session.summary ?? undefined,
   };
 }
 
@@ -164,6 +168,19 @@ export async function rescheduleSession(
   return apiFetch<ApiClassSession>(`/api/sessions/${id}/reschedule`, {
     method: "POST",
     body: JSON.stringify({ scheduledStartAtUtc, scheduledEndAtUtc }),
+  });
+}
+
+export type NoShowParty = "Teacher" | "Student";
+
+/**
+ * Records a no-show: accrues the payout waiting-amount/deduction and carries the class
+ * forward 7 days (server-side, see SessionService.MarkNoShowAsync). Admin or Teacher only.
+ */
+export async function markNoShow(id: string, party: NoShowParty, note?: string): Promise<ApiClassSession> {
+  return apiFetch<ApiClassSession>(`/api/sessions/${id}/no-show`, {
+    method: "POST",
+    body: JSON.stringify({ party, note }),
   });
 }
 

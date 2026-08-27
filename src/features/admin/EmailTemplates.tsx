@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Mail, Save, Sparkles } from "lucide-react";
+import { RichTextEditor, type RichTextEditorHandle } from "@/components/RichTextEditor";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,7 +90,8 @@ export default function EmailTemplates() {
 
   const subjectRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const lastFocused = useRef<"subject" | "body">("body");
+  const visualRef = useRef<RichTextEditorHandle>(null);
+  const lastFocused = useRef<"subject" | "body" | "visual">("visual");
 
   async function reload(keepSelection = true) {
     if (!apiEnabled()) return;
@@ -152,6 +155,8 @@ export default function EmailTemplates() {
     const placeholder = `{{${token}}}`;
     if (lastFocused.current === "subject") {
       insertAtCursor(subjectRef.current, subject, placeholder, setSubject);
+    } else if (lastFocused.current === "visual") {
+      visualRef.current?.insertText(placeholder);
     } else {
       insertAtCursor(bodyRef.current, htmlBody, placeholder, setHtmlBody);
     }
@@ -176,12 +181,11 @@ export default function EmailTemplates() {
     return (
       <div>
         <PageHeader eyebrow="Communication" title="Email Templates" description="The Email Template Master for every automated system email." />
-        <Card>
-          <CardHeader>
-            <CardTitle>Email Templates</CardTitle>
-            <CardDescription>Templates are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them.</CardDescription>
-          </CardHeader>
-        </Card>
+        <EmptyState
+          icon={Mail}
+          title="Demo mode"
+          description="Templates are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them."
+        />
       </div>
     );
   }
@@ -194,7 +198,7 @@ export default function EmailTemplates() {
         description="Design the Subject and HTML body every automated system email sends from — changes apply the next time that email fires."
       />
 
-      {error && <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+      {error && <InlineAlert variant="warning" className="mb-4">{error}</InlineAlert>}
 
       {loaded && templates.length === 0 ? (
         <EmptyState icon={Mail} title="No email templates yet" description="Templates are seeded automatically when the API starts." />
@@ -221,7 +225,7 @@ export default function EmailTemplates() {
                           t.id === selectedId ? "bg-primary/10 font-semibold text-primary" : "text-foreground hover:bg-muted/60"
                         )}
                       >
-                        <span className="truncate">{t.name}</span>
+                        <span className="min-w-0 flex-1 truncate">{t.name}</span>
                         <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", t.isActive ? "bg-success" : "bg-muted-foreground/40")} />
                       </button>
                     ))}
@@ -279,12 +283,23 @@ export default function EmailTemplates() {
                   />
                 </div>
 
-                <Tabs defaultValue="edit">
+                <Tabs defaultValue="visual">
                   <TabsList>
+                    <TabsTrigger value="visual">Visual Edit</TabsTrigger>
                     <TabsTrigger value="edit">Edit HTML</TabsTrigger>
                     <TabsTrigger value="preview">Preview{previewLoading && "…"}</TabsTrigger>
                     <TabsTrigger value="sample">Sample Data</TabsTrigger>
                   </TabsList>
+
+                  <TabsContent value="visual">
+                    <RichTextEditor
+                      ref={visualRef}
+                      value={htmlBody}
+                      onChange={setHtmlBody}
+                      onFocus={() => (lastFocused.current = "visual")}
+                      minHeight={360}
+                    />
+                  </TabsContent>
 
                   <TabsContent value="edit">
                     <Textarea

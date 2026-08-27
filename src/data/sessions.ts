@@ -36,9 +36,3 @@ export function getSessionsForTeacher(teacherId: string) {
   return SESSIONS.filter((s) => s.teacherId === teacherId);
 }
 
-export function getSessionsInMonth(year: number, month: number) {
-  return SESSIONS.filter((s) => {
-    const d = new Date(s.date);
-    return d.getFullYear() === year && d.getMonth() === month;
-  });
-}

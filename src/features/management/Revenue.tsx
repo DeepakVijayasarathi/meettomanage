@@ -14,6 +14,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { ChartCard } from "@/components/ChartCard";
 import { Card } from "@/components/ui/card";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -31,7 +32,10 @@ import type { Course } from "@/types";
 const DEMO_TREND = REVENUE_TREND;
 const DEMO_DEPT: ApiDashboardSummary["revenueByDepartment"] = DEPARTMENT_REVENUE.map((d) => ({ name: d.department, revenue: d.value }));
 
-const CATEGORY_COLOR: Record<Course["category"], string> = {
+// Known categories get a specific color; any other category cycles through the palette
+// by name hash, so a new admin-added one still gets a stable, distinct color instead of
+// every unknown category collapsing onto one fallback tone.
+const CATEGORY_COLOR: Record<string, string> = {
   Phonics: CHART_PALETTE[3],
   Maths: CHART_PALETTE[4],
   Reading: CHART_PALETTE[2],
@@ -39,16 +43,23 @@ const CATEGORY_COLOR: Record<Course["category"], string> = {
   Speaking: CHART_PALETTE[6],
 };
 
+function colorForCategory(category: string): string {
+  if (CATEGORY_COLOR[category]) return CATEGORY_COLOR[category];
+  let hash = 0;
+  for (const char of category) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return CHART_PALETTE[hash % CHART_PALETTE.length];
+}
+
 export default function ManagementRevenue() {
-  const { data: trend } = useApiData(() => getDashboardSummary().then((s) => s.revenueTrend), DEMO_TREND);
-  const { data: deptRaw } = useApiData(() => getDashboardSummary().then((s) => s.revenueByDepartment), DEMO_DEPT);
+  const { data: trend, loading: trendLoading, error: trendError, reload } = useApiData(() => getDashboardSummary().then((s) => s.revenueTrend), DEMO_TREND);
+  const { data: deptRaw, loading: deptLoading, error: deptError } = useApiData(() => getDashboardSummary().then((s) => s.revenueByDepartment), DEMO_DEPT);
   const departmentRevenue = deptRaw.map((d, i) => ({
     department: d.name,
     value: d.revenue,
     color: CHART_PALETTE[(i + 3) % CHART_PALETTE.length],
   }));
 
-  const { data: courses } = useApiData(
+  const { data: courses, error: coursesError } = useApiData(
     () => listCourses().then((list) => list.map(toFrontendCourse)),
     COURSES
   );
@@ -73,8 +84,8 @@ export default function ManagementRevenue() {
       accessor: (c) => c.name,
       sortable: true,
       render: (c) => (
-        <div>
-          <p className="font-semibold text-foreground">{c.name}</p>
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-foreground">{c.name}</p>
           <p className="text-xs text-muted-foreground">
             {c.type === "1:1" ? "1:1" : c.type === "demo" ? "Demo" : "Group"} · {c.duration} min
           </p>
@@ -88,7 +99,7 @@ export default function ManagementRevenue() {
       sortable: true,
       render: (c) => (
         <Badge variant="outline" className="gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: CATEGORY_COLOR[c.category] }} />
+          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: colorForCategory(c.category) }} />
           {c.category}
         </Badge>
       ),
@@ -119,7 +130,7 @@ export default function ManagementRevenue() {
             <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full rounded-full"
-                style={{ width: `${Math.max(share, 2)}%`, backgroundColor: CATEGORY_COLOR[c.category] }}
+                style={{ width: `${Math.max(share, 2)}%`, backgroundColor: colorForCategory(c.category) }}
               />
             </div>
             <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">{share.toFixed(1)}%</span>
@@ -137,8 +148,24 @@ export default function ManagementRevenue() {
         description="Where revenue comes from — course by course and department by department. Read-only, for strategic review; day-to-day course edits live in the Admin portal."
       />
 
+      {apiEnabled() && (trendError || coursesError) && (
+        <InlineAlert variant="warning" className="mb-4">
+          Could not load revenue data ({trendError ?? coursesError}) — the charts and table below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </InlineAlert>
+      )}
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <ChartCard title="Revenue Trend" description="Monthly revenue, last 6 months" className="lg:col-span-2" height={300}>
+        <ChartCard
+          title="Revenue Trend"
+          description="Monthly revenue, last 6 months"
+          className="lg:col-span-2"
+          height={300}
+          loading={trendLoading}
+          error={trendError}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={trend} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
               <defs>
@@ -159,7 +186,13 @@ export default function ManagementRevenue() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Revenue by Department" description="Share of this term's revenue" height={300}>
+        <ChartCard
+          title="Revenue by Department"
+          description="Share of this term's revenue"
+          height={300}
+          loading={deptLoading}
+          error={deptError}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie

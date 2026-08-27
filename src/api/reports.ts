@@ -69,6 +69,8 @@ export interface ApiStudentAnalytics {
   activityInteractions: number;
   whiteboardInteractions: number;
   averageEngagementScore: number;
+  talkTimeSeconds: number;
+  cameraOnSeconds: number;
   insights: string[];
 }
 

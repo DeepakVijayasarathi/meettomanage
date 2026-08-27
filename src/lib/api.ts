@@ -2,6 +2,7 @@
  * Minimal typed API client. When VITE_API_BASE_URL is unset the app runs in
  * demo mode: screens keep their mock data and login skips the backend.
  */
+import { authStorage, clearAuthStorage } from "@/lib/authStorage";
 
 const BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -12,12 +13,12 @@ export function apiEnabled(): boolean {
 }
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return authStorage().getItem(TOKEN_KEY);
 }
 
 export function setAccessToken(token: string | null) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  if (token) authStorage().setItem(TOKEN_KEY, token);
+  else authStorage().removeItem(TOKEN_KEY);
 }
 
 export class ApiError extends Error {
@@ -42,10 +43,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   // An expired/revoked token means the session is no longer authenticated: clear it
   // and land on login. Auth endpoints are exempt (a wrong PIN is also a 401).
   if (response.status === 401 && token && !path.startsWith("/api/auth/")) {
-    setAccessToken(null);
-    localStorage.removeItem("trn.role");
-    localStorage.removeItem("trn.userName");
-    localStorage.removeItem("trn.permissions");
+    clearAuthStorage();
     window.location.assign("/login");
   }
 
@@ -63,4 +61,31 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
+}
+
+/** Downloads a file response (a bulk-export CSV) with the auth token and saves it as `filename`. */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const token = getAccessToken();
+  const response = await fetch(`${BASE_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const problem = (await response.json()) as { detail?: string; title?: string };
+      detail = problem.detail ?? problem.title ?? detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(response.status, detail);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }

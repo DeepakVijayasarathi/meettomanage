@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CheckCircle2, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -16,6 +16,7 @@ import { getChildById } from "@/data/children";
 import { COURSES } from "@/data/courses";
 import { cn } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
+import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
 import { listCourseOptions } from "@/api/courses";
 import { submitEnrollmentForm } from "@/api/parentPortal";
@@ -66,6 +67,7 @@ interface EnrollmentForm {
 }
 
 export default function ParentEnrollment() {
+  const brand = useBrand();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { activeChildId, setActiveChildId, markEnrollmentComplete, userName, children: sessionChildren } = useSession();
@@ -89,27 +91,51 @@ export default function ParentEnrollment() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState<EnrollmentForm>({
-    childName: child?.name ?? "",
-    dob: "",
-    grade: child?.grade ?? "",
-    gender: "",
-    schoolName: "",
-    priorExperience: "",
-    parentName: userName !== "Guest" ? userName : "",
-    relationship: "",
-    parentPhone: "",
-    parentEmail: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-    address: "",
-    courseInterest: child?.courseId ?? "",
-    preferredDays: [],
-    preferredTime: "",
-    allergies: "",
-    notes: "",
-    consent: false,
-  });
+
+  // Parent/contact fields carry over between children on the same account (same
+  // parent, same address); everything else is this specific child's own answers and
+  // must start blank for each one.
+  function buildInitialForm(prev?: EnrollmentForm): EnrollmentForm {
+    return {
+      childName: child?.name ?? "",
+      dob: "",
+      grade: child?.grade ?? "",
+      gender: "",
+      schoolName: "",
+      priorExperience: "",
+      parentName: prev?.parentName || (userName !== "Guest" ? userName : ""),
+      relationship: prev?.relationship ?? "",
+      parentPhone: prev?.parentPhone ?? "",
+      parentEmail: prev?.parentEmail ?? "",
+      emergencyContactName: prev?.emergencyContactName ?? "",
+      emergencyContactPhone: prev?.emergencyContactPhone ?? "",
+      address: prev?.address ?? "",
+      courseInterest: child?.courseId ?? "",
+      preferredDays: [],
+      preferredTime: "",
+      allergies: "",
+      notes: "",
+      consent: false,
+    };
+  }
+
+  const [form, setForm] = useState<EnrollmentForm>(() => buildInitialForm());
+
+  // useState's initializer above only ever runs on this component's first mount — but
+  // switching to a different child (e.g. right after "Add Child") reuses this same
+  // route/component instance with just a new childId, not a fresh one. Without this,
+  // the form kept showing whichever child's answers were typed in first, no matter
+  // which child the URL/active-child now pointed at.
+  const previousChildIdRef = useRef(childId);
+  useEffect(() => {
+    if (previousChildIdRef.current === childId) return;
+    previousChildIdRef.current = childId;
+    setForm((prev) => buildInitialForm(prev));
+    setStep(0);
+    setErrors({});
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childId]);
 
   useEffect(() => {
     if (!submitted) return;
@@ -186,7 +212,8 @@ export default function ParentEnrollment() {
       if (emergencyPhoneError) next.emergencyContactPhone = emergencyPhoneError;
       else if (!parentPhoneError && phoneDigits(form.emergencyContactPhone) === phoneDigits(form.parentPhone))
         next.emergencyContactPhone = "The emergency contact should be a different number from your own.";
-      if (form.address.trim().length < 10) next.address = "Enter the full home address (street, city, PIN).";
+      if (form.address.trim().length > 0 && form.address.trim().length < 10)
+        next.address = "Enter the full home address (street, city, PIN), or leave it blank.";
     } else {
       if (!form.courseInterest) next.courseInterest = "Select a course to continue.";
       if (!form.consent) next.consent = "Please confirm the details and give consent to submit.";
@@ -289,7 +316,7 @@ export default function ParentEnrollment() {
 
       <Card className="mx-auto max-w-2xl">
         <CardHeader className="gap-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+          <div aria-live="polite" className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
             <span>
               Step {step + 1} of {STEPS.length}
             </span>
@@ -417,10 +444,9 @@ export default function ParentEnrollment() {
                     />
                   </Field>
                 </div>
-                <Field label="Home address" htmlFor="address" required error={errors.address}>
+                <Field label="Home address (optional)" htmlFor="address" error={errors.address}>
                   <Textarea
                     id="address"
-                    required
                     value={form.address}
                     onChange={(e) => update("address", e.target.value)}
                     placeholder="Street, city, state, PIN"
@@ -508,7 +534,7 @@ export default function ParentEnrollment() {
                   />
                   <span className="text-sm text-muted-foreground">
                     I confirm the details above are correct, and I consent to my child attending online classes that may be
-                    recorded for learning and quality purposes, per The Reader Nest's terms.
+                    recorded for learning and quality purposes, per {brand.name}'s terms.
                   </span>
                 </label>
                 {errors.consent && <p className="text-xs font-medium text-destructive">{errors.consent}</p>}

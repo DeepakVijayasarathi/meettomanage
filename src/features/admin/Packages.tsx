@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarClock, CreditCard, PackagePlus, Pencil, PlayCircle, RefreshCw, XCircle } from "lucide-react";
+import { CalendarClock, CreditCard, Loader2, PackagePlus, Pencil, PlayCircle, RefreshCw, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -29,6 +29,8 @@ import {
   listSubscriptions,
   renewSubscription,
   updatePackagePlan,
+  bulkImportPackagePlans,
+  exportPackagePlans,
   type ApiBillingCycle,
   type ApiBillingType,
   type ApiPackagePlan,
@@ -37,6 +39,7 @@ import {
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
 import { listStudents, type StudentRow } from "@/api/users";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 
 const BILLING_TYPES: { value: ApiBillingType; label: string }[] = [
   { value: "Subscription", label: "Subscription (recurring)" },
@@ -60,14 +63,14 @@ const SUBSCRIPTION_BADGE: Record<ApiSubscription["status"], "success" | "warning
 
 // Demo-mode sample rows so the screen reads correctly without a backend.
 const DEMO_PLANS: ApiPackagePlan[] = [
-  { id: "pp-1", name: "Phonics Foundations — Monthly", courseId: null, billingType: "Subscription", billingCycle: "Monthly", price: 2500, sessionsIncluded: 12, isActive: true },
-  { id: "pp-2", name: "Maths Explorers — Quarterly", courseId: null, billingType: "Subscription", billingCycle: "Quarterly", price: 6900, sessionsIncluded: 36, isActive: true },
-  { id: "pp-3", name: "Assessment Pack", courseId: null, billingType: "OneTime", billingCycle: "OneTime", price: 1200, sessionsIncluded: 1, isActive: false },
+  { id: "pp-1", name: "Phonics Foundations — Monthly", courseId: null, billingType: "Subscription", billingCycle: "Monthly", price: 2500, sessionsIncluded: 12, validityDays: null, isActive: true },
+  { id: "pp-2", name: "Maths Explorers — Quarterly", courseId: null, billingType: "Subscription", billingCycle: "Quarterly", price: 6900, sessionsIncluded: 36, validityDays: null, isActive: true },
+  { id: "pp-3", name: "Assessment Pack", courseId: null, billingType: "OneTime", billingCycle: "OneTime", price: 1200, sessionsIncluded: 1, validityDays: 30, isActive: false },
 ];
 
 const DEMO_SUBSCRIPTIONS: ApiSubscription[] = [
-  { id: "sub-1", parentProfileId: "p-1", childId: "c-1", childName: "Aarav Kapoor", packagePlanId: "pp-1", planName: "Phonics Foundations — Monthly", status: "Active", startDate: "2026-05-01", nextBillingAtUtc: "2026-08-01T00:00:00Z", cancelledAtUtc: null },
-  { id: "sub-2", parentProfileId: "p-1", childId: "c-2", childName: "Diya Kapoor", packagePlanId: "pp-2", planName: "Maths Explorers — Quarterly", status: "Cancelled", startDate: "2026-02-15", nextBillingAtUtc: null, cancelledAtUtc: "2026-06-20T00:00:00Z" },
+  { id: "sub-1", parentProfileId: "p-1", childId: "c-1", childName: "Aarav Kapoor", packagePlanId: "pp-1", planName: "Phonics Foundations — Monthly", status: "Active", startDate: "2026-05-01", endDate: null, nextBillingAtUtc: "2026-08-01T00:00:00Z", cancelledAtUtc: null },
+  { id: "sub-2", parentProfileId: "p-1", childId: "c-2", childName: "Diya Kapoor", packagePlanId: "pp-2", planName: "Maths Explorers — Quarterly", status: "Cancelled", startDate: "2026-02-15", endDate: null, nextBillingAtUtc: null, cancelledAtUtc: "2026-06-20T00:00:00Z" },
 ];
 
 interface PlanForm {
@@ -77,6 +80,7 @@ interface PlanForm {
   billingCycle: ApiBillingCycle;
   price: string;
   sessionsIncluded: string;
+  validityDays: string;
   isActive: boolean;
 }
 
@@ -87,14 +91,15 @@ const EMPTY_PLAN_FORM: PlanForm = {
   billingCycle: "Monthly",
   price: "",
   sessionsIncluded: "",
+  validityDays: "",
   isActive: true,
 };
 
 export default function AdminPackages() {
   const live = apiEnabled();
 
-  const { data: plans, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
-  const { data: subscriptions, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
+  const { data: plans, loading: plansLoading, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
+  const { data: subscriptions, loading: subscriptionsLoading, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
     () => listSubscriptions(),
     DEMO_SUBSCRIPTIONS
   );
@@ -129,6 +134,7 @@ export default function AdminPackages() {
       billingCycle: plan.billingCycle,
       price: String(plan.price),
       sessionsIncluded: plan.sessionsIncluded != null ? String(plan.sessionsIncluded) : "",
+      validityDays: plan.validityDays != null ? String(plan.validityDays) : "",
       isActive: plan.isActive,
     });
     setPlanError(null);
@@ -150,6 +156,11 @@ export default function AdminPackages() {
       setPlanError("Sessions included must be a whole number of at least 1.");
       return;
     }
+    const validityDays = planForm.validityDays.trim() === "" ? undefined : Number(planForm.validityDays);
+    if (validityDays !== undefined && (!Number.isInteger(validityDays) || validityDays < 1)) {
+      setPlanError("Validity (days) must be a whole number of at least 1.");
+      return;
+    }
 
     setSavingPlan(true);
     setPlanError(null);
@@ -161,6 +172,7 @@ export default function AdminPackages() {
         billingCycle: planForm.billingCycle,
         price,
         sessionsIncluded: sessions,
+        validityDays,
         isActive: planForm.isActive,
       };
       if (editingPlan) await updatePackagePlan(editingPlan.id, input);
@@ -221,6 +233,7 @@ export default function AdminPackages() {
   // ----- Renew / cancel -----
   const [confirmCancel, setConfirmCancel] = useState<ApiSubscription | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   async function handleRenew(sub: ApiSubscription) {
     if (!live) {
@@ -228,26 +241,27 @@ export default function AdminPackages() {
       return;
     }
     setActionError(null);
+    setBusyId(sub.id);
     try {
       await renewSubscription(sub.id);
       await reloadSubscriptions();
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Couldn't renew the subscription.");
+    } finally {
+      setBusyId(null);
     }
   }
 
+  // Deliberately doesn't catch its own errors — the ConfirmDialog below returns this
+  // promise directly, so a rejection surfaces as its inline error and keeps the dialog
+  // open, instead of the dialog closing immediately regardless of outcome.
   async function handleCancel(sub: ApiSubscription) {
     if (!live) {
       setActionError("Demo mode — no subscription actually cancelled.");
       return;
     }
-    setActionError(null);
-    try {
-      await cancelSubscription(sub.id);
-      await reloadSubscriptions();
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Couldn't cancel the subscription.");
-    }
+    await cancelSubscription(sub.id);
+    await reloadSubscriptions();
   }
 
   const activePlans = plans.filter((p) => p.isActive);
@@ -261,8 +275,8 @@ export default function AdminPackages() {
         sortable: true,
         accessor: (p) => p.name,
         render: (p) => (
-          <div>
-            <p className="font-semibold text-foreground">{p.name}</p>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-foreground">{p.name}</p>
             <p className="text-xs text-muted-foreground">
               {p.courseId ? courseNameById.get(p.courseId) ?? "Linked course" : "No course linked"}
             </p>
@@ -291,6 +305,11 @@ export default function AdminPackages() {
         key: "sessions",
         header: "Sessions",
         render: (p) => <span className="text-sm text-muted-foreground">{p.sessionsIncluded ?? "—"}</span>,
+      },
+      {
+        key: "validity",
+        header: "Validity",
+        render: (p) => <span className="text-sm text-muted-foreground">{p.validityDays ? `${p.validityDays} days` : "—"}</span>,
       },
       {
         key: "status",
@@ -355,17 +374,34 @@ export default function AdminPackages() {
         ),
       },
       {
+        key: "endDate",
+        header: "Valid Until",
+        sortable: true,
+        accessor: (s) => s.endDate ?? "",
+        render: (s) => <span className="text-sm text-muted-foreground">{s.endDate ? formatDate(s.endDate) : "—"}</span>,
+      },
+      {
         key: "actions",
         header: "",
         render: (s) =>
           s.status === "Active" ? (
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setConfirmCancel(s); }}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); setConfirmCancel(s); }}
+            >
               <XCircle className="h-3.5 w-3.5" />
               Cancel
             </Button>
           ) : (
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); void handleRenew(s); }}>
-              <RefreshCw className="h-3.5 w-3.5" />
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busyId === s.id}
+              onClick={(e) => { e.stopPropagation(); void handleRenew(s); }}
+            >
+              {busyId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
               Renew
             </Button>
           ),
@@ -384,8 +420,8 @@ export default function AdminPackages() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Active Plans" value={String(activePlans.length)} icon={CreditCard} tone="primary" />
-        <KpiCard label="Active Subscriptions" value={String(activeSubscriptions.length)} icon={PlayCircle} tone="success" />
+        <KpiCard label="Active Plans" value={String(activePlans.length)} icon={CreditCard} tone="primary" loading={plansLoading} />
+        <KpiCard label="Active Subscriptions" value={String(activeSubscriptions.length)} icon={PlayCircle} tone="success" loading={subscriptionsLoading} />
         <KpiCard
           label="Next Auto-Invoice"
           value={
@@ -397,6 +433,7 @@ export default function AdminPackages() {
           }
           icon={CalendarClock}
           tone="neutral"
+          loading={subscriptionsLoading}
         />
       </div>
 
@@ -424,10 +461,19 @@ export default function AdminPackages() {
               emptyTitle="No package plans yet"
               emptyDescription="Create a plan to define what parents are billed and how often."
               toolbar={
-                <Button onClick={openCreatePlan}>
-                  <PackagePlus className="h-4 w-4" />
-                  New plan
-                </Button>
+                <div className="flex items-center gap-2">
+                  <BulkImportExportBar
+                    entityLabel="package plans"
+                    templateColumns={["Name", "CourseName", "BillingType", "BillingCycle", "Price", "SessionsIncluded", "ValidityDays", "IsActive"]}
+                    onImport={bulkImportPackagePlans}
+                    onExport={exportPackagePlans}
+                    onImported={reloadPlans}
+                  />
+                  <Button onClick={openCreatePlan}>
+                    <PackagePlus className="h-4 w-4" />
+                    New plan
+                  </Button>
+                </div>
               }
             />
           </TabsContent>
@@ -495,12 +541,12 @@ export default function AdminPackages() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label>Billing type</Label>
+                <Label htmlFor="plan-billing-type-select">Billing type</Label>
                 <Select
                   value={planForm.billingType}
                   onValueChange={(v) => setPlanForm((f) => ({ ...f, billingType: v as ApiBillingType }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="plan-billing-type-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -513,12 +559,12 @@ export default function AdminPackages() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Billing cycle</Label>
+                <Label htmlFor="plan-billing-cycle-select">Billing cycle</Label>
                 <Select
                   value={planForm.billingCycle}
                   onValueChange={(v) => setPlanForm((f) => ({ ...f, billingCycle: v as ApiBillingCycle }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="plan-billing-cycle-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -553,6 +599,18 @@ export default function AdminPackages() {
                   onChange={(e) => setPlanForm((f) => ({ ...f, sessionsIncluded: e.target.value }))}
                 />
               </div>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="plan-validity-days">Validity (days) (optional)</Label>
+              <Input
+                id="plan-validity-days"
+                type="number"
+                min="1"
+                placeholder="e.g. 60 — leave blank if the plan never expires on its own"
+                value={planForm.validityDays}
+                onChange={(e) => setPlanForm((f) => ({ ...f, validityDays: e.target.value }))}
+              />
             </div>
 
             <label className="flex items-center gap-2 text-sm text-foreground">
@@ -595,9 +653,9 @@ export default function AdminPackages() {
 
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label>Student</Label>
+              <Label htmlFor="subscription-student-select">Student</Label>
               <Select value={subChildId} onValueChange={setSubChildId}>
-                <SelectTrigger>
+                <SelectTrigger id="subscription-student-select">
                   <SelectValue placeholder="Pick a student" />
                 </SelectTrigger>
                 <SelectContent>
@@ -612,9 +670,9 @@ export default function AdminPackages() {
             </div>
 
             <div className="grid gap-1.5">
-              <Label>Plan</Label>
+              <Label htmlFor="subscription-plan-select">Plan</Label>
               <Select value={subPlanId} onValueChange={setSubPlanId}>
-                <SelectTrigger>
+                <SelectTrigger id="subscription-plan-select">
                   <SelectValue placeholder="Pick a plan" />
                 </SelectTrigger>
                 <SelectContent>
@@ -668,10 +726,8 @@ export default function AdminPackages() {
             : ""
         }
         confirmLabel="Cancel subscription"
-        onConfirm={() => {
-          if (confirmCancel) void handleCancel(confirmCancel);
-          setConfirmCancel(null);
-        }}
+        destructive
+        onConfirm={() => (confirmCancel ? handleCancel(confirmCancel) : undefined)}
       />
     </div>
   );

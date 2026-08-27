@@ -26,6 +26,7 @@ import {
   History,
   CalendarRange,
   UserSearch,
+  UserCog,
   Link2,
   KanbanSquare,
   TrendingUp,
@@ -35,6 +36,10 @@ import {
   ScrollText,
   ShoppingBag,
   Sparkles,
+  Video,
+  Building2,
+  Activity,
+  MessageCircleQuestion,
   type LucideIcon,
 } from "lucide-react";
 
@@ -57,9 +62,11 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Academics",
     items: [
       { label: "Courses", to: "/admin/courses", icon: BookOpen },
+      { label: "Departments", to: "/admin/departments", icon: Building2 },
       { label: "Batches", to: "/admin/batches", icon: Layers },
       { label: "Academic Calendar", to: "/admin/calendar", icon: CalendarDays },
       { label: "Sessions", to: "/admin/sessions", icon: CalendarClock },
+      { label: "Quiz Bank", to: "/admin/quiz-bank", icon: Sparkles },
     ],
   },
   {
@@ -92,11 +99,15 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Bulk Email", to: "/admin/bulk-email", icon: Mail },
       { label: "Email Templates", to: "/admin/email-templates", icon: FileText },
       { label: "Progress Reports", to: "/admin/progress-reports", icon: ScrollText },
+      { label: "Doubt Chatbot", to: "/admin/chatbot", icon: MessageCircleQuestion },
     ],
   },
   {
     title: "System",
-    items: [{ label: "Settings & Branding", to: "/admin/settings", icon: Settings }],
+    items: [
+      { label: "Settings & Branding", to: "/admin/settings", icon: Settings },
+      { label: "Server Monitoring", to: "/admin/monitoring", icon: Activity },
+    ],
   },
 ];
 
@@ -114,7 +125,9 @@ export const TEACHER_NAV: NavSection[] = [
       // My Classes is the only entry point now.
       { label: "My Classes", to: "/teacher/classes", icon: CalendarClock },
       { label: "Attendance & Records", to: "/teacher/attendance", icon: ClipboardList },
+      { label: "Recordings", to: "/teacher/recordings", icon: Video },
       { label: "Demo Feedback", to: "/teacher/demo-feedback", icon: ClipboardCheck, badge: "1" },
+      { label: "Student Doubts", to: "/teacher/doubts", icon: MessageCircleQuestion },
     ],
   },
   {
@@ -133,7 +146,8 @@ export const PARENT_NAV: NavSection[] = [
     title: "Learning",
     items: [
       { label: "Schedule & Live Class", to: "/parent/schedule", icon: CalendarClock },
-      { label: "Resources & Recordings", to: "/parent/resources", icon: FolderOpen },
+      { label: "Resources", to: "/parent/resources", icon: FolderOpen },
+      { label: "Recordings", to: "/parent/recordings", icon: Video },
       { label: "Student View", to: "/student", icon: Sparkles },
     ],
   },
@@ -171,6 +185,7 @@ export const ADMISSION_NAV: NavSection[] = [
     title: "Pipeline",
     items: [
       { label: "Demo Scheduling", to: "/admission/demo-scheduling", icon: CalendarClock },
+      { label: "Teacher Assignment", to: "/admission/demo-teacher-assignment", icon: UserCog },
       { label: "Demo Feedback", to: "/admission/demo-feedback", icon: ClipboardCheck },
       { label: "Conversion Board", to: "/admission/conversion", icon: KanbanSquare },
     ],

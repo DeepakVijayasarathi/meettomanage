@@ -27,7 +27,7 @@ export function AccountDialog({
   onOpenChange: (open: boolean) => void;
   initialTab?: "profile" | "preferences";
 }) {
-  const { userName, setUserName } = useSession();
+  const { userName, setUserName, setTimeZoneId: setSessionTimeZoneId } = useSession();
   const live = apiEnabled();
 
   const [tab, setTab] = useState(initialTab);
@@ -93,6 +93,9 @@ export function AccountDialog({
         timeZoneId,
       });
       setUserName(updated.fullName);
+      // Takes effect immediately in this tab (every session time on screen converts
+      // against it) rather than only on the next login or page load.
+      setSessionTimeZoneId(updated.timeZoneId);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {

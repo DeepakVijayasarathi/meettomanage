@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import type { NavSection } from "@/lib/nav";
 import {
+  Activity,
   Ban,
   Banknote,
   BarChart3,
@@ -32,6 +33,8 @@ import {
   ShieldCheck,
   ShoppingBag,
   Sparkles,
+  Building2,
+  MessageCircleQuestion,
   TrendingUp,
   UserPlus,
   UserSearch,
@@ -71,6 +74,7 @@ export interface SaveMenuItemRequest {
 
 /** Lucide icons the menu manager can reference by name; extend as menus grow. */
 export const MENU_ICONS: Record<string, LucideIcon> = {
+  Activity,
   LayoutDashboard,
   Users,
   ShieldCheck,
@@ -107,6 +111,8 @@ export const MENU_ICONS: Record<string, LucideIcon> = {
   ScrollText,
   ShoppingBag,
   Sparkles,
+  Building2,
+  MessageCircleQuestion,
 };
 
 export function resolveMenuIcon(name: string): LucideIcon {

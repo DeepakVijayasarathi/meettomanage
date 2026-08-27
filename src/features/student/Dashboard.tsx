@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import {
+  Award,
   BookOpen,
   CalendarCheck2,
   Flame,
@@ -17,7 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { InlineAlert } from "@/components/InlineAlert";
 import { apiEnabled } from "@/lib/api";
+import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
 import { useSession } from "@/state/session";
 import { getParentDashboard, getParentResources, getParentSchedule } from "@/api/parentPortal";
@@ -35,15 +38,24 @@ import { formatDate } from "@/lib/utils";
 const CHILD_ID = "c-1";
 const TODAY = "2026-07-09";
 
+// A true flame-red, not derived from CHART_PALETTE (which has no red) — the one
+// deliberate exception among these badges, since "streak" is a fire icon and
+// needs to actually read as fire, not as whichever chart color happened to be free.
+const STREAK_FLAME_RED = "#DC2626";
+
 const BADGES = [
-  { label: "Phonics Star", icon: BookOpen, earned: true, color: "#F08A1D" },
-  { label: "7-Day Streak", icon: Flame, earned: true, color: "#EF4444" },
-  { label: "Quiz Whiz", icon: Trophy, earned: true, color: "#EAB308" },
-  { label: "Reading Rocket", icon: Sparkles, earned: false, color: "#8B5CF6" },
-  { label: "Perfect Attendance", icon: CalendarCheck2, earned: false, color: "#17A9C9" },
+  { label: "Phonics Star", icon: BookOpen, earned: true, color: CHART_PALETTE[3] },
+  { label: "7-Day Streak", icon: Flame, earned: true, color: STREAK_FLAME_RED },
+  { label: "Quiz Whiz", icon: Trophy, earned: true, color: CHART_PALETTE[6] },
+  { label: "Reading Rocket", icon: Sparkles, earned: false, color: CHART_PALETTE[4] },
+  { label: "Perfect Attendance", icon: CalendarCheck2, earned: false, color: CHART_PALETTE[2] },
 ];
 
 export default function StudentDashboard() {
+  // Called unconditionally, before the early return below, so this stays a valid hook order
+  // regardless of which branch renders.
+  const brand = useBrand();
+
   // API mode renders the real preview from the parent's own data (children,
   // schedule, leaderboard, resources); the mock learner below is demo-only.
   if (apiEnabled()) {
@@ -79,7 +91,7 @@ export default function StudentDashboard() {
       <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <p>
-          Students don&apos;t have their own login at The Reader Nest — they always learn through a parent&apos;s account. This screen is
+          Students don&apos;t have their own login at {brand.name} — they always learn through a parent&apos;s account. This screen is
           a demo of that kid-facing view, for sales calls and stakeholder walkthroughs.
         </p>
       </div>
@@ -117,7 +129,10 @@ export default function StudentDashboard() {
               ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="w-full sm:w-auto">
+                    {/* tabIndex: the Button inside is disabled (so browsers pull it out of
+                        the tab order entirely) — without this, the join-hint tooltip a
+                        mouse user gets on hover is unreachable by keyboard at all. */}
+                    <span tabIndex={0} className="w-full sm:w-auto">
                       <Button size="lg" variant="outline" disabled className="w-full sm:w-auto">
                         <Video className="h-4 w-4" />
                         Join Class
@@ -234,7 +249,7 @@ export default function StudentDashboard() {
                   >
                     {entry.name.charAt(0)}
                   </span>
-                  <p className="flex-1 truncate text-sm font-semibold text-foreground">
+                  <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
                     {entry.name} {isMe && <span className="text-primary">(You)</span>}
                   </p>
                   <span className="flex items-center gap-1 text-sm font-bold text-foreground">
@@ -329,7 +344,7 @@ function ApiStudentDashboard() {
   const { children, activeChildId } = useSession();
   const activeChild = children.find((c) => c.id === activeChildId) ?? children[0];
 
-  const { data: dashboard } = useApiData(
+  const { data: dashboard, error: dashboardError } = useApiData(
     () => getParentDashboard(),
     null as Awaited<ReturnType<typeof getParentDashboard>> | null,
     null
@@ -393,13 +408,17 @@ function ApiStudentDashboard() {
   );
   const myStars = myIndex >= 0 ? sorted[myIndex].stars : 0;
   const myRank = myIndex + 1;
+  // Badges a teacher actually granted live in class (GamificationOverlay/InteractivePanel) —
+  // distinct from the fixed achievement grid below, which is derived from other stats and
+  // never reflected a teacher's own custom awards.
+  const myEarnedBadges = myIndex >= 0 ? sorted[myIndex].badges : [];
 
   const badges = [
-    { label: "First Class", icon: Sparkles, earned: classesCompleted >= 1, color: "#8B5CF6" },
-    { label: "Reading Rocket", icon: BookOpen, earned: classesCompleted >= 10, color: "#F08A1D" },
-    { label: "Star Collector", icon: Star, earned: myStars >= 10, color: "#EAB308" },
-    { label: "Super Streak", icon: Flame, earned: attendancePercent >= 90 && classesCompleted >= 5, color: "#EF4444" },
-    { label: "Perfect Attendance", icon: CalendarCheck2, earned: attendancePercent >= 95 && classesCompleted >= 1, color: "#17A9C9" },
+    { label: "First Class", icon: Sparkles, earned: classesCompleted >= 1, color: CHART_PALETTE[4] },
+    { label: "Reading Rocket", icon: BookOpen, earned: classesCompleted >= 10, color: CHART_PALETTE[3] },
+    { label: "Star Collector", icon: Star, earned: myStars >= 10, color: CHART_PALETTE[6] },
+    { label: "Super Streak", icon: Flame, earned: attendancePercent >= 90 && classesCompleted >= 5, color: STREAK_FLAME_RED },
+    { label: "Perfect Attendance", icon: CalendarCheck2, earned: attendancePercent >= 95 && classesCompleted >= 1, color: CHART_PALETTE[2] },
   ];
 
   const ringColor = CHART_PALETTE[0];
@@ -413,6 +432,12 @@ function ApiStudentDashboard() {
         title={`Hey ${firstName}! 👋`}
         description={`A live look at the experience ${firstName} gets when they join a class through your parent account — no separate student login needed.`}
       />
+
+      {dashboardError && (
+        <InlineAlert variant="warning" className="mb-4">
+          Could not load {firstName}'s progress ({dashboardError}) — the stats below may be incomplete.
+        </InlineAlert>
+      )}
 
       {/* Today's class */}
       <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 sm:p-8">
@@ -443,7 +468,10 @@ function ApiStudentDashboard() {
               ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="w-full sm:w-auto">
+                    {/* tabIndex: the Button inside is disabled (so browsers pull it out of
+                        the tab order entirely) — without this, the join-hint tooltip a
+                        mouse user gets on hover is unreachable by keyboard at all. */}
+                    <span tabIndex={0} className="w-full sm:w-auto">
                       <Button size="lg" variant="outline" disabled className="w-full sm:w-auto">
                         <Video className="h-4 w-4" />
                         Join from Schedule
@@ -565,7 +593,7 @@ function ApiStudentDashboard() {
                     >
                       {entry.participantName.charAt(0)}
                     </span>
-                    <p className="flex-1 truncate text-sm font-semibold text-foreground">
+                    <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
                       {entry.participantName} {isMe && <span className="text-primary">(You)</span>}
                     </p>
                     <span className="flex items-center gap-1 text-sm font-bold text-foreground">
@@ -588,6 +616,18 @@ function ApiStudentDashboard() {
               <p className="text-xs text-muted-foreground">Collect them all by showing up and joining in!</p>
             </div>
           </div>
+          {myEarnedBadges.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2 border-b border-border pb-4">
+              {myEarnedBadges.map((label) => (
+                <span
+                  key={label}
+                  className="flex items-center gap-1.5 rounded-full bg-brand-amber/15 px-3 py-1.5 text-xs font-semibold text-brand-amber"
+                >
+                  <Award className="h-3.5 w-3.5" /> {label}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {badges.map((badge) => (
               <div

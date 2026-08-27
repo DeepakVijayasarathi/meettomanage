@@ -1,6 +1,6 @@
 import { apiFetch, getAccessToken } from "@/lib/api";
 import type { ApiInvoice } from "@/api/billing";
-import type { ApiClassSession } from "@/api/sessions";
+import type { ApiClassSession, ApiSessionRecording } from "@/api/sessions";
 import type { ApiResource } from "@/api/resources";
 
 export interface ApiParentChildSummary {
@@ -43,6 +43,15 @@ export async function getParentSchedule(fromUtc: string, toUtc: string): Promise
 
 export async function getParentResources(): Promise<ApiResource[]> {
   return apiFetch<ApiResource[]>("/api/parent-portal/resources");
+}
+
+/**
+ * Recordings for one session, scoped to the signed-in parent's own child (verifies active
+ * batch enrollment and blocks while fee-suspended — see ParentPortalService.GetRecordingsAsync).
+ * Distinct from `listRecordings` in api/sessions.ts, which is the Admin/Teacher-only route.
+ */
+export async function getSessionRecordings(sessionId: string): Promise<ApiSessionRecording[]> {
+  return apiFetch<ApiSessionRecording[]>(`/api/parent-portal/sessions/${sessionId}/recordings`);
 }
 
 /**
@@ -207,6 +216,8 @@ export async function reviewEnrollmentForm(
     childDateOfBirth?: string;
     /** Starts the child on this billing plan at approval — first invoice is issued immediately. */
     packagePlanId?: string;
+    /** Places the child on this batch's roster at approval. */
+    batchId?: string;
   }
 ): Promise<ApiEnrollmentForm> {
   return apiFetch<ApiEnrollmentForm>(`/api/enrollment-forms/${id}/review`, {

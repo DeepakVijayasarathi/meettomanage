@@ -32,10 +32,6 @@ export function SessionStatusBadge({ status, className }: { status: SessionStatu
   );
 }
 
-export function SessionStatusDot({ status, className }: { status: SessionStatus; className?: string }) {
-  return <span className={cn("h-2 w-2 rounded-full", SESSION_STATUS_COLOR[status], className)} title={SESSION_STATUS_LABEL[status]} />;
-}
-
 const USER_STATUS_VARIANT: Record<UserStatus, { label: string; className: string }> = {
   active: { label: "Active", className: "bg-success/15 text-success" },
   inactive: { label: "Inactive", className: "bg-muted text-muted-foreground" },

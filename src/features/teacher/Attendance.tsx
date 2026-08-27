@@ -3,6 +3,7 @@ import { CheckCircle2, ClipboardList, Users, Video, XCircle } from "lucide-react
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
+import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,7 @@ export default function TeacherAttendance() {
   // still no aggregate endpoint, but the per-session one (already proven correct by the
   // summary dialog below) is fetched once per completed session and aggregated client-side -
   // bounded by how many completed sessions this teacher actually has, not the whole table.
-  const { data: apiData } = useApiData<{ sessions: ClassSession[]; attendanceBySession: Record<string, ApiSessionAttendance[]> }>(
+  const { data: apiData, loading: apiLoading, error: apiError, reload } = useApiData<{ sessions: ClassSession[]; attendanceBySession: Record<string, ApiSessionAttendance[]> }>(
     async () => {
       const sessions = (await listMySessions().then((items) => items.map(toFrontendSession))).filter(
         (s) => s.status === "completed"
@@ -110,8 +111,8 @@ export default function TeacherAttendance() {
       accessor: (row) => row.title,
       sortable: true,
       render: (row) => (
-        <div>
-          <p className="font-semibold text-foreground">{row.title}</p>
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-foreground">{row.title}</p>
           <p className="text-xs text-muted-foreground">{sessionSubtitle(row)}</p>
         </div>
       ),
@@ -156,8 +157,19 @@ export default function TeacherAttendance() {
       key: "attendance",
       header: "Attendance",
       render: (row) => {
-        // Live per-session detail loads in the summary dialog; no fabricated counts in API mode.
-        if (apiEnabled()) return <span className="text-sm text-muted-foreground">View summary</span>;
+        // Already fetched alongside the session list (see apiData above) — the real
+        // per-child breakdown, not a placeholder duplicating the "View summary" action.
+        if (apiEnabled()) {
+          const records = (apiData.attendanceBySession[row.id] ?? []).filter((r) => r.participantType === "Student");
+          if (records.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
+          const present = records.filter((r) => r.status === "Present").length;
+          const pct = Math.round((present / records.length) * 100);
+          return (
+            <Badge variant={pct === 100 ? "success" : pct >= 50 ? "warning" : "destructive"}>
+              {present}/{records.length} present
+            </Badge>
+          );
+        }
         const records = ATTENDANCE_RECORDS[row.id];
         if (!records) return <span className="text-sm text-muted-foreground">{row.childIds.length}/{row.childIds.length} present</span>;
         const present = records.filter((r) => r.present).length;
@@ -213,11 +225,20 @@ export default function TeacherAttendance() {
         eyebrow="Teaching"
       />
 
+      {apiEnabled() && apiError && (
+        <InlineAlert variant="warning" className="mb-4">
+          Could not load attendance records ({apiError}) — the list below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </InlineAlert>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Sessions Delivered" value={String(completed.length)} icon={ClipboardList} tone="primary" />
-        <KpiCard label="Average Attendance" value={avgAttendance ? `${avgAttendance}%` : "—"} icon={CheckCircle2} tone="success" />
-        <KpiCard label="Students Taught" value={String(uniqueStudents)} icon={Users} tone="warning" />
-        <KpiCard label="Recordings Available" value={`${recordingsAvailable}/${completed.length}`} icon={Video} tone="neutral" />
+        <KpiCard label="Sessions Delivered" value={String(completed.length)} icon={ClipboardList} tone="primary" loading={apiLoading} />
+        <KpiCard label="Average Attendance" value={avgAttendance ? `${avgAttendance}%` : "—"} icon={CheckCircle2} tone="success" loading={apiLoading} />
+        <KpiCard label="Students Taught" value={String(uniqueStudents)} icon={Users} tone="primary" loading={apiLoading} />
+        <KpiCard label="Recordings Available" value={`${recordingsAvailable}/${completed.length}`} icon={Video} tone="neutral" loading={apiLoading} />
       </div>
 
       <div className="mt-6">
@@ -274,7 +295,7 @@ export default function TeacherAttendance() {
               <div>
                 <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Session notes</p>
                 <p className="rounded-lg bg-muted/50 p-3 text-sm text-foreground">
-                  {(apiEnabled() ? undefined : SESSION_NOTES[selected.id]) ?? "No notes were recorded for this session."}
+                  {(apiEnabled() ? selected.summary : SESSION_NOTES[selected.id]) ?? "No notes were recorded for this session."}
                 </p>
               </div>
 

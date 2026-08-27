@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, MessageCircle, Plus, ShieldCheck, Trash2, UserCog, Users as UsersIcon } from "lucide-react";
+import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
+import { useBrand } from "@/lib/branding";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -23,14 +25,18 @@ import { Progress } from "@/components/ui/progress";
 import { PARENTS, TEACHERS, ADMISSION_TEAM, SUB_ADMINS, getParentById } from "@/data/users";
 import { CHILDREN } from "@/data/children";
 import { getCourseById } from "@/data/courses";
+import { DEMO_DEPARTMENTS } from "@/data/departments";
 import type { AppUser, Child } from "@/types";
 import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { changeUserRole, createUser, deleteUser, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { bulkImportStudents, bulkImportUsers, changeUserRole, createUser, deleteUser, exportStudents, exportUsers, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { BulkImportExportBar } from "@/components/BulkImportExportBar";
+import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
 import type { ApiRole } from "@/api/types";
 import { applyRoleToUser, listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
+import { listDepartments, type ApiDepartment } from "@/api/departments";
 
 function UserAvatar({ name, color }: { name: string; color: string }) {
   return (
@@ -57,8 +63,12 @@ const BASE_ADD_USER_ROLES: AddUserRoleOption[] = [
 ];
 
 // These preset names already have a dedicated base option above (or, for "admin", can
-// never be self-service created) — skip them so the flattened list has no look-alike duplicates.
-const ROLE_PRESET_NAMES_TO_SKIP = new Set(["admin", "teacher", "parent", "admission", "sub-admin"]);
+// never be self-service created) — skip them so the flattened list has no look-alike
+// duplicates. "student" is also skipped: it's a real system RoleDefinition (0 permissions,
+// DefaultRoute "/student"), but it exists only to back the Parent's own "Student View"
+// preview — assigning it to a staff account grants nothing useful and shows up as a
+// confusing "Student" badge on what's actually a Sub Admin account.
+const ROLE_PRESET_NAMES_TO_SKIP = new Set(["admin", "teacher", "parent", "admission", "sub-admin", "student"]);
 
 const FRONTEND_ROLE_TO_API: Record<string, ApiRole> = {
   parent: "Parent",
@@ -69,6 +79,7 @@ const FRONTEND_ROLE_TO_API: Record<string, ApiRole> = {
 };
 
 export default function AdminUsers() {
+  const brand = useBrand();
   const {
     data: parents,
     error: parentsError,
@@ -88,7 +99,8 @@ export default function AdminUsers() {
     },
     [...ADMISSION_TEAM, ...SUB_ADMINS]
   );
-  const { data: students } = useApiData<StudentRow[]>(listStudents, CHILDREN);
+  const { data: students, reload: reloadStudents } = useApiData<StudentRow[]>(listStudents, CHILDREN);
+  const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), DEMO_DEPARTMENTS);
 
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
   const [detailChild, setDetailChild] = useState<Child | null>(null);
@@ -98,11 +110,36 @@ export default function AdminUsers() {
   useEffect(() => {
     setChildNotes((detailChild as StudentRow | null)?.rmNotes ?? "");
   }, [detailChild]);
+  // Engagement/AI analytics for the open child profile — fetched on open rather than
+  // eagerly for the whole list, since it's a per-student aggregation query.
+  const [analytics, setAnalytics] = useState<ApiStudentAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  useEffect(() => {
+    if (!detailChild || !apiEnabled()) {
+      setAnalytics(null);
+      return;
+    }
+    let cancelled = false;
+    setAnalyticsLoading(true);
+    getStudentAnalytics(detailChild.id)
+      .then((data) => {
+        if (!cancelled) setAnalytics(data);
+      })
+      .catch(() => {
+        if (!cancelled) setAnalytics(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAnalyticsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detailChild]);
   // Edit-profile dialog (name + phone + role) for any user account.
   const [editUser, setEditUser] = useState<AppUser | null>(null);
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "" });
   const [editRole, setEditRole] = useState("");
-  const [editDepartment, setEditDepartment] = useState<"Phonics" | "Maths">("Phonics");
+  const [editDepartment, setEditDepartment] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -113,7 +150,7 @@ export default function AdminUsers() {
     setAddName("");
     setAddEmail("");
     setAddPhone("");
-    setAddDepartment("Phonics");
+    setAddDepartment(departments[0]?.id ?? "");
     setAddError(null);
     setAddOpen(true);
   }
@@ -126,7 +163,7 @@ export default function AdminUsers() {
       ? addUserRoleOptions.find((o) => o.roleDefinitionId === u.roleDefinitionId)
       : undefined;
     setEditRole(currentOption?.key ?? u.role);
-    setEditDepartment(u.department === "Maths" ? "Maths" : "Phonics");
+    setEditDepartment(u.departmentId ?? departments[0]?.id ?? "");
     setEditUser(u);
     setDetailUser(null);
   }
@@ -152,7 +189,7 @@ export default function AdminUsers() {
         firstName: editForm.firstName.trim(),
         lastName: editForm.lastName.trim(),
         phone: editForm.phone.trim() || undefined,
-        department: editingTeacherInPlace ? editDepartment : undefined,
+        departmentId: editingTeacherInPlace ? editDepartment : undefined,
       });
 
       // Admin accounts are untouchable through this action — the Role field is hidden for them.
@@ -168,7 +205,7 @@ export default function AdminUsers() {
               firstName: editForm.firstName.trim(),
               lastName: editForm.lastName.trim(),
               phone: editForm.phone.trim() || undefined,
-              department: editDepartment,
+              departmentId: editDepartment,
             });
           }
         }
@@ -257,7 +294,7 @@ export default function AdminUsers() {
   const [addName, setAddName] = useState("");
   const [addEmail, setAddEmail] = useState("");
   const [addPhone, setAddPhone] = useState("");
-  const [addDepartment, setAddDepartment] = useState<"Phonics" | "Maths">("Phonics");
+  const [addDepartment, setAddDepartment] = useState("");
   const [rolePresets, setRolePresets] = useState<ApiRolePreset[]>([]);
   const [addError, setAddError] = useState<string | null>(null);
   const [addSubmitting, setAddSubmitting] = useState(false);
@@ -266,6 +303,20 @@ export default function AdminUsers() {
   // roles API (Academic Coordinator, Management, Student, any custom ones), so picking
   // one directly creates that account — no separate "assign role" step needed.
   const addUserRoleOptions = useMemo<AddUserRoleOption[]>(() => {
+    // The base "Parent Relationship Manager" option is skipped from extraPresets below
+    // (it already has its own entry) — but wire it to the real "sub-admin" system preset
+    // once loaded, so re-selecting it on an existing user actually re-applies that preset
+    // instead of being a silent no-op. Without this, a Sub Admin whose RoleDefinitionId
+    // got stamped onto the wrong preset (e.g. by hand-editing the API) could never be
+    // reset back to the plain PRM default from this dialog.
+    const subAdminPreset = rolePresets.find((role) => role.name === "sub-admin");
+    const baseRoles = subAdminPreset
+      ? BASE_ADD_USER_ROLES.map((option) =>
+          option.key === "subadmin"
+            ? { ...option, roleDefinitionId: subAdminPreset.id, presetName: subAdminPreset.name }
+            : option
+        )
+      : BASE_ADD_USER_ROLES;
     const extraPresets = rolePresets
       .filter((role) => !ROLE_PRESET_NAMES_TO_SKIP.has(role.name))
       .map((role) => ({
@@ -275,7 +326,7 @@ export default function AdminUsers() {
         roleDefinitionId: role.id,
         presetName: role.name,
       }));
-    return [...BASE_ADD_USER_ROLES, ...extraPresets];
+    return [...baseRoles, ...extraPresets];
   }, [rolePresets]);
 
   useEffect(() => {
@@ -383,7 +434,7 @@ export default function AdminUsers() {
         lastName: rest.join(" "),
         phone: addPhone.trim() || undefined,
         role: roleOption.apiRole,
-        department: roleOption.apiRole === "Teacher" ? addDepartment : undefined,
+        departmentId: roleOption.apiRole === "Teacher" ? addDepartment : undefined,
         roleDefinitionId: roleOption.roleDefinitionId,
       });
       setAddOpen(false);
@@ -408,10 +459,10 @@ export default function AdminUsers() {
         sortable: true,
         accessor: (row) => row.name,
         render: (row) => (
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <UserAvatar name={row.name} color={row.avatarColor} />
-            <div>
-              <p className="font-semibold text-foreground">{row.name}</p>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-foreground">{row.name}</p>
               <p className="text-xs text-muted-foreground">{row.email}</p>
             </div>
           </div>
@@ -449,10 +500,10 @@ export default function AdminUsers() {
         sortable: true,
         accessor: (row) => row.name,
         render: (row) => (
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <UserAvatar name={row.name} color={row.avatarColor} />
-            <div>
-              <p className="font-semibold text-foreground">{row.name}</p>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-foreground">{row.name}</p>
               <p className="text-xs text-muted-foreground">
                 {[row.grade, row.age ? `Age ${row.age}` : ""].filter(Boolean).join(" · ")}
               </p>
@@ -504,10 +555,18 @@ export default function AdminUsers() {
         render: (row) => {
           // A SubAdmin account may have a named preset applied (Management, Coordinator,
           // etc.) — show that instead of the generic base-role label whenever one's set.
-          const presetLabel = row.roleDefinitionId
-            ? addUserRoleOptions.find((o) => o.roleDefinitionId === row.roleDefinitionId)?.label
+          // A roleDefinitionId that doesn't resolve (e.g. a preset since excluded from this
+          // list, like "student") must NOT silently fall back to the generic label — that
+          // would misreport a zero-permission account as a full Parent Relationship Manager.
+          const preset = row.roleDefinitionId
+            ? addUserRoleOptions.find((o) => o.roleDefinitionId === row.roleDefinitionId)
             : undefined;
-          const label = row.role === "admission" ? "Admission Team" : presetLabel ?? "Parent Relationship Manager";
+          const label =
+            row.role === "admission"
+              ? "Admission Team"
+              : row.roleDefinitionId && !preset
+                ? "Custom preset"
+                : (preset?.label ?? "Parent Relationship Manager");
           return (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold capitalize text-foreground/80">
               {label}
@@ -536,28 +595,21 @@ export default function AdminUsers() {
       />
 
       {apiEnabled() && parentsError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not reach the API ({parentsError}) — showing demo data.
-        </p>
+        </InlineAlert>
       )}
 
       {banner && (
-        <p
-          className={cn(
-            "mb-4 flex items-start gap-1.5 rounded-lg px-3 py-2 text-sm font-medium",
-            banner.ok ? "bg-success/10 text-success" : "bg-warning/10 text-warning-foreground"
-          )}
-        >
-          {banner.ok && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
+        <InlineAlert variant={banner.ok ? "success" : "warning"} className="mb-4">
           {banner.text}
-        </p>
+        </InlineAlert>
       )}
 
       {bulkResult && (
-        <p className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+        <InlineAlert variant="success" className="mb-4">
           {bulkResult}
-        </p>
+        </InlineAlert>
       )}
 
       <Tabs defaultValue="parents">
@@ -591,6 +643,15 @@ export default function AdminUsers() {
                 <Mail className="h-3 w-3" /> Resend credentials
               </Button>
             }
+            toolbar={
+              <BulkImportExportBar
+                entityLabel="parents"
+                templateColumns={["Email", "FirstName", "LastName", "Phone"]}
+                onImport={(file) => bulkImportUsers(file, "Parent")}
+                onExport={() => exportUsers("Parent")}
+                onImported={reloadParents}
+              />
+            }
           />
         </TabsContent>
 
@@ -601,6 +662,15 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search students by name…"
             onRowClick={(row) => setDetailChild(row)}
+            toolbar={
+              <BulkImportExportBar
+                entityLabel="students"
+                templateColumns={["ParentEmail", "StudentFullName", "DateOfBirth", "AcademicLevel"]}
+                onImport={bulkImportStudents}
+                onExport={exportStudents}
+                onImported={reloadStudents}
+              />
+            }
           />
         </TabsContent>
 
@@ -618,6 +688,15 @@ export default function AdminUsers() {
               <Button size="sm" className="h-7 px-2 text-xs" disabled={bulkSending} onClick={() => setBulkConfirmIds([...selectedTeacherIds])}>
                 <Mail className="h-3 w-3" /> Resend credentials
               </Button>
+            }
+            toolbar={
+              <BulkImportExportBar
+                entityLabel="teachers"
+                templateColumns={["Email", "FirstName", "LastName", "Phone", "DepartmentName"]}
+                onImport={(file) => bulkImportUsers(file, "Teacher")}
+                onExport={() => exportUsers("Teacher")}
+                onImported={reloadTeachers}
+              />
             }
           />
         </TabsContent>
@@ -791,7 +870,7 @@ export default function AdminUsers() {
         title="Delete this account?"
         description={
           deleteTarget
-            ? `${deleteTarget.name}'s account will be removed from Reader Nest. This can't be undone from the UI.`
+            ? `${deleteTarget.name}'s account will be removed from ${brand.name}. This can't be undone from the UI.`
             : undefined
         }
         confirmLabel="Delete Account"
@@ -805,7 +884,6 @@ export default function AdminUsers() {
         title={`Resend credentials to ${bulkConfirmIds?.length ?? 0} user(s)?`}
         description="Each person gets a new temporary PIN and their previous one stops working. Use this for a batch of accounts that all need a credentials reset — not routinely."
         confirmLabel="Send"
-        destructive
         onConfirm={() => {
           if (!bulkConfirmIds) return;
           return handleBulkResend(bulkConfirmIds).then(() => setBulkConfirmIds(null));
@@ -849,9 +927,9 @@ export default function AdminUsers() {
             </div>
             {editUser?.role !== "admin" && (
               <div className="grid gap-1.5">
-                <Label>Role</Label>
+                <Label htmlFor="edit-role-select">Role</Label>
                 <Select value={editRole} onValueChange={setEditRole}>
-                  <SelectTrigger>
+                  <SelectTrigger id="edit-role-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -870,14 +948,17 @@ export default function AdminUsers() {
             )}
             {editRole === "teacher" && (
               <div className="grid gap-1.5">
-                <Label>Department</Label>
-                <Select value={editDepartment} onValueChange={(v) => setEditDepartment(v as "Phonics" | "Maths")}>
-                  <SelectTrigger>
-                    <SelectValue />
+                <Label htmlFor="edit-department-select">Department</Label>
+                <Select value={editDepartment} onValueChange={setEditDepartment}>
+                  <SelectTrigger id="edit-department-select">
+                    <SelectValue placeholder="Select a department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Phonics">Phonics</SelectItem>
-                    <SelectItem value="Maths">Maths</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -940,6 +1021,59 @@ export default function AdminUsers() {
                 </div>
               </div>
 
+              {/* AI engagement analytics — quiz accuracy, board participation, talk-time and
+                  camera attentiveness from live-classroom signals, plus generated narrative
+                  insights. Built server-side but never surfaced anywhere until now. */}
+              {apiEnabled() && (
+                <div className="mt-4 rounded-xl border border-border bg-muted/20 p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Engagement Analytics</p>
+                  </div>
+                  {analyticsLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading…</p>
+                  ) : !analytics ? (
+                    <p className="text-sm text-muted-foreground">No engagement data yet — appears once this student has attended a live class.</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div>
+                          <p className="text-lg font-bold text-foreground">{analytics.averageEngagementScore}</p>
+                          <p className="text-xs text-muted-foreground">Engagement score</p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold text-foreground">
+                            {analytics.quizAttempts > 0 ? Math.round((100 * analytics.quizCorrect) / analytics.quizAttempts) : 0}%
+                          </p>
+                          <p className="text-xs text-muted-foreground">Quiz accuracy ({analytics.quizAttempts} attempts)</p>
+                        </div>
+                        <div>
+                          <p className="flex items-center gap-1 text-lg font-bold text-foreground">
+                            <Mic className="h-3.5 w-3.5 text-muted-foreground" /> {Math.round(analytics.talkTimeSeconds / 60)}m
+                          </p>
+                          <p className="text-xs text-muted-foreground">Talk time</p>
+                        </div>
+                        <div>
+                          <p className="flex items-center gap-1 text-lg font-bold text-foreground">
+                            <Video className="h-3.5 w-3.5 text-muted-foreground" /> {Math.round(analytics.cameraOnSeconds / 60)}m
+                          </p>
+                          <p className="text-xs text-muted-foreground">Camera on</p>
+                        </div>
+                      </div>
+                      {analytics.insights.length > 0 && (
+                        <ul className="mt-3 flex flex-col gap-1.5 border-t border-border pt-3">
+                          {analytics.insights.map((insight, i) => (
+                            <li key={i} className="text-xs text-foreground/90">
+                              {insight}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* RM special enrolment notes — visible on the profile to whoever is the RM. */}
               <div className="mt-2 flex flex-col gap-1.5">
                 <Label htmlFor="rm-notes">Relationship Manager notes</Label>
@@ -958,9 +1092,17 @@ export default function AdminUsers() {
                   Close
                 </Button>
                 <Button
-                  disabled={savingNotes || !apiEnabled()}
+                  disabled={savingNotes}
                   onClick={async () => {
                     if (!detailChild) return;
+                    // Matches handleUpdateUser/handleCreateUser's pattern elsewhere on this
+                    // page: stay clickable in demo mode and say so via the shared banner,
+                    // rather than silently greying out with no explanation.
+                    if (!apiEnabled()) {
+                      setBanner({ ok: true, text: "Demo mode — no notes actually saved." });
+                      setDetailChild(null);
+                      return;
+                    }
                     setSavingNotes(true);
                     try {
                       await updateStudentNotes(detailChild.id, childNotes.trim());
@@ -1011,9 +1153,9 @@ export default function AdminUsers() {
               <Input id="add-phone" placeholder="+91 90000 00000" value={addPhone} onChange={(e) => setAddPhone(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
-              <Label>Role</Label>
+              <Label htmlFor="add-role-select">Role</Label>
               <Select value={addRole} onValueChange={setAddRole}>
-                <SelectTrigger>
+                <SelectTrigger id="add-role-select">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1027,14 +1169,17 @@ export default function AdminUsers() {
             </div>
             {addRole === "teacher" && (
               <div className="grid gap-1.5">
-                <Label>Department</Label>
-                <Select value={addDepartment} onValueChange={(v) => setAddDepartment(v as "Phonics" | "Maths")}>
-                  <SelectTrigger>
-                    <SelectValue />
+                <Label htmlFor="add-department-select">Department</Label>
+                <Select value={addDepartment} onValueChange={setAddDepartment}>
+                  <SelectTrigger id="add-department-select">
+                    <SelectValue placeholder="Select a department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Phonics">Phonics</SelectItem>
-                    <SelectItem value="Maths">Maths</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

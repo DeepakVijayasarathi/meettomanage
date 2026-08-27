@@ -28,10 +28,12 @@ export interface ApiDemoBooking {
   parentPhone: string | null;
   childName: string;
   childAge: number | null;
-  department: "Phonics" | "Maths" | null;
+  departmentId: string | null;
+  departmentName: string | null;
   conversionStatus: ApiConversionStatus;
   followUpNotes: string | null;
   scheduledStartAtUtc: string | null;
+  scheduledEndAtUtc: string | null;
   meetingRoomId: string | null;
   /** Teacher conducting (or who conducted) the demo. */
   teacherProfileId: string | null;
@@ -97,7 +99,7 @@ export function toFrontendLead(booking: ApiDemoBooking): Lead {
     teacherName: booking.teacherName ?? "",
     demoDate,
     demoSessionId: booking.classSessionId ?? undefined,
-    recommendedCourse: booking.department ?? "—",
+    recommendedCourse: booking.departmentName ?? "—",
     conversionStage: STAGE_FROM_API[booking.conversionStatus],
     lastContactedOn: demoDate,
     assignedTo: "",
@@ -113,13 +115,55 @@ export async function listDemoBookings(status?: ApiConversionStatus): Promise<Ap
   return apiFetch<ApiDemoBooking[]>(`/api/demo-bookings${query}`);
 }
 
+export async function getDemoBooking(id: string): Promise<ApiDemoBooking> {
+  return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${id}`);
+}
+
+/** One active teacher's load around a booking's slot — powers the reassignment page's availability view. */
+export interface ApiTeacherWorkload {
+  teacherProfileId: string;
+  teacherName: string;
+  departmentId: string | null;
+  departmentName: string | null;
+  /** True if this teacher already has an overlapping session at the booking's slot. */
+  isBusyAtSlot: boolean;
+  sessionsToday: number;
+  sessionsThisWeek: number;
+}
+
+export async function getDemoTeacherWorkload(bookingId: string): Promise<ApiTeacherWorkload[]> {
+  return apiFetch<ApiTeacherWorkload[]>(`/api/demo-bookings/${bookingId}/teacher-workload`);
+}
+
+/** One manual teacher reassignment on a demo booking, newest first. */
+export interface ApiDemoReassignmentHistory {
+  id: string;
+  atUtc: string;
+  actorName: string | null;
+  oldTeacherName: string | null;
+  newTeacherName: string;
+  reason: string | null;
+}
+
+export async function getDemoReassignmentHistory(bookingId: string): Promise<ApiDemoReassignmentHistory[]> {
+  return apiFetch<ApiDemoReassignmentHistory[]>(`/api/demo-bookings/${bookingId}/reassignment-history`);
+}
+
+/** Manually override the teacher assigned to a demo booking. */
+export async function reassignDemoTeacher(bookingId: string, teacherProfileId: string, reason?: string): Promise<ApiDemoBooking> {
+  return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${bookingId}/teacher`, {
+    method: "PUT",
+    body: JSON.stringify({ teacherProfileId, reason: reason || undefined }),
+  });
+}
+
 export async function createDemoBooking(input: {
   parentName: string;
   parentEmail: string;
   parentPhone?: string;
   childName: string;
   childAge?: number;
-  department?: "Phonics" | "Maths";
+  departmentId?: string;
   /** Omit to auto-assign the least-loaded available teacher. */
   teacherProfileId?: string;
   scheduledStartAtUtc: string;
@@ -220,7 +264,7 @@ export function toAwaitingFeedback(booking: ApiDemoBooking): DemoFeedback {
     academicLevel: "",
     strengths: "",
     improvementAreas: "",
-    recommendedCourse: booking.department ?? "—",
+    recommendedCourse: booking.departmentName ?? "—",
     suggestedBatchType: "1:1",
     remarks: "",
     submitted: false,

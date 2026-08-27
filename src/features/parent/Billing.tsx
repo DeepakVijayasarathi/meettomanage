@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, CreditCard, Download, ReceiptText, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CreditCard, Download, Loader2, ReceiptText, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { FeeStatusBadge } from "@/components/StatusBadge";
 import { PayNowModal } from "@/components/PayNowModal";
+import { InvoiceDetailDialog } from "@/components/InvoiceDetailDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,7 +25,7 @@ const PARENT_ID = "p-1";
 export default function ParentBilling() {
   const { children } = useSession();
   const mockChildren = getChildrenByParent(PARENT_ID);
-  const { data: invoices, error: invoicesError, reload: reloadInvoices } = useApiData(
+  const { data: invoices, loading: invoicesLoading, error: invoicesError, reload: reloadInvoices } = useApiData(
     () => getParentInvoices().then((items) => items.map(toFrontendInvoice)),
     getInvoicesForParent(PARENT_ID)
   );
@@ -36,6 +38,7 @@ export default function ParentBilling() {
   const [payOpen, setPayOpen] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [detail, setDetail] = useState<Invoice | null>(null);
 
   const openPayModal = useCallback((invoice: Invoice) => {
     setPayInvoice(invoice);
@@ -55,12 +58,16 @@ export default function ParentBilling() {
     }
   }, []);
 
-  // The suspended child's name for the banner: real children in API mode, mock in demo.
-  const suspendedChild = apiEnabled()
+  // Suspension is computed once for the whole parent account (ParentPortalService) and
+  // applies identically to every child — never assume it's about just one of them.
+  // API mode: list every child on the account. Demo mode's mock family is single-child,
+  // so filtering by feeStatus stays accurate without needing the account-wide flag.
+  const suspendedChildNames = apiEnabled()
     ? isSuspended
-      ? children[0]
-      : undefined
-    : mockChildren.find((c) => c.feeStatus === "suspended");
+      ? children.map((c) => c.name)
+      : []
+    : mockChildren.filter((c) => c.feeStatus === "suspended").map((c) => c.name);
+  const isAccountSuspended = suspendedChildNames.length > 0;
 
   // Cancelled invoices are neither paid nor owed — exclude them from what's "outstanding".
   const outstanding = invoices.filter((i) => i.status !== "paid" && i.status !== "cancelled");
@@ -118,7 +125,7 @@ export default function ParentBilling() {
       render: (r) => (
         <div className="flex items-center justify-end gap-1.5">
           {r.status !== "paid" && r.status !== "cancelled" && (
-            <Button size="sm" onClick={() => openPayModal(r)}>
+            <Button size="sm" onClick={(e) => { e.stopPropagation(); openPayModal(r); }}>
               Pay {formatCurrency(invoiceBalance(r))}
             </Button>
           )}
@@ -129,7 +136,7 @@ export default function ParentBilling() {
               title="Download invoice"
               aria-label="Download invoice"
               disabled={downloadingId === r.id}
-              onClick={() => handleDownload(r)}
+              onClick={(e) => { e.stopPropagation(); handleDownload(r); }}
             >
               <Download className="h-3.5 w-3.5" />
             </Button>
@@ -143,29 +150,33 @@ export default function ParentBilling() {
 
   return (
     <div>
-      <PageHeader title="Payments &amp; Billing" description="Invoices, receipts and secure Pay Now checkout for your family." />
+      <PageHeader eyebrow="Account" title="Payments &amp; Billing" description="Invoices, receipts and secure Pay Now checkout for your family." />
 
       {apiEnabled() && invoicesError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load your invoices ({invoicesError}).{" "}
           <button type="button" className="underline" onClick={() => reloadInvoices()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
-      {downloadError && (
-        <p className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">{downloadError}</p>
-      )}
+      {downloadError && <InlineAlert variant="warning" className="mb-4">{downloadError}</InlineAlert>}
 
-      {suspendedChild && (
+      {isAccountSuspended && (
         <Card className="mb-6 border-destructive/40 bg-destructive/5 p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
             <div>
-              <p className="text-sm font-semibold text-destructive">Access restricted for {suspendedChild.name}</p>
+              <p className="text-sm font-semibold text-destructive">
+                {suspendedChildNames.length > 1
+                  ? "Access is restricted across your account"
+                  : `Access restricted for ${suspendedChildNames[0]}`}
+              </p>
               <p className="mt-0.5 text-sm text-foreground/80">
-                Live classes and resources are paused until the outstanding fee is cleared. Pay now to restore full access instantly.
+                {suspendedChildNames.length > 1
+                  ? `Live classes and resources are paused for ${suspendedChildNames.join(", ")} until the outstanding fee is cleared. Pay now to restore full access instantly.`
+                  : "Live classes and resources are paused until the outstanding fee is cleared. Pay now to restore full access instantly."}
               </p>
             </div>
           </div>
@@ -173,9 +184,9 @@ export default function ParentBilling() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <KpiCard label="Outstanding" value={formatCurrency(totalOutstanding)} icon={Wallet} tone={totalOutstanding > 0 ? "destructive" : "success"} />
-        <KpiCard label="Paid this year" value={formatCurrency(totalPaid)} icon={CheckCircle2} tone="success" />
-        <KpiCard label="Next due date" value={nextDue ? formatDate(nextDue.dueOn, "short") : "—"} icon={ReceiptText} tone="primary" />
+        <KpiCard label="Outstanding" value={formatCurrency(totalOutstanding)} icon={Wallet} tone={totalOutstanding > 0 ? "destructive" : "success"} loading={invoicesLoading} />
+        <KpiCard label="Paid this year" value={formatCurrency(totalPaid)} icon={CheckCircle2} tone="success" loading={invoicesLoading} />
+        <KpiCard label="Next due date" value={nextDue ? formatDate(nextDue.dueOn, "short") : "—"} icon={ReceiptText} tone="primary" loading={invoicesLoading} />
       </div>
 
       <Card className="mt-6">
@@ -184,7 +195,13 @@ export default function ParentBilling() {
           <CardDescription>Every invoice raised for your children</CardDescription>
         </CardHeader>
         <CardContent>
-          <DataTable data={invoices} columns={columns} rowKey={(r) => r.id} searchPlaceholder="Search invoices…" />
+          <DataTable
+            data={invoices}
+            columns={columns}
+            rowKey={(r) => r.id}
+            searchPlaceholder="Search invoices…"
+            onRowClick={(r) => setDetail(r)}
+          />
         </CardContent>
       </Card>
 
@@ -223,6 +240,33 @@ export default function ParentBilling() {
         invoiceLabel={payInvoice ? `${payInvoice.courseName} — ${payInvoice.childName}` : undefined}
         invoiceId={payInvoice?.apiId}
         onInitiated={reloadInvoices}
+      />
+
+      <InvoiceDetailDialog
+        invoice={detail}
+        onClose={() => setDetail(null)}
+        footerActions={
+          detail && (
+            <>
+              {detail.apiId && (
+                <Button variant="outline" onClick={() => handleDownload(detail)} disabled={downloadingId === detail.id}>
+                  {downloadingId === detail.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  {downloadingId === detail.id ? "Downloading…" : "Download PDF"}
+                </Button>
+              )}
+              {detail.status !== "paid" && detail.status !== "cancelled" && (
+                <Button
+                  onClick={() => {
+                    setDetail(null);
+                    openPayModal(detail);
+                  }}
+                >
+                  Pay {formatCurrency(invoiceBalance(detail))}
+                </Button>
+              )}
+            </>
+          )
+        }
       />
     </div>
   );

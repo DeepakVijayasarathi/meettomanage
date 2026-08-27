@@ -26,6 +26,18 @@ export interface ApiStoreInquiry {
   createdAtUtc: string;
 }
 
+export interface ApiPublicDepartment {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+}
+
+/** Public — no login required. Active departments only, for the demo-booking form's optional filter. */
+export async function listStoreDepartments(): Promise<ApiPublicDepartment[]> {
+  return apiFetch<ApiPublicDepartment[]>("/api/store/departments");
+}
+
 /** Public — no login required. */
 export async function listStorePlans(): Promise<ApiStorePlan[]> {
   return apiFetch<ApiStorePlan[]>("/api/store/plans");
@@ -61,7 +73,7 @@ export async function bookStoreDemo(input: {
   parentPhone: string;
   childName: string;
   childAge?: number;
-  department?: "Phonics" | "Maths";
+  departmentId?: string;
   /** ISO datetime the visitor picked. */
   preferredStartAtUtc: string;
 }): Promise<ApiStoreDemoBookingConfirmation> {
@@ -69,6 +81,22 @@ export async function bookStoreDemo(input: {
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export interface ApiAvailableDemoSlot {
+  startAtUtc: string;
+  endAtUtc: string;
+}
+
+/**
+ * Public — no login required. Which 30-minute slots on `date` (yyyy-MM-dd, the visitor's
+ * own local date) still have a teacher free — lets the booking form offer real openings
+ * instead of the visitor guessing a time and hitting "no teacher available".
+ */
+export async function listDemoAvailability(date: string, departmentId?: string): Promise<ApiAvailableDemoSlot[]> {
+  const params = new URLSearchParams({ date });
+  if (departmentId) params.set("departmentId", departmentId);
+  return apiFetch<ApiAvailableDemoSlot[]>(`/api/store/demo-availability?${params.toString()}`);
 }
 
 /** Admin — the follow-up queue. */

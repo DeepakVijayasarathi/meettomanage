@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CalendarDays, ListChecks, PlayCircle, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { CalendarBoard } from "@/components/CalendarBoard";
@@ -22,7 +23,7 @@ import { toFrontendSession } from "@/api/sessions";
 import { getParentSchedule } from "@/api/parentPortal";
 import { cn, formatDate } from "@/lib/utils";
 import type { ClassSession } from "@/types";
-import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, recordingExpiryLabel } from "./utils";
+import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart, recordingExpiryLabel } from "./utils";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -88,7 +89,15 @@ export default function ParentSchedule() {
   }, [usingApi, apiSessions, mockChild, child]);
 
   const upcoming = useMemo(
-    () => sessions.filter((s) => ["scheduled", "demo", "rescheduled"].includes(s.status)).sort(compareSessionAsc),
+    () =>
+      sessions
+        .filter((s) => ["scheduled", "demo", "rescheduled"].includes(s.status))
+        // A session's status doesn't flip to "completed" the instant it ends — without this,
+        // one that already ran earlier today (still "scheduled") outranks the real next class
+        // in this ascending sort, since it's chronologically first. Matches the parent
+        // Dashboard's own "Upcoming" widget, which already excludes anything past its end time.
+        .filter((s) => minutesUntilStart(s) > -s.duration)
+        .sort(compareSessionAsc),
     [sessions]
   );
 
@@ -104,6 +113,7 @@ export default function ParentSchedule() {
   return (
     <div>
       <PageHeader
+        eyebrow="Learning"
         title="Schedule &amp; Live Class"
         description="Upcoming sessions, calendar view and one-click join for your child."
         actions={<CalendarSyncButton />}
@@ -126,12 +136,12 @@ export default function ParentSchedule() {
       )}
 
       {usingApi && sessionsError && (
-        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mt-4">
           Could not load the schedule ({sessionsError}).{" "}
           <button type="button" className="underline" onClick={() => reloadSessions()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       {!child ? (
@@ -247,7 +257,10 @@ function ScheduleRow({ session }: { session: ClassSession }) {
         ) : (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span>
+              {/* tabIndex: the Button is disabled and unreachable by keyboard on its own —
+                  without this the join-hint tooltip a mouse user sees on hover has no
+                  keyboard equivalent. */}
+              <span tabIndex={0}>
                 <Button size="sm" variant="outline" disabled>
                   <Video className="h-3.5 w-3.5" /> Join
                 </Button>

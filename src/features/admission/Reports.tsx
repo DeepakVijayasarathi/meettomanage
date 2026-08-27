@@ -13,6 +13,7 @@ import {
   Cell,
 } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { ChartCard } from "@/components/ChartCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, toCsv as toCsvEscaped } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listDemoBookings, listDemoFeedback, toFrontendLead, toFrontendFeedback } from "@/api/demoBookings";
@@ -85,9 +86,11 @@ function buildReport(
   return { headers: ["Child", "Parent", "Conversion Stage", "Recommended Course", "Last Contacted", "Next Follow-up"], rows };
 }
 
+// Delegates to lib/utils's toCsv, which (unlike this file's own old copy) neutralizes
+// a leading =/+/-/@ — child/parent names here are free text entered at demo booking,
+// so a formula-injection payload in one is a real, reachable path into a staff export.
 function toCsv(headers: string[], rows: ReportRow[]) {
-  const lines = [headers.join(","), ...rows.map((r) => r.cells.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))];
-  return lines.join("\n");
+  return toCsvEscaped(headers, rows.map((r) => r.cells));
 }
 
 export default function AdmissionReports() {
@@ -274,10 +277,10 @@ export default function AdmissionReports() {
         </div>
 
         {reportError && (
-          <p className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          <InlineAlert variant="warning" className="mb-3">
             Could not load the data for this report ({reportError}) — what&apos;s below is
             incomplete, and exporting it would be too.
-          </p>
+          </InlineAlert>
         )}
 
         <DataTable

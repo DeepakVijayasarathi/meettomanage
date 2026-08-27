@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickAccentForegroundHsl, safeExternalUrl, safeInternalPath } from "./utils";
+import { escapeCsvCell, pickAccentForegroundHsl, safeExternalUrl, safeInternalPath, toCsv } from "./utils";
 import { ROLE_META } from "./roles";
 
 function hslTripleToRgb(triple: string): [number, number, number] {
@@ -94,4 +94,48 @@ describe("safeInternalPath", () => {
       expect(safeInternalPath(value)).toBeNull();
     }
   );
+});
+
+describe("escapeCsvCell", () => {
+  it("leaves ordinary text untouched", () => {
+    expect(escapeCsvCell("Aarav Kapoor")).toBe("Aarav Kapoor");
+    expect(escapeCsvCell(42)).toBe("42");
+  });
+
+  // A CSV export's child/parent/teacher/actor-name columns are free text a user
+  // controls (their own display name, an enrollment field) — opened in Excel/Sheets,
+  // a cell starting with one of these is executed as a formula, not shown as text.
+  it.each(["=cmd|' /C calc'!A0", "+1+1", "-2+3", "@SUM(A1:A9)"])("neutralizes a leading formula trigger in %j", (value) => {
+    const escaped = escapeCsvCell(value);
+    expect(escaped.startsWith("'")).toBe(true);
+    expect(escaped).toBe(`'${value}`);
+  });
+
+  it("quotes and escapes a cell containing a comma, quote, or newline", () => {
+    expect(escapeCsvCell("Doe, Jane")).toBe('"Doe, Jane"');
+    expect(escapeCsvCell('Say "hi"')).toBe('"Say ""hi"""');
+    expect(escapeCsvCell("line1\nline2")).toBe('"line1\nline2"');
+  });
+
+  it("quotes a neutralized formula value that also contains a comma", () => {
+    expect(escapeCsvCell("=A,B")).toBe('"\'=A,B"');
+  });
+});
+
+describe("toCsv", () => {
+  it("escapes every column header and cell", () => {
+    expect(toCsv(["Name", "Note"], [["=EVIL()", "fine"]])).toBe("Name,Note\n'=EVIL(),fine");
+  });
+
+  it("joins headers and rows with commas and newlines", () => {
+    expect(
+      toCsv(
+        ["A", "B"],
+        [
+          [1, 2],
+          [3, 4],
+        ]
+      )
+    ).toBe("A,B\n1,2\n3,4");
+  });
 });

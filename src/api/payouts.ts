@@ -14,10 +14,16 @@ export type ApiPayoutItemType =
 export interface ApiPayoutItem {
   id: string;
   classSessionId: string | null;
+  /** The batch this item's class belongs to -- null for items with no classSessionId. */
+  className: string | null;
+  /** The class's own scheduled start, not when this payout item was created. */
+  sessionDate: string | null;
   type: ApiPayoutItemType;
   amount: number;
   note: string | null;
   createdAtUtc: string;
+  /** Teacher's captured attendance fell well short of the scheduled class -- needs a human look before this payout is finalized. */
+  requiresReview: boolean;
 }
 
 export interface ApiPayout {
@@ -38,8 +44,8 @@ export interface ApiPayoutRate {
   /** Null identifies the centre-wide default rate card. */
   teacherProfileId: string | null;
   teacherName: string;
-  durationMinutes: number;
-  ratePerSession: number;
+  /** Rate applied per minute of a session's own scheduled duration. */
+  ratePerMinute: number;
   /** Teacher no-show deduction as % of the session rate (100 = full rate). */
   teacherNoShowPenaltyPercent: number;
   effectiveFrom: string;
@@ -75,6 +81,18 @@ export function toFrontendPayout(payout: ApiPayout): TeacherPayout {
     // since a Pending payout can still change (more sessions may complete this month)
     // while a Finalized one is locked and just waiting to be paid.
     status: payout.status === "Paid" ? "paid" : payout.status === "Finalized" ? "finalized" : "pending",
+    requiresReview: payout.items.some((i) => i.requiresReview),
+    items: payout.items.map((i) => ({
+      id: i.id,
+      classSessionId: i.classSessionId,
+      className: i.className,
+      sessionDate: i.sessionDate,
+      type: i.type,
+      amount: i.amount,
+      note: i.note,
+      createdAtUtc: i.createdAtUtc,
+      requiresReview: i.requiresReview,
+    })),
   };
 }
 
@@ -104,6 +122,18 @@ export async function markPayoutPaid(id: string): Promise<ApiPayout> {
   return apiFetch<ApiPayout>(`/api/payouts/${id}/mark-paid`, { method: "POST" });
 }
 
+/** Corrects (or confirms as-is) one flagged line item — only while its payout is still Pending. Clears the review flag either way. */
+export async function adjustPayoutItem(
+  payoutId: string,
+  itemId: string,
+  input: { newAmount: number; reason: string }
+): Promise<ApiPayout> {
+  return apiFetch<ApiPayout>(`/api/payouts/${payoutId}/items/${itemId}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function listPayoutRates(teacherProfileId?: string): Promise<ApiPayoutRate[]> {
   const query = teacherProfileId ? `?teacherProfileId=${teacherProfileId}` : "";
   return apiFetch<ApiPayoutRate[]>(`/api/payout-rates${query}`);
@@ -112,8 +142,8 @@ export async function listPayoutRates(teacherProfileId?: string): Promise<ApiPay
 export async function savePayoutRate(input: {
   /** Omit to save the centre-wide default rate card (pays teachers without their own rates). */
   teacherProfileId?: string;
-  durationMinutes: 30 | 45 | 60;
-  ratePerSession: number;
+  /** Rate applied per minute of a session's own scheduled duration. */
+  ratePerMinute: number;
   /** No-show deduction as % of the session rate; omitted = 100 (full rate). */
   teacherNoShowPenaltyPercent?: number;
   effectiveFrom: string;

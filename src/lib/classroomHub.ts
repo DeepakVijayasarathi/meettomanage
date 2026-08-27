@@ -40,6 +40,28 @@ export interface ClassroomHubEvents {
 export type ClassroomHubState = "connected" | "reconnecting" | "disconnected";
 
 /**
+ * Turns a raw SignalR/negotiate error into a short, teacher-facing reason instead
+ * of the generic "Working locally" badge that used to hide "you don't have access
+ * to this session" behind the same wording as an actual network outage. HubException
+ * messages thrown from JoinSession (see ClassroomHub.cs) come through verbatim, so
+ * those are shown as-is; everything else is a transport/auth failure, bucketed by
+ * what SignalR's own error text says.
+ */
+function describeHubError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  if (message.includes("You do not have access to this session")) return "You don't have access to this session.";
+  if (message.includes("Invalid session id")) return "This session's id looks wrong — live sync can't attach to it.";
+  if (message.includes("Unauthorized") || message.includes("Status code '401'")) return "Your session token was rejected — try signing in again.";
+  // Transport-level: negotiate succeeded but the follow-up connect couldn't find that
+  // connection id — classically a load-balanced backend without sticky sessions routing
+  // the two requests to different instances. Raw text like "No Connection with that ID:
+  // Status code '404'" is meaningless to a teacher mid-class; the class call itself is fine.
+  if (message.includes("No Connection with that ID") || message.includes("Status code '404'")) return "Couldn't reach the live-sync server.";
+  if (message.includes("Failed to fetch") || message.includes("Failed to complete negotiation")) return "Couldn't reach the live-sync server.";
+  return message;
+}
+
+/**
  * Live-classroom hub client: joins the session group and exposes typed send/on
  * wrappers over the SignalR connection. All sends are safe no-ops while
  * disconnected so a hub outage never breaks the class (Jitsi carries the call).
@@ -56,7 +78,7 @@ export class ClassroomHubClient {
   async connect(
     displayName: string,
     handlers: Partial<ClassroomHubEvents>,
-    onStateChange?: (state: ClassroomHubState) => void
+    onStateChange?: (state: ClassroomHubState, detail?: string) => void
   ): Promise<boolean> {
     if (!apiEnabled()) return false;
     const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
@@ -82,8 +104,14 @@ export class ClassroomHubClient {
     // SignalR's own retry loop — surface it so the UI can stop pretending sync
     // is healthy the instant it isn't, instead of only knowing "connected" once
     // at startup and never again.
-    connection.onreconnecting(() => onStateChange?.("reconnecting"));
-    connection.onclose(() => onStateChange?.("disconnected"));
+    connection.onreconnecting((err) => {
+      if (err) console.warn("Classroom hub reconnecting after a drop:", err);
+      onStateChange?.("reconnecting");
+    });
+    connection.onclose((err) => {
+      if (err) console.error("Classroom hub connection closed:", err);
+      onStateChange?.("disconnected", err ? describeHubError(err) : undefined);
+    });
 
     // Re-join the session group after an automatic reconnect (new connection id).
     connection.onreconnected(() => {
@@ -116,9 +144,14 @@ export class ClassroomHubClient {
       }
       onStateChange?.("connected");
       return true;
-    } catch {
+    } catch (err) {
       // Hub unavailable — the classroom still works, just without real-time sync.
-      onStateChange?.("disconnected");
+      // Logged (not swallowed): the only way to tell "WebSocket blocked by a
+      // proxy", "negotiate timed out", "401 from a stale token" and "hub simply
+      // down" apart is this exact error — silence made every one of those look
+      // identical from the UI's "disconnected" state alone.
+      console.error("Classroom hub connection failed:", err);
+      onStateChange?.("disconnected", describeHubError(err));
       return false;
     }
   }
@@ -150,6 +183,17 @@ export class ClassroomHubClient {
 
   answerQuiz(questionIndex: number, selectedIndex: number, correct: boolean): void {
     this.send("AnswerQuiz", questionIndex, selectedIndex, correct);
+  }
+
+  /** Live-leaderboard bump for a whiteboard mini-game completion (see postAward for the durable half). */
+  awardStar(): void {
+    this.send("AwardStar");
+  }
+
+  /** Teacher-only: live-leaderboard bump for a star manually given to a named student
+   *  (see postAward for the durable half — this only refreshes what everyone sees live). */
+  awardStarTo(participantName: string): void {
+    this.send("AwardStarToParticipant", participantName);
   }
 
   celebrate(message?: string): void {

@@ -51,7 +51,7 @@ export default function VideoTile({ participant, canDrawBoard, className }: Vide
       )}
 
       <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/75 via-black/20 to-transparent px-2.5 py-2">
-        <span className="truncate text-xs font-semibold text-white">
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-white">
           {name}
           {role === "teacher" && <span className="ml-1 text-white/60">· Teacher</span>}
         </span>

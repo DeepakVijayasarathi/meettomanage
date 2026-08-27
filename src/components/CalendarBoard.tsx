@@ -53,7 +53,10 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold tracking-tight">{format(cursor, "MMMM yyyy")}</h3>
+        {/* aria-live: Prev/Next/Today swap this text without moving focus — without it, a
+            screen-reader user who clicked "Next month" has no way to know the grid changed
+            unless they re-navigate back to this heading. */}
+        <h3 className="text-lg font-bold tracking-tight" aria-live="polite">{format(cursor, "MMMM yyyy")}</h3>
         <div className="flex items-center gap-1.5">
           <Button
             variant="outline"
@@ -121,11 +124,11 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
                       onClick={() => onSessionClick?.(s)}
                       title={s.title}
                       className={cn(
-                        "flex items-center gap-1 truncate rounded-md px-1.5 py-0.5 text-left text-[10px] font-medium text-white transition-transform hover:scale-[1.02]",
+                        "flex items-center gap-1 rounded-md px-1.5 py-0.5 text-left text-[10px] font-medium text-white transition-transform hover:scale-[1.02]",
                         SESSION_STATUS_COLOR[s.status]
                       )}
                     >
-                      <span className="truncate">
+                      <span className="min-w-0 flex-1 truncate">
                         {s.startTime} {s.title}
                       </span>
                     </button>

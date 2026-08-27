@@ -100,9 +100,9 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
                     }
                     style={({ isActive }) => (isActive ? { backgroundColor: roleHex } : undefined)}
                   >
-                    <span className={cn("flex items-center gap-2.5", collapsed && "justify-center")}>
+                    <span className={cn("flex min-w-0 items-center gap-2.5", collapsed && "justify-center")}>
                       <item.icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && <span className="truncate">{item.label}</span>}
+                      {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
                     </span>
                     {item.badge && !collapsed && (
                       <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/15 px-1 text-[10px] font-bold">

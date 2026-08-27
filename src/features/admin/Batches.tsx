@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -94,12 +96,12 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
   return (
     <Card className="flex flex-col p-5 transition-shadow hover:shadow-pop">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${color}1A`, color }}>
             <Layers className="h-5 w-5" />
           </span>
-          <div>
-            <p className="font-semibold text-foreground">{batch.name}</p>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-foreground">{batch.name}</p>
             <p className="text-xs text-muted-foreground">{courseName ?? "—"}</p>
           </div>
         </div>
@@ -113,7 +115,11 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
             {batch.enrolled} / {batch.capacity}
           </span>
         </div>
-        <Progress value={pct} className="h-2" indicatorClassName={pct >= 90 ? "bg-destructive" : pct >= 70 ? "bg-warning" : "bg-success"} />
+        {/* High fill is the good outcome (a near-full batch), matching every other
+            percentage-fill indicator in the app (management/Performance.tsx's
+            utilization bars, parent/Dashboard.tsx's progress rings) — this used to
+            run the opposite direction, reading a nearly-sold-out batch as "danger". */}
+        <Progress value={pct} className="h-2" indicatorClassName={pct >= 90 ? "bg-success" : pct >= 70 ? "bg-warning" : "bg-destructive"} />
       </div>
 
       <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
@@ -140,6 +146,7 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
 }
 
 export default function AdminBatches() {
+  const { toast } = useToast();
   const { data: batchData, error: batchError, reload } = useApiData<{ raw: ApiBatch[]; mapped: DisplayBatch[] }>(
     async () => {
       const raw = await listBatches();
@@ -152,13 +159,14 @@ export default function AdminBatches() {
 
   const { data: courseOptions } = useApiData<ApiCourseOption[]>(
     () => listCourseOptions(),
-    COURSES.map((c) => ({ id: c.id, name: c.name }))
+    COURSES.map((c) => ({ id: c.id, name: c.name, type: c.type === "group" ? ("Group" as const) : ("Individual" as const) }))
   );
 
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState<DisplayBatch | null>(null);
   const [teacherAssignment, setTeacherAssignment] = useState<string>("");
   const [saved, setSaved] = useState(false);
+  const [savingDetail, setSavingDetail] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // New-batch dialog
@@ -169,6 +177,23 @@ export default function AdminBatches() {
   const [newCapacity, setNewCapacity] = useState("8");
   const [newStart, setNewStart] = useState("");
   const [creating, setCreating] = useState(false);
+  // Individual (1:1) courses always run a single-seat batch — BatchService.CreateAsync
+  // forces Capacity to 1 for them server-side no matter what's submitted. Tracking the
+  // selected course's type here lets the Capacity field say so up front instead of
+  // silently overriding whatever number the admin typed (e.g. "10").
+  const newCourseIsIndividual = courseOptions.find((c) => c.id === newCourse)?.type === "Individual";
+
+  function handleNewCourseChange(courseId: string) {
+    setNewCourse(courseId);
+    const isIndividual = courseOptions.find((c) => c.id === courseId)?.type === "Individual";
+    if (isIndividual) {
+      setNewCapacity("1");
+    } else if (newCapacity === "1") {
+      // Coming back from an Individual course — "1" was forced, not chosen, so restore
+      // the usual group default rather than leaving a 1-seat group batch.
+      setNewCapacity("8");
+    }
+  }
   const [createError, setCreateError] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
 
@@ -309,6 +334,7 @@ export default function AdminBatches() {
     setDetail(b);
     setTeacherAssignment(b.teacherId);
     setSaved(false);
+    setSavingDetail(false);
     setSaveError(null);
     setGenResult(null);
     setGenStart(b.startDate && b.startDate > new Date().toISOString().slice(0, 10) ? b.startDate : "");
@@ -330,13 +356,19 @@ export default function AdminBatches() {
     const raw = batchData.raw.find((b) => b.id === detail.id);
     if (!raw) return;
 
+    setSavingDetail(true);
     try {
       await updateBatch(raw, teacherAssignment);
       setSaved(true);
       reload();
+      toast({ variant: "success", title: "Batch updated" });
       setTimeout(() => setDetail(null), 700);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not save the batch.");
+      const message = err instanceof Error ? err.message : "Could not save the batch.";
+      setSaveError(message);
+      toast({ variant: "error", title: "Couldn't save batch", description: message });
+    } finally {
+      setSavingDetail(false);
     }
   }
 
@@ -354,16 +386,16 @@ export default function AdminBatches() {
       />
 
       {banner && (
-        <div className="mb-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">{banner}</div>
+        <InlineAlert variant="success" bordered className="mb-5">{banner}</InlineAlert>
       )}
 
       {apiEnabled() && batchError && (
-        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
-          <span>Couldn't load batches: {batchError}. The list below may be incomplete.</span>
+        <InlineAlert variant="error" bordered className="mb-5 items-center justify-between">
+          <span className="flex-1">Couldn't load batches: {batchError}. The list below may be incomplete.</span>
           <Button variant="outline" size="sm" onClick={reload}>
             Retry
           </Button>
-        </div>
+        </InlineAlert>
       )}
 
       <div className="relative mb-5 max-w-sm">
@@ -435,16 +467,16 @@ export default function AdminBatches() {
 
               <div className="grid gap-4">
                 <div className="grid gap-1.5">
-                  <Label>Assign teacher</Label>
+                  <Label htmlFor="batch-assign-teacher-select">Assign teacher</Label>
                   <Select value={teacherAssignment} onValueChange={setTeacherAssignment}>
-                    <SelectTrigger>
+                    <SelectTrigger id="batch-assign-teacher-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {apiEnabled() && teacherOptions.length > 0
                         ? teacherOptions.map((t) => (
                             <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
-                              {t.fullName} {t.department ? `· ${t.department}` : ""}
+                              {t.fullName} {t.departmentName ? `· ${t.departmentName}` : ""}
                             </SelectItem>
                           ))
                         : TEACHERS.map((t) => (
@@ -457,7 +489,10 @@ export default function AdminBatches() {
                 </div>
                 {apiEnabled() ? (
                   <div className="grid gap-1.5">
-                    <Label>Assign students</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Assign students</Label>
+                      <span className="text-[11px] text-muted-foreground">Saved immediately</span>
+                    </div>
                     <Select value="" onValueChange={handleAssignStudent} disabled={assigning || roster.length >= detail.capacity}>
                       <SelectTrigger>
                         <SelectValue
@@ -500,7 +535,7 @@ export default function AdminBatches() {
                             key={s.enrollmentId}
                             className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-sm"
                           >
-                            <span className="truncate">
+                            <span className="min-w-0 flex-1 truncate">
                               {s.childName}
                               {s.academicLevel && <span className="text-xs text-muted-foreground"> · {s.academicLevel}</span>}
                             </span>
@@ -531,9 +566,12 @@ export default function AdminBatches() {
 
               {/* Session plan: bulk-creates every course session on the chosen weekdays (skips holidays) */}
               <div className="rounded-xl border border-border bg-muted/30 p-4">
-                <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                  <CalendarPlus className="h-4 w-4" /> Generate class schedule
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <CalendarPlus className="h-4 w-4" /> Generate class schedule
+                  </p>
+                  <span className="text-[11px] text-muted-foreground">Saved immediately</span>
+                </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Creates all of this batch's course sessions from a start date on the selected weekdays (holidays skipped).
                 </p>
@@ -581,11 +619,18 @@ export default function AdminBatches() {
               </div>
 
               {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDetail(null)}>
-                  Close
-                </Button>
-                <Button onClick={saveDetail}>{saved ? "Saved!" : "Save Changes"}</Button>
+              <DialogFooter className="items-center gap-3 sm:justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Only applies the teacher assignment above — student roster and schedule changes are already saved.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => setDetail(null)}>
+                    Close
+                  </Button>
+                  <Button onClick={saveDetail} disabled={savingDetail}>
+                    {saved ? "Saved!" : savingDetail ? "Saving…" : "Save Changes"}
+                  </Button>
+                </div>
               </DialogFooter>
             </>
           )}
@@ -606,31 +651,31 @@ export default function AdminBatches() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label>Course</Label>
-                <Select value={newCourse} onValueChange={setNewCourse}>
-                  <SelectTrigger>
+                <Label htmlFor="new-batch-course-select">Course</Label>
+                <Select value={newCourse} onValueChange={handleNewCourseChange}>
+                  <SelectTrigger id="new-batch-course-select">
                     <SelectValue placeholder="Select course" />
                   </SelectTrigger>
                   <SelectContent>
                     {courseOptions.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.name}
+                        {c.name} {c.type === "Individual" ? "(1:1)" : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Teacher</Label>
+                <Label htmlFor="new-batch-teacher-select">Teacher</Label>
                 <Select value={newTeacher} onValueChange={setNewTeacher}>
-                  <SelectTrigger>
+                  <SelectTrigger id="new-batch-teacher-select">
                     <SelectValue placeholder="Select teacher" />
                   </SelectTrigger>
                   <SelectContent>
                     {apiEnabled() && teacherOptions.length > 0
                       ? teacherOptions.map((t) => (
                           <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
-                            {t.fullName} {t.department ? `· ${t.department}` : ""}
+                            {t.fullName} {t.departmentName ? `· ${t.departmentName}` : ""}
                           </SelectItem>
                         ))
                       : TEACHERS.map((t) => (
@@ -645,7 +690,20 @@ export default function AdminBatches() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label htmlFor="nb-capacity">Capacity</Label>
-                <Input id="nb-capacity" type="number" min={1} max={500} value={newCapacity} onChange={(e) => setNewCapacity(e.target.value)} />
+                <Input
+                  id="nb-capacity"
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={newCapacity}
+                  disabled={newCourseIsIndividual}
+                  onChange={(e) => setNewCapacity(e.target.value)}
+                />
+                {newCourseIsIndividual && (
+                  <p className="text-xs text-muted-foreground">
+                    This is a 1:1 course — its batches always run with a single seat.
+                  </p>
+                )}
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="nb-start">Start date (optional)</Label>
