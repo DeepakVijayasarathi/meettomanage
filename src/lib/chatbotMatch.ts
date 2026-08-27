@@ -18,6 +18,47 @@ function tokenize(text: string): Set<string> {
   );
 }
 
+/** Classic DP edit distance — small inputs only (single tokens), so O(n*m) is fine. */
+function levenshteinDistance(a: string, b: string): number {
+  const distances: number[][] = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i++) distances[i][0] = i;
+  for (let j = 0; j <= b.length; j++) distances[0][j] = j;
+
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      distances[i][j] = Math.min(distances[i - 1][j] + 1, distances[i][j - 1] + 1, distances[i - 1][j - 1] + cost);
+    }
+  }
+
+  return distances[a.length][b.length];
+}
+
+function maxEditDistanceFor(wordLength: number): number {
+  if (wordLength <= 4) return 0;
+  if (wordLength <= 7) return 1;
+  return 2;
+}
+
+/**
+ * True on an exact token match, or a "close enough" one — a typo like "schdule" for
+ * "schedule" would otherwise never overlap at all, even though a human reads it as the
+ * obvious same word. Mirrors ChatbotService.TokenMatches on the backend.
+ */
+function tokenMatches(askedToken: string, faqTokens: Set<string>): boolean {
+  if (faqTokens.has(askedToken)) return true;
+
+  const maxDistance = maxEditDistanceFor(askedToken.length);
+  if (maxDistance === 0) return false;
+
+  for (const faqToken of faqTokens) {
+    if (Math.abs(faqToken.length - askedToken.length) <= maxDistance && levenshteinDistance(askedToken, faqToken) <= maxDistance) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export interface MatchableFaq {
   id: string;
   question: string;
@@ -36,7 +77,7 @@ export function findBestFaqMatch<T extends MatchableFaq>(question: string, faqs:
     const faqTokens = new Set([...tokenize(faq.question), ...tokenize(faq.keywords ?? "")]);
     let score = 0;
     for (const token of askedTokens) {
-      if (faqTokens.has(token)) score += 1;
+      if (tokenMatches(token, faqTokens)) score += 1;
     }
     if (score > bestScore) {
       bestScore = score;

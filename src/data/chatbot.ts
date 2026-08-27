@@ -14,6 +14,17 @@ export const MOCK_CHAT_FAQS: ApiChatFaq[] = [
     updatedAtUtc: null,
   },
   {
+    id: "faq-1b",
+    question: "How do I schedule a demo class?",
+    answer: "Demo scheduling is handled by our Admission team — reach out via the contact details on your enrollment confirmation, or ask here and a teacher will follow up to arrange a time.",
+    keywords: "schedule, demo, trial, book, appointment",
+    category: "Classes",
+    isActive: true,
+    sortOrder: 1,
+    createdAtUtc: new Date().toISOString(),
+    updatedAtUtc: null,
+  },
+  {
     id: "faq-2",
     question: "How do I pay my fees?",
     answer: "Open Payments & Billing from your portal menu, pick the invoice, and pay by card, UPI, or bank transfer. You'll get a receipt by email once it clears.",
