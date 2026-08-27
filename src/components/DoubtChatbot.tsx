@@ -51,9 +51,10 @@ const WELCOME_TURN: Turn = {
 
 /**
  * "Ask a Doubt" floating chatbot, mounted once in AppShell alongside FloatingNotes so every
- * portal (including Student) gets an always-available way to ask a question. Bottom-left so
- * it never collides with the notes widget's bottom-right button. Visibility is admin-configured
- * per portal (Settings & Branding → Widgets), same mechanism as Floating Notes.
+ * portal (including Student) gets an always-available way to ask a question. Stacked directly
+ * above the notes widget's button, same corner, so both are reachable without hunting two
+ * different corners of the screen. Visibility is admin-configured per portal (Settings &
+ * Branding → Widgets), same mechanism as Floating Notes.
  */
 export function DoubtChatbot({ role }: { role: Role }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
@@ -173,14 +174,16 @@ export function DoubtChatbot({ role }: { role: Role }) {
 
   return (
     <>
-      {/* bottom-left, mirroring FloatingNotes' bottom-right button so the two widgets never
-          overlap; bottom-20/right-4 → bottom-6/left-6 on larger screens matches its spacing. */}
+      {/* Stacked directly above FloatingNotes' button in the same corner (not beside it) —
+          same right offset, bottom pushed up by that button's height plus a gap: 80px
+          (bottom-20) + 48px button + 12px gap ≈ 140px on mobile, 24px (bottom-6) + 48 + 12
+          ≈ 84px on larger screens. */}
       <button
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "fixed bottom-20 left-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 hover:opacity-100 sm:bottom-6 sm:left-6",
+          "fixed bottom-[140px] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 hover:opacity-100 sm:bottom-[84px] sm:right-6",
           coversContent && !open && "opacity-30"
         )}
         aria-label={open ? "Close Ask a Doubt" : "Ask a doubt"}
@@ -190,7 +193,7 @@ export function DoubtChatbot({ role }: { role: Role }) {
 
       {open && (
         <Card
-          className="fixed bottom-36 left-4 z-50 flex flex-col overflow-hidden shadow-xl sm:bottom-[88px] sm:left-6"
+          className="fixed bottom-[204px] right-4 z-50 flex flex-col overflow-hidden shadow-xl sm:bottom-[148px] sm:right-6"
           style={{ width: PANEL_WIDTH }}
         >
           <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-2">
