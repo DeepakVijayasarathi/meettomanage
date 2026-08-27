@@ -80,6 +80,7 @@ export default function JitsiLive({
   mode,
   sessionId,
   displayName,
+  joinOverride,
 }: {
   room: string;
   title?: string;
@@ -88,6 +89,10 @@ export default function JitsiLive({
   /** Overrides the Jitsi participant name — e.g. the student's own name when a parent
    *  is joining on their child's behalf, rather than the parent account's name. */
   displayName?: string;
+  /** Skips the /jitsi-join session lookup and joins with this domain/token directly --
+   *  for rooms with no backing ClassSession (e.g. a member's personal meeting room),
+   *  where GetJitsiJoinAsync's session-participant/join-window checks don't apply. */
+  joinOverride?: { domain: string; token?: string | null };
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -212,7 +217,10 @@ export default function JitsiLive({
       let joinRoom = room;
       let joinDomain = JITSI_DOMAIN_FALLBACK;
       let joinToken: string | undefined;
-      if (interactive) {
+      if (joinOverride) {
+        joinDomain = joinOverride.domain;
+        joinToken = joinOverride.token ?? undefined;
+      } else if (interactive) {
         try {
           const join = await getJitsiJoin(sessionId!);
           joinRoom = join.room;

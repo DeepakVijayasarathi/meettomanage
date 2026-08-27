@@ -59,6 +59,7 @@ const ParentNotifications = lazy(() => import("@/features/parent/Notifications")
 const ParentAddChild = lazy(() => import("@/features/parent/AddChild"));
 
 const LiveClassroom = lazy(() => import("@/features/classroom/LiveClassroom"));
+const PersonalMeetingRoom = lazy(() => import("@/features/classroom/PersonalMeetingRoom"));
 
 const SubAdminDashboard = lazy(() => import("@/features/subadmin/Dashboard"));
 const SubAdminPermissions = lazy(() => import("@/features/subadmin/Permissions"));
@@ -130,6 +131,17 @@ export default function App() {
                 // session got silently bounced back to /student instead of joining.
                 <RequireAuth role="parent" also={["student"]}>
                   <LiveClassroom mode="student" />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/meet/personal"
+              element={
+                // Every role the "My meeting link" / Start button (PersonalMeetingButton)
+                // actually appears on — staff who need an ad-hoc video room, not the
+                // teacher/parent/student roles, which use a real scheduled class instead.
+                <RequireAuth role="admin" also={["subadmin", "management", "coordinator", "admission"]}>
+                  <PersonalMeetingRoom />
                 </RequireAuth>
               }
             />
