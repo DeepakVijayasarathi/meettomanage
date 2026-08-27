@@ -61,7 +61,7 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
     childIds: session.childIds ?? [],
     date: local.date,
     startTime: local.time,
-    duration: ([30, 45, 60].includes(minutes) ? minutes : 45) as ClassSession["duration"],
+    duration: minutes,
     status: session.type === "Demo" && session.status === "Scheduled" ? "demo" : STATUS_FROM_API[session.status],
     type: session.type === "Demo" ? "demo" : "group",
     meetingRoomId: session.meetingRoomId ?? undefined,

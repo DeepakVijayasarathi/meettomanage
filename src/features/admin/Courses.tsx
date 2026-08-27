@@ -84,6 +84,10 @@ export default function AdminCourses() {
       setSaveError("Category is required.");
       return;
     }
+    if (!Number.isFinite(Number(duration)) || Number(duration) <= 0) {
+      setSaveError("Duration must be a positive number of minutes.");
+      return;
+    }
     if (!effectiveDepartmentId) {
       setSaveError("Add a department under Academics → Departments before creating a course.");
       return;
@@ -309,17 +313,15 @@ export default function AdminCourses() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="course-duration-select">Duration</Label>
-                <Select value={duration} onValueChange={setDuration}>
-                  <SelectTrigger id="course-duration-select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="30">30 minutes</SelectItem>
-                    <SelectItem value="45">45 minutes</SelectItem>
-                    <SelectItem value="60">60 minutes</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="course-duration-input">Duration (min)</Label>
+                <Input
+                  id="course-duration-input"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="course-price">Price (₹)</Label>

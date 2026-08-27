@@ -42,7 +42,8 @@ export interface Child {
 }
 
 export type CourseType = "1:1" | "group" | "demo";
-export type ClassDuration = 30 | 45 | 60;
+/** Minutes -- any positive length, not a fixed 30/45/60 set. */
+export type ClassDuration = number;
 
 export interface Course {
   id: string;

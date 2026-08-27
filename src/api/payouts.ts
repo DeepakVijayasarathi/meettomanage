@@ -142,7 +142,8 @@ export async function listPayoutRates(teacherProfileId?: string): Promise<ApiPay
 export async function savePayoutRate(input: {
   /** Omit to save the centre-wide default rate card (pays teachers without their own rates). */
   teacherProfileId?: string;
-  durationMinutes: 30 | 45 | 60;
+  /** Any positive number of minutes -- must match a real session length exactly to price it. */
+  durationMinutes: number;
   ratePerSession: number;
   /** No-show deduction as % of the session rate; omitted = 100 (full rate). */
   teacherNoShowPenaltyPercent?: number;

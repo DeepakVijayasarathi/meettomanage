@@ -34,7 +34,7 @@ export function toFrontendCourse(course: ApiCourse): Course {
     name: course.name,
     category: (course.categoryName || course.departmentName) as Course["category"],
     type: course.type === "Individual" ? "1:1" : "group",
-    duration: course.durationMinutes as Course["duration"],
+    duration: course.durationMinutes,
     price: course.price,
     activeBatches: course.activeBatches,
     totalEnrolled: course.totalEnrolled,

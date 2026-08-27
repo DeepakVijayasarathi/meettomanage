@@ -5,6 +5,7 @@ export interface ApiBatch {
   id: string;
   courseId: string;
   courseName: string;
+  courseDurationMinutes: number;
   teacherProfileId: string;
   teacherName: string;
   name: string;
@@ -35,7 +36,7 @@ export function toFrontendBatch(batch: ApiBatch): DisplayBatch {
     teacherId: batch.teacherProfileId,
     teacherName: batch.teacherName,
     type: batch.capacity <= 1 ? "1:1" : "group",
-    duration: 45,
+    duration: batch.courseDurationMinutes,
     capacity: batch.capacity,
     enrolled: batch.enrolledCount,
     status: batch.status === "Dormant" || batch.status === "Archived" ? "dormant" : upcoming ? "upcoming" : "active",
