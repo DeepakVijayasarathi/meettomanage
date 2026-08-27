@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Plus, Video } from "lucide-react";
+import { ExternalLink, Loader2, Plus, Video } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,10 +103,15 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
               </p>
             ) : (
               <div className="flex flex-col gap-2">
-                {recordings.map((r) => {
+                {recordings.map((r, i) => {
                   // Registered links are free text (pasted here, or handed over by the Jitsi
                   // deployment) — never turn one into a clickable href unless it is http(s).
+                  // The raw link is never shown as label text either way — a pasted storage
+                  // URL is long, ugly and technical, exactly the kind of thing that used to
+                  // force this whole dialog into horizontal scroll; a short, friendly label
+                  // says the same thing without any of that risk.
                   const safeUrl = safeExternalUrl(r.storageUrl);
+                  const label = recordings.length > 1 ? `Recording ${i + 1}` : "Watch Recording";
                   return (
                   <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm">
                     <div className="min-w-0">
@@ -115,15 +120,16 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
                           href={safeUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex min-w-0 items-center gap-1.5 font-medium text-primary hover:underline"
+                          className="flex items-center gap-1.5 font-medium text-primary hover:underline"
                         >
                           <Video className="h-3.5 w-3.5 shrink-0" />
-                          <span className="min-w-0 flex-1 truncate">{r.storageUrl}</span>
+                          {label}
+                          <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
                         </a>
                       ) : (
-                        <p className="flex min-w-0 items-center gap-1.5 font-medium text-muted-foreground" title={r.storageUrl}>
+                        <p className="flex items-center gap-1.5 font-medium text-muted-foreground" title={r.storageUrl}>
                           <Video className="h-3.5 w-3.5 shrink-0" />
-                          <span className="min-w-0 flex-1 truncate">Blocked link (not a http/https address)</span>
+                          Blocked link (not a http/https address)
                         </p>
                       )}
                       <p className="mt-0.5 text-xs text-muted-foreground">
