@@ -87,7 +87,63 @@ export default function SubAdminPermissions() {
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-border">
+            {/* Mobile: the desktop table's min-w-[720px] (module column + 5 action columns)
+                scrolled almost entirely off a phone screen with no visual hint it was
+                scrollable, landing on a view that showed only the module names with every
+                actual grant/no-grant mark invisible off-canvas — the same bug the shared,
+                editable PermissionMatrix component already fixed with a card fallback below
+                sm; this read-only view is a separate hand-rolled table, so it needs its own. */}
+            <div className="flex flex-col gap-3 sm:hidden">
+              {PERMISSION_MODULES.map((mod, mi) => {
+                const menus = menusByModule[mod.value] ?? [];
+                const locked = !isGranted(permissions, role, mod.value, "View");
+                return (
+                  <div key={mod.value} className={cn("rounded-xl border border-border p-4", locked && "bg-muted/30")}>
+                    <div className="flex items-start gap-2.5">
+                      <span
+                        className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
+                        style={{
+                          backgroundColor: locked ? "hsl(var(--muted))" : `${CHART_PALETTE[mi % CHART_PALETTE.length]}1A`,
+                          color: locked ? "hsl(var(--muted-foreground))" : CHART_PALETTE[mi % CHART_PALETTE.length],
+                        }}
+                      >
+                        {locked ? <Lock className="h-3.5 w-3.5" /> : mod.label[0]}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className={cn("font-semibold", locked ? "text-muted-foreground" : "text-foreground")}>{mod.label}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {menus.length > 0 ? `Menus: ${menus.join(", ")}` : "No menu currently depends on this module"}
+                        </p>
+                      </div>
+                    </div>
+                    {locked ? (
+                      <div className="mt-3 flex items-center justify-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs font-medium text-muted-foreground">
+                        <Lock className="h-3.5 w-3.5" />
+                        Locked — contact your Admin to request access to {mod.label}
+                      </div>
+                    ) : (
+                      <div className="mt-3 grid grid-cols-3 gap-x-2 gap-y-2.5 border-t border-border pt-3">
+                        {PERMISSION_ACTIONS_LABELS.map((action) => {
+                          const granted = isGranted(permissions, role, mod.value, action);
+                          return (
+                            <div key={action} className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                              {granted ? (
+                                <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden="true" />
+                              ) : (
+                                <Minus className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />
+                              )}
+                              {action}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-xl border border-border sm:block">
               <table className="w-full min-w-[720px] text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/40">
@@ -224,7 +280,59 @@ export default function SubAdminPermissions() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-border">
+          {/* Same mobile card fallback as the API-mode matrix above — this demo-mode table
+              is a separate hand-rolled copy with its own MODULES/ACTIONS/PERMISSIONS data
+              shape, so it needs its own version of the fallback rather than sharing markup. */}
+          <div className="flex flex-col gap-3 sm:hidden">
+            {MODULES.map((mod) => {
+              const meta = MODULE_META[mod];
+              const level = accessLevelFor(mod);
+              const locked = level === "none";
+              return (
+                <div key={mod} className={cn("rounded-xl border border-border p-4", locked && "bg-muted/30")}>
+                  <div className="flex items-start gap-2.5">
+                    <span
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                      style={{
+                        backgroundColor: locked ? "hsl(var(--muted))" : `${meta.color}1A`,
+                        color: locked ? "hsl(var(--muted-foreground))" : meta.color,
+                      }}
+                    >
+                      {locked ? <Lock className="h-3.5 w-3.5" /> : <meta.icon className="h-3.5 w-3.5" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={cn("font-semibold", locked ? "text-muted-foreground" : "text-foreground")}>{mod}</p>
+                      <p className="text-[11px] text-muted-foreground">{meta.blurb}</p>
+                    </div>
+                  </div>
+                  {locked ? (
+                    <div className="mt-3 flex items-center justify-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs font-medium text-muted-foreground">
+                      <Lock className="h-3.5 w-3.5" />
+                      Locked — contact your Admin to request access to {mod}
+                    </div>
+                  ) : (
+                    <div className="mt-3 grid grid-cols-3 gap-x-2 gap-y-2.5 border-t border-border pt-3">
+                      {ACTIONS.map((action) => {
+                        const granted = PERMISSIONS[mod][action];
+                        return (
+                          <div key={action} className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                            {granted ? (
+                              <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden="true" />
+                            ) : (
+                              <Minus className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />
+                            )}
+                            {action}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-border sm:block">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
