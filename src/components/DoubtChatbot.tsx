@@ -14,7 +14,7 @@ import {
   type ApiChatMessage,
 } from "@/api/chatbot";
 import { MOCK_CHAT_FAQS } from "@/data/chatbot";
-import { findBestFaqMatch } from "@/lib/chatbotMatch";
+import { findBestFaqMatch, findSmallTalkReply } from "@/lib/chatbotMatch";
 import { useFixedButtonCollision } from "@/hooks/useFixedButtonCollision";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types";
@@ -170,15 +170,18 @@ export function DoubtChatbot({ role }: { role: Role }) {
     if (apiEnabled()) {
       try {
         const response = await askChatbot(question);
+        // Ratable only when it's a real FAQ answer — `matched` alone also covers a
+        // smalltalk reply (e.g. "hi"), which has nothing to rate or escalate on "not helpful".
+        const ratable = response.botMessage.matchedFaqId !== null;
         setTurns((prev) => [
           ...prev,
           {
             id: response.botMessage.id,
             sender: "Bot",
             text: response.botMessage.text,
-            matched: response.matched || undefined,
-            question: response.matched ? question : undefined,
-            feedback: response.matched ? null : undefined,
+            matched: ratable || undefined,
+            question: ratable ? question : undefined,
+            feedback: ratable ? null : undefined,
           },
         ]);
       } catch {
@@ -192,13 +195,15 @@ export function DoubtChatbot({ role }: { role: Role }) {
       return;
     }
 
-    // Demo mode: match locally against the mock FAQ list, no escalation to persist.
-    const match = findBestFaqMatch(question, faqs);
+    // Demo mode: smalltalk first, then match locally against the mock FAQ list — no
+    // escalation to persist since there's no backend.
+    const smallTalkReply = findSmallTalkReply(question);
+    const match = smallTalkReply ? null : findBestFaqMatch(question, faqs);
     const botTurn: Turn = {
       id: crypto.randomUUID(),
       sender: "Bot",
-      text: match?.answer ?? "I don't have an answer for that yet — in the real app this gets forwarded to a teacher.",
-      matched: !!match || undefined,
+      text: smallTalkReply ?? match?.answer ?? "I don't have an answer for that yet — in the real app this gets forwarded to a teacher.",
+      matched: (!!match || !!smallTalkReply) || undefined,
       question: match ? question : undefined,
       feedback: match ? null : undefined,
     };

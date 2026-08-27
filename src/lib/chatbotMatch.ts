@@ -59,6 +59,42 @@ function tokenMatches(askedToken: string, faqTokens: Set<string>): boolean {
   return false;
 }
 
+/** Mirrors ChatbotService.SmallTalkReplies on the backend, checked in order. */
+const SMALL_TALK_REPLIES: { triggers: string[]; reply: string }[] = [
+  {
+    triggers: ["hi", "hii", "hey", "hello", "helo", "hlo", "yo", "good morning", "good afternoon", "good evening"],
+    reply: "Hi! How can I help with your doubt today?",
+  },
+  { triggers: ["thanks", "thank you", "thankyou", "thx", "ty"], reply: "You're welcome! Let me know if you have any other doubts." },
+  { triggers: ["bye", "goodbye", "good bye", "see you", "cya"], reply: "Bye! Come back anytime you have a doubt." },
+  {
+    triggers: ["how are you", "how r u", "hows it going", "how's it going"],
+    reply: "I'm doing well, thanks for asking! What doubt can I help you with?",
+  },
+  {
+    triggers: ["help", "what can you do", "who are you"],
+    reply:
+      "I can answer common questions about classes, fees, login, recordings, attendance and more. If I don't know something, I'll forward it to a teacher so they can help directly.",
+  },
+];
+
+/**
+ * Recognizes a short greeting/smalltalk turn so it gets a friendly reply instead of being
+ * treated as an unanswerable doubt. Mirrors ChatbotService.FindSmallTalkReply — only short
+ * inputs qualify, so "hi, how do I pay my fees?" still falls through to real FAQ matching.
+ */
+export function findSmallTalkReply(question: string): string | null {
+  const normalized = question.trim().toLowerCase().replace(/[!?.,]+$/, "");
+  if (normalized.split(/\s+/).filter(Boolean).length > 4) return null;
+
+  for (const { triggers, reply } of SMALL_TALK_REPLIES) {
+    for (const trigger of triggers) {
+      if (normalized === trigger || normalized.startsWith(`${trigger} `)) return reply;
+    }
+  }
+  return null;
+}
+
 export interface MatchableFaq {
   id: string;
   question: string;

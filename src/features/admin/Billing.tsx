@@ -6,21 +6,13 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { FeeStatusBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InvoiceDetailDialog } from "@/components/InvoiceDetailDialog";
 import { INVOICES } from "@/data/invoices";
-import { getParentById } from "@/data/users";
 import { useApiData } from "@/api/hooks";
 import { apiEnabled } from "@/lib/api";
 import {
@@ -361,53 +353,40 @@ export default function AdminBilling() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>
-        <DialogContent>
-          {detail && (
+      <InvoiceDetailDialog
+        invoice={detail}
+        onClose={() => setDetail(null)}
+        footerActions={
+          detail && (
             <>
-              <DialogHeader>
-                <DialogTitle>{detail.id}</DialogTitle>
-                <DialogDescription>{detail.courseName}</DialogDescription>
-              </DialogHeader>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</p>
-                  <p className="mt-1 font-medium text-foreground">{detail.childName}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
-                  {/* The API resolves this via Invoice.ParentProfile.User — never borrow a name from the mocks in live mode */}
-                  <p className="mt-1 font-medium text-foreground">{live ? detail.parentName : getParentById(detail.parentId)?.name ?? "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Department</p>
-                  <p className="mt-1 font-medium text-foreground">{detail.department}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Amount</p>
-                  <p className="mt-1 font-medium text-foreground">{formatCurrency(detail.amount)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Issued On</p>
-                  <p className="mt-1 font-medium text-foreground">{formatDate(detail.issuedOn, "long")}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Due On</p>
-                  <p className="mt-1 font-medium text-foreground">{formatDate(detail.dueOn, "long")}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
-                  <div className="mt-1">
-                    <FeeStatusBadge status={detail.status} />
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Balance Due</p>
-                  <p className="mt-1 font-medium text-foreground">{formatCurrency(balanceDue)}</p>
-                </div>
-              </div>
-
+              {/* Real GET /api/invoices/{id}/pdf now backs this — the org's own "Bill of
+                  Supply" template, rendered server-side (QuestPDF). An earlier version of
+                  this button had no endpoint behind it and just flipped its own label to
+                  "Receipt Downloaded" without downloading anything; this replaces that. */}
+              {live && detail.apiId && (
+                <Button variant="outline" onClick={downloadPdf} disabled={pdfDownloading}>
+                  <FileText className="h-4 w-4" />
+                  {pdfDownloading ? "Downloading…" : "Download PDF"}
+                </Button>
+              )}
+              {live && detail.apiId && detail.status !== "paid" && detail.status !== "cancelled" && (
+                recording ? (
+                  <Button onClick={reviewPayment} disabled={saving}>
+                    {saving ? "Recording…" : "Confirm payment"}
+                  </Button>
+                ) : (
+                  <Button onClick={() => setRecording(true)}>
+                    <IndianRupee className="h-4 w-4" />
+                    Record payment
+                  </Button>
+                )
+              )}
+            </>
+          )
+        }
+      >
+        {detail && (
+          <>
               {live && detail.apiId && (transactionsLoading || transactions.length > 0) && (
                 <div className="mt-4 flex flex-col gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payments</p>
@@ -526,38 +505,9 @@ export default function AdminBilling() {
               )}
 
               {pdfError && <p className="mt-2 text-sm font-medium text-destructive">{pdfError}</p>}
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDetail(null)}>
-                  Close
-                </Button>
-                {/* Real GET /api/invoices/{id}/pdf now backs this — the org's own "Bill of
-                    Supply" template, rendered server-side (QuestPDF). An earlier version of
-                    this button had no endpoint behind it and just flipped its own label to
-                    "Receipt Downloaded" without downloading anything; this replaces that. */}
-                {live && detail.apiId && (
-                  <Button variant="outline" onClick={downloadPdf} disabled={pdfDownloading}>
-                    <FileText className="h-4 w-4" />
-                    {pdfDownloading ? "Downloading…" : "Download PDF"}
-                  </Button>
-                )}
-                {live && detail.apiId && detail.status !== "paid" && detail.status !== "cancelled" && (
-                  recording ? (
-                    <Button onClick={reviewPayment} disabled={saving}>
-                      {saving ? "Recording…" : "Confirm payment"}
-                    </Button>
-                  ) : (
-                    <Button onClick={() => setRecording(true)}>
-                      <IndianRupee className="h-4 w-4" />
-                      Record payment
-                    </Button>
-                  )
-                )}
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+          </>
+        )}
+      </InvoiceDetailDialog>
 
       <ConfirmDialog
         open={payConfirmOpen}
