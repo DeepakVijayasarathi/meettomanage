@@ -24,8 +24,14 @@ import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { cancelSession, listSessions, markNoShow, rescheduleSession, scheduleSession, toFrontendSession, type NoShowParty } from "@/api/sessions";
+import { cancelSession, getJitsiJoin, listSessions, markNoShow, rescheduleSession, scheduleSession, toFrontendSession, type NoShowParty } from "@/api/sessions";
 import { listBatches, listTeacherOptions } from "@/api/batches";
+import { buildJitsiJoinUrl } from "@/lib/jitsi";
+import { useSession } from "@/state/session";
+
+// Monitor-only, same as Coordinator's own Join Class (coordinator/Calendar.tsx) --
+// Admin had no way at all to drop into a live class from this screen, real or demo.
+const JOINABLE_STATUSES: SessionStatus[] = ["scheduled", "demo", "rescheduled"];
 
 const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
   { value: "all", label: "All statuses" },
@@ -41,6 +47,7 @@ const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
 
 export default function AdminSessions() {
   const usingApi = apiEnabled();
+  const { userName } = useSession();
   const { data: apiSessions, error: sessionsError, reload } = useApiData<ClassSession[]>(
     () => listSessions().then((items) => items.map(toFrontendSession)),
     []
@@ -57,6 +64,7 @@ export default function AdminSessions() {
   const [cancelTarget, setCancelTarget] = useState<ClassSession | null>(null);
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
+  const [joiningId, setJoiningId] = useState<string | null>(null);
 
   // Mark no-show dialog
   const [noShowTarget, setNoShowTarget] = useState<ClassSession | null>(null);
@@ -198,6 +206,22 @@ export default function AdminSessions() {
     }
   }
 
+  async function joinSession(session: ClassSession) {
+    if (!usingApi) {
+      notify(true, "Demo mode — no live class to actually join.");
+      return;
+    }
+    setJoiningId(session.id);
+    try {
+      const join = await getJitsiJoin(session.id);
+      window.open(buildJitsiJoinUrl(join.domain, join.room, join.token, userName), "_blank", "noopener");
+    } catch (err) {
+      notify(false, err instanceof Error ? err.message : "Couldn't join this class.");
+    } finally {
+      setJoiningId(null);
+    }
+  }
+
   const columns: DataTableColumn<ClassSession>[] = useMemo(
     () => [
       {
@@ -278,6 +302,19 @@ export default function AdminSessions() {
             </Button>
           ) : (
             <div className="flex items-center gap-1.5">
+              {JOINABLE_STATUSES.includes(row.status) && row.meetingRoomId && (
+                <Button
+                  size="sm"
+                  disabled={joiningId === row.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    joinSession(row);
+                  }}
+                >
+                  <Video className="h-3.5 w-3.5" />
+                  {joiningId === row.id ? "Joining…" : "Join"}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
