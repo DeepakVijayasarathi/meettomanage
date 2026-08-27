@@ -106,8 +106,11 @@ export default function AdminSessions() {
     if (batch) setNewTeacher(batch.teacherProfileId);
   }
 
+  const durationMinutes = Number(newDuration);
+  const durationValid = Number.isFinite(durationMinutes) && durationMinutes > 0;
+
   async function handleSchedule() {
-    if (!newTeacher || !newDate || (newType === "Regular" && !newBatch)) return;
+    if (!newTeacher || !newDate || !durationValid || (newType === "Regular" && !newBatch)) return;
     if (!usingApi) {
       notify(true, "Demo mode — session not persisted.");
       setScheduleOpen(false);
@@ -117,7 +120,7 @@ export default function AdminSessions() {
     setScheduleError(null);
     try {
       const start = localToUtcIso(newDate, newTime);
-      const end = new Date(new Date(start).getTime() + (Number(newDuration) || 45) * 60000).toISOString();
+      const end = new Date(new Date(start).getTime() + durationMinutes * 60000).toISOString();
       await scheduleSession({
         batchId: newType === "Regular" ? newBatch : undefined,
         teacherProfileId: newTeacher,
@@ -403,17 +406,15 @@ export default function AdminSessions() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="session-duration-select">Duration (min)</Label>
-                <Select value={newDuration} onValueChange={setNewDuration}>
-                  <SelectTrigger id="session-duration-select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="30">30</SelectItem>
-                    <SelectItem value="45">45</SelectItem>
-                    <SelectItem value="60">60</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="session-duration-input">Duration (min)</Label>
+                <Input
+                  id="session-duration-input"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={newDuration}
+                  onChange={(e) => setNewDuration(e.target.value)}
+                />
               </div>
             </div>
             {newType === "Regular" && (
@@ -465,7 +466,7 @@ export default function AdminSessions() {
               Cancel
             </Button>
             <Button
-              disabled={saving || !newTeacher || !newDate || (newType === "Regular" && !newBatch)}
+              disabled={saving || !newTeacher || !newDate || !durationValid || (newType === "Regular" && !newBatch)}
               onClick={handleSchedule}
             >
               {saving ? "Scheduling…" : "Schedule"}
