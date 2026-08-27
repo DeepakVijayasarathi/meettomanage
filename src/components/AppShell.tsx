@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { FloatingNotes } from "@/components/FloatingNotes";
+import { DoubtChatbot } from "@/components/DoubtChatbot";
 import { PageTransition } from "@/components/PageTransition";
 import { NAV_BY_ROLE, type NavSection } from "@/lib/nav";
 import { ROLE_META } from "@/lib/roles";
@@ -141,6 +142,7 @@ export function AppShell({ role, children }: AppShellProps) {
         </main>
       </div>
       <FloatingNotes role={role} />
+      <DoubtChatbot role={role} />
     </div>
   );
 }

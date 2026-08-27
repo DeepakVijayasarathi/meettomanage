@@ -39,6 +39,7 @@ import {
   Video,
   Building2,
   Activity,
+  MessageCircleQuestion,
   type LucideIcon,
 } from "lucide-react";
 
@@ -98,6 +99,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Bulk Email", to: "/admin/bulk-email", icon: Mail },
       { label: "Email Templates", to: "/admin/email-templates", icon: FileText },
       { label: "Progress Reports", to: "/admin/progress-reports", icon: ScrollText },
+      { label: "Doubt Chatbot", to: "/admin/chatbot", icon: MessageCircleQuestion },
     ],
   },
   {
@@ -125,6 +127,7 @@ export const TEACHER_NAV: NavSection[] = [
       { label: "Attendance & Records", to: "/teacher/attendance", icon: ClipboardList },
       { label: "Recordings", to: "/teacher/recordings", icon: Video },
       { label: "Demo Feedback", to: "/teacher/demo-feedback", icon: ClipboardCheck, badge: "1" },
+      { label: "Student Doubts", to: "/teacher/doubts", icon: MessageCircleQuestion },
     ],
   },
   {
