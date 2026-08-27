@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, Loader2, Plus, Video } from "lucide-react";
+import { Loader2, PlayCircle, Plus, Video } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
   const [minutes, setMinutes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
 
   const canManage = apiEnabled() && GUID_RE.test(session.id);
 
@@ -105,39 +106,40 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
               <div className="flex flex-col gap-2">
                 {recordings.map((r, i) => {
                   // Registered links are free text (pasted here, or handed over by the Jitsi
-                  // deployment) — never turn one into a clickable href unless it is http(s).
+                  // deployment) — never turn one into a playable src unless it is http(s).
                   // The raw link is never shown as label text either way — a pasted storage
                   // URL is long, ugly and technical, exactly the kind of thing that used to
                   // force this whole dialog into horizontal scroll; a short, friendly label
-                  // says the same thing without any of that risk.
+                  // plus an actual inline player (same pattern as Parent → Recordings) says
+                  // the same thing without any of that risk.
                   const safeUrl = safeExternalUrl(r.storageUrl);
-                  const label = recordings.length > 1 ? `Recording ${i + 1}` : "Watch Recording";
+                  const label = recordings.length > 1 ? `Recording ${i + 1}` : "Recording";
+                  const isPlaying = playingId === r.id;
                   return (
-                  <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm">
-                    <div className="min-w-0">
-                      {safeUrl ? (
-                        <a
-                          href={safeUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1.5 font-medium text-primary hover:underline"
-                        >
-                          <Video className="h-3.5 w-3.5 shrink-0" />
-                          {label}
-                          <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
-                        </a>
-                      ) : (
-                        <p className="flex items-center gap-1.5 font-medium text-muted-foreground" title={r.storageUrl}>
-                          <Video className="h-3.5 w-3.5 shrink-0" />
-                          Blocked link (not a http/https address)
-                        </p>
-                      )}
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {r.expiresAtUtc
-                          ? `Visible to parents until ${formatDate(r.expiresAtUtc.slice(0, 10), "long")}`
-                          : "Registered"}
+                  <div key={r.id} className="rounded-lg border border-border p-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="flex items-center gap-1.5 font-medium text-foreground">
+                        <Video className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        {safeUrl ? label : "Blocked link (not a http/https address)"}
                       </p>
+                      {safeUrl && (
+                        <Button
+                          size="sm"
+                          variant={isPlaying ? "outline" : "default"}
+                          onClick={() => setPlayingId(isPlaying ? null : r.id)}
+                        >
+                          <PlayCircle className="h-3.5 w-3.5" /> {isPlaying ? "Hide" : "Play"}
+                        </Button>
+                      )}
                     </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {r.expiresAtUtc
+                        ? `Visible to parents until ${formatDate(r.expiresAtUtc.slice(0, 10), "long")}`
+                        : "Registered"}
+                    </p>
+                    {isPlaying && safeUrl && (
+                      <video controls autoPlay className="mt-3 aspect-video w-full rounded-xl bg-black" src={safeUrl} />
+                    )}
                   </div>
                   );
                 })}
