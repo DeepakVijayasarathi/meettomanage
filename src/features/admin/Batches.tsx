@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -144,6 +146,7 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
 }
 
 export default function AdminBatches() {
+  const { toast } = useToast();
   const { data: batchData, error: batchError, reload } = useApiData<{ raw: ApiBatch[]; mapped: DisplayBatch[] }>(
     async () => {
       const raw = await listBatches();
@@ -358,9 +361,12 @@ export default function AdminBatches() {
       await updateBatch(raw, teacherAssignment);
       setSaved(true);
       reload();
+      toast({ variant: "success", title: "Batch updated" });
       setTimeout(() => setDetail(null), 700);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not save the batch.");
+      const message = err instanceof Error ? err.message : "Could not save the batch.";
+      setSaveError(message);
+      toast({ variant: "error", title: "Couldn't save batch", description: message });
     } finally {
       setSavingDetail(false);
     }
@@ -380,16 +386,16 @@ export default function AdminBatches() {
       />
 
       {banner && (
-        <div role="status" className="mb-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">{banner}</div>
+        <InlineAlert variant="success" bordered className="mb-5">{banner}</InlineAlert>
       )}
 
       {apiEnabled() && batchError && (
-        <div role="alert" className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
-          <span>Couldn't load batches: {batchError}. The list below may be incomplete.</span>
+        <InlineAlert variant="error" bordered className="mb-5 items-center justify-between">
+          <span className="flex-1">Couldn't load batches: {batchError}. The list below may be incomplete.</span>
           <Button variant="outline" size="sm" onClick={reload}>
             Retry
           </Button>
-        </div>
+        </InlineAlert>
       )}
 
       <div className="relative mb-5 max-w-sm">

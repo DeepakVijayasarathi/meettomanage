@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/AppShell";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Logo } from "@/components/Logo";
+import { Toaster } from "@/components/Toaster";
 
 const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Store = lazy(() => import("@/features/marketing/Store"));
@@ -239,6 +240,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </BrowserRouter>
+      <Toaster />
     </TooltipProvider>
   );
 }

@@ -247,6 +247,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
             variant="ghost"
             className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
             title={rightOpen ? "Collapse panel" : "Expand panel"}
+            aria-label={rightOpen ? "Collapse panel" : "Expand panel"}
             onClick={() => setRightOpen((o) => !o)}
           >
             {rightOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
-import { BookOpen, CheckCircle2, Plus, Users2 } from "lucide-react";
+import { BookOpen, Plus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +45,7 @@ const STATUS_VARIANT: Record<Course["status"], "success" | "warning" | "muted"> 
 };
 
 export default function AdminCourses() {
+  const { toast } = useToast();
   const { data: courses, error: apiError, reload } = useApiData(
     () => listCourses().then((list) => list.map(toFrontendCourse)),
     COURSES
@@ -114,8 +117,11 @@ export default function AdminCourses() {
       setName("");
       setPrice("");
       reload();
+      toast({ variant: "success", title: "Course created" });
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not create the course.");
+      const message = err instanceof Error ? err.message : "Could not create the course.";
+      setSaveError(message);
+      toast({ variant: "error", title: "Couldn't create course", description: message });
     } finally {
       setSaving(false);
     }
@@ -219,16 +225,15 @@ export default function AdminCourses() {
       />
 
       {apiEnabled() && apiError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not reach the API ({apiError}) — showing demo data.
-        </p>
+        </InlineAlert>
       )}
 
       {notice && (
-        <p role="status" className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+        <InlineAlert variant="success" className="mb-4">
           {notice}
-        </p>
+        </InlineAlert>
       )}
 
       <DataTable

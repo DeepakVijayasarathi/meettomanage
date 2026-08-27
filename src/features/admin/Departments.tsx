@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Building2, CheckCircle2, Plus } from "lucide-react";
+import { Building2, Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,7 @@ import { DEMO_DEPARTMENTS } from "@/data/departments";
 import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 
 export default function AdminDepartments() {
+  const { toast } = useToast();
   const { data: departments, error: loadError, reload } = useApiData<ApiDepartment[]>(() => listDepartments(), DEMO_DEPARTMENTS);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -70,8 +73,11 @@ export default function AdminDepartments() {
       }
       setDialogOpen(false);
       reload();
+      toast({ variant: "success", title: editing ? "Department updated" : "Department created" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the department.");
+      const message = err instanceof Error ? err.message : "Could not save the department.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save department", description: message });
     } finally {
       setSaving(false);
     }
@@ -125,16 +131,15 @@ export default function AdminDepartments() {
       />
 
       {apiEnabled() && loadError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not reach the API ({loadError}) — showing demo data.
-        </p>
+        </InlineAlert>
       )}
 
       {notice && (
-        <p role="status" className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+        <InlineAlert variant="success" className="mb-4">
           {notice}
-        </p>
+        </InlineAlert>
       )}
 
       <DataTable

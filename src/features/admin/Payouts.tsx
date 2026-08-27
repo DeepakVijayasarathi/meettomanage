@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Download, IndianRupee, Loader2, Settings2, UsersRound, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
@@ -334,21 +335,17 @@ export default function AdminPayouts() {
       />
 
       {apiEnabled() && payoutsError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load payouts ({payoutsError}) — the totals below don't reflect real data.{" "}
           <button type="button" className="underline" onClick={() => reloadPayouts()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
-      {exportError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{exportError}</p>
-      )}
+      {exportError && <InlineAlert variant="warning" className="mb-4">{exportError}</InlineAlert>}
 
-      {actionError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-foreground">{actionError}</p>
-      )}
+      {actionError && <InlineAlert variant="warning" className="mb-4">{actionError}</InlineAlert>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard label={`Total Payout — ${currentMonthLabel}`} value={formatCurrency(totals.totalThisMonth)} icon={IndianRupee} tone="primary" loading={payoutsLoading} />

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CalendarDays, ListChecks, PlayCircle, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { CalendarBoard } from "@/components/CalendarBoard";
@@ -135,12 +136,12 @@ export default function ParentSchedule() {
       )}
 
       {usingApi && sessionsError && (
-        <p role="alert" className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mt-4">
           Could not load the schedule ({sessionsError}).{" "}
           <button type="button" className="underline" onClick={() => reloadSessions()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       {!child ? (

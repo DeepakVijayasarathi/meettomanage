@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { CalendarCheck2, PhoneCall, PieChart, Sparkles, ThumbsDown, Trophy, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -88,7 +89,7 @@ export default function AdmissionConversion() {
       />
 
       {moveError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">{moveError}</p>
+        <InlineAlert variant="warning" className="mb-4">{moveError}</InlineAlert>
       )}
 
       {leads.length === 0 ? (

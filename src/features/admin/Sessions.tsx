@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { CalendarClock, Plus, Users2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -377,25 +379,18 @@ export default function AdminSessions() {
       />
 
       {usingApi && sessionsError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load the session calendar ({sessionsError}) — the schedule below may be incomplete.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       {banner && (
-        <div
-          role={banner.ok ? "status" : "alert"}
-          className={
-            banner.ok
-              ? "mb-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success"
-              : "mb-5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive"
-          }
-        >
+        <InlineAlert variant={banner.ok ? "success" : "error"} bordered className="mb-5">
           {banner.text}
-        </div>
+        </InlineAlert>
       )}
 
       <DataTable
@@ -406,18 +401,18 @@ export default function AdminSessions() {
         emptyTitle="No sessions in this window"
         emptyDescription="Schedule a session, or generate a batch schedule from Batches → Manage."
         toolbar={
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as SessionStatus | "all")}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterBar
+            filters={[
+              {
+                key: "status",
+                label: "Status",
+                value: statusFilter,
+                onChange: (v) => setStatusFilter(v as SessionStatus | "all"),
+                className: "w-48",
+                options: STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label })),
+              },
+            ]}
+          />
         }
       />
 

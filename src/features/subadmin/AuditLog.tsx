@@ -1,15 +1,10 @@
 import { useMemo, useState } from "react";
 import { Download, History } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { FilterBar } from "@/components/FilterBar";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { formatDate, toCsv as toCsvEscaped } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
@@ -173,12 +168,12 @@ export default function SubAdminAuditLog() {
         // A failed load leaves every figure below at zero and the table on "No actions in
         // this module" — which reads as "you have done nothing", the opposite of what an
         // accountability record should ever imply. Say the trail could not be read.
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load the audit trail ({loadError}) — this is not an empty log.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -211,25 +206,24 @@ export default function SubAdminAuditLog() {
           emptyTitle="No actions in this module"
           emptyDescription="Try a different module filter or clear your search."
           toolbar={
-            <>
-              <Select value={moduleFilter} onValueChange={(v) => setModuleFilter(v as SubAdminModule | "all")}>
-                <SelectTrigger className="w-44">
-                  <SelectValue placeholder="All modules" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All modules</SelectItem>
-                  {MODULES.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <FilterBar
+              filters={[
+                {
+                  key: "module",
+                  label: "Module",
+                  value: moduleFilter,
+                  onChange: (v) => setModuleFilter(v as SubAdminModule | "all"),
+                  className: "w-44",
+                  placeholder: "All modules",
+                  options: [{ value: "all", label: "All modules" }, ...MODULES.map((m) => ({ value: m, label: m }))],
+                },
+              ]}
+            >
               <Button variant="outline" size="sm" disabled={exporting} onClick={handleExport}>
                 <Download className="h-3.5 w-3.5" />
                 {exporting ? "Exporting…" : "Export CSV"}
               </Button>
-            </>
+            </FilterBar>
           }
         />
       </div>

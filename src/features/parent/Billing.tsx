@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, CreditCard, Download, Loader2, ReceiptText, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { FeeStatusBadge } from "@/components/StatusBadge";
@@ -152,17 +153,15 @@ export default function ParentBilling() {
       <PageHeader eyebrow="Account" title="Payments &amp; Billing" description="Invoices, receipts and secure Pay Now checkout for your family." />
 
       {apiEnabled() && invoicesError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load your invoices ({invoicesError}).{" "}
           <button type="button" className="underline" onClick={() => reloadInvoices()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
-      {downloadError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">{downloadError}</p>
-      )}
+      {downloadError && <InlineAlert variant="warning" className="mb-4">{downloadError}</InlineAlert>}
 
       {isAccountSuspended && (
         <Card className="mb-6 border-destructive/40 bg-destructive/5 p-4">

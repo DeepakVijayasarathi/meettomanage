@@ -27,6 +27,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -278,7 +279,7 @@ export default function AdminSettings() {
         }
       />
 
-      {error && <p role="alert" className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>}
+      {error && <InlineAlert variant="error" className="mb-4">{error}</InlineAlert>}
 
       <Tabs value={activeTab} onValueChange={changeTab}>
         <TabsList className="h-auto flex-wrap justify-start gap-y-1.5">
@@ -822,7 +823,7 @@ function MenuManager() {
         </div>
       </CardHeader>
       <CardContent>
-        {error && <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <InlineAlert variant="warning" className="mb-3">{error}</InlineAlert>}
 
         {form && (
           <div ref={formRef} className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4 scroll-mt-4">
@@ -1131,7 +1132,7 @@ function PayoutRatesManager() {
         </Button>
       </CardHeader>
       <CardContent>
-        {error && <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <InlineAlert variant="warning" className="mb-3">{error}</InlineAlert>}
 
         {!loaded ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
@@ -1431,8 +1432,8 @@ function JitsiRecordingSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {error && <p role="alert" className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
-        {saved && !error && <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-xs font-medium text-success">Saved.</p>}
+        {error && <InlineAlert variant="warning">{error}</InlineAlert>}
+        {saved && !error && <InlineAlert variant="success">Saved.</InlineAlert>}
 
         {!loaded ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
@@ -1663,7 +1664,7 @@ export function IntegrationsManager() {
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {error && <p role="alert" className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <InlineAlert variant="warning">{error}</InlineAlert>}
 
         {form && (
           <div ref={formRef} className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 scroll-mt-4">
@@ -1765,16 +1766,16 @@ export function IntegrationsManager() {
                 Fields named with "key", "secret", "token" or "password" (e.g. Razorpay's keyId/keySecret) are masked while typing.
               </p>
               {missingRequiredFields(form.key, configRows).length > 0 && (
-                <p role="alert" className="mt-1.5 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+                <InlineAlert variant="warning" className="mt-1.5">
                   {form.name || form.key} can't process live payments yet — missing:{" "}
                   {missingRequiredFields(form.key, configRows).join(", ")}. Parents who pick this gateway will see a
                   "not fully configured" message until these are filled in.
-                </p>
+                </InlineAlert>
               )}
               {configFormatWarning(form.key, configRows) && (
-                <p role="alert" className="mt-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                <InlineAlert variant="error" className="mt-1.5">
                   {configFormatWarning(form.key, configRows)}
-                </p>
+                </InlineAlert>
               )}
             </div>
 

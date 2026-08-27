@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listMyLeave, submitLeave, type ApiLeaveRequest } from "@/api/academicOps";
 import { localToUtcIso } from "@/lib/datetime";
-import { cn, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import type { ClassSession, LeaveRequest } from "@/types";
 
 function toFrontendLeave(leave: ApiLeaveRequest): LeaveRequest {
@@ -194,20 +195,18 @@ export default function TeacherLeave() {
       />
 
       {confirmation && (
-        <div role="status" className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
-          <CheckCircle2 className="h-4 w-4" />
+        <InlineAlert variant="success" bordered className="mb-5">
           {confirmation}
-        </div>
+        </InlineAlert>
       )}
 
       {/* Kept separate from the success banner above — a rejected submitLeave() used to
           write its error text into the same state, which rendered inside the green
           checkmark banner and looked like the request had gone through. */}
       {submitError && (
-        <div role="alert" className="mb-5 flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
-          <AlertTriangle className="h-4 w-4" />
+        <InlineAlert variant="error" bordered className="mb-5">
           {submitError}
-        </div>
+        </InlineAlert>
       )}
 
       <Card>
@@ -255,13 +254,7 @@ export default function TeacherLeave() {
               </div>
 
               {selectedSession && hoursBefore !== null && (
-                <div
-                  className={cn(
-                    "flex items-start gap-2.5 rounded-lg border p-3 text-sm",
-                    isBlocked ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-success/30 bg-success/10 text-success"
-                  )}
-                >
-                  {isBlocked ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
+                <InlineAlert variant={isBlocked ? "error" : "success"} className="text-sm">
                   {isBlocked ? (
                     <span>
                       This session starts in <strong>{hoursBefore.toFixed(1)} hours</strong>. Leave requests must be submitted at least{" "}
@@ -273,7 +266,7 @@ export default function TeacherLeave() {
                       requirement.
                     </span>
                   )}
-                </div>
+                </InlineAlert>
               )}
 
               <div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Mail, Save, Sparkles } from "lucide-react";
 import { RichTextEditor, type RichTextEditorHandle } from "@/components/RichTextEditor";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -197,7 +198,7 @@ export default function EmailTemplates() {
         description="Design the Subject and HTML body every automated system email sends from — changes apply the next time that email fires."
       />
 
-      {error && <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+      {error && <InlineAlert variant="warning" className="mb-4">{error}</InlineAlert>}
 
       {loaded && templates.length === 0 ? (
         <EmptyState icon={Mail} title="No email templates yet" description="Templates are seeded automatically when the API starts." />

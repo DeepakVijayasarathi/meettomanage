@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
 import { useBrand } from "@/lib/branding";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -594,29 +595,21 @@ export default function AdminUsers() {
       />
 
       {apiEnabled() && parentsError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not reach the API ({parentsError}) — showing demo data.
-        </p>
+        </InlineAlert>
       )}
 
       {banner && (
-        <p
-          role={banner.ok ? "status" : "alert"}
-          className={cn(
-            "mb-4 flex items-start gap-1.5 rounded-lg px-3 py-2 text-sm font-medium",
-            banner.ok ? "bg-success/10 text-success" : "bg-warning/10 text-warning-foreground"
-          )}
-        >
-          {banner.ok && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
+        <InlineAlert variant={banner.ok ? "success" : "warning"} className="mb-4">
           {banner.text}
-        </p>
+        </InlineAlert>
       )}
 
       {bulkResult && (
-        <p role="status" className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+        <InlineAlert variant="success" className="mb-4">
           {bulkResult}
-        </p>
+        </InlineAlert>
       )}
 
       <Tabs defaultValue="parents">

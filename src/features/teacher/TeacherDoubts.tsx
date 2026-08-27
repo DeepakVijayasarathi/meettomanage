@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { CheckCircle2, MessageCircleQuestion } from "lucide-react";
+import { MessageCircleQuestion } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
+import { InlineAlert } from "@/components/InlineAlert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -114,14 +115,14 @@ export default function TeacherDoubts() {
       />
 
       {apiEnabled() && loadError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not reach the API ({loadError}).
-        </p>
+        </InlineAlert>
       )}
       {notice && (
-        <p role="status" className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> {notice}
-        </p>
+        <InlineAlert variant="success" className="mb-4">
+          {notice}
+        </InlineAlert>
       )}
 
       <div className="mb-6">

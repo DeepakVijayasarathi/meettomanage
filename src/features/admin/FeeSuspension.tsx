@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { AlertOctagon, ShieldOff, Undo2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -76,16 +77,14 @@ export default function AdminFeeSuspension() {
         />
 
         {suspensionsError && (
-          <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          <InlineAlert variant="warning" className="mb-4">
             Could not load suspended accounts ({suspensionsError}).{" "}
             <button type="button" className="underline" onClick={() => reloadSuspensions()}>
               Retry
             </button>
-          </p>
+          </InlineAlert>
         )}
-        {liftError && (
-          <p role="alert" className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{liftError}</p>
-        )}
+        {liftError && <InlineAlert variant="error" className="mb-4">{liftError}</InlineAlert>}
 
         {suspensions.length === 0 ? (
           <EmptyState icon={ShieldOff} title="No suspended accounts" description="Every account is currently in good standing." />

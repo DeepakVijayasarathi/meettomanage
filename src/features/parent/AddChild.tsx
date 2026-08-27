@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { CalendarClock, CheckCircle2, Clock3, PartyPopper, TrendingUp, UserPlus, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -208,11 +209,11 @@ export default function ParentAddChild() {
             Welcome to {brand.name}! To get {form.name.trim() ? form.name.trim() : "them"} started, we just need a quick
             enrollment form — grade, contact details and course interest.
           </p>
-          <p className="mt-4 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+          <InlineAlert variant="warning" className="mt-4 border border-warning/30">
             You're in demo mode — the next screen continues with our sample learner{" "}
             <span className="font-semibold">Kabir Kapoor</span> instead of {displayName}, so you can see the full enrollment flow
             without it needing a real backend.
-          </p>
+          </InlineAlert>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
             <Button asChild>
               <Link to="/parent/enrollment?childId=c-3">

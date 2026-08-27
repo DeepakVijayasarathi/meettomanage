@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PlayCircle, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { InlineAlert } from "@/components/InlineAlert";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -100,9 +101,9 @@ export default function TeacherRecordings() {
       <PageHeader eyebrow="Teaching" title="Recordings" description="Every recording from your own classes, newest first." />
 
       {usingApi && error && (
-        <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mt-4">
           Could not load recordings ({error}).
-        </p>
+        </InlineAlert>
       )}
 
       {loading ? (

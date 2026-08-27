@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Activity,
   AlertTriangle,
-  ArrowLeft,
   Clock,
   Cpu,
   FileText,
@@ -24,6 +23,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { ChartCard } from "@/components/ChartCard";
 import { EmptyState } from "@/components/EmptyState";
+import { Breadcrumb } from "@/components/Breadcrumb";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -288,10 +288,13 @@ export default function AdminServerDetail() {
   const memorySummary = useMemo(() => summarize(server?.memoryHistory ?? []), [server]);
 
   const backLink = (
-    <Link to="/admin/monitoring" className="mb-4 flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-      <ArrowLeft className="h-3.5 w-3.5" />
-      Back to Server Monitoring
-    </Link>
+    <Breadcrumb
+      className="mb-4"
+      items={[
+        { label: "Server Monitoring", to: "/admin/monitoring" },
+        { label: server?.name ?? decodeURIComponent(serverName ?? "Server") },
+      ]}
+    />
   );
 
   if (loading && summary.servers.length === 0) {

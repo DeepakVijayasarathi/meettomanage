@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, AlertTriangle, BellOff, CheckCheck, CheckCircle2, Info, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -223,12 +224,12 @@ export default function ParentNotifications() {
       />
 
       {usingApi && loadError && (
-        <p role="alert" className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mt-4">
           Could not load notifications ({loadError}) — the list below may be incomplete.{" "}
           <button type="button" className="underline" onClick={reload}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       <Tabs defaultValue="all" className={usingApi && loadError ? "mt-4" : undefined}>

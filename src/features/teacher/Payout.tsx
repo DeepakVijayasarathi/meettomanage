@@ -4,6 +4,7 @@ import { Banknote, CalendarCheck, GraduationCap, Lock, TrendingUp, Wallet } from
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
+import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -108,12 +109,12 @@ export default function TeacherPayout() {
       />
 
       {apiEnabled() && payoutsError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4 text-xs">
           Could not load your payout history ({payoutsError}).{" "}
           <button type="button" className="underline" onClick={() => reloadPayouts()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       {payoutsLoading ? (

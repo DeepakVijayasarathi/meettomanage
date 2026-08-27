@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  AlertCircle,
   ArrowLeft,
   CalendarClock,
-  CheckCircle2,
   History,
   Search,
   UserCog,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { Breadcrumb } from "@/components/Breadcrumb";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -199,6 +199,14 @@ export default function DemoTeacherAssignment() {
 
   return (
     <div>
+      {bookingId && (
+        <Breadcrumb
+          items={[
+            { label: "Demo Scheduling", to: "/admission/demo-scheduling" },
+            { label: detail?.childName ?? "Teacher Assignment" },
+          ]}
+        />
+      )}
       <PageHeader
         eyebrow="Pipeline"
         title="Teacher Assignment"
@@ -270,23 +278,13 @@ export default function DemoTeacherAssignment() {
       {bookingId && detailLoading && !detail && <p className="py-10 text-center text-sm text-muted-foreground">Loading booking…</p>}
 
       {bookingId && !detailLoading && detailError && (
-        <div role="alert" className="flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
-          <AlertCircle className="h-4 w-4" /> {detailError}
-        </div>
+        <InlineAlert variant="error" bordered>{detailError}</InlineAlert>
       )}
 
       {bookingId && !detailError && detail && (
         <div className="flex flex-col gap-6">
-          {successMessage && (
-            <div className="flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
-              <CheckCircle2 className="h-4 w-4" /> {successMessage}
-            </div>
-          )}
-          {actionError && (
-            <div role="alert" className="flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
-              <AlertCircle className="h-4 w-4" /> {actionError}
-            </div>
-          )}
+          {successMessage && <InlineAlert variant="success" bordered>{successMessage}</InlineAlert>}
+          {actionError && <InlineAlert variant="error" bordered>{actionError}</InlineAlert>}
 
           <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0">

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { InlineAlert } from "@/components/InlineAlert";
 import { apiEnabled } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
@@ -343,7 +344,7 @@ function ApiStudentDashboard() {
   const { children, activeChildId } = useSession();
   const activeChild = children.find((c) => c.id === activeChildId) ?? children[0];
 
-  const { data: dashboard } = useApiData(
+  const { data: dashboard, error: dashboardError } = useApiData(
     () => getParentDashboard(),
     null as Awaited<ReturnType<typeof getParentDashboard>> | null,
     null
@@ -431,6 +432,12 @@ function ApiStudentDashboard() {
         title={`Hey ${firstName}! 👋`}
         description={`A live look at the experience ${firstName} gets when they join a class through your parent account — no separate student login needed.`}
       />
+
+      {dashboardError && (
+        <InlineAlert variant="warning" className="mb-4">
+          Could not load {firstName}'s progress ({dashboardError}) — the stats below may be incomplete.
+        </InlineAlert>
+      )}
 
       {/* Today's class */}
       <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 sm:p-8">
