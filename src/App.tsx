@@ -32,6 +32,7 @@ const AdminReports = lazy(() => import("@/features/admin/Reports"));
 const AdminBulkEmail = lazy(() => import("@/features/admin/BulkEmail"));
 const AdminEmailTemplates = lazy(() => import("@/features/admin/EmailTemplates"));
 const AdminProgressReports = lazy(() => import("@/features/admin/ProgressReports"));
+const AdminChatbot = lazy(() => import("@/features/admin/ChatbotAdmin"));
 const AdminEnrollments = lazy(() => import("@/features/admin/Enrollments"));
 const AdminStoreInquiries = lazy(() => import("@/features/admin/StoreInquiries"));
 const AdminSettings = lazy(() => import("@/features/admin/Settings"));
@@ -46,6 +47,7 @@ const TeacherLeave = lazy(() => import("@/features/teacher/Leave"));
 const TeacherPayout = lazy(() => import("@/features/teacher/Payout"));
 const TeacherResources = lazy(() => import("@/features/teacher/Resources"));
 const TeacherRecordings = lazy(() => import("@/features/teacher/Recordings"));
+const TeacherDoubts = lazy(() => import("@/features/teacher/TeacherDoubts"));
 
 const ParentDashboard = lazy(() => import("@/features/parent/Dashboard"));
 const ParentEnrollment = lazy(() => import("@/features/parent/Enrollment"));
@@ -152,6 +154,7 @@ export default function App() {
               <Route path="bulk-email" element={<AdminBulkEmail />} />
               <Route path="email-templates" element={<AdminEmailTemplates />} />
               <Route path="progress-reports" element={<AdminProgressReports />} />
+              <Route path="chatbot" element={<AdminChatbot />} />
               <Route path="enrollments" element={<AdminEnrollments />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="settings" element={<AdminSettings />} />
@@ -165,6 +168,7 @@ export default function App() {
               <Route path="attendance" element={<TeacherAttendance />} />
               <Route path="recordings" element={<TeacherRecordings />} />
               <Route path="demo-feedback" element={<TeacherDemoFeedback />} />
+              <Route path="doubts" element={<TeacherDoubts />} />
               <Route path="leave" element={<TeacherLeave />} />
               <Route path="payout" element={<TeacherPayout />} />
               <Route path="resources" element={<TeacherResources />} />

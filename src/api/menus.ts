@@ -34,6 +34,7 @@ import {
   ShoppingBag,
   Sparkles,
   Building2,
+  MessageCircleQuestion,
   TrendingUp,
   UserPlus,
   UserSearch,
@@ -111,6 +112,7 @@ export const MENU_ICONS: Record<string, LucideIcon> = {
   ShoppingBag,
   Sparkles,
   Building2,
+  MessageCircleQuestion,
 };
 
 export function resolveMenuIcon(name: string): LucideIcon {

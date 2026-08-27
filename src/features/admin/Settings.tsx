@@ -83,6 +83,9 @@ const PORTALS = ["admin", "teacher", "parent", "subadmin", "admission", "coordin
 /** Key the floating notes widget (FloatingNotes.tsx) reads via /api/settings/public. */
 const WIDGET_NOTES_KEY = "widgets.floatingNotes.enabledPortals";
 
+/** Key the "Ask a Doubt" chatbot widget (DoubtChatbot.tsx) reads via /api/settings/public. */
+const WIDGET_CHATBOT_KEY = "widgets.doubtChatbot.enabledPortals";
+
 /** Every DB-backed setting the screen edits, with its category and visibility. */
 const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boolean; fallback: string }> = {
   "org.name": { category: "General", isPublic: true, fallback: "The Reader Nest" },
@@ -116,6 +119,7 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "notify.lowAttendance": { category: "Notifications", fallback: "false" },
   "notify.weeklyDigest": { category: "Notifications", fallback: "true" },
   [WIDGET_NOTES_KEY]: { category: "Widgets", isPublic: true, fallback: JSON.stringify(PORTALS) },
+  [WIDGET_CHATBOT_KEY]: { category: "Widgets", isPublic: true, fallback: JSON.stringify(PORTALS) },
 };
 
 /** Parses the JSON portal-key array stored under WIDGET_NOTES_KEY; malformed/missing → none enabled. */
@@ -616,6 +620,38 @@ export default function AdminSettings() {
                         onCheckedChange={(next) => {
                           const nextList = next ? [...enabledPortals, portal] : enabledPortals.filter((p) => p !== portal);
                           setValue(WIDGET_NOTES_KEY, JSON.stringify(nextList));
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Ask a Doubt Chatbot Widget</CardTitle>
+              <CardDescription>
+                Choose which portals show the "Ask a Doubt" chatbot bubble. It answers common questions from the FAQ
+                knowledge base (managed under Insights → Doubt Chatbot) and forwards anything it can't answer to a
+                teacher — this only controls whether the widget appears at all.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-1">
+              {PORTALS.map((portal, i) => {
+                const enabledPortals = parsePortalList(values[WIDGET_CHATBOT_KEY]);
+                const checked = enabledPortals.includes(portal);
+                return (
+                  <div key={portal}>
+                    {i > 0 && <Separator className="my-1" />}
+                    <div className="flex items-center justify-between gap-4 py-3">
+                      <p className="text-sm font-semibold text-foreground">{portal[0].toUpperCase() + portal.slice(1)}</p>
+                      <Switch
+                        checked={checked}
+                        onCheckedChange={(next) => {
+                          const nextList = next ? [...enabledPortals, portal] : enabledPortals.filter((p) => p !== portal);
+                          setValue(WIDGET_CHATBOT_KEY, JSON.stringify(nextList));
                         }}
                       />
                     </div>
