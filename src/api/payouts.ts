@@ -14,6 +14,10 @@ export type ApiPayoutItemType =
 export interface ApiPayoutItem {
   id: string;
   classSessionId: string | null;
+  /** The batch this item's class belongs to -- null for items with no classSessionId. */
+  className: string | null;
+  /** The class's own scheduled start, not when this payout item was created. */
+  sessionDate: string | null;
   type: ApiPayoutItemType;
   amount: number;
   note: string | null;
@@ -81,9 +85,12 @@ export function toFrontendPayout(payout: ApiPayout): TeacherPayout {
     items: payout.items.map((i) => ({
       id: i.id,
       classSessionId: i.classSessionId,
+      className: i.className,
+      sessionDate: i.sessionDate,
       type: i.type,
       amount: i.amount,
       note: i.note,
+      createdAtUtc: i.createdAtUtc,
       requiresReview: i.requiresReview,
     })),
   };
