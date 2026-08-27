@@ -224,7 +224,7 @@ export default function EmailTemplates() {
                           t.id === selectedId ? "bg-primary/10 font-semibold text-primary" : "text-foreground hover:bg-muted/60"
                         )}
                       >
-                        <span className="truncate">{t.name}</span>
+                        <span className="min-w-0 flex-1 truncate">{t.name}</span>
                         <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", t.isActive ? "bg-success" : "bg-muted-foreground/40")} />
                       </button>
                     ))}

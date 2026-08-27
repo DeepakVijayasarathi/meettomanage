@@ -124,11 +124,11 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
                       onClick={() => onSessionClick?.(s)}
                       title={s.title}
                       className={cn(
-                        "flex items-center gap-1 truncate rounded-md px-1.5 py-0.5 text-left text-[10px] font-medium text-white transition-transform hover:scale-[1.02]",
+                        "flex items-center gap-1 rounded-md px-1.5 py-0.5 text-left text-[10px] font-medium text-white transition-transform hover:scale-[1.02]",
                         SESSION_STATUS_COLOR[s.status]
                       )}
                     >
-                      <span className="truncate">
+                      <span className="min-w-0 flex-1 truncate">
                         {s.startTime} {s.title}
                       </span>
                     </button>

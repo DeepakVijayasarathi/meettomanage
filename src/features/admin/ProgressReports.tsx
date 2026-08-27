@@ -190,11 +190,11 @@ export default function AdminProgressReports() {
                     r.id === selectedId ? "bg-primary/10 font-semibold text-primary" : "text-foreground hover:bg-muted/60"
                   )}
                 >
-                  <span className="flex items-center gap-2 truncate">
+                  <span className="flex min-w-0 items-center gap-2">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">
                       {getInitials(r.childName)}
                     </span>
-                    <span className="truncate">{r.childName}</span>
+                    <span className="min-w-0 flex-1 truncate">{r.childName}</span>
                   </span>
                   <Badge variant={r.status === "Sent" ? "success" : "warning"} className="shrink-0 text-[10px]">
                     {r.status === "Sent" ? "Sent" : "Draft"}
