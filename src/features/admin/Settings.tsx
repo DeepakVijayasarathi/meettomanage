@@ -27,6 +27,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -178,6 +179,7 @@ const SETTINGS_TABS = new Set([
 ]);
 
 export default function AdminSettings() {
+  const { toast } = useToast();
   const [values, setValues] = useState<Record<string, string>>(defaultValues);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -233,8 +235,10 @@ export default function AdminSettings() {
         }));
         await updateSettings(items);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not save settings.");
+        const message = err instanceof Error ? err.message : "Could not save settings.";
+        setError(message);
         setSaving(false);
+        toast({ variant: "error", title: "Couldn't save settings", description: message });
         return;
       }
       setSaving(false);
@@ -250,6 +254,7 @@ export default function AdminSettings() {
 
     setSaved(true);
     setTimeout(() => setSaved(false), 2200);
+    toast({ variant: "success", title: "Settings saved", description: "Your changes are live." });
   }
 
   const brandColor = values["brand.primaryColor"];
@@ -668,6 +673,7 @@ export default function AdminSettings() {
 
 /** DB-backed sidebar menu manager: per-portal item list with add/edit/delete. */
 function MenuManager() {
+  const { toast } = useToast();
   const [portal, setPortal] = useState<string>("admin");
   const [items, setItems] = useState<ApiMenuItem[]>([]);
   const [busy, setBusy] = useState(false);
@@ -733,8 +739,11 @@ function MenuManager() {
       setForm(null);
       setEditingId(null);
       await reload();
+      toast({ variant: "success", title: editingId ? "Menu item updated" : "Menu item created" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the menu item.");
+      const message = err instanceof Error ? err.message : "Could not save the menu item.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save menu item", description: message });
     } finally {
       setBusy(false);
     }
@@ -745,8 +754,11 @@ function MenuManager() {
     try {
       await deleteMenuItem(item.id);
       await reload();
+      toast({ variant: "success", title: `"${item.label}" removed` });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete the menu item.");
+      const message = err instanceof Error ? err.message : "Could not delete the menu item.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't delete menu item", description: message });
     } finally {
       setBusy(false);
     }
@@ -987,54 +999,32 @@ const DEFAULT_RATE_CARD = "__default";
 type RateCardRow = {
   key: string;
   label: string;
-  /** durationMinutes -> ratePerSession -- any duration is allowed, not just 30/45/60. */
-  rates: Record<number, number>;
+  ratePerSession: number;
   penaltyPercent: number;
 };
 
-/** Groups the flat rate rows into one summary row per card (default + each teacher). */
+/** One summary row per card (default + each teacher) -- flat rate, not per-duration. */
 function buildRateCardRows(allRates: ApiPayoutRate[]): RateCardRow[] {
   const map = new Map<string, RateCardRow>();
-  // listPayoutRates() orders newest-EffectiveFrom-first within each teacher+duration
-  // group, so the first row seen per (card, duration) here is always the live one.
+  // listPayoutRates() orders newest-EffectiveFrom-first within each teacher group, so
+  // the first row seen per card here is always the live one.
   for (const rate of allRates) {
     const key = rate.teacherProfileId ?? DEFAULT_RATE_CARD;
-    let row = map.get(key);
-    if (!row) {
-      row = { key, label: rate.teacherName, rates: {}, penaltyPercent: rate.teacherNoShowPenaltyPercent };
-      map.set(key, row);
-    }
-    if (row.rates[rate.durationMinutes] === undefined) {
-      row.rates[rate.durationMinutes] = rate.ratePerSession;
+    if (!map.has(key)) {
+      map.set(key, { key, label: rate.teacherName, ratePerSession: rate.ratePerSession, penaltyPercent: rate.teacherNoShowPenaltyPercent });
     }
   }
   return [...map.values()].sort((a, b) => (a.key === DEFAULT_RATE_CARD ? -1 : b.key === DEFAULT_RATE_CARD ? 1 : a.label.localeCompare(b.label)));
 }
 
-/** "30-min ₹900 · 45-min ₹1,100" -- durations are whatever's actually configured, not a fixed set. */
-function summarizeRates(rates: Record<number, number>): string {
-  const durations = Object.keys(rates).map(Number).sort((a, b) => a - b);
-  if (durations.length === 0) return "No durations configured yet";
-  return durations.map((d) => `${d}-min ${formatCurrency(rates[d])}`).join(" · ");
-}
-
-interface RateEntry {
-  id: string;
-  duration: string;
-  rate: string;
-}
-
-function blankRateEntry(duration = "", rate = "0"): RateEntry {
-  return { id: `rate-entry-${Math.random().toString(36).slice(2, 9)}`, duration, rate };
-}
-
 /**
  * Teacher payout rate cards (WBS p.31 "tutor payout rules" / "Penalty configuration"):
- * per-session rates by class duration and the teacher no-show penalty. A card with no
- * teacher is the centre-wide default that pays anyone without their own card; a
- * teacher's own card overrides it for that teacher only.
+ * one flat per-session rate (regardless of class duration) plus the teacher no-show
+ * penalty. A card with no teacher is the centre-wide default that pays anyone without
+ * their own card; a teacher's own card overrides it for that teacher only.
  */
 function PayoutRatesManager() {
+  const { toast } = useToast();
   const [allRates, setAllRates] = useState<ApiPayoutRate[]>([]);
   const [loaded, setLoaded] = useState(!apiEnabled());
   const [error, setError] = useState<string | null>(null);
@@ -1062,7 +1052,7 @@ function PayoutRatesManager() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTeacherId, setDialogTeacherId] = useState<string>(DEFAULT_RATE_CARD);
-  const [entries, setEntries] = useState<RateEntry[]>([]);
+  const [ratePerSession, setRatePerSession] = useState("0");
   const [penaltyPercent, setPenaltyPercent] = useState(100);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1075,75 +1065,42 @@ function PayoutRatesManager() {
     setDialogOpen(true);
   }
 
-  // Prefill from whatever's already loaded for this card — no extra round trip. A brand-new
-  // card starts from the common 30/45/60 lengths as a convenience, still fully editable —
-  // add or remove rows for whatever durations this centre's classes actually run at.
+  // Prefill from whatever's already loaded for this card — no extra round trip.
   useEffect(() => {
     if (!dialogOpen) return;
-    const rows = allRates.filter((r) => (r.teacherProfileId ?? DEFAULT_RATE_CARD) === dialogTeacherId);
-    if (rows.length > 0) {
-      setEntries(
-        [...rows]
-          .sort((a, b) => a.durationMinutes - b.durationMinutes)
-          .map((r) => blankRateEntry(String(r.durationMinutes), String(r.ratePerSession)))
-      );
-      setPenaltyPercent(rows[0].teacherNoShowPenaltyPercent);
-    } else {
-      setEntries([blankRateEntry("30", "0"), blankRateEntry("45", "0"), blankRateEntry("60", "0")]);
-      setPenaltyPercent(100);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogOpen, dialogTeacherId]);
+    const existing = cardRows.find((r) => r.key === dialogTeacherId);
+    setRatePerSession(existing ? String(existing.ratePerSession) : "0");
+    setPenaltyPercent(existing ? existing.penaltyPercent : 100);
+  }, [dialogOpen, dialogTeacherId, cardRows]);
 
-  function updateEntry(id: string, field: "duration" | "rate", value: string) {
-    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)));
-  }
-
-  function removeEntry(id: string) {
-    setEntries((prev) => prev.filter((e) => e.id !== id));
-  }
-
-  const durationValues = entries.map((e) => Number(e.duration));
-  const entriesError =
-    entries.length === 0
-      ? "Add at least one duration."
-      : durationValues.some((d) => !Number.isFinite(d) || d <= 0)
-        ? "Every duration must be a positive number of minutes."
-        : new Set(durationValues).size !== durationValues.length
-          ? "Each duration can only appear once on this card."
-          : entries.some((e) => !Number.isFinite(Number(e.rate)) || Number(e.rate) < 0)
-            ? "Every rate must be zero or a positive amount."
-            : null;
+  const rateError =
+    !Number.isFinite(Number(ratePerSession)) || Number(ratePerSession) < 0
+      ? "Rate must be zero or a positive amount."
+      : null;
 
   async function handleSave() {
     if (!apiEnabled()) {
       setSaved(true);
       return;
     }
-    if (entriesError) return;
+    if (rateError) return;
     setSaving(true);
     setError(null);
     const today = new Date().toISOString().slice(0, 10);
     try {
-      // Upsert-only: removing a row here stops it from being edited further, but the
-      // duration it used to price doesn't get deleted server-side (no delete-rate
-      // endpoint exists) -- same constraint the old fixed-three-duration version had,
-      // it just wasn't visible when duration could never change.
-      await Promise.all(
-        entries.map((entry) =>
-          savePayoutRate({
-            teacherProfileId: dialogTeacherId === DEFAULT_RATE_CARD ? undefined : dialogTeacherId,
-            durationMinutes: Number(entry.duration),
-            ratePerSession: Number(entry.rate) || 0,
-            teacherNoShowPenaltyPercent: penaltyPercent,
-            effectiveFrom: today,
-          })
-        )
-      );
+      await savePayoutRate({
+        teacherProfileId: dialogTeacherId === DEFAULT_RATE_CARD ? undefined : dialogTeacherId,
+        ratePerSession: Number(ratePerSession) || 0,
+        teacherNoShowPenaltyPercent: penaltyPercent,
+        effectiveFrom: today,
+      });
       setSaved(true);
       await reload();
+      toast({ variant: "success", title: "Rate card saved" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the rate card.");
+      const message = err instanceof Error ? err.message : "Could not save the rate card.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save the rate card", description: message });
     } finally {
       setSaving(false);
     }
@@ -1165,8 +1122,8 @@ function PayoutRatesManager() {
         <div>
           <CardTitle>Teacher Payout Rates</CardTitle>
           <CardDescription>
-            Per-session rates by class duration, plus the teacher no-show penalty. The default card pays any teacher
-            without rates of their own; a teacher's own card overrides it just for them.
+            One flat rate per session, plus the teacher no-show penalty. The default card pays any teacher without a
+            rate of their own; a teacher's own card overrides it just for them.
           </CardDescription>
         </div>
         <Button size="sm" onClick={() => openDialog(DEFAULT_RATE_CARD)}>
@@ -1200,7 +1157,7 @@ function PayoutRatesManager() {
                       {row.key === DEFAULT_RATE_CARD ? "All teachers (default)" : row.label}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {summarizeRates(row.rates)} · No-show penalty {row.penaltyPercent}%
+                      {formatCurrency(row.ratePerSession)} per session · No-show penalty {row.penaltyPercent}%
                     </p>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => openDialog(row.key)}>
@@ -1219,7 +1176,7 @@ function PayoutRatesManager() {
             <>
               <DialogHeader>
                 <DialogTitle>Configure Rate Card</DialogTitle>
-                <DialogDescription>Set per-session payout rates by class duration and the no-show penalty.</DialogDescription>
+                <DialogDescription>Set the flat per-session payout rate and the no-show penalty.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4">
                 <div className="grid gap-1.5">
@@ -1238,57 +1195,18 @@ function PayoutRatesManager() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Session rates by duration</Label>
-                    <Button type="button" variant="soft" size="sm" onClick={() => setEntries((prev) => [...prev, blankRateEntry()])}>
-                      <Plus className="h-3.5 w-3.5" /> Add duration
-                    </Button>
-                  </div>
-                  {entries.map((entry) => (
-                    <div key={entry.id} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
-                      <div className="grid gap-1">
-                        <Label htmlFor={`rate-duration-${entry.id}`} className="text-xs font-normal text-muted-foreground">
-                          Minutes
-                        </Label>
-                        <Input
-                          id={`rate-duration-${entry.id}`}
-                          type="number"
-                          min={1}
-                          step={1}
-                          value={entry.duration}
-                          onChange={(e) => updateEntry(entry.id, "duration", e.target.value)}
-                        />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor={`rate-amount-${entry.id}`} className="text-xs font-normal text-muted-foreground">
-                          Rate (₹)
-                        </Label>
-                        <Input
-                          id={`rate-amount-${entry.id}`}
-                          type="number"
-                          min={0}
-                          value={entry.rate}
-                          onChange={(e) => updateEntry(entry.id, "rate", e.target.value)}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        disabled={entries.length === 1}
-                        onClick={() => removeEntry(entry.id)}
-                        title="Remove this duration"
-                        aria-label="Remove this duration"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  {entriesError && (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="rate-per-session">Rate per session (₹)</Label>
+                  <Input
+                    id="rate-per-session"
+                    type="number"
+                    min={0}
+                    value={ratePerSession}
+                    onChange={(e) => setRatePerSession(e.target.value)}
+                  />
+                  {rateError && (
                     <p role="alert" className="text-xs font-medium text-destructive">
-                      {entriesError}
+                      {rateError}
                     </p>
                   )}
                 </div>
@@ -1311,7 +1229,7 @@ function PayoutRatesManager() {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={saving || !!entriesError}>
+                <Button onClick={handleSave} disabled={saving || !!rateError}>
                   {saved ? <CheckCircle2 className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
                   {saving ? "Saving…" : saved ? "Saved!" : "Save Rate Card"}
                 </Button>
@@ -1426,6 +1344,7 @@ const EMPTY_JITSI_FORM = { domain: "", appId: "", appSecret: "", autoRecord: tru
  * is Dictionary<string,string> end to end (see JITSI_ARCHITECTURE.md / SessionService.ReadAutoRecordEnabled).
  */
 function JitsiRecordingSettings() {
+  const { toast } = useToast();
   const [integration, setIntegration] = useState<ApiIntegration | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [form, setForm] = useState(EMPTY_JITSI_FORM);
@@ -1480,8 +1399,11 @@ function JitsiRecordingSettings() {
       else await createIntegration(request);
       await reload();
       setSaved(true);
+      toast({ variant: "success", title: "Jitsi settings saved" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save Jitsi settings.");
+      const message = err instanceof Error ? err.message : "Could not save Jitsi settings.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save Jitsi settings", description: message });
     } finally {
       setBusy(false);
     }
