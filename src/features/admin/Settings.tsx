@@ -1000,11 +1000,11 @@ const DEFAULT_RATE_CARD = "__default";
 type RateCardRow = {
   key: string;
   label: string;
-  ratePerSession: number;
+  ratePerMinute: number;
   penaltyPercent: number;
 };
 
-/** One summary row per card (default + each teacher) -- flat rate, not per-duration. */
+/** One summary row per card (default + each teacher) -- priced per minute of a session's own scheduled duration. */
 function buildRateCardRows(allRates: ApiPayoutRate[]): RateCardRow[] {
   const map = new Map<string, RateCardRow>();
   // listPayoutRates() orders newest-EffectiveFrom-first within each teacher group, so
@@ -1012,7 +1012,7 @@ function buildRateCardRows(allRates: ApiPayoutRate[]): RateCardRow[] {
   for (const rate of allRates) {
     const key = rate.teacherProfileId ?? DEFAULT_RATE_CARD;
     if (!map.has(key)) {
-      map.set(key, { key, label: rate.teacherName, ratePerSession: rate.ratePerSession, penaltyPercent: rate.teacherNoShowPenaltyPercent });
+      map.set(key, { key, label: rate.teacherName, ratePerMinute: rate.ratePerMinute, penaltyPercent: rate.teacherNoShowPenaltyPercent });
     }
   }
   return [...map.values()].sort((a, b) => (a.key === DEFAULT_RATE_CARD ? -1 : b.key === DEFAULT_RATE_CARD ? 1 : a.label.localeCompare(b.label)));
@@ -1020,9 +1020,9 @@ function buildRateCardRows(allRates: ApiPayoutRate[]): RateCardRow[] {
 
 /**
  * Teacher payout rate cards (WBS p.31 "tutor payout rules" / "Penalty configuration"):
- * one flat per-session rate (regardless of class duration) plus the teacher no-show
- * penalty. A card with no teacher is the centre-wide default that pays anyone without
- * their own card; a teacher's own card overrides it for that teacher only.
+ * one per-minute rate (applied to a session's own scheduled duration) plus the teacher
+ * no-show penalty. A card with no teacher is the centre-wide default that pays anyone
+ * without their own card; a teacher's own card overrides it for that teacher only.
  */
 function PayoutRatesManager() {
   const { toast } = useToast();
@@ -1053,7 +1053,7 @@ function PayoutRatesManager() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTeacherId, setDialogTeacherId] = useState<string>(DEFAULT_RATE_CARD);
-  const [ratePerSession, setRatePerSession] = useState("0");
+  const [ratePerMinute, setRatePerMinute] = useState("0");
   const [penaltyPercent, setPenaltyPercent] = useState(100);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1070,12 +1070,12 @@ function PayoutRatesManager() {
   useEffect(() => {
     if (!dialogOpen) return;
     const existing = cardRows.find((r) => r.key === dialogTeacherId);
-    setRatePerSession(existing ? String(existing.ratePerSession) : "0");
+    setRatePerMinute(existing ? String(existing.ratePerMinute) : "0");
     setPenaltyPercent(existing ? existing.penaltyPercent : 100);
   }, [dialogOpen, dialogTeacherId, cardRows]);
 
   const rateError =
-    !Number.isFinite(Number(ratePerSession)) || Number(ratePerSession) < 0
+    !Number.isFinite(Number(ratePerMinute)) || Number(ratePerMinute) < 0
       ? "Rate must be zero or a positive amount."
       : null;
 
@@ -1091,7 +1091,7 @@ function PayoutRatesManager() {
     try {
       await savePayoutRate({
         teacherProfileId: dialogTeacherId === DEFAULT_RATE_CARD ? undefined : dialogTeacherId,
-        ratePerSession: Number(ratePerSession) || 0,
+        ratePerMinute: Number(ratePerMinute) || 0,
         teacherNoShowPenaltyPercent: penaltyPercent,
         effectiveFrom: today,
       });
@@ -1123,8 +1123,9 @@ function PayoutRatesManager() {
         <div>
           <CardTitle>Teacher Payout Rates</CardTitle>
           <CardDescription>
-            One flat rate per session, plus the teacher no-show penalty. The default card pays any teacher without a
-            rate of their own; a teacher's own card overrides it just for them.
+            A rate per minute, applied to each session's own scheduled duration, plus the teacher no-show penalty.
+            The default card pays any teacher without a rate of their own; a teacher's own card overrides it just
+            for them.
           </CardDescription>
         </div>
         <Button size="sm" onClick={() => openDialog(DEFAULT_RATE_CARD)}>
@@ -1158,7 +1159,7 @@ function PayoutRatesManager() {
                       {row.key === DEFAULT_RATE_CARD ? "All teachers (default)" : row.label}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {formatCurrency(row.ratePerSession)} per session · No-show penalty {row.penaltyPercent}%
+                      {formatCurrency(row.ratePerMinute)} per minute · No-show penalty {row.penaltyPercent}%
                     </p>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => openDialog(row.key)}>
@@ -1177,7 +1178,7 @@ function PayoutRatesManager() {
             <>
               <DialogHeader>
                 <DialogTitle>Configure Rate Card</DialogTitle>
-                <DialogDescription>Set the flat per-session payout rate and the no-show penalty.</DialogDescription>
+                <DialogDescription>Set the per-minute payout rate and the no-show penalty.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4">
                 <div className="grid gap-1.5">
@@ -1197,13 +1198,13 @@ function PayoutRatesManager() {
                   </Select>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="rate-per-session">Rate per session (₹)</Label>
+                  <Label htmlFor="rate-per-minute">Rate per minute (₹)</Label>
                   <Input
-                    id="rate-per-session"
+                    id="rate-per-minute"
                     type="number"
                     min={0}
-                    value={ratePerSession}
-                    onChange={(e) => setRatePerSession(e.target.value)}
+                    value={ratePerMinute}
+                    onChange={(e) => setRatePerMinute(e.target.value)}
                   />
                   {rateError && (
                     <p role="alert" className="text-xs font-medium text-destructive">
