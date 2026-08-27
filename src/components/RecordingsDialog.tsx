@@ -115,15 +115,15 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
                           href={safeUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-1.5 truncate font-medium text-primary hover:underline"
+                          className="flex min-w-0 items-center gap-1.5 font-medium text-primary hover:underline"
                         >
                           <Video className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate">{r.storageUrl}</span>
+                          <span className="min-w-0 flex-1 truncate">{r.storageUrl}</span>
                         </a>
                       ) : (
-                        <p className="flex items-center gap-1.5 truncate font-medium text-muted-foreground" title={r.storageUrl}>
+                        <p className="flex min-w-0 items-center gap-1.5 font-medium text-muted-foreground" title={r.storageUrl}>
                           <Video className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate">Blocked link (not a http/https address)</span>
+                          <span className="min-w-0 flex-1 truncate">Blocked link (not a http/https address)</span>
                         </p>
                       )}
                       <p className="mt-0.5 text-xs text-muted-foreground">

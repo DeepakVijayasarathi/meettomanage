@@ -112,6 +112,7 @@ export default function ParentSchedule() {
   return (
     <div>
       <PageHeader
+        eyebrow="Learning"
         title="Schedule &amp; Live Class"
         description="Upcoming sessions, calendar view and one-click join for your child."
         actions={<CalendarSyncButton />}

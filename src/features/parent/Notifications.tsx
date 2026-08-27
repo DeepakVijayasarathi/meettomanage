@@ -212,6 +212,7 @@ export default function ParentNotifications() {
   return (
     <div>
       <PageHeader
+        eyebrow="Account"
         title="Notifications &amp; Reports"
         description="Attendance updates, performance summaries and payment reminders for your family."
         actions={

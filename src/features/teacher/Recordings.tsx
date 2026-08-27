@@ -97,7 +97,7 @@ export default function TeacherRecordings() {
 
   return (
     <div>
-      <PageHeader title="Recordings" description="Every recording from your own classes, newest first." />
+      <PageHeader eyebrow="Teaching" title="Recordings" description="Every recording from your own classes, newest first." />
 
       {usingApi && error && (
         <p className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">

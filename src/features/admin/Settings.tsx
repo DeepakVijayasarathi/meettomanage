@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Bell,
@@ -639,8 +639,18 @@ function MenuManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<SaveMenuItemRequest | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ApiMenuItem | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const iconNames = useMemo(() => Object.keys(MENU_ICONS).sort(), []);
+
+  // Same reasoning as IntegrationsManager: the form renders above the (possibly long,
+  // multi-section) item list, so editing an item further down opens a form the user
+  // can't see without manually scrolling back up themselves.
+  useEffect(() => {
+    if (form) {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [form]);
 
   async function reload(nextPortal = portal) {
     if (!apiEnabled()) return;
@@ -730,14 +740,11 @@ function MenuManager() {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Sidebar Menus</CardTitle>
-          <CardDescription>
-            Menus are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode uses the built-in navigation.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={ListTree}
+        title="Demo mode"
+        description="Menus are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode uses the built-in navigation."
+      />
     );
   }
 
@@ -770,7 +777,7 @@ function MenuManager() {
         {error && <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         {form && (
-          <div className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div ref={formRef} className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4 scroll-mt-4">
             <div className="grid gap-1.5">
               <Label>Label</Label>
               <Input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Courses" />
@@ -1062,14 +1069,11 @@ function PayoutRatesManager() {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Teacher Payout Rates</CardTitle>
-          <CardDescription>
-            Rate cards are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode has no payout data.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={Wallet}
+        title="Demo mode"
+        description="Rate cards are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode has no payout data."
+      />
     );
   }
 
@@ -1361,12 +1365,11 @@ function JitsiRecordingSettings() {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Jitsi Meet &amp; Recording</CardTitle>
-          <CardDescription>Connect the API (VITE_API_BASE_URL) to manage the live classroom domain and auto-record.</CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={Video}
+        title="Demo mode"
+        description="Connect the API (VITE_API_BASE_URL) to manage the live classroom domain and auto-record."
+      />
     );
   }
 
@@ -1472,6 +1475,16 @@ export function IntegrationsManager() {
   const [configRows, setConfigRows] = useState<ConfigRow[]>([]);
   const [revealedRows, setRevealedRows] = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<ApiIntegration | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  // The edit form always renders above the (possibly long) grouped list, so clicking
+  // "Configure" on an item further down opens a form the user can't see without
+  // scrolling all the way back up themselves — nothing on screen even hints it opened.
+  useEffect(() => {
+    if (form) {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [form]);
 
   async function reload() {
     if (!apiEnabled()) return;
@@ -1577,14 +1590,11 @@ export function IntegrationsManager() {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Connected Integrations</CardTitle>
-          <CardDescription>
-            Integrations are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={Plug}
+        title="Demo mode"
+        description="Integrations are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them."
+      />
     );
   }
 
@@ -1610,7 +1620,7 @@ export function IntegrationsManager() {
         {error && <p role="alert" className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
 
         {form && (
-          <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2">
+          <div ref={formRef} className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 scroll-mt-4">
             <div className="grid gap-1.5">
               <Label>Key</Label>
               <Input

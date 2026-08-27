@@ -42,6 +42,7 @@ export default function ParentAddChild() {
     return (
       <div>
         <PageHeader
+          eyebrow="Account"
           title="Add Child"
           description="Your family's enrolled children, enrollments under review, and adding a sibling."
           actions={
@@ -197,7 +198,7 @@ export default function ParentAddChild() {
     const displayName = form.name.trim() || "Your child";
     return (
       <div>
-        <PageHeader title="Add Child" description="Enroll a sibling under your account." />
+        <PageHeader eyebrow="Account" title="Add Child" description="Enroll a sibling under your account." />
         <Card className="mx-auto mt-10 max-w-lg p-8 text-center">
           <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-success/15 text-success">
             <PartyPopper className="h-7 w-7" />
@@ -229,7 +230,7 @@ export default function ParentAddChild() {
 
   return (
     <div>
-      <PageHeader title="Add Child" description="Add a sibling to your account — you'll complete their enrollment right after." />
+      <PageHeader eyebrow="Account" title="Add Child" description="Add a sibling to your account — you'll complete their enrollment right after." />
       <Card className="mx-auto mt-6 max-w-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

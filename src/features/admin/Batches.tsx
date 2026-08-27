@@ -529,7 +529,7 @@ export default function AdminBatches() {
                             key={s.enrollmentId}
                             className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-sm"
                           >
-                            <span className="truncate">
+                            <span className="min-w-0 flex-1 truncate">
                               {s.childName}
                               {s.academicLevel && <span className="text-xs text-muted-foreground"> · {s.academicLevel}</span>}
                             </span>

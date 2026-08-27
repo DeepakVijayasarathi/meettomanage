@@ -180,12 +180,11 @@ export default function EmailTemplates() {
     return (
       <div>
         <PageHeader eyebrow="Communication" title="Email Templates" description="The Email Template Master for every automated system email." />
-        <Card>
-          <CardHeader>
-            <CardTitle>Email Templates</CardTitle>
-            <CardDescription>Templates are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them.</CardDescription>
-          </CardHeader>
-        </Card>
+        <EmptyState
+          icon={Mail}
+          title="Demo mode"
+          description="Templates are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them."
+        />
       </div>
     );
   }
@@ -225,7 +224,7 @@ export default function EmailTemplates() {
                           t.id === selectedId ? "bg-primary/10 font-semibold text-primary" : "text-foreground hover:bg-muted/60"
                         )}
                       >
-                        <span className="truncate">{t.name}</span>
+                        <span className="min-w-0 flex-1 truncate">{t.name}</span>
                         <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", t.isActive ? "bg-success" : "bg-muted-foreground/40")} />
                       </button>
                     ))}

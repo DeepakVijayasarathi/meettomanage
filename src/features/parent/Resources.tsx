@@ -96,7 +96,7 @@ export default function ParentResources() {
 
   return (
     <div>
-      <PageHeader title="Resources" description="Worksheets, reading books and any videos shared directly by your teacher. For class recordings, see Recordings in the sidebar." />
+      <PageHeader eyebrow="Learning" title="Resources" description="Worksheets, reading books and any videos shared directly by your teacher. For class recordings, see Recordings in the sidebar." />
       <MultiChildSwitcher />
 
       {child && !isEnrolled && (

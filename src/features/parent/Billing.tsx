@@ -147,7 +147,7 @@ export default function ParentBilling() {
 
   return (
     <div>
-      <PageHeader title="Payments &amp; Billing" description="Invoices, receipts and secure Pay Now checkout for your family." />
+      <PageHeader eyebrow="Account" title="Payments &amp; Billing" description="Invoices, receipts and secure Pay Now checkout for your family." />
 
       {apiEnabled() && invoicesError && (
         <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">

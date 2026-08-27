@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
+import { EmptyState } from "@/components/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -245,9 +246,16 @@ export default function AdminQuizQuestions() {
       )}
 
       {questions.length === 0 && !loadError ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          No quiz questions yet. Classes launching a live quiz will see an empty bank until some are added here.
-        </div>
+        <EmptyState
+          icon={Sparkles}
+          title="No quiz questions yet"
+          description="Classes launching a live quiz will see an empty bank until some are added here."
+          action={
+            <Button onClick={openAdd}>
+              <Plus className="h-4 w-4" /> Add Question
+            </Button>
+          }
+        />
       ) : (
         <DataTable
           data={questions}

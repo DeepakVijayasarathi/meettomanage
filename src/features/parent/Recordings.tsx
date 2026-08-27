@@ -117,7 +117,7 @@ export default function ParentRecordings() {
 
   return (
     <div>
-      <PageHeader title="Recordings" description="Every class recording your child can still watch — available for 15 days after class." />
+      <PageHeader eyebrow="Learning" title="Recordings" description="Every class recording your child can still watch — available for 15 days after class." />
       <MultiChildSwitcher />
 
       {child && !isEnrolled && (
