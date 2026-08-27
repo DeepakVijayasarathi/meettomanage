@@ -243,7 +243,7 @@ export default function GamificationOverlay({
                 >
                   {i + 1}
                 </span>
-                <span className="flex-1 truncate font-medium text-white/85">{entry.name}</span>
+                <span className="min-w-0 flex-1 truncate font-medium text-white/85">{entry.name}</span>
                 {badgeFor(entry.stars) && (
                   // role="img" + aria-label (not just title): a bare <span> with only a title
                   // attribute isn't focusable and many screen readers don't reliably expose
