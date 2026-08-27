@@ -39,6 +39,8 @@ export interface ApiPackagePlan {
   billingCycle: ApiBillingCycle;
   price: number;
   sessionsIncluded: number | null;
+  /** Days of access a subscription on this plan gets from its start date; null means it never expires on its own. */
+  validityDays: number | null;
   isActive: boolean;
 }
 
@@ -186,6 +188,8 @@ export interface ApiSubscription {
   planName: string;
   status: ApiSubscriptionStatus;
   startDate: string;
+  /** When this subscription's access lapses on its own, from the plan's validityDays; null for a plan with no set validity window. */
+  endDate: string | null;
   nextBillingAtUtc: string | null;
   cancelledAtUtc: string | null;
 }
@@ -221,6 +225,7 @@ export interface SavePackagePlanInput {
   billingCycle: ApiBillingCycle;
   price: number;
   sessionsIncluded?: number;
+  validityDays?: number;
   isActive?: boolean;
 }
 
