@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { MessageCircleQuestion, Send, X } from "lucide-react";
+import { MessageCircleQuestion, Send, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiEnabled } from "@/lib/api";
 import { getPublicSettings } from "@/api/settings";
-import { askChatbot, listActiveFaqs, listMyChatHistory, type ApiChatFaq, type ApiChatMessage } from "@/api/chatbot";
+import {
+  askChatbot,
+  listActiveFaqs,
+  listMyChatHistory,
+  submitChatFeedback,
+  type ApiChatFaq,
+  type ApiChatMessage,
+} from "@/api/chatbot";
 import { MOCK_CHAT_FAQS } from "@/data/chatbot";
 import { findBestFaqMatch } from "@/lib/chatbotMatch";
 import { useFixedButtonCollision } from "@/hooks/useFixedButtonCollision";
@@ -19,15 +26,33 @@ const OPEN_KEY = "trn.chatbotWidget.open";
 /** Demo mode (no API) has no signed-in user, so history just lives in this browser. */
 const DEMO_HISTORY_KEY = "trn.chatbot.demo";
 const PANEL_WIDTH = 320;
+const MAX_SUGGESTIONS = 4;
 
 interface Turn {
   id: string;
   sender: "User" | "Bot";
   text: string;
+  /** Only set on a Bot turn that answered from a matched FAQ — an escalated turn has nothing to rate. */
+  matched?: boolean;
+  /** The question this Bot turn answered — needed to escalate it if rated unhelpful. */
+  question?: string;
+  /** undefined = not ratable; null = ratable, not yet rated; true/false = rated. */
+  feedback?: boolean | null;
 }
 
-function toTurn(message: ApiChatMessage): Turn {
-  return { id: message.id, sender: message.sender, text: message.text };
+/** Reconstructs matched/question/feedback for a loaded history so ratings survive a reopen. */
+function toTurns(history: ApiChatMessage[]): Turn[] {
+  return history.map((message, i) => {
+    const matched = message.sender === "Bot" && message.matchedFaqId !== null;
+    return {
+      id: message.id,
+      sender: message.sender,
+      text: message.text,
+      matched: matched || undefined,
+      question: matched ? history[i - 1]?.text : undefined,
+      feedback: matched ? message.wasHelpful : undefined,
+    };
+  });
 }
 
 function loadDemoHistory(): Turn[] {
@@ -115,7 +140,7 @@ export function DoubtChatbot({ role }: { role: Role }) {
     if (!open || loaded) return;
     if (apiEnabled()) {
       listMyChatHistory()
-        .then((history) => setTurns(history.length > 0 ? history.map(toTurn) : [WELCOME_TURN]))
+        .then((history) => setTurns(history.length > 0 ? toTurns(history) : [WELCOME_TURN]))
         .catch(() => setTurns([WELCOME_TURN]))
         .finally(() => setLoaded(true));
     } else {
@@ -133,8 +158,8 @@ export function DoubtChatbot({ role }: { role: Role }) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turns]);
 
-  async function send() {
-    const question = draft.trim();
+  async function send(overrideText?: string) {
+    const question = (overrideText ?? draft).trim();
     if (!question || sending) return;
     setDraft("");
     setSending(true);
@@ -145,7 +170,17 @@ export function DoubtChatbot({ role }: { role: Role }) {
     if (apiEnabled()) {
       try {
         const response = await askChatbot(question);
-        setTurns((prev) => [...prev, toTurn(response.botMessage)]);
+        setTurns((prev) => [
+          ...prev,
+          {
+            id: response.botMessage.id,
+            sender: "Bot",
+            text: response.botMessage.text,
+            matched: response.matched || undefined,
+            question: response.matched ? question : undefined,
+            feedback: response.matched ? null : undefined,
+          },
+        ]);
       } catch {
         setTurns((prev) => [
           ...prev,
@@ -163,12 +198,56 @@ export function DoubtChatbot({ role }: { role: Role }) {
       id: crypto.randomUUID(),
       sender: "Bot",
       text: match?.answer ?? "I don't have an answer for that yet — in the real app this gets forwarded to a teacher.",
+      matched: !!match || undefined,
+      question: match ? question : undefined,
+      feedback: match ? null : undefined,
     };
     const next = [...turns, userTurn, botTurn];
     setTurns(next);
     saveDemoHistory(next);
     setSending(false);
   }
+
+  async function rate(turn: Turn, helpful: boolean) {
+    if (!apiEnabled()) {
+      // Built entirely inside the updater (not off the `turns` closure) so it reflects
+      // whatever's actually current, then persisted from that same, definitely-fresh value.
+      setTurns((prev) => {
+        const rated = prev.map((t) => (t.id === turn.id ? { ...t, feedback: helpful } : t));
+        const next: Turn[] = helpful
+          ? rated
+          : [
+              ...rated,
+              {
+                id: crypto.randomUUID(),
+                sender: "Bot",
+                text: "Thanks — in the real app this gets forwarded to a teacher for a better answer.",
+              },
+            ];
+        saveDemoHistory(next);
+        return next;
+      });
+      return;
+    }
+
+    // Optimistic — a rating is low-stakes, and staying responsive matters more than
+    // rolling back on a rare failed request.
+    setTurns((prev) => prev.map((t) => (t.id === turn.id ? { ...t, feedback: helpful } : t)));
+
+    try {
+      await submitChatFeedback(turn.id, helpful, turn.question ?? turn.text);
+      if (!helpful) {
+        setTurns((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), sender: "Bot", text: "Thanks for letting me know — I've forwarded this to a teacher for a better answer." },
+        ]);
+      }
+    } catch {
+      // Rating failed silently — not worth interrupting the conversation over.
+    }
+  }
+
+  const showSuggestions = turns.length === 1 && turns[0].id === "welcome" && faqs.length > 0;
 
   if (enabled !== true) return null;
 
@@ -207,16 +286,47 @@ export function DoubtChatbot({ role }: { role: Role }) {
 
           <div ref={scrollRef} className="flex max-h-80 flex-col gap-2 overflow-y-auto p-3">
             {turns.map((turn) => (
-              <div
-                key={turn.id}
-                className={cn(
-                  "max-w-[85%] rounded-lg px-2.5 py-1.5 text-xs leading-relaxed",
-                  turn.sender === "Bot" ? "self-start bg-muted text-foreground" : "self-end bg-primary text-primary-foreground"
+              <div key={turn.id} className={cn("flex flex-col gap-1", turn.sender === "Bot" ? "items-start" : "items-end")}>
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-lg px-2.5 py-1.5 text-xs leading-relaxed",
+                    turn.sender === "Bot" ? "bg-muted text-foreground" : "bg-primary text-primary-foreground"
+                  )}
+                >
+                  {turn.text}
+                </div>
+                {turn.feedback === null && (
+                  <div className="flex items-center gap-2 px-0.5 text-[10px] text-muted-foreground">
+                    <span>Helpful?</span>
+                    <button type="button" onClick={() => void rate(turn, true)} aria-label="Mark as helpful" className="hover:text-success">
+                      <ThumbsUp className="h-3 w-3" />
+                    </button>
+                    <button type="button" onClick={() => void rate(turn, false)} aria-label="Mark as not helpful" className="hover:text-destructive">
+                      <ThumbsDown className="h-3 w-3" />
+                    </button>
+                  </div>
                 )}
-              >
-                {turn.text}
+                {turn.feedback === true && <span className="px-0.5 text-[10px] text-success">Marked helpful</span>}
               </div>
             ))}
+
+            {showSuggestions && (
+              <div className="mt-1 flex flex-col gap-1.5">
+                <p className="px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Common questions</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {faqs.slice(0, MAX_SUGGESTIONS).map((faq) => (
+                    <button
+                      key={faq.id}
+                      type="button"
+                      onClick={() => void send(faq.question)}
+                      className="rounded-full border border-border bg-card px-2.5 py-1 text-left text-[11px] text-foreground hover:border-primary hover:text-primary"
+                    >
+                      {faq.question}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 border-t border-border p-2">

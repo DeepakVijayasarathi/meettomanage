@@ -405,12 +405,13 @@ function AnalyticsPanel() {
     { label: "Answered by bot", value: stats.answeredByBot },
     { label: "Escalated to teacher", value: stats.escalatedToTeacher },
     { label: "Pending escalations", value: stats.pendingEscalations },
+    { label: "Marked unhelpful", value: stats.markedUnhelpful },
     { label: "Active users", value: stats.activeUsers },
   ];
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {tiles.map((tile) => (
           <Card key={tile.label}>
             <CardContent className="pt-5">
