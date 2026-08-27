@@ -212,7 +212,8 @@ export default function ParentEnrollment() {
       if (emergencyPhoneError) next.emergencyContactPhone = emergencyPhoneError;
       else if (!parentPhoneError && phoneDigits(form.emergencyContactPhone) === phoneDigits(form.parentPhone))
         next.emergencyContactPhone = "The emergency contact should be a different number from your own.";
-      if (form.address.trim().length < 10) next.address = "Enter the full home address (street, city, PIN).";
+      if (form.address.trim().length > 0 && form.address.trim().length < 10)
+        next.address = "Enter the full home address (street, city, PIN), or leave it blank.";
     } else {
       if (!form.courseInterest) next.courseInterest = "Select a course to continue.";
       if (!form.consent) next.consent = "Please confirm the details and give consent to submit.";
@@ -443,10 +444,9 @@ export default function ParentEnrollment() {
                     />
                   </Field>
                 </div>
-                <Field label="Home address" htmlFor="address" required error={errors.address}>
+                <Field label="Home address (optional)" htmlFor="address" error={errors.address}>
                   <Textarea
                     id="address"
-                    required
                     value={form.address}
                     onChange={(e) => update("address", e.target.value)}
                     placeholder="Street, city, state, PIN"
