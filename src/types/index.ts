@@ -145,9 +145,14 @@ export interface TeacherPayout {
 export interface TeacherPayoutItem {
   id: string;
   classSessionId: string | null;
+  /** The batch this item's class belongs to -- null for items with no classSessionId (a bonus/adjustment with no single class behind it). */
+  className: string | null;
+  /** The class's own scheduled start, not when this payout item was created. */
+  sessionDate: string | null;
   type: string;
   amount: number;
   note: string | null;
+  createdAtUtc: string;
   requiresReview: boolean;
 }
 

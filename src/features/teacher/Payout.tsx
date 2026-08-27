@@ -1,20 +1,31 @@
+import { useState } from "react";
 import { parse } from "date-fns";
-import { Banknote, CalendarCheck, Lock, TrendingUp, Wallet } from "lucide-react";
+import { Banknote, CalendarCheck, GraduationCap, Lock, TrendingUp, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getPayoutsForTeacher } from "@/data/payouts";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
 import { useSession } from "@/state/session";
-import { cn, formatCurrency } from "@/lib/utils";
-import type { TeacherPayout } from "@/types";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import type { TeacherPayout, TeacherPayoutItem } from "@/types";
 
 const TEACHER_ID = "t-1";
+
+const ITEM_TYPE_LABEL: Record<string, string> = {
+  SessionEarning: "Class Earning",
+  StudentNoShowWaiting: "Student No-Show (Waiting Pay)",
+  TeacherNoShowDeduction: "Teacher No-Show Deduction",
+  Penalty: "Penalty",
+  Bonus: "Bonus",
+  Adjustment: "Adjustment",
+};
 
 function parseMonth(month: string) {
   return parse(month, "MMMM yyyy", new Date());
@@ -30,6 +41,7 @@ export default function TeacherPayout() {
   const latest = payouts[0];
   const lifetimeTotal = payouts.reduce((sum, p) => sum + p.finalAmount, 0);
   const lifetimeSessions = payouts.reduce((sum, p) => sum + p.sessionsCompleted, 0);
+  const [selectedPayout, setSelectedPayout] = useState<TeacherPayout | null>(null);
 
   const columns: DataTableColumn<TeacherPayout>[] = [
     {
@@ -144,10 +156,61 @@ export default function TeacherPayout() {
 
           <div className="mt-6">
             <h2 className="mb-3 text-base font-semibold text-foreground">Payout History</h2>
-            <DataTable data={payouts} columns={columns} rowKey={(row) => row.id} searchPlaceholder="Search by month…" pageSize={12} />
+            <p className="mb-3 text-xs text-muted-foreground">Click a month to see its class-wise earnings breakdown.</p>
+            <DataTable
+              data={payouts}
+              columns={columns}
+              rowKey={(row) => row.id}
+              searchPlaceholder="Search by month…"
+              pageSize={12}
+              onRowClick={(row) => setSelectedPayout(row)}
+            />
           </div>
         </>
       )}
+
+      <Dialog open={selectedPayout !== null} onOpenChange={(open) => !open && setSelectedPayout(null)}>
+        <DialogContent className="max-w-lg">
+          {selectedPayout && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedPayout.month} — Class-Wise Breakdown</DialogTitle>
+                <DialogDescription>Every class and adjustment that made up this month's {formatCurrency(selectedPayout.finalAmount)} payout.</DialogDescription>
+              </DialogHeader>
+              <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto">
+                {selectedPayout.items.length === 0 && (
+                  <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">No line-item detail on record for this month.</p>
+                )}
+                {selectedPayout.items.map((item: TeacherPayoutItem) => {
+                  const dateLabel = item.sessionDate
+                    ? formatDate(item.sessionDate, "short")
+                    : formatDate(item.createdAtUtc, "short");
+                  const typeLabel = ITEM_TYPE_LABEL[item.type] ?? item.type;
+                  const isNegative = item.amount < 0;
+                  return (
+                    <div key={item.id} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <GraduationCap className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{item.className ?? typeLabel}</p>
+                          <p className="text-xs text-muted-foreground">{item.className ? `${typeLabel} · ${dateLabel}` : dateLabel}</p>
+                          {item.note && <p className="mt-1 text-xs text-muted-foreground">{item.note}</p>}
+                        </div>
+                      </div>
+                      <span className={cn("shrink-0 text-sm font-bold", isNegative ? "text-destructive" : "text-success")}>
+                        {isNegative ? "-" : "+"}
+                        {formatCurrency(Math.abs(item.amount))}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
