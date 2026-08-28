@@ -165,6 +165,8 @@ export default function TeacherPayout() {
               searchPlaceholder="Search by month…"
               pageSize={12}
               onRowClick={(row) => setSelectedPayout(row)}
+              emptyTitle="No payouts yet"
+              emptyDescription="Your monthly payout will appear here once your first sessions are calculated."
               error={apiEnabled() ? payoutsError : null}
               onRetry={reloadPayouts}
             />

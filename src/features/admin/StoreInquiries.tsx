@@ -178,6 +178,8 @@ export default function AdminStoreInquiries() {
           columns={columns}
           rowKey={(row) => row.id}
           searchPlaceholder="Search by parent or child name…"
+          emptyTitle="No store inquiries yet"
+          emptyDescription="Enquiries submitted from the marketing store will appear here."
           error={live ? error : null}
           onRetry={reload}
         />

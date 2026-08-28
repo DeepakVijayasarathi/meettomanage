@@ -308,6 +308,8 @@ export default function SubAdminReports() {
                 rowKey={(r) => r.id}
                 searchPlaceholder="Search batches, courses or teachers…"
                 pageSize={6}
+                emptyTitle="No batches in view"
+                emptyDescription="Batches you have access to will be listed here once they're scheduled."
                 error={usingApi ? batchRowsError : null}
                 onRetry={reloadBatchRows}
               />

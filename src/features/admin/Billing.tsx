@@ -358,6 +358,8 @@ export default function AdminBilling() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search invoices by ID or student…"
             onRowClick={openDetail}
+            emptyTitle="No invoices yet"
+            emptyDescription="Invoices are generated automatically from enrollments and subscriptions, or can be raised manually."
             error={live ? invoicesError : null}
             onRetry={reload}
           />

@@ -367,6 +367,8 @@ export default function AdminPayouts() {
           columns={columns}
           rowKey={(row) => row.id}
           searchPlaceholder="Search by teacher name…"
+          emptyTitle="No payouts yet"
+          emptyDescription="Teacher payouts will appear here once sessions are delivered and calculated for a pay period."
           error={apiEnabled() ? payoutsError : null}
           onRetry={reloadPayouts}
         />

@@ -649,6 +649,8 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search parents by name or email…"
             onRowClick={(row) => setDetailUser(row)}
+            emptyTitle="No parent accounts yet"
+            emptyDescription="Parent accounts are created when a student enrolls, or you can add one directly with Add User above."
             selectable
             selectedKeys={selectedParentIds}
             onSelectionChange={setSelectedParentIds}
@@ -678,6 +680,8 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search students by name…"
             onRowClick={(row) => setDetailChild(row)}
+            emptyTitle="No students enrolled yet"
+            emptyDescription="Students appear here once a parent adds a child, or you can import a batch using the button above."
             error={apiEnabled() ? studentsError : null}
             onRetry={reloadStudents}
             toolbar={
@@ -699,6 +703,8 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search teachers by name or email…"
             onRowClick={(row) => setDetailUser(row)}
+            emptyTitle="No teacher accounts yet"
+            emptyDescription="Add your first teacher with Add User above so you can assign them to batches and sessions."
             selectable
             selectedKeys={selectedTeacherIds}
             onSelectionChange={setSelectedTeacherIds}
@@ -728,6 +734,8 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search staff by name…"
             onRowClick={(row) => setDetailUser(row)}
+            emptyTitle="No admission or sub-admin accounts yet"
+            emptyDescription="Add your first staff account with Add User above."
             error={apiEnabled() ? staffError : null}
             onRetry={reloadStaff}
           />

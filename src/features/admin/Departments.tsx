@@ -151,6 +151,8 @@ export default function AdminDepartments() {
           const q = query.toLowerCase();
           return d.name.toLowerCase().includes(q) || (d.description ?? "").toLowerCase().includes(q);
         }}
+        emptyTitle="No departments yet"
+        emptyDescription="Create a department to group courses and staff, or import a batch using the button above."
         error={apiEnabled() ? loadError : null}
         onRetry={reload}
         toolbar={

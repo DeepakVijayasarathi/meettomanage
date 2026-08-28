@@ -266,6 +266,8 @@ export default function AdmissionLeads() {
         rowKey={(row) => row.id}
         searchPlaceholder="Search by child, parent, phone or course…"
         onRowClick={(row) => openFollowUp(row)}
+        emptyTitle="No leads yet"
+        emptyDescription="New enquiries and demo requests will show up here as they come in."
         error={apiEnabled() ? leadsError : null}
         onRetry={reload}
         toolbar={

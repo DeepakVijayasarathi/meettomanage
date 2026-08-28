@@ -221,6 +221,8 @@ export default function AdminResources() {
         columns={columns}
         rowKey={(row) => row.id}
         searchPlaceholder="Search resources by title…"
+        emptyTitle="No resources uploaded yet"
+        emptyDescription="Upload a reading book, worksheet or recording with the button above to make it available to parents and teachers."
         error={apiEnabled() ? resourcesError : null}
         onRetry={reload}
       />

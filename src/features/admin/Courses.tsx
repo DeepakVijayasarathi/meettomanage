@@ -242,6 +242,8 @@ export default function AdminCourses() {
         rowKey={(row) => row.id}
         searchPlaceholder="Search courses by name or category…"
         pageSize={8}
+        emptyTitle="No courses in the catalogue yet"
+        emptyDescription="Add your first course, or import a batch of courses using the button above."
         error={apiEnabled() ? apiError : null}
         onRetry={reload}
         toolbar={

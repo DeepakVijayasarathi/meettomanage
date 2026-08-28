@@ -339,6 +339,8 @@ export default function AdminEnrollments() {
         rowKey={(row) => row.id}
         searchPlaceholder="Search by student name…"
         onRowClick={openDetail}
+        emptyTitle="No enrollments yet"
+        emptyDescription="Enrollments will appear here once a lead converts or a parent completes registration."
         error={apiEnabled() ? rowsError : null}
         onRetry={reload}
       />

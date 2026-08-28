@@ -242,6 +242,8 @@ export default function ManagementRevenue() {
           searchPlaceholder="Search courses…"
           searchFn={(c, q) => c.name.toLowerCase().includes(q.toLowerCase()) || c.category.toLowerCase().includes(q.toLowerCase())}
           pageSize={8}
+          emptyTitle="No course revenue to show"
+          emptyDescription="Revenue breaks down by course once courses have paid enrollments."
           error={apiEnabled() ? coursesError : null}
           onRetry={reloadCourses}
         />

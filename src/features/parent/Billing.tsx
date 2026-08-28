@@ -201,6 +201,8 @@ export default function ParentBilling() {
             rowKey={(r) => r.id}
             searchPlaceholder="Search invoices…"
             onRowClick={(r) => setDetail(r)}
+            emptyTitle="No invoices yet"
+            emptyDescription="Invoices for your children's courses and subscriptions will appear here once raised."
             error={apiEnabled() ? invoicesError : null}
             onRetry={reloadInvoices}
           />
@@ -214,7 +216,7 @@ export default function ParentBilling() {
         </CardHeader>
         <CardContent>
           {paid.length === 0 ? (
-            <EmptyState icon={CreditCard} title="No payments yet" />
+            <EmptyState icon={CreditCard} title="No payments yet" description="Completed payment receipts will appear here once an invoice is paid." />
           ) : (
             <div className="flex flex-col gap-2">
               {paid.map((inv) => (

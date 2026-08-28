@@ -218,6 +218,8 @@ function FaqManager() {
           rowKey={(f) => f.id}
           searchPlaceholder="Search FAQs…"
           searchFn={(f, query) => f.question.toLowerCase().includes(query.toLowerCase())}
+          emptyTitle="No FAQs configured yet"
+          emptyDescription="Add a question and answer so the 'Ask a Doubt' chatbot can respond automatically."
           error={apiEnabled() ? loadError : null}
           onRetry={reload}
         />

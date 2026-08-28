@@ -279,6 +279,8 @@ export default function AdmissionPayments() {
           columns={columns}
           rowKey={(row) => row.id}
           searchPlaceholder="Search by child or course…"
+          emptyTitle="No payments yet"
+          emptyDescription="Invoices and payments will appear here once families start enrolling."
           error={apiEnabled() ? invoicesError : null}
           onRetry={reload}
           toolbar={
