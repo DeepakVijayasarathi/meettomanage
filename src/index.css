@@ -51,6 +51,13 @@
     --warning: 33 92% 50%;
     --warning-foreground: 26 83% 14%;
 
+    /* Configurable brand accent (Settings → Branding → Accent color, brand.accentColor) —
+       decorative use only (gradients, badges, small captions), not a semantic status color
+       like the ones above. Defaults to the brand red (#E63329); overridden at runtime by
+       branding.ts's setBrand() once the DB-backed setting loads. */
+    --brand-accent: 3 79% 53%;
+    --brand-accent-foreground: 0 0% 100%;
+
     --border: 214 20% 89%;
     --input: 214 20% 89%;
     --ring: 214 52% 25%;
@@ -95,6 +102,9 @@
     --warning: 33 92% 58%;
     --warning-foreground: 26 83% 12%;
 
+    --brand-accent: 3 85% 62%;
+    --brand-accent-foreground: 222 30% 8%;
+
     --border: 222 20% 20%;
     --input: 222 20% 20%;
     --ring: 214 65% 58%;
@@ -126,7 +136,14 @@
     --card-foreground: 222 32% 12%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 32% 12%;
-    --primary: 214 52% 25%;
+    /* --primary / --ring / --brand-accent are deliberately NOT redeclared here (unlike
+       every other token in this block) — branding.ts's setBrand() sets those three as an
+       inline style directly on <html> once a runtime brand color loads, which already
+       beats .dark's class rule there via specificity. Redeclaring them on this wrapper
+       would shadow that inline value for everything inside it, so a custom
+       brand.primaryColor/accentColor would silently never show up on the login/marketing
+       pages that use this scope. Their *-foreground pairs stay pinned below because
+       setBrand() never touches those and .dark's foreground value would otherwise leak in. */
     --primary-foreground: 0 0% 100%;
     --secondary: 214 40% 94%;
     --secondary-foreground: 214 52% 22%;
@@ -140,9 +157,9 @@
     --success-foreground: 0 0% 100%;
     --warning: 33 92% 50%;
     --warning-foreground: 26 83% 14%;
+    --brand-accent-foreground: 0 0% 100%;
     --border: 214 20% 89%;
     --input: 214 20% 89%;
-    --ring: 214 52% 25%;
   }
 
   * {

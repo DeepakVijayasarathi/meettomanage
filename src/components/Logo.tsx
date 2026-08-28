@@ -27,7 +27,7 @@ export function Logo({ className, imgClassName, showWordmark = true, variant = "
             {brand.name}
           </span>
           <span className={cn("text-[10px] font-semibold uppercase tracking-[0.16em]", variant === "dark" ? "text-muted-foreground" : "text-white/70")}>
-            meet · manage · grow
+            {brand.tagline}
           </span>
         </div>
       )}

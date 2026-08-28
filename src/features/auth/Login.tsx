@@ -17,7 +17,8 @@ import { toFrontendRole } from "@/api/types";
 import { safeInternalPath } from "@/lib/utils";
 import type { Role } from "@/types";
 
-// Floating feature badges over the hero panel — one flat brand orange, matching the mark.
+// Floating feature badges over the hero panel — colour comes from the brand-accent
+// token (Settings → Branding → Accent color), not a literal hex.
 const HERO_BADGES = [
   { icon: Video, label: "Live Classes" },
   { icon: CalendarCheck2, label: "Attendance" },
@@ -126,11 +127,23 @@ export default function Login() {
     <div className="theme-light-scope min-h-screen bg-white lg:grid lg:grid-cols-[3fr_2fr]">
       {/* Left — full-bleed hero panel. This gradient is a stand-in for a real institute
           photo (the reference design uses one) — swap this block for an <img> once a
-          licensed photo is supplied; there's no image-generation step in this pass. */}
-      <div className="relative hidden overflow-hidden lg:block">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0F1E30] via-[#1E3A5F] to-[#12243A]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(247,148,29,0.28),transparent_55%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_75%,rgba(230,51,41,0.18),transparent_55%)]" />
+          licensed photo is supplied; there's no image-generation step in this pass.
+          Colours here read hsl(var(--primary))/hsl(var(--brand-accent)) via inline style
+          rather than Tailwind classes — an arbitrary-value class like bg-[#1e3a5f] bakes
+          the literal hex in at build time and can't react to a runtime brand color change,
+          which defeats the whole point of this being a white-label deployment. */}
+      <div
+        className="relative hidden overflow-hidden lg:block"
+        style={{ background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 60%, color-mix(in srgb, hsl(var(--primary)) 60%, black) 100%)" }}
+      >
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(circle at 25% 15%, hsl(var(--brand-accent) / 0.28), transparent 55%)" }}
+        />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(circle at 80% 75%, hsl(var(--brand-accent) / 0.18), transparent 55%)" }}
+        />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" />
 
         <p className="absolute left-10 top-8 text-xs font-medium text-white/60">© 2026 {brand.name}</p>
@@ -138,7 +151,7 @@ export default function Login() {
         <div className="absolute right-10 top-16 flex flex-col gap-4">
           {HERO_BADGES.map((badge) => (
             <div key={badge.label} className="flex items-center gap-3 rounded-2xl bg-white/95 px-4 py-3 shadow-pop backdrop-blur">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F7941D]/15 text-[#F7941D]">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-accent/15 text-brand-accent">
                 <badge.icon className="h-5 w-5" />
               </span>
               <span className="text-sm font-semibold text-brand-ink">{badge.label}</span>
@@ -163,10 +176,10 @@ export default function Login() {
         <div className="w-full max-w-sm">
           <div className="flex flex-col items-center text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-pop ring-1 ring-brand-ink/10">
-              <img src="/logo-icon.png" alt={brand.name} className="h-11 w-11 object-contain" />
+              <img src={brand.logoUrl ?? "/logo-icon.png"} alt={brand.name} className="h-11 w-11 object-contain" />
             </div>
-            <p className="mt-4 font-display text-[12px] font-bold uppercase tracking-[0.25em] text-[#F7941D]">
-              Meet &middot; Manage &middot; Grow
+            <p className="mt-4 font-display text-[12px] font-bold uppercase tracking-[0.25em] text-brand-accent">
+              {brand.tagline}
             </p>
             <h2 style={{ fontFamily: HEADLINE_FONT }} className="mt-2 text-3xl font-semibold tracking-tight text-brand-ink">
               Welcome back
@@ -283,7 +296,7 @@ export default function Login() {
                 <Checkbox checked={rememberMe} onCheckedChange={(v) => setRememberMe(v === true)} />
                 Remember me
               </label>
-              <Link to="/forgot-password" className="text-sm font-semibold text-[#E63329] hover:underline">
+              <Link to="/forgot-password" className="text-sm font-semibold text-brand-accent hover:underline">
                 Forgot your PIN?
               </Link>
             </div>
@@ -292,7 +305,7 @@ export default function Login() {
               type="submit"
               size="lg"
               disabled={submitting}
-              className="mt-1 w-full !bg-gradient-to-r !from-[#E63329] !to-[#F7941D] !text-white hover:!opacity-90"
+              className="mt-1 w-full !bg-gradient-to-r !from-primary !to-brand-accent !text-white hover:!opacity-90"
             >
               {submitting ? (
                 <>
@@ -313,7 +326,7 @@ export default function Login() {
 
           <p className="mt-7 text-center text-sm text-brand-ink/70">
             New here?{" "}
-            <Link to="/" className="font-semibold text-[#E63329] hover:underline">
+            <Link to="/" className="font-semibold text-brand-accent hover:underline">
               Explore More
             </Link>
           </p>

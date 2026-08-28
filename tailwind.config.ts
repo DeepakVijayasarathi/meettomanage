@@ -57,6 +57,14 @@ export default {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        // Settings → Branding → Accent color (brand.accentColor), applied at runtime by
+        // branding.ts's setBrand() — decorative accent use (gradients, small captions,
+        // badges), never a literal hex/arbitrary-value class, so a white-label deployment
+        // can actually change it without a rebuild.
+        "brand-accent": {
+          DEFAULT: "hsl(var(--brand-accent))",
+          foreground: "hsl(var(--brand-accent-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar))",
           foreground: "hsl(var(--sidebar-foreground))",
