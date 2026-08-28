@@ -520,11 +520,11 @@ export default function AdmissionDemoScheduling() {
               <Input id="demoTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>
+              <Label htmlFor="demo-teacher-select">
                 Teacher <span className="text-destructive">*</span>
               </Label>
               <Select value={teacherId} onValueChange={setTeacherId}>
-                <SelectTrigger>
+                <SelectTrigger id="demo-teacher-select">
                   <SelectValue placeholder="Select a teacher" />
                 </SelectTrigger>
                 <SelectContent>

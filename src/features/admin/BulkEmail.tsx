@@ -133,9 +133,9 @@ export default function AdminBulkEmail() {
         <Card className="lg:col-span-2">
           <CardContent className="flex flex-col gap-4 p-5">
             <div className="grid gap-1.5">
-              <Label>Recipient scope</Label>
+              <Label id="bulk-email-scope-label">Recipient scope</Label>
               <Tabs value={scope} onValueChange={(v) => setScope(v as Scope)}>
-                <TabsList>
+                <TabsList aria-labelledby="bulk-email-scope-label">
                   <TabsTrigger value="all">All Active Students</TabsTrigger>
                   <TabsTrigger value="batch">Per Batch</TabsTrigger>
                 </TabsList>

@@ -524,12 +524,12 @@ export default function AdminPackages() {
             </div>
 
             <div className="grid gap-1.5">
-              <Label>Course (optional)</Label>
+              <Label htmlFor="plan-course-select">Course (optional)</Label>
               <Select
                 value={planForm.courseId || "none"}
                 onValueChange={(v) => setPlanForm((f) => ({ ...f, courseId: v === "none" ? "" : v }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="plan-course-select">
                   <SelectValue placeholder="No course linked" />
                 </SelectTrigger>
                 <SelectContent>

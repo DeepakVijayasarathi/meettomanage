@@ -365,9 +365,9 @@ export default function AdmissionLeads() {
                   <Input id="nextFollowUp" type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label>Move to stage</Label>
+                  <Label htmlFor="lead-move-stage-select">Move to stage</Label>
                   <Select value={newStage} onValueChange={(v) => setNewStage(v as ConversionStage)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="lead-move-stage-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

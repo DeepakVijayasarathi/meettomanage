@@ -490,11 +490,11 @@ export default function AdminBatches() {
                 {apiEnabled() ? (
                   <div className="grid gap-1.5">
                     <div className="flex items-center justify-between">
-                      <Label>Assign students</Label>
+                      <Label htmlFor="batch-assign-student-select">Assign students</Label>
                       <span className="text-[11px] text-muted-foreground">Saved immediately</span>
                     </div>
                     <Select value="" onValueChange={handleAssignStudent} disabled={assigning || roster.length >= detail.capacity}>
-                      <SelectTrigger>
+                      <SelectTrigger id="batch-assign-student-select">
                         <SelectValue
                           placeholder={
                             roster.length >= detail.capacity

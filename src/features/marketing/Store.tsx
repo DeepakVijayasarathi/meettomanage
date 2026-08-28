@@ -441,9 +441,9 @@ export default function Store() {
                   </div>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>Subject (optional)</Label>
+                  <Label htmlFor="demo-subject-select">Subject (optional)</Label>
                   <Select value={demoForm.department} onValueChange={(v) => setDemoForm((f) => ({ ...f, department: v }))}>
-                    <SelectTrigger>
+                    <SelectTrigger id="demo-subject-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -476,7 +476,7 @@ export default function Store() {
                     </div>
                     {demoDate && (
                       <div className="grid gap-1.5">
-                        <Label>Available times</Label>
+                        <Label id="demo-available-times-label">Available times</Label>
                         {slotsLoading ? (
                           <p className="flex items-center gap-1.5 text-xs text-brand-ink/50">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking availability…
@@ -486,7 +486,7 @@ export default function Store() {
                         ) : availableSlots.length === 0 ? (
                           <p className="text-xs text-brand-ink/50">No open slots that day — try another date.</p>
                         ) : (
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2" role="group" aria-labelledby="demo-available-times-label">
                             {availableSlots.map((slot) => {
                               const slotLocal = toLocalInputValue(new Date(slot.startAtUtc));
                               const isSelected = demoForm.preferredStart === slotLocal;

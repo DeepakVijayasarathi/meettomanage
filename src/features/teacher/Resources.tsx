@@ -265,9 +265,9 @@ export default function TeacherResources() {
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1.5">
-                    <Label>Type</Label>
+                    <Label htmlFor="resource-type-select">Type</Label>
                     <Select value={type} onValueChange={(v) => setType(v as Resource["type"])}>
-                      <SelectTrigger>
+                      <SelectTrigger id="resource-type-select">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -279,10 +279,10 @@ export default function TeacherResources() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label>
+                    <Label id="resource-visible-batches-label">
                       Visible to batches <span className="text-destructive">*</span>
                     </Label>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div role="group" aria-labelledby="resource-visible-batches-label" className="flex flex-wrap gap-1.5">
                       {batchOptions.map((b) => (
                         <Button
                           key={b.id}

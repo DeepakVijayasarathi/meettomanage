@@ -321,12 +321,13 @@ export default function AdminQuizQuestions() {
 
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <Label>Options (mark the correct one)</Label>
+                <Label id="qq-options-label">Options (mark the correct one)</Label>
                 <Button size="sm" variant="ghost" onClick={addOption} disabled={options.length >= 6}>
                   <Plus className="h-3.5 w-3.5" /> Add option
                 </Button>
               </div>
-              {options.map((option) => (
+              <div role="group" aria-labelledby="qq-options-label" className="grid gap-2">
+              {options.map((option, idx) => (
                 <div key={option.key} className="flex items-center gap-2">
                   <Checkbox
                     checked={option.isCorrect}
@@ -335,6 +336,7 @@ export default function AdminQuizQuestions() {
                   />
                   <Input
                     placeholder="Option text"
+                    aria-label={`Option ${idx + 1} text`}
                     value={option.text}
                     onChange={(e) => setOptions((prev) => prev.map((o) => (o.key === option.key ? { ...o, text: e.target.value } : o)))}
                   />
@@ -350,6 +352,7 @@ export default function AdminQuizQuestions() {
                   </Button>
                 </div>
               ))}
+              </div>
             </div>
 
             {error && <p className="text-sm font-medium text-destructive">{error}</p>}

@@ -565,9 +565,9 @@ export default function AdminSessions() {
               </DialogHeader>
               <div className="grid gap-4">
                 <div className="grid gap-1.5">
-                  <Label>Who didn't show up?</Label>
+                  <Label htmlFor="no-show-party-select">Who didn't show up?</Label>
                   <Select value={noShowParty} onValueChange={(v) => setNoShowParty(v as NoShowParty)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="no-show-party-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
