@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { BookOpenText, Building2, Calculator, ChevronDown, Landmark, Link2, Pencil, ShieldCheck, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -136,6 +137,7 @@ function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount
 }
 
 export default function AdminPaymentMapping() {
+  const { toast } = useToast();
   const { data: accounts, reload: reloadAccounts } = useApiData<ApiPaymentAccount[]>(listPaymentAccounts, DEMO_ACCOUNTS);
   const { data: parents } = useApiData<AppUser[]>(
     () => listUsers({ role: "Parent" }).then((r) => r.items.map(toAppUser)),
@@ -209,8 +211,11 @@ export default function AdminPaymentMapping() {
       });
       setEditAccount(null);
       reloadAccounts();
+      toast({ variant: "success", title: "Account saved" });
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Could not save the account.");
+      const message = err instanceof Error ? err.message : "Could not save the account.";
+      setEditError(message);
+      toast({ variant: "error", title: "Couldn't save account", description: message });
     } finally {
       setEditSaving(false);
     }
@@ -233,8 +238,11 @@ export default function AdminPaymentMapping() {
       const parentName = parents.find((p) => p.id === effectiveParent)?.name ?? "parent";
       const acctName = accounts.find((a) => a.id === effectiveAccount)?.name ?? "account";
       setResult({ ok: true, message: `${parentName} is now routed to ${acctName}.` });
+      toast({ variant: "success", title: "Mapping saved", description: `${parentName} routed to ${acctName}.` });
     } catch (err) {
-      setResult({ ok: false, message: err instanceof Error ? err.message : "Could not save the mapping." });
+      const message = err instanceof Error ? err.message : "Could not save the mapping.";
+      setResult({ ok: false, message });
+      toast({ variant: "error", title: "Couldn't save mapping", description: message });
     } finally {
       setSaving(false);
     }

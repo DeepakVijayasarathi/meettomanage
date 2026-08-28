@@ -294,6 +294,8 @@ export default function ManagementPerformance() {
           searchPlaceholder="Search teachers…"
           searchFn={(r, q) => r.teacher.name.toLowerCase().includes(q.toLowerCase())}
           pageSize={8}
+          error={usingApi ? rowsError : null}
+          onRetry={reload}
         />
       </Card>
     </div>

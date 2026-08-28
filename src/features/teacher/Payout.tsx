@@ -165,6 +165,8 @@ export default function TeacherPayout() {
               searchPlaceholder="Search by month…"
               pageSize={12}
               onRowClick={(row) => setSelectedPayout(row)}
+              error={apiEnabled() ? payoutsError : null}
+              onRetry={reloadPayouts}
             />
           </div>
         </>

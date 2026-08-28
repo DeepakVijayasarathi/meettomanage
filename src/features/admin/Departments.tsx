@@ -151,6 +151,8 @@ export default function AdminDepartments() {
           const q = query.toLowerCase();
           return d.name.toLowerCase().includes(q) || (d.description ?? "").toLowerCase().includes(q);
         }}
+        error={apiEnabled() ? loadError : null}
+        onRetry={reload}
         toolbar={
           <BulkImportExportBar
             entityLabel="departments"

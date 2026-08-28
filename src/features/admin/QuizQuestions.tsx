@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
@@ -40,6 +41,7 @@ const EMPTY_OPTIONS: DraftOption[] = [
 ];
 
 export default function AdminQuizQuestions() {
+  const { toast } = useToast();
   const { data: questions, error: loadError, reload } = useApiData<ApiQuizQuestion[]>(() => listQuizQuestions(), []);
   const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), []);
   const { data: courses } = useApiData<ApiCourse[]>(() => listCourses(), []);
@@ -143,8 +145,11 @@ export default function AdminQuizQuestions() {
       }
       setDialogOpen(false);
       reload();
+      toast({ variant: "success", title: editing ? "Question updated" : "Question created" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the question.");
+      const message = err instanceof Error ? err.message : "Could not save the question.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save question", description: message });
     } finally {
       setSaving(false);
     }
@@ -162,8 +167,11 @@ export default function AdminQuizQuestions() {
       await deleteQuizQuestion(deleteTarget.id);
       setDeleteTarget(null);
       reload();
+      toast({ variant: "success", title: "Question deleted" });
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : "Could not delete that question.");
+      const message = err instanceof Error ? err.message : "Could not delete that question.";
+      setNotice(message);
+      toast({ variant: "error", title: "Couldn't delete question", description: message });
     } finally {
       setDeleting(false);
     }
@@ -263,6 +271,8 @@ export default function AdminQuizQuestions() {
           rowKey={(q) => q.id}
           searchPlaceholder="Search questions…"
           searchFn={(q, query) => q.prompt.toLowerCase().includes(query.toLowerCase())}
+          error={apiEnabled() ? loadError : null}
+          onRetry={reload}
         />
       )}
 

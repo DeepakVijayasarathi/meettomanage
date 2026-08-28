@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarPlus, ChevronDown, ChevronUp, Trash2, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
@@ -111,7 +112,8 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
 }
 
 export default function AdmissionDemoScheduling() {
-  const { data: apiRows, reload: reloadRows } = useApiData(
+  const { toast } = useToast();
+  const { data: apiRows, error: rowsError, reload: reloadRows } = useApiData(
     () => listDemoBookings().then((bookings) => bookings.map(bookingToRow)),
     seedRows()
   );
@@ -205,8 +207,12 @@ export default function AdmissionDemoScheduling() {
           setActionError(null);
           setJustScheduled(childName.trim());
           resetForm();
+          toast({ variant: "success", title: "Demo scheduled" });
         })
-        .catch((err: Error) => setActionError(err.message))
+        .catch((err: Error) => {
+          setActionError(err.message);
+          toast({ variant: "error", title: "Couldn't schedule demo", description: err.message });
+        })
         .finally(() => setScheduling(false));
       return;
     }
@@ -561,6 +567,8 @@ export default function AdmissionDemoScheduling() {
         searchPlaceholder="Search by child, parent or teacher…"
         emptyTitle="No demos scheduled yet"
         emptyDescription="Use the form above to schedule your first demo class."
+        error={apiEnabled() ? rowsError : null}
+        onRetry={reloadRows}
       />
 
       <ConfirmDialog
@@ -578,6 +586,7 @@ export default function AdmissionDemoScheduling() {
             return updateConversionStatus(completeTarget.id, "DemoCompleted").then(() => {
               setActionError(null);
               reloadRows();
+              toast({ variant: "success", title: "Demo marked completed" });
             });
           }
           setRows((prev) => prev.map((r) => (r.id === completeTarget.id ? { ...r, status: "completed" } : r)));
@@ -600,6 +609,7 @@ export default function AdmissionDemoScheduling() {
             return updateConversionStatus(cancelTarget.id, "NotInterested").then(() => {
               setActionError(null);
               reloadRows();
+              toast({ variant: "success", title: "Demo cancelled" });
             });
           }
           setRows((prev) => prev.map((r) => (r.id === cancelTarget.id ? { ...r, status: "cancelled" } : r)));

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, ClipboardList, Upload, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { FileDropzone } from "@/components/FileDropzone";
 import { Switch } from "@/components/ui/switch";
@@ -41,7 +42,8 @@ function inferResourceType(file: File): ApiResourceType {
 }
 
 export default function AdminResources() {
-  const { data: apiResources, reload } = useApiData(
+  const { toast } = useToast();
+  const { data: apiResources, error: resourcesError, reload } = useApiData(
     () => listResources().then((items) => items.map(toFrontendResource)),
     RESOURCES
   );
@@ -76,8 +78,11 @@ export default function AdminResources() {
       reload();
       setUploadOpen(false);
       setPendingFile(null);
+      toast({ variant: "success", title: "Resource uploaded" });
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Could not upload the file.");
+      const message = err instanceof Error ? err.message : "Could not upload the file.";
+      setUploadError(message);
+      toast({ variant: "error", title: "Couldn't upload resource", description: message });
     } finally {
       setUploading(false);
     }
@@ -216,6 +221,8 @@ export default function AdminResources() {
         columns={columns}
         rowKey={(row) => row.id}
         searchPlaceholder="Search resources by title…"
+        error={apiEnabled() ? resourcesError : null}
+        onRetry={reload}
       />
 
       <Dialog

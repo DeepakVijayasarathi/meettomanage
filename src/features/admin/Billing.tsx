@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, FileText, IndianRupee, TimerReset, Undo2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -51,6 +52,7 @@ const DEPARTMENT_COLOR: Record<string, string> = {
 const FALLBACK_DEPARTMENT_COLOR = CHART_PALETTE[1];
 
 export default function AdminBilling() {
+  const { toast } = useToast();
   // GET /api/invoices is paged (the table grows one row per billing cycle, forever). This
   // screen filters, sorts and totals client-side, so it takes one full page and lets
   // DataTable paginate that in the browser; `totalCount` is what tells us when the page
@@ -152,8 +154,11 @@ export default function AdminBilling() {
       setRefundTargetId(null);
       const items = await listInvoiceTransactions(detail.apiId);
       setTransactions(items);
+      toast({ variant: "success", title: "Refund requested", description: `${formatCurrency(amount)} awaiting approval.` });
     } catch (e) {
-      setRefundError(e instanceof Error ? e.message : "Couldn't request this refund.");
+      const message = e instanceof Error ? e.message : "Couldn't request this refund.";
+      setRefundError(message);
+      toast({ variant: "error", title: "Couldn't request refund", description: message });
     } finally {
       setRefundSubmitting(false);
     }
@@ -203,8 +208,11 @@ export default function AdminBilling() {
       await recordPayment(detail.apiId, { amount, method: payMethod });
       await reload();
       setDetail(null);
+      toast({ variant: "success", title: "Payment recorded", description: `${formatCurrency(amount)} recorded.` });
     } catch (e) {
-      setPayError(e instanceof Error ? e.message : "Couldn't record the payment.");
+      const message = e instanceof Error ? e.message : "Couldn't record the payment.";
+      setPayError(message);
+      toast({ variant: "error", title: "Couldn't record payment", description: message });
     } finally {
       setSaving(false);
     }
@@ -350,6 +358,8 @@ export default function AdminBilling() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search invoices by ID or student…"
             onRowClick={openDetail}
+            error={live ? invoicesError : null}
+            onRetry={reload}
           />
         </TabsContent>
       </Tabs>

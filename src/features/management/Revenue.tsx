@@ -59,7 +59,7 @@ export default function ManagementRevenue() {
     color: CHART_PALETTE[(i + 3) % CHART_PALETTE.length],
   }));
 
-  const { data: courses, error: coursesError } = useApiData(
+  const { data: courses, error: coursesError, reload: reloadCourses } = useApiData(
     () => listCourses().then((list) => list.map(toFrontendCourse)),
     COURSES
   );
@@ -242,6 +242,8 @@ export default function ManagementRevenue() {
           searchPlaceholder="Search courses…"
           searchFn={(c, q) => c.name.toLowerCase().includes(q.toLowerCase()) || c.category.toLowerCase().includes(q.toLowerCase())}
           pageSize={8}
+          error={apiEnabled() ? coursesError : null}
+          onRetry={reloadCourses}
         />
       </Card>
     </div>

@@ -87,7 +87,7 @@ export default function TeacherLeave() {
     .filter((s) => sessionDateTime(s) > now)
     .sort((a, b) => sessionDateTime(a).getTime() - sessionDateTime(b).getTime());
 
-  const { data: fetchedLeaves, reload: reloadLeaves } = useApiData(
+  const { data: fetchedLeaves, error: leavesError, reload: reloadLeaves } = useApiData(
     () => listMyLeave().then((items) => items.map(toFrontendLeave)),
     getLeavesForTeacher(TEACHER_ID)
   );
@@ -281,10 +281,17 @@ export default function TeacherLeave() {
 
       <div className="mt-6">
         <h2 className="mb-3 text-base font-semibold text-foreground">Leave History</h2>
-        {leaves.length === 0 ? (
+        {leaves.length === 0 && !leavesError ? (
           <EmptyState icon={Clock} title="No leave requests yet" description="Your submitted leave requests will appear here." />
         ) : (
-          <DataTable data={leaves} columns={columns} rowKey={(row) => row.id} searchPlaceholder="Search leave history…" />
+          <DataTable
+            data={leaves}
+            columns={columns}
+            rowKey={(row) => row.id}
+            searchPlaceholder="Search leave history…"
+            error={apiEnabled() ? leavesError : null}
+            onRetry={reloadLeaves}
+          />
         )}
       </div>
     </div>

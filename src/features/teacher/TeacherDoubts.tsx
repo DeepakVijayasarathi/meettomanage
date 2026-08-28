@@ -127,10 +127,16 @@ export default function TeacherDoubts() {
 
       <div className="mb-6">
         <h2 className="mb-2 text-sm font-semibold text-foreground">Pending ({pending.length})</h2>
-        {pending.length === 0 ? (
+        {pending.length === 0 && !loadError ? (
           <EmptyState icon={MessageCircleQuestion} title="Nothing pending" description="Every escalated doubt has been resolved." />
         ) : (
-          <DataTable data={pending} columns={columns} rowKey={(e) => e.id} />
+          <DataTable
+            data={pending}
+            columns={columns}
+            rowKey={(e) => e.id}
+            error={apiEnabled() ? loadError : null}
+            onRetry={reload}
+          />
         )}
       </div>
 

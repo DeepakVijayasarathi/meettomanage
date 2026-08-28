@@ -242,7 +242,7 @@ export default function TeacherAttendance() {
       </div>
 
       <div className="mt-6">
-        {completed.length === 0 ? (
+        {completed.length === 0 && !apiError ? (
           <EmptyState icon={ClipboardList} title="No completed sessions yet" description="Once you deliver a class, its attendance record will show up here." />
         ) : (
           <DataTable
@@ -251,6 +251,8 @@ export default function TeacherAttendance() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search sessions…"
             onRowClick={(row) => openSummary(row)}
+            error={apiEnabled() ? apiError : null}
+            onRetry={reload}
           />
         )}
       </div>

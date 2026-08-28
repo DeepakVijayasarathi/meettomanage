@@ -198,6 +198,8 @@ export default function SubAdminAuditLog() {
             `${row.action} ${row.detail} ${row.module}`.toLowerCase().includes(query.toLowerCase())
           }
           pageSize={8}
+          error={usingApi ? loadError : null}
+          onRetry={reload}
           // API mode pages against the server so the whole trail stays reachable; demo mode
           // holds its scripted log in memory, where DataTable's own paging is the right tool.
           serverPagination={

@@ -201,6 +201,8 @@ export default function ParentBilling() {
             rowKey={(r) => r.id}
             searchPlaceholder="Search invoices…"
             onRowClick={(r) => setDetail(r)}
+            error={apiEnabled() ? invoicesError : null}
+            onRetry={reloadInvoices}
           />
         </CardContent>
       </Card>

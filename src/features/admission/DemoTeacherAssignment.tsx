@@ -8,6 +8,7 @@ import {
   UserCog,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { EmptyState } from "@/components/EmptyState";
@@ -89,6 +90,7 @@ function mockWorkload(currentTeacherId: string): ApiTeacherWorkload[] {
 }
 
 export default function DemoTeacherAssignment() {
+  const { toast } = useToast();
   const { bookingId } = useParams<{ bookingId?: string }>();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -192,8 +194,12 @@ export default function DemoTeacherAssignment() {
       .then((booking) => {
         setSuccessMessage(`${booking.teacherName} is now assigned to ${booking.childName}'s demo.`);
         loadDetail(detail.id);
+        toast({ variant: "success", title: "Teacher reassigned" });
       })
-      .catch((err: Error) => setActionError(err.message))
+      .catch((err: Error) => {
+        setActionError(err.message);
+        toast({ variant: "error", title: "Couldn't reassign teacher", description: err.message });
+      })
       .finally(() => setSubmitting(false));
   }
 

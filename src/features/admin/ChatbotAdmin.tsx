@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MessageCircleQuestion, Plus, Trash2, Users } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +63,7 @@ export default function ChatbotAdmin() {
 }
 
 function FaqManager() {
+  const { toast } = useToast();
   const { data: faqs, error: loadError, reload } = useApiData<ApiChatFaq[]>(() => listAllFaqs(), MOCK_CHAT_FAQS);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ApiChatFaq | null>(null);
@@ -113,8 +115,11 @@ function FaqManager() {
       }
       setDialogOpen(false);
       reload();
+      toast({ variant: "success", title: editing ? "FAQ updated" : "FAQ created" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the FAQ.");
+      const message = err instanceof Error ? err.message : "Could not save the FAQ.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save FAQ", description: message });
     } finally {
       setSaving(false);
     }
@@ -132,8 +137,11 @@ function FaqManager() {
       await deleteChatFaq(deleteTarget.id);
       setDeleteTarget(null);
       reload();
+      toast({ variant: "success", title: "FAQ deleted" });
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : "Could not delete that FAQ.");
+      const message = err instanceof Error ? err.message : "Could not delete that FAQ.";
+      setNotice(message);
+      toast({ variant: "error", title: "Couldn't delete FAQ", description: message });
     } finally {
       setDeleting(false);
     }
@@ -192,7 +200,7 @@ function FaqManager() {
         </InlineAlert>
       )}
 
-      {faqs.length === 0 ? (
+      {faqs.length === 0 && !loadError ? (
         <EmptyState
           icon={MessageCircleQuestion}
           title="No FAQs yet"
@@ -210,6 +218,8 @@ function FaqManager() {
           rowKey={(f) => f.id}
           searchPlaceholder="Search FAQs…"
           searchFn={(f, query) => f.question.toLowerCase().includes(query.toLowerCase())}
+          error={apiEnabled() ? loadError : null}
+          onRetry={reload}
         />
       )}
 
@@ -276,6 +286,7 @@ function FaqManager() {
 }
 
 function EscalationsPanel() {
+  const { toast } = useToast();
   const { data: escalations, error: loadError, reload } = useApiData<ApiChatEscalation[]>(
     () => listChatEscalations(),
     MOCK_CHAT_ESCALATIONS
@@ -302,8 +313,11 @@ function EscalationsPanel() {
       await resolveChatEscalation(resolveTarget.id, note);
       setResolveTarget(null);
       reload();
+      toast({ variant: "success", title: "Doubt resolved" });
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : "Could not resolve that doubt.");
+      const message = err instanceof Error ? err.message : "Could not resolve that doubt.";
+      setNotice(message);
+      toast({ variant: "error", title: "Couldn't resolve doubt", description: message });
     } finally {
       setSaving(false);
     }
@@ -362,7 +376,7 @@ function EscalationsPanel() {
         </InlineAlert>
       )}
 
-      {escalations.length === 0 ? (
+      {escalations.length === 0 && !loadError ? (
         <EmptyState icon={MessageCircleQuestion} title="No escalations" description="Every doubt so far has matched an FAQ — nothing has needed a teacher yet." />
       ) : (
         <DataTable
@@ -371,6 +385,8 @@ function EscalationsPanel() {
           rowKey={(e) => e.id}
           searchPlaceholder="Search doubts…"
           searchFn={(e, query) => e.question.toLowerCase().includes(query.toLowerCase()) || e.userName.toLowerCase().includes(query.toLowerCase())}
+          error={apiEnabled() ? loadError : null}
+          onRetry={reload}
         />
       )}
 

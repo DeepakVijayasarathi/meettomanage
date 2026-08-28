@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Mail, MessageSquarePlus, Phone, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -57,7 +58,8 @@ const STAGE_BADGE: Record<ConversionStage, BadgeProps["variant"]> = {
 };
 
 export default function AdmissionLeads() {
-  const { data: apiLeads, reload } = useApiData(
+  const { toast } = useToast();
+  const { data: apiLeads, error: leadsError, reload } = useApiData(
     () => listDemoBookings().then((bookings) => bookings.map(toFrontendLead)),
     INITIAL_LEADS
   );
@@ -114,8 +116,11 @@ export default function AdmissionLeads() {
         setJustLogged(activeLead.childName);
         setTimeout(() => setJustLogged(null), 4000);
         setActiveLead(null);
+        toast({ variant: "success", title: "Follow-up logged" });
       } catch (err) {
-        setFollowUpError(err instanceof Error ? err.message : "Couldn't save this follow-up. Please try again.");
+        const message = err instanceof Error ? err.message : "Couldn't save this follow-up. Please try again.";
+        setFollowUpError(message);
+        toast({ variant: "error", title: "Couldn't log follow-up", description: message });
       } finally {
         setLoggingFollowUp(false);
       }
@@ -261,6 +266,8 @@ export default function AdmissionLeads() {
         rowKey={(row) => row.id}
         searchPlaceholder="Search by child, parent, phone or course…"
         onRowClick={(row) => openFollowUp(row)}
+        error={apiEnabled() ? leadsError : null}
+        onRetry={reload}
         toolbar={
           <FilterBar
             filters={[

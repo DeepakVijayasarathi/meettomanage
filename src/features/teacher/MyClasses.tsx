@@ -222,6 +222,8 @@ export default function TeacherMyClasses() {
             onRowClick={(row) => setSelected(row)}
             emptyTitle="No classes match this filter"
             emptyDescription="Try a different status filter or clear your search."
+            error={apiEnabled() && sessionsError ? sessionsError : null}
+            onRetry={reload}
             toolbar={
               <FilterBar
                 filters={[

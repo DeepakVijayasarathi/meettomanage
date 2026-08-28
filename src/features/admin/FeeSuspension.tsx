@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { AlertOctagon, ShieldOff, Undo2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +26,7 @@ function daysOverdue(dueOn: string) {
 }
 
 export default function AdminFeeSuspension() {
+  const { toast } = useToast();
   const [statusOverride, setStatusOverride] = useState<Record<string, Child["feeStatus"]>>({});
   const [suspendTarget, setSuspendTarget] = useState<Child | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<Child | null>(null);
@@ -59,8 +61,11 @@ export default function AdminFeeSuspension() {
     try {
       await liftSuspension(suspension.id);
       await reloadSuspensions();
+      toast({ variant: "success", title: "Access restored" });
     } catch (err) {
-      setLiftError(err instanceof Error ? err.message : "Could not restore access. Try again.");
+      const message = err instanceof Error ? err.message : "Could not restore access. Try again.";
+      setLiftError(message);
+      toast({ variant: "error", title: "Couldn't restore access", description: message });
     } finally {
       setLiftingId(null);
     }

@@ -98,8 +98,8 @@ const EMPTY_PLAN_FORM: PlanForm = {
 export default function AdminPackages() {
   const live = apiEnabled();
 
-  const { data: plans, loading: plansLoading, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
-  const { data: subscriptions, loading: subscriptionsLoading, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
+  const { data: plans, loading: plansLoading, error: plansError, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
+  const { data: subscriptions, loading: subscriptionsLoading, error: subscriptionsError, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
     () => listSubscriptions(),
     DEMO_SUBSCRIPTIONS
   );
@@ -460,6 +460,8 @@ export default function AdminPackages() {
               onRowClick={openEditPlan}
               emptyTitle="No package plans yet"
               emptyDescription="Create a plan to define what parents are billed and how often."
+              error={live ? plansError : null}
+              onRetry={reloadPlans}
               toolbar={
                 <div className="flex items-center gap-2">
                   <BulkImportExportBar
@@ -487,6 +489,8 @@ export default function AdminPackages() {
               searchFn={(s, q) => `${s.childName} ${s.planName}`.toLowerCase().includes(q.toLowerCase())}
               emptyTitle="No subscriptions yet"
               emptyDescription="Start a subscription to begin auto-billing a child on a plan."
+              error={live ? subscriptionsError : null}
+              onRetry={reloadSubscriptions}
               toolbar={
                 <Button onClick={openStartSubscription}>
                   <PlayCircle className="h-4 w-4" />

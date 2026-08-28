@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, IndianRupee, Link2, ListChecks, Loader2, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -77,6 +78,7 @@ function fromInvoice(invoice: Invoice): PaymentRow {
 }
 
 export default function AdmissionPayments() {
+  const { toast } = useToast();
   // One page of the (forever-growing) invoice table; the status filter, totals and
   // DataTable's paging all run client-side over it. totalCount is the whole matching
   // set server-side, which is what the "Invoices" KPI should actually count.
@@ -123,8 +125,11 @@ export default function AdmissionPayments() {
       await navigator.clipboard?.writeText(link.url).catch(() => undefined);
       setCopiedId(row.id);
       setTimeout(() => setCopiedId((id) => (id === row.id ? null : id)), 2500);
+      toast({ variant: "success", title: "Payment link copied", description: "The link is on your clipboard." });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not generate a payment link for this invoice.");
+      const message = e instanceof Error ? e.message : "Could not generate a payment link for this invoice.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't generate link", description: message });
     } finally {
       setLinkBusyId(null);
     }
@@ -274,6 +279,8 @@ export default function AdmissionPayments() {
           columns={columns}
           rowKey={(row) => row.id}
           searchPlaceholder="Search by child or course…"
+          error={apiEnabled() ? invoicesError : null}
+          onRetry={reload}
           toolbar={
             <FilterBar
               filters={[

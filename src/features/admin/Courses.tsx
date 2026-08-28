@@ -242,6 +242,8 @@ export default function AdminCourses() {
         rowKey={(row) => row.id}
         searchPlaceholder="Search courses by name or category…"
         pageSize={8}
+        error={apiEnabled() ? apiError : null}
+        onRetry={reload}
         toolbar={
           <BulkImportExportBar
             entityLabel="courses"

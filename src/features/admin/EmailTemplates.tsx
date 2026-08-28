@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Mail, Save, Sparkles } from "lucide-react";
 import { RichTextEditor, type RichTextEditorHandle } from "@/components/RichTextEditor";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,6 +75,7 @@ function insertAtCursor(
 }
 
 export default function EmailTemplates() {
+  const { toast } = useToast();
   const [templates, setTemplates] = useState<ApiEmailTemplate[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,8 +172,11 @@ export default function EmailTemplates() {
       await reload();
       setSavedAt(Date.now());
       setError(null);
+      toast({ variant: "success", title: "Template saved" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the template.");
+      const message = err instanceof Error ? err.message : "Could not save the template.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save template", description: message });
     } finally {
       setBusy(false);
     }

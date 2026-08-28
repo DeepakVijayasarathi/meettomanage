@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Download, IndianRupee, Loader2, Settings2, UsersRound, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -36,6 +37,7 @@ function downloadCsv(filename: string, csv: string) {
 }
 
 export default function AdminPayouts() {
+  const { toast } = useToast();
   const { data: payouts, loading: payoutsLoading, error: payoutsError, reload: reloadPayouts } = useApiData(
     () => listPayouts().then((items) => items.map(toFrontendPayout)),
     PAYOUTS
@@ -93,8 +95,11 @@ export default function AdminPayouts() {
       } else {
         setReviewPayout(null);
       }
+      toast({ variant: "success", title: "Adjustment saved" });
     } catch (err) {
-      setReviewError(err instanceof Error ? err.message : "Could not save this adjustment.");
+      const message = err instanceof Error ? err.message : "Could not save this adjustment.";
+      setReviewError(message);
+      toast({ variant: "error", title: "Couldn't save adjustment", description: message });
     } finally {
       setReviewSavingId(null);
     }
@@ -114,8 +119,11 @@ export default function AdminPayouts() {
       if (action === "finalize") await finalizePayout(payout.id);
       else await markPayoutPaid(payout.id);
       await reloadPayouts();
+      toast({ variant: "success", title: action === "finalize" ? "Payout finalized" : "Payout marked paid" });
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : `Could not ${action === "finalize" ? "finalize" : "mark paid"} this payout.`);
+      const message = err instanceof Error ? err.message : `Could not ${action === "finalize" ? "finalize" : "mark paid"} this payout.`;
+      setActionError(message);
+      toast({ variant: "error", title: "Couldn't update payout", description: message });
     } finally {
       setBusyId(null);
       setConfirmTarget(null);
@@ -359,6 +367,8 @@ export default function AdminPayouts() {
           columns={columns}
           rowKey={(row) => row.id}
           searchPlaceholder="Search by teacher name…"
+          error={apiEnabled() ? payoutsError : null}
+          onRetry={reloadPayouts}
         />
       </div>
 

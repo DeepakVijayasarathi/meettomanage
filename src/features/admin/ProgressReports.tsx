@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Save, ScrollText, Send } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,7 @@ function toApiShape(items: typeof DEMO_PROGRESS_REPORTS): ApiProgressReport[] {
 }
 
 export default function AdminProgressReports() {
+  const { toast } = useToast();
   const live = apiEnabled();
   const now = new Date();
   const [period, setPeriod] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
@@ -96,8 +98,11 @@ export default function AdminProgressReports() {
       await saveProgressReportContent(selected.id, draftContent);
       await reload();
       setSavedAt(Date.now());
+      toast({ variant: "success", title: "Draft saved" });
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Couldn't save the report.");
+      const message = err instanceof Error ? err.message : "Couldn't save the report.";
+      setActionError(message);
+      toast({ variant: "error", title: "Couldn't save draft", description: message });
     } finally {
       setBusy(false);
     }
@@ -119,8 +124,11 @@ export default function AdminProgressReports() {
       await saveProgressReportContent(confirmSendId, draftContent);
       await sendProgressReport(confirmSendId);
       await reload();
+      toast({ variant: "success", title: "Report sent", description: "The parent has been emailed this report." });
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Couldn't send the report.");
+      const message = err instanceof Error ? err.message : "Couldn't send the report.";
+      setActionError(message);
+      toast({ variant: "error", title: "Couldn't send report", description: message });
     } finally {
       setBusy(false);
       setConfirmSendId(null);
