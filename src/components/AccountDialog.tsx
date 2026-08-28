@@ -55,7 +55,7 @@ export function AccountDialog({
       const [f, ...r] = userName.split(" ");
       setFirstName(f ?? "");
       setLastName(r.join(" "));
-      setEmail("demo@thereadernest.com");
+      setEmail("demo@meettomanage.cloud");
       setRole("Demo");
       return;
     }

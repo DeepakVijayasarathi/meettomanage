@@ -266,7 +266,7 @@ export default function JitsiLive({
           // branding.json's "virtualBackgrounds" array is what actually supplies it; this
           // config key just tells Jitsi where to fetch that JSON from. Served by the same
           // Jitsi web container as everything else (see docker-compose.yml's web volumes).
-          dynamicBrandingUrl: "https://thereadernest.co.in/branding/branding.json",
+          dynamicBrandingUrl: "https://meettomanage.cloud/branding/branding.json",
           // Don't let the browser suggest/remember this room outside our own scheduling flow.
           doNotStoreRoom: true,
           // Without an explicit subject, Jitsi's own top bar falls back to displaying the
@@ -338,7 +338,7 @@ export default function JitsiLive({
         // this is what actually makes it the default someone sees without picking anything,
         // same as branding.json's src. Still just a starting point: the toolbar's own
         // background button lets anyone turn it off or pick something else afterward.
-        api?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
+        api?.executeCommand("setVirtualBackground", true, "https://meettomanage.cloud/images/meeting-bg-default.jpg");
         if (mode === "teacher" && autoRecordRef.current) {
           // Auto session recording: starts when the host joins; requires Jibri
           // on the Jitsi deployment (no-op on deployments without it). Admin can

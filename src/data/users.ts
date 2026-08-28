@@ -1,12 +1,12 @@
 import type { AppUser } from "@/types";
 
 export const TEACHERS: AppUser[] = [
-  { id: "t-1", name: "Karan Mehta", email: "karan.mehta@readernest.com", phone: "+91 98200 11122", role: "teacher", status: "active", avatarColor: "#F08A1D", joinedOn: "2023-02-11", department: "Phonics" },
-  { id: "t-2", name: "Isha Sharma", email: "isha.sharma@readernest.com", phone: "+91 98200 22233", role: "teacher", status: "active", avatarColor: "#8B5CF6", joinedOn: "2022-08-03", department: "Maths" },
-  { id: "t-3", name: "Rohan Verma", email: "rohan.verma@readernest.com", phone: "+91 98200 33344", role: "teacher", status: "active", avatarColor: "#17A9C9", joinedOn: "2023-06-19", department: "Phonics" },
-  { id: "t-4", name: "Meera Iyer", email: "meera.iyer@readernest.com", phone: "+91 98200 44455", role: "teacher", status: "active", avatarColor: "#23A455", joinedOn: "2021-11-27", department: "Maths" },
-  { id: "t-5", name: "Aditya Nair", email: "aditya.nair@readernest.com", phone: "+91 98200 55566", role: "teacher", status: "inactive", avatarColor: "#EC4899", joinedOn: "2024-01-15", department: "Phonics" },
-  { id: "t-6", name: "Sneha Kulkarni", email: "sneha.kulkarni@readernest.com", phone: "+91 98200 66677", role: "teacher", status: "active", avatarColor: "#EAB308", joinedOn: "2023-09-08", department: "Maths" },
+  { id: "t-1", name: "Karan Mehta", email: "karan.mehta@meettomanage.cloud", phone: "+91 98200 11122", role: "teacher", status: "active", avatarColor: "#F08A1D", joinedOn: "2023-02-11", department: "Phonics" },
+  { id: "t-2", name: "Isha Sharma", email: "isha.sharma@meettomanage.cloud", phone: "+91 98200 22233", role: "teacher", status: "active", avatarColor: "#8B5CF6", joinedOn: "2022-08-03", department: "Maths" },
+  { id: "t-3", name: "Rohan Verma", email: "rohan.verma@meettomanage.cloud", phone: "+91 98200 33344", role: "teacher", status: "active", avatarColor: "#17A9C9", joinedOn: "2023-06-19", department: "Phonics" },
+  { id: "t-4", name: "Meera Iyer", email: "meera.iyer@meettomanage.cloud", phone: "+91 98200 44455", role: "teacher", status: "active", avatarColor: "#23A455", joinedOn: "2021-11-27", department: "Maths" },
+  { id: "t-5", name: "Aditya Nair", email: "aditya.nair@meettomanage.cloud", phone: "+91 98200 55566", role: "teacher", status: "inactive", avatarColor: "#EC4899", joinedOn: "2024-01-15", department: "Phonics" },
+  { id: "t-6", name: "Sneha Kulkarni", email: "sneha.kulkarni@meettomanage.cloud", phone: "+91 98200 66677", role: "teacher", status: "active", avatarColor: "#EAB308", joinedOn: "2023-09-08", department: "Maths" },
 ];
 
 export const PARENTS: AppUser[] = [
@@ -23,13 +23,13 @@ export const PARENTS: AppUser[] = [
 ];
 
 export const ADMISSION_TEAM: AppUser[] = [
-  { id: "ad-1", name: "Priya Menon", email: "priya.menon@readernest.com", phone: "+91 98100 12121", role: "admission", status: "active", avatarColor: "#8B5CF6", joinedOn: "2023-01-10" },
-  { id: "ad-2", name: "Farhan Ali", email: "farhan.ali@readernest.com", phone: "+91 98100 23232", role: "admission", status: "active", avatarColor: "#A855F7", joinedOn: "2023-09-01" },
+  { id: "ad-1", name: "Priya Menon", email: "priya.menon@meettomanage.cloud", phone: "+91 98100 12121", role: "admission", status: "active", avatarColor: "#8B5CF6", joinedOn: "2023-01-10" },
+  { id: "ad-2", name: "Farhan Ali", email: "farhan.ali@meettomanage.cloud", phone: "+91 98100 23232", role: "admission", status: "active", avatarColor: "#A855F7", joinedOn: "2023-09-01" },
 ];
 
 export const SUB_ADMINS: AppUser[] = [
-  { id: "sa-1", name: "Neha Kulkarni", email: "neha.kulkarni@readernest.com", phone: "+91 98300 12121", role: "subadmin", status: "active", avatarColor: "#0E9C8C", joinedOn: "2023-02-20" },
-  { id: "sa-2", name: "Yash Patel", email: "yash.patel@readernest.com", phone: "+91 98300 23232", role: "subadmin", status: "active", avatarColor: "#0D9488", joinedOn: "2023-11-05" },
+  { id: "sa-1", name: "Neha Kulkarni", email: "neha.kulkarni@meettomanage.cloud", phone: "+91 98300 12121", role: "subadmin", status: "active", avatarColor: "#0E9C8C", joinedOn: "2023-02-20" },
+  { id: "sa-2", name: "Yash Patel", email: "yash.patel@meettomanage.cloud", phone: "+91 98300 23232", role: "subadmin", status: "active", avatarColor: "#0D9488", joinedOn: "2023-11-05" },
 ];
 
 export function getTeacherById(id: string) {

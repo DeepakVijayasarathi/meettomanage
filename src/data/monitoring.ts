@@ -36,7 +36,7 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
   servers: [
     {
       name: "Jitsi / Video",
-      hostname: "thereadernest.co.in",
+      hostname: "meet.meettomanage.cloud",
       reachable: true,
       error: null,
       uptimeSeconds: 41 * 3600,
@@ -77,7 +77,7 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
     },
     {
       name: "App / API",
-      hostname: "thereadernest.in",
+      hostname: "app.meettomanage.cloud",
       reachable: true,
       error: null,
       uptimeSeconds: 12 * 24 * 3600,

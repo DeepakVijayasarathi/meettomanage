@@ -15,7 +15,7 @@ import { apiEnabled } from "@/lib/api";
 import { getPublicSettings, toSettingsMap } from "@/api/settings";
 import { hexToHslTriple } from "@/lib/utils";
 
-export const BRAND_NAME: string = (import.meta.env.VITE_BRAND_NAME as string | undefined) ?? "The Reader Nest";
+export const BRAND_NAME: string = (import.meta.env.VITE_BRAND_NAME as string | undefined) ?? "Meet to Manage";
 
 export const BRAND_LOGO_URL: string | undefined = import.meta.env.VITE_BRAND_LOGO_URL as string | undefined;
 

@@ -13,15 +13,15 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 32% 12%;
 
-    /* L lowered from 44% to 32% — the previous value only cleared 2.81:1 contrast
-       against white primary-foreground text (WCAG AA requires 4.5:1 for body-size
-       text); this is the app's default button variant, so it affected nearly every
-       primary CTA (Sign in, Pay Now, Save, Confirm, ...) across every portal. */
-    --primary: 191 79% 32%;
+    /* Meet to Manage brand navy (#1E3A5F). Sits at 25% L, comfortably clearing WCAG AA's
+       4.5:1 against white primary-foreground text; this is the app's default button variant,
+       so it affects nearly every primary CTA (Sign in, Pay Now, Save, Confirm, ...) across
+       every portal. */
+    --primary: 214 52% 25%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 191 55% 94%;
-    --secondary-foreground: 195 60% 22%;
+    --secondary: 214 40% 94%;
+    --secondary-foreground: 214 52% 22%;
 
     --muted: 212 22% 95%;
     /* L lowered from 46% to 42% — text-muted-foreground on bg-muted (the pattern used by
@@ -32,25 +32,28 @@
     --accent: 210 25% 94%;
     --accent-foreground: 222 32% 14%;
 
-    /* L lowered from 51% to 45% — text-destructive on its own bg-destructive/10 badge
+    /* Nudged toward the Meet to Manage brand red (#E63329, hue 3) from a plain hue-0 red;
+       L lowered from 51% to 45% — text-destructive on its own bg-destructive/10 badge
        (e.g. the "Suspended" user-status pill) only cleared 4.13:1; the darker value also
        improves destructive-foreground (white) contrast on solid destructive buttons. */
-    --destructive: 0 72% 45%;
+    --destructive: 3 76% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    /* L lowered from 42% to 30% — text-success on its own bg-success/15 badge (the
-       "Active"/"Paid"/"Completed" status pill used across every portal) only cleared
-       2.78:1, badly failing WCAG AA's 4.5:1; this is the single most-reused status color
-       in the app. Darkening it also improves success-foreground (white) on solid buttons. */
-    --success: 106 50% 30%;
+    /* Hue nudged toward the Meet to Manage brand green (#7DC142, hue ~92). L lowered from
+       42% to 30% — text-success on its own bg-success/15 badge (the "Active"/"Paid"/
+       "Completed" status pill used across every portal) only cleared 2.78:1, badly failing
+       WCAG AA's 4.5:1; this is the single most-reused status color in the app. Darkening it
+       also improves success-foreground (white) on solid buttons. */
+    --success: 96 50% 30%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    /* Meet to Manage brand orange (#F7941D, hue ~33). */
+    --warning: 33 92% 50%;
     --warning-foreground: 26 83% 14%;
 
     --border: 214 20% 89%;
     --input: 214 20% 89%;
-    --ring: 191 79% 32%;
+    --ring: 214 52% 25%;
 
     --radius: 0.85rem;
 
@@ -71,11 +74,11 @@
     --popover: 222 26% 11%;
     --popover-foreground: 210 25% 96%;
 
-    --primary: 191 85% 55%;
+    --primary: 214 65% 58%;
     --primary-foreground: 222 30% 8%;
 
     --secondary: 222 22% 16%;
-    --secondary-foreground: 191 60% 85%;
+    --secondary-foreground: 214 60% 85%;
 
     --muted: 222 20% 16%;
     --muted-foreground: 215 16% 65%;
@@ -83,18 +86,18 @@
     --accent: 222 20% 18%;
     --accent-foreground: 210 25% 96%;
 
-    --destructive: 0 70% 58%;
+    --destructive: 3 70% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 106 45% 55%;
+    --success: 96 45% 55%;
     --success-foreground: 222 30% 10%;
 
-    --warning: 38 92% 58%;
+    --warning: 33 92% 58%;
     --warning-foreground: 26 83% 12%;
 
     --border: 222 20% 20%;
     --input: 222 20% 20%;
-    --ring: 191 85% 55%;
+    --ring: 214 65% 58%;
   }
 
   /* Login/ForgotPassword/ResetPin and the public marketing pages (Home, Store) render a
@@ -123,23 +126,23 @@
     --card-foreground: 222 32% 12%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 32% 12%;
-    --primary: 191 79% 32%;
+    --primary: 214 52% 25%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 191 55% 94%;
-    --secondary-foreground: 195 60% 22%;
+    --secondary: 214 40% 94%;
+    --secondary-foreground: 214 52% 22%;
     --muted: 212 22% 95%;
     --muted-foreground: 215 16% 42%;
     --accent: 210 25% 94%;
     --accent-foreground: 222 32% 14%;
-    --destructive: 0 72% 45%;
+    --destructive: 3 76% 45%;
     --destructive-foreground: 0 0% 100%;
-    --success: 106 50% 30%;
+    --success: 96 50% 30%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 33 92% 50%;
     --warning-foreground: 26 83% 14%;
     --border: 214 20% 89%;
     --input: 214 20% 89%;
-    --ring: 191 79% 32%;
+    --ring: 214 52% 25%;
   }
 
   * {

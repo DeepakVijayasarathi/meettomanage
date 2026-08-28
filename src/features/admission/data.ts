@@ -152,7 +152,7 @@ export const LEADS: Lead[] = [
       {
         id: "n-3a",
         date: "2026-07-07",
-        note: "Pooja (already a Reader Nest parent for Reyansh) enquired about a demo for her younger daughter Aisha. Booked a flexible slot with Rohan; Pooja and grandmother will both join the demo.",
+        note: "Pooja (already a Meet to Manage parent for Reyansh) enquired about a demo for her younger daughter Aisha. Booked a flexible slot with Rohan; Pooja and grandmother will both join the demo.",
         loggedBy: "Farhan Ali",
         nextFollowUpDate: "2026-07-21",
       },
@@ -492,7 +492,7 @@ export const PAYMENT_LINKS: PaymentLink[] = [
     status: "Pending",
     linkSharedOn: "2026-07-05",
     lastReminderOn: "2026-07-08",
-    paymentLinkUrl: "https://pay.readernest.com/rn/PAY-2601",
+    paymentLinkUrl: "https://pay.meettomanage.cloud/m2m/PAY-2601",
   },
   {
     id: "PAY-2602",
@@ -506,7 +506,7 @@ export const PAYMENT_LINKS: PaymentLink[] = [
     status: "Paid",
     linkSharedOn: "2026-06-28",
     paidOn: "2026-07-02",
-    paymentLinkUrl: "https://pay.readernest.com/rn/PAY-2602",
+    paymentLinkUrl: "https://pay.meettomanage.cloud/m2m/PAY-2602",
   },
   {
     id: "PAY-2603",
@@ -520,7 +520,7 @@ export const PAYMENT_LINKS: PaymentLink[] = [
     status: "Paid",
     linkSharedOn: "2026-06-30",
     paidOn: "2026-07-04",
-    paymentLinkUrl: "https://pay.readernest.com/rn/PAY-2603",
+    paymentLinkUrl: "https://pay.meettomanage.cloud/m2m/PAY-2603",
   },
   {
     id: "PAY-2604",
@@ -534,7 +534,7 @@ export const PAYMENT_LINKS: PaymentLink[] = [
     status: "Paid",
     linkSharedOn: "2026-06-14",
     paidOn: "2026-06-19",
-    paymentLinkUrl: "https://pay.readernest.com/rn/PAY-2604",
+    paymentLinkUrl: "https://pay.meettomanage.cloud/m2m/PAY-2604",
   },
   {
     id: "PAY-2605",
@@ -549,7 +549,7 @@ export const PAYMENT_LINKS: PaymentLink[] = [
     linkSharedOn: "2026-07-02",
     paidOn: "2026-07-04",
     lastReminderOn: "2026-07-07",
-    paymentLinkUrl: "https://pay.readernest.com/rn/PAY-2605",
+    paymentLinkUrl: "https://pay.meettomanage.cloud/m2m/PAY-2605",
   },
   {
     id: "PAY-2606",
@@ -562,7 +562,7 @@ export const PAYMENT_LINKS: PaymentLink[] = [
     amountPaid: 0,
     status: "Pending",
     linkSharedOn: "2026-07-06",
-    paymentLinkUrl: "https://pay.readernest.com/rn/PAY-2606",
+    paymentLinkUrl: "https://pay.meettomanage.cloud/m2m/PAY-2606",
   },
   {
     id: "PAY-2607",
@@ -577,7 +577,7 @@ export const PAYMENT_LINKS: PaymentLink[] = [
     linkSharedOn: "2026-07-03",
     paidOn: "2026-07-05",
     lastReminderOn: "2026-07-08",
-    paymentLinkUrl: "https://pay.readernest.com/rn/PAY-2607",
+    paymentLinkUrl: "https://pay.meettomanage.cloud/m2m/PAY-2607",
   },
   {
     id: "PAY-2608",
@@ -590,7 +590,7 @@ export const PAYMENT_LINKS: PaymentLink[] = [
     amountPaid: 0,
     status: "Pending",
     linkSharedOn: "2026-07-09",
-    paymentLinkUrl: "https://pay.readernest.com/rn/PAY-2608",
+    paymentLinkUrl: "https://pay.meettomanage.cloud/m2m/PAY-2608",
   },
   {
     id: "PAY-2609",
@@ -603,7 +603,7 @@ export const PAYMENT_LINKS: PaymentLink[] = [
     amountPaid: 0,
     status: "Pending",
     linkSharedOn: "2026-07-09",
-    paymentLinkUrl: "https://pay.readernest.com/rn/PAY-2609",
+    paymentLinkUrl: "https://pay.meettomanage.cloud/m2m/PAY-2609",
   },
   {
     id: "PAY-2610",
@@ -618,7 +618,7 @@ export const PAYMENT_LINKS: PaymentLink[] = [
     linkSharedOn: "2026-06-30",
     paidOn: "2026-07-03",
     lastReminderOn: "2026-07-06",
-    paymentLinkUrl: "https://pay.readernest.com/rn/PAY-2610",
+    paymentLinkUrl: "https://pay.meettomanage.cloud/m2m/PAY-2610",
   },
 ];
 

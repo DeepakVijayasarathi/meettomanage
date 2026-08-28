@@ -134,7 +134,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
   }
 
   function handleLink() {
-    const url = window.prompt("Link URL (e.g. https://thereadernest.in)");
+    const url = window.prompt("Link URL (e.g. https://meettomanage.cloud)");
     if (url) exec("createLink", url);
   }
 

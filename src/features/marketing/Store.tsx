@@ -244,7 +244,7 @@ export default function Store() {
           <Sparkles className="h-3.5 w-3.5" /> Course Catalogue
         </Badge>
         <h1 className="font-display mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
-          Find the right course for {brand.name === "The Reader Nest" ? "your child" : "your family"}.
+          Find the right course for {brand.name === "Meet to Manage" ? "your child" : "your family"}.
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-brand-ink/65">
           Browse our current courses below. Tell us a little about your child and our team will reach out within a

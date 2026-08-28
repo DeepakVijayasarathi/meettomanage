@@ -1,6 +1,6 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useState, type CSSProperties, type SVGProps } from "react";
 import { useLocation, useNavigate, Navigate, Link } from "react-router-dom";
-import { AlertCircle, ArrowRight, Loader2, Lock, Mail, Sparkles, Video, CalendarCheck2, Wallet } from "lucide-react";
+import { AlertCircle, ArrowRight, CalendarCheck2, Eye, EyeOff, IndianRupee, Loader2, Lock, Mail, Sparkles, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,14 +14,14 @@ import { apiEnabled, getAccessToken } from "@/lib/api";
 import { getRemember, setRemember } from "@/lib/authStorage";
 import { login } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
-import { cn, safeInternalPath } from "@/lib/utils";
+import { safeInternalPath } from "@/lib/utils";
 import type { Role } from "@/types";
 
-// Colour-matched to the logo's own cast: the blue boy, the pink girl, the green nest.
-const TRUST_CHIPS = [
-  { icon: Video, label: "Live Classes", colorClass: "bg-brand-blue/10 text-brand-blue" },
-  { icon: CalendarCheck2, label: "Attendance", colorClass: "bg-brand-pink/10 text-brand-pink" },
-  { icon: Wallet, label: "Billing", colorClass: "bg-brand-green/10 text-brand-green" },
+// Floating feature badges over the hero panel — one flat brand orange, matching the mark.
+const HERO_BADGES = [
+  { icon: Video, label: "Live Classes" },
+  { icon: CalendarCheck2, label: "Attendance" },
+  { icon: IndianRupee, label: "Fees" },
 ];
 
 const PIN_LENGTH = 4;
@@ -29,12 +29,36 @@ const PIN_LENGTH = 4;
 // everywhere else) — a warmer, rounder headline face for the two big greeting moments.
 const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
 
+function GoogleIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
+      <path
+        fill="#4285F4"
+        d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M11.69 28.18A13.96 13.96 0 0 1 10.94 24c0-1.45.25-2.86.7-4.18v-5.7H4.34A21.98 21.98 0 0 0 2 24c0 3.55.85 6.91 2.34 9.88z"
+      />
+      <path
+        fill="#EA4335"
+        d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"
+      />
+    </svg>
+  );
+}
+
 export default function Login() {
   useLightBrandScope();
   const brand = useBrand();
   const [role, setRole] = useState<Role>("admin");
-  const [email, setEmail] = useState(apiEnabled() ? "" : "demo@readernest.com");
-  const [pin, setPin] = useState<string[]>(apiEnabled() ? Array(PIN_LENGTH).fill("") : ["1", "2", "3", "4"]);
+  const [email, setEmail] = useState(apiEnabled() ? "" : "demo@meettomanage.cloud");
+  const [pin, setPin] = useState(apiEnabled() ? "" : "1234");
+  const [showPin, setShowPin] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(getRemember());
@@ -49,7 +73,6 @@ export default function Login() {
   } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
-  const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
   // Where RequireAuth bounced the visitor from, so login lands them back there.
   // Their portal home stays the fallback; a cross-role path re-bounces harmlessly.
   // Sanitised because both this and the API's defaultRoute are navigate() targets:
@@ -63,36 +86,6 @@ export default function Login() {
   // production. Send them straight to where they already are.
   if (sessionRole && (!apiEnabled() || getAccessToken())) {
     return <Navigate to={sessionHomePath ?? ROLE_META[sessionRole].homePath} replace />;
-  }
-
-  function setDigit(index: number, raw: string) {
-    const digit = raw.replace(/\D/g, "").slice(-1);
-    setPin((prev) => {
-      const next = [...prev];
-      next[index] = digit;
-      return next;
-    });
-    if (digit && index < PIN_LENGTH - 1) {
-      pinRefs.current[index + 1]?.focus();
-    }
-  }
-
-  function handlePinKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Backspace" && !pin[index] && index > 0) {
-      pinRefs.current[index - 1]?.focus();
-    }
-  }
-
-  function handlePinPaste(e: React.ClipboardEvent<HTMLInputElement>) {
-    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, PIN_LENGTH).split("");
-    if (digits.length === 0) return;
-    e.preventDefault();
-    setPin((prev) => {
-      const next = [...prev];
-      digits.forEach((d, i) => (next[i] = d));
-      return next;
-    });
-    pinRefs.current[Math.min(digits.length, PIN_LENGTH - 1)]?.focus();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -113,7 +106,7 @@ export default function Login() {
     setSubmitting(true);
     setError(null);
     try {
-      const response = await login(email, pin.join(""));
+      const response = await login(email, pin);
       const frontendRole = toFrontendRole(response.user.role);
       const homePath = safeInternalPath(response.defaultRoute) ?? ROLE_META[frontendRole].homePath;
       setSessionRole(frontendRole);
@@ -130,90 +123,72 @@ export default function Login() {
   }
 
   return (
-    <div className="theme-light-scope min-h-screen bg-brand-cream lg:grid lg:grid-cols-[2fr_1fr]">
-      {/* Left — a composed brand panel on the same cream canvas as the page (no stock photo) */}
-      <div className="hidden flex-col justify-center gap-10 p-10 lg:flex">
-        <div className="relative mx-auto w-full max-w-3xl">
-          <div className="relative aspect-[16/11] w-full overflow-hidden rounded-[28px] bg-gradient-to-br from-[#EAF3FF] via-brand-cream to-[#FDECF6] ring-4 ring-white">
-            {/* Soft washes in the same three hues as the trust chips below — brand colour, not a generic gradient. */}
-            <div className="pointer-events-none absolute -left-20 -top-24 h-72 w-72 rounded-full bg-brand-blue/25 blur-[80px]" />
-            <div className="pointer-events-none absolute -bottom-24 -right-16 h-80 w-80 rounded-full bg-brand-pink/20 blur-[90px]" />
-            <div className="pointer-events-none absolute bottom-0 left-1/4 h-56 w-56 rounded-full bg-brand-green/20 blur-[80px]" />
+    <div className="theme-light-scope min-h-screen bg-white lg:grid lg:grid-cols-[3fr_2fr]">
+      {/* Left — full-bleed hero panel. This gradient is a stand-in for a real institute
+          photo (the reference design uses one) — swap this block for an <img> once a
+          licensed photo is supplied; there's no image-generation step in this pass. */}
+      <div className="relative hidden overflow-hidden lg:block">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0F1E30] via-[#1E3A5F] to-[#12243A]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(247,148,29,0.28),transparent_55%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_75%,rgba(230,51,41,0.18),transparent_55%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" />
 
-            {/* A few small accents, not a busy scene — restraint was the whole point of the redesign. */}
-            <span className="pointer-events-none absolute left-[18%] top-[22%] h-2.5 w-2.5 rounded-full bg-brand-blue/50" />
-            <span className="pointer-events-none absolute right-[20%] top-[32%] h-1.5 w-1.5 rounded-full bg-brand-pink/60" />
-            <span className="pointer-events-none absolute bottom-[24%] right-[26%] h-2 w-2 rounded-full bg-brand-green/50" />
-            <svg
-              className="pointer-events-none absolute left-[12%] bottom-[20%] h-16 w-16 text-brand-green/25"
-              viewBox="0 0 64 64"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M4 32c8-14 20-14 28 0s20 14 28 0"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeDasharray="0.5 8"
-              />
-            </svg>
+        <p className="absolute left-10 top-8 text-xs font-medium text-white/60">© 2026 {brand.name}</p>
 
-            <div className="relative flex h-full flex-col items-center justify-center gap-5 px-14 text-center">
-              <div className="flex h-24 w-24 items-center justify-center rounded-[26px] bg-white shadow-lg ring-1 ring-brand-ink/5">
-                <img src="/logo-icon.png" alt="" className="h-16 w-16 object-contain" />
-              </div>
-              <div>
-                <p className="font-display text-[13px] font-bold uppercase tracking-[0.3em] text-brand-green">
-                  Read &middot; Write &middot; Speak
-                </p>
-                <h2
-                  style={{ fontFamily: HEADLINE_FONT }}
-                  className="mt-3 text-4xl font-semibold leading-[1.1] tracking-tight text-brand-ink xl:text-5xl"
-                >
-                  Learning today,
-                  <br />
-                  leading tomorrow.
-                </h2>
-              </div>
+        <div className="absolute right-10 top-16 flex flex-col gap-4">
+          {HERO_BADGES.map((badge) => (
+            <div key={badge.label} className="flex items-center gap-3 rounded-2xl bg-white/95 px-4 py-3 shadow-pop backdrop-blur">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F7941D]/15 text-[#F7941D]">
+                <badge.icon className="h-5 w-5" />
+              </span>
+              <span className="text-sm font-semibold text-brand-ink">{badge.label}</span>
             </div>
-          </div>
+          ))}
         </div>
 
-        <div className="mx-auto w-full max-w-3xl">
-          <p className="text-lg font-semibold leading-snug text-brand-ink">
-            One platform for live classes, admissions, billing and every parent conversation.
+        <div className="absolute inset-x-0 bottom-0 p-12">
+          <h1 style={{ fontFamily: HEADLINE_FONT }} className="text-4xl font-bold leading-[1.1] text-white xl:text-5xl">
+            Teach live.
+            <br />
+            Track everything.
+          </h1>
+          <p className="mt-4 max-w-md text-base text-white/80">
+            Classes, attendance, fees, and reports in one focused workspace for your institute.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2.5">
-            {TRUST_CHIPS.map((chip) => (
-              <span
-                key={chip.label}
-                className={cn("flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold", chip.colorClass)}
-              >
-                <chip.icon className="h-3.5 w-3.5" />
-                {chip.label}
-              </span>
-            ))}
-          </div>
-          <p className="mt-6 text-xs font-medium text-brand-ink/70">© 2026 {brand.name}. All rights reserved.</p>
         </div>
       </div>
 
-      {/* Right — sign-in card, floating on the same cream canvas */}
+      {/* Right — sign-in */}
       <div className="flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-[0_24px_70px_-24px_rgba(43,32,20,0.22)] ring-1 ring-brand-ink/[0.04]">
+        <div className="w-full max-w-sm">
           <div className="flex flex-col items-center text-center">
-            <img src="/logo-icon.png" alt={brand.name} className="h-14 w-14 object-contain lg:hidden" />
-            <h1
-              style={{ fontFamily: HEADLINE_FONT }}
-              className="mt-2 text-[1.7rem] font-semibold tracking-tight text-brand-ink sm:text-3xl lg:mt-0"
-            >
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-pop ring-1 ring-brand-ink/10">
+              <img src="/logo-icon.png" alt={brand.name} className="h-11 w-11 object-contain" />
+            </div>
+            <p className="mt-4 font-display text-[12px] font-bold uppercase tracking-[0.25em] text-[#F7941D]">
+              Meet &middot; Manage &middot; Grow
+            </p>
+            <h2 style={{ fontFamily: HEADLINE_FONT }} className="mt-2 text-3xl font-semibold tracking-tight text-brand-ink">
               Welcome back
-            </h1>
+            </h2>
             <p className="mt-1.5 text-sm text-brand-ink/70">Sign in to your account and continue</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-4">
+          <button
+            type="button"
+            onClick={() => setError("Google sign-in isn't set up for this deployment yet — use email and PIN below.")}
+            className="mt-7 flex w-full items-center justify-center gap-2.5 rounded-xl border border-brand-ink/15 bg-white px-4 py-2.5 text-sm font-semibold text-brand-ink shadow-sm transition-colors hover:bg-brand-ink/[0.03]"
+          >
+            <GoogleIcon className="h-4 w-4" /> Continue with Google
+          </button>
+
+          <div className="mt-6 flex items-center gap-3">
+            <span className="h-px flex-1 bg-brand-ink/10" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-brand-ink/40">Email sign in</span>
+            <span className="h-px flex-1 bg-brand-ink/10" />
+          </div>
+
+          <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
                 Email
@@ -224,7 +199,7 @@ export default function Login() {
                   id="email"
                   type="email"
                   autoComplete="username"
-                  placeholder="you@readernest.com"
+                  placeholder="you@meettomanage.cloud"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-11 pl-9"
@@ -234,48 +209,40 @@ export default function Login() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="pin-0" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/70">
-                <Lock className="h-3 w-3" /> PIN
+              <Label htmlFor="pin" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
+                PIN
               </Label>
-              <div className="flex gap-2.5">
-                {pin.map((digit, i) => (
-                  <input
-                    key={i}
-                    ref={(el) => {
-                      pinRefs.current[i] = el;
-                    }}
-                    id={`pin-${i}`}
-                    // type="text" (not "password") so inputMode="numeric" reliably brings up
-                    // the numeric keypad on mobile — combining password+numeric is a known
-                    // Safari/WebView gotcha where the full keyboard shows regardless. Masked
-                    // visually instead via -webkit-text-security (Chrome/Edge/Safari; Firefox
-                    // falls back to showing the digit — a minor, non-security-critical gap for
-                    // a 4-digit login PIN, not a password).
-                    type="text"
-                    inputMode="numeric"
-                    pattern="\d*"
-                    maxLength={1}
-                    autoComplete={i === 0 ? "current-password" : "off"}
-                    value={digit}
-                    onChange={(e) => setDigit(i, e.target.value)}
-                    onKeyDown={(e) => handlePinKeyDown(i, e)}
-                    onFocus={(e) => e.target.select()}
-                    onPaste={handlePinPaste}
-                    required
-                    aria-label={`PIN digit ${i + 1} of ${PIN_LENGTH}`}
-                    style={{ WebkitTextSecurity: "disc" } as CSSProperties}
-                    className="h-14 w-full rounded-xl border border-brand-ink/15 bg-brand-cream/40 text-center text-xl font-bold text-brand-ink transition-colors focus-visible:border-brand-green focus-visible:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/30"
-                  />
-                ))}
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-ink/35" />
+                <input
+                  id="pin"
+                  // type="text" (not "password") so inputMode="numeric" reliably brings up
+                  // the numeric keypad on mobile — combining password+numeric is a known
+                  // Safari/WebView gotcha where the full keyboard shows regardless. Masked
+                  // visually instead via -webkit-text-security when hidden (Chrome/Edge/
+                  // Safari; Firefox falls back to showing the digits — a minor, non-
+                  // security-critical gap for a 4-digit login PIN, not a password).
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d*"
+                  maxLength={PIN_LENGTH}
+                  autoComplete="current-password"
+                  placeholder="Enter your PIN"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, PIN_LENGTH))}
+                  required
+                  style={{ WebkitTextSecurity: showPin ? "none" : "disc" } as CSSProperties}
+                  className="h-11 w-full rounded-md border border-input bg-background pl-9 pr-10 text-sm tracking-[0.3em] ring-offset-background transition-colors placeholder:tracking-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin((v) => !v)}
+                  aria-label={showPin ? "Hide PIN" : "Show PIN"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-ink/35 hover:text-brand-ink/60"
+                >
+                  {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-              {/* Visually-hidden progress announcement — each digit box only has its own
-                  "PIN digit N of 4" label, so a screen-reader user typing has no way to
-                  know when all 4 are filled and the form is actually ready to submit. */}
-              <p className="sr-only" aria-live="polite">
-                {pin.filter(Boolean).length === PIN_LENGTH
-                  ? "PIN complete."
-                  : `${pin.filter(Boolean).length} of ${PIN_LENGTH} PIN digits entered.`}
-              </p>
             </div>
 
             {!apiEnabled() && (
@@ -316,7 +283,7 @@ export default function Login() {
                 <Checkbox checked={rememberMe} onCheckedChange={(v) => setRememberMe(v === true)} />
                 Remember me
               </label>
-              <Link to="/forgot-password" className="text-sm font-semibold text-brand-greenDark hover:underline">
+              <Link to="/forgot-password" className="text-sm font-semibold text-[#E63329] hover:underline">
                 Forgot your PIN?
               </Link>
             </div>
@@ -325,7 +292,7 @@ export default function Login() {
               type="submit"
               size="lg"
               disabled={submitting}
-              className="mt-1 w-full !bg-brand-green !text-white hover:!bg-brand-greenDark"
+              className="mt-1 w-full !bg-gradient-to-r !from-[#E63329] !to-[#F7941D] !text-white hover:!opacity-90"
             >
               {submitting ? (
                 <>
@@ -333,7 +300,7 @@ export default function Login() {
                 </>
               ) : apiEnabled() ? (
                 <>
-                  Sign in <ArrowRight className="h-4 w-4" />
+                  Sign In <ArrowRight className="h-4 w-4" />
                 </>
               ) : (
                 <>
@@ -346,7 +313,7 @@ export default function Login() {
 
           <p className="mt-7 text-center text-sm text-brand-ink/70">
             New here?{" "}
-            <Link to="/" className="font-semibold text-brand-greenDark hover:underline">
+            <Link to="/" className="font-semibold text-[#E63329] hover:underline">
               Explore More
             </Link>
           </p>
@@ -356,6 +323,10 @@ export default function Login() {
               This is a demo build with mock data — no credentials are verified.
             </p>
           )}
+
+          <p className="mt-8 text-center text-xs text-brand-ink/50">
+            Powered by <span className="font-semibold text-brand-ink/70">{brand.name}</span>
+          </p>
         </div>
       </div>
     </div>

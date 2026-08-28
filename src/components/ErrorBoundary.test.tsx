@@ -43,7 +43,7 @@ describe("ErrorBoundary", () => {
 
     render(
       <ErrorBoundary>
-        <Bomb message="Failed to fetch dynamically imported module: https://thereadernest.in/assets/Billing-abc123.js" />
+        <Bomb message="Failed to fetch dynamically imported module: https://meettomanage.cloud/assets/Billing-abc123.js" />
       </ErrorBoundary>
     );
 
@@ -65,7 +65,7 @@ describe("ErrorBoundary", () => {
 
     render(
       <ErrorBoundary>
-        <Bomb message="Failed to fetch dynamically imported module: https://thereadernest.in/assets/Billing-abc123.js" />
+        <Bomb message="Failed to fetch dynamically imported module: https://meettomanage.cloud/assets/Billing-abc123.js" />
       </ErrorBoundary>
     );
 

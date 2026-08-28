@@ -90,9 +90,9 @@ const WIDGET_CHATBOT_KEY = "widgets.doubtChatbot.enabledPortals";
 
 /** Every DB-backed setting the screen edits, with its category and visibility. */
 const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boolean; fallback: string }> = {
-  "org.name": { category: "General", isPublic: true, fallback: "The Reader Nest" },
-  "org.domain": { category: "General", fallback: "app.thereadernest.com" },
-  "org.supportEmail": { category: "General", fallback: "support@thereadernest.com" },
+  "org.name": { category: "General", isPublic: true, fallback: "Meet to Manage" },
+  "org.domain": { category: "General", fallback: "app.meettomanage.cloud" },
+  "org.supportEmail": { category: "General", fallback: "support@meettomanage.cloud" },
   "org.supportPhone": { category: "General", fallback: "+91 98200 00000" },
   "org.timezone": { category: "General", fallback: "Asia/Kolkata (GMT +5:30)" },
   // Printed on every generated invoice PDF (Admin Billing → Download PDF) — these were
@@ -108,10 +108,10 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "invoice.contactEmail": { category: "General", fallback: "" },
   "invoice.signatoryName": { category: "General", fallback: "" },
   "invoice.signatoryTitle": { category: "General", fallback: "" },
-  "brand.name": { category: "Branding", isPublic: true, fallback: "The Reader Nest" },
+  "brand.name": { category: "Branding", isPublic: true, fallback: "Meet to Manage" },
   "brand.logoUrl": { category: "Branding", isPublic: true, fallback: "" },
-  "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#1F6FE0" },
-  "brand.accentColor": { category: "Branding", isPublic: true, fallback: "#57B33B" },
+  "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#1E3A5F" },
+  "brand.accentColor": { category: "Branding", isPublic: true, fallback: "#E63329" },
   // Attendance/no-show thresholds for the teacher payout pipeline -- were fixed constants in
   // PayoutService and NoShowDetectionBackgroundService until now.
   "payroll.minAttendancePercentForReview": { category: "General", fallback: "50" },
@@ -248,7 +248,7 @@ export default function AdminSettings() {
     // Apply the new brand live without a reload
     setBrand({
       ...getBrand(),
-      name: values["brand.name"] || "The Reader Nest",
+      name: values["brand.name"] || "Meet to Manage",
       logoUrl: values["brand.logoUrl"] || undefined,
       primaryHsl: hexToHslTriple(values["brand.primaryColor"] || "#1F6FE0"),
     });
@@ -1450,7 +1450,7 @@ function JitsiRecordingSettings() {
                 id="jitsi-domain"
                 value={form.domain}
                 onChange={(e) => setForm({ ...form, domain: e.target.value })}
-                placeholder="e.g. thereadernest.co.in"
+                placeholder="e.g. meettomanage.cloud"
                 className="font-mono text-sm"
               />
               <p className="text-[11px] text-muted-foreground">
