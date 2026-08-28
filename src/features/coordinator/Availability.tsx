@@ -64,7 +64,12 @@ type DayState = "available" | "leave" | "holiday";
 
 const DAY_STATE_STYLE: Record<DayState, string> = {
   available: "bg-success/10 text-success",
-  leave: "bg-status-leave/15 text-status-leave",
+  // text-status-leave (the token's full #EC4899, meant for a small decorative status dot
+  // elsewhere) only cleared ~3.5:1 as this pill's text-xs/font-semibold label text —
+  // short of WCAG AA's 4.5:1. A darkened one-off shade of the same pink keeps this
+  // legend visually distinct from "available"/"holiday" without touching the shared
+  // status.leave token (still correct at full saturation for its dot usage).
+  leave: "bg-status-leave/15 text-[#af1261]",
   holiday: "bg-status-holiday/20 text-foreground/70",
 };
 

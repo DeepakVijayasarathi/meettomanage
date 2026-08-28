@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { cloneElement, isValidElement, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CheckCircle2, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -343,7 +343,7 @@ export default function ParentEnrollment() {
                     <Input id="dob" type="date" required value={form.dob} onChange={(e) => update("dob", e.target.value)} />
                   </Field>
                   <Field label="Gender" htmlFor="gender" required error={errors.gender}>
-                    <Select value={form.gender} onValueChange={(v) => update("gender", v)}>
+                    <Select required value={form.gender} onValueChange={(v) => update("gender", v)}>
                       <SelectTrigger id="gender">
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
@@ -397,7 +397,7 @@ export default function ParentEnrollment() {
                     <Input id="parentName" required value={form.parentName} onChange={(e) => update("parentName", e.target.value)} />
                   </Field>
                   <Field label="Relationship to student" htmlFor="relationship" required error={errors.relationship}>
-                    <Select value={form.relationship} onValueChange={(v) => update("relationship", v)}>
+                    <Select required value={form.relationship} onValueChange={(v) => update("relationship", v)}>
                       <SelectTrigger id="relationship">
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
@@ -465,7 +465,7 @@ export default function ParentEnrollment() {
             {step === 2 && (
               <div className="flex flex-col gap-4">
                 <Field label="Course of interest" htmlFor="courseInterest" required error={errors.courseInterest}>
-                  <Select value={form.courseInterest} onValueChange={(v) => update("courseInterest", v)}>
+                  <Select required value={form.courseInterest} onValueChange={(v) => update("courseInterest", v)}>
                     <SelectTrigger id="courseInterest">
                       <SelectValue placeholder="Select a course" />
                     </SelectTrigger>
@@ -584,18 +584,29 @@ function Field({
   error?: string;
   children: ReactNode;
 }) {
+  const errorId = `${htmlFor}-error`;
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={htmlFor} className={cn(error && "text-destructive")}>
         {label}
         {required && <span className="ml-0.5 text-destructive">*</span>}
       </Label>
-      {children}
+      {/* aria-describedby ties the field to its error so a screen-reader user re-focusing
+          it later (not just at the moment role="alert" first announces it) still hears
+          why it's flagged; aria-invalid mirrors the same red-border/red-label visual cue
+          programmatically. Every call site here passes exactly one form control as
+          children, so cloning in these two props is safe. */}
+      {isValidElement<{ "aria-describedby"?: string; "aria-invalid"?: boolean }>(children)
+        ? cloneElement(children, {
+            "aria-describedby": error ? errorId : undefined,
+            "aria-invalid": !!error,
+          })
+        : children}
       {/* role="alert" so a screen reader announces the failure on Next/Submit — the
           errors appear well below the button that triggered them and were otherwise
           silent (matching how Login and Store already announce their errors). */}
       {error && (
-        <p role="alert" className="text-xs font-medium text-destructive">
+        <p id={errorId} role="alert" className="text-xs font-medium text-destructive">
           {error}
         </p>
       )}

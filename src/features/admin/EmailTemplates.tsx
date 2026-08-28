@@ -279,8 +279,9 @@ export default function EmailTemplates() {
                 )}
 
                 <div className="grid gap-1.5">
-                  <Label>Subject</Label>
+                  <Label htmlFor="template-subject">Subject</Label>
                   <Input
+                    id="template-subject"
                     ref={subjectRef}
                     value={subject}
                     onFocus={() => (lastFocused.current = "subject")}
@@ -339,8 +340,9 @@ export default function EmailTemplates() {
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {selected.placeholders.map((p) => (
                         <div key={p} className="grid gap-1">
-                          <Label className="font-mono text-[11px]">{p}</Label>
+                          <Label htmlFor={`sample-token-${p}`} className="font-mono text-[11px]">{p}</Label>
                           <Input
+                            id={`sample-token-${p}`}
                             value={sampleTokens[p] ?? ""}
                             placeholder={`[${p}]`}
                             onChange={(e) => setSampleTokens((prev) => ({ ...prev, [p]: e.target.value }))}

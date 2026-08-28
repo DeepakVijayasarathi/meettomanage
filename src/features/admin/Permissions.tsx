@@ -598,8 +598,9 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
           <>
             <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="grid gap-1.5">
-                <Label>Identifier</Label>
+                <Label htmlFor="role-identifier">Identifier</Label>
                 <Input
+                  id="role-identifier"
                   value={draft.name}
                   onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                   placeholder="e.g. finance-officer"
@@ -608,16 +609,18 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label>Display name</Label>
+                <Label htmlFor="role-display-name">Display name</Label>
                 <Input
+                  id="role-display-name"
                   value={draft.displayName}
                   onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
                   placeholder="e.g. Finance Officer"
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label>Description</Label>
+                <Label htmlFor="role-description">Description</Label>
                 <Input
+                  id="role-description"
                   value={draft.description}
                   onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                   placeholder="What this role is for"

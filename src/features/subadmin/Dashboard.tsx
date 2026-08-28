@@ -327,7 +327,9 @@ export default function SubAdminDashboard() {
             </div>
             <div className="flex flex-col divide-y divide-border">
               {recentActivity.length === 0 && (
-                <p className="py-6 text-center text-sm text-muted-foreground">No activity recorded yet.</p>
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  No activity recorded yet — actions you take will show up here as you go.
+                </p>
               )}
               {recentActivity.map((entry, i) => {
                 // API entity names won't always match the demo module set — fall back to a neutral icon.
