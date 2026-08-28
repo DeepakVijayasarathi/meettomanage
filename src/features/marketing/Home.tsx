@@ -551,10 +551,10 @@ export default function MarketingHome() {
               </li>
               <li>
                 <a
-                  href="tel:+15550123456"
+                  href="tel:+919344773231"
                   className="flex items-center gap-2 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
                 >
-                  <Phone className="h-3.5 w-3.5 shrink-0" /> +1 (555) 012-3456
+                  <Phone className="h-3.5 w-3.5 shrink-0" /> +91 93447 73231
                 </a>
               </li>
               <li className="flex items-center gap-2 text-sm font-medium text-[#5B6472]">
