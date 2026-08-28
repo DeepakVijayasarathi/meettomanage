@@ -667,7 +667,15 @@ export default function AdminBatches() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label htmlFor="nb-capacity">Capacity</Label>
-                <Input id="nb-capacity" type="number" min={1} max={500} value={newCapacity} onChange={(e) => setNewCapacity(e.target.value)} />
+                <Input
+                  id="nb-capacity"
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={newCapacity}
+                  onChange={(e) => setNewCapacity(e.target.value)}
+                  placeholder="e.g. 12"
+                />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="nb-start">Start date (optional)</Label>

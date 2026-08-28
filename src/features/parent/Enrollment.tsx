@@ -273,7 +273,7 @@ export default function ParentEnrollment() {
           </span>
           <h2 className="text-lg font-bold text-foreground">{displayFirstName}'s enrollment is complete!</h2>
           <p className="mt-2 text-sm text-muted-foreground">Taking you to the dashboard…</p>
-          <Button className="mt-6" onClick={() => navigate("/parent")}>
+          <Button className="mt-6 !bg-brand-green !text-white hover:!bg-brand-greenDark" onClick={() => navigate("/parent")}>
             Go to Dashboard now
           </Button>
         </Card>
@@ -304,7 +304,13 @@ export default function ParentEnrollment() {
             {step === 0 && (
               <div className="flex flex-col gap-4">
                 <Field label="Student's full name" htmlFor="childName" required error={errors.childName}>
-                  <Input id="childName" required value={form.childName} onChange={(e) => update("childName", e.target.value)} />
+                  <Input
+                    id="childName"
+                    required
+                    value={form.childName}
+                    onChange={(e) => update("childName", e.target.value)}
+                    placeholder="e.g. Aarav Kapoor"
+                  />
                 </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Date of birth" htmlFor="dob" required error={errors.dob}>
@@ -313,7 +319,7 @@ export default function ParentEnrollment() {
                   <Field label="Gender" htmlFor="gender" required error={errors.gender}>
                     <Select value={form.gender} onValueChange={(v) => update("gender", v)}>
                       <SelectTrigger id="gender">
-                        <SelectValue placeholder="Select" />
+                        <SelectValue placeholder="Select gender" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="female">Female</SelectItem>
@@ -362,12 +368,18 @@ export default function ParentEnrollment() {
               <div className="flex flex-col gap-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Parent / guardian name" htmlFor="parentName" required error={errors.parentName}>
-                    <Input id="parentName" required value={form.parentName} onChange={(e) => update("parentName", e.target.value)} />
+                    <Input
+                      id="parentName"
+                      required
+                      value={form.parentName}
+                      onChange={(e) => update("parentName", e.target.value)}
+                      placeholder="e.g. Priya Kapoor"
+                    />
                   </Field>
                   <Field label="Relationship to student" htmlFor="relationship" required error={errors.relationship}>
                     <Select value={form.relationship} onValueChange={(v) => update("relationship", v)}>
                       <SelectTrigger id="relationship">
-                        <SelectValue placeholder="Select" />
+                        <SelectValue placeholder="Select relationship" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="mother">Mother</SelectItem>
@@ -469,7 +481,7 @@ export default function ParentEnrollment() {
                 <Field label="Preferred time slot" htmlFor="preferredTime">
                   <Select value={form.preferredTime} onValueChange={(v) => update("preferredTime", v)}>
                     <SelectTrigger id="preferredTime">
-                      <SelectValue placeholder="Select (optional)" />
+                      <SelectValue placeholder="Select a time slot (optional)" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="morning">Morning (8am–12pm)</SelectItem>
@@ -524,11 +536,15 @@ export default function ParentEnrollment() {
                 <ArrowLeft className="h-4 w-4" /> Back
               </Button>
               {step < STEPS.length - 1 ? (
-                <Button type="button" onClick={handleNext}>
+                <Button type="button" onClick={handleNext} className="!bg-brand-green !text-white hover:!bg-brand-greenDark">
                   Next <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button type="submit" disabled={submitting}>
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="!bg-brand-green !text-white hover:!bg-brand-greenDark"
+                >
                   <CheckCircle2 className="h-4 w-4" /> {submitting ? "Submitting…" : "Submit & Unlock Dashboard"}
                 </Button>
               )}

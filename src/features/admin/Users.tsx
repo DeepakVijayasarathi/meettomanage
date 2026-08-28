@@ -867,6 +867,7 @@ export default function AdminUsers() {
                   id="edit-first"
                   value={editForm.firstName}
                   onChange={(e) => setEditForm((f) => ({ ...f, firstName: e.target.value }))}
+                  placeholder="e.g. Simran"
                 />
               </div>
               <div className="grid gap-1.5">
@@ -875,6 +876,7 @@ export default function AdminUsers() {
                   id="edit-last"
                   value={editForm.lastName}
                   onChange={(e) => setEditForm((f) => ({ ...f, lastName: e.target.value }))}
+                  placeholder="e.g. Kaur"
                 />
               </div>
             </div>

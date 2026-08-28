@@ -314,22 +314,48 @@ export default function Store() {
               <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
                 <div className="grid gap-1.5">
                   <Label htmlFor="parentName">Your name</Label>
-                  <Input id="parentName" required value={form.parentName} onChange={(e) => setForm((f) => ({ ...f, parentName: e.target.value }))} />
+                  <Input
+                    id="parentName"
+                    required
+                    value={form.parentName}
+                    onChange={(e) => setForm((f) => ({ ...f, parentName: e.target.value }))}
+                    placeholder="e.g. Priya Kapoor"
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-1.5">
                     <Label htmlFor="parentEmail">Email</Label>
-                    <Input id="parentEmail" type="email" required value={form.parentEmail} onChange={(e) => setForm((f) => ({ ...f, parentEmail: e.target.value }))} />
+                    <Input
+                      id="parentEmail"
+                      type="email"
+                      required
+                      value={form.parentEmail}
+                      onChange={(e) => setForm((f) => ({ ...f, parentEmail: e.target.value }))}
+                      placeholder="you@email.com"
+                    />
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="parentPhone">Phone</Label>
-                    <Input id="parentPhone" type="tel" required value={form.parentPhone} onChange={(e) => setForm((f) => ({ ...f, parentPhone: e.target.value }))} />
+                    <Input
+                      id="parentPhone"
+                      type="tel"
+                      required
+                      value={form.parentPhone}
+                      onChange={(e) => setForm((f) => ({ ...f, parentPhone: e.target.value }))}
+                      placeholder="+91 98765 43210"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-1.5">
                     <Label htmlFor="childName">Child's name</Label>
-                    <Input id="childName" required value={form.childName} onChange={(e) => setForm((f) => ({ ...f, childName: e.target.value }))} />
+                    <Input
+                      id="childName"
+                      required
+                      value={form.childName}
+                      onChange={(e) => setForm((f) => ({ ...f, childName: e.target.value }))}
+                      placeholder="e.g. Aarav Kapoor"
+                    />
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="childAge">Child's age</Label>
@@ -383,6 +409,7 @@ export default function Store() {
                     required
                     value={demoForm.parentName}
                     onChange={(e) => setDemoForm((f) => ({ ...f, parentName: e.target.value }))}
+                    placeholder="e.g. Priya Kapoor"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -394,6 +421,7 @@ export default function Store() {
                       required
                       value={demoForm.parentEmail}
                       onChange={(e) => setDemoForm((f) => ({ ...f, parentEmail: e.target.value }))}
+                      placeholder="you@email.com"
                     />
                   </div>
                   <div className="grid gap-1.5">
@@ -404,6 +432,7 @@ export default function Store() {
                       required
                       value={demoForm.parentPhone}
                       onChange={(e) => setDemoForm((f) => ({ ...f, parentPhone: e.target.value }))}
+                      placeholder="+91 98765 43210"
                     />
                   </div>
                 </div>
@@ -415,6 +444,7 @@ export default function Store() {
                       required
                       value={demoForm.childName}
                       onChange={(e) => setDemoForm((f) => ({ ...f, childName: e.target.value }))}
+                      placeholder="e.g. Aarav Kapoor"
                     />
                   </div>
                   <div className="grid gap-1.5">

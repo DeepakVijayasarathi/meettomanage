@@ -45,7 +45,7 @@ export default function ParentAddChild() {
           title="Add Child"
           description="Your family's enrolled children, enrollments under review, and adding a sibling."
           actions={
-            <Button asChild>
+            <Button asChild className="!bg-brand-green !text-white hover:!bg-brand-greenDark">
               <Link to="/parent/enrollment">
                 <UserPlus className="h-4 w-4" /> Add a child
               </Link>
@@ -59,7 +59,7 @@ export default function ParentAddChild() {
             title="No children yet"
             description="Add your first child through the enrollment form — once our team approves it, they'll appear here and on your dashboard."
             action={
-              <Button asChild>
+              <Button asChild className="!bg-brand-green !text-white hover:!bg-brand-greenDark">
                 <Link to="/parent/enrollment">
                   Start Enrollment <CheckCircle2 className="h-4 w-4" />
                 </Link>
@@ -160,7 +160,7 @@ export default function ParentAddChild() {
                           <Badge variant={rejected ? "destructive" : "warning"}>{rejected ? "Needs changes" : "Pending approval"}</Badge>
                         </div>
                         {rejected && (
-                          <Button size="sm" asChild className="mt-4">
+                          <Button size="sm" asChild className="mt-4 !bg-brand-green !text-white hover:!bg-brand-greenDark">
                             <Link to="/parent/enrollment">Edit &amp; resubmit</Link>
                           </Button>
                         )}
@@ -213,7 +213,7 @@ export default function ParentAddChild() {
             without it needing a real backend.
           </p>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Button asChild>
+            <Button asChild className="!bg-brand-green !text-white hover:!bg-brand-greenDark">
               <Link to="/parent/enrollment?childId=c-3">
                 Continue with demo learner <CheckCircle2 className="h-4 w-4" />
               </Link>
@@ -267,7 +267,7 @@ export default function ParentAddChild() {
                 <Label htmlFor="gender">Gender</Label>
                 <Select value={form.gender} onValueChange={(v) => update("gender", v)}>
                   <SelectTrigger id="gender">
-                    <SelectValue placeholder="Select" />
+                    <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="female">Female</SelectItem>
@@ -293,7 +293,7 @@ export default function ParentAddChild() {
               </Select>
             </div>
             {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
-            <Button type="submit" className="mt-2">
+            <Button type="submit" className="mt-2 !bg-brand-green !text-white hover:!bg-brand-greenDark">
               <CheckCircle2 className="h-4 w-4" /> Add child
             </Button>
           </form>

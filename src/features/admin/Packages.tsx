@@ -554,6 +554,7 @@ export default function AdminPackages() {
                   min="0"
                   value={planForm.price}
                   onChange={(e) => setPlanForm((f) => ({ ...f, price: e.target.value }))}
+                  placeholder="e.g. 2500"
                 />
               </div>
               <div className="grid gap-1.5">
@@ -564,6 +565,7 @@ export default function AdminPackages() {
                   min="1"
                   value={planForm.sessionsIncluded}
                   onChange={(e) => setPlanForm((f) => ({ ...f, sessionsIncluded: e.target.value }))}
+                  placeholder="e.g. 8"
                 />
               </div>
             </div>
