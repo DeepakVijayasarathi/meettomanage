@@ -19,25 +19,39 @@ export function useFixedButtonCollision(buttonRef: RefObject<HTMLElement | null>
   useEffect(() => {
     let frame: number | null = null;
 
-    function checkCollision() {
-      frame = null;
-      const button = buttonRef.current;
-      if (!button) return;
-
-      const rect = button.getBoundingClientRect();
-      const stack = document.elementsFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-
-      // A leaf element with its own direct text is a reasonable stand-in for "real content"
-      // (a date, a figure, a label) without needing to know any given page's structure —
-      // generic layout wrappers (main, page/card containers) never carry text directly, only
-      // through further-nested children.
-      const covering = stack.some((el) => {
+    // A leaf element with its own direct text is a reasonable stand-in for "real content"
+    // (a date, a figure, a label) without needing to know any given page's structure —
+    // generic layout wrappers (main, page/card containers) never carry text directly, only
+    // through further-nested children.
+    function hasCoveredText(x: number, y: number, button: HTMLElement): boolean {
+      const stack = document.elementsFromPoint(x, y);
+      return stack.some((el) => {
         if (el === button || button.contains(el)) return false;
         for (const node of el.childNodes) {
           if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) return true;
         }
         return false;
       });
+    }
+
+    function checkCollision() {
+      frame = null;
+      const button = buttonRef.current;
+      if (!button) return;
+
+      const rect = button.getBoundingClientRect();
+      // Sample several points across the button's footprint, not just its exact center —
+      // on a 48x48 button the center pixel can land on padding/whitespace inside a card
+      // (e.g. the gap between a "Phone" row and a "Department" row) while the rest of the
+      // button still visually sits on top of that row's text. A single center sample missed
+      // that case entirely; five points spread across the footprint catch it.
+      const covering = [
+        [0.5, 0.5],
+        [0.25, 0.25],
+        [0.75, 0.25],
+        [0.25, 0.75],
+        [0.75, 0.75],
+      ].some(([fx, fy]) => hasCoveredText(rect.left + rect.width * fx, rect.top + rect.height * fy, button));
       setCoversContent(covering);
     }
 

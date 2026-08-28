@@ -267,7 +267,7 @@ export function DoubtChatbot({ role }: { role: Role }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "fixed bottom-[140px] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 hover:opacity-100 sm:bottom-[84px] sm:right-6",
+          "fixed bottom-[140px] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg outline-none transition-all hover:scale-105 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:bottom-[84px] sm:right-6",
           coversContent && !open && "opacity-30"
         )}
         aria-label={open ? "Close Ask a Doubt" : "Ask a doubt"}
