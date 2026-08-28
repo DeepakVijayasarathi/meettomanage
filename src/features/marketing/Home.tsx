@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BarChart3,
   CalendarCheck2,
+  ChevronDown,
   CheckCircle2,
   Hand,
   HeartHandshake,
@@ -15,6 +16,7 @@ import {
   Sparkles,
   Video,
   Wallet,
+  XCircle,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -130,6 +132,38 @@ const STATS = [
   { value: "24/7", label: "Automated fee & reminder engine" },
 ];
 
+/** Anchors into this same page — kept to sections that actually exist, so the nav never promises more than the page delivers. */
+const NAV_LINKS = [
+  { label: "Platform", href: "#features" },
+  { label: "Portals", href: "#portals" },
+  { label: "FAQ", href: "#faq" },
+  { label: "Blog", href: "/blog" },
+];
+
+/** Every answer restates a fact already stated elsewhere on this page (STATS/FEATURES/PAIN_POINTS) — no numbers or claims invented for this section alone. */
+const FAQS = [
+  {
+    q: "Is this just another video-call tool?",
+    a: "No — the live classroom is one part of it. Scheduling, admissions, billing and reporting all live in the same system, so a session connects straight to attendance, invoices and reports instead of sitting in its own app.",
+  },
+  {
+    q: "How long can a family access a class recording?",
+    a: "Recordings stay available for a 15-day window after each session, from the same portal the family already uses to check schedules and pay fees.",
+  },
+  {
+    q: "What happens when a fee payment is late?",
+    a: "Invoices generate automatically and a family's access can suspend automatically when a payment is overdue — then restore instantly the moment they pay, no manual follow-up needed.",
+  },
+  {
+    q: "Do teachers, parents and admins all use the same login screen?",
+    a: "Yes. One sign-in, then each of the 8 role-based portals — admin, teacher, parent, student and more — shows only what that person needs.",
+  },
+  {
+    q: "How do I see it before committing to anything?",
+    a: "Book a free demo class. No payment details required — we match you with a teacher and send the join link by email.",
+  },
+];
+
 const SESSION_TILES = [
   { label: "Teacher", initial: "T", bg: "#F97316" },
   { label: "Aarav", initial: "A", bg: "#5B6472" },
@@ -151,28 +185,51 @@ export default function MarketingHome() {
       />
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Logo />
-          <div className="flex items-center gap-2">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+          <Logo wordmarkClassName="hidden sm:inline" />
+
+          {/* Section anchors — desktop only. On narrow screens there's only room for the two
+              CTAs (see the mobile-header wrap this replaced), so wayfinding there stays limited
+              to scrolling; that's an acceptable trade for not cramping the primary actions. */}
+          <nav aria-label="Page sections" className="hidden items-center gap-7 lg:flex">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-sm font-semibold text-[#5B6472] transition-colors hover:text-[#171B22]"
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <Button
               variant="outline"
-              className="border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5"
+              className="border-[#171B22]/15 px-2.5 text-[#171B22] hover:bg-[#171B22]/5 sm:px-4"
               onClick={() => setDemoOpen(true)}
             >
-              Book a Demo
+              <span className="sm:hidden">Demo</span>
+              <span className="hidden sm:inline">Book a Demo</span>
             </Button>
-            <Button asChild className="!bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+            <Button asChild className="!bg-[#F97316] px-3 !text-white hover:!bg-[#EA580C] sm:px-4">
               <Link to="/login">
-                Sign In <ArrowRight className="h-4 w-4" />
+                Sign In <ArrowRight className="hidden h-4 w-4 sm:inline" />
               </Link>
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 py-14 lg:grid-cols-2 lg:py-20">
-        <div>
+      {/* Hero — the faint top-right glow echoes the dark CTA banner's radial glow lower down,
+          a quiet visual bookend rather than a one-off decoration. */}
+      <section className="relative overflow-hidden">
+        <div
+          className="pointer-events-none absolute -right-24 -top-32 h-[28rem] w-[28rem] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(249,115,22,0.10), rgba(249,115,22,0) 70%)" }}
+        />
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 py-14 lg:grid-cols-2 lg:py-20">
+          <div>
           <div className="motion-safe:animate-slide-up inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
             <Sparkles className="h-3.5 w-3.5" /> Learning Management &amp; Virtual Classroom Platform
           </div>
@@ -294,13 +351,15 @@ export default function MarketingHome() {
             </div>
           </div>
         </div>
+        </div>
       </section>
 
       {/* Pain points → solutions */}
-      <section className="border-t border-black/10 bg-white py-20">
+      <section className="border-t border-black/10 bg-[#FBFBFC] py-16 sm:py-20">
         <div className="mx-auto max-w-3xl px-6">
           <Reveal>
-            <h2 className="font-display text-3xl font-extrabold leading-[1.15] tracking-tight sm:text-4xl md:text-5xl">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">The old way vs. {brand.name}</p>
+            <h2 className="font-display mt-3 text-3xl font-extrabold leading-[1.15] tracking-tight sm:text-4xl md:text-5xl">
               You didn't start an academy to manage five different apps.
             </h2>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-[#5B6472] sm:text-lg">
@@ -309,13 +368,19 @@ export default function MarketingHome() {
             </p>
           </Reveal>
 
-          <div className="mt-16 divide-y divide-black/10">
+          <div className="mt-14 flex flex-col gap-4">
             {PAIN_POINTS.map((p, i) => (
-              <Reveal key={p.pain} delayMs={i * 80} className="py-8">
-                <p className="text-lg leading-snug text-[#5B6472] sm:text-xl">{p.pain}</p>
-                <p className="mt-3 text-lg font-bold leading-snug text-[#171B22] sm:text-xl">
-                  <span className="text-[#EA580C]">→</span> {p.fix}
-                </p>
+              <Reveal key={p.pain} delayMs={i * 80}>
+                <div className="rounded-2xl border border-black/10 bg-white p-6 sm:p-7">
+                  <div className="flex items-start gap-3">
+                    <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#B8BEC9]" />
+                    <p className="text-base leading-snug text-[#5B6472] sm:text-lg">{p.pain}</p>
+                  </div>
+                  <div className="mt-4 flex items-start gap-3 border-t border-dashed border-black/10 pt-4">
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#EA580C]" />
+                    <p className="text-base font-bold leading-snug text-[#171B22] sm:text-lg">{p.fix}</p>
+                  </div>
+                </div>
               </Reveal>
             ))}
           </div>
@@ -323,7 +388,7 @@ export default function MarketingHome() {
       </section>
 
       {/* Feature grid */}
-      <section className="border-t border-black/10 bg-[#F5F6F9] py-16">
+      <section id="features" className="scroll-mt-20 border-t border-black/10 bg-[#F5F6F9] py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">Platform</p>
@@ -356,7 +421,7 @@ export default function MarketingHome() {
       </section>
 
       {/* Portals */}
-      <section className="bg-white py-16">
+      <section id="portals" className="scroll-mt-20 bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mx-auto max-w-2xl text-center">
             <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EDEFF3] px-3.5 py-1.5 text-xs font-semibold text-[#262D37]">
@@ -379,9 +444,12 @@ export default function MarketingHome() {
                     to="/portal-select"
                     className="group flex h-full flex-col gap-3 rounded-2xl border border-black/10 bg-[#F5F6F9] p-5 transition-all hover:-translate-y-1 hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
+                    {/* meta.hex ties each card to that role's own color identity across the
+                        app (sidebar, PortalSelect, login role picker) instead of a flat
+                        one-off navy, so a returning user recognizes "their" portal by color. */}
                     <span
                       className="flex h-11 w-11 items-center justify-center rounded-xl text-white"
-                      style={{ backgroundColor: "#1A1F27" }}
+                      style={{ backgroundColor: meta.hex }}
                     >
                       <meta.icon className="h-[22px] w-[22px]" />
                     </span>
@@ -400,8 +468,34 @@ export default function MarketingHome() {
         </div>
       </section>
 
+      {/* FAQ */}
+      <section id="faq" className="scroll-mt-20 border-t border-black/10 bg-[#F5F6F9] py-16 sm:py-20">
+        <div className="mx-auto max-w-3xl px-6">
+          <Reveal>
+            <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">FAQ</p>
+            <h2 className="font-display mt-3 text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Questions academies ask before switching
+            </h2>
+          </Reveal>
+
+          <div className="mt-10 flex flex-col gap-3">
+            {FAQS.map((item, i) => (
+              <Reveal key={item.q} delayMs={i * 60}>
+                <details className="group rounded-2xl border border-black/10 bg-white open:shadow-soft">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-bold text-[#171B22] marker:content-none [&::-webkit-details-marker]:hidden">
+                    {item.q}
+                    <ChevronDown className="h-4 w-4 shrink-0 text-[#5B6472] transition-transform duration-200 group-open:rotate-180" />
+                  </summary>
+                  <p className="px-5 pb-5 text-sm leading-relaxed text-[#5B6472]">{item.a}</p>
+                </details>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA banner */}
-      <section className="bg-white py-16">
+      <section className="bg-white py-16 sm:py-20">
         <Reveal className="mx-auto max-w-4xl">
           <div className="relative overflow-hidden rounded-[28px] bg-[#1A1F27] px-8 py-12 text-center shadow-pop sm:px-14">
             <div
@@ -433,13 +527,77 @@ export default function MarketingHome() {
         </Reveal>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-left">
-          <Logo imgClassName="h-7 w-7" />
-          <Link to="/blog" className="text-xs font-semibold text-[#5B6472] hover:text-[#EA580C]">
-            Blog
-          </Link>
+      {/* Footer — every link below points at a real route or in-page section (no Privacy/
+          Terms/social links, since none of those exist yet; inventing the URLs would just
+          trade a sparse footer for a broken one). */}
+      <footer className="border-t border-black/10 bg-[#F5F6F9] pb-8 pt-14">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-10 px-6 sm:grid-cols-4">
+          <div className="col-span-2 sm:col-span-1">
+            <Logo imgClassName="h-8 w-8" />
+            <p className="mt-4 max-w-[22ch] text-sm leading-relaxed text-[#5B6472]">
+              Live teaching, scheduling, admissions and billing — one role-based system for your whole academy.
+            </p>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#8B93A1]">Platform</p>
+            <ul className="mt-4 flex flex-col gap-3">
+              <li>
+                <a href="#features" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
+                  Features
+                </a>
+              </li>
+              <li>
+                <a href="#portals" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
+                  Portals
+                </a>
+              </li>
+              <li>
+                <a href="#faq" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
+                  FAQ
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#8B93A1]">Get started</p>
+            <ul className="mt-4 flex flex-col gap-3">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setDemoOpen(true)}
+                  className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
+                >
+                  Book a Demo
+                </button>
+              </li>
+              <li>
+                <Link to="/login" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
+                  Sign In
+                </Link>
+              </li>
+              <li>
+                <Link to="/portal-select" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
+                  Explore Portals
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#8B93A1]">Resources</p>
+            <ul className="mt-4 flex flex-col gap-3">
+              <li>
+                <Link to="/blog" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
+                  Blog
+                </Link>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mx-auto mt-12 max-w-6xl border-t border-black/10 px-6 pt-6">
           <p className="text-xs font-medium text-[#5B6472]">
             © {new Date().getFullYear()} {brand.name}. All rights reserved.
           </p>

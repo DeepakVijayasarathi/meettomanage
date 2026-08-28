@@ -6,9 +6,12 @@ interface LogoProps {
   imgClassName?: string;
   showWordmark?: boolean;
   variant?: "light" | "dark";
+  /** Extra classes on the wordmark <span> — e.g. `"hidden sm:inline"` to drop the text on
+      narrow headers where it would otherwise wrap and crowd sibling nav buttons. */
+  wordmarkClassName?: string;
 }
 
-export function Logo({ className, imgClassName, showWordmark = true, variant = "dark" }: LogoProps) {
+export function Logo({ className, imgClassName, showWordmark = true, variant = "dark", wordmarkClassName }: LogoProps) {
   const brand = useBrand();
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
@@ -27,8 +30,9 @@ export function Logo({ className, imgClassName, showWordmark = true, variant = "
       {showWordmark && (
         <span
           className={cn(
-            "font-display text-[15px] font-extrabold tracking-tight",
-            variant === "dark" ? "text-foreground" : "text-white"
+            "font-display whitespace-nowrap text-[15px] font-extrabold tracking-tight",
+            variant === "dark" ? "text-foreground" : "text-white",
+            wordmarkClassName
           )}
         >
           {brand.name}
