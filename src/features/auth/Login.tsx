@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type SVGProps } from "react";
+import { useState, type CSSProperties } from "react";
 import { useLocation, useNavigate, Navigate, Link } from "react-router-dom";
 import { AlertCircle, ArrowRight, CalendarCheck2, Eye, EyeOff, IndianRupee, Loader2, Lock, Mail, Sparkles, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { apiEnabled, getAccessToken } from "@/lib/api";
 import { getRemember, setRemember } from "@/lib/authStorage";
 import { login } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
-import { safeInternalPath } from "@/lib/utils";
+import { cn, safeInternalPath } from "@/lib/utils";
 import type { Role } from "@/types";
 
 // Floating feature badges over the hero panel — colour comes from the brand-accent
@@ -29,29 +29,6 @@ const PIN_LENGTH = 4;
 // Scoped to this page only (not the global `font-display` mapping, which stays Inter
 // everywhere else) — a warmer, rounder headline face for the two big greeting moments.
 const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
-
-function GoogleIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
-      <path
-        fill="#4285F4"
-        d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"
-      />
-      <path
-        fill="#34A853"
-        d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M11.69 28.18A13.96 13.96 0 0 1 10.94 24c0-1.45.25-2.86.7-4.18v-5.7H4.34A21.98 21.98 0 0 0 2 24c0 3.55.85 6.91 2.34 9.88z"
-      />
-      <path
-        fill="#EA4335"
-        d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"
-      />
-    </svg>
-  );
-}
 
 export default function Login() {
   useLightBrandScope();
@@ -136,6 +113,15 @@ export default function Login() {
         className="relative hidden overflow-hidden lg:block"
         style={{ background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 60%, color-mix(in srgb, hsl(var(--primary)) 60%, black) 100%)" }}
       >
+        {/* Faint dot-grid texture — pure decoration, kept theme-neutral (white at low
+            opacity) so it never needs its own brand-color wiring. */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.15]"
+          style={{
+            backgroundImage: "radial-gradient(rgba(255,255,255,0.7) 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+          }}
+        />
         <div
           className="pointer-events-none absolute inset-0"
           style={{ background: "radial-gradient(circle at 25% 15%, hsl(var(--brand-accent) / 0.28), transparent 55%)" }}
@@ -149,8 +135,12 @@ export default function Login() {
         <p className="absolute left-10 top-8 text-xs font-medium text-white/60">© 2026 {brand.name}</p>
 
         <div className="absolute right-10 top-16 flex flex-col gap-4">
-          {HERO_BADGES.map((badge) => (
-            <div key={badge.label} className="flex items-center gap-3 rounded-2xl bg-white/95 px-4 py-3 shadow-pop backdrop-blur">
+          {HERO_BADGES.map((badge, i) => (
+            <div
+              key={badge.label}
+              style={{ animationDelay: `${i * 90}ms`, animationFillMode: "backwards" }}
+              className="animate-slide-up flex items-center gap-3 rounded-2xl bg-white/95 px-4 py-3 shadow-pop backdrop-blur transition-transform hover:-translate-y-0.5"
+            >
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-accent/15 text-brand-accent">
                 <badge.icon className="h-5 w-5" />
               </span>
@@ -159,7 +149,7 @@ export default function Login() {
           ))}
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 p-12">
+        <div className="animate-slide-up absolute inset-x-0 bottom-0 p-12">
           <h1 style={{ fontFamily: HEADLINE_FONT }} className="text-4xl font-bold leading-[1.1] text-white xl:text-5xl">
             Teach live.
             <br />
@@ -173,7 +163,7 @@ export default function Login() {
 
       {/* Right — sign-in */}
       <div className="flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm">
+        <div className="animate-fade-in w-full max-w-sm">
           <div className="flex flex-col items-center text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-pop ring-1 ring-brand-ink/10">
               <img src={brand.logoUrl ?? "/logo-icon.png"} alt={brand.name} className="h-11 w-11 object-contain" />
@@ -187,21 +177,7 @@ export default function Login() {
             <p className="mt-1.5 text-sm text-brand-ink/70">Sign in to your account and continue</p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setError("Google sign-in isn't set up for this deployment yet — use email and PIN below.")}
-            className="mt-7 flex w-full items-center justify-center gap-2.5 rounded-xl border border-brand-ink/15 bg-white px-4 py-2.5 text-sm font-semibold text-brand-ink shadow-sm transition-colors hover:bg-brand-ink/[0.03]"
-          >
-            <GoogleIcon className="h-4 w-4" /> Continue with Google
-          </button>
-
-          <div className="mt-6 flex items-center gap-3">
-            <span className="h-px flex-1 bg-brand-ink/10" />
-            <span className="text-xs font-semibold uppercase tracking-wide text-brand-ink/40">Email sign in</span>
-            <span className="h-px flex-1 bg-brand-ink/10" />
-          </div>
-
-          <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
                 Email
@@ -251,10 +227,24 @@ export default function Login() {
                   type="button"
                   onClick={() => setShowPin((v) => !v)}
                   aria-label={showPin ? "Hide PIN" : "Show PIN"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-ink/35 hover:text-brand-ink/60"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded text-brand-ink/35 transition-colors hover:text-brand-ink/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
+              </div>
+              {/* Purely decorative fill progress — the input's own maxLength/required
+                  already enforce the real constraint; this just gives the familiar
+                  OTP-style "digits entered" feedback as you type. */}
+              <div className="mt-0.5 flex gap-1.5" aria-hidden="true">
+                {Array.from({ length: PIN_LENGTH }, (_, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      "h-1.5 flex-1 rounded-full transition-colors duration-200",
+                      i < pin.length ? "bg-brand-accent" : "bg-brand-ink/10"
+                    )}
+                  />
+                ))}
               </div>
             </div>
 
@@ -305,7 +295,7 @@ export default function Login() {
               type="submit"
               size="lg"
               disabled={submitting}
-              className="mt-1 w-full !bg-gradient-to-r !from-primary !to-brand-accent !text-white hover:!opacity-90"
+              className="mt-1 w-full !bg-gradient-to-r !from-primary !to-brand-accent !text-white shadow-md transition-all hover:!opacity-90 hover:shadow-lg"
             >
               {submitting ? (
                 <>
