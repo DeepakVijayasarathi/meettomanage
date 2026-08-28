@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { AppShell } from "@/components/AppShell";
@@ -8,6 +9,9 @@ import { Logo } from "@/components/Logo";
 
 const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Store = lazy(() => import("@/features/marketing/Store"));
+const Demo = lazy(() => import("@/features/marketing/Demo"));
+const BlogList = lazy(() => import("@/features/marketing/BlogList"));
+const BlogPost = lazy(() => import("@/features/marketing/BlogPost"));
 const Login = lazy(() => import("@/features/auth/Login"));
 const PortalSelect = lazy(() => import("@/features/auth/PortalSelect"));
 const ForgotPassword = lazy(() => import("@/features/auth/ForgotPassword"));
@@ -103,144 +107,149 @@ function RouteFallback() {
 
 export default function App() {
   return (
-    <TooltipProvider delayDuration={200}>
-      <BrowserRouter>
-        <Suspense fallback={<RouteFallback />}>
-          <Routes>
-            <Route path="/" element={<MarketingHome />} />
-            <Route path="/store" element={<Store />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/portal-select" element={<PortalSelect />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-pin" element={<ResetPin />} />
-
-            {/* Immersive, full-screen classroom — rendered outside the portal shell */}
-            <Route
-              path="/teacher/live/:sessionId"
-              element={
-                <RequireAuth role="teacher">
-                  <LiveClassroom mode="teacher" />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/parent/live/:sessionId"
-              element={
-                // also={["student"]}: the Student Experience dashboard's own "Join Class" CTA
-                // links here directly (it's the same kid-facing classroom, just reached via the
-                // /student preview instead of the parent portal) — without this a student-role
-                // session got silently bounced back to /student instead of joining.
-                <RequireAuth role="parent" also={["student"]}>
-                  <LiveClassroom mode="student" />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/meet/personal"
-              element={
-                // Every role the "My meeting link" / Start button (PersonalMeetingButton)
-                // actually appears on — staff who need an ad-hoc video room, not the
-                // teacher/parent/student roles, which use a real scheduled class instead.
-                <RequireAuth role="admin" also={["subadmin", "management", "coordinator", "admission"]}>
-                  <PersonalMeetingRoom />
-                </RequireAuth>
-              }
-            />
-
-            <Route path="/admin" element={<RequireAuth role="admin"><AppShell role="admin"><Outlet /></AppShell></RequireAuth>}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="users" element={<AdminUsers />} />
-              <Route path="permissions" element={<AdminPermissions />} />
-              <Route path="courses" element={<AdminCourses />} />
-              <Route path="departments" element={<AdminDepartments />} />
-              <Route path="quiz-bank" element={<AdminQuizQuestions />} />
-              <Route path="batches" element={<AdminBatches />} />
-              <Route path="calendar" element={<AdminAcademicCalendar />} />
-              <Route path="sessions" element={<AdminSessions />} />
-              <Route path="resources" element={<AdminResources />} />
-              <Route path="billing" element={<AdminBilling />} />
-              <Route path="packages" element={<AdminPackages />} />
-              <Route path="payment-mapping" element={<AdminPaymentMapping />} />
-              <Route path="payouts" element={<AdminPayouts />} />
-              <Route path="fee-suspension" element={<AdminFeeSuspension />} />
-              <Route path="reports" element={<AdminReports />} />
-              <Route path="bulk-email" element={<AdminBulkEmail />} />
-              <Route path="email-templates" element={<AdminEmailTemplates />} />
-              <Route path="progress-reports" element={<AdminProgressReports />} />
-              <Route path="chatbot" element={<AdminChatbot />} />
-              <Route path="enrollments" element={<AdminEnrollments />} />
-              <Route path="store-inquiries" element={<AdminStoreInquiries />} />
-              <Route path="settings" element={<AdminSettings />} />
-              <Route path="monitoring" element={<AdminMonitoring />} />
-              <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
-            </Route>
-
-            <Route path="/teacher" element={<RequireAuth role="teacher"><AppShell role="teacher"><Outlet /></AppShell></RequireAuth>}>
-              <Route index element={<TeacherDashboard />} />
-              <Route path="classes" element={<TeacherMyClasses />} />
-              <Route path="attendance" element={<TeacherAttendance />} />
-              <Route path="recordings" element={<TeacherRecordings />} />
-              <Route path="demo-feedback" element={<TeacherDemoFeedback />} />
-              <Route path="doubts" element={<TeacherDoubts />} />
-              <Route path="leave" element={<TeacherLeave />} />
-              <Route path="payout" element={<TeacherPayout />} />
-              <Route path="resources" element={<TeacherResources />} />
-            </Route>
-
-            <Route path="/parent" element={<RequireAuth role="parent"><AppShell role="parent"><Outlet /></AppShell></RequireAuth>}>
-              <Route index element={<ParentDashboard />} />
-              <Route path="enrollment" element={<ParentEnrollment />} />
-              <Route path="schedule" element={<ParentSchedule />} />
-              <Route path="resources" element={<ParentResources />} />
-              <Route path="recordings" element={<ParentRecordings />} />
-              <Route path="billing" element={<ParentBilling />} />
-              <Route path="notifications" element={<ParentNotifications />} />
-              <Route path="add-child" element={<ParentAddChild />} />
-            </Route>
-
-            <Route path="/subadmin" element={<RequireAuth role="subadmin"><AppShell role="subadmin"><Outlet /></AppShell></RequireAuth>}>
-              <Route index element={<SubAdminDashboard />} />
-              <Route path="permissions" element={<SubAdminPermissions />} />
-              <Route path="integrations" element={<SubAdminIntegrations />} />
-              <Route path="reports" element={<SubAdminReports />} />
-              <Route path="audit-log" element={<SubAdminAuditLog />} />
-            </Route>
-
-            <Route path="/admission" element={<RequireAuth role="admission"><AppShell role="admission"><Outlet /></AppShell></RequireAuth>}>
-              <Route index element={<AdmissionDashboard />} />
-              <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
-              <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
-              <Route path="demo-teacher-assignment/:bookingId" element={<AdmissionDemoTeacherAssignment />} />
-              <Route path="demo-feedback" element={<AdmissionDemoFeedback />} />
-              <Route path="leads" element={<AdmissionLeads />} />
-              <Route path="payments" element={<AdmissionPayments />} />
-              <Route path="conversion" element={<AdmissionConversion />} />
-              <Route path="reports" element={<AdmissionReports />} />
-            </Route>
-
-            <Route path="/coordinator" element={<RequireAuth role="coordinator"><AppShell role="coordinator"><Outlet /></AppShell></RequireAuth>}>
-              <Route index element={<CoordinatorDashboard />} />
-              <Route path="calendar" element={<CoordinatorCalendar />} />
-              <Route path="availability" element={<CoordinatorAvailability />} />
-            </Route>
-
-            <Route path="/management" element={<RequireAuth role="management"><AppShell role="management"><Outlet /></AppShell></RequireAuth>}>
-              <Route index element={<ManagementDashboard />} />
-              <Route path="revenue" element={<ManagementRevenue />} />
-              <Route path="performance" element={<ManagementPerformance />} />
-              <Route path="reports" element={<ManagementReports />} />
-            </Route>
-
-            {/* The student view doubles as the parent's "what my child sees" preview. */}
-            <Route path="/student" element={<RequireAuth role="student" also={["parent"]}><AppShell role="student"><Outlet /></AppShell></RequireAuth>}>
-              <Route index element={<StudentDashboard />} />
-            </Route>
-
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-      <Toaster />
-    </TooltipProvider>
+    <HelmetProvider>
+      <TooltipProvider delayDuration={200}>
+        <BrowserRouter>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path="/" element={<MarketingHome />} />
+              <Route path="/store" element={<Store />} />
+              <Route path="/demo" element={<Demo />} />
+              <Route path="/blog" element={<BlogList />} />
+              <Route path="/blog/:slug" element={<BlogPost />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/portal-select" element={<PortalSelect />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-pin" element={<ResetPin />} />
+  
+              {/* Immersive, full-screen classroom — rendered outside the portal shell */}
+              <Route
+                path="/teacher/live/:sessionId"
+                element={
+                  <RequireAuth role="teacher">
+                    <LiveClassroom mode="teacher" />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/parent/live/:sessionId"
+                element={
+                  // also={["student"]}: the Student Experience dashboard's own "Join Class" CTA
+                  // links here directly (it's the same kid-facing classroom, just reached via the
+                  // /student preview instead of the parent portal) — without this a student-role
+                  // session got silently bounced back to /student instead of joining.
+                  <RequireAuth role="parent" also={["student"]}>
+                    <LiveClassroom mode="student" />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/meet/personal"
+                element={
+                  // Every role the "My meeting link" / Start button (PersonalMeetingButton)
+                  // actually appears on — staff who need an ad-hoc video room, not the
+                  // teacher/parent/student roles, which use a real scheduled class instead.
+                  <RequireAuth role="admin" also={["subadmin", "management", "coordinator", "admission"]}>
+                    <PersonalMeetingRoom />
+                  </RequireAuth>
+                }
+              />
+  
+              <Route path="/admin" element={<RequireAuth role="admin"><AppShell role="admin"><Outlet /></AppShell></RequireAuth>}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="permissions" element={<AdminPermissions />} />
+                <Route path="courses" element={<AdminCourses />} />
+                <Route path="departments" element={<AdminDepartments />} />
+                <Route path="quiz-bank" element={<AdminQuizQuestions />} />
+                <Route path="batches" element={<AdminBatches />} />
+                <Route path="calendar" element={<AdminAcademicCalendar />} />
+                <Route path="sessions" element={<AdminSessions />} />
+                <Route path="resources" element={<AdminResources />} />
+                <Route path="billing" element={<AdminBilling />} />
+                <Route path="packages" element={<AdminPackages />} />
+                <Route path="payment-mapping" element={<AdminPaymentMapping />} />
+                <Route path="payouts" element={<AdminPayouts />} />
+                <Route path="fee-suspension" element={<AdminFeeSuspension />} />
+                <Route path="reports" element={<AdminReports />} />
+                <Route path="bulk-email" element={<AdminBulkEmail />} />
+                <Route path="email-templates" element={<AdminEmailTemplates />} />
+                <Route path="progress-reports" element={<AdminProgressReports />} />
+                <Route path="chatbot" element={<AdminChatbot />} />
+                <Route path="enrollments" element={<AdminEnrollments />} />
+                <Route path="store-inquiries" element={<AdminStoreInquiries />} />
+                <Route path="settings" element={<AdminSettings />} />
+                <Route path="monitoring" element={<AdminMonitoring />} />
+                <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
+              </Route>
+  
+              <Route path="/teacher" element={<RequireAuth role="teacher"><AppShell role="teacher"><Outlet /></AppShell></RequireAuth>}>
+                <Route index element={<TeacherDashboard />} />
+                <Route path="classes" element={<TeacherMyClasses />} />
+                <Route path="attendance" element={<TeacherAttendance />} />
+                <Route path="recordings" element={<TeacherRecordings />} />
+                <Route path="demo-feedback" element={<TeacherDemoFeedback />} />
+                <Route path="doubts" element={<TeacherDoubts />} />
+                <Route path="leave" element={<TeacherLeave />} />
+                <Route path="payout" element={<TeacherPayout />} />
+                <Route path="resources" element={<TeacherResources />} />
+              </Route>
+  
+              <Route path="/parent" element={<RequireAuth role="parent"><AppShell role="parent"><Outlet /></AppShell></RequireAuth>}>
+                <Route index element={<ParentDashboard />} />
+                <Route path="enrollment" element={<ParentEnrollment />} />
+                <Route path="schedule" element={<ParentSchedule />} />
+                <Route path="resources" element={<ParentResources />} />
+                <Route path="recordings" element={<ParentRecordings />} />
+                <Route path="billing" element={<ParentBilling />} />
+                <Route path="notifications" element={<ParentNotifications />} />
+                <Route path="add-child" element={<ParentAddChild />} />
+              </Route>
+  
+              <Route path="/subadmin" element={<RequireAuth role="subadmin"><AppShell role="subadmin"><Outlet /></AppShell></RequireAuth>}>
+                <Route index element={<SubAdminDashboard />} />
+                <Route path="permissions" element={<SubAdminPermissions />} />
+                <Route path="integrations" element={<SubAdminIntegrations />} />
+                <Route path="reports" element={<SubAdminReports />} />
+                <Route path="audit-log" element={<SubAdminAuditLog />} />
+              </Route>
+  
+              <Route path="/admission" element={<RequireAuth role="admission"><AppShell role="admission"><Outlet /></AppShell></RequireAuth>}>
+                <Route index element={<AdmissionDashboard />} />
+                <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
+                <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
+                <Route path="demo-teacher-assignment/:bookingId" element={<AdmissionDemoTeacherAssignment />} />
+                <Route path="demo-feedback" element={<AdmissionDemoFeedback />} />
+                <Route path="leads" element={<AdmissionLeads />} />
+                <Route path="payments" element={<AdmissionPayments />} />
+                <Route path="conversion" element={<AdmissionConversion />} />
+                <Route path="reports" element={<AdmissionReports />} />
+              </Route>
+  
+              <Route path="/coordinator" element={<RequireAuth role="coordinator"><AppShell role="coordinator"><Outlet /></AppShell></RequireAuth>}>
+                <Route index element={<CoordinatorDashboard />} />
+                <Route path="calendar" element={<CoordinatorCalendar />} />
+                <Route path="availability" element={<CoordinatorAvailability />} />
+              </Route>
+  
+              <Route path="/management" element={<RequireAuth role="management"><AppShell role="management"><Outlet /></AppShell></RequireAuth>}>
+                <Route index element={<ManagementDashboard />} />
+                <Route path="revenue" element={<ManagementRevenue />} />
+                <Route path="performance" element={<ManagementPerformance />} />
+                <Route path="reports" element={<ManagementReports />} />
+              </Route>
+  
+              {/* The student view doubles as the parent's "what my child sees" preview. */}
+              <Route path="/student" element={<RequireAuth role="student" also={["parent"]}><AppShell role="student"><Outlet /></AppShell></RequireAuth>}>
+                <Route index element={<StudentDashboard />} />
+              </Route>
+  
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+        <Toaster />
+      </TooltipProvider>
+    </HelmetProvider>
   );
 }

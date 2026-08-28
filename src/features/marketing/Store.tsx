@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { EmptyState } from "@/components/EmptyState";
 import { Logo } from "@/components/Logo";
 import { BookDemoDialog } from "@/components/BookDemoDialog";
+import { Seo } from "@/components/Seo";
 import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
 import { apiEnabled } from "@/lib/api";
@@ -101,6 +102,11 @@ export default function Store() {
 
   return (
     <div className="theme-light-scope min-h-screen bg-brand-cream text-brand-ink">
+      <Seo
+        title="Course Catalogue — Meet to Manage"
+        description="Browse current courses and book a free demo class — no account needed."
+        path="/store"
+      />
       <header className="sticky top-0 z-30 border-b border-brand-ink/10 bg-brand-cream/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link to="/" aria-label={`${brand.name} home`}>

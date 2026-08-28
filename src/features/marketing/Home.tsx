@@ -20,9 +20,30 @@ import {
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { BookDemoDialog } from "@/components/BookDemoDialog";
+import { Seo } from "@/components/Seo";
 import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
+import { useInView } from "@/hooks/useInView";
+import { cn } from "@/lib/utils";
+
+/** Fades and slides an element up once it scrolls into view — plays once, not on every pass. */
+function Reveal({ children, delayMs = 0, className }: { children: React.ReactNode; delayMs?: number; className?: string }) {
+  const { ref, inView } = useInView<HTMLDivElement>();
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "motion-safe:transition-all motion-safe:duration-700 motion-safe:ease-out",
+        inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6",
+        className
+      )}
+      style={{ transitionDelay: inView ? `${delayMs}ms` : "0ms" }}
+    >
+      {children}
+    </div>
+  );
+}
 
 interface FeatureItem {
   icon: LucideIcon;
@@ -83,6 +104,25 @@ const FEATURES: FeatureItem[] = [
   },
 ];
 
+const PAIN_POINTS = [
+  {
+    pain: "Fee reminders lost in a WhatsApp thread, and a child quietly drops out of class.",
+    fix: "Automatic invoices and dual-gateway billing — with instant fee-suspension and restoration the moment a parent pays.",
+  },
+  {
+    pain: "A demo booking sits in someone's inbox until the family gives up and goes elsewhere.",
+    fix: "An admissions pipeline that tracks every booking from first call to enrolled family.",
+  },
+  {
+    pain: "You find out a class had three no-shows a week later — if at all.",
+    fix: "Live attendance and engagement scores, the moment a session ends.",
+  },
+  {
+    pain: "Teaching happens on one app, billing on another, admissions on a third.",
+    fix: "One login. One role-based system. Every piece already connected.",
+  },
+];
+
 const STATS = [
   { value: "8", label: "Role-based portals" },
   { value: "100%", label: "Real-time classroom" },
@@ -104,6 +144,11 @@ export default function MarketingHome() {
 
   return (
     <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
+      <Seo
+        title="Meet to Manage — LMS & Virtual Classroom"
+        description="Meet to Manage brings live teaching, scheduling, admissions, billing and reporting into one role-based platform for schools and academies."
+        path="/"
+      />
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -128,18 +173,27 @@ export default function MarketingHome() {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 py-14 lg:grid-cols-2 lg:py-20">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
+          <div className="motion-safe:animate-slide-up inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
             <Sparkles className="h-3.5 w-3.5" /> Learning Management &amp; Virtual Classroom Platform
           </div>
-          <h1 className="font-display mt-5 text-4xl font-extrabold leading-[1.14] tracking-tight sm:text-5xl">
+          <h1
+            className="motion-safe:animate-slide-up font-display mt-5 text-4xl font-extrabold leading-[1.14] tracking-tight sm:text-5xl"
+            style={{ animationDelay: "80ms", animationFillMode: "backwards" }}
+          >
             Meet your students live.
             <span className="text-[#EA580C]"> Manage</span> your academy end to end.
           </h1>
-          <p className="mt-5 max-w-lg text-base leading-relaxed text-[#5B6472]">
+          <p
+            className="motion-safe:animate-slide-up mt-5 max-w-lg text-base leading-relaxed text-[#5B6472]"
+            style={{ animationDelay: "160ms", animationFillMode: "backwards" }}
+          >
             {brand.name} brings live teaching, scheduling, admissions, billing and reporting into a single,
             role-based system — so every meeting turns into progress everyone can track.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <div
+            className="motion-safe:animate-slide-up mt-8 flex flex-wrap items-center gap-3"
+            style={{ animationDelay: "240ms", animationFillMode: "backwards" }}
+          >
             <Button asChild size="lg" className="!bg-[#F97316] !text-white hover:!bg-[#EA580C]">
               <Link to="/login">
                 Sign In <ArrowRight className="h-4 w-4" />
@@ -150,7 +204,10 @@ export default function MarketingHome() {
             </Button>
           </div>
 
-          <div className="mt-10 grid grid-cols-2 gap-5 sm:grid-cols-4">
+          <div
+            className="motion-safe:animate-slide-up mt-10 grid grid-cols-2 gap-5 sm:grid-cols-4"
+            style={{ animationDelay: "320ms", animationFillMode: "backwards" }}
+          >
             {STATS.map((s) => (
               <div key={s.label}>
                 <p className="font-display text-2xl font-extrabold text-[#171B22]">{s.value}</p>
@@ -161,8 +218,11 @@ export default function MarketingHome() {
         </div>
 
         {/* Hero visual: live session mockup */}
-        <div className="relative mx-auto w-full max-w-md lg:max-w-none">
-          <div className="absolute -left-4 -top-4 z-10 flex h-14 w-14 -rotate-6 items-center justify-center rounded-full bg-white p-2 shadow-pop ring-1 ring-black/10">
+        <div
+          className="motion-safe:animate-slide-up relative mx-auto w-full max-w-md lg:max-w-none"
+          style={{ animationDelay: "160ms", animationFillMode: "backwards" }}
+        >
+          <div className="motion-safe:animate-float absolute -left-4 -top-4 z-10 flex h-14 w-14 -rotate-6 items-center justify-center rounded-full bg-white p-2 shadow-pop ring-1 ring-black/10">
             <img src="/logo-icon.png" alt="" className="h-full w-full object-contain" />
           </div>
 
@@ -177,7 +237,7 @@ export default function MarketingHome() {
                 <span className="text-xs font-semibold text-white/85">Live Session — Grade 4 Reading</span>
               </div>
               <span className="flex items-center gap-1.5 rounded-full bg-[#F97316] px-2.5 py-1 text-[10px] font-bold tracking-wide text-white">
-                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                <span className="motion-safe:animate-pulse h-1.5 w-1.5 rounded-full bg-white" />
                 LIVE
               </span>
             </div>
@@ -221,7 +281,10 @@ export default function MarketingHome() {
             </div>
           </div>
 
-          <div className="absolute -bottom-5 -right-3 flex items-center gap-2.5 rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-pop">
+          <div
+            className="motion-safe:animate-float absolute -bottom-5 -right-3 flex items-center gap-2.5 rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-pop"
+            style={{ animationDelay: "1.2s" }}
+          >
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF3EA] text-[#EA580C]">
               <CheckCircle2 className="h-5 w-5" />
             </span>
@@ -229,6 +292,32 @@ export default function MarketingHome() {
               <p className="text-sm font-bold text-[#171B22]">Class in progress</p>
               <p className="text-xs text-[#5B6472]">3 batches running now</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pain points → solutions */}
+      <section className="border-t border-black/10 bg-white py-20">
+        <div className="mx-auto max-w-3xl px-6">
+          <Reveal>
+            <h2 className="font-display text-3xl font-extrabold leading-[1.15] tracking-tight sm:text-4xl md:text-5xl">
+              You didn't start an academy to manage five different apps.
+            </h2>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-[#5B6472] sm:text-lg">
+              {brand.name} replaces the spreadsheet, the WhatsApp group and the sticky notes — one system, already
+              talking to itself.
+            </p>
+          </Reveal>
+
+          <div className="mt-16 divide-y divide-black/10">
+            {PAIN_POINTS.map((p, i) => (
+              <Reveal key={p.pain} delayMs={i * 80} className="py-8">
+                <p className="text-lg leading-snug text-[#5B6472] sm:text-xl">{p.pain}</p>
+                <p className="mt-3 text-lg font-bold leading-snug text-[#171B22] sm:text-xl">
+                  <span className="text-[#EA580C]">→</span> {p.fix}
+                </p>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
@@ -248,20 +337,19 @@ export default function MarketingHome() {
           </div>
 
           <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURES.map((f) => (
-              <div
-                key={f.title}
-                className="group rounded-2xl border border-black/10 bg-white p-5 transition-all hover:-translate-y-1 hover:shadow-pop"
-              >
-                <span
-                  className="flex h-11 w-11 items-center justify-center rounded-xl"
-                  style={{ backgroundColor: `${f.hex}1A`, color: f.hex }}
-                >
-                  <f.icon className="h-[22px] w-[22px]" />
-                </span>
-                <h3 className="mt-4 text-sm font-bold text-[#171B22]">{f.title}</h3>
-                <p className="mt-1.5 text-xs leading-relaxed text-[#5B6472]">{f.description}</p>
-              </div>
+            {FEATURES.map((f, i) => (
+              <Reveal key={f.title} delayMs={(i % 4) * 80}>
+                <div className="group h-full rounded-2xl border border-black/10 bg-white p-5 transition-all hover:-translate-y-1 hover:shadow-pop">
+                  <span
+                    className="flex h-11 w-11 items-center justify-center rounded-xl"
+                    style={{ backgroundColor: `${f.hex}1A`, color: f.hex }}
+                  >
+                    <f.icon className="h-[22px] w-[22px]" />
+                  </span>
+                  <h3 className="mt-4 text-sm font-bold text-[#171B22]">{f.title}</h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-[#5B6472]">{f.description}</p>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -283,28 +371,29 @@ export default function MarketingHome() {
           </div>
 
           <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {ROLE_ORDER.map((r) => {
+            {ROLE_ORDER.map((r, i) => {
               const meta = ROLE_META[r];
               return (
-                <Link
-                  key={r}
-                  to="/portal-select"
-                  className="group flex flex-col gap-3 rounded-2xl border border-black/10 bg-[#F5F6F9] p-5 transition-all hover:-translate-y-1 hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <span
-                    className="flex h-11 w-11 items-center justify-center rounded-xl text-white"
-                    style={{ backgroundColor: "#1A1F27" }}
+                <Reveal key={r} delayMs={(i % 4) * 80}>
+                  <Link
+                    to="/portal-select"
+                    className="group flex h-full flex-col gap-3 rounded-2xl border border-black/10 bg-[#F5F6F9] p-5 transition-all hover:-translate-y-1 hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
-                    <meta.icon className="h-[22px] w-[22px]" />
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-bold text-[#171B22]">{meta.label}</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-[#5B6472]">{meta.description}</p>
-                  </div>
-                  <span className="mt-auto flex items-center gap-1 text-xs font-semibold text-[#EA580C] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                    Explore <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </Link>
+                    <span
+                      className="flex h-11 w-11 items-center justify-center rounded-xl text-white"
+                      style={{ backgroundColor: "#1A1F27" }}
+                    >
+                      <meta.icon className="h-[22px] w-[22px]" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#171B22]">{meta.label}</h3>
+                      <p className="mt-1 text-xs leading-relaxed text-[#5B6472]">{meta.description}</p>
+                    </div>
+                    <span className="mt-auto flex items-center gap-1 text-xs font-semibold text-[#EA580C] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                      Explore <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </Link>
+                </Reveal>
               );
             })}
           </div>
@@ -313,39 +402,44 @@ export default function MarketingHome() {
 
       {/* CTA banner */}
       <section className="bg-white py-16">
-        <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[28px] bg-[#1A1F27] px-8 py-12 text-center shadow-pop sm:px-14">
-          <div
-            className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(249,115,22,0.35), rgba(249,115,22,0) 70%)" }}
-          />
-          <div className="relative">
-            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
-              <img src="/logo-icon.png" alt="" className="h-7 w-7 object-contain" />
-            </span>
-            <h2 className="font-display mt-5 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
-              Ready to bring every meeting under one roof?
-            </h2>
-            <p className="mx-auto mt-3 max-w-md text-sm text-white/60">
-              Sign in to your portal and pick up right where you left off — or explore what each role sees first.
-            </p>
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-              <Button asChild size="lg" className="!bg-[#F97316] !text-white hover:!bg-[#EA580C]">
-                <Link to="/login">
-                  Sign In <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="!bg-transparent border-white/30 !text-white hover:!bg-white/10">
-                <Link to="/portal-select">Explore Portals</Link>
-              </Button>
+        <Reveal className="mx-auto max-w-4xl">
+          <div className="relative overflow-hidden rounded-[28px] bg-[#1A1F27] px-8 py-12 text-center shadow-pop sm:px-14">
+            <div
+              className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full"
+              style={{ background: "radial-gradient(circle, rgba(249,115,22,0.35), rgba(249,115,22,0) 70%)" }}
+            />
+            <div className="relative">
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
+                <img src="/logo-icon.png" alt="" className="h-7 w-7 object-contain" />
+              </span>
+              <h2 className="font-display mt-5 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+                Ready to bring every meeting under one roof?
+              </h2>
+              <p className="mx-auto mt-3 max-w-md text-sm text-white/60">
+                Sign in to your portal and pick up right where you left off — or explore what each role sees first.
+              </p>
+              <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+                <Button asChild size="lg" className="!bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+                  <Link to="/login">
+                    Sign In <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="!bg-transparent border-white/30 !text-white hover:!bg-white/10">
+                  <Link to="/portal-select">Explore Portals</Link>
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* Footer */}
       <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-left">
           <Logo imgClassName="h-7 w-7" />
+          <Link to="/blog" className="text-xs font-semibold text-[#5B6472] hover:text-[#EA580C]">
+            Blog
+          </Link>
           <p className="text-xs font-medium text-[#5B6472]">
             © {new Date().getFullYear()} {brand.name}. All rights reserved.
           </p>

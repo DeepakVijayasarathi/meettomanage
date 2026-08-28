@@ -171,6 +171,9 @@ export default {
         },
         "page-in": { from: { opacity: "0", transform: "translateY(8px)" }, to: { opacity: "1", transform: "translateY(0)" } },
         shimmer: { from: { transform: "translateX(-100%)" }, to: { transform: "translateX(100%)" } },
+        // Gentle bob for floating decorative badges (marketing hero) — small amplitude,
+        // slow enough to read as "hovering" rather than distracting.
+        float: { "0%, 100%": { transform: "translateY(0)" }, "50%": { transform: "translateY(-8px)" } },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -183,6 +186,7 @@ export default {
         "badge-pop": "badge-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards",
         "page-in": "page-in 0.28s cubic-bezier(0.16,1,0.3,1)",
         shimmer: "shimmer 1.8s ease-in-out infinite",
+        float: "float 4s ease-in-out infinite",
       },
     },
   },
