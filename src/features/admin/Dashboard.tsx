@@ -1,4 +1,6 @@
-﻿import {
+﻿import { Link } from "react-router-dom";
+import type { LucideIcon } from "lucide-react";
+import {
   Users,
   UserCheck,
   IndianRupee,
@@ -10,6 +12,8 @@
   Undo2,
   LayoutGrid,
   Clock,
+  Rocket,
+  ArrowRight,
 } from "lucide-react";
 import {
   AreaChart,
@@ -36,6 +40,7 @@ import { SessionStatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent } from "@/lib/utils";
 import {
@@ -76,6 +81,14 @@ const ZERO_KPIS: typeof ADMIN_KPIS = {
 /** Local YYYY-MM-DD (matches the date key toFrontendSession produces). */
 function localDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+interface DashboardKpi {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  tone: "primary" | "success" | "warning" | "destructive" | "neutral";
+  trend?: { value: number; label?: string };
 }
 
 export default function AdminDashboard() {
@@ -134,6 +147,32 @@ export default function AdminDashboard() {
   // KPI above) — empty chart in API mode.
   const teacherUtilization = usingApi ? [] : TEACHER_UTILIZATION;
 
+  // Zero students means there's nothing yet to measure — every derived rate (revenue,
+  // conversion, attendance, renewal, refund, occupancy) is meaningless rather than a real
+  // "bad" 0. Distinguish that first-run state from a real computed zero so a fresh account
+  // reads as "waiting for activity" instead of "everything is broken".
+  const isFreshAccount = !dashboardLoading && !dashboardError && kpis.totalStudents === 0;
+  const emptyDetail = isFreshAccount ? "No activity yet" : undefined;
+
+  // Headline volume + money — the numbers that answer "how big is the business right now".
+  const primaryKpis: DashboardKpi[] = [
+    { label: "Total Students", value: formatNumber(kpis.totalStudents), icon: Users, tone: "primary", trend: usingApi ? undefined : { value: 6.2, label: "vs last month" } },
+    { label: "Active Students", value: formatNumber(kpis.activeStudents), icon: UserCheck, tone: "success", trend: usingApi ? undefined : { value: 3.8, label: "vs last month" } },
+    { label: "Revenue This Month", value: formatCurrency(kpis.revenueThisMonth), icon: IndianRupee, tone: "primary", trend: usingApi ? undefined : { value: kpis.revenueGrowth, label: "vs last month" } },
+    { label: "New Enrollments", value: formatNumber(kpis.enrollments), icon: GraduationCap, tone: "primary", trend: usingApi ? undefined : { value: 4.1, label: "vs last month" } },
+  ];
+
+  // Rates and quality signals — grouped by what they mean: green for healthy performance
+  // trends, gray for operational capacity, red for the one true risk metric (refunds).
+  const secondaryKpis: DashboardKpi[] = [
+    { label: "Conversion Rate", value: formatPercent(kpis.conversionRate), icon: TrendingUp, tone: "success", trend: usingApi ? undefined : { value: 2.4, label: "vs last month" } },
+    { label: "Attendance Rate", value: formatPercent(kpis.attendanceRate), icon: CalendarCheck2, tone: "success", trend: usingApi ? undefined : { value: 1.5, label: "vs last month" } },
+    { label: "Renewal Rate", value: formatPercent(kpis.renewalRate), icon: RefreshCw, tone: "success", trend: usingApi ? undefined : { value: -0.8, label: "vs last month" } },
+    { label: "Refund Rate", value: formatPercent(kpis.refundRate, 1), icon: Undo2, tone: "destructive", trend: usingApi ? undefined : { value: 0.4, label: "vs last month" } },
+    { label: "Teacher Utilization", value: formatPercent(kpis.teacherUtilization), icon: ClipboardCheck, tone: "neutral", trend: usingApi ? undefined : { value: -1.2, label: "vs last month" } },
+    { label: "Batch Occupancy", value: formatPercent(kpis.batchOccupancy), icon: LayoutGrid, tone: "neutral", trend: usingApi ? undefined : { value: 2.9, label: "vs last month" } },
+  ];
+
   return (
     <div>
       <PageHeader
@@ -143,103 +182,89 @@ export default function AdminDashboard() {
         actions={<PersonalMeetingButton />}
       />
 
-      {/* KPI row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="Total Students"
-          value={formatNumber(kpis.totalStudents)}
-          icon={Users}
-          tone="primary"
-          trend={usingApi ? undefined : { value: 6.2, label: "vs last month" }}
-          loading={dashboardLoading}
-          error={dashboardError}
-        />
-        <KpiCard
-          label="Active Students"
-          value={formatNumber(kpis.activeStudents)}
-          icon={UserCheck}
-          tone="success"
-          trend={usingApi ? undefined : { value: 3.8, label: "vs last month" }}
-          loading={dashboardLoading}
-          error={dashboardError}
-        />
-        <KpiCard
-          label="Revenue This Month"
-          value={formatCurrency(kpis.revenueThisMonth)}
-          icon={IndianRupee}
-          tone="primary"
-          trend={usingApi ? undefined : { value: kpis.revenueGrowth, label: "vs last month" }}
-          loading={dashboardLoading}
-          error={dashboardError}
-        />
-        <KpiCard
-          label="New Enrollments"
-          value={formatNumber(kpis.enrollments)}
-          icon={GraduationCap}
-          tone="primary"
-          trend={usingApi ? undefined : { value: 4.1, label: "vs last month" }}
-          loading={dashboardLoading}
-          error={dashboardError}
-        />
-        <KpiCard
-          label="Conversion Rate"
-          value={formatPercent(kpis.conversionRate)}
-          icon={TrendingUp}
-          tone="success"
-          trend={usingApi ? undefined : { value: 2.4, label: "vs last month" }}
-          loading={dashboardLoading}
-          error={dashboardError}
-        />
-        <KpiCard
-          label="Teacher Utilization"
-          value={formatPercent(kpis.teacherUtilization)}
-          icon={ClipboardCheck}
-          tone="primary"
-          trend={usingApi ? undefined : { value: -1.2, label: "vs last month" }}
-          loading={dashboardLoading}
-          error={dashboardError}
-        />
-        <KpiCard
-          label="Attendance Rate"
-          value={formatPercent(kpis.attendanceRate)}
-          icon={CalendarCheck2}
-          tone="success"
-          trend={usingApi ? undefined : { value: 1.5, label: "vs last month" }}
-          loading={dashboardLoading}
-          error={dashboardError}
-        />
-        <KpiCard
-          label="Renewal Rate"
-          value={formatPercent(kpis.renewalRate)}
-          icon={RefreshCw}
-          tone="success"
-          trend={usingApi ? undefined : { value: -0.8, label: "vs last month" }}
-          loading={dashboardLoading}
-          error={dashboardError}
-        />
-        <KpiCard
-          label="Refund Rate"
-          value={formatPercent(kpis.refundRate, 1)}
-          icon={Undo2}
-          tone="destructive"
-          trend={usingApi ? undefined : { value: 0.4, label: "vs last month" }}
-          loading={dashboardLoading}
-          error={dashboardError}
-        />
-        <KpiCard
-          label="Batch Occupancy"
-          value={formatPercent(kpis.batchOccupancy)}
-          icon={LayoutGrid}
-          tone="neutral"
-          trend={usingApi ? undefined : { value: 2.9, label: "vs last month" }}
-          loading={dashboardLoading}
-          error={dashboardError}
-        />
-      </div>
+      {isFreshAccount && (
+        <div className="mb-6 flex flex-col gap-4 rounded-xl border border-primary/20 bg-primary/5 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-4 ring-primary/5">
+              <Rocket className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Your dashboard is ready</p>
+              <p className="mt-0.5 max-w-xl text-sm text-muted-foreground">
+                Nothing below is broken — these metrics populate automatically once you set up courses and enroll
+                students. There&apos;s just no activity to measure yet.
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link to="/admin/courses">Set up courses</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link to="/admin/users">Add students</Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Primary KPI tier — growth & revenue, given the most visual weight on the page */}
+      <section>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Growth &amp; revenue</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {primaryKpis.map((kpi) => (
+            <KpiCard
+              key={kpi.label}
+              size="lg"
+              label={kpi.label}
+              value={kpi.value}
+              detail={emptyDetail}
+              icon={kpi.icon}
+              tone={kpi.tone}
+              trend={kpi.trend}
+              loading={dashboardLoading}
+              error={dashboardError}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Secondary KPI tier — rates and quality signals, deliberately more compact */}
+      <section className="mt-6">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Performance &amp; quality</h2>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          {secondaryKpis.map((kpi) => (
+            <KpiCard
+              key={kpi.label}
+              label={kpi.label}
+              value={kpi.value}
+              detail={emptyDetail}
+              icon={kpi.icon}
+              tone={kpi.tone}
+              trend={kpi.trend}
+              loading={dashboardLoading}
+              error={dashboardError}
+            />
+          ))}
+        </div>
+      </section>
 
       {/* Charts grid */}
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <ChartCard title="Revenue Trend" description="Monthly revenue, last 6 months" loading={dashboardLoading} error={dashboardError}>
+        <ChartCard
+          title="Revenue Trend"
+          description="Monthly revenue, last 6 months"
+          loading={dashboardLoading}
+          error={dashboardError}
+          empty={revenueTrend.length === 0}
+          emptyMessage="Revenue will appear here once payments are recorded."
+          action={
+            <Button asChild variant="ghost" size="sm" className="gap-1">
+              <Link to="/admin/reports">
+                View reports <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          }
+        >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={revenueTrend} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
               <defs>
@@ -260,7 +285,14 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Department Revenue" description="Share of revenue by department" loading={dashboardLoading} error={dashboardError}>
+        <ChartCard
+          title="Department Revenue"
+          description="Share of revenue by department"
+          loading={dashboardLoading}
+          error={dashboardError}
+          empty={departmentRevenue.length === 0}
+          emptyMessage="Department revenue will appear once enrollments are recorded."
+        >
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -286,7 +318,14 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Course Revenue" description="Collected revenue by course, all time" loading={dashboardLoading} error={dashboardError}>
+        <ChartCard
+          title="Course Revenue"
+          description="Collected revenue by course, all time"
+          loading={dashboardLoading}
+          error={dashboardError}
+          empty={courseRevenue.length === 0}
+          emptyMessage="Course revenue will appear here once enrollments are recorded."
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={courseRevenue} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
@@ -302,7 +341,14 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Enrollment Funnel" description="Demo to enrollment conversion, this quarter" loading={dashboardLoading} error={dashboardError}>
+        <ChartCard
+          title="Enrollment Funnel"
+          description="Demo to enrollment conversion, this quarter"
+          loading={dashboardLoading}
+          error={dashboardError}
+          empty={enrollmentFunnel.length === 0}
+          emptyMessage="Funnel data will appear once demos are logged."
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={enrollmentFunnel} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />

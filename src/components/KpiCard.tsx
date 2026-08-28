@@ -21,6 +21,10 @@ interface KpiCardProps {
   loading?: boolean;
   /** Shows an inline error instead of a value that would otherwise look like real zero data. */
   error?: string | null;
+  /** "lg" gives the metric more visual weight (bigger value + icon badge) for headline KPIs
+   *  pulled to the top of a dashboard. Defaults to "default" everywhere else — purely additive,
+   *  existing call sites are unaffected. */
+  size?: "default" | "lg";
 }
 
 const TONE_STYLES: Record<NonNullable<KpiCardProps["tone"]>, string> = {
@@ -31,8 +35,9 @@ const TONE_STYLES: Record<NonNullable<KpiCardProps["tone"]>, string> = {
   neutral: "bg-muted text-muted-foreground ring-4 ring-muted",
 };
 
-export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "primary", className, loading, error }: KpiCardProps) {
+export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "primary", className, loading, error, size = "default" }: KpiCardProps) {
   const positive = trend ? trend.value >= 0 : true;
+  const isLg = size === "lg";
 
   if (loading) {
     return (
@@ -40,9 +45,9 @@ export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "prima
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-2.5">
             <Skeleton className="h-3.5 w-20" />
-            <Skeleton className="h-6 w-16" />
+            <Skeleton className={cn("h-6 w-16", isLg && "h-7 w-24")} />
           </div>
-          {Icon && <Skeleton className="h-10 w-10 shrink-0 rounded-xl" />}
+          {Icon && <Skeleton className={cn("h-10 w-10 shrink-0 rounded-xl", isLg && "h-12 w-12")} />}
         </div>
       </Card>
     );
@@ -77,12 +82,25 @@ export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "prima
               ("Demo → Enrollment Co..."). Two lines fits every title in this app without
               growing the card for the common one-line case. */}
           <p className="line-clamp-2 text-xs font-medium text-muted-foreground sm:text-sm">{label}</p>
-          <p className="mt-1.5 truncate text-xl font-bold tracking-tight text-foreground sm:text-2xl">{value}</p>
+          <p
+            className={cn(
+              "mt-1.5 truncate font-bold tracking-tight text-foreground",
+              isLg ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"
+            )}
+          >
+            {value}
+          </p>
           {detail && <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">{detail}</p>}
         </div>
         {Icon && (
-          <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", TONE_STYLES[tone])}>
-            <Icon className="h-5 w-5" />
+          <span
+            className={cn(
+              "flex shrink-0 items-center justify-center rounded-xl",
+              isLg ? "h-12 w-12" : "h-10 w-10",
+              TONE_STYLES[tone]
+            )}
+          >
+            <Icon className={isLg ? "h-6 w-6" : "h-5 w-5"} />
           </span>
         )}
       </div>
