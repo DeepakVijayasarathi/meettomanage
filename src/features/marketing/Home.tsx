@@ -1,15 +1,16 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
   BarChart3,
-  BookOpen,
   CalendarCheck2,
   CheckCircle2,
+  Hand,
   HeartHandshake,
-  LayoutGrid,
-  Menu,
+  Mic,
   MessageSquare,
   PenTool,
+  ScreenShare,
   ShieldCheck,
   Sparkles,
   Video,
@@ -17,76 +18,66 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/Logo";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { BookDemoDialog } from "@/components/BookDemoDialog";
 import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
-import { cn } from "@/lib/utils";
 
 interface FeatureItem {
   icon: LucideIcon;
   title: string;
   description: string;
-  /** Literal Tailwind classes when the color matches a design-system token. */
-  colorClass?: string;
-  /** Raw hex fallback for a color with no matching token. */
-  hex?: string;
+  /** Meet to Manage brand accent — alternates orange/navy, no matching design-system token yet. */
+  hex: string;
 }
 
 const FEATURES: FeatureItem[] = [
   {
     icon: Video,
-    colorClass: "bg-brand-blue/10 text-brand-blue",
+    hex: "#F97316",
     title: "Live Classroom",
     description: "One-click Jitsi video, screen share, chat, raise-hand and teacher controls — built for real teaching, not just meetings.",
   },
   {
     icon: PenTool,
-    // No matching design-system token for this hex — kept as a literal color.
-    hex: "#8B5CF6",
+    hex: "#262D37",
     title: "Interactive Whiteboard",
     description: "Infinite, multi-page boards with drawing, drag & drop, tag & match and hotspot activities, synced live for every student.",
   },
   {
     icon: CalendarCheck2,
-    colorClass: "bg-role-teacher/10 text-role-teacher",
+    hex: "#F97316",
     title: "Smart Scheduling",
     description: "1:1 and group classes, conflict-free academic calendars, automatic no-show handling and intelligent rescheduling.",
   },
   {
     icon: HeartHandshake,
-    colorClass: "bg-brand-pink/10 text-brand-pink",
+    hex: "#262D37",
     title: "Admissions CRM",
     description: "Demo bookings, teacher feedback, follow-ups and a conversion pipeline that turns leads into enrolled families.",
   },
   {
     icon: Wallet,
-    colorClass: "bg-brand-green/10 text-brand-green",
+    hex: "#F97316",
     title: "Billing & Payments",
     description: "Subscriptions, auto invoices, dual payment-gateway routing and automatic fee-suspension with instant restoration.",
   },
   {
     icon: BarChart3,
-    colorClass: "bg-brand-cyan/10 text-brand-cyan",
+    hex: "#262D37",
     title: "Analytics & AI Reports",
     description: "Engagement scores, attendance trends, teacher performance and business KPIs — all in one live dashboard.",
   },
   {
     icon: Sparkles,
-    colorClass: "bg-status-scheduled/10 text-status-scheduled",
+    hex: "#F97316",
     title: "Gamification",
     description: "Live quizzes, stars, badges, milestones and leaderboards that make every class something kids look forward to.",
   },
   {
     icon: MessageSquare,
-    colorClass: "bg-role-coordinator/10 text-role-coordinator",
+    hex: "#262D37",
     title: "Notifications, Built In",
     description: "Email, SMS and WhatsApp reminders, booking confirmations and payment alerts — nobody misses a class.",
   },
@@ -99,47 +90,37 @@ const STATS = [
   { value: "24/7", label: "Automated fee & reminder engine" },
 ];
 
+const SESSION_TILES = [
+  { label: "Teacher", initial: "T", bg: "#F97316" },
+  { label: "Aarav", initial: "A", bg: "#5B6472" },
+  { label: "Riya", initial: "R", bg: "#EA580C" },
+  { label: "Sana", initial: "S", bg: "#3A4150" },
+];
+
 export default function MarketingHome() {
   useLightBrandScope();
   const brand = useBrand();
+  const [demoOpen, setDemoOpen] = useState(false);
 
   return (
-    <div className="theme-light-scope min-h-screen bg-brand-cream text-brand-ink">
+    <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
       {/* Nav */}
-      <header className="sticky top-0 z-30 border-b border-brand-ink/10 bg-brand-cream/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Logo />
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" className="hidden sm:inline-flex">
-              <Link to="/store">Browse Courses</Link>
+            <Button
+              variant="outline"
+              className="border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5"
+              onClick={() => setDemoOpen(true)}
+            >
+              Book a Demo
             </Button>
-            <Button asChild variant="ghost" className="hidden sm:inline-flex">
-              <Link to="/portal-select">Explore Portals</Link>
-            </Button>
-            <Button asChild className="!bg-brand-green !text-white hover:!bg-brand-greenDark">
+            <Button asChild className="!bg-[#F97316] !text-white hover:!bg-[#EA580C]">
               <Link to="/login">
                 Sign In <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="sm:hidden" aria-label="Open menu">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem asChild>
-                  <Link to="/store" className="cursor-pointer">
-                    <BookOpen /> Browse Courses
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/portal-select" className="cursor-pointer">
-                    <LayoutGrid /> Explore Portals
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -147,26 +128,24 @@ export default function MarketingHome() {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 py-14 lg:grid-cols-2 lg:py-20">
         <div>
-          <Badge className="gap-1.5 bg-brand-green/10 text-brand-greenDark hover:bg-brand-green/10">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
             <Sparkles className="h-3.5 w-3.5" /> Learning Management &amp; Virtual Classroom Platform
-          </Badge>
-          <h1 className="font-display mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
-            One platform for live classes,
-            <span className="text-brand-greenDark"> admissions</span>,
-            <span className="text-brand-blue"> billing</span> and every
-            <span className="text-brand-pink"> parent conversation</span>.
+          </div>
+          <h1 className="font-display mt-5 text-4xl font-extrabold leading-[1.14] tracking-tight sm:text-5xl">
+            Meet your students live.
+            <span className="text-[#EA580C]"> Manage</span> your academy end to end.
           </h1>
-          <p className="mt-5 max-w-lg text-base leading-relaxed text-brand-ink/65">
+          <p className="mt-5 max-w-lg text-base leading-relaxed text-[#5B6472]">
             {brand.name} brings live teaching, scheduling, admissions, billing and reporting into a single,
-            role-based system — so every class runs smoothly and every family stays in the loop.
+            role-based system — so every meeting turns into progress everyone can track.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button asChild size="lg" className="!bg-brand-green !text-white hover:!bg-brand-greenDark">
+            <Button asChild size="lg" className="!bg-[#F97316] !text-white hover:!bg-[#EA580C]">
               <Link to="/login">
                 Sign In <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="border-brand-ink/15 text-brand-ink hover:bg-brand-ink/5">
+            <Button asChild size="lg" variant="outline" className="border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5">
               <Link to="/portal-select">Explore Portals</Link>
             </Button>
           </div>
@@ -174,44 +153,95 @@ export default function MarketingHome() {
           <div className="mt-10 grid grid-cols-2 gap-5 sm:grid-cols-4">
             {STATS.map((s) => (
               <div key={s.label}>
-                <p className="font-display text-2xl font-extrabold text-brand-ink">{s.value}</p>
-                <p className="mt-0.5 text-xs font-medium leading-snug text-brand-ink/55">{s.label}</p>
+                <p className="font-display text-2xl font-extrabold text-[#171B22]">{s.value}</p>
+                <p className="mt-0.5 text-xs font-medium leading-snug text-[#5B6472]">{s.label}</p>
               </div>
             ))}
           </div>
         </div>
 
+        {/* Hero visual: live session mockup */}
         <div className="relative mx-auto w-full max-w-md lg:max-w-none">
-          <div className="absolute -left-4 -top-4 z-10 flex h-14 w-14 -rotate-6 items-center justify-center rounded-full bg-white p-2 shadow-pop ring-1 ring-brand-ink/10">
-            <img src={brand.logoUrl ?? "/logo-icon.png"} alt="" className="h-full w-full object-contain" />
+          <div className="absolute -left-4 -top-4 z-10 flex h-14 w-14 -rotate-6 items-center justify-center rounded-full bg-white p-2 shadow-pop ring-1 ring-black/10">
+            <img src="/logo-icon.png" alt="" className="h-full w-full object-contain" />
           </div>
-          <div className="overflow-hidden rounded-[28px] shadow-pop ring-4 ring-white">
-            <img
-              src="/login.png"
-              alt={`Two children reading together at ${brand.name}`}
-              className="aspect-[4/3] w-full object-cover"
-            />
+
+          <div className="overflow-hidden rounded-[24px] shadow-pop ring-4 ring-white">
+            <div className="flex items-center justify-between bg-[#1A1F27] px-4 py-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex gap-1">
+                  <span className="h-2 w-2 rounded-full bg-white/20" />
+                  <span className="h-2 w-2 rounded-full bg-white/20" />
+                  <span className="h-2 w-2 rounded-full bg-white/20" />
+                </div>
+                <span className="text-xs font-semibold text-white/85">Live Session — Grade 4 Reading</span>
+              </div>
+              <span className="flex items-center gap-1.5 rounded-full bg-[#F97316] px-2.5 py-1 text-[10px] font-bold tracking-wide text-white">
+                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                LIVE
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 bg-[#12151C] p-3.5">
+              {SESSION_TILES.map((tile) => (
+                <div
+                  key={tile.label}
+                  className="relative flex aspect-[4/3] items-center justify-center rounded-xl"
+                  style={{ background: "linear-gradient(160deg,#2B3140,#1B1F28)" }}
+                >
+                  <div
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white"
+                    style={{ backgroundColor: tile.bg }}
+                  >
+                    {tile.initial}
+                  </div>
+                  <span className="absolute bottom-2 left-2 rounded-md bg-black/35 px-1.5 py-0.5 text-[10px] font-semibold text-white/85">
+                    {tile.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-center gap-3 bg-[#1A1F27] p-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white">
+                <Mic className="h-3.5 w-3.5" />
+              </span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white">
+                <Video className="h-3.5 w-3.5" />
+              </span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F97316] text-white">
+                <Hand className="h-3.5 w-3.5" />
+              </span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white">
+                <MessageSquare className="h-3.5 w-3.5" />
+              </span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white">
+                <ScreenShare className="h-3.5 w-3.5" />
+              </span>
+            </div>
           </div>
-          <div className="absolute -bottom-5 -right-3 flex items-center gap-2 rounded-2xl border border-brand-ink/10 bg-white px-4 py-3 shadow-pop">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-green/10 text-brand-green">
+
+          <div className="absolute -bottom-5 -right-3 flex items-center gap-2.5 rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-pop">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF3EA] text-[#EA580C]">
               <CheckCircle2 className="h-5 w-5" />
             </span>
             <div className="leading-tight">
-              <p className="text-sm font-bold text-brand-ink">Live &amp; Running</p>
-              <p className="text-xs text-brand-ink/50">Classes in session right now</p>
+              <p className="text-sm font-bold text-[#171B22]">Class in progress</p>
+              <p className="text-xs text-[#5B6472]">3 batches running now</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Feature grid */}
-      <section className="border-t border-brand-ink/10 bg-white py-16">
+      <section className="border-t border-black/10 bg-[#F5F6F9] py-16">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
-              Everything a modern learning academy needs
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">Platform</p>
+            <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Everything a growing academy needs to meet, teach and manage
             </h2>
-            <p className="mt-3 text-sm text-brand-ink/60">
+            <p className="mt-3 text-sm text-[#5B6472]">
               From the first demo class to monthly billing, {brand.name} covers the entire journey — for admins,
               teachers, parents and students alike.
             </p>
@@ -221,16 +251,16 @@ export default function MarketingHome() {
             {FEATURES.map((f) => (
               <div
                 key={f.title}
-                className="group rounded-2xl border border-brand-ink/10 p-5 transition-all hover:-translate-y-1 hover:shadow-pop"
+                className="group rounded-2xl border border-black/10 bg-white p-5 transition-all hover:-translate-y-1 hover:shadow-pop"
               >
                 <span
-                  className={cn("flex h-11 w-11 items-center justify-center rounded-xl", f.colorClass)}
-                  style={f.hex ? { backgroundColor: `${f.hex}1A`, color: f.hex } : undefined}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: `${f.hex}1A`, color: f.hex }}
                 >
                   <f.icon className="h-[22px] w-[22px]" />
                 </span>
-                <h3 className="mt-4 text-sm font-bold text-brand-ink">{f.title}</h3>
-                <p className="mt-1.5 text-xs leading-relaxed text-brand-ink/55">{f.description}</p>
+                <h3 className="mt-4 text-sm font-bold text-[#171B22]">{f.title}</h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-[#5B6472]">{f.description}</p>
               </div>
             ))}
           </div>
@@ -238,16 +268,16 @@ export default function MarketingHome() {
       </section>
 
       {/* Portals */}
-      <section className="bg-brand-cream py-16">
+      <section className="bg-white py-16">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <Badge className="gap-1.5 bg-brand-blue/10 text-brand-blue hover:bg-brand-blue/10">
-              <ShieldCheck className="h-3.5 w-3.5" /> One login, the right view every time
-            </Badge>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EDEFF3] px-3.5 py-1.5 text-xs font-semibold text-[#262D37]">
+              <ShieldCheck className="h-3.5 w-3.5" /> One login, every role
+            </div>
             <h2 className="font-display mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
-              A dedicated portal for every role
+              A dedicated portal for every person in your academy
             </h2>
-            <p className="mt-3 text-sm text-brand-ink/60">
+            <p className="mt-3 text-sm text-[#5B6472]">
               Eight role-based portals, each showing exactly what that person needs — nothing more, nothing less.
             </p>
           </div>
@@ -259,19 +289,19 @@ export default function MarketingHome() {
                 <Link
                   key={r}
                   to="/portal-select"
-                  className="group flex flex-col gap-3 rounded-2xl border border-brand-ink/10 bg-white p-5 transition-all hover:-translate-y-1 hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="group flex flex-col gap-3 rounded-2xl border border-black/10 bg-[#F5F6F9] p-5 transition-all hover:-translate-y-1 hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <span
                     className="flex h-11 w-11 items-center justify-center rounded-xl text-white"
-                    style={{ backgroundColor: meta.hex }}
+                    style={{ backgroundColor: "#1A1F27" }}
                   >
                     <meta.icon className="h-[22px] w-[22px]" />
                   </span>
                   <div>
-                    <h3 className="text-sm font-bold text-brand-ink">{meta.label}</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-brand-ink/55">{meta.description}</p>
+                    <h3 className="text-sm font-bold text-[#171B22]">{meta.label}</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-[#5B6472]">{meta.description}</p>
                   </div>
-                  <span className="mt-auto flex items-center gap-1 text-xs font-semibold text-brand-green opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                  <span className="mt-auto flex items-center gap-1 text-xs font-semibold text-[#EA580C] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                     Explore <ArrowRight className="h-3.5 w-3.5" />
                   </span>
                 </Link>
@@ -283,38 +313,46 @@ export default function MarketingHome() {
 
       {/* CTA banner */}
       <section className="bg-white py-16">
-        <div className="mx-auto max-w-4xl rounded-[28px] bg-brand-navy px-8 py-12 text-center shadow-pop sm:px-14">
-          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-white">
-            <BookOpen className="h-6 w-6" />
-          </span>
-          <h2 className="font-display mt-5 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
-            Ready to bring your academy online?
-          </h2>
-          <p className="mx-auto mt-3 max-w-md text-sm text-white/60">
-            Sign in to your portal and pick up right where you left off — or explore every role first.
-          </p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <Button asChild size="lg" className="!bg-brand-green !text-white hover:!bg-brand-greenDark">
-              <Link to="/login">
-                Sign In <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="!bg-transparent border-white/30 !text-white hover:!bg-white/10">
-              <Link to="/portal-select">Explore Portals</Link>
-            </Button>
+        <div className="relative mx-auto max-w-4xl overflow-hidden rounded-[28px] bg-[#1A1F27] px-8 py-12 text-center shadow-pop sm:px-14">
+          <div
+            className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full"
+            style={{ background: "radial-gradient(circle, rgba(249,115,22,0.35), rgba(249,115,22,0) 70%)" }}
+          />
+          <div className="relative">
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
+              <img src="/logo-icon.png" alt="" className="h-7 w-7 object-contain" />
+            </span>
+            <h2 className="font-display mt-5 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+              Ready to bring every meeting under one roof?
+            </h2>
+            <p className="mx-auto mt-3 max-w-md text-sm text-white/60">
+              Sign in to your portal and pick up right where you left off — or explore what each role sees first.
+            </p>
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+              <Button asChild size="lg" className="!bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+                <Link to="/login">
+                  Sign In <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="!bg-transparent border-white/30 !text-white hover:!bg-white/10">
+                <Link to="/portal-select">Explore Portals</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-brand-ink/10 bg-brand-cream py-8">
+      <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-left">
           <Logo imgClassName="h-7 w-7" />
-          <p className="text-xs font-medium text-brand-ink/45">
+          <p className="text-xs font-medium text-[#5B6472]">
             © {new Date().getFullYear()} {brand.name}. All rights reserved.
           </p>
         </div>
       </footer>
+
+      <BookDemoDialog open={demoOpen} onOpenChange={setDemoOpen} />
     </div>
   );
 }
