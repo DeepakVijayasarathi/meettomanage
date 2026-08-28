@@ -3,6 +3,8 @@ import {
   Circle as CircleIcon,
   Eraser,
   Hand,
+  Maximize2,
+  Minimize2,
   Minus,
   PenTool,
   Plus,
@@ -41,9 +43,26 @@ export interface Stroke {
 /** One synced board operation, relayed verbatim through the classroom hub. */
 export type BoardOp =
   | { kind: "stroke"; pageIndex: number; stroke: Stroke }
+  // Points added to an already-established stroke (one already delivered via a
+  // "stroke" op). Carries only the new points, not the whole growing array — a
+  // long, slow stroke sent as repeated full-array "stroke" ops would mean every
+  // later send re-transmits everything already sent before it, so total data
+  // over the stroke's lifetime grows with the square of its length instead of
+  // linearly. This is what actually keeps live-drawing traffic flat regardless
+  // of how long a single stroke runs.
+  | { kind: "strokeAppend"; pageIndex: number; strokeId: string; points: Point[] }
   | { kind: "clear"; pageIndex: number }
-  | { kind: "addPage" }
-  | { kind: "removePage"; pageIndex: number };
+  // Carries the new page's own index so every recipient can both grow their page list
+  // AND jump straight to it — previously this carried no index at all, so a page added
+  // by anyone other than the teacher grew the teacher's page count with nothing telling
+  // their view to actually move there (it silently stayed on whatever page they were on).
+  | { kind: "addPage"; pageIndex: number }
+  | { kind: "removePage"; pageIndex: number }
+  // Explicit page navigation, broadcast only by whoever holds board access (see canDraw
+  // below) — keeps the whole class looking at the same page of a shared board, the same
+  // way the strokes on it are already shared, instead of each viewer's "which page am I
+  // on" being silent local-only state no one else's switch ever touched.
+  | { kind: "goToPage"; pageIndex: number };
 
 interface Page {
   id: string;
@@ -165,6 +184,19 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   const [color, setColor] = useState(CHART_PALETTE[0]);
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [showActivity, setShowActivity] = useState(false);
+  // Fills the viewport on demand — the board otherwise lives in a ~380px sidebar, cramped
+  // for detailed drawing or a big class to read from the back. The canvas's own ResizeObserver
+  // (below) picks up the new, much larger container size automatically; nothing here touches
+  // canvas pixels directly.
+  const [maximized, setMaximized] = useState(false);
+  useEffect(() => {
+    if (!maximized) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMaximized(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [maximized]);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [lastCleared, setLastCleared] = useState<{ pageIndex: number; strokes: Stroke[] } | null>(null);
   const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string; sticky?: boolean } | null>(null);
@@ -175,6 +207,17 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   const containerRef = useRef<HTMLDivElement>(null);
   const drawingRef = useRef(false);
   const draftRef = useRef<Stroke | null>(null);
+  // Throttles in-progress stroke broadcasts during a drag — without this, remote
+  // viewers saw nothing at all until the pen lifted (commitDraft), so a signature or
+  // any slow, deliberate stroke looked like it "popped in" all at once after a multi-
+  // second gap. ~20 sends/sec reads as live drawing without flooding the hub per pixel.
+  const lastBoardSendRef = useRef(0);
+  // How many of the current stroke's points have already gone out, and whether the
+  // establishing "stroke" op has been sent yet — together these let later sends go
+  // out as small strokeAppend deltas instead of resending the whole (ever-growing)
+  // points array every throttle tick. Both reset per-stroke in handlePointerDown.
+  const sentPointCountRef = useRef(0);
+  const strokeEstablishedRef = useRef(false);
   const panRef = useRef<{ startX: number; startY: number; origin: Point } | null>(null);
   // Offscreen cache of this page's already-committed strokes. handlePointerMove used to call
   // a redraw() that replayed every committed stroke from scratch on every single pointer
@@ -263,6 +306,8 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     }
     drawingRef.current = true;
     draftRef.current = { id: nextId(), tool, points: [pt], color, width: strokeWidth };
+    sentPointCountRef.current = 0;
+    strokeEstablishedRef.current = false;
     canvasRef.current?.setPointerCapture(e.pointerId);
   }
 
@@ -280,6 +325,28 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
       draftRef.current.points = [draftRef.current.points[0], pt];
     }
     redraw();
+
+    // Broadcast the in-progress stroke so remote viewers see it grow live instead of
+    // only appearing once complete. The first send establishes the stroke (id, tool,
+    // color, width) with whatever points exist so far; every send after that carries
+    // only the points added since the last send, not the whole array again — see the
+    // BoardOp.strokeAppend comment for why that matters on a long stroke.
+    const now = performance.now();
+    if (onBoardOp && now - lastBoardSendRef.current >= 50) {
+      lastBoardSendRef.current = now;
+      const allPoints = draftRef.current.points;
+      if (!strokeEstablishedRef.current) {
+        strokeEstablishedRef.current = true;
+        sentPointCountRef.current = allPoints.length;
+        onBoardOp({ kind: "stroke", pageIndex, stroke: { ...draftRef.current, points: [...allPoints] } });
+      } else {
+        const newPoints = allPoints.slice(sentPointCountRef.current);
+        if (newPoints.length > 0) {
+          sentPointCountRef.current = allPoints.length;
+          onBoardOp({ kind: "strokeAppend", pageIndex, strokeId: draftRef.current.id, points: newPoints });
+        }
+      }
+    }
   }
 
   function commitDraft() {
@@ -290,7 +357,17 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     draftRef.current = null;
     setPages((prev) => prev.map((p, i) => (i === pageIndex ? { ...p, strokes: [...p.strokes, finished] } : p)));
     setLastCleared(null);
-    onBoardOp?.({ kind: "stroke", pageIndex, stroke: finished });
+    // Same delta logic as the throttled sends above: if the stroke was never
+    // established (a quick tap/short stroke that finished inside one throttle
+    // window), send it whole; otherwise only the tail end no send has covered yet.
+    if (!strokeEstablishedRef.current) {
+      onBoardOp?.({ kind: "stroke", pageIndex, stroke: finished });
+    } else {
+      const remaining = finished.points.slice(sentPointCountRef.current);
+      if (remaining.length > 0) {
+        onBoardOp?.({ kind: "strokeAppend", pageIndex, strokeId: finished.id, points: remaining });
+      }
+    }
     onInteraction?.();
   }
 
@@ -332,9 +409,10 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   }
 
   function addPage() {
+    const newIndex = pages.length;
     setPages((prev) => [...prev, { id: nextId(), strokes: [] }]);
-    setPageIndex(pages.length);
-    onBoardOp?.({ kind: "addPage" });
+    setPageIndex(newIndex);
+    onBoardOp?.({ kind: "addPage", pageIndex: newIndex });
   }
 
   function removePage() {
@@ -342,6 +420,14 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     setPages((prev) => prev.filter((_, i) => i !== pageIndex));
     setPageIndex((i) => Math.max(0, i - 1));
     onBoardOp?.({ kind: "removePage", pageIndex });
+  }
+
+  /** Local page switch; also tells the rest of the class to follow along whenever the
+   *  switcher actually holds board access (a passive viewer flipping through to look at
+   *  earlier pages shouldn't yank everyone else's view with them). */
+  function goToPage(newIndex: number) {
+    setPageIndex(newIndex);
+    if (canDraw) onBoardOp?.({ kind: "goToPage", pageIndex: newIndex });
   }
 
   // Apply remote board ops from classmates (relayed through the classroom hub).
@@ -354,31 +440,86 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
             // Pad so an op for a page we haven't created yet still lands
             const pages = [...prev];
             while (pages.length <= op.pageIndex) pages.push({ id: nextId(), strokes: [] });
-            return pages.map((p, i) => (i === op.pageIndex ? { ...p, strokes: [...p.strokes, op.stroke] } : p));
+            return pages.map((p, i) => {
+              if (i !== op.pageIndex) return p;
+              // Upsert by id rather than a blind push: a "stroke" op normally only
+              // arrives once per id (the establishing send — growth after that comes
+              // as strokeAppend below), but this stays a safe no-duplicate landing
+              // spot for any resync/reconnect path that resends a known id wholesale.
+              const existingIndex = p.strokes.findIndex((s) => s.id === op.stroke.id);
+              if (existingIndex === -1) return { ...p, strokes: [...p.strokes, op.stroke] };
+              const strokes = [...p.strokes];
+              strokes[existingIndex] = op.stroke;
+              return { ...p, strokes };
+            });
           });
+          break;
+        case "strokeAppend":
+          setPages((prev) =>
+            prev.map((p, i) => {
+              if (i !== op.pageIndex) return p;
+              const existingIndex = p.strokes.findIndex((s) => s.id === op.strokeId);
+              // The establishing "stroke" op for this id hasn't arrived yet (out-of-order
+              // delivery, or dropped) — nothing to append to, so drop this delta. The
+              // stroke will still show up complete once "stroke" lands, just without
+              // the mid-drawing animation for this one; never worth crashing over.
+              if (existingIndex === -1) return p;
+              const strokes = [...p.strokes];
+              strokes[existingIndex] = { ...strokes[existingIndex], points: [...strokes[existingIndex].points, ...op.points] };
+              return { ...p, strokes };
+            })
+          );
           break;
         case "clear":
           setPages((prev) => prev.map((p, i) => (i === op.pageIndex ? { ...p, strokes: [] } : p)));
           break;
         case "addPage":
-          setPages((prev) => [...prev, { id: nextId(), strokes: [] }]);
+          // Pad rather than just push one — if this client somehow missed an earlier
+          // addPage (a dropped message, joining mid-class), a single push would land the
+          // new page at the wrong index and permanently desync its page count from
+          // everyone else's. Padding to op.pageIndex always converges on the sender's count.
+          setPages((prev) => {
+            const next = [...prev];
+            while (next.length <= op.pageIndex) next.push({ id: nextId(), strokes: [] });
+            return next;
+          });
+          setPageIndex(op.pageIndex);
           break;
         case "removePage":
           setPages((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== op.pageIndex) : prev));
           setPageIndex((i) => Math.max(0, Math.min(i, pagesRef.current.length - 2)));
           break;
+        case "goToPage":
+          // Clamp defensively: if this client's page list hasn't caught up to an addPage
+          // that's still in flight, following straight to the sender's raw index could
+          // point past the end of what's rendered here yet.
+          setPageIndex(Math.max(0, Math.min(op.pageIndex, pagesRef.current.length - 1)));
+          break;
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscribeBoardOps]);
 
+  const maximizeButton = (
+    <Button
+      size="icon"
+      variant="ghost"
+      className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
+      title={maximized ? "Shrink the board back down" : "Make the board bigger"}
+      aria-label={maximized ? "Shrink the board back down" : "Make the board bigger"}
+      aria-pressed={maximized}
+      onClick={() => setMaximized((m) => !m)}
+    >
+      {maximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+    </Button>
+  );
+
   return (
-    <div className="flex h-full flex-col gap-2 p-3">
+    <div className={cn("flex h-full flex-col gap-2 p-3", maximized && "fixed inset-0 z-40 h-screen bg-brand-navy p-4")}>
       {canDraw ? (
         // Dark toolbar chrome matches the rest of the interactive panel (tabs, roster,
         // quiz) — only the canvas below stays a light "paper" surface, so this reads
         // as one dark product with a sheet of paper on it, not two stitched-together UIs.
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2 shadow-inner shadow-black/20 backdrop-blur-sm">
           <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1">
             {TOOLS.map(({ id, label, icon: Icon }) => (
               <button
@@ -461,7 +602,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               variant="ghost"
               className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
               aria-label="Previous page"
-              onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
+              onClick={() => goToPage(Math.max(0, pageIndex - 1))}
               disabled={pageIndex === 0}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -474,7 +615,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               variant="ghost"
               className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
               aria-label="Next page"
-              onClick={() => setPageIndex((i) => Math.min(pages.length - 1, i + 1))}
+              onClick={() => goToPage(Math.min(pages.length - 1, pageIndex + 1))}
               disabled={pageIndex === pages.length - 1}
             >
               <ChevronRight className="h-4 w-4" />
@@ -494,18 +635,49 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
                 <X className="h-4 w-4" />
               </Button>
             )}
+            <div className="ml-1 h-6 w-px bg-white/10" aria-hidden="true" />
+            {maximizeButton}
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/60">
+        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/60 shadow-inner shadow-black/20 backdrop-blur-sm">
           <span>👀 View only — ask your teacher for whiteboard access to draw</span>
-          <span className="text-white/40">
-            Page {pageIndex + 1}/{pages.length}
-          </span>
+          <div className="flex items-center gap-1">
+            {/* Without draw access there's no Add/Remove page — but browsing between
+                pages the teacher (or another student) already created is still just
+                looking, not editing, so it stays available here too. Previously this
+                branch had no page controls at all: a student without board access had
+                no way to move off whatever page they happened to land on. */}
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 text-white/60 hover:bg-white/10 hover:text-white"
+              aria-label="Previous page"
+              onClick={() => goToPage(Math.max(0, pageIndex - 1))}
+              disabled={pageIndex === 0}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <span className="whitespace-nowrap px-0.5 text-white/40">
+              Page {pageIndex + 1}/{pages.length}
+            </span>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 text-white/60 hover:bg-white/10 hover:text-white"
+              aria-label="Next page"
+              onClick={() => goToPage(Math.min(pages.length - 1, pageIndex + 1))}
+              disabled={pageIndex === pages.length - 1}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+            <div className="mx-1 h-5 w-px bg-white/10" aria-hidden="true" />
+            {maximizeButton}
+          </div>
         </div>
       )}
 
-      <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-cream shadow-pop">
+      <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-cream shadow-pop ring-1 ring-black/5">
         <canvas
           ref={canvasRef}
           className={cn(

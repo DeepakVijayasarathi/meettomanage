@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { CalendarClock, Plus, Users2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
+import { InlineAlert } from "@/components/InlineAlert";
+import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -24,8 +27,14 @@ import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { cancelSession, listSessions, markNoShow, rescheduleSession, scheduleSession, toFrontendSession, type NoShowParty } from "@/api/sessions";
+import { cancelSession, getJitsiJoin, listSessions, markNoShow, rescheduleSession, scheduleSession, toFrontendSession, type NoShowParty } from "@/api/sessions";
 import { listBatches, listTeacherOptions } from "@/api/batches";
+import { buildJitsiJoinUrl } from "@/lib/jitsi";
+import { useSession } from "@/state/session";
+
+// Monitor-only, same as Coordinator's own Join Class (coordinator/Calendar.tsx) --
+// Admin had no way at all to drop into a live class from this screen, real or demo.
+const JOINABLE_STATUSES: SessionStatus[] = ["scheduled", "demo", "rescheduled"];
 
 const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
   { value: "all", label: "All statuses" },
@@ -40,7 +49,9 @@ const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
 ];
 
 export default function AdminSessions() {
+  const { toast } = useToast();
   const usingApi = apiEnabled();
+  const { userName } = useSession();
   const { data: apiSessions, error: sessionsError, reload } = useApiData<ClassSession[]>(
     () => listSessions().then((items) => items.map(toFrontendSession)),
     []
@@ -57,6 +68,7 @@ export default function AdminSessions() {
   const [cancelTarget, setCancelTarget] = useState<ClassSession | null>(null);
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
+  const [joiningId, setJoiningId] = useState<string | null>(null);
 
   // Mark no-show dialog
   const [noShowTarget, setNoShowTarget] = useState<ClassSession | null>(null);
@@ -96,6 +108,10 @@ export default function AdminSessions() {
 
   function notify(ok: boolean, text: string) {
     setBanner({ ok, text });
+    // Demo-mode notices ("Demo mode — session not persisted.") also route through here —
+    // still worth a toast, matching how every other demo-mode confirmation in the app
+    // gives some feedback rather than silently closing the dialog.
+    toast({ variant: ok ? "success" : "error", title: ok ? "Done" : "Something went wrong", description: text });
     setTimeout(() => setBanner(null), 5000);
   }
 
@@ -106,8 +122,11 @@ export default function AdminSessions() {
     if (batch) setNewTeacher(batch.teacherProfileId);
   }
 
+  const durationMinutes = Number(newDuration);
+  const durationValid = Number.isFinite(durationMinutes) && durationMinutes > 0;
+
   async function handleSchedule() {
-    if (!newTeacher || !newDate || (newType === "Regular" && !newBatch)) return;
+    if (!newTeacher || !newDate || !durationValid || (newType === "Regular" && !newBatch)) return;
     if (!usingApi) {
       notify(true, "Demo mode — session not persisted.");
       setScheduleOpen(false);
@@ -117,7 +136,7 @@ export default function AdminSessions() {
     setScheduleError(null);
     try {
       const start = localToUtcIso(newDate, newTime);
-      const end = new Date(new Date(start).getTime() + (Number(newDuration) || 45) * 60000).toISOString();
+      const end = new Date(new Date(start).getTime() + durationMinutes * 60000).toISOString();
       await scheduleSession({
         batchId: newType === "Regular" ? newBatch : undefined,
         teacherProfileId: newTeacher,
@@ -129,7 +148,9 @@ export default function AdminSessions() {
       setScheduleOpen(false);
       reload();
     } catch (err) {
-      setScheduleError(err instanceof Error ? err.message : "Could not schedule the session.");
+      const message = err instanceof Error ? err.message : "Could not schedule the session.";
+      setScheduleError(message);
+      toast({ variant: "error", title: "Couldn't schedule session", description: message });
     } finally {
       setSaving(false);
     }
@@ -195,6 +216,22 @@ export default function AdminSessions() {
       reload();
     } catch (err) {
       notify(false, err instanceof Error ? err.message : "Could not cancel the session.");
+    }
+  }
+
+  async function joinSession(session: ClassSession) {
+    if (!usingApi) {
+      notify(true, "Demo mode — no live class to actually join.");
+      return;
+    }
+    setJoiningId(session.id);
+    try {
+      const join = await getJitsiJoin(session.id);
+      window.open(buildJitsiJoinUrl(join.domain, join.room, join.token, userName), "_blank", "noopener");
+    } catch (err) {
+      notify(false, err instanceof Error ? err.message : "Couldn't join this class.");
+    } finally {
+      setJoiningId(null);
     }
   }
 
@@ -278,6 +315,19 @@ export default function AdminSessions() {
             </Button>
           ) : (
             <div className="flex items-center gap-1.5">
+              {JOINABLE_STATUSES.includes(row.status) && row.meetingRoomId && (
+                <Button
+                  size="sm"
+                  disabled={joiningId === row.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    joinSession(row);
+                  }}
+                >
+                  <Video className="h-3.5 w-3.5" />
+                  {joiningId === row.id ? "Joining…" : "Join"}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -337,25 +387,18 @@ export default function AdminSessions() {
       />
 
       {usingApi && sessionsError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load the session calendar ({sessionsError}) — the schedule below may be incomplete.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       {banner && (
-        <div
-          role={banner.ok ? "status" : "alert"}
-          className={
-            banner.ok
-              ? "mb-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success"
-              : "mb-5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive"
-          }
-        >
+        <InlineAlert variant={banner.ok ? "success" : "error"} bordered className="mb-5">
           {banner.text}
-        </div>
+        </InlineAlert>
       )}
 
       <DataTable
@@ -365,19 +408,21 @@ export default function AdminSessions() {
         searchPlaceholder="Search sessions by title or teacher…"
         emptyTitle="No sessions in this window"
         emptyDescription="Schedule a session, or generate a batch schedule from Batches → Manage."
+        error={usingApi ? sessionsError : null}
+        onRetry={reload}
         toolbar={
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as SessionStatus | "all")}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterBar
+            filters={[
+              {
+                key: "status",
+                label: "Status",
+                value: statusFilter,
+                onChange: (v) => setStatusFilter(v as SessionStatus | "all"),
+                className: "w-48",
+                options: STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label })),
+              },
+            ]}
+          />
         }
       />
 
@@ -403,17 +448,15 @@ export default function AdminSessions() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="session-duration-select">Duration (min)</Label>
-                <Select value={newDuration} onValueChange={setNewDuration}>
-                  <SelectTrigger id="session-duration-select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="30">30</SelectItem>
-                    <SelectItem value="45">45</SelectItem>
-                    <SelectItem value="60">60</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="session-duration-input">Duration (min)</Label>
+                <Input
+                  id="session-duration-input"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={newDuration}
+                  onChange={(e) => setNewDuration(e.target.value)}
+                />
               </div>
             </div>
             {newType === "Regular" && (
@@ -442,7 +485,7 @@ export default function AdminSessions() {
                 <SelectContent>
                   {teachers.map((t) => (
                     <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
-                      {t.fullName} {t.department ? `· ${t.department}` : ""}
+                      {t.fullName} {t.departmentName ? `· ${t.departmentName}` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -465,7 +508,7 @@ export default function AdminSessions() {
               Cancel
             </Button>
             <Button
-              disabled={saving || !newTeacher || !newDate || (newType === "Regular" && !newBatch)}
+              disabled={saving || !newTeacher || !newDate || !durationValid || (newType === "Regular" && !newBatch)}
               onClick={handleSchedule}
             >
               {saving ? "Scheduling…" : "Schedule"}
@@ -522,9 +565,9 @@ export default function AdminSessions() {
               </DialogHeader>
               <div className="grid gap-4">
                 <div className="grid gap-1.5">
-                  <Label>Who didn't show up?</Label>
+                  <Label htmlFor="no-show-party-select">Who didn't show up?</Label>
                   <Select value={noShowParty} onValueChange={(v) => setNoShowParty(v as NoShowParty)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="no-show-party-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { AlertOctagon, ShieldOff, Undo2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
+import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -24,6 +26,7 @@ function daysOverdue(dueOn: string) {
 }
 
 export default function AdminFeeSuspension() {
+  const { toast } = useToast();
   const [statusOverride, setStatusOverride] = useState<Record<string, Child["feeStatus"]>>({});
   const [suspendTarget, setSuspendTarget] = useState<Child | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<Child | null>(null);
@@ -58,8 +61,11 @@ export default function AdminFeeSuspension() {
     try {
       await liftSuspension(suspension.id);
       await reloadSuspensions();
+      toast({ variant: "success", title: "Access restored" });
     } catch (err) {
-      setLiftError(err instanceof Error ? err.message : "Could not restore access. Try again.");
+      const message = err instanceof Error ? err.message : "Could not restore access. Try again.";
+      setLiftError(message);
+      toast({ variant: "error", title: "Couldn't restore access", description: message });
     } finally {
       setLiftingId(null);
     }
@@ -76,16 +82,14 @@ export default function AdminFeeSuspension() {
         />
 
         {suspensionsError && (
-          <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          <InlineAlert variant="warning" className="mb-4">
             Could not load suspended accounts ({suspensionsError}).{" "}
             <button type="button" className="underline" onClick={() => reloadSuspensions()}>
               Retry
             </button>
-          </p>
+          </InlineAlert>
         )}
-        {liftError && (
-          <p role="alert" className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{liftError}</p>
-        )}
+        {liftError && <InlineAlert variant="error" className="mb-4">{liftError}</InlineAlert>}
 
         {suspensions.length === 0 ? (
           <EmptyState icon={ShieldOff} title="No suspended accounts" description="Every account is currently in good standing." />

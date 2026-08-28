@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { LucideIcon } from "lucide-react";
-import { AlertCircle, Download, IndianRupee, PieChart as PieChartIcon, Users } from "lucide-react";
+import { AlertCircle, Download, IndianRupee, Inbox, PieChart as PieChartIcon, Users } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
@@ -46,9 +46,22 @@ interface SummaryCardProps {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  /** Zero-rows copy, specific to what this card summarizes — defaults to a generic fallback. */
+  emptyMessage?: string;
 }
 
-function SummaryCard({ icon: Icon, title, description, columns, rows, filename, loading, error, onRetry }: SummaryCardProps) {
+function SummaryCard({
+  icon: Icon,
+  title,
+  description,
+  columns,
+  rows,
+  filename,
+  loading,
+  error,
+  onRetry,
+  emptyMessage = "No data for this period.",
+}: SummaryCardProps) {
   return (
     <Card className="flex flex-col">
       <CardContent className="flex flex-1 flex-col p-5">
@@ -89,8 +102,9 @@ function SummaryCard({ icon: Icon, title, description, columns, rows, filename, 
             )}
           </div>
         ) : rows.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-            <span>No data for this period.</span>
+          <div className="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+            <Inbox className="h-5 w-5" />
+            <span>{emptyMessage}</span>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
@@ -178,6 +192,7 @@ export default function ManagementReports() {
           loading={loading}
           error={error}
           onRetry={reload}
+          emptyMessage="No revenue recorded in the last 6 months."
         />
         <SummaryCard
           icon={PieChartIcon}
@@ -189,6 +204,7 @@ export default function ManagementReports() {
           loading={loading}
           error={error}
           onRetry={reload}
+          emptyMessage="No department revenue to compare yet."
         />
         <SummaryCard
           icon={Users}
@@ -200,6 +216,7 @@ export default function ManagementReports() {
           loading={loading}
           error={error}
           onRetry={reload}
+          emptyMessage="No demos or enrollments recorded this quarter."
         />
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, BookOpen, Download, FileText, type LucideIcon, PlayCircle, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
@@ -96,7 +97,7 @@ export default function ParentResources() {
 
   return (
     <div>
-      <PageHeader title="Resources" description="Worksheets, reading books and any videos shared directly by your teacher. For class recordings, see Recordings in the sidebar." />
+      <PageHeader eyebrow="Learning" title="Resources" description="Worksheets, reading books and any videos shared directly by your teacher. For class recordings, see Recordings in the sidebar." />
       <MultiChildSwitcher />
 
       {child && !isEnrolled && (
@@ -114,17 +115,15 @@ export default function ParentResources() {
       )}
 
       {usingApi && resourcesError && (
-        <p role="alert" className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mt-4">
           Could not load resources ({resourcesError}).{" "}
           <button type="button" className="underline" onClick={() => reloadResources()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
-      {downloadError && (
-        <p role="alert" className="mt-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{downloadError}</p>
-      )}
+      {downloadError && <InlineAlert variant="warning" className="mt-4">{downloadError}</InlineAlert>}
 
       {!child ? (
         <EmptyState icon={BookOpen} title="No child selected" className="mt-6" />

@@ -3,6 +3,7 @@ import { PartyPopper, RefreshCcw, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SessionStatusBadge } from "@/components/StatusBadge";
@@ -31,6 +32,7 @@ const LOCKED_STATUSES: ClassSession["status"][] = ["cancelled", "completed", "ho
 const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo", "rescheduled"];
 
 export default function CoordinatorCalendar() {
+  const { toast } = useToast();
   const usingApi = apiEnabled();
   const { userName } = useSession();
   const { data: apiSessions, reload } = useApiData<ClassSession[]>(
@@ -73,10 +75,17 @@ export default function CoordinatorCalendar() {
       return;
     }
     // Coordinator "reschedule" pushes the session one week forward at the same slot.
-    const newStart = nextRescheduleSlot(session);
-    const newEnd = new Date(newStart.getTime() + session.duration * 60000);
-    await rescheduleSession(session.id, newStart.toISOString(), newEnd.toISOString());
-    reload();
+    try {
+      const newStart = nextRescheduleSlot(session);
+      const newEnd = new Date(newStart.getTime() + session.duration * 60000);
+      await rescheduleSession(session.id, newStart.toISOString(), newEnd.toISOString());
+      reload();
+      toast({ variant: "success", title: "Session rescheduled", description: `"${session.title}" moved to ${formatDate(nextRescheduleSlot(session).toISOString().slice(0, 10), "long")}.` });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not reschedule this session.";
+      toast({ variant: "error", title: "Couldn't reschedule session", description: message });
+      throw err;
+    }
   }
 
   async function doHoliday(session: ClassSession) {
@@ -85,8 +94,15 @@ export default function CoordinatorCalendar() {
       return;
     }
     // No session-level "holiday" state on the backend; cancelling frees the slot as the dialog states.
-    await cancelSession(session.id, "Marked as holiday by coordinator");
-    reload();
+    try {
+      await cancelSession(session.id, "Marked as holiday by coordinator");
+      reload();
+      toast({ variant: "success", title: "Session marked as holiday", description: `"${session.title}" was cancelled and freed from the schedule.` });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not mark this session as a holiday.";
+      toast({ variant: "error", title: "Couldn't mark holiday", description: message });
+      throw err;
+    }
   }
 
   // A bare room URL isn't enough once the Jitsi deployment enforces token verification (see

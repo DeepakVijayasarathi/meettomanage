@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
+import { useBrand } from "@/lib/branding";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
+import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -23,15 +26,18 @@ import { Progress } from "@/components/ui/progress";
 import { PARENTS, TEACHERS, ADMISSION_TEAM, SUB_ADMINS, getParentById } from "@/data/users";
 import { CHILDREN } from "@/data/children";
 import { getCourseById } from "@/data/courses";
+import { DEMO_DEPARTMENTS } from "@/data/departments";
 import type { AppUser, Child } from "@/types";
 import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { changeUserRole, createUser, deleteUser, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { bulkImportStudents, bulkImportUsers, changeUserRole, createUser, deleteUser, exportStudents, exportUsers, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
 import type { ApiRole } from "@/api/types";
 import { applyRoleToUser, listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
+import { listDepartments, type ApiDepartment } from "@/api/departments";
 
 function UserAvatar({ name, color }: { name: string; color: string }) {
   return (
@@ -58,8 +64,12 @@ const BASE_ADD_USER_ROLES: AddUserRoleOption[] = [
 ];
 
 // These preset names already have a dedicated base option above (or, for "admin", can
-// never be self-service created) — skip them so the flattened list has no look-alike duplicates.
-const ROLE_PRESET_NAMES_TO_SKIP = new Set(["admin", "teacher", "parent", "admission", "sub-admin"]);
+// never be self-service created) — skip them so the flattened list has no look-alike
+// duplicates. "student" is also skipped: it's a real system RoleDefinition (0 permissions,
+// DefaultRoute "/student"), but it exists only to back the Parent's own "Student View"
+// preview — assigning it to a staff account grants nothing useful and shows up as a
+// confusing "Student" badge on what's actually a Sub Admin account.
+const ROLE_PRESET_NAMES_TO_SKIP = new Set(["admin", "teacher", "parent", "admission", "sub-admin", "student"]);
 
 const FRONTEND_ROLE_TO_API: Record<string, ApiRole> = {
   parent: "Parent",
@@ -70,16 +80,18 @@ const FRONTEND_ROLE_TO_API: Record<string, ApiRole> = {
 };
 
 export default function AdminUsers() {
+  const brand = useBrand();
+  const { toast } = useToast();
   const {
     data: parents,
     error: parentsError,
     reload: reloadParents,
   } = useApiData(() => listUsers({ role: "Parent" }).then((r) => r.items.map(toAppUser)), PARENTS);
-  const { data: teachers, reload: reloadTeachers } = useApiData(
+  const { data: teachers, error: teachersError, reload: reloadTeachers } = useApiData(
     () => listUsers({ role: "Teacher" }).then((r) => r.items.map(toAppUser)),
     TEACHERS
   );
-  const { data: staff, reload: reloadStaff } = useApiData(
+  const { data: staff, error: staffError, reload: reloadStaff } = useApiData(
     async () => {
       const [admission, subAdmins] = await Promise.all([
         listUsers({ role: "AdmissionTeam" }),
@@ -89,7 +101,8 @@ export default function AdminUsers() {
     },
     [...ADMISSION_TEAM, ...SUB_ADMINS]
   );
-  const { data: students } = useApiData<StudentRow[]>(listStudents, CHILDREN);
+  const { data: students, error: studentsError, reload: reloadStudents } = useApiData<StudentRow[]>(listStudents, CHILDREN);
+  const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), DEMO_DEPARTMENTS);
 
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
   const [detailChild, setDetailChild] = useState<Child | null>(null);
@@ -128,7 +141,7 @@ export default function AdminUsers() {
   const [editUser, setEditUser] = useState<AppUser | null>(null);
   const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "" });
   const [editRole, setEditRole] = useState("");
-  const [editDepartment, setEditDepartment] = useState<"Phonics" | "Maths">("Phonics");
+  const [editDepartment, setEditDepartment] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -139,7 +152,7 @@ export default function AdminUsers() {
     setAddName("");
     setAddEmail("");
     setAddPhone("");
-    setAddDepartment("Phonics");
+    setAddDepartment(departments[0]?.id ?? "");
     setAddError(null);
     setAddOpen(true);
   }
@@ -152,7 +165,7 @@ export default function AdminUsers() {
       ? addUserRoleOptions.find((o) => o.roleDefinitionId === u.roleDefinitionId)
       : undefined;
     setEditRole(currentOption?.key ?? u.role);
-    setEditDepartment(u.department === "Maths" ? "Maths" : "Phonics");
+    setEditDepartment(u.departmentId ?? departments[0]?.id ?? "");
     setEditUser(u);
     setDetailUser(null);
   }
@@ -178,7 +191,7 @@ export default function AdminUsers() {
         firstName: editForm.firstName.trim(),
         lastName: editForm.lastName.trim(),
         phone: editForm.phone.trim() || undefined,
-        department: editingTeacherInPlace ? editDepartment : undefined,
+        departmentId: editingTeacherInPlace ? editDepartment : undefined,
       });
 
       // Admin accounts are untouchable through this action — the Role field is hidden for them.
@@ -194,7 +207,7 @@ export default function AdminUsers() {
               firstName: editForm.firstName.trim(),
               lastName: editForm.lastName.trim(),
               phone: editForm.phone.trim() || undefined,
-              department: editDepartment,
+              departmentId: editDepartment,
             });
           }
         }
@@ -207,8 +220,11 @@ export default function AdminUsers() {
       reloadParents();
       reloadTeachers();
       reloadStaff();
+      toast({ variant: "success", title: "Profile updated" });
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Could not update the profile.");
+      const message = err instanceof Error ? err.message : "Could not update the profile.";
+      setEditError(message);
+      toast({ variant: "error", title: "Couldn't update profile", description: message });
     } finally {
       setEditSaving(false);
     }
@@ -231,8 +247,11 @@ export default function AdminUsers() {
       reloadParents();
       reloadTeachers();
       reloadStaff();
+      toast({ variant: "success", title: "Account deleted", description: `${deleteTarget.name}'s account was removed.` });
     } catch (err) {
-      setBanner({ ok: false, text: err instanceof Error ? err.message : "Could not delete the account." });
+      const message = err instanceof Error ? err.message : "Could not delete the account.";
+      setBanner({ ok: false, text: message });
+      toast({ variant: "error", title: "Couldn't delete account", description: message });
     }
   }
 
@@ -265,8 +284,11 @@ export default function AdminUsers() {
     try {
       const pin = await resetPin(detailUser.id);
       setPinResult({ ok: true, pin });
+      toast({ variant: "success", title: "PIN reset", description: `A new PIN was generated for ${detailUser.name}.` });
     } catch (err) {
-      setPinResult({ ok: false, message: err instanceof Error ? err.message : "Could not reset the PIN." });
+      const message = err instanceof Error ? err.message : "Could not reset the PIN.";
+      setPinResult({ ok: false, message });
+      toast({ variant: "error", title: "Couldn't reset PIN", description: message });
     } finally {
       setResettingPin(false);
     }
@@ -283,7 +305,7 @@ export default function AdminUsers() {
   const [addName, setAddName] = useState("");
   const [addEmail, setAddEmail] = useState("");
   const [addPhone, setAddPhone] = useState("");
-  const [addDepartment, setAddDepartment] = useState<"Phonics" | "Maths">("Phonics");
+  const [addDepartment, setAddDepartment] = useState("");
   const [rolePresets, setRolePresets] = useState<ApiRolePreset[]>([]);
   const [addError, setAddError] = useState<string | null>(null);
   const [addSubmitting, setAddSubmitting] = useState(false);
@@ -423,7 +445,7 @@ export default function AdminUsers() {
         lastName: rest.join(" "),
         phone: addPhone.trim() || undefined,
         role: roleOption.apiRole,
-        department: roleOption.apiRole === "Teacher" ? addDepartment : undefined,
+        departmentId: roleOption.apiRole === "Teacher" ? addDepartment : undefined,
         roleDefinitionId: roleOption.roleDefinitionId,
       });
       setAddOpen(false);
@@ -433,8 +455,11 @@ export default function AdminUsers() {
       reloadParents();
       reloadTeachers();
       reloadStaff();
+      toast({ variant: "success", title: "User created" });
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Could not create the user.");
+      const message = err instanceof Error ? err.message : "Could not create the user.";
+      setAddError(message);
+      toast({ variant: "error", title: "Couldn't create user", description: message });
     } finally {
       setAddSubmitting(false);
     }
@@ -544,10 +569,18 @@ export default function AdminUsers() {
         render: (row) => {
           // A SubAdmin account may have a named preset applied (Management, Coordinator,
           // etc.) — show that instead of the generic base-role label whenever one's set.
-          const presetLabel = row.roleDefinitionId
-            ? addUserRoleOptions.find((o) => o.roleDefinitionId === row.roleDefinitionId)?.label
+          // A roleDefinitionId that doesn't resolve (e.g. a preset since excluded from this
+          // list, like "student") must NOT silently fall back to the generic label — that
+          // would misreport a zero-permission account as a full Parent Relationship Manager.
+          const preset = row.roleDefinitionId
+            ? addUserRoleOptions.find((o) => o.roleDefinitionId === row.roleDefinitionId)
             : undefined;
-          const label = row.role === "admission" ? "Admission Team" : presetLabel ?? "Parent Relationship Manager";
+          const label =
+            row.role === "admission"
+              ? "Admission Team"
+              : row.roleDefinitionId && !preset
+                ? "Custom preset"
+                : (preset?.label ?? "Parent Relationship Manager");
           return (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold capitalize text-foreground/80">
               {label}
@@ -576,29 +609,21 @@ export default function AdminUsers() {
       />
 
       {apiEnabled() && parentsError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not reach the API ({parentsError}) — showing demo data.
-        </p>
+        </InlineAlert>
       )}
 
       {banner && (
-        <p
-          role={banner.ok ? "status" : "alert"}
-          className={cn(
-            "mb-4 flex items-start gap-1.5 rounded-lg px-3 py-2 text-sm font-medium",
-            banner.ok ? "bg-success/10 text-success" : "bg-warning/10 text-warning-foreground"
-          )}
-        >
-          {banner.ok && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
+        <InlineAlert variant={banner.ok ? "success" : "warning"} className="mb-4">
           {banner.text}
-        </p>
+        </InlineAlert>
       )}
 
       {bulkResult && (
-        <p role="status" className="mb-4 flex items-start gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+        <InlineAlert variant="success" className="mb-4">
           {bulkResult}
-        </p>
+        </InlineAlert>
       )}
 
       <Tabs defaultValue="parents">
@@ -624,6 +649,8 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search parents by name or email…"
             onRowClick={(row) => setDetailUser(row)}
+            emptyTitle="No parent accounts yet"
+            emptyDescription="Parent accounts are created when a student enrolls, or you can add one directly with Add User above."
             selectable
             selectedKeys={selectedParentIds}
             onSelectionChange={setSelectedParentIds}
@@ -631,6 +658,17 @@ export default function AdminUsers() {
               <Button size="sm" className="h-7 px-2 text-xs" disabled={bulkSending} onClick={() => setBulkConfirmIds([...selectedParentIds])}>
                 <Mail className="h-3 w-3" /> Resend credentials
               </Button>
+            }
+            error={apiEnabled() ? parentsError : null}
+            onRetry={reloadParents}
+            toolbar={
+              <BulkImportExportBar
+                entityLabel="parents"
+                templateColumns={["Email", "FirstName", "LastName", "Phone"]}
+                onImport={(file) => bulkImportUsers(file, "Parent")}
+                onExport={() => exportUsers("Parent")}
+                onImported={reloadParents}
+              />
             }
           />
         </TabsContent>
@@ -642,6 +680,19 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search students by name…"
             onRowClick={(row) => setDetailChild(row)}
+            emptyTitle="No students enrolled yet"
+            emptyDescription="Students appear here once a parent adds a child, or you can import a batch using the button above."
+            error={apiEnabled() ? studentsError : null}
+            onRetry={reloadStudents}
+            toolbar={
+              <BulkImportExportBar
+                entityLabel="students"
+                templateColumns={["ParentEmail", "StudentFullName", "DateOfBirth", "AcademicLevel"]}
+                onImport={bulkImportStudents}
+                onExport={exportStudents}
+                onImported={reloadStudents}
+              />
+            }
           />
         </TabsContent>
 
@@ -652,6 +703,8 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search teachers by name or email…"
             onRowClick={(row) => setDetailUser(row)}
+            emptyTitle="No teacher accounts yet"
+            emptyDescription="Add your first teacher with Add User above so you can assign them to batches and sessions."
             selectable
             selectedKeys={selectedTeacherIds}
             onSelectionChange={setSelectedTeacherIds}
@@ -659,6 +712,17 @@ export default function AdminUsers() {
               <Button size="sm" className="h-7 px-2 text-xs" disabled={bulkSending} onClick={() => setBulkConfirmIds([...selectedTeacherIds])}>
                 <Mail className="h-3 w-3" /> Resend credentials
               </Button>
+            }
+            error={apiEnabled() ? teachersError : null}
+            onRetry={reloadTeachers}
+            toolbar={
+              <BulkImportExportBar
+                entityLabel="teachers"
+                templateColumns={["Email", "FirstName", "LastName", "Phone", "DepartmentName"]}
+                onImport={(file) => bulkImportUsers(file, "Teacher")}
+                onExport={() => exportUsers("Teacher")}
+                onImported={reloadTeachers}
+              />
             }
           />
         </TabsContent>
@@ -670,6 +734,10 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search staff by name…"
             onRowClick={(row) => setDetailUser(row)}
+            emptyTitle="No admission or sub-admin accounts yet"
+            emptyDescription="Add your first staff account with Add User above."
+            error={apiEnabled() ? staffError : null}
+            onRetry={reloadStaff}
           />
         </TabsContent>
       </Tabs>
@@ -832,7 +900,7 @@ export default function AdminUsers() {
         title="Delete this account?"
         description={
           deleteTarget
-            ? `${deleteTarget.name}'s account will be removed from Reader Nest. This can't be undone from the UI.`
+            ? `${deleteTarget.name}'s account will be removed from ${brand.name}. This can't be undone from the UI.`
             : undefined
         }
         confirmLabel="Delete Account"
@@ -913,13 +981,16 @@ export default function AdminUsers() {
             {editRole === "teacher" && (
               <div className="grid gap-1.5">
                 <Label htmlFor="edit-department-select">Department</Label>
-                <Select value={editDepartment} onValueChange={(v) => setEditDepartment(v as "Phonics" | "Maths")}>
+                <Select value={editDepartment} onValueChange={setEditDepartment}>
                   <SelectTrigger id="edit-department-select">
-                    <SelectValue />
+                    <SelectValue placeholder="Select a department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Phonics">Phonics</SelectItem>
-                    <SelectItem value="Maths">Maths</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1131,13 +1202,16 @@ export default function AdminUsers() {
             {addRole === "teacher" && (
               <div className="grid gap-1.5">
                 <Label htmlFor="add-department-select">Department</Label>
-                <Select value={addDepartment} onValueChange={(v) => setAddDepartment(v as "Phonics" | "Maths")}>
+                <Select value={addDepartment} onValueChange={setAddDepartment}>
                   <SelectTrigger id="add-department-select">
-                    <SelectValue />
+                    <SelectValue placeholder="Select a department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Phonics">Phonics</SelectItem>
-                    <SelectItem value="Maths">Maths</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

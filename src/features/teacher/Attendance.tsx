@@ -3,6 +3,7 @@ import { CheckCircle2, ClipboardList, Users, Video, XCircle } from "lucide-react
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
+import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -225,12 +226,12 @@ export default function TeacherAttendance() {
       />
 
       {apiEnabled() && apiError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load attendance records ({apiError}) — the list below may be incomplete.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -241,7 +242,7 @@ export default function TeacherAttendance() {
       </div>
 
       <div className="mt-6">
-        {completed.length === 0 ? (
+        {completed.length === 0 && !apiError ? (
           <EmptyState icon={ClipboardList} title="No completed sessions yet" description="Once you deliver a class, its attendance record will show up here." />
         ) : (
           <DataTable
@@ -250,6 +251,8 @@ export default function TeacherAttendance() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search sessions…"
             onRowClick={(row) => openSummary(row)}
+            error={apiEnabled() ? apiError : null}
+            onRetry={reload}
           />
         )}
       </div>

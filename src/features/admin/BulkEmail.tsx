@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Loader2, Mail, Send, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +23,7 @@ type Scope = "all" | "batch";
 const MOCK_BATCH_OPTIONS = BATCHES.map((b) => ({ id: b.id, name: b.name }));
 
 export default function AdminBulkEmail() {
+  const { toast } = useToast();
   const { data: batchOptions } = useApiData(
     () => listBatches().then((batches) => batches.map((b) => ({ id: b.id, name: b.name }))),
     MOCK_BATCH_OPTIONS
@@ -81,8 +83,11 @@ export default function AdminBulkEmail() {
       const result = await sendBulkEmail({ subject, body, batchId: scope === "batch" ? batchId : undefined });
       setSentCount(result.recipientCount);
       setSent(true);
+      toast({ variant: "success", title: "Email sent", description: `Delivered to ${result.recipientCount} recipient(s).` });
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : "Couldn't send the email. Please try again.");
+      const message = err instanceof Error ? err.message : "Couldn't send the email. Please try again.";
+      setSendError(message);
+      toast({ variant: "error", title: "Couldn't send email", description: message });
     } finally {
       setSending(false);
     }
@@ -128,9 +133,9 @@ export default function AdminBulkEmail() {
         <Card className="lg:col-span-2">
           <CardContent className="flex flex-col gap-4 p-5">
             <div className="grid gap-1.5">
-              <Label>Recipient scope</Label>
+              <Label id="bulk-email-scope-label">Recipient scope</Label>
               <Tabs value={scope} onValueChange={(v) => setScope(v as Scope)}>
-                <TabsList>
+                <TabsList aria-labelledby="bulk-email-scope-label">
                   <TabsTrigger value="all">All Active Students</TabsTrigger>
                   <TabsTrigger value="batch">Per Batch</TabsTrigger>
                 </TabsList>

@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,9 +54,14 @@ const EMPTY_FORM: FormState = {
 };
 
 const MOCK_FEEDBACKS = DEMO_FEEDBACKS.filter((f) => f.teacherName === TEACHER_NAME);
-const MOCK_COURSE_OPTIONS = COURSES.filter((c) => c.type !== "demo").map((c) => ({ id: c.id, name: c.name }));
+const MOCK_COURSE_OPTIONS = COURSES.filter((c) => c.type !== "demo").map((c) => ({
+  id: c.id,
+  name: c.name,
+  type: c.type === "group" ? ("Group" as const) : ("Individual" as const),
+}));
 
 export default function TeacherDemoFeedback() {
+  const { toast } = useToast();
   const { data: apiFeedbacks, reload } = useApiData(
     () =>
       Promise.all([listMyDemoBookings(), listMyDemoFeedback()]).then(([bookings, submittedItems]) => [
@@ -121,8 +128,11 @@ export default function TeacherDemoFeedback() {
         setJustSubmitted(active.childName);
         setActiveId(null);
         setForm(EMPTY_FORM);
+        toast({ variant: "success", title: "Feedback submitted", description: `Feedback for ${active.childName} was recorded.` });
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Couldn't submit this feedback. Please try again.");
+        const message = err instanceof Error ? err.message : "Couldn't submit this feedback. Please try again.";
+        setSubmitError(message);
+        toast({ variant: "error", title: "Couldn't submit feedback", description: message });
       } finally {
         setSubmitting(false);
       }
@@ -144,10 +154,9 @@ export default function TeacherDemoFeedback() {
       />
 
       {justSubmitted && (
-        <div role="status" className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
-          <CheckCircle2 className="h-4 w-4" />
+        <InlineAlert variant="success" bordered className="mb-5">
           Feedback for {justSubmitted} submitted successfully.
-        </div>
+        </InlineAlert>
       )}
 
       <div className="mb-8">

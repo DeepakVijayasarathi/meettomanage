@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Mail, MessageSquarePlus, Phone, Sparkles } from "lucide-react";
+import { Mail, MessageSquarePlus, Phone, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
+import { InlineAlert } from "@/components/InlineAlert";
+import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
@@ -55,7 +58,8 @@ const STAGE_BADGE: Record<ConversionStage, BadgeProps["variant"]> = {
 };
 
 export default function AdmissionLeads() {
-  const { data: apiLeads, reload } = useApiData(
+  const { toast } = useToast();
+  const { data: apiLeads, error: leadsError, reload } = useApiData(
     () => listDemoBookings().then((bookings) => bookings.map(toFrontendLead)),
     INITIAL_LEADS
   );
@@ -112,8 +116,11 @@ export default function AdmissionLeads() {
         setJustLogged(activeLead.childName);
         setTimeout(() => setJustLogged(null), 4000);
         setActiveLead(null);
+        toast({ variant: "success", title: "Follow-up logged" });
       } catch (err) {
-        setFollowUpError(err instanceof Error ? err.message : "Couldn't save this follow-up. Please try again.");
+        const message = err instanceof Error ? err.message : "Couldn't save this follow-up. Please try again.";
+        setFollowUpError(message);
+        toast({ variant: "error", title: "Couldn't log follow-up", description: message });
       } finally {
         setLoggingFollowUp(false);
       }
@@ -248,10 +255,9 @@ export default function AdmissionLeads() {
       />
 
       {justLogged && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
-          <CheckCircle2 className="h-4 w-4" />
+        <InlineAlert variant="success" bordered className="mb-5">
           Follow-up logged for {justLogged}.
-        </div>
+        </InlineAlert>
       )}
 
       <DataTable
@@ -260,19 +266,23 @@ export default function AdmissionLeads() {
         rowKey={(row) => row.id}
         searchPlaceholder="Search by child, parent, phone or course…"
         onRowClick={(row) => openFollowUp(row)}
+        emptyTitle="No leads yet"
+        emptyDescription="New enquiries and demo requests will show up here as they come in."
+        error={apiEnabled() ? leadsError : null}
+        onRetry={reload}
         toolbar={
-          <Select value={stageFilter} onValueChange={(v) => setStageFilter(v as ConversionStage | "all")}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STAGE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterBar
+            filters={[
+              {
+                key: "stage",
+                label: "Stage",
+                value: stageFilter,
+                onChange: (v) => setStageFilter(v as ConversionStage | "all"),
+                className: "w-48",
+                options: STAGE_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label })),
+              },
+            ]}
+          />
         }
       />
 
@@ -355,9 +365,9 @@ export default function AdmissionLeads() {
                   <Input id="nextFollowUp" type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label>Move to stage</Label>
+                  <Label htmlFor="lead-move-stage-select">Move to stage</Label>
                   <Select value={newStage} onValueChange={(v) => setNewStage(v as ConversionStage)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="lead-move-stage-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

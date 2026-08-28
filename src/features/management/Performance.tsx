@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { KpiCard } from "@/components/KpiCard";
 import { ChartCard } from "@/components/ChartCard";
 import { Card } from "@/components/ui/card";
@@ -196,12 +197,12 @@ export default function ManagementPerformance() {
       />
 
       {usingApi && rowsError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load teacher performance data ({rowsError}) — the figures below may be incomplete.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -293,6 +294,10 @@ export default function ManagementPerformance() {
           searchPlaceholder="Search teachers…"
           searchFn={(r, q) => r.teacher.name.toLowerCase().includes(q.toLowerCase())}
           pageSize={8}
+          emptyTitle="No teacher performance data yet"
+          emptyDescription="Performance metrics build up once teachers start delivering sessions."
+          error={usingApi ? rowsError : null}
+          onRetry={reload}
         />
       </Card>
     </div>

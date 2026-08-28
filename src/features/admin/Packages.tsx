@@ -29,6 +29,8 @@ import {
   listSubscriptions,
   renewSubscription,
   updatePackagePlan,
+  bulkImportPackagePlans,
+  exportPackagePlans,
   type ApiBillingCycle,
   type ApiBillingType,
   type ApiPackagePlan,
@@ -37,6 +39,7 @@ import {
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
 import { listStudents, type StudentRow } from "@/api/users";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 
 const BILLING_TYPES: { value: ApiBillingType; label: string }[] = [
   { value: "Subscription", label: "Subscription (recurring)" },
@@ -60,14 +63,14 @@ const SUBSCRIPTION_BADGE: Record<ApiSubscription["status"], "success" | "warning
 
 // Demo-mode sample rows so the screen reads correctly without a backend.
 const DEMO_PLANS: ApiPackagePlan[] = [
-  { id: "pp-1", name: "Phonics Foundations — Monthly", courseId: null, billingType: "Subscription", billingCycle: "Monthly", price: 2500, sessionsIncluded: 12, isActive: true },
-  { id: "pp-2", name: "Maths Explorers — Quarterly", courseId: null, billingType: "Subscription", billingCycle: "Quarterly", price: 6900, sessionsIncluded: 36, isActive: true },
-  { id: "pp-3", name: "Assessment Pack", courseId: null, billingType: "OneTime", billingCycle: "OneTime", price: 1200, sessionsIncluded: 1, isActive: false },
+  { id: "pp-1", name: "Phonics Foundations — Monthly", courseId: null, billingType: "Subscription", billingCycle: "Monthly", price: 2500, sessionsIncluded: 12, validityDays: null, isActive: true },
+  { id: "pp-2", name: "Maths Explorers — Quarterly", courseId: null, billingType: "Subscription", billingCycle: "Quarterly", price: 6900, sessionsIncluded: 36, validityDays: null, isActive: true },
+  { id: "pp-3", name: "Assessment Pack", courseId: null, billingType: "OneTime", billingCycle: "OneTime", price: 1200, sessionsIncluded: 1, validityDays: 30, isActive: false },
 ];
 
 const DEMO_SUBSCRIPTIONS: ApiSubscription[] = [
-  { id: "sub-1", parentProfileId: "p-1", childId: "c-1", childName: "Aarav Kapoor", packagePlanId: "pp-1", planName: "Phonics Foundations — Monthly", status: "Active", startDate: "2026-05-01", nextBillingAtUtc: "2026-08-01T00:00:00Z", cancelledAtUtc: null },
-  { id: "sub-2", parentProfileId: "p-1", childId: "c-2", childName: "Diya Kapoor", packagePlanId: "pp-2", planName: "Maths Explorers — Quarterly", status: "Cancelled", startDate: "2026-02-15", nextBillingAtUtc: null, cancelledAtUtc: "2026-06-20T00:00:00Z" },
+  { id: "sub-1", parentProfileId: "p-1", childId: "c-1", childName: "Aarav Kapoor", packagePlanId: "pp-1", planName: "Phonics Foundations — Monthly", status: "Active", startDate: "2026-05-01", endDate: null, nextBillingAtUtc: "2026-08-01T00:00:00Z", cancelledAtUtc: null },
+  { id: "sub-2", parentProfileId: "p-1", childId: "c-2", childName: "Diya Kapoor", packagePlanId: "pp-2", planName: "Maths Explorers — Quarterly", status: "Cancelled", startDate: "2026-02-15", endDate: null, nextBillingAtUtc: null, cancelledAtUtc: "2026-06-20T00:00:00Z" },
 ];
 
 interface PlanForm {
@@ -77,6 +80,7 @@ interface PlanForm {
   billingCycle: ApiBillingCycle;
   price: string;
   sessionsIncluded: string;
+  validityDays: string;
   isActive: boolean;
 }
 
@@ -87,14 +91,15 @@ const EMPTY_PLAN_FORM: PlanForm = {
   billingCycle: "Monthly",
   price: "",
   sessionsIncluded: "",
+  validityDays: "",
   isActive: true,
 };
 
 export default function AdminPackages() {
   const live = apiEnabled();
 
-  const { data: plans, loading: plansLoading, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
-  const { data: subscriptions, loading: subscriptionsLoading, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
+  const { data: plans, loading: plansLoading, error: plansError, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
+  const { data: subscriptions, loading: subscriptionsLoading, error: subscriptionsError, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
     () => listSubscriptions(),
     DEMO_SUBSCRIPTIONS
   );
@@ -129,6 +134,7 @@ export default function AdminPackages() {
       billingCycle: plan.billingCycle,
       price: String(plan.price),
       sessionsIncluded: plan.sessionsIncluded != null ? String(plan.sessionsIncluded) : "",
+      validityDays: plan.validityDays != null ? String(plan.validityDays) : "",
       isActive: plan.isActive,
     });
     setPlanError(null);
@@ -150,6 +156,11 @@ export default function AdminPackages() {
       setPlanError("Sessions included must be a whole number of at least 1.");
       return;
     }
+    const validityDays = planForm.validityDays.trim() === "" ? undefined : Number(planForm.validityDays);
+    if (validityDays !== undefined && (!Number.isInteger(validityDays) || validityDays < 1)) {
+      setPlanError("Validity (days) must be a whole number of at least 1.");
+      return;
+    }
 
     setSavingPlan(true);
     setPlanError(null);
@@ -161,6 +172,7 @@ export default function AdminPackages() {
         billingCycle: planForm.billingCycle,
         price,
         sessionsIncluded: sessions,
+        validityDays,
         isActive: planForm.isActive,
       };
       if (editingPlan) await updatePackagePlan(editingPlan.id, input);
@@ -295,6 +307,11 @@ export default function AdminPackages() {
         render: (p) => <span className="text-sm text-muted-foreground">{p.sessionsIncluded ?? "—"}</span>,
       },
       {
+        key: "validity",
+        header: "Validity",
+        render: (p) => <span className="text-sm text-muted-foreground">{p.validityDays ? `${p.validityDays} days` : "—"}</span>,
+      },
+      {
         key: "status",
         header: "Status",
         sortable: true,
@@ -355,6 +372,13 @@ export default function AdminPackages() {
             {s.nextBillingAtUtc ? formatDate(s.nextBillingAtUtc.slice(0, 10)) : "—"}
           </span>
         ),
+      },
+      {
+        key: "endDate",
+        header: "Valid Until",
+        sortable: true,
+        accessor: (s) => s.endDate ?? "",
+        render: (s) => <span className="text-sm text-muted-foreground">{s.endDate ? formatDate(s.endDate) : "—"}</span>,
       },
       {
         key: "actions",
@@ -436,11 +460,22 @@ export default function AdminPackages() {
               onRowClick={openEditPlan}
               emptyTitle="No package plans yet"
               emptyDescription="Create a plan to define what parents are billed and how often."
+              error={live ? plansError : null}
+              onRetry={reloadPlans}
               toolbar={
-                <Button onClick={openCreatePlan}>
-                  <PackagePlus className="h-4 w-4" />
-                  New plan
-                </Button>
+                <div className="flex items-center gap-2">
+                  <BulkImportExportBar
+                    entityLabel="package plans"
+                    templateColumns={["Name", "CourseName", "BillingType", "BillingCycle", "Price", "SessionsIncluded", "ValidityDays", "IsActive"]}
+                    onImport={bulkImportPackagePlans}
+                    onExport={exportPackagePlans}
+                    onImported={reloadPlans}
+                  />
+                  <Button onClick={openCreatePlan}>
+                    <PackagePlus className="h-4 w-4" />
+                    New plan
+                  </Button>
+                </div>
               }
             />
           </TabsContent>
@@ -454,6 +489,8 @@ export default function AdminPackages() {
               searchFn={(s, q) => `${s.childName} ${s.planName}`.toLowerCase().includes(q.toLowerCase())}
               emptyTitle="No subscriptions yet"
               emptyDescription="Start a subscription to begin auto-billing a child on a plan."
+              error={live ? subscriptionsError : null}
+              onRetry={reloadSubscriptions}
               toolbar={
                 <Button onClick={openStartSubscription}>
                   <PlayCircle className="h-4 w-4" />
@@ -487,12 +524,12 @@ export default function AdminPackages() {
             </div>
 
             <div className="grid gap-1.5">
-              <Label>Course (optional)</Label>
+              <Label htmlFor="plan-course-select">Course (optional)</Label>
               <Select
                 value={planForm.courseId || "none"}
                 onValueChange={(v) => setPlanForm((f) => ({ ...f, courseId: v === "none" ? "" : v }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="plan-course-select">
                   <SelectValue placeholder="No course linked" />
                 </SelectTrigger>
                 <SelectContent>
@@ -568,6 +605,18 @@ export default function AdminPackages() {
                   placeholder="e.g. 8"
                 />
               </div>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="plan-validity-days">Validity (days) (optional)</Label>
+              <Input
+                id="plan-validity-days"
+                type="number"
+                min="1"
+                placeholder="e.g. 60 — leave blank if the plan never expires on its own"
+                value={planForm.validityDays}
+                onChange={(e) => setPlanForm((f) => ({ ...f, validityDays: e.target.value }))}
+              />
             </div>
 
             <label className="flex items-center gap-2 text-sm text-foreground">

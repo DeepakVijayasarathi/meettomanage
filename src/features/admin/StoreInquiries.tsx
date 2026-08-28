@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Loader2, ShoppingBag } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
+import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +51,7 @@ const STATUS_VARIANT: Record<ApiStoreInquiryStatus, "warning" | "default" | "suc
 };
 
 export default function AdminStoreInquiries() {
+  const { toast } = useToast();
   const live = apiEnabled();
   const { data: inquiries, error, reload } = useApiData<ApiStoreInquiry[]>(() => listStoreInquiries(), DEMO_INQUIRIES);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -64,8 +67,11 @@ export default function AdminStoreInquiries() {
     try {
       await updateStoreInquiryStatus(inquiry.id, status);
       await reload();
+      toast({ variant: "success", title: "Inquiry updated", description: `Marked as ${status}.` });
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Couldn't update this inquiry.");
+      const message = err instanceof Error ? err.message : "Couldn't update this inquiry.";
+      setActionError(message);
+      toast({ variant: "error", title: "Couldn't update inquiry", description: message });
     } finally {
       setBusyId(null);
     }
@@ -154,22 +160,29 @@ export default function AdminStoreInquiries() {
       />
 
       {live && error && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load store inquiries ({error}).{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
-      {actionError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{actionError}</p>
-      )}
+      {actionError && <InlineAlert variant="warning" className="mb-4">{actionError}</InlineAlert>}
 
-      {inquiries.length === 0 ? (
+      {inquiries.length === 0 && !error ? (
         <EmptyState icon={ShoppingBag} title="No store inquiries yet" description="Submissions from the public course catalog will show up here." />
       ) : (
-        <DataTable data={inquiries} columns={columns} rowKey={(row) => row.id} searchPlaceholder="Search by parent or child name…" />
+        <DataTable
+          data={inquiries}
+          columns={columns}
+          rowKey={(row) => row.id}
+          searchPlaceholder="Search by parent or child name…"
+          emptyTitle="No store inquiries yet"
+          emptyDescription="Enquiries submitted from the marketing store will appear here."
+          error={live ? error : null}
+          onRetry={reload}
+        />
       )}
     </div>
   );

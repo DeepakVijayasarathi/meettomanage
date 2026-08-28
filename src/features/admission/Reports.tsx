@@ -13,6 +13,7 @@ import {
   Cell,
 } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
 import { ChartCard } from "@/components/ChartCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
@@ -101,18 +102,18 @@ export default function AdmissionReports() {
   );
   const [toDate, setToDate] = useState(usingApi ? new Date().toISOString().slice(0, 10) : "2026-07-09");
 
-  const { data: apiLeads, error: leadsError } = useApiData<Lead[]>(
+  const { data: apiLeads, error: leadsError, reload: reloadLeads } = useApiData<Lead[]>(
     () => listDemoBookings().then((b) => b.map(toFrontendLead)),
     []
   );
-  const { data: apiFeedbacks, error: feedbacksError } = useApiData<DemoFeedback[]>(
+  const { data: apiFeedbacks, error: feedbacksError, reload: reloadFeedbacks } = useApiData<DemoFeedback[]>(
     () => listDemoFeedback().then((f) => f.map(toFrontendFeedback)),
     []
   );
   // GET /api/invoices is paged; this report filters by date client-side over one page,
   // so a long-running institution's older invoices fall outside it. totalCount is kept
   // so the payments report can flag when it isn't looking at the whole table.
-  const { data: apiPaymentPage, error: paymentsError } = useApiData(
+  const { data: apiPaymentPage, error: paymentsError, reload: reloadPayments } = useApiData(
     () =>
       listInvoiceRows((invoice) => {
         const inv = toFrontendInvoice(invoice);
@@ -143,6 +144,8 @@ export default function AdmissionReports() {
         ? feedbacksError
         : leadsError
     : null;
+  const reloadReport =
+    reportType === "payments" ? reloadPayments : reportType === "feedback" ? reloadFeedbacks : reloadLeads;
 
   const leads = usingApi ? apiLeads : LEADS;
   const feedbacks = usingApi ? apiFeedbacks : DEMO_FEEDBACKS;
@@ -237,9 +240,9 @@ export default function AdmissionReports() {
       <Card className="mt-6">
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-end">
           <div className="grid flex-1 gap-1.5">
-            <Label>Report type</Label>
+            <Label htmlFor="report-type-select">Report type</Label>
             <Select value={reportType} onValueChange={(v) => setReportType(v as ReportType)}>
-              <SelectTrigger>
+              <SelectTrigger id="report-type-select">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -276,10 +279,10 @@ export default function AdmissionReports() {
         </div>
 
         {reportError && (
-          <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+          <InlineAlert variant="warning" className="mb-3">
             Could not load the data for this report ({reportError}) — what&apos;s below is
             incomplete, and exporting it would be too.
-          </p>
+          </InlineAlert>
         )}
 
         <DataTable
@@ -289,6 +292,8 @@ export default function AdmissionReports() {
           searchPlaceholder="Search this report…"
           emptyTitle="No records in this range"
           emptyDescription="Try widening the date range or switching the report type."
+          error={reportError}
+          onRetry={reloadReport}
         />
         <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
           <Sparkles className="h-3 w-3" /> Exporting downloads exactly what&apos;s shown above.

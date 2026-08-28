@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { BookOpenText, Calculator, Landmark, Link2, Pencil, ShieldCheck } from "lucide-react";
+import { BookOpenText, Building2, Calculator, ChevronDown, Landmark, Link2, Pencil, ShieldCheck, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -24,7 +26,8 @@ const DEMO_ACCOUNTS: ApiPaymentAccount[] = [
   {
     id: "ph",
     name: "Phonics Department Account",
-    department: "Phonics",
+    departmentId: "phonics",
+    departmentName: "Phonics",
     gatewayProvider: "Razorpay",
     gatewayAccountRef: "acc_ph0n1cs_4821",
     isActive: true,
@@ -35,7 +38,8 @@ const DEMO_ACCOUNTS: ApiPaymentAccount[] = [
   {
     id: "ma",
     name: "Maths Department Account",
-    department: "Maths",
+    departmentId: "maths",
+    departmentName: "Maths",
     gatewayProvider: "Cashfree",
     gatewayAccountRef: "acc_m4ths_7734",
     isActive: true,
@@ -45,10 +49,12 @@ const DEMO_ACCOUNTS: ApiPaymentAccount[] = [
   },
 ];
 
-const DEPT_ICON = { Phonics: BookOpenText, Maths: Calculator } as const;
+// Known departments get a fitting icon; any admin-added one falls back to Building2 —
+// not a closed set, just a nicer default for the two departments this app shipped with.
+const DEPT_ICON: Record<string, typeof BookOpenText> = { Phonics: BookOpenText, Maths: Calculator };
 
 function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount; color: string; onEdit: () => void }) {
-  const Icon = DEPT_ICON[account.department] ?? BookOpenText;
+  const Icon = DEPT_ICON[account.departmentName] ?? Building2;
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
@@ -59,15 +65,23 @@ function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount
           <div>
             <CardTitle>{account.name}</CardTitle>
             <CardDescription>
-              {account.gatewayProvider} · {account.gatewayAccountRef}
+              {/* A brand-new department gets this account auto-created (inactive, unwired) so
+                  it shows up here immediately instead of silently having nowhere for its
+                  invoices to route — "pending-client-decision" is that placeholder ref, not
+                  something to show an admin as if it were real gateway wiring. */}
+              {account.gatewayAccountRef === "pending-client-decision"
+                ? "Not yet configured"
+                : `${account.gatewayProvider} · ${account.gatewayAccountRef}`}
             </CardDescription>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {account.isActive && (
+          {account.isActive ? (
             <Badge variant="success" className="gap-1">
               <ShieldCheck className="h-3.5 w-3.5" /> Active
             </Badge>
+          ) : (
+            account.gatewayAccountRef === "pending-client-decision" && <Badge variant="muted">Needs setup</Badge>
           )}
           <Button size="sm" variant="ghost" onClick={onEdit} title="Edit gateway wiring">
             <Pencil className="h-3.5 w-3.5" />
@@ -101,7 +115,7 @@ function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount
               {account.recentTransactions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="py-6 text-center text-sm text-muted-foreground">
-                    No transactions yet.
+                    No transactions yet — payments collected into this account will appear here.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -123,6 +137,7 @@ function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount
 }
 
 export default function AdminPaymentMapping() {
+  const { toast } = useToast();
   const { data: accounts, reload: reloadAccounts } = useApiData<ApiPaymentAccount[]>(listPaymentAccounts, DEMO_ACCOUNTS);
   const { data: parents } = useApiData<AppUser[]>(
     () => listUsers({ role: "Parent" }).then((r) => r.items.map(toAppUser)),
@@ -140,10 +155,19 @@ export default function AdminPaymentMapping() {
   const [editProvider, setEditProvider] = useState("razorpay");
   const [editRef, setEditRef] = useState("");
   const [editActive, setEditActive] = useState(true);
+  // Pre-checked: most orgs here run one real gateway account for the whole business, so the
+  // easy default is "applies everywhere" — unchecking it is the escape hatch for a genuine
+  // per-department dual-gateway need.
+  const [editApplyToAll, setEditApplyToAll] = useState(true);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
   const [mappingConfirmOpen, setMappingConfirmOpen] = useState(false);
+
+  // Collapsed by default: routing is automatic (every invoice already goes to its own
+  // department's account, no per-parent setup), so this per-parent override — genuinely
+  // rare — shouldn't read as a required step just by being visible on the page.
+  const [showOverride, setShowOverride] = useState(false);
 
   function openEdit(account: ApiPaymentAccount) {
     setEditAccount(account);
@@ -151,6 +175,7 @@ export default function AdminPaymentMapping() {
     setEditProvider(account.gatewayProvider.toLowerCase().includes("cashfree") ? "cashfree" : "razorpay");
     setEditRef(account.gatewayAccountRef === "pending-client-decision" ? "" : account.gatewayAccountRef);
     setEditActive(account.isActive);
+    setEditApplyToAll(true);
     setEditError(null);
   }
 
@@ -176,12 +201,21 @@ export default function AdminPaymentMapping() {
         gatewayProvider: editProvider,
         gatewayAccountRef: editRef.trim(),
         isActive: editActive,
+        applyToAllDepartments: editApplyToAll,
       });
-      setResult({ ok: true, message: `${editName.trim()} now charges through ${editProvider}.` });
+      setResult({
+        ok: true,
+        message: editApplyToAll
+          ? `Every department now charges through ${editProvider}.`
+          : `${editName.trim()} now charges through ${editProvider}.`,
+      });
       setEditAccount(null);
       reloadAccounts();
+      toast({ variant: "success", title: "Account saved" });
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Could not save the account.");
+      const message = err instanceof Error ? err.message : "Could not save the account.";
+      setEditError(message);
+      toast({ variant: "error", title: "Couldn't save account", description: message });
     } finally {
       setEditSaving(false);
     }
@@ -204,28 +238,63 @@ export default function AdminPaymentMapping() {
       const parentName = parents.find((p) => p.id === effectiveParent)?.name ?? "parent";
       const acctName = accounts.find((a) => a.id === effectiveAccount)?.name ?? "account";
       setResult({ ok: true, message: `${parentName} is now routed to ${acctName}.` });
+      toast({ variant: "success", title: "Mapping saved", description: `${parentName} routed to ${acctName}.` });
     } catch (err) {
-      setResult({ ok: false, message: err instanceof Error ? err.message : "Could not save the mapping." });
+      const message = err instanceof Error ? err.message : "Could not save the mapping.";
+      setResult({ ok: false, message });
+      toast({ variant: "error", title: "Couldn't save mapping", description: message });
     } finally {
       setSaving(false);
     }
   }
+
+  // Same provider+ref across every department (the normal case here, and the outcome
+  // "apply to every department" converges toward) — shown as one card instead of N
+  // identical-looking ones, since there's really only one account to think about.
+  const isOrgWide =
+    accounts.length > 1 &&
+    accounts.every(
+      (a) => a.gatewayProvider === accounts[0].gatewayProvider && a.gatewayAccountRef === accounts[0].gatewayAccountRef
+    );
+  const orgAccount: ApiPaymentAccount | null = isOrgWide
+    ? {
+        ...accounts[0],
+        name: "Organization Payment Account",
+        departmentName: "All departments",
+        isActive: accounts.every((a) => a.isActive),
+        transactionCount: accounts.reduce((sum, a) => sum + a.transactionCount, 0),
+        totalCollected: accounts.reduce((sum, a) => sum + a.totalCollected, 0),
+        recentTransactions: accounts
+          .flatMap((a) => a.recentTransactions)
+          .sort((a, b) => new Date(b.dateUtc).getTime() - new Date(a.dateUtc).getTime())
+          .slice(0, 5),
+      }
+    : null;
 
   return (
     <div>
       <PageHeader
         eyebrow="Payments Infrastructure"
         title="Payment Gateway Mapping"
-        description="Department-level payment accounts for Phonics and Maths, and parent-to-account assignment."
+        description={isOrgWide ? "Where every invoice collects payment." : "Where each department's invoices collect payment."}
       />
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {accounts.map((account, i) => (
+      <div className="mb-5 flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <p className="text-sm text-foreground">
+          <span className="font-semibold">This is automatic.</span> Every invoice already routes to the right
+          account below — nothing to set up per parent, and every new department inherits whichever account is
+          already configured. New parents just work.
+        </p>
+      </div>
+
+      <div className={cn("grid grid-cols-1 gap-5", !isOrgWide && "lg:grid-cols-2")}>
+        {(orgAccount ? [orgAccount] : accounts).map((account, i) => (
           <DepartmentCard
             key={account.id}
             account={account}
             color={CHART_PALETTE[(i + 3) % CHART_PALETTE.length]}
-            onEdit={() => openEdit(account)}
+            onEdit={() => openEdit(accounts[i])}
           />
         ))}
       </div>
@@ -235,7 +304,7 @@ export default function AdminPaymentMapping() {
           {editAccount && (
             <>
               <DialogHeader>
-                <DialogTitle>Edit {editAccount.department} payment account</DialogTitle>
+                <DialogTitle>Edit {editAccount.departmentName} payment account</DialogTitle>
                 <DialogDescription>
                   Which gateway this department charges through. API keys live in Settings → Integrations; only the account reference is stored here.
                 </DialogDescription>
@@ -280,6 +349,16 @@ export default function AdminPaymentMapping() {
                     onChange={(e) => setEditRef(e.target.value)}
                   />
                 </div>
+                <label className="flex items-start gap-2.5 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+                  <Checkbox checked={editApplyToAll} onCheckedChange={(v) => setEditApplyToAll(v === true)} className="mt-0.5" />
+                  <span>
+                    <span className="font-medium text-foreground">Apply to every department</span>
+                    <span className="block text-xs text-muted-foreground">
+                      One gateway account for the whole business (recommended). Uncheck only if this department
+                      genuinely needs to charge through a different account than the rest.
+                    </span>
+                  </span>
+                </label>
                 {editError && <p className="text-sm font-medium text-destructive">{editError}</p>}
               </div>
               <DialogFooter>
@@ -301,23 +380,37 @@ export default function AdminPaymentMapping() {
       <ConfirmDialog
         open={editConfirmOpen}
         onOpenChange={setEditConfirmOpen}
-        title={`Change how ${editAccount?.department} charges get routed?`}
-        description={`Every new payment for this department will go through ${editProvider} (${editRef.trim()}) from now on. Existing transactions are unaffected.`}
+        title={editApplyToAll ? "Change how every department charges get routed?" : `Change how ${editAccount?.departmentName} charges get routed?`}
+        description={
+          editApplyToAll
+            ? `Every department's future payments will go through ${editProvider} (${editRef.trim()}) from now on. Existing transactions are unaffected.`
+            : `Only ${editAccount?.departmentName}'s future payments will go through ${editProvider} (${editRef.trim()}) from now on — every other department keeps its own account. Existing transactions are unaffected.`
+        }
         confirmLabel="Save account"
         onConfirm={saveAccountEdit}
       />
 
       <Card className="mt-6">
-        <CardHeader className="flex-row items-center gap-3 space-y-0">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${CHART_PALETTE[0]}1A`, color: CHART_PALETTE[0] }}>
+        <button
+          type="button"
+          onClick={() => setShowOverride((v) => !v)}
+          aria-expanded={showOverride}
+          className="flex w-full items-center gap-3 p-5 text-left"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${CHART_PALETTE[0]}1A`, color: CHART_PALETTE[0] }}>
             <Link2 className="h-5 w-5" />
           </span>
-          <div>
-            <CardTitle>Assign Parent to Payment Account</CardTitle>
-            <CardDescription>Route a parent&apos;s future payments to a specific department account.</CardDescription>
+          <div className="flex-1">
+            <CardTitle>Override for one parent</CardTitle>
+            <CardDescription>
+              Rare — routes a specific parent's payments to a different account than their invoice's own
+              department. Most parents never need this.
+            </CardDescription>
           </div>
-        </CardHeader>
-        <CardContent>
+          <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", showOverride && "rotate-180")} />
+        </button>
+        {showOverride && (
+        <CardContent className="pt-0">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="grid gap-1.5">
               <Label htmlFor="mapping-parent-select">Parent</Label>
@@ -343,7 +436,7 @@ export default function AdminPaymentMapping() {
                 <SelectContent>
                   {accounts.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
-                      {a.department} — {a.gatewayProvider}
+                      {a.departmentName} — {a.gatewayProvider}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -372,6 +465,7 @@ export default function AdminPaymentMapping() {
             </p>
           )}
         </CardContent>
+        )}
       </Card>
 
       <ConfirmDialog

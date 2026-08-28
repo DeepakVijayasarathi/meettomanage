@@ -1,10 +1,11 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 import { cn } from "@/lib/utils";
 
 export interface DataTableColumn<T> {
@@ -55,6 +56,18 @@ interface DataTableProps<T> {
     totalCount: number;
     onPageChange: (page: number) => void;
   };
+  /**
+   * Opt-in: when set (and there are no rows to show), the table body renders ErrorState
+   * instead of the ordinary "no records" EmptyState — distinguishing "the fetch that would
+   * have filled this table failed" from "the fetch succeeded and there's genuinely nothing
+   * here." Off by default, so every existing DataTable consumer is unaffected unless it
+   * passes this. If `data` is non-empty despite `error` being set (a reload failed but the
+   * previous successful page is still in hand), the table renders normally — there's more
+   * value in showing the stale-but-real rows than blanking them out to an error screen.
+   */
+  error?: string | null;
+  /** Surfaced as ErrorState's Retry action — typically the same reload()/refetch the caller already passes to useApiData. */
+  onRetry?: () => void;
 }
 
 export function DataTable<T>({
@@ -73,11 +86,60 @@ export function DataTable<T>({
   onSelectionChange,
   bulkActions,
   serverPagination,
+  error,
+  onRetry,
 }: DataTableProps<T>) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const [page, setPage] = useState(1);
   const selection = selectedKeys ?? new Set<string>();
+
+  // A wide table (many columns, or an action column with 2-3 buttons) routinely runs
+  // past the viewport on a real laptop, not just a phone — DataTable already scrolls it
+  // horizontally instead of clipping, but a plain scrollbar at the very bottom of a tall
+  // page is easy to miss entirely, silently hiding the last column's actions. These two
+  // edge fades make "there's more this way" visible at a glance, and disappear once
+  // there's nothing left to scroll to (including for a table that was never wide enough
+  // to scroll in the first place).
+  // The bordered/rounded box below is only the visual frame — the shared <Table>
+  // primitive wraps its own <table> in its own "overflow-x-auto w-full" div, so
+  // *that* inner div (found via the <table> element's parentElement, since Table
+  // only forwards a ref to the <table> itself) is the element that actually gains
+  // a scrollbar once the table's natural width exceeds it. The frame div matches
+  // it exactly in width either way, so it's still the right place to anchor the
+  // two edge-fade overlays below.
+  const frameRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [scrollShadow, setScrollShadow] = useState({ left: false, right: false });
+
+  function updateScrollShadow() {
+    const el = tableRef.current?.parentElement;
+    if (!el) return;
+    setScrollShadow({
+      left: el.scrollLeft > 1,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+    });
+  }
+
+  // Listener/observer are only ever attached once — mount-only deps are correct here.
+  useEffect(() => {
+    const el = tableRef.current?.parentElement;
+    if (!el) return;
+    updateScrollShadow();
+    el.addEventListener("scroll", updateScrollShadow, { passive: true });
+    // Two different things can change which way is scrollable: the container's own
+    // width (sidebar collapse, window resize) and the table's content width (a new
+    // page of rows, a column added/removed) — the latter doesn't touch the
+    // container's box size at all, so the <table> itself needs its own observed target too.
+    const observer = new ResizeObserver(updateScrollShadow);
+    observer.observe(el);
+    if (tableRef.current) observer.observe(tableRef.current);
+    return () => {
+      el.removeEventListener("scroll", updateScrollShadow);
+      observer.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function toggleRow(key: string, checked: boolean) {
     const next = new Set(selection);
@@ -183,16 +245,24 @@ export function DataTable<T>({
       </div>
 
       {sorted.length === 0 ? (
-        // A search that simply matched nothing shouldn't reuse the page's "no data
-        // exists at all" copy (e.g. "No demos scheduled yet") — that reads as if the
-        // list is genuinely empty rather than just filtered, which is misleading once
-        // real rows exist. Only fall back to the caller's empty copy when there's no
-        // active query, i.e. the table really has no data.
-        <EmptyState
-          icon={Search}
-          title={trimmedQuery ? `No results for "${trimmedQuery}"` : emptyTitle}
-          description={trimmedQuery ? "Try a different search term, or clear the search to see everything." : emptyDescription}
-        />
+        error ? (
+          // The fetch that would have filled this table failed — not "genuinely empty."
+          // A search query narrowing an error state to 0 rows isn't a meaningful distinction
+          // (there was nothing successfully loaded to search in the first place), so this
+          // takes priority over the "no results for {query}" branch below.
+          <ErrorState onRetry={onRetry} />
+        ) : (
+          // A search that simply matched nothing shouldn't reuse the page's "no data
+          // exists at all" copy (e.g. "No demos scheduled yet") — that reads as if the
+          // list is genuinely empty rather than just filtered, which is misleading once
+          // real rows exist. Only fall back to the caller's empty copy when there's no
+          // active query, i.e. the table really has no data.
+          <EmptyState
+            icon={Search}
+            title={trimmedQuery ? `No results for "${trimmedQuery}"` : emptyTitle}
+            description={trimmedQuery ? "Try a different search term, or clear the search to see everything." : emptyDescription}
+          />
+        )
       ) : (
         <>
           {/* Mobile: a horizontally-scrolling table is unusable on a phone (every column but
@@ -265,8 +335,25 @@ export function DataTable<T>({
             })}
           </div>
 
-          <div className="hidden overflow-x-auto rounded-xl border border-border sm:block">
-            <Table>
+          <div ref={frameRef} className="relative hidden overflow-hidden rounded-xl border border-border sm:block">
+            {/* Edge fades: pointer-events-none so they never intercept clicks/scroll on
+                the real content underneath, and sized to roughly a column's worth of
+                width so they read as "content continues" rather than a stray line. */}
+            <div
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-background to-transparent transition-opacity duration-150",
+                scrollShadow.left ? "opacity-100" : "opacity-0"
+              )}
+            />
+            <div
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent transition-opacity duration-150",
+                scrollShadow.right ? "opacity-100" : "opacity-0"
+              )}
+            />
+            <Table ref={tableRef}>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   {selectable && (

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, CheckCircle2, Mail, Plus, RotateCcw, Save, ShieldCheck, Trash2, UserCog, Wand2, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
+import { InlineAlert } from "@/components/InlineAlert";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -113,6 +115,7 @@ interface MenusByModuleProp {
 }
 
 function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
+  const { toast } = useToast();
   const { data: subAdmins, loading: loadingSubAdmins } = useApiData(
     () => listUsers({ role: "SubAdmin" }).then((r) => r.items.map(toAppUser)),
     SUB_ADMINS
@@ -237,8 +240,11 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
         await applyRoleToUser(activeId, roleName);
         setMatrices((prev) => ({ ...prev, [activeId]: expandPermissions(preset.permissions) }));
         setLoadError(null);
+        toast({ variant: "success", title: "Preset applied", description: `"${roleName}" permissions applied.` });
       } catch (err) {
-        setLoadError(err instanceof Error ? err.message : "Could not apply the preset.");
+        const message = err instanceof Error ? err.message : "Could not apply the preset.";
+        setLoadError(message);
+        toast({ variant: "error", title: "Couldn't apply preset", description: message });
       }
     } else {
       setMatrices((prev) => ({ ...prev, [activeId]: expandPermissions(preset.permissions) }));
@@ -258,8 +264,11 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
       setServerMatrices((prev) => ({ ...prev, [activeId]: matrix }));
       setSavedTick(Date.now());
       setTimeout(() => setSavedTick(null), 2200);
+      toast({ variant: "success", title: "Permissions saved" });
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : "Could not save permissions.");
+      const message = err instanceof Error ? err.message : "Could not save permissions.";
+      setLoadError(message);
+      toast({ variant: "error", title: "Couldn't save permissions", description: message });
     } finally {
       setSaving(false);
     }
@@ -358,7 +367,7 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
                   : "Click a module name to toggle every action in that row. Changes are local to this session and are not persisted."}
               </p>
               {apiEnabled() && loadError && (
-                <p role="alert" className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{loadError}</p>
+                <InlineAlert variant="warning" className="mt-2">{loadError}</InlineAlert>
               )}
             </CardContent>
           </Card>
@@ -379,6 +388,7 @@ type RoleDraft = { name: string; displayName: string; description: string; defau
  * of that type immediately, the same way it does for a Sub Admin preset.
  */
 function RolePresets({ menusByModule }: MenusByModuleProp) {
+  const { toast } = useToast();
   const [roles, setRoles] = useState<ApiRole[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<RoleDraft | null>(null);
@@ -507,8 +517,11 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
       }
       setSavedTick(Date.now());
       setTimeout(() => setSavedTick(null), 2200);
+      toast({ variant: "success", title: isNew ? "Role created" : "Role saved" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the role.");
+      const message = err instanceof Error ? err.message : "Could not save the role.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save role", description: message });
     } finally {
       setBusy(false);
     }
@@ -521,8 +534,11 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
     try {
       await deleteRole(selectedRole.id);
       await reload(null);
+      toast({ variant: "success", title: "Role deleted" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete the role.");
+      const message = err instanceof Error ? err.message : "Could not delete the role.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't delete role", description: message });
     } finally {
       setBusy(false);
     }
@@ -530,14 +546,11 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Role Presets</CardTitle>
-          <CardDescription>
-            Permission roles are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={UserCog}
+        title="Demo mode"
+        description="Permission roles are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them."
+      />
     );
   }
 
@@ -556,7 +569,7 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
         </Button>
       </CardHeader>
       <CardContent>
-        {error && <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <InlineAlert variant="warning" className="mb-3">{error}</InlineAlert>}
 
         <div className="mb-4 flex flex-wrap gap-2">
           {roles.map((role) => (
@@ -585,8 +598,9 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
           <>
             <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="grid gap-1.5">
-                <Label>Identifier</Label>
+                <Label htmlFor="role-identifier">Identifier</Label>
                 <Input
+                  id="role-identifier"
                   value={draft.name}
                   onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                   placeholder="e.g. finance-officer"
@@ -595,16 +609,18 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label>Display name</Label>
+                <Label htmlFor="role-display-name">Display name</Label>
                 <Input
+                  id="role-display-name"
                   value={draft.displayName}
                   onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
                   placeholder="e.g. Finance Officer"
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label>Description</Label>
+                <Label htmlFor="role-description">Description</Label>
                 <Input
+                  id="role-description"
                   value={draft.description}
                   onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                   placeholder="What this role is for"
@@ -701,11 +717,18 @@ const ACCESS_REQUEST_STATUS_STYLE: Record<ApiAccessRequest["status"], string> = 
  * from the "Relationship Managers" tab, same as any other permission change.
  */
 function AccessRequestsPanel({ requests, reload }: { requests: ApiAccessRequest[]; reload: () => void }) {
+  const { toast } = useToast();
   const [approveTarget, setApproveTarget] = useState<ApiAccessRequest | null>(null);
   const [rejectTarget, setRejectTarget] = useState<ApiAccessRequest | null>(null);
 
+  // The rejection path is intentionally left to ConfirmDialog's own try/catch (it already
+  // shows the error inline and keeps the dialog open) — only the success case adds a toast
+  // here, since ConfirmDialog gives no further feedback once it closes.
   function decide(target: ApiAccessRequest, approve: boolean) {
-    return reviewAccessRequest(target.id, approve).then(() => reload());
+    return reviewAccessRequest(target.id, approve).then(() => {
+      reload();
+      toast({ variant: "success", title: approve ? "Request approved" : "Request rejected" });
+    });
   }
 
   const pending = requests.filter((r) => r.status === "Pending");

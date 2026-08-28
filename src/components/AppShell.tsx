@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { FloatingNotes } from "@/components/FloatingNotes";
+import { DoubtChatbot } from "@/components/DoubtChatbot";
 import { PageTransition } from "@/components/PageTransition";
 import { NAV_BY_ROLE, type NavSection } from "@/lib/nav";
 import { ROLE_META } from "@/lib/roles";
@@ -18,6 +19,11 @@ interface AppShellProps {
 }
 
 const COLLAPSE_KEY = "trn.sidebarCollapsed";
+
+// Coordinator/Admission/Management aren't separate backend roles — they're display
+// portals a Sub Admin's assigned preset (RoleDefinition.DefaultRoute) routes to. The
+// account's real, login-issued role is always "subadmin". See the role-sync effect below.
+const SUBADMIN_PRESET_PORTALS: Role[] = ["coordinator", "admission", "management"];
 
 export function AppShell({ role, children }: AppShellProps) {
   const { setRole } = useSession();
@@ -68,7 +74,15 @@ export function AppShell({ role, children }: AppShellProps) {
     // there is no separate Student login, the signed-in account is always a
     // Parent. Syncing role here would overwrite the real session role and break
     // anything gated on it (e.g. the parent's-children fetch in SessionProvider).
-    if (role === "student") return;
+    //
+    // Same reasoning for the three Sub Admin preset portals: Login already wrote the
+    // correct, real "subadmin" role from the backend before ever navigating here, and
+    // RequireAuth separately admits a subadmin into e.g. /coordinator via homePath's
+    // portal, not session.role. Overwriting it to "coordinator"/"admission"/"management"
+    // here used to permanently strand these accounts — their own genuinely subadmin-
+    // scoped screens (My Permissions, Integrations, Audit Log) gate on role="subadmin"
+    // and nothing ever wrote that value back for the rest of the session.
+    if (role === "student" || SUBADMIN_PRESET_PORTALS.includes(role)) return;
     setRole(role);
   }, [role, setRole]);
 
@@ -128,6 +142,7 @@ export function AppShell({ role, children }: AppShellProps) {
         </main>
       </div>
       <FloatingNotes role={role} />
+      <DoubtChatbot role={role} />
     </div>
   );
 }

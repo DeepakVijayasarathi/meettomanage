@@ -1,6 +1,6 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, downloadFile } from "@/lib/api";
 import type { AppUser, Child } from "@/types";
-import { toFrontendRole, toFrontendStatus, type ApiRole, type ApiUser, type PagedResult } from "./types";
+import { toFrontendRole, toFrontendStatus, type ApiRole, type ApiUser, type BulkImportResult, type PagedResult } from "./types";
 
 /** A students-directory row: the mock Child shape plus resolved parent/course names from the API. */
 export type StudentRow = Child & { parentName?: string; courseName?: string; rmNotes?: string };
@@ -67,7 +67,8 @@ export function toAppUser(user: ApiUser): AppUser {
     status: toFrontendStatus(user.status),
     avatarColor: avatarColorFor(user.id),
     joinedOn: user.createdAtUtc.slice(0, 10),
-    department: user.department ?? undefined,
+    department: user.departmentName ?? undefined,
+    departmentId: user.departmentId ?? undefined,
     roleDefinitionId: user.roleDefinitionId ?? undefined,
   };
 }
@@ -96,7 +97,7 @@ export async function resendCredentials(userId: string, channel: "Email" | "What
 
 export async function updateUser(
   id: string,
-  request: { firstName: string; lastName: string; phone?: string; department?: "Phonics" | "Maths" }
+  request: { firstName: string; lastName: string; phone?: string; departmentId?: string }
 ): Promise<ApiUser> {
   return apiFetch<ApiUser>(`/api/users/${id}`, {
     method: "PUT",
@@ -144,7 +145,7 @@ export async function createUser(request: {
   lastName: string;
   phone?: string;
   role: ApiRole;
-  department?: "Phonics" | "Maths";
+  departmentId?: string;
   /** Role preset to assign immediately; only valid when role is "SubAdmin". */
   roleDefinitionId?: string;
 }): Promise<ApiUser> {
@@ -152,4 +153,29 @@ export async function createUser(request: {
     method: "POST",
     body: JSON.stringify(request),
   });
+}
+
+/** Bulk-create Parent or Teacher accounts from a .csv/.xlsx. Columns: Email, FirstName,
+ *  LastName, Phone, DepartmentName (Teacher rows only). */
+export async function bulkImportUsers(file: File, role: "Parent" | "Teacher"): Promise<BulkImportResult> {
+  const form = new FormData();
+  form.set("file", file);
+  form.set("role", role);
+  return apiFetch<BulkImportResult>("/api/users/bulk-import", { method: "POST", body: form });
+}
+
+export async function exportUsers(role: "Parent" | "Teacher"): Promise<void> {
+  await downloadFile(`/api/users/export?role=${role}`, `${role.toLowerCase()}s.csv`);
+}
+
+/** Bulk-create Students (Child records) from a .csv/.xlsx. Each row's ParentEmail must match
+ *  an existing Parent account. Columns: ParentEmail, StudentFullName, DateOfBirth (YYYY-MM-DD, optional), AcademicLevel (optional). */
+export async function bulkImportStudents(file: File): Promise<BulkImportResult> {
+  const form = new FormData();
+  form.set("file", file);
+  return apiFetch<BulkImportResult>("/api/users/students/bulk-import", { method: "POST", body: form });
+}
+
+export async function exportStudents(): Promise<void> {
+  await downloadFile("/api/users/students/export", "students.csv");
 }

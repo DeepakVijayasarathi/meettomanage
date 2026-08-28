@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useBrand } from "@/lib/branding";
+import { useLightBrandScope } from "@/lib/theme";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
@@ -99,10 +100,11 @@ const STATS = [
 ];
 
 export default function MarketingHome() {
+  useLightBrandScope();
   const brand = useBrand();
 
   return (
-    <div className="min-h-screen bg-brand-cream text-brand-ink">
+    <div className="theme-light-scope min-h-screen bg-brand-cream text-brand-ink">
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-brand-ink/10 bg-brand-cream/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -181,7 +183,7 @@ export default function MarketingHome() {
 
         <div className="relative mx-auto w-full max-w-md lg:max-w-none">
           <div className="absolute -left-4 -top-4 z-10 flex h-14 w-14 -rotate-6 items-center justify-center rounded-full bg-white p-2 shadow-pop ring-1 ring-brand-ink/10">
-            <img src={brand.logoUrl ?? "/logo.png"} alt="" className="h-full w-full object-contain" />
+            <img src={brand.logoUrl ?? "/logo-icon.png"} alt="" className="h-full w-full object-contain" />
           </div>
           <div className="overflow-hidden rounded-[28px] shadow-pop ring-4 ring-white">
             <img

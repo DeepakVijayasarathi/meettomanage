@@ -21,10 +21,21 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { EmptyState } from "@/components/EmptyState";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/lib/branding";
+import { useLightBrandScope } from "@/lib/theme";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { bookStoreDemo, listDemoAvailability, listStorePlans, submitStoreInquiry, type ApiAvailableDemoSlot, type ApiStorePlan } from "@/api/store";
+import {
+  bookStoreDemo,
+  listDemoAvailability,
+  listStoreDepartments,
+  listStorePlans,
+  submitStoreInquiry,
+  type ApiAvailableDemoSlot,
+  type ApiPublicDepartment,
+  type ApiStorePlan,
+} from "@/api/store";
 import { cn, formatCurrency } from "@/lib/utils";
+import { DEMO_DEPARTMENTS } from "@/data/departments";
 
 const DEMO_PLANS: ApiStorePlan[] = [
   { id: "pp-1", name: "Phonics Foundations — Monthly", courseName: "Phonics", billingType: "Subscription", billingCycle: "Monthly", price: 2500, sessionsIncluded: 12 },
@@ -58,9 +69,11 @@ function toLocalInputValue(date: Date): string {
 }
 
 export default function Store() {
+  useLightBrandScope();
   const brand = useBrand();
   const live = apiEnabled();
   const { data: plans, loading, error: plansError, reload: reloadPlans } = useApiData<ApiStorePlan[]>(() => listStorePlans(), DEMO_PLANS);
+  const { data: departments } = useApiData<ApiPublicDepartment[]>(() => listStoreDepartments(), DEMO_DEPARTMENTS);
 
   const [selectedPlan, setSelectedPlan] = useState<ApiStorePlan | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -86,7 +99,7 @@ export default function Store() {
   const demoMinStart = toLocalInputValue(new Date(Date.now() + 2 * 3_600_000 + 10 * 60_000)); // 2h + a small buffer
   const demoMaxStart = toLocalInputValue(new Date(Date.now() + 29 * 86_400_000));
 
-  const demoDepartment = demoForm.department === "none" ? undefined : (demoForm.department as "Phonics" | "Maths");
+  const demoDepartment = demoForm.department === "none" ? undefined : demoForm.department;
 
   const loadAvailableSlots = useCallback(
     (date: string) => {
@@ -155,7 +168,7 @@ export default function Store() {
         parentPhone: demoForm.parentPhone,
         childName: demoForm.childName,
         childAge: demoForm.childAge ? Number(demoForm.childAge) : undefined,
-        department: demoForm.department === "none" ? undefined : (demoForm.department as "Phonics" | "Maths"),
+        departmentId: demoForm.department === "none" ? undefined : demoForm.department,
         preferredStartAtUtc: new Date(demoForm.preferredStart).toISOString(),
       });
       setDemoConfirmed(new Date(confirmation.scheduledStartAtUtc).toLocaleString());
@@ -205,7 +218,7 @@ export default function Store() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-cream text-brand-ink">
+    <div className="theme-light-scope min-h-screen bg-brand-cream text-brand-ink">
       <header className="sticky top-0 z-30 border-b border-brand-ink/10 bg-brand-cream/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link to="/" aria-label={`${brand.name} home`}>
@@ -460,15 +473,18 @@ export default function Store() {
                   </div>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>Subject (optional)</Label>
+                  <Label htmlFor="demo-subject-select">Subject (optional)</Label>
                   <Select value={demoForm.department} onValueChange={(v) => setDemoForm((f) => ({ ...f, department: v }))}>
-                    <SelectTrigger>
+                    <SelectTrigger id="demo-subject-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No preference</SelectItem>
-                      <SelectItem value="Phonics">Phonics</SelectItem>
-                      <SelectItem value="Maths">Maths</SelectItem>
+                      {departments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -492,7 +508,7 @@ export default function Store() {
                     </div>
                     {demoDate && (
                       <div className="grid gap-1.5">
-                        <Label>Available times</Label>
+                        <Label id="demo-available-times-label">Available times</Label>
                         {slotsLoading ? (
                           <p className="flex items-center gap-1.5 text-xs text-brand-ink/50">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking availability…
@@ -502,7 +518,7 @@ export default function Store() {
                         ) : availableSlots.length === 0 ? (
                           <p className="text-xs text-brand-ink/50">No open slots that day — try another date.</p>
                         ) : (
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2" role="group" aria-labelledby="demo-available-times-label">
                             {availableSlots.map((slot) => {
                               const slotLocal = toLocalInputValue(new Date(slot.startAtUtc));
                               const isSelected = demoForm.preferredStart === slotLocal;

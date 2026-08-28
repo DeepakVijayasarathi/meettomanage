@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, CalendarPlus, CheckCircle2, ChevronDown, ChevronUp, Trash2, UserPlus, Users2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { CalendarPlus, ChevronDown, ChevronUp, Trash2, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
+import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -109,7 +112,8 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
 }
 
 export default function AdmissionDemoScheduling() {
-  const { data: apiRows, reload: reloadRows } = useApiData(
+  const { toast } = useToast();
+  const { data: apiRows, error: rowsError, reload: reloadRows } = useApiData(
     () => listDemoBookings().then((bookings) => bookings.map(bookingToRow)),
     seedRows()
   );
@@ -203,8 +207,12 @@ export default function AdmissionDemoScheduling() {
           setActionError(null);
           setJustScheduled(childName.trim());
           resetForm();
+          toast({ variant: "success", title: "Demo scheduled" });
         })
-        .catch((err: Error) => setActionError(err.message))
+        .catch((err: Error) => {
+          setActionError(err.message);
+          toast({ variant: "error", title: "Couldn't schedule demo", description: err.message });
+        })
         .finally(() => setScheduling(false));
       return;
     }
@@ -322,6 +330,15 @@ export default function AdmissionDemoScheduling() {
         header: "Actions",
         render: (row) => (
           <div className="flex items-center gap-1.5">
+            {row.status === "demo" ? (
+              <Button asChild variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
+                <Link to={`/admission/demo-teacher-assignment/${row.id}`}>Reassign</Link>
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" disabled>
+                Reassign
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -366,17 +383,15 @@ export default function AdmissionDemoScheduling() {
       </p>
 
       {justScheduled && (
-        <div className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
-          <CheckCircle2 className="h-4 w-4" />
+        <InlineAlert variant="success" bordered className="mb-5">
           Demo scheduled for {justScheduled}. All invited parents/guardians will receive an invite.
-        </div>
+        </InlineAlert>
       )}
 
       {actionError && (
-        <div role="alert" className="mb-5 flex items-center gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
-          <AlertCircle className="h-4 w-4" />
+        <InlineAlert variant="error" bordered className="mb-5">
           {actionError}
-        </div>
+        </InlineAlert>
       )}
 
       <Card className="mb-6">
@@ -505,11 +520,11 @@ export default function AdmissionDemoScheduling() {
               <Input id="demoTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>
+              <Label htmlFor="demo-teacher-select">
                 Teacher <span className="text-destructive">*</span>
               </Label>
               <Select value={teacherId} onValueChange={setTeacherId}>
-                <SelectTrigger>
+                <SelectTrigger id="demo-teacher-select">
                   <SelectValue placeholder="Select a teacher" />
                 </SelectTrigger>
                 <SelectContent>
@@ -552,6 +567,8 @@ export default function AdmissionDemoScheduling() {
         searchPlaceholder="Search by child, parent or teacher…"
         emptyTitle="No demos scheduled yet"
         emptyDescription="Use the form above to schedule your first demo class."
+        error={apiEnabled() ? rowsError : null}
+        onRetry={reloadRows}
       />
 
       <ConfirmDialog
@@ -569,6 +586,7 @@ export default function AdmissionDemoScheduling() {
             return updateConversionStatus(completeTarget.id, "DemoCompleted").then(() => {
               setActionError(null);
               reloadRows();
+              toast({ variant: "success", title: "Demo marked completed" });
             });
           }
           setRows((prev) => prev.map((r) => (r.id === completeTarget.id ? { ...r, status: "completed" } : r)));
@@ -591,6 +609,7 @@ export default function AdmissionDemoScheduling() {
             return updateConversionStatus(cancelTarget.id, "NotInterested").then(() => {
               setActionError(null);
               reloadRows();
+              toast({ variant: "success", title: "Demo cancelled" });
             });
           }
           setRows((prev) => prev.map((r) => (r.id === cancelTarget.id ? { ...r, status: "cancelled" } : r)));

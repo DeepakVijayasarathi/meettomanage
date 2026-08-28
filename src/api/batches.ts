@@ -5,6 +5,7 @@ export interface ApiBatch {
   id: string;
   courseId: string;
   courseName: string;
+  courseDurationMinutes: number;
   teacherProfileId: string;
   teacherName: string;
   name: string;
@@ -19,7 +20,8 @@ export interface TeacherOption {
   teacherProfileId: string;
   userId: string;
   fullName: string;
-  department: "Phonics" | "Maths" | null;
+  departmentId: string | null;
+  departmentName: string | null;
 }
 
 export type DisplayBatch = Batch & { teacherName?: string; courseName?: string };
@@ -34,7 +36,7 @@ export function toFrontendBatch(batch: ApiBatch): DisplayBatch {
     teacherId: batch.teacherProfileId,
     teacherName: batch.teacherName,
     type: batch.capacity <= 1 ? "1:1" : "group",
-    duration: 45,
+    duration: batch.courseDurationMinutes,
     capacity: batch.capacity,
     enrolled: batch.enrolledCount,
     status: batch.status === "Dormant" || batch.status === "Archived" ? "dormant" : upcoming ? "upcoming" : "active",

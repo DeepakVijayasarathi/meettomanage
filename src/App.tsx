@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
 import { AppShell } from "@/components/AppShell";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Logo } from "@/components/Logo";
@@ -17,6 +18,8 @@ const AdminDashboard = lazy(() => import("@/features/admin/Dashboard"));
 const AdminUsers = lazy(() => import("@/features/admin/Users"));
 const AdminPermissions = lazy(() => import("@/features/admin/Permissions"));
 const AdminCourses = lazy(() => import("@/features/admin/Courses"));
+const AdminDepartments = lazy(() => import("@/features/admin/Departments"));
+const AdminQuizQuestions = lazy(() => import("@/features/admin/QuizQuestions"));
 const AdminBatches = lazy(() => import("@/features/admin/Batches"));
 const AdminAcademicCalendar = lazy(() => import("@/features/admin/AcademicCalendar"));
 const AdminSessions = lazy(() => import("@/features/admin/Sessions"));
@@ -30,9 +33,12 @@ const AdminReports = lazy(() => import("@/features/admin/Reports"));
 const AdminBulkEmail = lazy(() => import("@/features/admin/BulkEmail"));
 const AdminEmailTemplates = lazy(() => import("@/features/admin/EmailTemplates"));
 const AdminProgressReports = lazy(() => import("@/features/admin/ProgressReports"));
+const AdminChatbot = lazy(() => import("@/features/admin/ChatbotAdmin"));
 const AdminEnrollments = lazy(() => import("@/features/admin/Enrollments"));
 const AdminStoreInquiries = lazy(() => import("@/features/admin/StoreInquiries"));
 const AdminSettings = lazy(() => import("@/features/admin/Settings"));
+const AdminMonitoring = lazy(() => import("@/features/admin/Monitoring"));
+const AdminServerDetail = lazy(() => import("@/features/admin/ServerDetail"));
 
 const TeacherDashboard = lazy(() => import("@/features/teacher/Dashboard"));
 const TeacherMyClasses = lazy(() => import("@/features/teacher/MyClasses"));
@@ -41,6 +47,8 @@ const TeacherDemoFeedback = lazy(() => import("@/features/teacher/DemoFeedback")
 const TeacherLeave = lazy(() => import("@/features/teacher/Leave"));
 const TeacherPayout = lazy(() => import("@/features/teacher/Payout"));
 const TeacherResources = lazy(() => import("@/features/teacher/Resources"));
+const TeacherRecordings = lazy(() => import("@/features/teacher/Recordings"));
+const TeacherDoubts = lazy(() => import("@/features/teacher/TeacherDoubts"));
 
 const ParentDashboard = lazy(() => import("@/features/parent/Dashboard"));
 const ParentEnrollment = lazy(() => import("@/features/parent/Enrollment"));
@@ -52,6 +60,7 @@ const ParentNotifications = lazy(() => import("@/features/parent/Notifications")
 const ParentAddChild = lazy(() => import("@/features/parent/AddChild"));
 
 const LiveClassroom = lazy(() => import("@/features/classroom/LiveClassroom"));
+const PersonalMeetingRoom = lazy(() => import("@/features/classroom/PersonalMeetingRoom"));
 
 const SubAdminDashboard = lazy(() => import("@/features/subadmin/Dashboard"));
 const SubAdminPermissions = lazy(() => import("@/features/subadmin/Permissions"));
@@ -61,6 +70,7 @@ const SubAdminAuditLog = lazy(() => import("@/features/subadmin/AuditLog"));
 
 const AdmissionDashboard = lazy(() => import("@/features/admission/Dashboard"));
 const AdmissionDemoScheduling = lazy(() => import("@/features/admission/DemoScheduling"));
+const AdmissionDemoTeacherAssignment = lazy(() => import("@/features/admission/DemoTeacherAssignment"));
 const AdmissionDemoFeedback = lazy(() => import("@/features/admission/DemoFeedback"));
 const AdmissionLeads = lazy(() => import("@/features/admission/Leads"));
 const AdmissionPayments = lazy(() => import("@/features/admission/Payments"));
@@ -125,12 +135,25 @@ export default function App() {
                 </RequireAuth>
               }
             />
+            <Route
+              path="/meet/personal"
+              element={
+                // Every role the "My meeting link" / Start button (PersonalMeetingButton)
+                // actually appears on — staff who need an ad-hoc video room, not the
+                // teacher/parent/student roles, which use a real scheduled class instead.
+                <RequireAuth role="admin" also={["subadmin", "management", "coordinator", "admission"]}>
+                  <PersonalMeetingRoom />
+                </RequireAuth>
+              }
+            />
 
             <Route path="/admin" element={<RequireAuth role="admin"><AppShell role="admin"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<AdminDashboard />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="permissions" element={<AdminPermissions />} />
               <Route path="courses" element={<AdminCourses />} />
+              <Route path="departments" element={<AdminDepartments />} />
+              <Route path="quiz-bank" element={<AdminQuizQuestions />} />
               <Route path="batches" element={<AdminBatches />} />
               <Route path="calendar" element={<AdminAcademicCalendar />} />
               <Route path="sessions" element={<AdminSessions />} />
@@ -144,16 +167,21 @@ export default function App() {
               <Route path="bulk-email" element={<AdminBulkEmail />} />
               <Route path="email-templates" element={<AdminEmailTemplates />} />
               <Route path="progress-reports" element={<AdminProgressReports />} />
+              <Route path="chatbot" element={<AdminChatbot />} />
               <Route path="enrollments" element={<AdminEnrollments />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="settings" element={<AdminSettings />} />
+              <Route path="monitoring" element={<AdminMonitoring />} />
+              <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
             </Route>
 
             <Route path="/teacher" element={<RequireAuth role="teacher"><AppShell role="teacher"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<TeacherDashboard />} />
               <Route path="classes" element={<TeacherMyClasses />} />
               <Route path="attendance" element={<TeacherAttendance />} />
+              <Route path="recordings" element={<TeacherRecordings />} />
               <Route path="demo-feedback" element={<TeacherDemoFeedback />} />
+              <Route path="doubts" element={<TeacherDoubts />} />
               <Route path="leave" element={<TeacherLeave />} />
               <Route path="payout" element={<TeacherPayout />} />
               <Route path="resources" element={<TeacherResources />} />
@@ -181,6 +209,8 @@ export default function App() {
             <Route path="/admission" element={<RequireAuth role="admission"><AppShell role="admission"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<AdmissionDashboard />} />
               <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
+              <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-teacher-assignment/:bookingId" element={<AdmissionDemoTeacherAssignment />} />
               <Route path="demo-feedback" element={<AdmissionDemoFeedback />} />
               <Route path="leads" element={<AdmissionLeads />} />
               <Route path="payments" element={<AdmissionPayments />} />
@@ -210,6 +240,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </BrowserRouter>
+      <Toaster />
     </TooltipProvider>
   );
 }

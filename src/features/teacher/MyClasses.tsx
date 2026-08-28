@@ -4,13 +4,14 @@ import { CalendarClock, List, Users, Video } from "lucide-react";
 import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { FilterBar } from "@/components/FilterBar";
 import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { RecordingsDialog } from "@/components/RecordingsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -194,12 +195,12 @@ export default function TeacherMyClasses() {
       />
 
       {apiEnabled() && sessionsError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load your classes ({sessionsError}) — the list below may be incomplete.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       <Tabs defaultValue="list">
@@ -221,19 +222,22 @@ export default function TeacherMyClasses() {
             onRowClick={(row) => setSelected(row)}
             emptyTitle="No classes match this filter"
             emptyDescription="Try a different status filter or clear your search."
+            error={apiEnabled() && sessionsError ? sessionsError : null}
+            onRetry={reload}
             toolbar={
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_FILTERS.map((f) => (
-                    <SelectItem key={f.value} value={f.value}>
-                      {f.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FilterBar
+                filters={[
+                  {
+                    key: "status",
+                    label: "Status",
+                    value: statusFilter,
+                    onChange: setStatusFilter,
+                    className: "w-[180px]",
+                    placeholder: "Filter status",
+                    options: STATUS_FILTERS.map((f) => ({ value: f.value, label: f.label })),
+                  },
+                ]}
+              />
             }
           />
         </TabsContent>

@@ -97,6 +97,51 @@
     --ring: 191 85% 55%;
   }
 
+  /* Login/ForgotPassword/ResetPin and the public marketing pages (Home, Store) render a
+     fixed light cream/white brand identity, independent of the app's dark-mode toggle —
+     that control lives inside the authenticated AppShell and these pages keep their own
+     brand-*-token look regardless of it. They still embed shared shadcn primitives
+     (Input, Select, Button, Checkbox, ...) that read the semantic tokens above, so a
+     visitor who turned dark mode on in a previous session and lands back here — logged
+     out, or before ever logging in — would otherwise see those inputs/triggers render
+     with dark's near-black --background/--input floating inside the light card. Pinning
+     the same 15 tokens back to their light :root values on these pages' own root wrapper
+     closes that gap; kept as a literal duplicate (not a var() reference to :root) because
+     .dark's rules on <html> would otherwise still win via source order. */
+  .theme-light-scope {
+    /* `color` is inherited, not recomputed per custom-property scope — a plain element
+       below here with no explicit text-* class (e.g. ui/input.tsx's <input>, which only
+       sets bg-background/border-input, never its own text color) would otherwise keep
+       inheriting <body>'s already-resolved dark-mode --foreground (near-white) straight
+       through this scope, rendering as washed-out pale text on the light card. Setting
+       color explicitly here gives everything below a fresh, correctly-light inheritance
+       root instead of only fixing the tokens that are re-read via var() on each element. */
+    color: hsl(var(--foreground));
+    --background: 210 25% 98%;
+    --foreground: 222 32% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 32% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 32% 12%;
+    --primary: 191 79% 32%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 191 55% 94%;
+    --secondary-foreground: 195 60% 22%;
+    --muted: 212 22% 95%;
+    --muted-foreground: 215 16% 42%;
+    --accent: 210 25% 94%;
+    --accent-foreground: 222 32% 14%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 106 50% 30%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 26 83% 14%;
+    --border: 214 20% 89%;
+    --input: 214 20% 89%;
+    --ring: 191 79% 32%;
+  }
+
   * {
     @apply border-border;
   }

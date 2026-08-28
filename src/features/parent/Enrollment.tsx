@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { cloneElement, isValidElement, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CheckCircle2, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +68,7 @@ interface EnrollmentForm {
 }
 
 export default function ParentEnrollment() {
+  const { toast } = useToast();
   const brand = useBrand();
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -91,27 +93,51 @@ export default function ParentEnrollment() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState<EnrollmentForm>({
-    childName: child?.name ?? "",
-    dob: "",
-    grade: child?.grade ?? "",
-    gender: "",
-    schoolName: "",
-    priorExperience: "",
-    parentName: userName !== "Guest" ? userName : "",
-    relationship: "",
-    parentPhone: "",
-    parentEmail: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-    address: "",
-    courseInterest: child?.courseId ?? "",
-    preferredDays: [],
-    preferredTime: "",
-    allergies: "",
-    notes: "",
-    consent: false,
-  });
+
+  // Parent/contact fields carry over between children on the same account (same
+  // parent, same address); everything else is this specific child's own answers and
+  // must start blank for each one.
+  function buildInitialForm(prev?: EnrollmentForm): EnrollmentForm {
+    return {
+      childName: child?.name ?? "",
+      dob: "",
+      grade: child?.grade ?? "",
+      gender: "",
+      schoolName: "",
+      priorExperience: "",
+      parentName: prev?.parentName || (userName !== "Guest" ? userName : ""),
+      relationship: prev?.relationship ?? "",
+      parentPhone: prev?.parentPhone ?? "",
+      parentEmail: prev?.parentEmail ?? "",
+      emergencyContactName: prev?.emergencyContactName ?? "",
+      emergencyContactPhone: prev?.emergencyContactPhone ?? "",
+      address: prev?.address ?? "",
+      courseInterest: child?.courseId ?? "",
+      preferredDays: [],
+      preferredTime: "",
+      allergies: "",
+      notes: "",
+      consent: false,
+    };
+  }
+
+  const [form, setForm] = useState<EnrollmentForm>(() => buildInitialForm());
+
+  // useState's initializer above only ever runs on this component's first mount — but
+  // switching to a different child (e.g. right after "Add Child") reuses this same
+  // route/component instance with just a new childId, not a fresh one. Without this,
+  // the form kept showing whichever child's answers were typed in first, no matter
+  // which child the URL/active-child now pointed at.
+  const previousChildIdRef = useRef(childId);
+  useEffect(() => {
+    if (previousChildIdRef.current === childId) return;
+    previousChildIdRef.current = childId;
+    setForm((prev) => buildInitialForm(prev));
+    setStep(0);
+    setErrors({});
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childId]);
 
   useEffect(() => {
     if (!submitted) return;
@@ -188,7 +214,8 @@ export default function ParentEnrollment() {
       if (emergencyPhoneError) next.emergencyContactPhone = emergencyPhoneError;
       else if (!parentPhoneError && phoneDigits(form.emergencyContactPhone) === phoneDigits(form.parentPhone))
         next.emergencyContactPhone = "The emergency contact should be a different number from your own.";
-      if (form.address.trim().length < 10) next.address = "Enter the full home address (street, city, PIN).";
+      if (form.address.trim().length > 0 && form.address.trim().length < 10)
+        next.address = "Enter the full home address (street, city, PIN), or leave it blank.";
     } else {
       if (!form.courseInterest) next.courseInterest = "Select a course to continue.";
       if (!form.consent) next.consent = "Please confirm the details and give consent to submit.";
@@ -231,8 +258,13 @@ export default function ParentEnrollment() {
           markEnrollmentComplete(childId);
           setActiveChildId(childId);
           setSubmitted(true);
+          toast({ variant: "success", title: "Enrollment submitted" });
         })
-        .catch((err: Error) => setError(err.message || "Could not submit the form. Please try again."))
+        .catch((err: Error) => {
+          const message = err.message || "Could not submit the form. Please try again.";
+          setError(message);
+          toast({ variant: "error", title: "Couldn't submit enrollment", description: message });
+        })
         .finally(() => setSubmitting(false));
       return;
     }
@@ -317,7 +349,7 @@ export default function ParentEnrollment() {
                     <Input id="dob" type="date" required value={form.dob} onChange={(e) => update("dob", e.target.value)} />
                   </Field>
                   <Field label="Gender" htmlFor="gender" required error={errors.gender}>
-                    <Select value={form.gender} onValueChange={(v) => update("gender", v)}>
+                    <Select required value={form.gender} onValueChange={(v) => update("gender", v)}>
                       <SelectTrigger id="gender">
                         <SelectValue placeholder="Select gender" />
                       </SelectTrigger>
@@ -377,7 +409,7 @@ export default function ParentEnrollment() {
                     />
                   </Field>
                   <Field label="Relationship to student" htmlFor="relationship" required error={errors.relationship}>
-                    <Select value={form.relationship} onValueChange={(v) => update("relationship", v)}>
+                    <Select required value={form.relationship} onValueChange={(v) => update("relationship", v)}>
                       <SelectTrigger id="relationship">
                         <SelectValue placeholder="Select relationship" />
                       </SelectTrigger>
@@ -431,10 +463,9 @@ export default function ParentEnrollment() {
                     />
                   </Field>
                 </div>
-                <Field label="Home address" htmlFor="address" required error={errors.address}>
+                <Field label="Home address (optional)" htmlFor="address" error={errors.address}>
                   <Textarea
                     id="address"
-                    required
                     value={form.address}
                     onChange={(e) => update("address", e.target.value)}
                     placeholder="Street, city, state, PIN"
@@ -446,7 +477,7 @@ export default function ParentEnrollment() {
             {step === 2 && (
               <div className="flex flex-col gap-4">
                 <Field label="Course of interest" htmlFor="courseInterest" required error={errors.courseInterest}>
-                  <Select value={form.courseInterest} onValueChange={(v) => update("courseInterest", v)}>
+                  <Select required value={form.courseInterest} onValueChange={(v) => update("courseInterest", v)}>
                     <SelectTrigger id="courseInterest">
                       <SelectValue placeholder="Select a course" />
                     </SelectTrigger>
@@ -569,18 +600,29 @@ function Field({
   error?: string;
   children: ReactNode;
 }) {
+  const errorId = `${htmlFor}-error`;
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={htmlFor} className={cn(error && "text-destructive")}>
         {label}
         {required && <span className="ml-0.5 text-destructive">*</span>}
       </Label>
-      {children}
+      {/* aria-describedby ties the field to its error so a screen-reader user re-focusing
+          it later (not just at the moment role="alert" first announces it) still hears
+          why it's flagged; aria-invalid mirrors the same red-border/red-label visual cue
+          programmatically. Every call site here passes exactly one form control as
+          children, so cloning in these two props is safe. */}
+      {isValidElement<{ "aria-describedby"?: string; "aria-invalid"?: boolean }>(children)
+        ? cloneElement(children, {
+            "aria-describedby": error ? errorId : undefined,
+            "aria-invalid": !!error,
+          })
+        : children}
       {/* role="alert" so a screen reader announces the failure on Next/Submit — the
           errors appear well below the button that triggered them and were otherwise
           silent (matching how Login and Store already announce their errors). */}
       {error && (
-        <p role="alert" className="text-xs font-medium text-destructive">
+        <p id={errorId} role="alert" className="text-xs font-medium text-destructive">
           {error}
         </p>
       )}

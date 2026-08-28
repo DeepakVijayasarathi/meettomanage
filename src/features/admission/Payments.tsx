@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, IndianRupee, Link2, ListChecks, Loader2, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
+import { InlineAlert } from "@/components/InlineAlert";
+import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { KpiCard } from "@/components/KpiCard";
 import { FeeStatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CashConfirmationsPanel } from "@/components/CashConfirmationsPanel";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -24,7 +26,7 @@ interface PaymentRow {
   childName: string;
   parentName: string;
   courseName: string;
-  department: "Phonics" | "Maths";
+  department: string;
   amount: number;
   /** Settled so far; only known in API mode — the demo mock has no partial-payment figure. */
   amountPaid?: number;
@@ -76,6 +78,7 @@ function fromInvoice(invoice: Invoice): PaymentRow {
 }
 
 export default function AdmissionPayments() {
+  const { toast } = useToast();
   // One page of the (forever-growing) invoice table; the status filter, totals and
   // DataTable's paging all run client-side over it. totalCount is the whole matching
   // set server-side, which is what the "Invoices" KPI should actually count.
@@ -122,8 +125,11 @@ export default function AdmissionPayments() {
       await navigator.clipboard?.writeText(link.url).catch(() => undefined);
       setCopiedId(row.id);
       setTimeout(() => setCopiedId((id) => (id === row.id ? null : id)), 2500);
+      toast({ variant: "success", title: "Payment link copied", description: "The link is on your clipboard." });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not generate a payment link for this invoice.");
+      const message = e instanceof Error ? e.message : "Could not generate a payment link for this invoice.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't generate link", description: message });
     } finally {
       setLinkBusyId(null);
     }
@@ -231,13 +237,13 @@ export default function AdmissionPayments() {
         // Without this the screen reads "Invoices 0 · Collected ₹0 · Outstanding ₹0" after
         // a failed fetch — collection figures of zero are a claim about money, and one
         // nobody should make on the strength of a request that never returned.
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load invoices ({invoicesError}) — the figures and table below are not
           your real collection position.{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -273,19 +279,23 @@ export default function AdmissionPayments() {
           columns={columns}
           rowKey={(row) => row.id}
           searchPlaceholder="Search by child or course…"
+          emptyTitle="No payments yet"
+          emptyDescription="Invoices and payments will appear here once families start enrolling."
+          error={apiEnabled() ? invoicesError : null}
+          onRetry={reload}
           toolbar={
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as RowStatus | "all")}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterBar
+              filters={[
+                {
+                  key: "status",
+                  label: "Status",
+                  value: statusFilter,
+                  onChange: (v) => setStatusFilter(v as RowStatus | "all"),
+                  className: "w-48",
+                  options: STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label })),
+                },
+              ]}
+            />
           }
         />
         {!apiEnabled() && (

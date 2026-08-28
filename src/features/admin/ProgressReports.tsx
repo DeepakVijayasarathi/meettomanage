@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Save, ScrollText, Send } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
+import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +44,7 @@ function toApiShape(items: typeof DEMO_PROGRESS_REPORTS): ApiProgressReport[] {
 }
 
 export default function AdminProgressReports() {
+  const { toast } = useToast();
   const live = apiEnabled();
   const now = new Date();
   const [period, setPeriod] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
@@ -95,8 +98,11 @@ export default function AdminProgressReports() {
       await saveProgressReportContent(selected.id, draftContent);
       await reload();
       setSavedAt(Date.now());
+      toast({ variant: "success", title: "Draft saved" });
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Couldn't save the report.");
+      const message = err instanceof Error ? err.message : "Couldn't save the report.";
+      setActionError(message);
+      toast({ variant: "error", title: "Couldn't save draft", description: message });
     } finally {
       setBusy(false);
     }
@@ -118,8 +124,11 @@ export default function AdminProgressReports() {
       await saveProgressReportContent(confirmSendId, draftContent);
       await sendProgressReport(confirmSendId);
       await reload();
+      toast({ variant: "success", title: "Report sent", description: "The parent has been emailed this report." });
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Couldn't send the report.");
+      const message = err instanceof Error ? err.message : "Couldn't send the report.";
+      setActionError(message);
+      toast({ variant: "error", title: "Couldn't send report", description: message });
     } finally {
       setBusy(false);
       setConfirmSendId(null);
@@ -149,17 +158,15 @@ export default function AdminProgressReports() {
       />
 
       {live && error && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load progress reports ({error}).{" "}
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
-        </p>
+        </InlineAlert>
       )}
 
-      {actionError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{actionError}</p>
-      )}
+      {actionError && <InlineAlert variant="warning" className="mb-4">{actionError}</InlineAlert>}
 
       {loading ? (
         <div className="flex h-40 items-center justify-center text-muted-foreground">
@@ -190,11 +197,11 @@ export default function AdminProgressReports() {
                     r.id === selectedId ? "bg-primary/10 font-semibold text-primary" : "text-foreground hover:bg-muted/60"
                   )}
                 >
-                  <span className="flex items-center gap-2 truncate">
+                  <span className="flex min-w-0 items-center gap-2">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">
                       {getInitials(r.childName)}
                     </span>
-                    <span className="truncate">{r.childName}</span>
+                    <span className="min-w-0 flex-1 truncate">{r.childName}</span>
                   </span>
                   <Badge variant={r.status === "Sent" ? "success" : "warning"} className="shrink-0 text-[10px]">
                     {r.status === "Sent" ? "Sent" : "Draft"}

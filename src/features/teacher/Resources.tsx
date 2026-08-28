@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, CheckCircle2, Download, Eye, EyeOff, FileText, FolderOpen, Upload, Video } from "lucide-react";
+import { BookOpen, Download, Eye, EyeOff, FileText, FolderOpen, Upload, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { FileDropzone } from "@/components/FileDropzone";
+import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +89,7 @@ function apiToView(r: ApiResource): ViewResource {
 }
 
 export default function TeacherResources() {
+  const { toast } = useToast();
   const usingApi = apiEnabled();
 
   // Demo roster (mock) — filtered to this teacher's batches.
@@ -183,8 +186,11 @@ export default function TeacherResources() {
         setUploadOpen(false);
         resetUploadForm();
         reload();
+        toast({ variant: "success", title: "Resource uploaded", description: `Visible to ${batchLabel}.` });
       } catch (e) {
-        setUploadError(e instanceof Error ? e.message : "Upload failed. Please try again.");
+        const message = e instanceof Error ? e.message : "Upload failed. Please try again.";
+        setUploadError(message);
+        toast({ variant: "error", title: "Upload failed", description: message });
       } finally {
         setSubmitting(false);
       }
@@ -259,9 +265,9 @@ export default function TeacherResources() {
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1.5">
-                    <Label>Type</Label>
+                    <Label htmlFor="resource-type-select">Type</Label>
                     <Select value={type} onValueChange={(v) => setType(v as Resource["type"])}>
-                      <SelectTrigger>
+                      <SelectTrigger id="resource-type-select">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -273,10 +279,10 @@ export default function TeacherResources() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label>
+                    <Label id="resource-visible-batches-label">
                       Visible to batches <span className="text-destructive">*</span>
                     </Label>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div role="group" aria-labelledby="resource-visible-batches-label" className="flex flex-wrap gap-1.5">
                       {batchOptions.map((b) => (
                         <Button
                           key={b.id}
@@ -314,16 +320,15 @@ export default function TeacherResources() {
       />
 
       {confirmation && (
-        <div role="status" className="mb-5 flex items-center gap-2.5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-medium text-success">
-          <CheckCircle2 className="h-4 w-4" />
+        <InlineAlert variant="success" bordered className="mb-5">
           {confirmation}
-        </div>
+        </InlineAlert>
       )}
 
       {usingApi && error && (
-        <div role="alert" className="mb-5 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+        <InlineAlert variant="error" bordered className="mb-5">
           Couldn't load your resources: {error}
-        </div>
+        </InlineAlert>
       )}
 
       {usingApi && loading ? (

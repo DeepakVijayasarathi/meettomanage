@@ -19,7 +19,8 @@ export interface AppUser {
   status: UserStatus;
   avatarColor: string;
   joinedOn: string;
-  department?: "Phonics" | "Maths";
+  department?: string;
+  departmentId?: string;
   /** Assigned named role (preset) id; only meaningful for Sub Admin accounts. */
   roleDefinitionId?: string;
 }
@@ -41,12 +42,14 @@ export interface Child {
 }
 
 export type CourseType = "1:1" | "group" | "demo";
-export type ClassDuration = 30 | 45 | 60;
+/** Minutes -- any positive length, not a fixed 30/45/60 set. */
+export type ClassDuration = number;
 
 export interface Course {
   id: string;
   name: string;
-  category: "Phonics" | "Maths" | "Reading" | "Writing" | "Speaking";
+  /** Course category display name — the course's own CourseCategory, or its department when no category name applies. Any admin-defined category/department is valid, not a fixed set. */
+  category: string;
   type: CourseType;
   duration: ClassDuration;
   price: number;
@@ -108,8 +111,10 @@ export interface Invoice {
   /** Real backend invoice Guid (id above is the display invoice number); present in API mode only. */
   apiId?: string;
   parentId: string;
+  /** Real backend child Guid, when the invoice is linked to one; present in API mode only. */
+  childId?: string;
   childName: string;
-  department: "Phonics" | "Maths";
+  department: string;
   amount: number;
   /** Amount settled so far; balance due = amount - amountPaid. Present in API mode. */
   amountPaid?: number;
@@ -133,6 +138,23 @@ export interface TeacherPayout {
   finalAmount: number;
   /** pending: still accruing, amount can change. finalized: locked, awaiting payment. paid: done. */
   status: "pending" | "finalized" | "paid";
+  /** True when a session's captured teacher attendance fell well short of its scheduled duration -- must be resolved (adjusted or confirmed) before this payout can be finalized. */
+  requiresReview: boolean;
+  items: TeacherPayoutItem[];
+}
+
+export interface TeacherPayoutItem {
+  id: string;
+  classSessionId: string | null;
+  /** The batch this item's class belongs to -- null for items with no classSessionId (a bonus/adjustment with no single class behind it). */
+  className: string | null;
+  /** The class's own scheduled start, not when this payout item was created. */
+  sessionDate: string | null;
+  type: string;
+  amount: number;
+  note: string | null;
+  createdAtUtc: string;
+  requiresReview: boolean;
 }
 
 export interface LeaveRequest {
@@ -211,4 +233,100 @@ export interface Participant {
   handRaised: boolean;
   avatarColor: string;
   speaking?: boolean;
+}
+
+export interface MonitoredService {
+  name: string;
+  active: boolean;
+}
+
+export interface LiveCallSummary {
+  activeConferences: number;
+  totalParticipants: number;
+}
+
+export interface TimeSeriesPoint {
+  timestamp: string;
+  value: number;
+}
+
+export interface CallQuality {
+  averageRttMs: number;
+  incomingLossPercent: number;
+  outgoingLossPercent: number;
+  incomingBitrateKbps: number;
+  outgoingBitrateKbps: number;
+  endpointsSendingAudio: number;
+  endpointsSendingVideo: number;
+  jvbStressPercent: number;
+  jvbHealthy: boolean;
+}
+
+export interface CapacityForecast {
+  isFilling: boolean;
+  daysUntilFull: number | null;
+  trendGbPerDay: number;
+}
+
+export interface ServerStatus {
+  name: string;
+  hostname: string;
+  /** false means the agent itself couldn't be reached — every other field is meaningless then, not zero. */
+  reachable: boolean;
+  error?: string | null;
+  uptimeSeconds: number;
+  loadAverage1m: number;
+  cpuCores: number;
+  cpuUsagePercent: number;
+  memoryUsedPercent: number;
+  memoryTotalMb: number;
+  diskUsedPercent: number;
+  diskTotalGb: number;
+  networkRxMbps: number;
+  networkTxMbps: number;
+  diskReadMbps: number;
+  diskWriteMbps: number;
+  services: MonitoredService[];
+  /** How long ago the agent last wrote its status file — large even while reachable means the agent/cron is stuck. */
+  agentDataAgeSeconds: number;
+  liveCalls: LiveCallSummary | null;
+  /** Last hour, ~2-minute steps. Empty when unreachable. */
+  cpuHistory: TimeSeriesPoint[];
+  memoryHistory: TimeSeriesPoint[];
+  callQuality: CallQuality | null;
+  diskForecast: CapacityForecast | null;
+}
+
+export interface DatabaseInsights {
+  activeConnections: number;
+  maxConnections: number;
+  commitsPerSecond: number;
+  rollbacksPerSecond: number;
+  cacheHitRatioPercent: number;
+  databaseSizeMb: number;
+  deadlocksTotal: number;
+  locksHeld: number;
+}
+
+export interface MonitoringAlert {
+  name: string;
+  severity: string;
+  summary: string;
+  description: string;
+  state: string;
+  activeSince: string;
+  instance: string | null;
+}
+
+export interface MonitoringSummary {
+  servers: ServerStatus[];
+  apiHealthy: boolean;
+  databaseHealthy: boolean;
+  databaseLatencyMs: number;
+  databaseInsights: DatabaseInsights | null;
+  /** Total connections currently joined to any live class, platform-wide — distinct from a single server's own Jitsi participant count. */
+  concurrentClassroomUsers: number;
+  activeClassCount: number;
+  activeAlerts: MonitoringAlert[];
+  generatedAtUtc: string;
 }

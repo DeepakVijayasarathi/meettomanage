@@ -1,5 +1,5 @@
-import { apiFetch } from "@/lib/api";
-import type { PagedResult } from "./types";
+import { apiFetch, downloadFile } from "@/lib/api";
+import type { BulkImportResult, PagedResult } from "./types";
 import type { Invoice } from "@/types";
 
 export type ApiInvoiceStatus = "Pending" | "PartiallyPaid" | "Paid" | "Overdue" | "Cancelled";
@@ -20,7 +20,8 @@ export interface ApiInvoice {
   /** Resolved display name for the invoicing parent — the account holder, not the child. */
   parentName: string | null;
   parentEmail: string | null;
-  department: "Phonics" | "Maths";
+  departmentId: string;
+  departmentName: string;
   amount: number;
   amountPaid: number;
   currency: string;
@@ -38,6 +39,8 @@ export interface ApiPackagePlan {
   billingCycle: ApiBillingCycle;
   price: number;
   sessionsIncluded: number | null;
+  /** Days of access a subscription on this plan gets from its start date; null means it never expires on its own. */
+  validityDays: number | null;
   isActive: boolean;
 }
 
@@ -54,8 +57,9 @@ export function toFrontendInvoice(invoice: ApiInvoice): Invoice {
     id: invoice.invoiceNumber,
     apiId: invoice.id,
     parentId: invoice.parentProfileId,
+    childId: invoice.childId ?? undefined,
     childName: invoice.childName ?? "—",
-    department: invoice.department,
+    department: invoice.departmentName,
     amount: invoice.amount,
     amountPaid: invoice.amountPaid,
     status: INVOICE_STATUS_FROM_API[invoice.status],
@@ -114,7 +118,7 @@ export async function createInvoice(input: {
   parentProfileId: string;
   childId?: string;
   subscriptionId?: string;
-  department: "Phonics" | "Maths";
+  departmentId: string;
   amount: number;
   dueDate: string;
 }): Promise<ApiInvoice> {
@@ -156,6 +160,11 @@ export async function createPaymentLink(invoiceId: string): Promise<ApiPaymentLi
   return apiFetch<ApiPaymentLink>(`/api/invoices/${invoiceId}/payment-link`, { method: "POST" });
 }
 
+/** Downloads the "Bill of Supply" PDF for one invoice, matching the org's own template. */
+export async function downloadInvoicePdf(invoiceId: string, invoiceNumber: string): Promise<void> {
+  await downloadFile(`/api/invoices/${invoiceId}/pdf`, `${invoiceNumber}.pdf`);
+}
+
 export async function listSuspensions(status?: "Active" | "Lifted"): Promise<ApiFeeSuspension[]> {
   return apiFetch<ApiFeeSuspension[]>(`/api/invoices/suspensions${status ? `?status=${status}` : ""}`);
 }
@@ -179,6 +188,8 @@ export interface ApiSubscription {
   planName: string;
   status: ApiSubscriptionStatus;
   startDate: string;
+  /** When this subscription's access lapses on its own, from the plan's validityDays; null for a plan with no set validity window. */
+  endDate: string | null;
   nextBillingAtUtc: string | null;
   cancelledAtUtc: string | null;
 }
@@ -214,6 +225,7 @@ export interface SavePackagePlanInput {
   billingCycle: ApiBillingCycle;
   price: number;
   sessionsIncluded?: number;
+  validityDays?: number;
   isActive?: boolean;
 }
 
@@ -223,6 +235,18 @@ export async function createPackagePlan(input: SavePackagePlanInput): Promise<Ap
 
 export async function updatePackagePlan(id: string, input: SavePackagePlanInput): Promise<ApiPackagePlan> {
   return apiFetch<ApiPackagePlan>(`/api/package-plans/${id}`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+/** Bulk-create package plans from a .csv/.xlsx. Columns: Name, CourseName (optional),
+ *  BillingType, BillingCycle, Price, SessionsIncluded (optional), IsActive. */
+export async function bulkImportPackagePlans(file: File): Promise<BulkImportResult> {
+  const form = new FormData();
+  form.set("file", file);
+  return apiFetch<BulkImportResult>("/api/package-plans/bulk-import", { method: "POST", body: form });
+}
+
+export async function exportPackagePlans(): Promise<void> {
+  await downloadFile("/api/package-plans/export", "package-plans.csv");
 }
 
 export interface ApiPaymentAccountTransaction {
@@ -237,7 +261,8 @@ export interface ApiPaymentAccountTransaction {
 export interface ApiPaymentAccount {
   id: string;
   name: string;
-  department: "Phonics" | "Maths";
+  departmentId: string;
+  departmentName: string;
   gatewayProvider: string;
   gatewayAccountRef: string;
   isActive: boolean;
@@ -251,10 +276,15 @@ export async function listPaymentAccounts(): Promise<ApiPaymentAccount[]> {
   return apiFetch<ApiPaymentAccount[]>("/api/payment-accounts");
 }
 
-/** Admin edit of a department account's gateway wiring (name/provider/ref/active). */
+/**
+ * Admin edit of a department account's gateway wiring (name/provider/ref/active).
+ * applyToAllDepartments (default true server-side if omitted) syncs the same provider/ref/
+ * active onto every other department's account too — most orgs here run one gateway account
+ * for the whole business, not a distinct one per department.
+ */
 export async function updatePaymentAccount(
   id: string,
-  input: { name: string; gatewayProvider: string; gatewayAccountRef: string; isActive: boolean }
+  input: { name: string; gatewayProvider: string; gatewayAccountRef: string; isActive: boolean; applyToAllDepartments?: boolean }
 ): Promise<ApiPaymentAccount> {
   return apiFetch<ApiPaymentAccount>(`/api/payment-accounts/${id}`, {
     method: "PUT",

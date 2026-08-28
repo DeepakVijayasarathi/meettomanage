@@ -8,7 +8,7 @@ import { SESSIONS } from "@/data/sessions";
 import type { ChatMessage, Participant } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { buildInitialMessages, buildParticipants, LEADERBOARD_SEED } from "./classroomData";
+import { buildInitialMessages, buildParticipants, LEADERBOARD_SEED, QUIZ_BANK } from "./classroomData";
 import VideoStage from "./VideoStage";
 import Whiteboard from "./Whiteboard";
 import ParticipantsPanel from "./ParticipantsPanel";
@@ -247,6 +247,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
             variant="ghost"
             className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
             title={rightOpen ? "Collapse panel" : "Expand panel"}
+            aria-label={rightOpen ? "Collapse panel" : "Expand panel"}
             onClick={() => setRightOpen((o) => !o)}
           >
             {rightOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
@@ -301,6 +302,8 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
             }}
             leaderboard={LEADERBOARD_SEED}
             message={celebrationMessage}
+            // This mock/demo classroom has no Stars tab elsewhere to duplicate — always show.
+            showLeaderboardCard
           />
 
           <div className="absolute inset-x-0 bottom-4 z-30 flex justify-center px-2 sm:px-4">
@@ -400,6 +403,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
                   <QuizOverlay
                     active={quizOpen}
                     mode={mode}
+                    questions={QUIZ_BANK}
                     onCorrectAnswer={() => {
                       celebrate();
                       postEngagement(sessionId, selfName, "QuizCorrect");

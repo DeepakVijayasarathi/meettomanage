@@ -7,6 +7,7 @@ import { apiEnabled } from "@/lib/api";
 import { getPublicSettings } from "@/api/settings";
 import { createNote, deleteNote, listMyNotes, updateNote, type ApiFloatingNote, type SaveFloatingNoteRequest } from "@/api/notes";
 import { cn } from "@/lib/utils";
+import { useFixedButtonCollision } from "@/hooks/useFixedButtonCollision";
 import type { Role } from "@/types";
 
 /** Must match the key the admin Settings & Branding → Widgets tab saves. */
@@ -67,15 +68,6 @@ export function FloatingNotes({ role }: { role: Role }) {
       return null;
     }
   });
-  // Whatever a page reserves at its true bottom (see AppShell's main padding) only protects
-  // content once you're scrolled all the way down — a fixed-position button sits in the same
-  // screen pixels at every OTHER scroll position too, and whatever a page's own layout happens
-  // to put there gets visually covered regardless of padding. Confirmed live across mobile,
-  // tablet and desktop, on content nowhere near the end of any of those pages (a mid-scroll
-  // date on a user card, a payout figures card, a "full module access" card) — padding tuning
-  // can't fix that class of overlap, only detecting it at runtime and backing off can.
-  const [coversContent, setCoversContent] = useState(false);
-
   const dragState = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -131,51 +123,15 @@ export function FloatingNotes({ role }: { role: Role }) {
     localStorage.setItem(OPEN_KEY, open ? "1" : "0");
   }, [open]);
 
-  useEffect(() => {
-    let frame: number | null = null;
-
-    function checkCollision() {
-      frame = null;
-      const button = buttonRef.current;
-      if (!button) return;
-
-      const rect = button.getBoundingClientRect();
-      const stack = document.elementsFromPoint(
-        rect.left + rect.width / 2,
-        rect.top + rect.height / 2
-      );
-
-      // A leaf element with its own direct text is a reasonable stand-in for "real content"
-      // (a date, a figure, a label) without needing to know any given page's structure —
-      // generic layout wrappers (main, page/card containers) never carry text directly, only
-      // through further-nested children.
-      const covering = stack.some((el) => {
-        if (el === button || button.contains(el)) return false;
-        for (const node of el.childNodes) {
-          if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) return true;
-        }
-        return false;
-      });
-      setCoversContent(covering);
-    }
-
-    function scheduleCheck() {
-      if (frame !== null) return;
-      frame = requestAnimationFrame(checkCollision);
-    }
-
-    scheduleCheck();
-    // capture: true — scroll doesn't bubble, but a capturing listener on window still fires
-    // for scroll events on any descendant scrollable region (a dialog's own overflow-y-auto
-    // panel, a Kanban column, etc.), not just the page/window scroll itself.
-    window.addEventListener("scroll", scheduleCheck, { capture: true, passive: true });
-    window.addEventListener("resize", scheduleCheck);
-    return () => {
-      if (frame !== null) cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", scheduleCheck, { capture: true });
-      window.removeEventListener("resize", scheduleCheck);
-    };
-  }, [enabled, open]);
+  // Whatever a page reserves at its true bottom (see AppShell's main padding) only protects
+  // content once you're scrolled all the way down — a fixed-position button sits in the same
+  // screen pixels at every OTHER scroll position too, and whatever a page's own layout happens
+  // to put there gets visually covered regardless of padding. Confirmed live across mobile,
+  // tablet and desktop, on content nowhere near the end of any of those pages (a mid-scroll
+  // date on a user card, a payout figures card, a "full module access" card) — padding tuning
+  // can't fix that class of overlap, only detecting it at runtime and backing off can. Shared
+  // with DoubtChatbot via useFixedButtonCollision.
+  const coversContent = useFixedButtonCollision(buttonRef, [enabled, open]);
 
   function persistPos(next: { x: number; y: number }) {
     setPos(next);
@@ -277,7 +233,7 @@ export function FloatingNotes({ role }: { role: Role }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 hover:opacity-100 sm:bottom-6 sm:right-6",
+          "fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg outline-none transition-all hover:scale-105 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:bottom-6 sm:right-6",
           coversContent && !open && "opacity-30"
         )}
         aria-label={open ? "Close my notes" : "Open my notes"}

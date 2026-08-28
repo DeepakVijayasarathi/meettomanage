@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Bell,
@@ -27,6 +27,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -83,6 +85,9 @@ const PORTALS = ["admin", "teacher", "parent", "subadmin", "admission", "coordin
 /** Key the floating notes widget (FloatingNotes.tsx) reads via /api/settings/public. */
 const WIDGET_NOTES_KEY = "widgets.floatingNotes.enabledPortals";
 
+/** Key the "Ask a Doubt" chatbot widget (DoubtChatbot.tsx) reads via /api/settings/public. */
+const WIDGET_CHATBOT_KEY = "widgets.doubtChatbot.enabledPortals";
+
 /** Every DB-backed setting the screen edits, with its category and visibility. */
 const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boolean; fallback: string }> = {
   "org.name": { category: "General", isPublic: true, fallback: "The Reader Nest" },
@@ -90,15 +95,33 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "org.supportEmail": { category: "General", fallback: "support@thereadernest.com" },
   "org.supportPhone": { category: "General", fallback: "+91 98200 00000" },
   "org.timezone": { category: "General", fallback: "Asia/Kolkata (GMT +5:30)" },
+  // Printed on every generated invoice PDF (Admin Billing → Download PDF) — these were
+  // fixed constants in the PDF generator until now; editing them here changes every
+  // invoice generated from here on, with no code change or redeploy needed. No fallback
+  // value here: this is real org-specific bank/GST/signatory data, which must live only
+  // in the database (set once via this screen), never hardcoded in source.
+  "invoice.accountNumber": { category: "General", fallback: "" },
+  "invoice.ifscCode": { category: "General", fallback: "" },
+  "invoice.branchName": { category: "General", fallback: "" },
+  "invoice.gstNumber": { category: "General", fallback: "" },
+  "invoice.accountName": { category: "General", fallback: "" },
+  "invoice.contactEmail": { category: "General", fallback: "" },
+  "invoice.signatoryName": { category: "General", fallback: "" },
+  "invoice.signatoryTitle": { category: "General", fallback: "" },
   "brand.name": { category: "Branding", isPublic: true, fallback: "The Reader Nest" },
   "brand.logoUrl": { category: "Branding", isPublic: true, fallback: "" },
   "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#1F6FE0" },
   "brand.accentColor": { category: "Branding", isPublic: true, fallback: "#57B33B" },
+  // Attendance/no-show thresholds for the teacher payout pipeline -- were fixed constants in
+  // PayoutService and NoShowDetectionBackgroundService until now.
+  "payroll.minAttendancePercentForReview": { category: "General", fallback: "50" },
+  "payroll.noShowGraceMinutes": { category: "General", fallback: "20" },
   "notify.feeReminders": { category: "Notifications", fallback: "true" },
   "notify.leaveRequests": { category: "Notifications", fallback: "true" },
   "notify.lowAttendance": { category: "Notifications", fallback: "false" },
   "notify.weeklyDigest": { category: "Notifications", fallback: "true" },
   [WIDGET_NOTES_KEY]: { category: "Widgets", isPublic: true, fallback: JSON.stringify(PORTALS) },
+  [WIDGET_CHATBOT_KEY]: { category: "Widgets", isPublic: true, fallback: JSON.stringify(PORTALS) },
 };
 
 /** Parses the JSON portal-key array stored under WIDGET_NOTES_KEY; malformed/missing → none enabled. */
@@ -157,6 +180,7 @@ const SETTINGS_TABS = new Set([
 ]);
 
 export default function AdminSettings() {
+  const { toast } = useToast();
   const [values, setValues] = useState<Record<string, string>>(defaultValues);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -212,8 +236,10 @@ export default function AdminSettings() {
         }));
         await updateSettings(items);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not save settings.");
+        const message = err instanceof Error ? err.message : "Could not save settings.";
+        setError(message);
         setSaving(false);
+        toast({ variant: "error", title: "Couldn't save settings", description: message });
         return;
       }
       setSaving(false);
@@ -229,6 +255,7 @@ export default function AdminSettings() {
 
     setSaved(true);
     setTimeout(() => setSaved(false), 2200);
+    toast({ variant: "success", title: "Settings saved", description: "Your changes are live." });
   }
 
   const brandColor = values["brand.primaryColor"];
@@ -252,7 +279,7 @@ export default function AdminSettings() {
         }
       />
 
-      {error && <p role="alert" className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>}
+      {error && <InlineAlert variant="error" className="mb-4">{error}</InlineAlert>}
 
       <Tabs value={activeTab} onValueChange={changeTab}>
         <TabsList className="h-auto flex-wrap justify-start gap-y-1.5">
@@ -280,7 +307,7 @@ export default function AdminSettings() {
           </TabsTrigger>
         </TabsList>
         <p className="mb-4 mt-2 text-xs text-muted-foreground">
-          <ShieldAlert className="mr-1 inline h-3 w-3 align-[-1px] text-warning" />
+          <ShieldAlert className="mr-1 inline h-3 w-3 align-[-1px] text-warning-foreground" />
           Payroll and Integrations hold live payout rates and payment-gateway credentials — double-check before changing them.
         </p>
 
@@ -316,6 +343,71 @@ export default function AdminSettings() {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Invoice Details</CardTitle>
+              <CardDescription>Bank, GST and signatory details printed on every generated invoice PDF.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-account-number">Account number</Label>
+                <Input
+                  id="invoice-account-number"
+                  value={values["invoice.accountNumber"]}
+                  onChange={(e) => setValue("invoice.accountNumber", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-ifsc">IFSC code</Label>
+                <Input id="invoice-ifsc" value={values["invoice.ifscCode"]} onChange={(e) => setValue("invoice.ifscCode", e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-branch">Branch name</Label>
+                <Input
+                  id="invoice-branch"
+                  value={values["invoice.branchName"]}
+                  onChange={(e) => setValue("invoice.branchName", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-gst">GST number</Label>
+                <Input id="invoice-gst" value={values["invoice.gstNumber"]} onChange={(e) => setValue("invoice.gstNumber", e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-account-name">Account name</Label>
+                <Input
+                  id="invoice-account-name"
+                  value={values["invoice.accountName"]}
+                  onChange={(e) => setValue("invoice.accountName", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-contact-email">Contact email (shown on invoice)</Label>
+                <Input
+                  id="invoice-contact-email"
+                  value={values["invoice.contactEmail"]}
+                  onChange={(e) => setValue("invoice.contactEmail", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-signatory-name">Signatory name</Label>
+                <Input
+                  id="invoice-signatory-name"
+                  value={values["invoice.signatoryName"]}
+                  onChange={(e) => setValue("invoice.signatoryName", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="invoice-signatory-title">Signatory title</Label>
+                <Input
+                  id="invoice-signatory-title"
+                  value={values["invoice.signatoryTitle"]}
+                  onChange={(e) => setValue("invoice.signatoryTitle", e.target.value)}
+                />
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="branding">
@@ -347,7 +439,7 @@ export default function AdminSettings() {
 
               <div className="flex items-center gap-5">
                 <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 p-2">
-                  <img src={values["brand.logoUrl"] || "/logo.png"} alt="Brand logo" className="h-full w-full object-contain" />
+                  <img src={values["brand.logoUrl"] || "/logo-icon.png"} alt="Brand logo" className="h-full w-full object-contain" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-foreground">Logo preview</p>
@@ -359,9 +451,10 @@ export default function AdminSettings() {
 
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <Label>Primary brand color</Label>
+                  <Label htmlFor="brand-primary-color">Primary brand color</Label>
                   <div className="mt-2 flex items-center gap-2">
                     <input
+                      id="brand-primary-color"
                       type="color"
                       value={brandColor}
                       onChange={(e) => setValue("brand.primaryColor", e.target.value)}
@@ -390,9 +483,10 @@ export default function AdminSettings() {
                 </div>
 
                 <div>
-                  <Label>Accent color</Label>
+                  <Label htmlFor="brand-accent-color">Accent color</Label>
                   <div className="mt-2 flex items-center gap-2">
                     <input
+                      id="brand-accent-color"
                       type="color"
                       value={accentColor}
                       onChange={(e) => setValue("brand.accentColor", e.target.value)}
@@ -466,7 +560,43 @@ export default function AdminSettings() {
           <MenuManager />
         </TabsContent>
 
-        <TabsContent value="payroll">
+        <TabsContent value="payroll" className="flex flex-col gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Attendance &amp; No-Show Thresholds</CardTitle>
+              <CardDescription>
+                These used to be fixed in code. A session is flagged for review before its payout can be
+                finalized when the teacher's captured attendance falls under this percentage of the
+                scheduled class.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="payroll-min-attendance">Minimum attendance for automatic payout (%)</Label>
+                <Input
+                  id="payroll-min-attendance"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={values["payroll.minAttendancePercentForReview"]}
+                  onChange={(e) => setValue("payroll.minAttendancePercentForReview", e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="payroll-noshow-grace">No-show detection grace period (minutes)</Label>
+                <Input
+                  id="payroll-noshow-grace"
+                  type="number"
+                  min={1}
+                  value={values["payroll.noShowGraceMinutes"]}
+                  onChange={(e) => setValue("payroll.noShowGraceMinutes", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  How long after a session's scheduled start with nobody joined before it's auto-marked a no-show.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
           <PayoutRatesManager />
         </TabsContent>
 
@@ -506,6 +636,38 @@ export default function AdminSettings() {
               })}
             </CardContent>
           </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Ask a Doubt Chatbot Widget</CardTitle>
+              <CardDescription>
+                Choose which portals show the "Ask a Doubt" chatbot bubble. It answers common questions from the FAQ
+                knowledge base (managed under Insights → Doubt Chatbot) and forwards anything it can't answer to a
+                teacher — this only controls whether the widget appears at all.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-1">
+              {PORTALS.map((portal, i) => {
+                const enabledPortals = parsePortalList(values[WIDGET_CHATBOT_KEY]);
+                const checked = enabledPortals.includes(portal);
+                return (
+                  <div key={portal}>
+                    {i > 0 && <Separator className="my-1" />}
+                    <div className="flex items-center justify-between gap-4 py-3">
+                      <p className="text-sm font-semibold text-foreground">{portal[0].toUpperCase() + portal.slice(1)}</p>
+                      <Switch
+                        checked={checked}
+                        onCheckedChange={(next) => {
+                          const nextList = next ? [...enabledPortals, portal] : enabledPortals.filter((p) => p !== portal);
+                          setValue(WIDGET_CHATBOT_KEY, JSON.stringify(nextList));
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
@@ -514,6 +676,7 @@ export default function AdminSettings() {
 
 /** DB-backed sidebar menu manager: per-portal item list with add/edit/delete. */
 function MenuManager() {
+  const { toast } = useToast();
   const [portal, setPortal] = useState<string>("admin");
   const [items, setItems] = useState<ApiMenuItem[]>([]);
   const [busy, setBusy] = useState(false);
@@ -521,8 +684,18 @@ function MenuManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<SaveMenuItemRequest | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ApiMenuItem | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const iconNames = useMemo(() => Object.keys(MENU_ICONS).sort(), []);
+
+  // Same reasoning as IntegrationsManager: the form renders above the (possibly long,
+  // multi-section) item list, so editing an item further down opens a form the user
+  // can't see without manually scrolling back up themselves.
+  useEffect(() => {
+    if (form) {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [form]);
 
   async function reload(nextPortal = portal) {
     if (!apiEnabled()) return;
@@ -569,8 +742,11 @@ function MenuManager() {
       setForm(null);
       setEditingId(null);
       await reload();
+      toast({ variant: "success", title: editingId ? "Menu item updated" : "Menu item created" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the menu item.");
+      const message = err instanceof Error ? err.message : "Could not save the menu item.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save menu item", description: message });
     } finally {
       setBusy(false);
     }
@@ -581,8 +757,11 @@ function MenuManager() {
     try {
       await deleteMenuItem(item.id);
       await reload();
+      toast({ variant: "success", title: `"${item.label}" removed` });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete the menu item.");
+      const message = err instanceof Error ? err.message : "Could not delete the menu item.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't delete menu item", description: message });
     } finally {
       setBusy(false);
     }
@@ -612,14 +791,11 @@ function MenuManager() {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Sidebar Menus</CardTitle>
-          <CardDescription>
-            Menus are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode uses the built-in navigation.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={ListTree}
+        title="Demo mode"
+        description="Menus are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode uses the built-in navigation."
+      />
     );
   }
 
@@ -649,21 +825,22 @@ function MenuManager() {
         </div>
       </CardHeader>
       <CardContent>
-        {error && <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <InlineAlert variant="warning" className="mb-3">{error}</InlineAlert>}
 
         {form && (
-          <div className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div ref={formRef} className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4 scroll-mt-4">
             <div className="grid gap-1.5">
-              <Label>Label</Label>
-              <Input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Courses" />
+              <Label htmlFor="menu-item-label">Label</Label>
+              <Input id="menu-item-label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Courses" />
             </div>
             <div className="grid gap-1.5">
-              <Label>Path</Label>
-              <Input value={form.path} onChange={(e) => setForm({ ...form, path: e.target.value })} placeholder={`/${portal}/…`} />
+              <Label htmlFor="menu-item-path">Path</Label>
+              <Input id="menu-item-path" value={form.path} onChange={(e) => setForm({ ...form, path: e.target.value })} placeholder={`/${portal}/…`} />
             </div>
             <div className="grid gap-1.5">
-              <Label>Section</Label>
+              <Label htmlFor="menu-item-section">Section</Label>
               <Input
+                id="menu-item-section"
                 value={form.section ?? ""}
                 onChange={(e) => setForm({ ...form, section: e.target.value || null })}
                 placeholder="Empty = top block"
@@ -706,16 +883,17 @@ function MenuManager() {
               </Select>
             </div>
             <div className="grid gap-1.5">
-              <Label>Section order</Label>
+              <Label htmlFor="menu-item-section-order">Section order</Label>
               <Input
+                id="menu-item-section-order"
                 type="number"
                 value={form.sectionOrder}
                 onChange={(e) => setForm({ ...form, sectionOrder: Number(e.target.value) })}
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>Item order</Label>
-              <Input type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })} />
+              <Label htmlFor="menu-item-sort-order">Item order</Label>
+              <Input id="menu-item-sort-order" type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })} />
             </div>
             <div className="flex items-end gap-2 pb-1">
               <Switch checked={form.isActive} onCheckedChange={(isActive) => setForm({ ...form, isActive })} />
@@ -826,25 +1004,19 @@ const DEFAULT_RATE_CARD = "__default";
 type RateCardRow = {
   key: string;
   label: string;
-  rates: Partial<Record<30 | 45 | 60, number>>;
+  ratePerMinute: number;
   penaltyPercent: number;
 };
 
-/** Groups the flat rate rows into one summary row per card (default + each teacher). */
+/** One summary row per card (default + each teacher) -- priced per minute of a session's own scheduled duration. */
 function buildRateCardRows(allRates: ApiPayoutRate[]): RateCardRow[] {
   const map = new Map<string, RateCardRow>();
-  // listPayoutRates() orders newest-EffectiveFrom-first within each teacher+duration
-  // group, so the first row seen per (card, duration) here is always the live one.
+  // listPayoutRates() orders newest-EffectiveFrom-first within each teacher group, so
+  // the first row seen per card here is always the live one.
   for (const rate of allRates) {
     const key = rate.teacherProfileId ?? DEFAULT_RATE_CARD;
-    let row = map.get(key);
-    if (!row) {
-      row = { key, label: rate.teacherName, rates: {}, penaltyPercent: rate.teacherNoShowPenaltyPercent };
-      map.set(key, row);
-    }
-    const duration = rate.durationMinutes as 30 | 45 | 60;
-    if (row.rates[duration] === undefined) {
-      row.rates[duration] = rate.ratePerSession;
+    if (!map.has(key)) {
+      map.set(key, { key, label: rate.teacherName, ratePerMinute: rate.ratePerMinute, penaltyPercent: rate.teacherNoShowPenaltyPercent });
     }
   }
   return [...map.values()].sort((a, b) => (a.key === DEFAULT_RATE_CARD ? -1 : b.key === DEFAULT_RATE_CARD ? 1 : a.label.localeCompare(b.label)));
@@ -852,11 +1024,12 @@ function buildRateCardRows(allRates: ApiPayoutRate[]): RateCardRow[] {
 
 /**
  * Teacher payout rate cards (WBS p.31 "tutor payout rules" / "Penalty configuration"):
- * per-session rates by class duration and the teacher no-show penalty. A card with no
- * teacher is the centre-wide default that pays anyone without their own card; a
- * teacher's own card overrides it for that teacher only.
+ * one per-minute rate (applied to a session's own scheduled duration) plus the teacher
+ * no-show penalty. A card with no teacher is the centre-wide default that pays anyone
+ * without their own card; a teacher's own card overrides it for that teacher only.
  */
 function PayoutRatesManager() {
+  const { toast } = useToast();
   const [allRates, setAllRates] = useState<ApiPayoutRate[]>([]);
   const [loaded, setLoaded] = useState(!apiEnabled());
   const [error, setError] = useState<string | null>(null);
@@ -884,7 +1057,7 @@ function PayoutRatesManager() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTeacherId, setDialogTeacherId] = useState<string>(DEFAULT_RATE_CARD);
-  const [rates, setRates] = useState<Record<30 | 45 | 60, number>>({ 30: 900, 45: 1100, 60: 1400 });
+  const [ratePerMinute, setRatePerMinute] = useState("0");
   const [penaltyPercent, setPenaltyPercent] = useState(100);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -900,43 +1073,39 @@ function PayoutRatesManager() {
   // Prefill from whatever's already loaded for this card — no extra round trip.
   useEffect(() => {
     if (!dialogOpen) return;
-    const rows = allRates.filter((r) => (r.teacherProfileId ?? DEFAULT_RATE_CARD) === dialogTeacherId);
-    setRates((prev) => {
-      const next = { ...prev };
-      for (const duration of [30, 45, 60] as const) {
-        const current = rows.find((r) => r.durationMinutes === duration);
-        if (current) next[duration] = current.ratePerSession;
-      }
-      return next;
-    });
-    setPenaltyPercent(rows[0]?.teacherNoShowPenaltyPercent ?? 100);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogOpen, dialogTeacherId]);
+    const existing = cardRows.find((r) => r.key === dialogTeacherId);
+    setRatePerMinute(existing ? String(existing.ratePerMinute) : "0");
+    setPenaltyPercent(existing ? existing.penaltyPercent : 100);
+  }, [dialogOpen, dialogTeacherId, cardRows]);
+
+  const rateError =
+    !Number.isFinite(Number(ratePerMinute)) || Number(ratePerMinute) < 0
+      ? "Rate must be zero or a positive amount."
+      : null;
 
   async function handleSave() {
     if (!apiEnabled()) {
       setSaved(true);
       return;
     }
+    if (rateError) return;
     setSaving(true);
     setError(null);
     const today = new Date().toISOString().slice(0, 10);
     try {
-      await Promise.all(
-        ([30, 45, 60] as const).map((duration) =>
-          savePayoutRate({
-            teacherProfileId: dialogTeacherId === DEFAULT_RATE_CARD ? undefined : dialogTeacherId,
-            durationMinutes: duration,
-            ratePerSession: rates[duration],
-            teacherNoShowPenaltyPercent: penaltyPercent,
-            effectiveFrom: today,
-          })
-        )
-      );
+      await savePayoutRate({
+        teacherProfileId: dialogTeacherId === DEFAULT_RATE_CARD ? undefined : dialogTeacherId,
+        ratePerMinute: Number(ratePerMinute) || 0,
+        teacherNoShowPenaltyPercent: penaltyPercent,
+        effectiveFrom: today,
+      });
       setSaved(true);
       await reload();
+      toast({ variant: "success", title: "Rate card saved" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the rate card.");
+      const message = err instanceof Error ? err.message : "Could not save the rate card.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save the rate card", description: message });
     } finally {
       setSaving(false);
     }
@@ -944,14 +1113,11 @@ function PayoutRatesManager() {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Teacher Payout Rates</CardTitle>
-          <CardDescription>
-            Rate cards are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode has no payout data.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={Wallet}
+        title="Demo mode"
+        description="Rate cards are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode has no payout data."
+      />
     );
   }
 
@@ -961,8 +1127,9 @@ function PayoutRatesManager() {
         <div>
           <CardTitle>Teacher Payout Rates</CardTitle>
           <CardDescription>
-            Per-session rates by class duration, plus the teacher no-show penalty. The default card pays any teacher
-            without rates of their own; a teacher's own card overrides it just for them.
+            A rate per minute, applied to each session's own scheduled duration, plus the teacher no-show penalty.
+            The default card pays any teacher without a rate of their own; a teacher's own card overrides it just
+            for them.
           </CardDescription>
         </div>
         <Button size="sm" onClick={() => openDialog(DEFAULT_RATE_CARD)}>
@@ -970,7 +1137,7 @@ function PayoutRatesManager() {
         </Button>
       </CardHeader>
       <CardContent>
-        {error && <p role="alert" className="mb-3 rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <InlineAlert variant="warning" className="mb-3">{error}</InlineAlert>}
 
         {!loaded ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
@@ -996,8 +1163,7 @@ function PayoutRatesManager() {
                       {row.key === DEFAULT_RATE_CARD ? "All teachers (default)" : row.label}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      30-min {formatCurrency(row.rates[30] ?? 0)} · 45-min {formatCurrency(row.rates[45] ?? 0)} · 60-min{" "}
-                      {formatCurrency(row.rates[60] ?? 0)} · No-show penalty {row.penaltyPercent}%
+                      {formatCurrency(row.ratePerMinute)} per minute · No-show penalty {row.penaltyPercent}%
                     </p>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => openDialog(row.key)}>
@@ -1016,7 +1182,7 @@ function PayoutRatesManager() {
             <>
               <DialogHeader>
                 <DialogTitle>Configure Rate Card</DialogTitle>
-                <DialogDescription>Set per-session payout rates by class duration and the no-show penalty.</DialogDescription>
+                <DialogDescription>Set the per-minute payout rate and the no-show penalty.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4">
                 <div className="grid gap-1.5">
@@ -1035,17 +1201,21 @@ function PayoutRatesManager() {
                     </SelectContent>
                   </Select>
                 </div>
-                {([30, 45, 60] as const).map((duration) => (
-                  <div key={duration} className="grid gap-1.5">
-                    <Label htmlFor={`payroll-rate-${duration}`}>{duration}-minute session rate (₹)</Label>
-                    <Input
-                      id={`payroll-rate-${duration}`}
-                      type="number"
-                      value={rates[duration]}
-                      onChange={(e) => setRates((prev) => ({ ...prev, [duration]: Number(e.target.value) }))}
-                    />
-                  </div>
-                ))}
+                <div className="grid gap-1.5">
+                  <Label htmlFor="rate-per-minute">Rate per minute (₹)</Label>
+                  <Input
+                    id="rate-per-minute"
+                    type="number"
+                    min={0}
+                    value={ratePerMinute}
+                    onChange={(e) => setRatePerMinute(e.target.value)}
+                  />
+                  {rateError && (
+                    <p role="alert" className="text-xs font-medium text-destructive">
+                      {rateError}
+                    </p>
+                  )}
+                </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="payroll-noshow-penalty">No-show penalty (% of session rate)</Label>
                   <Input
@@ -1065,7 +1235,7 @@ function PayoutRatesManager() {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={saving}>
+                <Button onClick={handleSave} disabled={saving || !!rateError}>
                   {saved ? <CheckCircle2 className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
                   {saving ? "Saving…" : saved ? "Saved!" : "Save Rate Card"}
                 </Button>
@@ -1180,6 +1350,7 @@ const EMPTY_JITSI_FORM = { domain: "", appId: "", appSecret: "", autoRecord: tru
  * is Dictionary<string,string> end to end (see JITSI_ARCHITECTURE.md / SessionService.ReadAutoRecordEnabled).
  */
 function JitsiRecordingSettings() {
+  const { toast } = useToast();
   const [integration, setIntegration] = useState<ApiIntegration | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [form, setForm] = useState(EMPTY_JITSI_FORM);
@@ -1234,8 +1405,11 @@ function JitsiRecordingSettings() {
       else await createIntegration(request);
       await reload();
       setSaved(true);
+      toast({ variant: "success", title: "Jitsi settings saved" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save Jitsi settings.");
+      const message = err instanceof Error ? err.message : "Could not save Jitsi settings.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save Jitsi settings", description: message });
     } finally {
       setBusy(false);
     }
@@ -1243,12 +1417,11 @@ function JitsiRecordingSettings() {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Jitsi Meet &amp; Recording</CardTitle>
-          <CardDescription>Connect the API (VITE_API_BASE_URL) to manage the live classroom domain and auto-record.</CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={Video}
+        title="Demo mode"
+        description="Connect the API (VITE_API_BASE_URL) to manage the live classroom domain and auto-record."
+      />
     );
   }
 
@@ -1264,16 +1437,17 @@ function JitsiRecordingSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {error && <p role="alert" className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
-        {saved && !error && <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-xs font-medium text-success">Saved.</p>}
+        {error && <InlineAlert variant="warning">{error}</InlineAlert>}
+        {saved && !error && <InlineAlert variant="success">Saved.</InlineAlert>}
 
         {!loaded ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5 sm:col-span-2">
-              <Label>Domain</Label>
+              <Label htmlFor="jitsi-domain">Domain</Label>
               <Input
+                id="jitsi-domain"
                 value={form.domain}
                 onChange={(e) => setForm({ ...form, domain: e.target.value })}
                 placeholder="e.g. thereadernest.co.in"
@@ -1285,17 +1459,19 @@ function JitsiRecordingSettings() {
               </p>
             </div>
             <div className="grid gap-1.5">
-              <Label>App Id</Label>
+              <Label htmlFor="jitsi-app-id">App Id</Label>
               <Input
+                id="jitsi-app-id"
                 value={form.appId}
                 onChange={(e) => setForm({ ...form, appId: e.target.value })}
                 placeholder="Optional — only for JWT-secured rooms"
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>App Secret</Label>
+              <Label htmlFor="jitsi-app-secret">App Secret</Label>
               <div className="relative">
                 <Input
+                  id="jitsi-app-secret"
                   type={revealSecret ? "text" : "password"}
                   value={form.appSecret}
                   onChange={(e) => setForm({ ...form, appSecret: e.target.value })}
@@ -1354,6 +1530,16 @@ export function IntegrationsManager() {
   const [configRows, setConfigRows] = useState<ConfigRow[]>([]);
   const [revealedRows, setRevealedRows] = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<ApiIntegration | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  // The edit form always renders above the (possibly long) grouped list, so clicking
+  // "Configure" on an item further down opens a form the user can't see without
+  // scrolling all the way back up themselves — nothing on screen even hints it opened.
+  useEffect(() => {
+    if (form) {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [form]);
 
   async function reload() {
     if (!apiEnabled()) return;
@@ -1459,14 +1645,11 @@ export function IntegrationsManager() {
 
   if (!apiEnabled()) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Connected Integrations</CardTitle>
-          <CardDescription>
-            Integrations are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={Plug}
+        title="Demo mode"
+        description="Integrations are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them."
+      />
     );
   }
 
@@ -1489,13 +1672,14 @@ export function IntegrationsManager() {
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {error && <p role="alert" className="rounded-lg bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">{error}</p>}
+        {error && <InlineAlert variant="warning">{error}</InlineAlert>}
 
         {form && (
-          <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2">
+          <div ref={formRef} className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 scroll-mt-4">
             <div className="grid gap-1.5">
-              <Label>Key</Label>
+              <Label htmlFor="integration-key">Key</Label>
               <Input
+                id="integration-key"
                 value={form.key}
                 onChange={(e) => setForm({ ...form, key: e.target.value })}
                 placeholder="e.g. sms-gateway"
@@ -1504,8 +1688,8 @@ export function IntegrationsManager() {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>Name</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. SMS Gateway" />
+              <Label htmlFor="integration-name">Name</Label>
+              <Input id="integration-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. SMS Gateway" />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="integration-category-select">Category</Label>
@@ -1523,8 +1707,9 @@ export function IntegrationsManager() {
               </Select>
             </div>
             <div className="grid gap-1.5">
-              <Label>Description</Label>
+              <Label htmlFor="integration-description">Description</Label>
               <Input
+                id="integration-description"
                 value={form.description ?? ""}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 placeholder="What this integration is for"
@@ -1533,7 +1718,7 @@ export function IntegrationsManager() {
 
             <div className="sm:col-span-2">
               <div className="mb-1.5 flex items-center justify-between">
-                <Label>Configuration fields</Label>
+                <Label id="integration-config-fields-label">Configuration fields</Label>
                 <Button
                   variant="outline"
                   size="sm"
@@ -1543,7 +1728,7 @@ export function IntegrationsManager() {
                   <Plus className="h-3.5 w-3.5" /> Add field
                 </Button>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2" role="group" aria-labelledby="integration-config-fields-label">
                 {configRows.map((row, i) => {
                   const secret = isSecretField(row.key);
                   const revealed = revealedRows.has(i);
@@ -1553,6 +1738,7 @@ export function IntegrationsManager() {
                         value={row.key}
                         onChange={(e) => setConfigRows(configRows.map((r, ri) => (ri === i ? { ...r, key: e.target.value } : r)))}
                         placeholder="field name, e.g. apiKey"
+                        aria-label={`Configuration field ${i + 1} name`}
                         className="w-48 font-mono text-xs"
                       />
                       <div className="relative flex-1">
@@ -1561,6 +1747,7 @@ export function IntegrationsManager() {
                           value={row.value}
                           onChange={(e) => setConfigRows(configRows.map((r, ri) => (ri === i ? { ...r, value: e.target.value } : r)))}
                           placeholder="value"
+                          aria-label={`Configuration field ${i + 1} value`}
                           className={cn(secret && "pr-9")}
                           autoComplete="off"
                         />
@@ -1591,16 +1778,16 @@ export function IntegrationsManager() {
                 Fields named with "key", "secret", "token" or "password" (e.g. Razorpay's keyId/keySecret) are masked while typing.
               </p>
               {missingRequiredFields(form.key, configRows).length > 0 && (
-                <p role="alert" className="mt-1.5 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs font-medium text-warning-foreground">
+                <InlineAlert variant="warning" className="mt-1.5">
                   {form.name || form.key} can't process live payments yet — missing:{" "}
                   {missingRequiredFields(form.key, configRows).join(", ")}. Parents who pick this gateway will see a
                   "not fully configured" message until these are filled in.
-                </p>
+                </InlineAlert>
               )}
               {configFormatWarning(form.key, configRows) && (
-                <p role="alert" className="mt-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                <InlineAlert variant="error" className="mt-1.5">
                   {configFormatWarning(form.key, configRows)}
-                </p>
+                </InlineAlert>
               )}
             </div>
 

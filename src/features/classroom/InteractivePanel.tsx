@@ -7,9 +7,10 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { ClassroomHubClient, type ClassroomHubState, type HubParticipant } from "@/lib/classroomHub";
 import { postEngagement } from "@/api/engagement";
 import { getLeaderboard, postAward } from "@/api/gamification";
+import { getQuizQuestionsForSession } from "@/api/quizQuestions";
 import Whiteboard, { type BoardOp } from "./Whiteboard";
 import QuizOverlay from "./QuizOverlay";
-import type { LeaderboardEntry } from "./classroomData";
+import type { LeaderboardEntry, QuizQuestion } from "./classroomData";
 
 type PanelTab = "board" | "quiz" | "stars" | "people";
 
@@ -42,12 +43,20 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [quizActive, setQuizActive] = useState(false);
   const [syncedIndex, setSyncedIndex] = useState<number | null>(null);
+  // This class's resolved quiz bank (this course's own questions, falling back to its
+  // department's shared ones) — replaces what used to be one hardcoded set every class
+  // shared regardless of subject. Empty until it loads, or if nothing's configured yet.
+  const [questionBank, setQuestionBank] = useState<QuizQuestion[]>([]);
   // Real per-option answer counts for the current question, built from the hub's own
   // QuizAnswer broadcasts — replaces a formula that fabricated plausible-looking numbers.
   const [quizTally, setQuizTally] = useState<Record<number, number[]>>({});
   // Students draw only when the teacher grants access; teachers always can.
   const [boardAllowed, setBoardAllowed] = useState(false);
   const [grantedIds, setGrantedIds] = useState<Set<string>>(new Set());
+  // Brief "Given!" confirmation on the button just clicked — giving a star is otherwise
+  // fire-and-forget (postAward never throws; the hub send is a no-op while disconnected),
+  // so without this the teacher has no feedback at all that the click did anything.
+  const [justAwardedId, setJustAwardedId] = useState<string | null>(null);
 
   const hubRef = useRef<ClassroomHubClient | null>(null);
   const boardHandlers = useRef(new Set<(op: BoardOp) => void>());
@@ -151,6 +160,29 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
+  // Resolved once per class: this course's own quiz questions, falling back to its
+  // department's shared set (or empty if nothing's configured — QuizOverlay shows an
+  // honest "no questions yet" state rather than crashing on an empty bank).
+  useEffect(() => {
+    let cancelled = false;
+    getQuizQuestionsForSession(sessionId)
+      .then((questions) => {
+        if (cancelled) return;
+        setQuestionBank(
+          questions.map((q) => ({
+            id: q.id,
+            prompt: q.prompt,
+            options: q.options.map((o) => o.text),
+            correctIndex: q.options.findIndex((o) => o.isCorrect),
+          }))
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
   const subscribeBoardOps = useCallback((handler: (op: BoardOp) => void) => {
     boardHandlers.current.add(handler);
     return () => {
@@ -189,52 +221,103 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
     hubRef.current.setBoardAccess(participant.connectionId, next);
   }
 
+  /**
+   * Manual, ad-hoc star for a named student — the counterpart to the automatic
+   * quiz-correct-answer / whiteboard-mini-game-completion paths, for rewarding
+   * participation that doesn't happen to run through either of those (answered well
+   * verbally, helped a classmate, etc.). Same durable-record-then-live-bump order as
+   * every other award in this panel: postAward persists it (and auto-grants a
+   * milestone server-side if it crosses a threshold) independent of whether the hub
+   * is even connected; awardStarTo only refreshes what the class sees live right now.
+   */
+  function giveStar(participant: HubParticipant) {
+    postAward(sessionId, participant.name, "Star");
+    hubRef.current?.awardStarTo(participant.name);
+    setJustAwardedId(participant.connectionId);
+    setTimeout(() => setJustAwardedId((current) => (current === participant.connectionId ? null : current)), 1500);
+  }
+
   const canDraw = mode === "teacher" || boardAllowed;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-brand-navy">
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Panel title bar: gives the Interactive panel its own identity (matching the
+          rounded card it now sits inside) and a persistent, always-visible hub-status
+          chip — previously that signal only appeared conditionally above the tab list,
+          in the same spot the reconnecting/disconnected text still lives below it. */}
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-white/[0.03] px-3 py-2.5">
+        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/50">
+          <Sparkles className="h-3.5 w-3.5 text-brand-violet" /> Interactive
+        </span>
+        <span
+          role="status"
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+            hubState === "connected" && "bg-brand-green/15 text-brand-green",
+            hubState === "reconnecting" && "bg-brand-amber/15 text-brand-amber",
+            hubState === "disconnected" && "bg-white/10 text-white/60"
+          )}
+        >
+          {hubState === "connected" && (
+            <>
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-green" /> Live
+            </>
+          )}
+          {hubState === "reconnecting" && (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" /> Reconnecting
+            </>
+          )}
+          {hubState === "disconnected" && (
+            <>
+              <CloudOff className="h-3 w-3" /> Working locally
+            </>
+          )}
+        </span>
+      </div>
       <Tabs value={tab} onValueChange={(v) => setTab(v as PanelTab)} className="flex h-full min-h-0 flex-col">
-        <div className="shrink-0 border-b border-white/10 p-2">
-          <TabsList className="w-full bg-white/5">
-            <TabsTrigger value="board" className="flex-1 gap-1 text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none">
+        <div className="shrink-0 border-b border-white/10 bg-white/[0.02] p-2">
+          <TabsList className="w-full gap-1 rounded-full bg-white/5 p-1">
+            <TabsTrigger
+              value="board"
+              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+            >
               <PencilRuler className="h-3.5 w-3.5" /> Board
             </TabsTrigger>
-            <TabsTrigger value="quiz" className="flex-1 gap-1 text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none">
+            <TabsTrigger
+              value="quiz"
+              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+            >
               <Sparkles className="h-3.5 w-3.5" /> Quiz
             </TabsTrigger>
-            <TabsTrigger value="stars" className="flex-1 gap-1 text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none">
+            <TabsTrigger
+              value="stars"
+              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+            >
               <Trophy className="h-3.5 w-3.5" /> Stars
             </TabsTrigger>
-            <TabsTrigger value="people" className="flex-1 gap-1 text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none">
+            <TabsTrigger
+              value="people"
+              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+            >
               <Users className="h-3.5 w-3.5" /> People
               {roster.length > 0 && (
                 <span className="ml-0.5 rounded-full bg-white/15 px-1.5 py-px text-[10px] font-bold leading-tight">{roster.length}</span>
               )}
             </TabsTrigger>
           </TabsList>
-          {/* Same chip language as JitsiLive's own "Rec"/"Reconnecting" header badges,
-              so a degraded-hub state reads as this product's status treatment, not a
-              generic warning banner. The class call itself is unaffected either way. */}
-          {/* role="status" on both: sync degrading (or recovering) mid-class is exactly the
-              kind of thing a screen-reader user won't notice on their own since it can
-              appear while focus is anywhere else — the roster, the whiteboard, the quiz. */}
+          {/* The status chip above is now the persistent signal; these keep only the
+              extra detail text (what a degraded sync actually means for the class) so
+              the two don't duplicate the same "reconnecting"/"offline" announcement. */}
           {hubState === "reconnecting" && (
-            <div className="mt-1.5 flex items-center gap-1.5 px-1" role="status">
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-brand-amber/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-amber">
-                <Loader2 className="h-3 w-3 animate-spin" /> Reconnecting
-              </span>
-              <p className="text-[10px] text-white/40">Board and quiz updates may not reach everyone yet.</p>
-            </div>
+            <p role="status" className="mt-1.5 px-1 text-[10px] text-white/40">
+              Board and quiz updates may not reach everyone yet.
+            </p>
           )}
           {hubState === "disconnected" && (
-            <div className="mt-1.5 flex items-center gap-1.5 px-1" role="status">
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/60">
-                <CloudOff className="h-3 w-3" /> Working locally
-              </span>
-              <p className="text-[10px] text-white/40">
-                {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
-              </p>
-            </div>
+            <p role="status" className="mt-1.5 px-1 text-[10px] text-white/40">
+              {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
+            </p>
           )}
         </div>
 
@@ -270,7 +353,13 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                     End quiz
                   </Button>
                 ) : (
-                  <Button size="sm" className="gap-1 !bg-brand-violet hover:!bg-[#6a4de0]" onClick={launchQuiz}>
+                  <Button
+                    size="sm"
+                    className="gap-1 !bg-brand-violet hover:!bg-[#6a4de0]"
+                    onClick={launchQuiz}
+                    disabled={questionBank.length === 0}
+                    title={questionBank.length === 0 ? "Add questions for this course in Admin → Quiz Bank first" : undefined}
+                  >
                     <Sparkles className="h-3.5 w-3.5" /> Launch quiz
                   </Button>
                 )}
@@ -280,6 +369,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
               <QuizOverlay
                 active={quizActive}
                 mode={mode}
+                questions={questionBank}
                 syncedIndex={mode === "student" ? syncedIndex : undefined}
                 liveTally={syncedIndex != null ? quizTally[syncedIndex] : undefined}
                 onLaunchQuestion={(index) => hubRef.current?.startQuiz(index)}
@@ -319,7 +409,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                   <span className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: entry.color }}>
                     {entry.name.slice(0, 1).toUpperCase()}
                   </span>
-                  <span className="flex-1 truncate text-sm font-semibold text-white">{entry.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{entry.name}</span>
                   <span className="flex items-center gap-1 text-xs font-bold text-brand-amber">
                     <Star className="h-3.5 w-3.5 fill-brand-amber" /> {entry.stars}
                   </span>
@@ -357,6 +447,24 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                     <span role="img" aria-label={`${participant.name} has their hand raised`} title="Hand raised">
                       <Hand className="h-4 w-4 text-amber-300" aria-hidden="true" />
                     </span>
+                  )}
+                  {mode === "teacher" && participant.role === "student" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={justAwardedId === participant.connectionId}
+                      className={cn(
+                        "h-7 px-2 text-[11px]",
+                        justAwardedId === participant.connectionId
+                          ? "text-brand-amber"
+                          : "text-white/50 hover:bg-white/10 hover:text-white"
+                      )}
+                      onClick={() => giveStar(participant)}
+                      title={`Give ${participant.name} a star`}
+                    >
+                      <Star className={cn("mr-1 h-3 w-3", justAwardedId === participant.connectionId && "fill-brand-amber")} />
+                      {justAwardedId === participant.connectionId ? "Given!" : "Give star"}
+                    </Button>
                   )}
                   {mode === "teacher" && participant.role === "student" && (
                     <Button

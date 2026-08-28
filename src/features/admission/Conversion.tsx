@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { CalendarCheck2, PhoneCall, PieChart, Sparkles, ThumbsDown, Trophy, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
+import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +43,7 @@ function isBoardStage(stage: ConversionStage): stage is BoardStage {
 }
 
 export default function AdmissionConversion() {
+  const { toast } = useToast();
   const usingApi = apiEnabled();
   const { data: apiLeads, reload } = useApiData<Lead[]>(
     () => listDemoBookings().then((b) => b.map(toFrontendLead)),
@@ -71,8 +74,11 @@ export default function AdmissionConversion() {
       try {
         await updateConversionStatus(leadId, toApiConversionStatus(stage));
         reload();
+        toast({ variant: "success", title: "Stage updated", description: `Moved to ${stage}.` });
       } catch (err) {
-        setMoveError(err instanceof Error ? err.message : "Couldn't move this lead. Please try again.");
+        const message = err instanceof Error ? err.message : "Couldn't move this lead. Please try again.";
+        setMoveError(message);
+        toast({ variant: "error", title: "Couldn't move lead", description: message });
       }
       return;
     }
@@ -88,7 +94,7 @@ export default function AdmissionConversion() {
       />
 
       {moveError && (
-        <p role="alert" className="mb-4 rounded-lg bg-warning/10 px-3 py-2 text-sm font-medium text-warning-foreground">{moveError}</p>
+        <InlineAlert variant="warning" className="mb-4">{moveError}</InlineAlert>
       )}
 
       {leads.length === 0 ? (
