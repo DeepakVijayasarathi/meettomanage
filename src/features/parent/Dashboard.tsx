@@ -306,12 +306,23 @@ function FeeCard({
   onPay: () => void;
 }) {
   const needsAction = child.feeStatus === "due" || child.feeStatus === "overdue" || child.feeStatus === "suspended";
+  // Overdue/suspended is a harder stop than a routine "due" — reuse the same red the
+  // FeeStatusBadge already gives those two statuses instead of treating all three alike.
+  const isSevere = child.feeStatus === "overdue" || child.feeStatus === "suspended";
   // The invoice backing "Pay Now" comes from a separate fetch than feeStatus — until it
-  // resolves (or if it never finds a matching invoice) there's nothing to pay against,
-  // so the button must stay disabled instead of silently doing nothing when clicked.
+  // resolves there's nothing to pay against yet, so the button stays disabled with a
+  // loading label. If it's *finished* loading and still found nothing, that's a real
+  // data mismatch (a fee marked due with no invoice behind it) worth surfacing instead of
+  // just leaving a mysteriously dead, unlabeled button — see the fallback note below.
   const payDisabled = invoiceLoading || !invoice;
+  const invoiceMissing = !invoiceLoading && !invoice;
   return (
-    <Card className={cn("p-5", needsAction && "border-warning/40")}>
+    <Card
+      className={cn(
+        "p-5",
+        needsAction && (isSevere ? "border-destructive/40 bg-destructive/[0.03]" : "border-warning/50 bg-warning/[0.06]")
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-muted-foreground">Fee Status</p>
@@ -321,17 +332,43 @@ function FeeCard({
         </div>
         <span
           className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-            needsAction ? "bg-warning/20 text-warning-foreground" : "bg-success/15 text-success"
+            "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+            !needsAction ? "bg-success/15 text-success" : isSevere ? "bg-destructive/15 text-destructive" : "bg-warning/25 text-warning-foreground"
           )}
         >
           <Wallet className="h-5 w-5" />
+          {/* A quiet pulsing dot — the same "something needs your attention" affordance as a
+              notification badge — so a fee due doesn't read as just another neutral stat
+              tile among Classes Completed/Remaining/Attendance. */}
+          {needsAction && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
+              <span
+                className={cn(
+                  "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+                  isSevere ? "bg-destructive" : "bg-warning"
+                )}
+              />
+              <span className={cn("relative inline-flex h-2.5 w-2.5 rounded-full", isSevere ? "bg-destructive" : "bg-warning")} />
+            </span>
+          )}
         </span>
       </div>
       {needsAction ? (
-        <Button size="sm" className="mt-4 w-full" onClick={onPay} disabled={payDisabled}>
-          {invoiceLoading ? "Loading…" : `Pay ${invoice ? formatCurrency(invoiceBalance(invoice)) : "Now"}`}
-        </Button>
+        <>
+          <Button
+            size="sm"
+            className="mt-4 w-full !bg-brand-green !text-white shadow-card hover:!bg-brand-greenDark disabled:!opacity-60"
+            onClick={onPay}
+            disabled={payDisabled}
+          >
+            {invoiceLoading ? "Loading…" : invoice ? `Pay ${formatCurrency(invoiceBalance(invoice))}` : "Pay Now"}
+          </Button>
+          {invoiceMissing && (
+            <p className="mt-2 text-[11px] font-medium text-muted-foreground">
+              Couldn't find an invoice to pay yet — contact support if this fee stays stuck as {child.feeStatus}.
+            </p>
+          )}
+        </>
       ) : (
         <p className="mt-4 text-xs font-medium text-success">All caught up — thank you!</p>
       )}

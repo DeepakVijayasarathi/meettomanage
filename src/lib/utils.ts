@@ -145,6 +145,11 @@ function contrastRatio(hexA: string, hexB: string): number {
  * as 2.51:1 for others (e.g. teacher orange), well under WCAG AA's 4.5:1 minimum for
  * button-label text. Picks whichever of white or the app's dark navy ink actually
  * contrasts better against the given accent color, instead of assuming white always works.
+ *
+ * Not currently called by AppShell's accentStyle — white was chosen there as a
+ * deliberate, informed product tradeoff (brand consistency over this contrast fix, see
+ * accentStyle's own comment). Kept here, and still covered by tests, in case that
+ * tradeoff is ever revisited for some or all portals.
  */
 export function pickAccentForegroundHsl(hex: string): string {
   const white = "#FFFFFF";

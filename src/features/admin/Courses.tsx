@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Combobox } from "@/components/ui/combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -277,19 +278,17 @@ export default function AdminCourses() {
                 <Label htmlFor="course-category-input">Category</Label>
                 {/* Free text + suggestions instead of a fixed list: course categories are
                     admin-defined (see ensureCategory in api/courses.ts, which reuses an
-                    existing category by name or creates one), not a closed set. */}
-                <Input
+                    existing category by name or creates one), not a closed set. A native
+                    <input list> did this but its browser-rendered datalist popup can't be
+                    styled to match the rest of the app's dropdowns — Combobox is the same
+                    "type anything, or pick a suggestion" behavior with SelectContent's look. */}
+                <Combobox
                   id="course-category-input"
-                  list="course-category-options"
-                  placeholder="e.g. Reading, Grammar, or a new category"
                   value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  onValueChange={setCategory}
+                  options={categories.map((c) => c.name)}
+                  placeholder="e.g. Reading, Grammar, or a new category"
                 />
-                <datalist id="course-category-options">
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.name} />
-                  ))}
-                </datalist>
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="course-department-select">Department</Label>

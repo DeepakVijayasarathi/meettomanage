@@ -470,7 +470,7 @@ export default function AdminBatches() {
                   <Label htmlFor="batch-assign-teacher-select">Assign teacher</Label>
                   <Select value={teacherAssignment} onValueChange={setTeacherAssignment}>
                     <SelectTrigger id="batch-assign-teacher-select">
-                      <SelectValue />
+                      <SelectValue placeholder="Select teacher" />
                     </SelectTrigger>
                     <SelectContent>
                       {apiEnabled() && teacherOptions.length > 0

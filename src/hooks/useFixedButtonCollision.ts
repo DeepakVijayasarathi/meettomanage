@@ -43,14 +43,25 @@ export function useFixedButtonCollision(buttonRef: RefObject<HTMLElement | null>
       // Sample several points across the button's footprint, not just its exact center —
       // on a 48x48 button the center pixel can land on padding/whitespace inside a card
       // (e.g. the gap between a "Phone" row and a "Department" row) while the rest of the
-      // button still visually sits on top of that row's text. A single center sample missed
-      // that case entirely; five points spread across the footprint catch it.
+      // button still visually sits on top of that row's text. The four quadrant midpoints
+      // catch most cases, but a status pill sitting right at the button's edge (its own
+      // bottom-left corner just clipping one letter of a badge, confirmed live on a
+      // parent's "Recent Activity" list) can miss a purely interior 3x3-minus-edges grid
+      // entirely — the true corners and edge midpoints below close that gap.
       const covering = [
         [0.5, 0.5],
         [0.25, 0.25],
         [0.75, 0.25],
         [0.25, 0.75],
         [0.75, 0.75],
+        [0, 0],
+        [1, 0],
+        [0, 1],
+        [1, 1],
+        [0.5, 0],
+        [0.5, 1],
+        [0, 0.5],
+        [1, 0.5],
       ].some(([fx, fy]) => hasCoveredText(rect.left + rect.width * fx, rect.top + rect.height * fy, button));
       setCoversContent(covering);
     }
@@ -66,10 +77,25 @@ export function useFixedButtonCollision(buttonRef: RefObject<HTMLElement | null>
     // panel, a Kanban column, etc.), not just the page/window scroll itself.
     window.addEventListener("scroll", scheduleCheck, { capture: true, passive: true });
     window.addEventListener("resize", scheduleCheck);
+
+    // Confirmed live: the very first check (the scheduleCheck() call above, right after
+    // mount) can run before the page has actually finished laying out — a parent
+    // dashboard's "Recent Activity" list, present in the DOM from the first render, still
+    // shifted into its final position ~1s later (web font swap reflowing every card),
+    // after which this button sat squarely over a status badge at full opacity with
+    // nothing left to trigger a recheck (scroll/resize deps hadn't changed). A
+    // ResizeObserver on <body> catches that class of "content resized/reflowed without a
+    // scroll or window resize" change generically, instead of guessing a fixed delay.
+    // Guarded — jsdom (this hook's own test environment, via any component that mounts
+    // FloatingNotes/DoubtChatbot) has no ResizeObserver global at all.
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleCheck) : null;
+    resizeObserver?.observe(document.body);
+
     return () => {
       if (frame !== null) cancelAnimationFrame(frame);
       window.removeEventListener("scroll", scheduleCheck, { capture: true });
       window.removeEventListener("resize", scheduleCheck);
+      resizeObserver?.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, recheckDeps);

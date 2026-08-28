@@ -1,6 +1,6 @@
 import { cloneElement, isValidElement, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, CheckCircle2, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
 import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { COURSES } from "@/data/courses";
@@ -323,13 +322,54 @@ export default function ParentEnrollment() {
 
       <Card className="mx-auto max-w-2xl">
         <CardHeader className="gap-3">
-          <div aria-live="polite" className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-            <span>
-              Step {step + 1} of {STEPS.length}
-            </span>
-            <span>{STEPS[step]}</span>
-          </div>
-          <Progress value={((step + 1) / STEPS.length) * 100} />
+          {/* Visible to sighted users as circles + connecting lines; a screen reader gets the
+              same "Step X of Y: Label" announcement the old text-only header gave, via the
+              sr-only live region below — swapping the visual for a stepper shouldn't mean
+              losing that announcement on every Back/Next. */}
+          <p aria-live="polite" className="sr-only">
+            Step {step + 1} of {STEPS.length}: {STEPS[step]}
+          </p>
+          <ol className="flex">
+            {STEPS.map((label, i) => {
+              const isCompleted = i < step;
+              const isCurrent = i === step;
+              return (
+                <li key={label} className="relative flex-1 text-center">
+                  {/* Each item draws only its own left/right half of the connector — the
+                      previous item's right half and this item's left half meet exactly at
+                      the midpoint between the two circles, and both read the same
+                      "is the step between them done" condition so the color always agrees. */}
+                  {i > 0 && (
+                    <div className={cn("absolute left-0 right-1/2 top-4 h-0.5", i - 1 < step ? "bg-brand-green" : "bg-border")} />
+                  )}
+                  {i < STEPS.length - 1 && (
+                    <div className={cn("absolute left-1/2 right-0 top-4 h-0.5", i < step ? "bg-brand-green" : "bg-border")} />
+                  )}
+                  <span
+                    aria-current={isCurrent ? "step" : undefined}
+                    className={cn(
+                      "relative z-10 mx-auto flex h-8 w-8 items-center justify-center rounded-full border-2 bg-card text-xs font-bold transition-colors",
+                      isCompleted
+                        ? "border-brand-green bg-brand-green text-white"
+                        : isCurrent
+                          ? "border-brand-green text-brand-green"
+                          : "border-border text-muted-foreground"
+                    )}
+                  >
+                    {isCompleted ? <Check className="h-4 w-4" /> : i + 1}
+                  </span>
+                  <span
+                    className={cn(
+                      "mx-auto mt-1.5 block max-w-[6.5rem] text-[11px] font-semibold leading-tight",
+                      isCurrent ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    {label}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
