@@ -110,7 +110,6 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "invoice.signatoryTitle": { category: "General", fallback: "" },
   "brand.name": { category: "Branding", isPublic: true, fallback: "Meet to Manage" },
   "brand.logoUrl": { category: "Branding", isPublic: true, fallback: "" },
-  "brand.tagline": { category: "Branding", isPublic: true, fallback: "Meet · Manage · Grow" },
   "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#1E3A5F" },
   "brand.accentColor": { category: "Branding", isPublic: true, fallback: "#E63329" },
   // Attendance/no-show thresholds for the teacher payout pipeline -- were fixed constants in
@@ -251,7 +250,6 @@ export default function AdminSettings() {
       ...getBrand(),
       name: values["brand.name"] || "Meet to Manage",
       logoUrl: values["brand.logoUrl"] || undefined,
-      tagline: values["brand.tagline"] || "Meet · Manage · Grow",
       primaryHsl: hexToHslTriple(values["brand.primaryColor"] || "#1E3A5F"),
       accentHsl: hexToHslTriple(values["brand.accentColor"] || "#E63329"),
     });
@@ -436,15 +434,6 @@ export default function AdminSettings() {
                     placeholder="https://cdn.example.com/logo.png (empty = built-in mark)"
                     value={values["brand.logoUrl"]}
                     onChange={(e) => setValue("brand.logoUrl", e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-1.5 sm:col-span-2">
-                  <Label htmlFor="brand-tagline">Tagline</Label>
-                  <Input
-                    id="brand-tagline"
-                    placeholder="Short caption shown under the wordmark, e.g. Meet · Manage · Grow"
-                    value={values["brand.tagline"]}
-                    onChange={(e) => setValue("brand.tagline", e.target.value)}
                   />
                 </div>
               </div>

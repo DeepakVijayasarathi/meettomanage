@@ -17,19 +17,14 @@ export function Logo({ className, imgClassName, showWordmark = true, variant = "
           reads cleanly at the ~36px icon size every actual <Logo> usage in the app renders. */}
       <img src={brand.logoUrl ?? "/logo-icon.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
       {showWordmark && (
-        <div className="flex flex-col leading-none">
-          <span
-            className={cn(
-              "font-display text-[15px] font-extrabold tracking-tight",
-              variant === "dark" ? "text-foreground" : "text-white"
-            )}
-          >
-            {brand.name}
-          </span>
-          <span className={cn("text-[10px] font-semibold uppercase tracking-[0.16em]", variant === "dark" ? "text-muted-foreground" : "text-white/70")}>
-            {brand.tagline}
-          </span>
-        </div>
+        <span
+          className={cn(
+            "font-display text-[15px] font-extrabold tracking-tight",
+            variant === "dark" ? "text-foreground" : "text-white"
+          )}
+        >
+          {brand.name}
+        </span>
       )}
     </div>
   );

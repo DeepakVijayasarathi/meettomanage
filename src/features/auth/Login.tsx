@@ -168,10 +168,7 @@ export default function Login() {
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-pop ring-1 ring-brand-ink/10">
               <img src={brand.logoUrl ?? "/logo-icon.png"} alt={brand.name} className="h-11 w-11 object-contain" />
             </div>
-            <p className="mt-4 font-display text-[12px] font-bold uppercase tracking-[0.25em] text-brand-accent">
-              {brand.tagline}
-            </p>
-            <h2 style={{ fontFamily: HEADLINE_FONT }} className="mt-2 text-3xl font-semibold tracking-tight text-brand-ink">
+            <h2 style={{ fontFamily: HEADLINE_FONT }} className="mt-4 text-3xl font-semibold tracking-tight text-brand-ink">
               Welcome back
             </h2>
             <p className="mt-1.5 text-sm text-brand-ink/70">Sign in to your account and continue</p>

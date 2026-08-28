@@ -7,13 +7,12 @@
  *   VITE_BRAND_PRIMARY  — primary colour as "H S% L%" HSL triple for the theme tokens
  *   VITE_BRAND_ACCENT   — accent colour as "H S% L%" HSL triple for the --brand-accent token
  *   VITE_BRAND_LOGO_URL — logo image URL; falls back to the built-in mark
- *   VITE_BRAND_TAGLINE  — short caption shown under the wordmark (Logo, login screen)
  *
- * DB keys: brand.name, brand.logoUrl, brand.primaryColor (#hex), brand.accentColor (#hex),
- * brand.tagline. Components must read colour through the --primary / --brand-accent CSS
- * tokens (Tailwind's `primary` / `brand-accent` classes) — never a literal hex or an
- * arbitrary-value Tailwind class — since those bake the colour in at build time and can't
- * react to a runtime Settings change.
+ * DB keys: brand.name, brand.logoUrl, brand.primaryColor (#hex), brand.accentColor (#hex).
+ * Components must read colour through the --primary / --brand-accent CSS tokens (Tailwind's
+ * `primary` / `brand-accent` classes) — never a literal hex or an arbitrary-value Tailwind
+ * class — since those bake the colour in at build time and can't react to a runtime
+ * Settings change.
  */
 
 import { useSyncExternalStore } from "react";
@@ -24,9 +23,6 @@ import { hexToHslTriple } from "@/lib/utils";
 export const BRAND_NAME: string = (import.meta.env.VITE_BRAND_NAME as string | undefined) ?? "Meet to Manage";
 
 export const BRAND_LOGO_URL: string | undefined = import.meta.env.VITE_BRAND_LOGO_URL as string | undefined;
-
-export const BRAND_TAGLINE: string =
-  (import.meta.env.VITE_BRAND_TAGLINE as string | undefined) ?? "Meet · Manage · Grow";
 
 // Fall back to :root's own default HSL triples (src/index.css), not undefined — setBrand()
 // only writes the --primary/--ring/--brand-accent inline style on <html> when these are
@@ -40,7 +36,6 @@ const BRAND_ACCENT: string = (import.meta.env.VITE_BRAND_ACCENT as string | unde
 export interface Brand {
   name: string;
   logoUrl?: string;
-  tagline?: string;
   /** Primary colour as "H S% L%" triple, ready for the --primary token. */
   primaryHsl?: string;
   /** Accent colour as "H S% L%" triple, ready for the --brand-accent token. */
@@ -50,7 +45,6 @@ export interface Brand {
 let brand: Brand = {
   name: BRAND_NAME,
   logoUrl: BRAND_LOGO_URL,
-  tagline: BRAND_TAGLINE,
   primaryHsl: BRAND_PRIMARY,
   accentHsl: BRAND_ACCENT,
 };
@@ -107,7 +101,6 @@ export async function loadBrandingFromApi(): Promise<void> {
     setBrand({
       name: map["brand.name"] || BRAND_NAME,
       logoUrl: map["brand.logoUrl"] || BRAND_LOGO_URL,
-      tagline: map["brand.tagline"] || BRAND_TAGLINE,
       primaryHsl: primaryHex ? hexToHslTriple(primaryHex) : BRAND_PRIMARY,
       accentHsl: accentHex ? hexToHslTriple(accentHex) : BRAND_ACCENT,
     });
