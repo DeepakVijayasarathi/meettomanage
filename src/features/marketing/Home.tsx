@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useBrand } from "@/lib/branding";
+import { useLightBrandScope } from "@/lib/theme";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
@@ -99,10 +100,11 @@ const STATS = [
 ];
 
 export default function MarketingHome() {
+  useLightBrandScope();
   const brand = useBrand();
 
   return (
-    <div className="min-h-screen bg-brand-cream text-brand-ink">
+    <div className="theme-light-scope min-h-screen bg-brand-cream text-brand-ink">
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-brand-ink/10 bg-brand-cream/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">

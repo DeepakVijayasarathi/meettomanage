@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { EmptyState } from "@/components/EmptyState";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/lib/branding";
+import { useLightBrandScope } from "@/lib/theme";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
@@ -68,6 +69,7 @@ function toLocalInputValue(date: Date): string {
 }
 
 export default function Store() {
+  useLightBrandScope();
   const brand = useBrand();
   const live = apiEnabled();
   const { data: plans, loading, error: plansError, reload: reloadPlans } = useApiData<ApiStorePlan[]>(() => listStorePlans(), DEMO_PLANS);
@@ -216,7 +218,7 @@ export default function Store() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-cream text-brand-ink">
+    <div className="theme-light-scope min-h-screen bg-brand-cream text-brand-ink">
       <header className="sticky top-0 z-30 border-b border-brand-ink/10 bg-brand-cream/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link to="/" aria-label={`${brand.name} home`}>

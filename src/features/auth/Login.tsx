@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { useBrand } from "@/lib/branding";
+import { useLightBrandScope } from "@/lib/theme";
 import { apiEnabled, getAccessToken } from "@/lib/api";
 import { getRemember, setRemember } from "@/lib/authStorage";
 import { login } from "@/api/auth";
@@ -29,6 +30,7 @@ const PIN_LENGTH = 4;
 const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
 
 export default function Login() {
+  useLightBrandScope();
   const brand = useBrand();
   const [role, setRole] = useState<Role>("admin");
   const [email, setEmail] = useState(apiEnabled() ? "" : "demo@readernest.com");
@@ -128,7 +130,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-cream lg:grid lg:grid-cols-[2fr_1fr]">
+    <div className="theme-light-scope min-h-screen bg-brand-cream lg:grid lg:grid-cols-[2fr_1fr]">
       {/* Left — a composed brand panel on the same cream canvas as the page (no stock photo) */}
       <div className="hidden flex-col justify-center gap-10 p-10 lg:flex">
         <div className="relative mx-auto w-full max-w-3xl">
