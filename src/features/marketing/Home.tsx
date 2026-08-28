@@ -8,9 +8,12 @@ import {
   CheckCircle2,
   Hand,
   HeartHandshake,
+  Mail,
+  MapPin,
   Mic,
   MessageSquare,
   PenTool,
+  Phone,
   ScreenShare,
   ShieldCheck,
   Sparkles,
@@ -537,6 +540,27 @@ export default function MarketingHome() {
             <p className="mt-4 max-w-[22ch] text-sm leading-relaxed text-[#5B6472]">
               Live teaching, scheduling, admissions and billing — one role-based system for your whole academy.
             </p>
+            <ul className="mt-5 flex flex-col gap-2.5">
+              <li>
+                <a
+                  href="mailto:hello@infinityuniquers.dev"
+                  className="flex items-center gap-2 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
+                >
+                  <Mail className="h-3.5 w-3.5 shrink-0" /> hello@infinityuniquers.dev
+                </a>
+              </li>
+              <li>
+                <a
+                  href="tel:+15550123456"
+                  className="flex items-center gap-2 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
+                >
+                  <Phone className="h-3.5 w-3.5 shrink-0" /> +1 (555) 012-3456
+                </a>
+              </li>
+              <li className="flex items-center gap-2 text-sm font-medium text-[#5B6472]">
+                <MapPin className="h-3.5 w-3.5 shrink-0" /> San Francisco, CA · Remote-first
+              </li>
+            </ul>
           </div>
 
           <div>
