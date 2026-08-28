@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,7 @@ import { MOCK_CHAT_ESCALATIONS } from "@/data/chatbot";
  * in this first pass (see ChatEscalation's own comment on the backend).
  */
 export default function TeacherDoubts() {
+  const { toast } = useToast();
   const { data: escalations, error: loadError, reload } = useApiData<ApiChatEscalation[]>(
     () => listChatEscalations(),
     MOCK_CHAT_ESCALATIONS
@@ -50,8 +52,11 @@ export default function TeacherDoubts() {
       await resolveChatEscalation(resolveTarget.id, note);
       setResolveTarget(null);
       reload();
+      toast({ variant: "success", title: "Doubt resolved" });
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : "Could not resolve that doubt.");
+      const message = err instanceof Error ? err.message : "Could not resolve that doubt.";
+      setNotice(message);
+      toast({ variant: "error", title: "Couldn't resolve doubt", description: message });
     } finally {
       setSaving(false);
     }

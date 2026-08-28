@@ -3,6 +3,7 @@ import { Clock } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,7 @@ function LeaveStatusBadge({ status }: { status: LeaveRequest["status"] }) {
 }
 
 export default function TeacherLeave() {
+  const { toast } = useToast();
   const now = apiEnabled() ? new Date() : NOW;
   const { data: fetchedSessions } = useApiData(
     () => listMySessions().then((sessions) => sessions.map(toFrontendSession)),
@@ -133,8 +135,12 @@ export default function TeacherLeave() {
             /* reloadLeaves() below still picks it up from the server's own response */
           }
           reloadLeaves();
+          toast({ variant: "success", title: "Leave request submitted", description: "Pending admin approval." });
         })
-        .catch((err: Error) => setSubmitError(err.message));
+        .catch((err: Error) => {
+          setSubmitError(err.message);
+          toast({ variant: "error", title: "Couldn't submit leave request", description: err.message });
+        });
       setSessionId("");
       setReason("");
       return;

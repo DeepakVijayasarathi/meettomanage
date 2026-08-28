@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CheckCircle2, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +68,7 @@ interface EnrollmentForm {
 }
 
 export default function ParentEnrollment() {
+  const { toast } = useToast();
   const brand = useBrand();
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -256,8 +258,13 @@ export default function ParentEnrollment() {
           markEnrollmentComplete(childId);
           setActiveChildId(childId);
           setSubmitted(true);
+          toast({ variant: "success", title: "Enrollment submitted" });
         })
-        .catch((err: Error) => setError(err.message || "Could not submit the form. Please try again."))
+        .catch((err: Error) => {
+          const message = err.message || "Could not submit the form. Please try again.";
+          setError(message);
+          toast({ variant: "error", title: "Couldn't submit enrollment", description: message });
+        })
         .finally(() => setSubmitting(false));
       return;
     }

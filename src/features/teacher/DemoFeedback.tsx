@@ -9,6 +9,7 @@ import {
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +61,7 @@ const MOCK_COURSE_OPTIONS = COURSES.filter((c) => c.type !== "demo").map((c) => 
 }));
 
 export default function TeacherDemoFeedback() {
+  const { toast } = useToast();
   const { data: apiFeedbacks, reload } = useApiData(
     () =>
       Promise.all([listMyDemoBookings(), listMyDemoFeedback()]).then(([bookings, submittedItems]) => [
@@ -126,8 +128,11 @@ export default function TeacherDemoFeedback() {
         setJustSubmitted(active.childName);
         setActiveId(null);
         setForm(EMPTY_FORM);
+        toast({ variant: "success", title: "Feedback submitted", description: `Feedback for ${active.childName} was recorded.` });
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Couldn't submit this feedback. Please try again.");
+        const message = err instanceof Error ? err.message : "Couldn't submit this feedback. Please try again.";
+        setSubmitError(message);
+        toast({ variant: "error", title: "Couldn't submit feedback", description: message });
       } finally {
         setSubmitting(false);
       }

@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { FileDropzone } from "@/components/FileDropzone";
 import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +89,7 @@ function apiToView(r: ApiResource): ViewResource {
 }
 
 export default function TeacherResources() {
+  const { toast } = useToast();
   const usingApi = apiEnabled();
 
   // Demo roster (mock) — filtered to this teacher's batches.
@@ -184,8 +186,11 @@ export default function TeacherResources() {
         setUploadOpen(false);
         resetUploadForm();
         reload();
+        toast({ variant: "success", title: "Resource uploaded", description: `Visible to ${batchLabel}.` });
       } catch (e) {
-        setUploadError(e instanceof Error ? e.message : "Upload failed. Please try again.");
+        const message = e instanceof Error ? e.message : "Upload failed. Please try again.";
+        setUploadError(message);
+        toast({ variant: "error", title: "Upload failed", description: message });
       } finally {
         setSubmitting(false);
       }

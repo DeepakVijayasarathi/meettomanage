@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,7 @@ const DAY_STATE_LABEL: Record<DayState, string> = {
 };
 
 export default function CoordinatorAvailability() {
+  const { toast } = useToast();
   const usingApi = apiEnabled();
   // Real clock in API mode; the mock universe stays pinned for reproducible demos.
   const [now] = useState(() => (usingApi ? new Date() : NOW));
@@ -93,7 +95,20 @@ export default function CoordinatorAvailability() {
 
   function decide(target: LeaveRequest, approve: boolean) {
     if (apiEnabled()) {
-      return reviewLeave(target.id, approve).then(() => reload());
+      return reviewLeave(target.id, approve)
+        .then(() => {
+          reload();
+          toast({
+            variant: "success",
+            title: approve ? "Leave approved" : "Leave rejected",
+            description: `${target.teacherName}'s leave request was ${approve ? "approved" : "rejected"}.`,
+          });
+        })
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+          toast({ variant: "error", title: `Couldn't ${approve ? "approve" : "reject"} leave`, description: message });
+          throw err;
+        });
     }
     setLeaves((prev) => prev.map((l) => (l.id === target.id ? { ...l, status: approve ? "approved" : "rejected" } : l)));
   }

@@ -21,6 +21,7 @@ import { ScheduleConflictsPanel } from "@/components/ScheduleConflictsPanel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/state/session";
 import { formatDate, formatPercent } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -77,6 +78,7 @@ interface ActivityRow {
 }
 
 export default function SubAdminDashboard() {
+  const { toast } = useToast();
   const { userName, permissions } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
   const usingApi = apiEnabled();
@@ -427,9 +429,19 @@ export default function SubAdminDashboard() {
         onConfirm={() => {
           if (!usingApi) {
             setRequestedDemo(true);
+            toast({ variant: "success", title: "Request sent", description: `Sent to ${adminContact} (demo mode — not persisted).` });
             return;
           }
-          return submitAccessRequest(scope.noneValues).then(() => reloadMyRequests());
+          return submitAccessRequest(scope.noneValues)
+            .then(() => {
+              reloadMyRequests();
+              toast({ variant: "success", title: "Access request sent", description: `Sent to ${adminContact} for review.` });
+            })
+            .catch((err: unknown) => {
+              const message = err instanceof Error ? err.message : "Could not send the request. Please try again.";
+              toast({ variant: "error", title: "Couldn't send request", description: message });
+              throw err;
+            });
         }}
       />
     </div>
