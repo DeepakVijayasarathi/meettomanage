@@ -6,13 +6,16 @@ import {
   CalendarCheck2,
   ChevronDown,
   CheckCircle2,
+  Clock,
   Hand,
   HeartHandshake,
+  Layers,
   Mail,
   Mic,
   MessageSquare,
   PenTool,
   Phone,
+  RefreshCw,
   ScreenShare,
   ShieldCheck,
   Sparkles,
@@ -108,30 +111,48 @@ const FEATURES: FeatureItem[] = [
   },
 ];
 
-const PAIN_POINTS = [
+interface PainPoint {
+  icon: LucideIcon;
+  pain: string;
+  fix: string;
+}
+
+const PAIN_POINTS: PainPoint[] = [
   {
+    icon: Wallet,
     pain: "Fee reminders lost in a WhatsApp thread, and a child quietly drops out of class.",
     fix: "Automatic invoices and dual-gateway billing — with instant fee-suspension and restoration the moment a parent pays.",
   },
   {
+    icon: HeartHandshake,
     pain: "A demo booking sits in someone's inbox until the family gives up and goes elsewhere.",
     fix: "An admissions pipeline that tracks every booking from first call to enrolled family.",
   },
   {
+    icon: BarChart3,
     pain: "You find out a class had three no-shows a week later — if at all.",
     fix: "Live attendance and engagement scores, the moment a session ends.",
   },
   {
+    icon: Layers,
     pain: "Teaching happens on one app, billing on another, admissions on a third.",
     fix: "One login. One role-based system. Every piece already connected.",
   },
 ];
 
-const STATS = [
-  { value: "8", label: "Role-based portals" },
-  { value: "100%", label: "Real-time classroom" },
-  { value: "15-day", label: "Recording access window" },
-  { value: "24/7", label: "Automated fee & reminder engine" },
+/** Reframes the same four PAIN_POINTS facts as a head-to-head strip — no new claims, just a second, more decision-stage lens on facts already stated above. */
+const COMPARISON_ROWS = [
+  { old: "Fee follow-ups tracked manually, easy to miss", now: "Automatic invoices, auto-suspend and instant restoration on payment" },
+  { old: "Admissions tracked in an inbox or a notebook", now: "One pipeline from first call to enrolled family" },
+  { old: "Attendance found out about days later, if at all", now: "Live attendance and engagement the moment class ends" },
+  { old: "A video app, a spreadsheet and a WhatsApp group", now: "One login, every role, already connected" },
+];
+
+const STATS: { value: string; label: string; icon: LucideIcon }[] = [
+  { value: "8", label: "Role-based portals", icon: Layers },
+  { value: "100%", label: "Real-time classroom", icon: Video },
+  { value: "15-day", label: "Recording access window", icon: Clock },
+  { value: "24/7", label: "Automated fee & reminder engine", icon: RefreshCw },
 ];
 
 /** Anchors into this same page — kept to sections that actually exist, so the nav never promises more than the page delivers. */
@@ -206,16 +227,18 @@ export default function MarketingHome() {
             ))}
           </nav>
 
+          {/* Sign In stays available for returning users, but a fresh visitor's highest-value
+              next step is requesting a demo — that CTA now carries the primary (filled) weight
+              here and in the hero, matching how the rest of the page's CTAs are prioritized. */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <Button asChild variant="outline" className="border-[#171B22]/15 px-2.5 text-[#171B22] hover:bg-[#171B22]/5 sm:px-4">
+              <Link to="/login">Sign In</Link>
+            </Button>
+            <Button asChild className="!bg-[#F97316] px-3 !text-white hover:!bg-[#EA580C] sm:px-4">
               <Link to="/get-started">
                 <span className="sm:hidden">Demo</span>
                 <span className="hidden sm:inline">Request a Demo</span>
-              </Link>
-            </Button>
-            <Button asChild className="!bg-[#F97316] px-3 !text-white hover:!bg-[#EA580C] sm:px-4">
-              <Link to="/login">
-                Sign In <ArrowRight className="hidden h-4 w-4 sm:inline" />
+                <ArrowRight className="hidden h-4 w-4 sm:inline" />
               </Link>
             </Button>
           </div>
@@ -253,8 +276,8 @@ export default function MarketingHome() {
             style={{ animationDelay: "240ms", animationFillMode: "backwards" }}
           >
             <Button asChild size="lg" className="!bg-[#F97316] !text-white hover:!bg-[#EA580C]">
-              <Link to="/login">
-                Sign In <ArrowRight className="h-4 w-4" />
+              <Link to="/get-started">
+                Request a Demo <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5">
@@ -262,15 +285,21 @@ export default function MarketingHome() {
             </Button>
           </div>
 
+          {/* Real, verifiable trust indicators only — every phrase here restates language
+              already used on the dedicated /demo and /get-started flows, not a generic
+              "no credit card" line this product's signup doesn't actually have. */}
           <div
-            className="motion-safe:animate-slide-up mt-10 grid grid-cols-2 gap-5 sm:grid-cols-4"
-            style={{ animationDelay: "320ms", animationFillMode: "backwards" }}
+            className="motion-safe:animate-slide-up mt-7 flex flex-wrap items-center gap-x-5 gap-y-2"
+            style={{ animationDelay: "280ms", animationFillMode: "backwards" }}
           >
-            {STATS.map((s) => (
-              <div key={s.label}>
-                <p className="font-display text-2xl font-extrabold text-[#171B22]">{s.value}</p>
-                <p className="mt-0.5 text-xs font-medium leading-snug text-[#5B6472]">{s.label}</p>
-              </div>
+            {[
+              "No payment details to book a demo",
+              "One login — 8 role-based portals",
+              "Free demo class before you commit",
+            ].map((item) => (
+              <span key={item} className="flex items-center gap-1.5 text-xs font-semibold text-[#5B6472]">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#EA580C]" /> {item}
+              </span>
             ))}
           </div>
         </div>
@@ -360,6 +389,26 @@ export default function MarketingHome() {
         </div>
       </section>
 
+      {/* Social proof strip — no fabricated customer counts or logos exist for this product yet,
+          so this states real, verifiable platform facts instead of an invented "Trusted by..."
+          claim. Swap the eyebrow to real customer trust language once that data exists. */}
+      <section className="border-y border-black/10 bg-[#F5F6F9] py-10 sm:py-12">
+        <div className="mx-auto max-w-6xl px-6">
+          <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#8B93A1]">What's already built in</p>
+          <div className="mt-7 grid grid-cols-2 gap-6 sm:grid-cols-4">
+            {STATS.map((s) => (
+              <div key={s.label} className="flex flex-col items-center text-center sm:items-start sm:text-left">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#EA580C] shadow-soft">
+                  <s.icon className="h-4 w-4" />
+                </span>
+                <p className="font-display mt-3 text-2xl font-extrabold text-[#171B22]">{s.value}</p>
+                <p className="mt-0.5 text-xs font-medium leading-snug text-[#5B6472]">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Pain points → solutions */}
       <section className="border-t border-black/10 bg-[#FBFBFC] py-16 sm:py-20">
         <div className="mx-auto max-w-3xl px-6">
@@ -378,7 +427,10 @@ export default function MarketingHome() {
             {PAIN_POINTS.map((p, i) => (
               <Reveal key={p.pain} delayMs={i * 80}>
                 <div className="rounded-2xl border border-black/10 bg-white p-6 sm:p-7">
-                  <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F6F9] text-[#5B6472]">
+                    <p.icon className="h-5 w-5" />
+                  </span>
+                  <div className="mt-4 flex items-start gap-3">
                     <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#B8BEC9]" />
                     <p className="text-base leading-snug text-[#5B6472] sm:text-lg">{p.pain}</p>
                   </div>
@@ -390,6 +442,31 @@ export default function MarketingHome() {
               </Reveal>
             ))}
           </div>
+
+          {/* Same four facts as the cards above, restated head-to-head for a reader already
+              past "does this understand my problem" and into "why this over the alternative". */}
+          <Reveal delayMs={PAIN_POINTS.length * 80} className="mt-10">
+            <div className="overflow-hidden rounded-2xl border border-black/10 bg-white">
+              <div className="grid grid-cols-2 border-b border-black/10 bg-[#F5F6F9]">
+                <div className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-[#8B93A1] sm:px-5">The old way</div>
+                <div className="border-l border-black/10 px-4 py-3 text-xs font-bold uppercase tracking-wide text-[#EA580C] sm:px-5">
+                  {brand.name}
+                </div>
+              </div>
+              {COMPARISON_ROWS.map((row, i) => (
+                <div key={row.old} className={cn("grid grid-cols-2", i !== 0 && "border-t border-black/10")}>
+                  <div className="flex items-start gap-2 px-4 py-4 text-sm text-[#5B6472] sm:px-5">
+                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#B8BEC9]" />
+                    {row.old}
+                  </div>
+                  <div className="flex items-start gap-2 border-l border-black/10 px-4 py-4 text-sm font-semibold text-[#171B22] sm:px-5">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#EA580C]" />
+                    {row.now}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 
