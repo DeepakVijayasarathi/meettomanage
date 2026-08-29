@@ -483,9 +483,12 @@ export default function MarketingHome() {
 
           {/* Real, verifiable trust indicators only — every phrase here restates language
               already used on the dedicated /demo and /get-started flows, not a generic
-              "no credit card" line this product's signup doesn't actually have. */}
+              "no credit card" line this product's signup doesn't actually have.
+              Stacked (not flex-wrap) at every width: at the hero column's ~500px desktop
+              width, wrapping left three items of uneven length two-then-one, creating a
+              lopsided row instead of a clean list. */}
           <div
-            className="motion-safe:animate-slide-up mt-7 flex flex-wrap items-center gap-x-5 gap-y-2"
+            className="motion-safe:animate-slide-up mt-7 flex flex-col gap-2"
             style={{ animationDelay: "280ms", animationFillMode: "backwards" }}
           >
             {[
