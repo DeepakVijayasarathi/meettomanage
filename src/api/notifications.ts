@@ -19,6 +19,11 @@ type ApiNotificationType =
 export interface ApiNotification {
   id: string;
   type: ApiNotificationType;
+  /** The EmailTemplateSeedData key this was rendered from (e.g. "batch-assignment"),
+   *  null for hand-built/bulk emails. See ROUTE_BY_TEMPLATE_KEY below — several
+   *  distinct templates share NotificationType.General, so this is what actually
+   *  tells apart "the type alone can't route this precisely" cases. */
+  templateKey: string | null;
   channel: string;
   subject: string | null;
   body: string;
@@ -89,10 +94,30 @@ const ROUTE_BY_ROLE_AND_TYPE: Partial<Record<Role, Partial<Record<ApiNotificatio
   },
 };
 
-/** Resolves the click-through route for one notification, or undefined if this
- *  role/type combination has nowhere more specific to send the viewer than
- *  wherever they already are. */
-function routeFor(type: ApiNotificationType, role: Role | null): string | undefined {
+/**
+ * NotificationType is too coarse to route on its own — a third of the actual email
+ * templates (see EmailTemplateSeedData.cs) share NotificationType.General despite
+ * being about very different things, so every one of those fell back to the
+ * type-level "General" route (the recipient's own dashboard) regardless of what
+ * they were actually about. TemplateKey is the stable, non-interpolated signal
+ * that tells them apart; checked first, ahead of the coarser role+type map.
+ * Each template only ever goes to one audience today, so this isn't role-scoped —
+ * add a role split here if a template is ever reused across roles.
+ */
+const ROUTE_BY_TEMPLATE_KEY: Record<string, string> = {
+  "batch-assignment": "/parent/schedule",
+  "leave-submitted-admin-alert": "/admin/sessions",
+  "weekly-kpi-digest": "/admin/reports",
+  "access-request-submitted-admin-alert": "/admin/permissions",
+  "access-request-reviewed": "/subadmin/permissions",
+  // "welcome-credentials" / "pin-reset" intentionally unmapped — there's no page
+  // more specific than the dashboard for "your account/PIN is ready".
+};
+
+/** Resolves the click-through route for one notification, or undefined if there's
+ *  nowhere more specific to send the viewer than wherever they already are. */
+function routeFor(type: ApiNotificationType, templateKey: string | null, role: Role | null): string | undefined {
+  if (templateKey && ROUTE_BY_TEMPLATE_KEY[templateKey]) return ROUTE_BY_TEMPLATE_KEY[templateKey];
   if (!role) return undefined;
   return ROUTE_BY_ROLE_AND_TYPE[role]?.[type];
 }
@@ -120,7 +145,7 @@ export function toNotificationItem(n: ApiNotification, role: Role | null = null)
     time: relativeTime(n.createdAtUtc),
     read: n.isRead,
     type: TONE_BY_TYPE[n.type] ?? "info",
-    route: routeFor(n.type, role),
+    route: routeFor(n.type, n.templateKey, role),
   };
 }
 
