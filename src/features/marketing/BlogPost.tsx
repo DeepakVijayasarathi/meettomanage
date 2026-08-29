@@ -1,32 +1,78 @@
-import { useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { Seo } from "@/components/Seo";
 import { BookDemoDialog } from "@/components/BookDemoDialog";
+import { EmptyState } from "@/components/EmptyState";
 import { useLightBrandScope } from "@/lib/theme";
-import { BLOG_POSTS, getBlogPost } from "@/data/blogPosts";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { getBlogPost, listBlogPosts, type ApiBlogPostDetail, type ApiBlogPostSummary } from "@/api/marketing";
+import { DEMO_BLOG_SUMMARIES, getDemoBlogPost } from "@/data/blogPosts";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 }
 
+/** A blank line starts a new block; a block starting with "## " is a heading. */
+function parseMarkdownLite(content: string): { heading?: string; text?: string }[] {
+  return content
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => (block.startsWith("## ") ? { heading: block.slice(3).trim() } : { text: block }));
+}
+
 export default function BlogPost() {
   useLightBrandScope();
-  const { slug } = useParams<{ slug: string }>();
-  const post = slug ? getBlogPost(slug) : undefined;
+  const { slug = "" } = useParams<{ slug: string }>();
+  const live = apiEnabled();
   const [demoOpen, setDemoOpen] = useState(false);
 
-  if (!post) {
-    return <Navigate to="/blog" replace />;
-  }
+  // useApiData fetches once per mount and only re-runs on an explicit reload() — clicking
+  // between posts changes `slug` without remounting this component (same route element),
+  // so it's a poor fit here. Plain state that re-derives/re-fetches whenever `slug` changes
+  // works correctly in both demo and live mode instead.
+  const [post, setPost] = useState<ApiBlogPostDetail | null>(() => (live ? null : getDemoBlogPost(slug) ?? null));
+  const [loading, setLoading] = useState(live);
+  const [error, setError] = useState<string | null>(null);
 
-  const more = BLOG_POSTS.filter((p) => p.slug !== post.slug).slice(0, 2);
+  useEffect(() => {
+    if (!live) {
+      setPost(getDemoBlogPost(slug) ?? null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    getBlogPost(slug)
+      .then((p) => {
+        if (!cancelled) {
+          setPost(p);
+          setError(null);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Request failed");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, live]);
+
+  const { data: otherPosts } = useApiData<ApiBlogPostSummary[]>(() => listBlogPosts(), DEMO_BLOG_SUMMARIES);
+
+  const more = otherPosts.filter((p) => p.slug !== slug).slice(0, 2);
 
   return (
     <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
-      <Seo title={`${post.title} — Meet to Manage Blog`} description={post.excerpt} path={`/blog/${post.slug}`} type="article" />
+      {post && (
+        <Seo title={`${post.title} — Meet to Manage Blog`} description={post.excerpt} path={`/blog/${slug}`} type="article" />
+      )}
 
       <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
@@ -42,37 +88,48 @@ export default function BlogPost() {
       </header>
 
       <article className="mx-auto max-w-3xl px-6 py-14">
-        <p className="text-xs font-medium text-[#5B6472]">
-          {formatDate(post.date)} · {post.readMinutes} min read
-        </p>
-        <h1 className="font-display mt-3 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
-          {post.title}
-        </h1>
+        {loading ? (
+          <div className="flex justify-center py-16 text-[#5B6472]">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : !post ? (
+          <EmptyState
+            icon={AlertCircle}
+            title="Couldn't find that post"
+            description={live && error ? `Couldn't load this post (${error}).` : "It may have been unpublished or moved."}
+          />
+        ) : (
+          <>
+            <p className="text-xs font-medium text-[#5B6472]">
+              {formatDate(post.publishedAtUtc)} · {post.readMinutes} min read
+            </p>
+            <h1 className="font-display mt-3 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">{post.title}</h1>
 
-        <div className="mt-10 flex flex-col gap-8">
-          {post.sections.map((section, i) => (
-            <div key={i}>
-              {section.heading && (
-                <h2 className="font-display text-xl font-bold tracking-tight text-[#171B22]">{section.heading}</h2>
+            <div className="mt-10 flex flex-col gap-4">
+              {parseMarkdownLite(post.content).map((block, i) =>
+                block.heading ? (
+                  <h2 key={i} className="font-display mt-4 text-xl font-bold tracking-tight text-[#171B22] first:mt-0">
+                    {block.heading}
+                  </h2>
+                ) : (
+                  <p key={i} className="text-base leading-relaxed text-[#5B6472]">
+                    {block.text}
+                  </p>
+                )
               )}
-              {section.paragraphs.map((p, j) => (
-                <p key={j} className={`text-base leading-relaxed text-[#5B6472] ${section.heading ? "mt-3" : ""}`}>
-                  {p}
-                </p>
-              ))}
             </div>
-          ))}
-        </div>
 
-        <div className="mt-14 rounded-2xl border border-black/10 bg-[#F5F6F9] px-6 py-8 text-center">
-          <h3 className="font-display text-lg font-bold text-[#171B22]">See it running in your own academy</h3>
-          <p className="mx-auto mt-2 max-w-md text-sm text-[#5B6472]">
-            A free demo class shows you exactly how scheduling, billing and admissions work together.
-          </p>
-          <Button size="lg" className="mt-5 !bg-[#F97316] !text-white hover:!bg-[#EA580C]" onClick={() => setDemoOpen(true)}>
-            Book a Demo
-          </Button>
-        </div>
+            <div className="mt-14 rounded-2xl border border-black/10 bg-[#F5F6F9] px-6 py-8 text-center">
+              <h3 className="font-display text-lg font-bold text-[#171B22]">See it running in your own academy</h3>
+              <p className="mx-auto mt-2 max-w-md text-sm text-[#5B6472]">
+                A free demo class shows you exactly how scheduling, billing and admissions work together.
+              </p>
+              <Button size="lg" className="mt-5 !bg-[#F97316] !text-white hover:!bg-[#EA580C]" onClick={() => setDemoOpen(true)}>
+                Book a Demo
+              </Button>
+            </div>
+          </>
+        )}
 
         {more.length > 0 && (
           <div className="mt-16 border-t border-black/10 pt-10">

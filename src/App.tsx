@@ -10,6 +10,7 @@ import { Logo } from "@/components/Logo";
 const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Store = lazy(() => import("@/features/marketing/Store"));
 const Demo = lazy(() => import("@/features/marketing/Demo"));
+const GetStarted = lazy(() => import("@/features/marketing/GetStarted"));
 const BlogList = lazy(() => import("@/features/marketing/BlogList"));
 const BlogPost = lazy(() => import("@/features/marketing/BlogPost"));
 const Login = lazy(() => import("@/features/auth/Login"));
@@ -40,6 +41,8 @@ const AdminProgressReports = lazy(() => import("@/features/admin/ProgressReports
 const AdminChatbot = lazy(() => import("@/features/admin/ChatbotAdmin"));
 const AdminEnrollments = lazy(() => import("@/features/admin/Enrollments"));
 const AdminStoreInquiries = lazy(() => import("@/features/admin/StoreInquiries"));
+const AdminDemoRequests = lazy(() => import("@/features/admin/DemoRequests"));
+const AdminBlogPosts = lazy(() => import("@/features/admin/BlogPosts"));
 const AdminSettings = lazy(() => import("@/features/admin/Settings"));
 const AdminMonitoring = lazy(() => import("@/features/admin/Monitoring"));
 const AdminServerDetail = lazy(() => import("@/features/admin/ServerDetail"));
@@ -115,6 +118,7 @@ export default function App() {
               <Route path="/" element={<MarketingHome />} />
               <Route path="/store" element={<Store />} />
               <Route path="/demo" element={<Demo />} />
+              <Route path="/get-started" element={<GetStarted />} />
               <Route path="/blog" element={<BlogList />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/login" element={<Login />} />
@@ -178,6 +182,8 @@ export default function App() {
                 <Route path="chatbot" element={<AdminChatbot />} />
                 <Route path="enrollments" element={<AdminEnrollments />} />
                 <Route path="store-inquiries" element={<AdminStoreInquiries />} />
+                <Route path="demo-requests" element={<AdminDemoRequests />} />
+                <Route path="blog-posts" element={<AdminBlogPosts />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="monitoring" element={<AdminMonitoring />} />
                 <Route path="monitoring/:serverName" element={<AdminServerDetail />} />

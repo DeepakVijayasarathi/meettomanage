@@ -1,10 +1,14 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { Seo } from "@/components/Seo";
+import { InlineAlert } from "@/components/InlineAlert";
 import { useLightBrandScope } from "@/lib/theme";
-import { BLOG_POSTS } from "@/data/blogPosts";
+import { apiEnabled } from "@/lib/api";
+import { useApiData } from "@/api/hooks";
+import { listBlogPosts, type ApiBlogPostSummary } from "@/api/marketing";
+import { DEMO_BLOG_SUMMARIES } from "@/data/blogPosts";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
@@ -12,7 +16,9 @@ function formatDate(iso: string): string {
 
 export default function BlogList() {
   useLightBrandScope();
-  const posts = [...BLOG_POSTS].sort((a, b) => b.date.localeCompare(a.date));
+  const live = apiEnabled();
+  const { data: posts, loading, error, reload } = useApiData<ApiBlogPostSummary[]>(() => listBlogPosts(), DEMO_BLOG_SUMMARIES);
+  const sorted = [...posts].sort((a, b) => b.publishedAtUtc.localeCompare(a.publishedAtUtc));
 
   return (
     <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
@@ -52,22 +58,37 @@ export default function BlogList() {
           scale.
         </p>
 
-        <div className="mt-12 divide-y divide-black/10 border-t border-black/10">
-          {posts.map((post) => (
-            <Link key={post.slug} to={`/blog/${post.slug}`} className="group block py-8">
-              <p className="text-xs font-medium text-[#5B6472]">
-                {formatDate(post.date)} · {post.readMinutes} min read
-              </p>
-              <h2 className="font-display mt-2 text-xl font-bold tracking-tight text-[#171B22] group-hover:text-[#EA580C] sm:text-2xl">
-                {post.title}
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#5B6472]">{post.excerpt}</p>
-              <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#EA580C]">
-                Read more <ArrowRight className="h-3.5 w-3.5" />
-              </span>
-            </Link>
-          ))}
-        </div>
+        {live && error && (
+          <InlineAlert variant="warning" className="mt-8">
+            Couldn't load posts ({error}).{" "}
+            <button type="button" className="underline" onClick={() => reload()}>
+              Retry
+            </button>
+          </InlineAlert>
+        )}
+
+        {loading ? (
+          <div className="flex justify-center py-16 text-[#5B6472]">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : (
+          <div className="mt-12 divide-y divide-black/10 border-t border-black/10">
+            {sorted.map((post) => (
+              <Link key={post.slug} to={`/blog/${post.slug}`} className="group block py-8">
+                <p className="text-xs font-medium text-[#5B6472]">
+                  {formatDate(post.publishedAtUtc)} · {post.readMinutes} min read
+                </p>
+                <h2 className="font-display mt-2 text-xl font-bold tracking-tight text-[#171B22] group-hover:text-[#EA580C] sm:text-2xl">
+                  {post.title}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#5B6472]">{post.excerpt}</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#EA580C]">
+                  Read more <ArrowRight className="h-3.5 w-3.5" />
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">

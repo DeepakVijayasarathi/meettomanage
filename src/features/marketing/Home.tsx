@@ -590,12 +590,17 @@ export default function MarketingHome() {
             <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#8B93A1]">Get started</p>
             <ul className="mt-4 flex flex-col gap-3">
               <li>
+                <Link to="/get-started" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
+                  Request a Demo
+                </Link>
+              </li>
+              <li>
                 <button
                   type="button"
                   onClick={() => setDemoOpen(true)}
                   className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
                 >
-                  Book a Demo
+                  Book a Class Demo
                 </button>
               </li>
               <li>

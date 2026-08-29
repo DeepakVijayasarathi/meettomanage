@@ -40,6 +40,8 @@ import {
   Building2,
   Activity,
   MessageCircleQuestion,
+  Handshake,
+  Newspaper,
   type LucideIcon,
 } from "lucide-react";
 
@@ -107,6 +109,13 @@ export const ADMIN_NAV: NavSection[] = [
     items: [
       { label: "Settings & Branding", to: "/admin/settings", icon: Settings },
       { label: "Server Monitoring", to: "/admin/monitoring", icon: Activity },
+    ],
+  },
+  {
+    title: "Marketing",
+    items: [
+      { label: "Demo Requests", to: "/admin/demo-requests", icon: Handshake },
+      { label: "Blog Posts", to: "/admin/blog-posts", icon: Newspaper },
     ],
   },
 ];

@@ -14,6 +14,7 @@ export const PERMISSION_MODULES = [
   { value: "Communication", label: "Communication" },
   { value: "Settings", label: "Settings" },
   { value: "SystemMonitoring", label: "Server Monitoring" },
+  { value: "Marketing", label: "Marketing" },
 ] as const;
 
 export type PermissionModuleName = (typeof PERMISSION_MODULES)[number]["value"];
