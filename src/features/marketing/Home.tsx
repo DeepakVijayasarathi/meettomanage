@@ -3,13 +3,16 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   BarChart3,
+  Building2,
   CalendarCheck2,
   ChevronDown,
   CheckCircle2,
   Clock,
+  CreditCard,
   Hand,
   HeartHandshake,
   Layers,
+  Lock,
   Mail,
   Mic,
   MessageSquare,
@@ -19,6 +22,8 @@ import {
   ScreenShare,
   ShieldCheck,
   Sparkles,
+  Target,
+  Users,
   Video,
   Wallet,
   XCircle,
@@ -244,16 +249,102 @@ const ANALYTICS_KPIS = [
 /** Illustrative weekly session bars — deliberately small, classroom-scale shapes, not a claimed real metric. */
 const ANALYTICS_BARS = [40, 65, 50, 80, 60, 35, 20];
 
+interface SolutionAudience {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  chips: string[];
+  ctaLabel: string;
+  ctaTo: string;
+}
+
+/** Real, evidenced sub-segments of the product's actual audience — tutoring/coaching academies — not generic corporate-L&D or MOOC-creator verticals the product has no evidence of fitting. */
+const SOLUTIONS: SolutionAudience[] = [
+  {
+    icon: Target,
+    title: "Single-subject academies",
+    description:
+      "Running one core subject — phonics, maths, coding — and need every demo, batch and fee followed up without adding admin headcount.",
+    chips: ["Smart Scheduling", "Admissions CRM"],
+    ctaLabel: "See the Admission Portal",
+    ctaTo: "/portal-select",
+  },
+  {
+    icon: Building2,
+    title: "Multi-branch coaching institutes",
+    description:
+      "Coordinating several batches, teachers and branches, where fee collection and attendance need to be visible in one place, not five.",
+    chips: ["Billing & Payments", "Analytics & Reports"],
+    ctaLabel: "See the Management Dashboard",
+    ctaTo: "/portal-select",
+  },
+  {
+    icon: Users,
+    title: "Independent tutors & small teaching teams",
+    description:
+      "Growing past spreadsheets and personal WhatsApp groups, without wanting to stitch together five separate tools to get there.",
+    chips: ["Live Classroom", "One login, every role"],
+    ctaLabel: "Explore Portals",
+    ctaTo: "/portal-select",
+  },
+];
+
+interface SecurityItem {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}
+
+/** Every line here is a verified architectural fact (permission-gated portals, dual gateway, per-request status re-check) — no compliance badges, since none are held. */
+const SECURITY_ITEMS: SecurityItem[] = [
+  {
+    icon: ShieldCheck,
+    title: "Role-based access, everywhere",
+    description: "Eight distinct portals, each gated by permission — a teacher can't see billing, and a parent can't see admin tools.",
+  },
+  {
+    icon: Lock,
+    title: "Session-based sign-in",
+    description: "A deactivated account loses access on its very next request — not once its token happens to expire.",
+  },
+  {
+    icon: RefreshCw,
+    title: "Automatic fee safeguards",
+    description: "Access can suspend the moment a payment is overdue, and restore itself the instant a family pays — no manual follow-up either way.",
+  },
+  {
+    icon: CreditCard,
+    title: "Two independent payment routes",
+    description: "Payments route through Razorpay or Cashfree, so fee collection isn't dependent on a single gateway.",
+  },
+];
+
+interface IntegrationItem {
+  icon: LucideIcon;
+  name: string;
+  description: string;
+}
+
+const INTEGRATIONS: IntegrationItem[] = [
+  { icon: Video, name: "Jitsi", description: "Live video classroom" },
+  { icon: CreditCard, name: "Razorpay", description: "Payment gateway" },
+  { icon: Wallet, name: "Cashfree", description: "Payment gateway" },
+  { icon: Mail, name: "Email", description: "Reminders & confirmations" },
+  { icon: MessageSquare, name: "WhatsApp", description: "Reminders & confirmations" },
+  { icon: Phone, name: "SMS", description: "Reminders & confirmations" },
+];
+
 /** Anchors into this same page — kept to sections that actually exist, so the nav never promises more than the page delivers. */
 const NAV_LINKS = [
   { label: "Product", href: "#product" },
   { label: "Features", href: "#features" },
   { label: "Portals", href: "#portals" },
+  { label: "Solutions", href: "#solutions" },
   { label: "FAQ", href: "#faq" },
   { label: "Blog", href: "/blog" },
 ];
 
-/** Every answer restates a fact already stated elsewhere on this page (STATS/FEATURES/PAIN_POINTS) — no numbers or claims invented for this section alone. */
+/** Every answer restates a fact already stated elsewhere on this page (STATS/FEATURES/PAIN_POINTS/SECURITY_ITEMS) — no numbers or claims invented for this section alone. */
 const FAQS = [
   {
     q: "Is this just another video-call tool?",
@@ -270,6 +361,18 @@ const FAQS = [
   {
     q: "Do teachers, parents and admins all use the same login screen?",
     a: "Yes. One sign-in, then each of the 8 role-based portals — admin, teacher, parent, student and more — shows only what that person needs.",
+  },
+  {
+    q: "Can I control what each staff member can see or do?",
+    a: "Yes — every portal is gated by permission, not just by role. A teacher's portal can't reach billing, and front-desk staff can be given exactly the access they need and nothing more.",
+  },
+  {
+    q: "How does scheduling handle a no-show or a clash?",
+    a: "Batches are scheduled against a conflict-free calendar, no-shows are handled automatically, and rescheduling happens without a manual back-and-forth.",
+  },
+  {
+    q: "How is a payment actually collected — and is it secure?",
+    a: "Payments route through Razorpay or Cashfree, whichever your academy has configured, so collection isn't dependent on a single gateway going down.",
   },
   {
     q: "How do I see it before committing to anything?",
@@ -308,7 +411,7 @@ export default function MarketingHome() {
           {/* Section anchors — desktop only. On narrow screens there's only room for the two
               CTAs (see the mobile-header wrap this replaced), so wayfinding there stays limited
               to scrolling; that's an acceptable trade for not cramping the primary actions. */}
-          <nav aria-label="Page sections" className="hidden items-center gap-7 lg:flex">
+          <nav aria-label="Page sections" className="hidden items-center gap-6 lg:flex">
             {NAV_LINKS.map((link) => (
               <a
                 key={link.href}
@@ -833,8 +936,123 @@ export default function MarketingHome() {
         </div>
       </section>
 
+      {/* Solutions — real, evidenced sub-segments of the product's actual audience (tutoring
+          and coaching academies), not generic corporate-L&D or MOOC-creator verticals with no
+          evidence in this codebase. */}
+      <section id="solutions" className="scroll-mt-20 border-t border-black/10 bg-[#F5F6F9] py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">Who it's for</p>
+            <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Built for how tutoring and coaching academies actually run
+            </h2>
+            <p className="mt-3 text-sm text-[#5B6472]">
+              Whether you teach one subject out of a single classroom or coordinate several branches and teachers,
+              the same system scales with you.
+            </p>
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 gap-5 lg:grid-cols-3">
+            {SOLUTIONS.map((s, i) => (
+              <Reveal key={s.title} delayMs={i * 100}>
+                <div className="flex h-full flex-col rounded-2xl border border-black/10 bg-white p-6">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF3EA] text-[#EA580C]">
+                    <s.icon className="h-5 w-5" />
+                  </span>
+                  <h3 className="mt-4 text-base font-bold text-[#171B22]">{s.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#5B6472]">{s.description}</p>
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {s.chips.map((chip) => (
+                      <span key={chip} className="rounded-full bg-[#F5F6F9] px-2.5 py-1 text-[11px] font-semibold text-[#262D37]">
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+                  <Link
+                    to={s.ctaTo}
+                    className="mt-5 flex items-center gap-1 text-sm font-semibold text-[#EA580C] hover:text-[#C2410C]"
+                  >
+                    {s.ctaLabel} <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Security & trust — verified architectural facts only. No ISO/SOC2/GDPR badges are
+          claimed here since none have been obtained for this product; the closing note says
+          so directly instead of staying silent about it. */}
+      <section className="bg-white py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">Security &amp; trust</p>
+            <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Real access control, not just a login screen
+            </h2>
+            <p className="mt-3 text-sm text-[#5B6472]">
+              Every portal only shows what that role is allowed to see — and money movement has its own safeguards.
+            </p>
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {SECURITY_ITEMS.map((item, i) => (
+              <Reveal key={item.title} delayMs={(i % 4) * 80}>
+                <div className="h-full rounded-2xl border border-black/10 bg-[#F5F6F9] p-5">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-[#EA580C] shadow-soft">
+                    <item.icon className="h-5 w-5" />
+                  </span>
+                  <h3 className="mt-4 text-sm font-bold text-[#171B22]">{item.title}</h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-[#5B6472]">{item.description}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+
+          <p className="mx-auto mt-8 max-w-xl text-center text-xs text-[#8B93A1]">
+            We don't yet publish formal compliance certifications — happy to walk through our specific security setup
+            on a call.
+          </p>
+        </div>
+      </section>
+
+      {/* Integrations — the real, fixed set of channels this product ships with today, not an
+          open marketplace. Framed as "built in" rather than "connect your stack" since that's
+          the accurate description. */}
+      <section id="integrations" className="scroll-mt-20 border-t border-black/10 bg-[#F5F6F9] py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">Integrations</p>
+            <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Built in, not bolted on
+            </h2>
+            <p className="mt-3 text-sm text-[#5B6472]">
+              Live video, payments and every reminder run through the same system a family already uses to check
+              schedules and pay fees.
+            </p>
+          </div>
+
+          <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            {INTEGRATIONS.map((integration, i) => (
+              <Reveal key={integration.name} delayMs={(i % 6) * 60}>
+                <div className="flex h-full flex-col items-center gap-2.5 rounded-2xl border border-black/10 bg-white p-5 text-center">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF3EA] text-[#EA580C]">
+                    <integration.icon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-[#171B22]">{integration.name}</p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-[#5B6472]">{integration.description}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
-      <section id="faq" className="scroll-mt-20 border-t border-black/10 bg-[#F5F6F9] py-16 sm:py-20">
+      <section id="faq" className="scroll-mt-20 bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-3xl px-6">
           <Reveal>
             <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">FAQ</p>
@@ -846,7 +1064,7 @@ export default function MarketingHome() {
           <div className="mt-10 flex flex-col gap-3">
             {FAQS.map((item, i) => (
               <Reveal key={item.q} delayMs={i * 60}>
-                <details className="group rounded-2xl border border-black/10 bg-white open:shadow-soft">
+                <details className="group rounded-2xl border border-black/10 bg-[#F5F6F9] open:shadow-soft">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-bold text-[#171B22] marker:content-none [&::-webkit-details-marker]:hidden">
                     {item.q}
                     <ChevronDown className="h-4 w-4 shrink-0 text-[#5B6472] transition-transform duration-200 group-open:rotate-180" />
@@ -859,9 +1077,12 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* CTA banner */}
-      <section className="bg-white py-16 sm:py-20">
-        <Reveal className="mx-auto max-w-4xl">
+      {/* CTA banner — the page's two real conversion paths, not a hero repeat: an academy
+          owner requesting a platform demo, or a parent booking a class demo. Sign-in stays
+          reachable as a quiet text link for returning users, without competing for weight
+          against the two lead-gen actions. */}
+      <section className="border-t border-black/10 bg-[#F5F6F9] py-16 sm:py-20">
+        <Reveal className="mx-auto max-w-4xl px-6">
           <div className="relative overflow-hidden rounded-[28px] bg-[#1A1F27] px-8 py-12 text-center shadow-pop sm:px-14">
             <div
               className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full"
@@ -872,21 +1093,30 @@ export default function MarketingHome() {
                 <img src="/logo-icon.png" alt="" className="h-7 w-7 object-contain" />
               </span>
               <h2 className="font-display mt-5 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
-                Ready to bring every meeting under one roof?
+                Your next class, your next invoice, your next admission — one login away.
               </h2>
               <p className="mx-auto mt-3 max-w-md text-sm text-white/60">
-                Sign in to your portal and pick up right where you left off — or explore what each role sees first.
+                See {brand.name} running an academy before you decide anything, or book a free class for your child
+                first — whichever you're ready for.
               </p>
               <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
                 <Button asChild size="lg" className="!bg-[#F97316] !text-white hover:!bg-[#EA580C]">
-                  <Link to="/login">
-                    Sign In <ArrowRight className="h-4 w-4" />
+                  <Link to="/get-started">
+                    Request a Demo <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="!bg-transparent border-white/30 !text-white hover:!bg-white/10">
-                  <Link to="/portal-select">Explore Portals</Link>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="!bg-transparent border-white/30 !text-white hover:!bg-white/10"
+                  onClick={() => setDemoOpen(true)}
+                >
+                  Book a Class Demo
                 </Button>
               </div>
+              <Link to="/login" className="mt-6 inline-block text-xs font-semibold text-white/50 hover:text-white/80">
+                Already have an account? Sign in
+              </Link>
             </div>
           </div>
         </Reveal>
@@ -932,6 +1162,11 @@ export default function MarketingHome() {
             <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#8B93A1]">Platform</p>
             <ul className="mt-4 flex flex-col gap-3">
               <li>
+                <a href="#product" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
+                  Product
+                </a>
+              </li>
+              <li>
                 <a href="#features" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
                   Features
                 </a>
@@ -939,6 +1174,11 @@ export default function MarketingHome() {
               <li>
                 <a href="#portals" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
                   Portals
+                </a>
+              </li>
+              <li>
+                <a href="#solutions" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
+                  Solutions
                 </a>
               </li>
               <li>
