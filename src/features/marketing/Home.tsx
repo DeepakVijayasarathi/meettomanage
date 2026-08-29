@@ -52,12 +52,56 @@ function Reveal({ children, delayMs = 0, className }: { children: React.ReactNod
   );
 }
 
+/**
+ * Dark browser-chrome mockup shell used across the Product showcase section — the same
+ * visual language as the hero's live-session tile (three window dots + title bar + dark
+ * canvas), so every "product screenshot" on the page reads as one consistent product
+ * rather than three unrelated illustration styles. The hero's own mockup keeps its
+ * bespoke markup rather than being rebuilt on top of this (it already shipped and was
+ * verified at every breakpoint — not worth the regression risk to fold it in here too).
+ */
+function BrowserFrame({
+  title,
+  live,
+  children,
+  className,
+}: {
+  title: string;
+  live?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("overflow-hidden rounded-[20px] shadow-pop ring-1 ring-black/10", className)}>
+      <div className="flex items-center justify-between bg-[#1A1F27] px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex gap-1">
+            <span className="h-2 w-2 rounded-full bg-white/20" />
+            <span className="h-2 w-2 rounded-full bg-white/20" />
+            <span className="h-2 w-2 rounded-full bg-white/20" />
+          </div>
+          <span className="text-xs font-semibold text-white/85">{title}</span>
+        </div>
+        {live && (
+          <span className="flex items-center gap-1.5 rounded-full bg-[#F97316] px-2.5 py-1 text-[10px] font-bold tracking-wide text-white">
+            <span className="motion-safe:animate-pulse h-1.5 w-1.5 rounded-full bg-white" />
+            LIVE
+          </span>
+        )}
+      </div>
+      <div className="bg-[#12151C] p-4">{children}</div>
+    </div>
+  );
+}
+
 interface FeatureItem {
   icon: LucideIcon;
   title: string;
   description: string;
   /** Meet to Manage brand accent — alternates orange/navy, no matching design-system token yet. */
   hex: string;
+  /** Customer-outcome bucket used by the Features section's filter — Create/Manage/Teach/Measure, not the underlying technical module. */
+  category: "Create" | "Manage" | "Teach" | "Measure";
 }
 
 const FEATURES: FeatureItem[] = [
@@ -66,50 +110,61 @@ const FEATURES: FeatureItem[] = [
     hex: "#F97316",
     title: "Live Classroom",
     description: "One-click Jitsi video, screen share, chat, raise-hand and teacher controls — built for real teaching, not just meetings.",
+    category: "Teach",
   },
   {
     icon: PenTool,
     hex: "#262D37",
     title: "Interactive Whiteboard",
     description: "Infinite, multi-page boards with drawing, drag & drop, tag & match and hotspot activities, synced live for every student.",
+    category: "Create",
   },
   {
     icon: CalendarCheck2,
     hex: "#F97316",
     title: "Smart Scheduling",
     description: "1:1 and group classes, conflict-free academic calendars, automatic no-show handling and intelligent rescheduling.",
+    category: "Manage",
   },
   {
     icon: HeartHandshake,
     hex: "#262D37",
     title: "Admissions CRM",
     description: "Demo bookings, teacher feedback, follow-ups and a conversion pipeline that turns leads into enrolled families.",
+    category: "Manage",
   },
   {
     icon: Wallet,
     hex: "#F97316",
     title: "Billing & Payments",
     description: "Subscriptions, auto invoices, dual payment-gateway routing and automatic fee-suspension with instant restoration.",
+    category: "Manage",
   },
   {
     icon: BarChart3,
     hex: "#262D37",
-    title: "Analytics & AI Reports",
+    title: "Analytics & Reports",
     description: "Engagement scores, attendance trends, teacher performance and business KPIs — all in one live dashboard.",
+    category: "Measure",
   },
   {
     icon: Sparkles,
     hex: "#F97316",
     title: "Gamification",
     description: "Live quizzes, stars, badges, milestones and leaderboards that make every class something kids look forward to.",
+    category: "Teach",
   },
   {
     icon: MessageSquare,
     hex: "#262D37",
     title: "Notifications, Built In",
     description: "Email, SMS and WhatsApp reminders, booking confirmations and payment alerts — nobody misses a class.",
+    category: "Manage",
   },
 ];
+
+const CATEGORY_FILTERS = ["All", "Create", "Manage", "Teach", "Measure"] as const;
+type CategoryFilter = (typeof CATEGORY_FILTERS)[number];
 
 interface PainPoint {
   icon: LucideIcon;
@@ -155,9 +210,44 @@ const STATS: { value: string; label: string; icon: LucideIcon }[] = [
   { value: "24/7", label: "Automated fee & reminder engine", icon: RefreshCw },
 ];
 
+const BATCH_ROWS = [
+  { name: "Grade 3 Phonics — Batch A", teacher: "Ms. Rao", students: 12, status: "Live" as const, initial: "R", color: "#F97316" },
+  { name: "Grade 5 Maths — Batch B", teacher: "Mr. Iyer", students: 9, status: "Scheduled" as const, initial: "I", color: "#5B6472" },
+  { name: "Grade 2 Phonics — Batch C", teacher: "Ms. Fernandes", students: 14, status: "Completed" as const, initial: "F", color: "#23A455" },
+  { name: "Grade 6 Maths — Batch D", teacher: "Mr. Batra", students: 11, status: "Scheduled" as const, initial: "B", color: "#5B6472" },
+];
+
+const BATCH_STATUS_CLASSES: Record<(typeof BATCH_ROWS)[number]["status"], string> = {
+  Live: "bg-[#F97316] text-white",
+  Scheduled: "bg-white/10 text-white/70",
+  Completed: "bg-[#23A455]/20 text-[#8FE0AE]",
+};
+
+const INVOICE_ROWS = [
+  { family: "Kapoor Family", amount: "₹2,400", status: "Paid" as const },
+  { family: "Mehta Family", amount: "₹1,800", status: "Overdue" as const },
+  { family: "Rao Family", amount: "₹2,400", status: "Paid" as const },
+  { family: "Iyer Family", amount: "₹3,200", status: "Paid" as const },
+];
+
+const INVOICE_STATUS_CLASSES: Record<(typeof INVOICE_ROWS)[number]["status"], string> = {
+  Paid: "bg-[#23A455]/20 text-[#8FE0AE]",
+  Overdue: "bg-[#C52020]/25 text-[#FCA5A5]",
+};
+
+const ANALYTICS_KPIS = [
+  { label: "Attendance", value: "92%" },
+  { label: "Engagement score", value: "4.6/5" },
+  { label: "Sessions this week", value: "18" },
+];
+
+/** Illustrative weekly session bars — deliberately small, classroom-scale shapes, not a claimed real metric. */
+const ANALYTICS_BARS = [40, 65, 50, 80, 60, 35, 20];
+
 /** Anchors into this same page — kept to sections that actually exist, so the nav never promises more than the page delivers. */
 const NAV_LINKS = [
-  { label: "Platform", href: "#features" },
+  { label: "Product", href: "#product" },
+  { label: "Features", href: "#features" },
   { label: "Portals", href: "#portals" },
   { label: "FAQ", href: "#faq" },
   { label: "Blog", href: "/blog" },
@@ -198,6 +288,9 @@ export default function MarketingHome() {
   useLightBrandScope();
   const brand = useBrand();
   const [demoOpen, setDemoOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<CategoryFilter>("All");
+
+  const visibleFeatures = activeCategory === "All" ? FEATURES : FEATURES.filter((f) => f.category === activeCategory);
 
   return (
     <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
@@ -470,7 +563,171 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* Feature grid */}
+      {/* Product showcase — the interfaces below are illustrative product views built for
+          this page (the same visual language as the hero mockup), not literal screenshots
+          or real customer data. That's stated plainly beneath them rather than left ambiguous. */}
+      <section id="product" className="scroll-mt-20 border-t border-black/10 bg-white py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">Product</p>
+            <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Everything you need to run learning, in one place
+            </h2>
+            <p className="mt-3 text-sm text-[#5B6472]">
+              A closer look at how {brand.name} presents batches, billing and performance — the same building blocks
+              every portal uses.
+            </p>
+          </div>
+
+          <div className="mt-16 flex flex-col gap-16 sm:gap-20">
+            {/* Row A — batches & attendance */}
+            <Reveal>
+              <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-14">
+                <div>
+                  <h3 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">
+                    Batches and attendance, without the spreadsheet
+                  </h3>
+                  <p className="mt-3 text-base leading-relaxed text-[#5B6472]">
+                    See every batch, its teacher and how many students are enrolled — attendance updates the moment a
+                    class ends, with no manual entry after the fact.
+                  </p>
+                  <ul className="mt-5 flex flex-col gap-3">
+                    {[
+                      "Conflict-free scheduling across teachers and time slots",
+                      "Automatic no-show handling and rescheduling",
+                      "One roster per batch, visible to every role that needs it",
+                    ].map((item) => (
+                      <li key={item} className="flex items-start gap-2.5 text-sm text-[#171B22]">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#EA580C]" /> {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <BrowserFrame title="Batches — This Week">
+                  <div className="flex flex-col gap-2">
+                    {BATCH_ROWS.map((row) => (
+                      <div key={row.name} className="flex items-center gap-3 rounded-xl bg-white/[0.04] p-3">
+                        <span
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                          style={{ backgroundColor: row.color }}
+                        >
+                          {row.initial}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-white">{row.name}</p>
+                          <p className="text-[11px] text-white/50">
+                            {row.teacher} · {row.students} students
+                          </p>
+                        </div>
+                        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold", BATCH_STATUS_CLASSES[row.status])}>
+                          {row.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </BrowserFrame>
+              </div>
+            </Reveal>
+
+            {/* Row B — billing (mockup on the left this time, for an alternating rhythm) */}
+            <Reveal>
+              <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-14">
+                <div className="lg:order-2">
+                  <h3 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Billing that chases itself</h3>
+                  <p className="mt-3 text-base leading-relaxed text-[#5B6472]">
+                    Invoices generate automatically, and a family's access can pause the moment a payment is overdue —
+                    then restore instantly the second they pay. No manual follow-up either way.
+                  </p>
+                  <ul className="mt-5 flex flex-col gap-3">
+                    {[
+                      "Dual-gateway routing — Razorpay or Cashfree",
+                      "Instant fee-suspension and restoration",
+                      "One payment history per family, not per spreadsheet tab",
+                    ].map((item) => (
+                      <li key={item} className="flex items-start gap-2.5 text-sm text-[#171B22]">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#EA580C]" /> {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="lg:order-1">
+                  <BrowserFrame title="Billing — August">
+                    <div className="mb-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-[#8FE0AE]">
+                      <RefreshCw className="h-3 w-3" /> Auto-suspend: On
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {INVOICE_ROWS.map((row) => (
+                        <div key={row.family} className="flex items-center justify-between rounded-xl bg-white/[0.04] p-3">
+                          <div>
+                            <p className="text-xs font-semibold text-white">{row.family}</p>
+                            <p className="text-[11px] text-white/50">{row.amount}</p>
+                          </div>
+                          <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold", INVOICE_STATUS_CLASSES[row.status])}>
+                            {row.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </BrowserFrame>
+                </div>
+              </div>
+            </Reveal>
+
+            {/* Row C — analytics */}
+            <Reveal>
+              <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-14">
+                <div>
+                  <h3 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">
+                    Know how a class went, the moment it ends
+                  </h3>
+                  <p className="mt-3 text-base leading-relaxed text-[#5B6472]">
+                    Attendance, engagement scores and teacher performance land on one dashboard — not a week later,
+                    and not stitched together from three different exports.
+                  </p>
+                  <ul className="mt-5 flex flex-col gap-3">
+                    {[
+                      "Live attendance & engagement scoring",
+                      "Teacher performance at a glance",
+                      "Business KPIs for the whole academy, updated as classes happen",
+                    ].map((item) => (
+                      <li key={item} className="flex items-start gap-2.5 text-sm text-[#171B22]">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#EA580C]" /> {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <BrowserFrame title="Analytics — Overview">
+                  <div className="grid grid-cols-3 gap-2">
+                    {ANALYTICS_KPIS.map((kpi) => (
+                      <div key={kpi.label} className="rounded-xl bg-white/[0.04] p-3">
+                        <p className="text-sm font-extrabold text-white">{kpi.value}</p>
+                        <p className="mt-0.5 text-[10px] leading-tight text-white/50">{kpi.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex h-20 items-end gap-1.5 rounded-xl bg-white/[0.04] p-3">
+                    {ANALYTICS_BARS.map((h, i) => (
+                      <div
+                        key={i}
+                        className="flex-1 rounded-sm"
+                        style={{ height: `${h}%`, background: "linear-gradient(180deg,#F97316,#EA580C)" }}
+                      />
+                    ))}
+                  </div>
+                </BrowserFrame>
+              </div>
+            </Reveal>
+          </div>
+
+          <p className="mt-14 text-center text-xs text-[#8B93A1]">
+            Interfaces above are illustrative product views built for this page — not real customer data.
+          </p>
+        </div>
+      </section>
+
+      {/* Feature grid — organized by customer outcome (Create / Manage / Teach / Measure)
+          rather than by technical module, with the filter reusing the same 8 features
+          instead of duplicating them into a second, redundant section. */}
       <section id="features" className="scroll-mt-20 border-t border-black/10 bg-[#F5F6F9] py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mx-auto max-w-2xl text-center">
@@ -484,8 +741,32 @@ export default function MarketingHome() {
             </p>
           </div>
 
-          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURES.map((f, i) => (
+          <div role="tablist" aria-label="Filter features by outcome" className="mt-8 flex flex-wrap justify-center gap-2">
+            {CATEGORY_FILTERS.map((cat) => {
+              const count = cat === "All" ? FEATURES.length : FEATURES.filter((f) => f.category === cat).length;
+              const active = activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveCategory(cat)}
+                  className={cn(
+                    "rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors",
+                    active
+                      ? "border-[#F97316] bg-[#F97316] text-white"
+                      : "border-black/10 bg-white text-[#5B6472] hover:border-[#F97316]/40 hover:text-[#171B22]"
+                  )}
+                >
+                  {cat} <span className={cn(active ? "text-white/70" : "text-[#B8BEC9]")}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {visibleFeatures.map((f, i) => (
               <Reveal key={f.title} delayMs={(i % 4) * 80}>
                 <div className="group h-full rounded-2xl border border-black/10 bg-white p-5 transition-all hover:-translate-y-1 hover:shadow-pop">
                   <span
@@ -494,7 +775,8 @@ export default function MarketingHome() {
                   >
                     <f.icon className="h-[22px] w-[22px]" />
                   </span>
-                  <h3 className="mt-4 text-sm font-bold text-[#171B22]">{f.title}</h3>
+                  <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-[#B8BEC9]">{f.category}</p>
+                  <h3 className="mt-1 text-sm font-bold text-[#171B22]">{f.title}</h3>
                   <p className="mt-1.5 text-xs leading-relaxed text-[#5B6472]">{f.description}</p>
                 </div>
               </Reveal>
