@@ -18,6 +18,7 @@ export default function Demo() {
   return (
     <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
       <Seo
+        pageKey="demo"
         title="Book a Free Demo — Meet to Manage"
         description="Book a free demo class and see how Meet to Manage's live classroom, scheduling and billing work together."
         path="/demo"

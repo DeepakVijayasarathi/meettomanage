@@ -60,6 +60,7 @@ export default function GetStarted() {
   return (
     <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
       <Seo
+        pageKey="getStarted"
         title="Request a Demo — Meet to Manage"
         description="Running an academy? See how Meet to Manage's live classroom, scheduling, admissions and billing work together — request a platform demo."
         path="/get-started"
@@ -118,6 +119,9 @@ export default function GetStarted() {
                   ? "Our team will reach out shortly to find a time for your platform demo."
                   : "Demo mode — no request was actually sent."}
               </p>
+              <Button asChild variant="outline" className="mt-6 border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5">
+                <Link to="/">Back to home</Link>
+              </Button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,9 +148,16 @@ export function BookDemoForm({ onDone, onConfirmedChange }: BookDemoFormProps) {
             ? `See you on ${demoConfirmed}. A confirmation with the join link is on its way to your email.`
             : `Demo mode — "booked" for ${demoConfirmed}, but nothing was actually scheduled.`}
         </p>
-        {onDone && (
+        {onDone ? (
           <Button className="mt-6 !bg-[#F97316] !text-white hover:!bg-[#EA580C]" onClick={onDone}>
             Done
+          </Button>
+        ) : (
+          // Standalone /demo page (no host dialog to close) — without this, a confirmed
+          // booking left the visitor on a dead-end confirmation with no obvious next step
+          // beyond the sticky header's own "Back home" link.
+          <Button asChild className="mt-6 !bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+            <Link to="/">Back to home</Link>
           </Button>
         )}
       </div>
