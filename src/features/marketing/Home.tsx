@@ -206,13 +206,11 @@ export default function MarketingHome() {
           </nav>
 
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <Button
-              variant="outline"
-              className="border-[#171B22]/15 px-2.5 text-[#171B22] hover:bg-[#171B22]/5 sm:px-4"
-              onClick={() => setDemoOpen(true)}
-            >
-              <span className="sm:hidden">Demo</span>
-              <span className="hidden sm:inline">Book a Demo</span>
+            <Button asChild variant="outline" className="border-[#171B22]/15 px-2.5 text-[#171B22] hover:bg-[#171B22]/5 sm:px-4">
+              <Link to="/get-started">
+                <span className="sm:hidden">Demo</span>
+                <span className="hidden sm:inline">Request a Demo</span>
+              </Link>
             </Button>
             <Button asChild className="!bg-[#F97316] px-3 !text-white hover:!bg-[#EA580C] sm:px-4">
               <Link to="/login">

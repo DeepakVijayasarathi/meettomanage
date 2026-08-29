@@ -4,7 +4,6 @@ import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { Seo } from "@/components/Seo";
-import { BookDemoDialog } from "@/components/BookDemoDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { useLightBrandScope } from "@/lib/theme";
 import { apiEnabled } from "@/lib/api";
@@ -29,7 +28,6 @@ export default function BlogPost() {
   useLightBrandScope();
   const { slug = "" } = useParams<{ slug: string }>();
   const live = apiEnabled();
-  const [demoOpen, setDemoOpen] = useState(false);
 
   // useApiData fetches once per mount and only re-runs on an explicit reload() — clicking
   // between posts changes `slug` without remounting this component (same route element),
@@ -122,10 +120,10 @@ export default function BlogPost() {
             <div className="mt-14 rounded-2xl border border-black/10 bg-[#F5F6F9] px-6 py-8 text-center">
               <h3 className="font-display text-lg font-bold text-[#171B22]">See it running in your own academy</h3>
               <p className="mx-auto mt-2 max-w-md text-sm text-[#5B6472]">
-                A free demo class shows you exactly how scheduling, billing and admissions work together.
+                A platform demo shows you exactly how scheduling, billing and admissions work together.
               </p>
-              <Button size="lg" className="mt-5 !bg-[#F97316] !text-white hover:!bg-[#EA580C]" onClick={() => setDemoOpen(true)}>
-                Book a Demo
+              <Button asChild size="lg" className="mt-5 !bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+                <Link to="/get-started">Request a Demo</Link>
               </Button>
             </div>
           </>
@@ -152,8 +150,6 @@ export default function BlogPost() {
           <p className="text-xs font-medium text-[#5B6472]">© {new Date().getFullYear()} Meet to Manage. All rights reserved.</p>
         </div>
       </footer>
-
-      <BookDemoDialog open={demoOpen} onOpenChange={setDemoOpen} />
     </div>
   );
 }
