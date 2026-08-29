@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { Seo } from "@/components/Seo";
 import { InlineAlert } from "@/components/InlineAlert";
+import { EmptyState } from "@/components/EmptyState";
 import { useLightBrandScope } from "@/lib/theme";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -23,6 +24,7 @@ export default function BlogList() {
   return (
     <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
       <Seo
+        pageKey="blog"
         title="Blog — Meet to Manage"
         description="Practical notes on running a modern academy: admissions, billing automation, scheduling and more."
         path="/blog"
@@ -33,7 +35,15 @@ export default function BlogList() {
           <Link to="/" aria-label="Meet to Manage home">
             <Logo />
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Text label collapses to an icon-only button below `sm` — there isn't room for
+                both this and Sign In as full-width buttons, but a visitor should still get an
+                explicit way back to the homepage, not just an implicit logo tap. */}
+            <Button asChild variant="ghost" size="icon" className="sm:hidden" aria-label="Back home">
+              <Link to="/">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
             <Button asChild variant="ghost" className="hidden sm:inline-flex">
               <Link to="/">
                 <ArrowLeft className="h-4 w-4" /> Back home
@@ -71,6 +81,13 @@ export default function BlogList() {
           <div className="flex justify-center py-16 text-[#5B6472]">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
+        ) : sorted.length === 0 ? (
+          <EmptyState
+            className="mt-12"
+            icon={BookOpen}
+            title="No posts published yet"
+            description="Check back soon — we're working on the first one."
+          />
         ) : (
           <div className="mt-12 divide-y divide-black/10 border-t border-black/10">
             {sorted.map((post) => (

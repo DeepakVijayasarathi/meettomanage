@@ -103,6 +103,7 @@ export default function Store() {
   return (
     <div className="theme-light-scope min-h-screen bg-brand-cream text-brand-ink">
       <Seo
+        pageKey="store"
         title="Course Catalogue — Meet to Manage"
         description="Browse current courses and book a free demo class — no account needed."
         path="/store"
@@ -112,7 +113,15 @@ export default function Store() {
           <Link to="/" aria-label={`${brand.name} home`}>
             <Logo />
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Text label collapses to an icon-only button below `sm` — there isn't room for
+                both this and Sign In as full-width buttons, but a visitor should still get an
+                explicit way back to the homepage, not just an implicit logo tap. */}
+            <Button asChild variant="ghost" size="icon" className="sm:hidden" aria-label="Back home">
+              <Link to="/">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
             <Button asChild variant="ghost" className="hidden sm:inline-flex">
               <Link to="/">
                 <ArrowLeft className="h-4 w-4" /> Back home
