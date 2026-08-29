@@ -181,6 +181,7 @@ export default function MarketingHome() {
   return (
     <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
       <Seo
+        pageKey="home"
         title="Meet to Manage — LMS & Virtual Classroom"
         description="Meet to Manage brings live teaching, scheduling, admissions, billing and reporting into one role-based platform for schools and academies."
         path="/"
@@ -338,8 +339,13 @@ export default function MarketingHome() {
             </div>
           </div>
 
+          {/* Below `lg` the mockup fills the whole hero column, so an absolutely-positioned
+              corner badge here would sit on top of the control-bar icons instead of beside
+              them (verified: it hid the raise-hand/chat/screen-share icons at both mobile and
+              tablet widths). It flows below the mockup up to `lg`, then floats over the
+              corner once the two-column layout gives it real clearance. */}
           <div
-            className="motion-safe:animate-float absolute -bottom-5 -right-3 flex items-center gap-2.5 rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-pop"
+            className="motion-safe:animate-float relative z-10 mx-auto mt-4 flex w-fit items-center gap-2.5 rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-pop lg:absolute lg:-bottom-5 lg:-right-3 lg:mt-0"
             style={{ animationDelay: "1.2s" }}
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF3EA] text-[#EA580C]">
