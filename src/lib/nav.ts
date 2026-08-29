@@ -77,6 +77,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Enrollment Review", to: "/admin/enrollments", icon: ClipboardCheck },
       { label: "Store Inquiries", to: "/admin/store-inquiries", icon: ShoppingBag },
       { label: "Leave Management", to: "/admin/leave", icon: CalendarOff },
+      { label: "Teacher Availability", to: "/admin/availability", icon: CalendarRange },
     ],
   },
   {

@@ -37,6 +37,7 @@ const AdminChatbot = lazy(() => import("@/features/admin/ChatbotAdmin"));
 const AdminEnrollments = lazy(() => import("@/features/admin/Enrollments"));
 const AdminStoreInquiries = lazy(() => import("@/features/admin/StoreInquiries"));
 const AdminLeave = lazy(() => import("@/features/admin/Leave"));
+const AdminAvailability = lazy(() => import("@/features/admin/Availability"));
 const AdminSettings = lazy(() => import("@/features/admin/Settings"));
 const AdminMonitoring = lazy(() => import("@/features/admin/Monitoring"));
 const AdminServerDetail = lazy(() => import("@/features/admin/ServerDetail"));
@@ -172,6 +173,7 @@ export default function App() {
               <Route path="enrollments" element={<AdminEnrollments />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="leave" element={<AdminLeave />} />
+              <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="monitoring" element={<AdminMonitoring />} />
               <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
