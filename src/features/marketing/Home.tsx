@@ -526,7 +526,11 @@ export default function MarketingHome() {
           className="motion-safe:animate-slide-up relative w-full max-w-[260px] sm:max-w-[300px] lg:max-w-[340px]"
           style={{ animationDelay: "160ms", animationFillMode: "backwards" }}
         >
-          <div className="motion-safe:animate-float absolute -left-4 -top-4 z-10 flex h-14 w-14 -rotate-6 items-center justify-center rounded-full bg-white p-2 shadow-pop ring-1 ring-black/10">
+          {/* Inset (not overlapping above/left of the card via a negative offset) so it's
+              structurally clamped inside the card's own bounds — it can never render behind
+              the sticky header, regardless of any transient layout shift (web-font swap,
+              browser zoom, etc.) that might otherwise nudge a negatively-offset badge upward. */}
+          <div className="motion-safe:animate-float absolute left-2 top-2 z-10 flex h-11 w-11 -rotate-6 items-center justify-center rounded-full bg-white p-2 shadow-pop ring-1 ring-black/10">
             <img src="/logo-icon.png" alt="" className="h-full w-full object-contain" />
           </div>
           <HeroReel />
