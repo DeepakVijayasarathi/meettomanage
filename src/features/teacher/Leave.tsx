@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getLeavesForTeacher } from "@/data/leaves";
 import { getSessionsForTeacher } from "@/data/sessions";
@@ -17,7 +18,7 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listMyLeave, submitLeave, type ApiLeaveRequest } from "@/api/academicOps";
-import { localToUtcIso } from "@/lib/datetime";
+import { localToUtcIso, utcIsoToLocalDateTime } from "@/lib/datetime";
 import { formatDate } from "@/lib/utils";
 import type { ClassSession, LeaveRequest } from "@/types";
 
@@ -96,6 +97,19 @@ export default function TeacherLeave() {
   const [leaves, setLeaves] = useState<LeaveRequest[]>(() => (apiEnabled() ? [] : getLeavesForTeacher(TEACHER_ID)));
   useEffect(() => setLeaves(fetchedLeaves), [fetchedLeaves]);
   const [sessionId, setSessionId] = useState<string>("");
+  // Independent date+time fields, not just a session picker — SubmitLeaveAsync (backend)
+  // accepts any start/end instant and never requires it to overlap a session, but the
+  // old UI only let a teacher pick from `eligibleSessions`. Whenever that list was empty
+  // (a lighter week, or nothing scheduled far enough out yet) the whole "Apply for Leave"
+  // card vanished behind an EmptyState with no button anywhere to submit a request.
+  // These fields are now the actual source of truth; picking an upcoming session below
+  // just quick-fills them as a convenience — it's optional, not required.
+  const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("09:00");
+  const [endDate, setEndDate] = useState("");
+  const [endTime, setEndTime] = useState("18:00");
+  // Stops the Start+1h auto-default (below) once the teacher edits End themselves.
+  const [endTouched, setEndTouched] = useState(false);
   const [reason, setReason] = useState("");
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -106,19 +120,67 @@ export default function TeacherLeave() {
     return () => clearTimeout(timer);
   }, [confirmation]);
 
+  // Defaults End to an hour after Start so the common same-day case doesn't require
+  // typing both ends of the range — stops the moment the teacher touches End directly.
+  useEffect(() => {
+    if (endTouched || !startDate || !startTime) return;
+    const startUtcMs = new Date(localToUtcIso(startDate, startTime)).getTime();
+    const suggested = utcIsoToLocalDateTime(new Date(startUtcMs + 60 * 60_000).toISOString());
+    setEndDate(suggested.date);
+    setEndTime(suggested.time);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, startTime]);
+
   const selectedSession = eligibleSessions.find((s) => s.id === sessionId) ?? null;
-  const hoursBefore = selectedSession ? hoursBetween(sessionDateTime(selectedSession), now) : null;
+  const startAt = startDate && startTime ? new Date(localToUtcIso(startDate, startTime)) : null;
+  const endAt = endDate && endTime ? new Date(localToUtcIso(endDate, endTime)) : null;
+  const hoursBefore = startAt ? hoursBetween(startAt, now) : null;
   const isBlocked = hoursBefore !== null && hoursBefore < MIN_HOURS_NOTICE;
-  const canSubmit = !!selectedSession && reason.trim().length > 0 && !isBlocked;
+  const validRange = !!startAt && !!endAt && endAt > startAt;
+  const canSubmit = validRange && reason.trim().length > 0 && !isBlocked;
+
+  /** Selecting an upcoming session pre-fills the date/time fields from it — still just
+   *  a convenience over the real source of truth (the fields), so the teacher can tweak
+   *  either end afterward without the picker fighting their edit. */
+  function quickFillFromSession(id: string) {
+    setSessionId(id);
+    const session = eligibleSessions.find((s) => s.id === id);
+    if (!session) return;
+    const start = sessionDateTime(session);
+    const end = new Date(start.getTime() + session.duration * 60_000);
+    const endLocal = utcIsoToLocalDateTime(end.toISOString());
+    setStartDate(session.date);
+    setStartTime(session.startTime);
+    setEndDate(endLocal.date);
+    setEndTime(endLocal.time);
+    setEndTouched(true);
+  }
+
+  function resetForm() {
+    setSessionId("");
+    setStartDate("");
+    setStartTime("09:00");
+    setEndDate("");
+    setEndTime("18:00");
+    setEndTouched(false);
+    setReason("");
+  }
 
   function handleSubmit() {
-    if (!selectedSession || hoursBefore === null || !canSubmit) return;
+    if (!startAt || !endAt || hoursBefore === null || !canSubmit) return;
     setSubmitError(null);
 
+    // A quick-filled session keeps its own descriptive label; a manually-entered range
+    // (no session tied to it) gets one built from whatever the teacher actually chose —
+    // a single date+time span, or a day range for multi-day leave.
+    const label = selectedSession
+      ? `${selectedSession.title} · ${formatTimeLabel(selectedSession.startTime)}`
+      : startDate === endDate
+        ? `${formatDate(startDate, "short")}, ${formatTimeLabel(startTime)} – ${formatTimeLabel(endTime)}`
+        : `${formatDate(startDate, "short")} – ${formatDate(endDate, "short")}`;
+
     if (apiEnabled()) {
-      const start = sessionDateTime(selectedSession);
-      const end = new Date(start.getTime() + selectedSession.duration * 60_000);
-      submitLeave({ startAtUtc: start.toISOString(), endAtUtc: end.toISOString(), reason: reason.trim() })
+      submitLeave({ startAtUtc: startAt.toISOString(), endAtUtc: endAt.toISOString(), reason: reason.trim() })
         .then((created) => {
           // The request already succeeded server-side by this point — nothing below should
           // be able to make it look like it didn't. Confirmation and reload both run
@@ -127,7 +189,7 @@ export default function TeacherLeave() {
           // throw out of this .then and land in the .catch below, which used to skip
           // reloadLeaves() entirely and leave the list stuck on stale data until a manual
           // page reload — created but invisible.
-          setConfirmation(`Leave request for "${selectedSession.title}" submitted — pending admin approval.`);
+          setConfirmation(`Leave request for "${label}" submitted — pending admin approval.`);
           setSubmitError(null);
           try {
             setLeaves((prev) => [toFrontendLeave(created), ...prev]);
@@ -141,8 +203,7 @@ export default function TeacherLeave() {
           setSubmitError(err.message);
           toast({ variant: "error", title: "Couldn't submit leave request", description: err.message });
         });
-      setSessionId("");
-      setReason("");
+      resetForm();
       return;
     }
 
@@ -150,17 +211,16 @@ export default function TeacherLeave() {
       id: `lv-${Date.now()}`,
       teacherId: TEACHER_ID,
       teacherName: TEACHER_NAME,
-      sessionId: selectedSession.id,
-      date: selectedSession.date,
-      session: `${selectedSession.title} · ${formatTimeLabel(selectedSession.startTime)}`,
+      sessionId: selectedSession?.id,
+      date: startDate,
+      session: label,
       reason: reason.trim(),
       hoursBeforeSession: Math.round(hoursBefore * 10) / 10,
       status: "pending",
     };
     setLeaves((prev) => [newLeave, ...prev]);
-    setConfirmation(`Leave request for "${selectedSession.title}" submitted — pending admin approval.`);
-    setSessionId("");
-    setReason("");
+    setConfirmation(`Leave request for "${label}" submitted — pending admin approval.`);
+    resetForm();
   }
 
   const columns: DataTableColumn<LeaveRequest>[] = useMemo(
@@ -196,7 +256,7 @@ export default function TeacherLeave() {
     <div>
       <PageHeader
         title="Leave Management"
-        description="Apply for leave from an upcoming class. Requests must be submitted at least 6 hours before the scheduled session."
+        description="Apply for leave over any date and time — optionally pre-filled from an upcoming class. Requests must be submitted at least 6 hours in advance."
         eyebrow="My Account"
       />
 
@@ -225,17 +285,13 @@ export default function TeacherLeave() {
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
-          {eligibleSessions.length === 0 ? (
-            <EmptyState icon={Clock} title="No upcoming classes" description="You have no upcoming scheduled classes to apply leave for." />
-          ) : (
-            <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4">
+            {eligibleSessions.length > 0 ? (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="upcomingSession">
-                  Upcoming Session <span className="text-destructive">*</span>
-                </Label>
-                <Select value={sessionId} onValueChange={setSessionId}>
+                <Label htmlFor="upcomingSession">Quick-fill from an upcoming session (optional)</Label>
+                <Select value={sessionId} onValueChange={quickFillFromSession}>
                   <SelectTrigger id="upcomingSession">
-                    <SelectValue placeholder="Select a session" />
+                    <SelectValue placeholder="Or just set the dates below directly" />
                   </SelectTrigger>
                   <SelectContent>
                     {eligibleSessions.map((s) => (
@@ -246,42 +302,107 @@ export default function TeacherLeave() {
                   </SelectContent>
                 </Select>
               </div>
+            ) : (
+              <InlineAlert variant="info" className="text-sm">
+                You have no upcoming scheduled classes right now — that's fine, set the dates below directly.
+              </InlineAlert>
+            )}
 
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="reason">
-                  Reason <span className="text-destructive">*</span>
+                <Label htmlFor="leaveStartDate">
+                  Start <span className="text-destructive">*</span>
                 </Label>
-                <Textarea
-                  id="reason"
-                  placeholder="Briefly describe your reason for leave"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="leaveStartDate"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      setSessionId("");
+                    }}
+                  />
+                  <Input
+                    aria-label="Start time"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => {
+                      setStartTime(e.target.value);
+                      setSessionId("");
+                    }}
+                  />
+                </div>
               </div>
-
-              {selectedSession && hoursBefore !== null && (
-                <InlineAlert variant={isBlocked ? "error" : "success"} className="text-sm">
-                  {isBlocked ? (
-                    <span>
-                      This session starts in <strong>{hoursBefore.toFixed(1)} hours</strong>. Leave requests must be submitted at least{" "}
-                      {MIN_HOURS_NOTICE} hours before the scheduled session — this request cannot be submitted.
-                    </span>
-                  ) : (
-                    <span>
-                      You're submitting <strong>{hoursBefore.toFixed(1)} hours</strong> in advance — this meets the {MIN_HOURS_NOTICE}-hour notice
-                      requirement.
-                    </span>
-                  )}
-                </InlineAlert>
-              )}
-
-              <div>
-                <Button disabled={!canSubmit} onClick={handleSubmit}>
-                  Submit Leave Request
-                </Button>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="leaveEndDate">
+                  End <span className="text-destructive">*</span>
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="leaveEndDate"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      setEndTouched(true);
+                      setSessionId("");
+                    }}
+                  />
+                  <Input
+                    aria-label="End time"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => {
+                      setEndTime(e.target.value);
+                      setEndTouched(true);
+                      setSessionId("");
+                    }}
+                  />
+                </div>
               </div>
             </div>
-          )}
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="reason">
+                Reason <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="reason"
+                placeholder="Briefly describe your reason for leave"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </div>
+
+            {startAt && endAt && endAt <= startAt && (
+              <InlineAlert variant="error" className="text-sm">
+                End must be after the start of your leave.
+              </InlineAlert>
+            )}
+
+            {startAt && hoursBefore !== null && (
+              <InlineAlert variant={isBlocked ? "error" : "success"} className="text-sm">
+                {isBlocked ? (
+                  <span>
+                    This leave starts in <strong>{hoursBefore.toFixed(1)} hours</strong>. Leave requests must be submitted at least{" "}
+                    {MIN_HOURS_NOTICE} hours in advance — this request cannot be submitted.
+                  </span>
+                ) : (
+                  <span>
+                    You're submitting <strong>{hoursBefore.toFixed(1)} hours</strong> in advance — this meets the {MIN_HOURS_NOTICE}-hour notice
+                    requirement.
+                  </span>
+                )}
+              </InlineAlert>
+            )}
+
+            <div>
+              <Button disabled={!canSubmit} onClick={handleSubmit}>
+                Apply for Leave
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
