@@ -9,7 +9,6 @@ import {
   Hand,
   HeartHandshake,
   Mail,
-  MapPin,
   Mic,
   MessageSquare,
   PenTool,
@@ -540,25 +539,28 @@ export default function MarketingHome() {
             <p className="mt-4 max-w-[22ch] text-sm leading-relaxed text-[#5B6472]">
               Live teaching, scheduling, admissions and billing — one role-based system for your whole academy.
             </p>
-            <ul className="mt-5 flex flex-col gap-2.5">
+            <ul className="mt-5 flex flex-col gap-3">
               <li>
                 <a
                   href="mailto:hello@infinityuniquers.dev"
-                  className="flex items-center gap-2 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
+                  className="group flex items-center gap-2.5 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
                 >
-                  <Mail className="h-3.5 w-3.5 shrink-0" /> hello@infinityuniquers.dev
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F97316]/10 text-[#EA580C] transition-colors group-hover:bg-[#F97316]/15">
+                    <Mail className="h-4 w-4" />
+                  </span>
+                  hello@infinityuniquers.dev
                 </a>
               </li>
               <li>
                 <a
                   href="tel:+919344773231"
-                  className="flex items-center gap-2 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
+                  className="group flex items-center gap-2.5 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
                 >
-                  <Phone className="h-3.5 w-3.5 shrink-0" /> +91 93447 73231
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F97316]/10 text-[#EA580C] transition-colors group-hover:bg-[#F97316]/15">
+                    <Phone className="h-4 w-4" />
+                  </span>
+                  +91 93447 73231
                 </a>
-              </li>
-              <li className="flex items-center gap-2 text-sm font-medium text-[#5B6472]">
-                <MapPin className="h-3.5 w-3.5 shrink-0" /> San Francisco, CA · Remote-first
               </li>
             </ul>
           </div>
