@@ -193,7 +193,7 @@
 
 @layer utilities {
   .font-display {
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   }
   /* Soft role-tinted glow behind page content; --primary is repointed per portal in AppShell. */
   .app-content-glow {
