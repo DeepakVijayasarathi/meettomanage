@@ -214,6 +214,9 @@ export interface NotificationItem {
   time: string;
   read: boolean;
   type: "info" | "success" | "warning" | "danger";
+  /** App-relative path (role-aware) to the page this notification is about — the
+   *  bell and the full Notifications list both navigate here on click, when set. */
+  route?: string;
 }
 
 export interface ChatMessage {

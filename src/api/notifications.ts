@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import type { NotificationItem } from "@/types";
+import type { NotificationItem, Role } from "@/types";
 
 /** Backend NotificationType enum names. */
 type ApiNotificationType =
@@ -48,6 +48,55 @@ const TONE_BY_TYPE: Record<ApiNotificationType, NotificationItem["type"]> = {
   FeeSuspension: "danger",
 };
 
+/**
+ * Where clicking a notification should land, by recipient role and notification
+ * type — derived from who each type is actually sent to server-side (see the
+ * `_notificationService.SendTemplatedEmailAsync` call sites in AcademicOpsService,
+ * BillingService, PayoutService, SessionService, ProgressReportService and
+ * SessionReminderBackgroundService). There's no per-notification entity id
+ * (session/invoice) carried through the API yet — MetadataJson exists on the
+ * backend entity but nothing populates it — so this routes to the general page
+ * the notification is about rather than deep-linking the exact record.
+ */
+const ROUTE_BY_ROLE_AND_TYPE: Partial<Record<Role, Partial<Record<ApiNotificationType, string>>>> = {
+  teacher: {
+    BookingConfirmation: "/teacher/classes",
+    SessionReminder: "/teacher/classes",
+    LeaveStatusUpdate: "/teacher/leave",
+    PayoutStatement: "/teacher/payout",
+    General: "/teacher",
+  },
+  parent: {
+    SessionReminder: "/parent/schedule",
+    LeaveStatusUpdate: "/parent/schedule",
+    AttendanceUpdate: "/parent/schedule",
+    PerformanceSummary: "/parent/schedule",
+    PaymentReminder: "/parent/billing",
+    PaymentReceived: "/parent/billing",
+    FeeSuspension: "/parent/billing",
+    General: "/parent",
+  },
+  admin: {
+    NoShowAlert: "/admin/sessions",
+    DelayedSessionAlert: "/admin/sessions",
+    LeaveStatusUpdate: "/admin/sessions",
+    PaymentReceived: "/admin/billing",
+    General: "/admin",
+  },
+  subadmin: {
+    LeaveStatusUpdate: "/subadmin/reports",
+    General: "/subadmin",
+  },
+};
+
+/** Resolves the click-through route for one notification, or undefined if this
+ *  role/type combination has nowhere more specific to send the viewer than
+ *  wherever they already are. */
+function routeFor(type: ApiNotificationType, role: Role | null): string | undefined {
+  if (!role) return undefined;
+  return ROUTE_BY_ROLE_AND_TYPE[role]?.[type];
+}
+
 function relativeTime(iso: string): string {
   const then = new Date(iso).getTime();
   const diffMs = Date.now() - then;
@@ -62,7 +111,7 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
-export function toNotificationItem(n: ApiNotification): NotificationItem {
+export function toNotificationItem(n: ApiNotification, role: Role | null = null): NotificationItem {
   return {
     id: n.id,
     title: n.subject || "Notification",
@@ -71,6 +120,7 @@ export function toNotificationItem(n: ApiNotification): NotificationItem {
     time: relativeTime(n.createdAtUtc),
     read: n.isRead,
     type: TONE_BY_TYPE[n.type] ?? "info",
+    route: routeFor(n.type, role),
   };
 }
 
