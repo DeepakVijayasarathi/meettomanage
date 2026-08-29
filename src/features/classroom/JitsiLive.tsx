@@ -333,12 +333,18 @@ export default function JitsiLive({
         media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
         // A small class reads better as a grid of faces than one spotlighted speaker.
         api?.executeCommand("setTileView", true);
-        // Auto-apply our own on-brand background as everyone's starting camera background —
-        // dynamicBrandingUrl (above) only adds it to the picker as an available *choice*;
-        // this is what actually makes it the default someone sees without picking anything,
-        // same as branding.json's src. Still just a starting point: the toolbar's own
-        // background button lets anyone turn it off or pick something else afterward.
-        api?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
+        // Auto-apply our own on-brand background as the teacher's starting camera
+        // background — dynamicBrandingUrl (above) only adds it to the picker as an
+        // available *choice*; this is what actually makes it the default someone sees
+        // without picking anything, same as branding.json's src. Still just a starting
+        // point: the toolbar's own background button lets the teacher turn it off or
+        // pick something else afterward.
+        // Students/children stay on "none" (their own real camera) instead of having
+        // this forced on them — a parent joining on a child's behalf doesn't expect the
+        // app to silently change what the child's camera shows.
+        if (mode === "teacher") {
+          api?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
+        }
         if (mode === "teacher" && autoRecordRef.current) {
           // Auto session recording: starts when the host joins; requires Jibri
           // on the Jitsi deployment (no-op on deployments without it). Admin can
@@ -683,9 +689,16 @@ export default function JitsiLive({
             </div>
           </div>
           {interactive && (
+            // max-h-[45vh] (md:max-h-none): below md the body stacks video above this
+            // panel instead of sitting side-by-side (flex-col → md:flex-row above), so
+            // without its own height cap the panel's content (Board tab's toolbar +
+            // canvas, quiz, roster) claims however much height it wants and pushes the
+            // video stage off-screen — reported as "can't see the video while changing
+            // slides." Same fix already applied to the mock classroom's aside
+            // (LiveClassroom.tsx) for the identical layout failure.
             <aside
               className={cn(
-                "flex min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 md:w-[380px]",
+                "flex max-h-[45vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 md:max-h-none md:w-[380px]",
                 !panelOpen && "hidden"
               )}
             >
