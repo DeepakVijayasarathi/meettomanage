@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -14,10 +14,12 @@ import {
   Layers,
   Lock,
   Mail,
+  MessageCircle,
   Mic,
   MessageSquare,
   PenTool,
   Phone,
+  Play,
   RefreshCw,
   ScreenShare,
   ShieldCheck,
@@ -26,6 +28,7 @@ import {
   Users,
   Video,
   Wallet,
+  X,
   XCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -53,6 +56,106 @@ function Reveal({ children, delayMs = 0, className }: { children: React.ReactNod
       style={{ transitionDelay: inView ? `${delayMs}ms` : "0ms" }}
     >
       {children}
+    </div>
+  );
+}
+
+/** Click-to-play vertical reel — starts paused on a poster frame so the ~5.7MB video is never
+    fetched unless a visitor actually wants it (`preload="none"`), and only requests audio once
+    there's a real user gesture to attach it to. */
+function VideoReel() {
+  const [playing, setPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  function handlePlay() {
+    setPlaying(true);
+    videoRef.current?.play();
+  }
+
+  return (
+    <div className="relative aspect-[9/16] overflow-hidden rounded-[24px] bg-[#12151C] shadow-pop ring-4 ring-white">
+      <video
+        ref={videoRef}
+        src="/videos/reels.mp4"
+        poster="/videos/reels-poster.jpg"
+        className="h-full w-full object-cover"
+        controls={playing}
+        loop
+        playsInline
+        preload="none"
+      />
+      {!playing && (
+        <button
+          type="button"
+          onClick={handlePlay}
+          aria-label="Play video"
+          className="group absolute inset-0 flex items-center justify-center bg-black/10 transition-colors hover:bg-black/25"
+        >
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#EA580C] shadow-pop transition-transform group-hover:scale-105">
+            <Play className="h-6 w-6 translate-x-0.5" fill="currentColor" />
+          </span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Floating contact widget — links out (WhatsApp/email/Request a Demo) rather than answering
+    questions itself, unlike the FAQ-matching "Ask a Doubt" bot used inside the logged-in
+    portals (DoubtChatbot.tsx). This page has no other fixed-position widget to collide with. */
+function ChatWidget() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6">
+      {open && (
+        <div className="w-72 rounded-2xl border border-black/10 bg-white p-5 shadow-pop">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-[#171B22]">Chat with us</p>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close chat"
+              className="text-[#8B93A1] transition-colors hover:text-[#171B22]"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-[#5B6472]">
+            Reach us directly, or request a platform demo.
+          </p>
+          <div className="mt-4 flex flex-col gap-2">
+            <a
+              href="https://wa.me/919344773231"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2.5 rounded-xl border border-black/10 px-3.5 py-2.5 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#F5F6F9]"
+            >
+              <MessageSquare className="h-4 w-4 text-[#25D366]" /> WhatsApp us
+            </a>
+            <a
+              href="mailto:hello@infinityuniquers.dev"
+              className="flex items-center gap-2.5 rounded-xl border border-black/10 px-3.5 py-2.5 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#F5F6F9]"
+            >
+              <Mail className="h-4 w-4 text-[#EA580C]" /> Email us
+            </a>
+            <Link
+              to="/get-started"
+              className="flex items-center gap-2.5 rounded-xl bg-[#F97316] px-3.5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#EA580C]"
+            >
+              <ArrowRight className="h-4 w-4" /> Request a demo
+            </Link>
+          </div>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-label={open ? "Close chat" : "Chat with us"}
+        className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F97316] text-white shadow-pop transition-transform hover:scale-105"
+      >
+        {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-6 w-6" />}
+      </button>
     </div>
   );
 }
@@ -605,6 +708,27 @@ export default function MarketingHome() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Watch — a short reel walkthrough */}
+      <section className="border-t border-black/10 bg-white py-16 sm:py-20">
+        <div className="mx-auto max-w-5xl px-6">
+          <Reveal>
+            <div className="mx-auto max-w-xl text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">Watch</p>
+              <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+                See it explained in under a minute
+              </h2>
+              <p className="mt-3 text-sm text-[#5B6472]">
+                A quick walkthrough of scheduling, billing and reporting inside {brand.name}.
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal delayMs={100} className="mx-auto mt-10 max-w-[280px]">
+            <VideoReel />
+          </Reveal>
         </div>
       </section>
 
@@ -1242,6 +1366,7 @@ export default function MarketingHome() {
       </footer>
 
       <BookDemoDialog open={demoOpen} onOpenChange={setDemoOpen} />
+      <ChatWidget />
     </div>
   );
 }
