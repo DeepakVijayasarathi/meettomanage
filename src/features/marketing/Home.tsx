@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -17,14 +17,13 @@ import {
   MessageSquare,
   PenTool,
   Phone,
+  Play,
   RefreshCw,
   ShieldCheck,
   Sparkles,
   Target,
   Users,
   Video,
-  Volume2,
-  VolumeX,
   Wallet,
   X,
   XCircle,
@@ -61,28 +60,38 @@ function Reveal({ children, delayMs = 0, className }: { children: React.ReactNod
 /** Autoplaying hero reel — muted by default since browsers block unmuted autoplay outright,
     with a tap-to-unmute control since the video has real narration a visitor may want to hear. */
 function HeroReel() {
-  const [muted, setMuted] = useState(true);
+  const [playing, setPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  function handlePlay() {
+    setPlaying(true);
+    videoRef.current?.play();
+  }
 
   return (
     <div className="relative aspect-[9/16] overflow-hidden rounded-[24px] bg-[#12151C] shadow-pop ring-4 ring-white">
       <video
+        ref={videoRef}
         src="/videos/reels.mp4"
         poster="/videos/reels-poster.jpg"
         className="h-full w-full object-cover"
-        autoPlay
-        muted={muted}
+        controls={playing}
         loop
         playsInline
-        preload="auto"
+        preload="none"
       />
-      <button
-        type="button"
-        onClick={() => setMuted((m) => !m)}
-        aria-label={muted ? "Unmute video" : "Mute video"}
-        className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur transition-colors hover:bg-black/70"
-      >
-        {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-      </button>
+      {!playing && (
+        <button
+          type="button"
+          onClick={handlePlay}
+          aria-label="Play video"
+          className="group absolute inset-0 flex items-center justify-center bg-black/10 transition-colors hover:bg-black/25"
+        >
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#EA580C] shadow-pop transition-transform group-hover:scale-105">
+            <Play className="h-6 w-6 translate-x-0.5" fill="currentColor" />
+          </span>
+        </button>
+      )}
     </div>
   );
 }
