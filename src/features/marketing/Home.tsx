@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -9,24 +9,22 @@ import {
   CheckCircle2,
   Clock,
   CreditCard,
-  Hand,
   HeartHandshake,
   Layers,
   Lock,
   Mail,
   MessageCircle,
-  Mic,
   MessageSquare,
   PenTool,
   Phone,
-  Play,
   RefreshCw,
-  ScreenShare,
   ShieldCheck,
   Sparkles,
   Target,
   Users,
   Video,
+  Volume2,
+  VolumeX,
   Wallet,
   X,
   XCircle,
@@ -60,42 +58,31 @@ function Reveal({ children, delayMs = 0, className }: { children: React.ReactNod
   );
 }
 
-/** Click-to-play vertical reel — starts paused on a poster frame so the ~5.7MB video is never
-    fetched unless a visitor actually wants it (`preload="none"`), and only requests audio once
-    there's a real user gesture to attach it to. */
-function VideoReel() {
-  const [playing, setPlaying] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  function handlePlay() {
-    setPlaying(true);
-    videoRef.current?.play();
-  }
+/** Autoplaying hero reel — muted by default since browsers block unmuted autoplay outright,
+    with a tap-to-unmute control since the video has real narration a visitor may want to hear. */
+function HeroReel() {
+  const [muted, setMuted] = useState(true);
 
   return (
     <div className="relative aspect-[9/16] overflow-hidden rounded-[24px] bg-[#12151C] shadow-pop ring-4 ring-white">
       <video
-        ref={videoRef}
         src="/videos/reels.mp4"
         poster="/videos/reels-poster.jpg"
         className="h-full w-full object-cover"
-        controls={playing}
+        autoPlay
+        muted={muted}
         loop
         playsInline
-        preload="none"
+        preload="auto"
       />
-      {!playing && (
-        <button
-          type="button"
-          onClick={handlePlay}
-          aria-label="Play video"
-          className="group absolute inset-0 flex items-center justify-center bg-black/10 transition-colors hover:bg-black/25"
-        >
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#EA580C] shadow-pop transition-transform group-hover:scale-105">
-            <Play className="h-6 w-6 translate-x-0.5" fill="currentColor" />
-          </span>
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => setMuted((m) => !m)}
+        aria-label={muted ? "Unmute video" : "Mute video"}
+        className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur transition-colors hover:bg-black/70"
+      >
+        {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+      </button>
     </div>
   );
 }
@@ -160,44 +147,13 @@ function ChatWidget() {
   );
 }
 
-/**
- * Dark browser-chrome mockup shell used across the Product showcase section — the same
- * visual language as the hero's live-session tile (three window dots + title bar + dark
- * canvas), so every "product screenshot" on the page reads as one consistent product
- * rather than three unrelated illustration styles. The hero's own mockup keeps its
- * bespoke markup rather than being rebuilt on top of this (it already shipped and was
- * verified at every breakpoint — not worth the regression risk to fold it in here too).
- */
-function BrowserFrame({
-  title,
-  live,
-  children,
-  className,
-}: {
-  title: string;
-  live?: boolean;
-  children: React.ReactNode;
-  className?: string;
-}) {
+/** Real product screenshots (captured from the actual admin portal in demo mode — seed/demo
+    data, not a real customer's) — a plain framed image rather than a fake browser-chrome
+    shell, since the screenshot already contains the app's own real header and nav. */
+function Screenshot({ src, alt }: { src: string; alt: string }) {
   return (
-    <div className={cn("overflow-hidden rounded-[20px] shadow-pop ring-1 ring-black/10", className)}>
-      <div className="flex items-center justify-between bg-[#1A1F27] px-4 py-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex gap-1">
-            <span className="h-2 w-2 rounded-full bg-white/20" />
-            <span className="h-2 w-2 rounded-full bg-white/20" />
-            <span className="h-2 w-2 rounded-full bg-white/20" />
-          </div>
-          <span className="text-xs font-semibold text-white/85">{title}</span>
-        </div>
-        {live && (
-          <span className="flex items-center gap-1.5 rounded-full bg-[#F97316] px-2.5 py-1 text-[10px] font-bold tracking-wide text-white">
-            <span className="motion-safe:animate-pulse h-1.5 w-1.5 rounded-full bg-white" />
-            LIVE
-          </span>
-        )}
-      </div>
-      <div className="bg-[#12151C] p-4">{children}</div>
+    <div className="overflow-hidden rounded-2xl border border-black/10 shadow-pop">
+      <img src={src} alt={alt} loading="lazy" className="h-auto w-full" />
     </div>
   );
 }
@@ -317,40 +273,6 @@ const STATS: { value: string; label: string; icon: LucideIcon }[] = [
   { value: "15-day", label: "Recording access window", icon: Clock },
   { value: "24/7", label: "Automated fee & reminder engine", icon: RefreshCw },
 ];
-
-const BATCH_ROWS = [
-  { name: "Grade 3 Phonics — Batch A", teacher: "Ms. Rao", students: 12, status: "Live" as const, initial: "R", color: "#F97316" },
-  { name: "Grade 5 Maths — Batch B", teacher: "Mr. Iyer", students: 9, status: "Scheduled" as const, initial: "I", color: "#5B6472" },
-  { name: "Grade 2 Phonics — Batch C", teacher: "Ms. Fernandes", students: 14, status: "Completed" as const, initial: "F", color: "#23A455" },
-  { name: "Grade 6 Maths — Batch D", teacher: "Mr. Batra", students: 11, status: "Scheduled" as const, initial: "B", color: "#5B6472" },
-];
-
-const BATCH_STATUS_CLASSES: Record<(typeof BATCH_ROWS)[number]["status"], string> = {
-  Live: "bg-[#F97316] text-white",
-  Scheduled: "bg-white/10 text-white/70",
-  Completed: "bg-[#23A455]/20 text-[#8FE0AE]",
-};
-
-const INVOICE_ROWS = [
-  { family: "Kapoor Family", amount: "₹2,400", status: "Paid" as const },
-  { family: "Mehta Family", amount: "₹1,800", status: "Overdue" as const },
-  { family: "Rao Family", amount: "₹2,400", status: "Paid" as const },
-  { family: "Iyer Family", amount: "₹3,200", status: "Paid" as const },
-];
-
-const INVOICE_STATUS_CLASSES: Record<(typeof INVOICE_ROWS)[number]["status"], string> = {
-  Paid: "bg-[#23A455]/20 text-[#8FE0AE]",
-  Overdue: "bg-[#C52020]/25 text-[#FCA5A5]",
-};
-
-const ANALYTICS_KPIS = [
-  { label: "Attendance", value: "92%" },
-  { label: "Engagement score", value: "4.6/5" },
-  { label: "Sessions this week", value: "18" },
-];
-
-/** Illustrative weekly session bars — deliberately small, classroom-scale shapes, not a claimed real metric. */
-const ANALYTICS_BARS = [40, 65, 50, 80, 60, 35, 20];
 
 interface SolutionAudience {
   icon: LucideIcon;
@@ -483,13 +405,6 @@ const FAQS = [
   },
 ];
 
-const SESSION_TILES = [
-  { label: "Teacher", initial: "T", bg: "#F97316" },
-  { label: "Aarav", initial: "A", bg: "#5B6472" },
-  { label: "Riya", initial: "R", bg: "#EA580C" },
-  { label: "Sana", initial: "S", bg: "#3A4150" },
-];
-
 export default function MarketingHome() {
   useLightBrandScope();
   const brand = useBrand();
@@ -606,87 +521,15 @@ export default function MarketingHome() {
           </div>
         </div>
 
-        {/* Hero visual: live session mockup */}
+        {/* Hero visual: autoplaying 60-second reel, replacing the earlier static mockup. */}
         <div
-          className="motion-safe:animate-slide-up relative mx-auto w-full max-w-md lg:max-w-none"
+          className="motion-safe:animate-slide-up relative w-full max-w-[260px] sm:max-w-[300px] lg:max-w-[340px]"
           style={{ animationDelay: "160ms", animationFillMode: "backwards" }}
         >
           <div className="motion-safe:animate-float absolute -left-4 -top-4 z-10 flex h-14 w-14 -rotate-6 items-center justify-center rounded-full bg-white p-2 shadow-pop ring-1 ring-black/10">
             <img src="/logo-icon.png" alt="" className="h-full w-full object-contain" />
           </div>
-
-          <div className="overflow-hidden rounded-[24px] shadow-pop ring-4 ring-white">
-            <div className="flex items-center justify-between bg-[#1A1F27] px-4 py-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex gap-1">
-                  <span className="h-2 w-2 rounded-full bg-white/20" />
-                  <span className="h-2 w-2 rounded-full bg-white/20" />
-                  <span className="h-2 w-2 rounded-full bg-white/20" />
-                </div>
-                <span className="text-xs font-semibold text-white/85">Live Session — Grade 4 Reading</span>
-              </div>
-              <span className="flex items-center gap-1.5 rounded-full bg-[#F97316] px-2.5 py-1 text-[10px] font-bold tracking-wide text-white">
-                <span className="motion-safe:animate-pulse h-1.5 w-1.5 rounded-full bg-white" />
-                LIVE
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 bg-[#12151C] p-3.5">
-              {SESSION_TILES.map((tile) => (
-                <div
-                  key={tile.label}
-                  className="relative flex aspect-[4/3] items-center justify-center rounded-xl"
-                  style={{ background: "linear-gradient(160deg,#2B3140,#1B1F28)" }}
-                >
-                  <div
-                    className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white"
-                    style={{ backgroundColor: tile.bg }}
-                  >
-                    {tile.initial}
-                  </div>
-                  <span className="absolute bottom-2 left-2 rounded-md bg-black/35 px-1.5 py-0.5 text-[10px] font-semibold text-white/85">
-                    {tile.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-center gap-3 bg-[#1A1F27] p-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white">
-                <Mic className="h-3.5 w-3.5" />
-              </span>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white">
-                <Video className="h-3.5 w-3.5" />
-              </span>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F97316] text-white">
-                <Hand className="h-3.5 w-3.5" />
-              </span>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white">
-                <MessageSquare className="h-3.5 w-3.5" />
-              </span>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white">
-                <ScreenShare className="h-3.5 w-3.5" />
-              </span>
-            </div>
-          </div>
-
-          {/* Below `lg` the mockup fills the whole hero column, so an absolutely-positioned
-              corner badge here would sit on top of the control-bar icons instead of beside
-              them (verified: it hid the raise-hand/chat/screen-share icons at both mobile and
-              tablet widths). It flows below the mockup up to `lg`, then floats over the
-              corner once the two-column layout gives it real clearance. */}
-          <div
-            className="motion-safe:animate-float relative z-10 mx-auto mt-4 flex w-fit items-center gap-2.5 rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-pop lg:absolute lg:-bottom-5 lg:-right-3 lg:mt-0"
-            style={{ animationDelay: "1.2s" }}
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF3EA] text-[#EA580C]">
-              <CheckCircle2 className="h-5 w-5" />
-            </span>
-            <div className="leading-tight">
-              <p className="text-sm font-bold text-[#171B22]">Class in progress</p>
-              <p className="text-xs text-[#5B6472]">3 batches running now</p>
-            </div>
-          </div>
+          <HeroReel />
         </div>
         </div>
       </section>
@@ -708,27 +551,6 @@ export default function MarketingHome() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Watch — a short reel walkthrough */}
-      <section className="border-t border-black/10 bg-white py-16 sm:py-20">
-        <div className="mx-auto max-w-5xl px-6">
-          <Reveal>
-            <div className="mx-auto max-w-xl text-center">
-              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">Watch</p>
-              <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                See it explained in under a minute
-              </h2>
-              <p className="mt-3 text-sm text-[#5B6472]">
-                A quick walkthrough of scheduling, billing and reporting inside {brand.name}.
-              </p>
-            </div>
-          </Reveal>
-
-          <Reveal delayMs={100} className="mx-auto mt-10 max-w-[280px]">
-            <VideoReel />
-          </Reveal>
         </div>
       </section>
 
@@ -833,29 +655,10 @@ export default function MarketingHome() {
                     ))}
                   </ul>
                 </div>
-                <BrowserFrame title="Batches — This Week">
-                  <div className="flex flex-col gap-2">
-                    {BATCH_ROWS.map((row) => (
-                      <div key={row.name} className="flex items-center gap-3 rounded-xl bg-white/[0.04] p-3">
-                        <span
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                          style={{ backgroundColor: row.color }}
-                        >
-                          {row.initial}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold text-white">{row.name}</p>
-                          <p className="text-[11px] text-white/50">
-                            {row.teacher} · {row.students} students
-                          </p>
-                        </div>
-                        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold", BATCH_STATUS_CLASSES[row.status])}>
-                          {row.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </BrowserFrame>
+                <Screenshot
+                  src="/screenshots/batches.webp"
+                  alt="Batches screen in the Meet to Manage admin portal, listing six active batches with teacher, schedule and capacity"
+                />
               </div>
             </Reveal>
 
@@ -881,24 +684,10 @@ export default function MarketingHome() {
                   </ul>
                 </div>
                 <div className="lg:order-1">
-                  <BrowserFrame title="Billing — August">
-                    <div className="mb-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-[#8FE0AE]">
-                      <RefreshCw className="h-3 w-3" /> Auto-suspend: On
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {INVOICE_ROWS.map((row) => (
-                        <div key={row.family} className="flex items-center justify-between rounded-xl bg-white/[0.04] p-3">
-                          <div>
-                            <p className="text-xs font-semibold text-white">{row.family}</p>
-                            <p className="text-[11px] text-white/50">{row.amount}</p>
-                          </div>
-                          <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold", INVOICE_STATUS_CLASSES[row.status])}>
-                            {row.status}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </BrowserFrame>
+                  <Screenshot
+                    src="/screenshots/billing.webp"
+                    alt="Billing & Finance screen in the Meet to Manage admin portal, showing an invoice table with paid, pending and overdue statuses"
+                  />
                 </div>
               </div>
             </Reveal>
@@ -926,31 +715,16 @@ export default function MarketingHome() {
                     ))}
                   </ul>
                 </div>
-                <BrowserFrame title="Analytics — Overview">
-                  <div className="grid grid-cols-3 gap-2">
-                    {ANALYTICS_KPIS.map((kpi) => (
-                      <div key={kpi.label} className="rounded-xl bg-white/[0.04] p-3">
-                        <p className="text-sm font-extrabold text-white">{kpi.value}</p>
-                        <p className="mt-0.5 text-[10px] leading-tight text-white/50">{kpi.label}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex h-20 items-end gap-1.5 rounded-xl bg-white/[0.04] p-3">
-                    {ANALYTICS_BARS.map((h, i) => (
-                      <div
-                        key={i}
-                        className="flex-1 rounded-sm"
-                        style={{ height: `${h}%`, background: "linear-gradient(180deg,#F97316,#EA580C)" }}
-                      />
-                    ))}
-                  </div>
-                </BrowserFrame>
+                <Screenshot
+                  src="/screenshots/analytics.webp"
+                  alt="Admin Dashboard screen in Meet to Manage, showing growth KPIs, a revenue trend chart and a department revenue breakdown"
+                />
               </div>
             </Reveal>
           </div>
 
           <p className="mt-14 text-center text-xs text-[#8B93A1]">
-            Interfaces above are illustrative product views built for this page — not real customer data.
+            Real screens from the Meet to Manage admin portal, shown with seed/demo data — not a real customer's.
           </p>
         </div>
       </section>
