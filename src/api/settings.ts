@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api";
 
-export type SettingCategory = "General" | "Branding" | "Notifications" | "Integrations" | "Widgets";
+export type SettingCategory = "General" | "Branding" | "Notifications" | "Integrations" | "Widgets" | "Seo";
 
 export interface ApiSetting {
   category: SettingCategory;

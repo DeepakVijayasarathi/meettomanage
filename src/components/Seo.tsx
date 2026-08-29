@@ -1,9 +1,12 @@
 import { Helmet } from "react-helmet-async";
+import { useSeoOverride } from "@/lib/seoSettings";
 
 const SITE_URL = "https://meettomanage.cloud";
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 
 interface SeoProps {
+  /** Admin Settings → SEO key this page reads overrides from (e.g. "home", "blog"). Omit for a page with no admin override — blog posts, which already have their own admin-editable title/excerpt. */
+  pageKey?: string;
   title: string;
   description: string;
   /** Path only, e.g. "/blog/five-signs" — combined with SITE_URL for canonical/OG urls. */
@@ -13,7 +16,9 @@ interface SeoProps {
 }
 
 /** Per-route title, description, canonical and social-share tags (index.html carries the site-wide defaults a crawler sees before JS runs). */
-export function Seo({ title, description, path, image = DEFAULT_IMAGE, type = "website" }: SeoProps) {
+export function Seo({ pageKey, title: titleFallback, description: descriptionFallback, path, image = DEFAULT_IMAGE, type = "website" }: SeoProps) {
+  const title = useSeoOverride(pageKey ?? "", "title", titleFallback);
+  const description = useSeoOverride(pageKey ?? "", "description", descriptionFallback);
   const url = `${SITE_URL}${path}`;
   return (
     <Helmet>
