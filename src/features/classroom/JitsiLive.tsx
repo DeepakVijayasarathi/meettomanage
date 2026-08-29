@@ -344,6 +344,15 @@ export default function JitsiLive({
         // app to silently change what the child's camera shows.
         if (mode === "teacher") {
           api?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
+        } else {
+          // Not just "skip setting one" — Jitsi remembers the last-picked virtual
+          // background per browser (jitsi-meet.localStorage), so a child's device that
+          // got the branded background force-applied before this fix still has it saved
+          // as their "last choice" and would silently keep reapplying it on every future
+          // join even though nothing here sets it anymore. Explicitly turning it off
+          // clears that remembered choice too, actually landing on "none" rather than
+          // just not making it worse going forward.
+          api?.executeCommand("setVirtualBackground", false);
         }
         if (mode === "teacher" && autoRecordRef.current) {
           // Auto session recording: starts when the host joins; requires Jibri
