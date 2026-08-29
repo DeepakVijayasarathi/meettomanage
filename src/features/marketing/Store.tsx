@@ -189,6 +189,15 @@ export default function Store() {
         )}
       </section>
 
+      <footer className="border-t border-brand-ink/10 bg-white py-8">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-left">
+          <Logo imgClassName="h-7 w-7" />
+          <p className="text-xs font-medium text-brand-ink/60">
+            © {new Date().getFullYear()} {brand.name}. All rights reserved.
+          </p>
+        </div>
+      </footer>
+
       <Dialog open={selectedPlan !== null} onOpenChange={(open) => !open && setSelectedPlan(null)}>
         <DialogContent className="max-w-md">
           {submitted ? (
