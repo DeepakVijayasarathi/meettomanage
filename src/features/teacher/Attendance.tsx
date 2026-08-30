@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { CheckCircle2, ClipboardList, Users, Video, XCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CheckCircle2, ClipboardList, IndianRupee, Users, Video, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -12,12 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getChildById } from "@/data/children";
+import { getPayoutsForTeacher } from "@/data/payouts";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
-import { formatDate, getInitials } from "@/lib/utils";
-import type { ClassSession } from "@/types";
+import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
+import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
+import type { ClassSession, TeacherPayout } from "@/types";
 
 const TEACHER_ID = "t-1";
 
@@ -44,6 +46,24 @@ const SESSION_NOTES: Record<string, string> = {
   "s-8": "Covered blending of 'sh' and 'ch' sounds using flashcards. Both students engaged well — assigned the Week 3 worksheet for home practice.",
   "s-22": "Recap session on short vowel sounds. Sara was attentive throughout; Aarav needs a quick catch-up on sequencing before the next class.",
 };
+
+const PAYOUT_ITEM_TYPE_LABEL: Record<string, string> = {
+  SessionEarning: "Class earning",
+  StudentNoShowWaiting: "Student no-show (waiting pay)",
+  TeacherNoShowDeduction: "Teacher no-show deduction",
+  Penalty: "Penalty",
+  Bonus: "Bonus",
+  Adjustment: "Adjustment",
+};
+
+/** One session can carry more than one payout line item (e.g. an earning plus a later
+ * adjustment) — netted here into a single figure per session, keyed off whichever
+ * payout period the item landed in so the status badge reflects that period's state. */
+interface SessionPayment {
+  amount: number;
+  status: TeacherPayout["status"];
+  items: TeacherPayout["items"];
+}
 
 function sessionSubtitle(session: ClassSession) {
   if (session.batchId) return getBatchById(session.batchId)?.name ?? "General session";
@@ -78,6 +98,30 @@ export default function TeacherAttendance() {
     { sessions: [], attendanceBySession: {} }
   );
   const apiCompleted = apiData.sessions;
+
+  // Payout history is the source of truth for what a given class actually paid — session
+  // earnings are computed there, not on the session itself. Fetched once per teacher (not
+  // per row) and netted client-side into a per-session lookup for the table/dialog below.
+  const { data: payouts } = useApiData(
+    () => listMyPayouts().then((items) => items.map(toFrontendPayout)),
+    getPayoutsForTeacher(TEACHER_ID)
+  );
+  const paymentBySession = useMemo(() => {
+    const map: Record<string, SessionPayment> = {};
+    for (const payout of payouts) {
+      for (const item of payout.items) {
+        if (!item.classSessionId) continue;
+        const existing = map[item.classSessionId];
+        if (existing) {
+          existing.amount += item.amount;
+          existing.items.push(item);
+        } else {
+          map[item.classSessionId] = { amount: item.amount, status: payout.status, items: [item] };
+        }
+      }
+    }
+    return map;
+  }, [payouts]);
   const completed = apiEnabled()
     ? [...apiCompleted].sort((a, b) => b.date.localeCompare(a.date))
     : getSessionsForTeacher(TEACHER_ID)
@@ -178,6 +222,24 @@ export default function TeacherAttendance() {
           <Badge variant={pct === 100 ? "success" : pct >= 50 ? "warning" : "destructive"}>
             {present}/{records.length} present
           </Badge>
+        );
+      },
+    },
+    {
+      key: "payment",
+      header: "Payment",
+      accessor: (row) => paymentBySession[row.id]?.amount ?? 0,
+      sortable: true,
+      render: (row) => {
+        const payment = paymentBySession[row.id];
+        if (!payment) return <span className="text-sm text-muted-foreground">—</span>;
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-medium text-foreground">{formatCurrency(payment.amount)}</span>
+            <Badge variant={payment.status === "paid" ? "success" : payment.status === "finalized" ? "default" : "warning"}>
+              {payment.status === "paid" ? "Paid" : payment.status === "finalized" ? "Finalized" : "Pending"}
+            </Badge>
+          </div>
         );
       },
     },
@@ -299,6 +361,45 @@ export default function TeacherAttendance() {
                 <p className="rounded-lg bg-muted/50 p-3 text-sm text-foreground">
                   {(apiEnabled() ? selected.summary : SESSION_NOTES[selected.id]) ?? "No notes were recorded for this session."}
                 </p>
+              </div>
+
+              <div>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment detail</p>
+                {(() => {
+                  const payment = paymentBySession[selected.id];
+                  if (!payment) {
+                    return (
+                      <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                        Not on a payout yet — this class hasn't been included in a payout calculation.
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                        <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <IndianRupee className="h-3.5 w-3.5" /> Net for this class
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-foreground">{formatCurrency(payment.amount)}</span>
+                          <Badge variant={payment.status === "paid" ? "success" : payment.status === "finalized" ? "default" : "warning"}>
+                            {payment.status === "paid" ? "Paid" : payment.status === "finalized" ? "Finalized" : "Pending"}
+                          </Badge>
+                        </div>
+                      </div>
+                      {payment.items.length > 1 &&
+                        payment.items.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between gap-3 pl-3 text-xs text-muted-foreground">
+                            <span>{PAYOUT_ITEM_TYPE_LABEL[item.type] ?? item.type}{item.note ? ` — ${item.note}` : ""}</span>
+                            <span className={item.amount < 0 ? "text-destructive" : "text-success"}>
+                              {item.amount < 0 ? "-" : "+"}
+                              {formatCurrency(Math.abs(item.amount))}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  );
+                })()}
               </div>
 
               <DialogFooter>
