@@ -574,8 +574,8 @@ export default function MarketingHome() {
 
       {/* Pain points → solutions */}
       <section className="border-t border-black/10 bg-[#FBFBFC] py-16 sm:py-20">
-        <div className="mx-auto max-w-3xl px-6">
-          <Reveal>
+        <div className="mx-auto max-w-4xl px-6">
+          <Reveal className="max-w-2xl">
             <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">The old way vs. {brand.name}</p>
             <h2 className="font-display mt-3 text-3xl font-extrabold leading-[1.15] tracking-tight sm:text-4xl md:text-5xl">
               You didn't start an academy to manage five different apps.
@@ -586,10 +586,10 @@ export default function MarketingHome() {
             </p>
           </Reveal>
 
-          <div className="mt-14 flex flex-col gap-4">
+          <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {PAIN_POINTS.map((p, i) => (
-              <Reveal key={p.pain} delayMs={i * 80}>
-                <div className="rounded-2xl border border-black/10 bg-white p-6 sm:p-7">
+              <Reveal key={p.pain} delayMs={i * 80} className="h-full">
+                <div className="flex h-full flex-col rounded-2xl border border-black/10 bg-white p-6 sm:p-7">
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F5F6F9] text-[#5B6472]">
                       <p.icon className="h-4 w-4" />
