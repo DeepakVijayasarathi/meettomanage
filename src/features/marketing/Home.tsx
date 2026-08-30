@@ -480,7 +480,7 @@ export default function MarketingHome() {
           className="pointer-events-none absolute -right-24 -top-32 h-[28rem] w-[28rem] rounded-full"
           style={{ background: "radial-gradient(circle, rgba(249,115,22,0.10), rgba(249,115,22,0) 70%)" }}
         />
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 py-14 lg:grid-cols-2 lg:gap-20 lg:py-20">
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-6 py-14 lg:grid-cols-[1.15fr_380px] lg:gap-16 lg:py-24">
           <div>
           <div className="motion-safe:animate-slide-up inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
             <Sparkles className="h-3.5 w-3.5" /> Learning Management &amp; Virtual Classroom Platform
@@ -537,7 +537,7 @@ export default function MarketingHome() {
 
         {/* Hero visual: autoplaying 60-second reel, replacing the earlier static mockup. */}
         <div
-          className="motion-safe:animate-slide-up relative w-full max-w-[260px] sm:max-w-[300px] lg:max-w-[340px]"
+          className="motion-safe:animate-slide-up relative w-full max-w-[260px] sm:max-w-[300px]"
           style={{ animationDelay: "160ms", animationFillMode: "backwards" }}
         >
           {/* Inset (not overlapping above/left of the card via a negative offset) so it's
