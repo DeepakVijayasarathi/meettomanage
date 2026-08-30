@@ -116,6 +116,15 @@ export async function listRecordings(sessionId: string): Promise<ApiSessionRecor
   return apiFetch<ApiSessionRecording[]>(`/api/sessions/${sessionId}/recordings`);
 }
 
+/**
+ * Unregisters a recording (Admin only). Only removes the database row — the underlying
+ * file in storage isn't touched, so this stops the recording from showing up anywhere in
+ * the app rather than reclaiming storage space.
+ */
+export async function deleteRecording(sessionId: string, recordingId: string): Promise<void> {
+  await apiFetch(`/api/sessions/${sessionId}/recordings/${recordingId}`, { method: "DELETE" });
+}
+
 export interface ApiClassroomSettings {
   domain: string;
   autoRecordEnabled: boolean;

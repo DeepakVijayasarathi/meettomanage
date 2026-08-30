@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Loader2, PlayCircle, Video } from "lucide-react";
+import { Loader2, PlayCircle, Trash2, Video } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { listRecordings, type ApiSessionRecording } from "@/api/sessions";
+import { deleteRecording, listRecordings, type ApiSessionRecording } from "@/api/sessions";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
+import { useToast } from "@/hooks/use-toast";
 import { formatDate, safeExternalUrl } from "@/lib/utils";
 import type { ClassSession } from "@/types";
 
@@ -18,16 +20,36 @@ const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /**
  * Recordings viewer for one session — Admin and Teacher share this exact dialog (same
- * `GET /api/sessions/{id}/recordings` route, both roles authorized). Read-only: recordings
- * are auto-registered by the Jitsi/Jibri pipeline, no manual "paste a link" path anymore.
+ * `GET /api/sessions/{id}/recordings` route, both roles authorized). Recordings are
+ * auto-registered by the Jitsi/Jibri pipeline, no manual "paste a link" path anymore.
+ * Deleting one is Admin-only — it unregisters the row, the underlying file is untouched.
  */
 export function RecordingsDialog({ session, onClose }: { session: ClassSession; onClose: () => void }) {
+  const { role } = useSession();
+  const { toast } = useToast();
   const [recordings, setRecordings] = useState<ApiSessionRecording[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const canManage = apiEnabled() && GUID_RE.test(session.id);
+  const canDelete = role === "admin";
+
+  async function handleDelete(recordingId: string) {
+    if (!window.confirm("Delete this recording? This can't be undone.")) return;
+    setDeletingId(recordingId);
+    try {
+      await deleteRecording(session.id, recordingId);
+      setRecordings((prev) => prev.filter((r) => r.id !== recordingId));
+      if (playingId === recordingId) setPlayingId(null);
+      toast({ variant: "success", title: "Recording deleted" });
+    } catch {
+      toast({ variant: "error", title: "Couldn't delete the recording", description: "Please try again." });
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   useEffect(() => {
     if (!canManage) {
@@ -92,15 +114,32 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
                         <Video className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         {safeUrl ? label : "Blocked link (not a http/https address)"}
                       </p>
-                      {safeUrl && (
-                        <Button
-                          size="sm"
-                          variant={isPlaying ? "outline" : "default"}
-                          onClick={() => setPlayingId(isPlaying ? null : r.id)}
-                        >
-                          <PlayCircle className="h-3.5 w-3.5" /> {isPlaying ? "Hide" : "Play"}
-                        </Button>
-                      )}
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {safeUrl && (
+                          <Button
+                            size="sm"
+                            variant={isPlaying ? "outline" : "default"}
+                            onClick={() => setPlayingId(isPlaying ? null : r.id)}
+                          >
+                            <PlayCircle className="h-3.5 w-3.5" /> {isPlaying ? "Hide" : "Play"}
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={deletingId === r.id}
+                            title="Delete this recording"
+                            onClick={() => handleDelete(r.id)}
+                          >
+                            {deletingId === r.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {r.expiresAtUtc
