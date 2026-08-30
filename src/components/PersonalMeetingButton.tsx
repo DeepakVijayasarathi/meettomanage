@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { AlertCircle, Check, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiEnabled } from "@/lib/api";
-import { useSession } from "@/state/session";
 import { buildPersonalMeetingUrl, getMyMeetingRoom } from "@/api/account";
 
 /**
@@ -13,7 +12,6 @@ import { buildPersonalMeetingUrl, getMyMeetingRoom } from "@/api/account";
  * on the clipboard, for sharing with someone outside the app entirely.
  */
 export function PersonalMeetingButton() {
-  const { userName } = useSession();
   const navigate = useNavigate();
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [busy, setBusy] = useState(false);
@@ -24,7 +22,12 @@ export function PersonalMeetingButton() {
     setBusy(true);
     try {
       const room = await getMyMeetingRoom();
-      const url = buildPersonalMeetingUrl(room, userName);
+      // No displayName here (see buildPersonalMeetingUrl's own doc comment) -- this link is
+      // meant to be shared, and whoever actually opens it isn't necessarily the admin whose
+      // name useSession() would supply. Passing it anyway used to bake this account's name
+      // into every copy of the link (misattributing anyone else who opened it) and silently
+      // skip Jitsi's own prejoin name prompt for them too.
+      const url = buildPersonalMeetingUrl(room);
       // Was previously fire-and-forget: writeText's rejection was swallowed and "Link
       // copied" showed regardless of whether anything actually landed on the clipboard --
       // e.g. when the Clipboard API isn't available at all (no navigator.clipboard) or the
