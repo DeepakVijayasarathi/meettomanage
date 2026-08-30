@@ -135,7 +135,20 @@ export default function TeacherLeave() {
   const startAt = startDate && startTime ? new Date(localToUtcIso(startDate, startTime)) : null;
   const endAt = endDate && endTime ? new Date(localToUtcIso(endDate, endTime)) : null;
   const hoursBefore = startAt ? hoursBetween(startAt, now) : null;
-  const isBlocked = hoursBefore !== null && hoursBefore < MIN_HOURS_NOTICE;
+  // Mirrors SubmitLeaveAsync's own rule exactly: the cutoff only matters for a session
+  // this leave would actually cover, not the leave's own start time in the abstract. The
+  // previous "leave starts within 6h = blocked" check fired even for a leave over a day
+  // with no scheduled classes at all, refusing a request the backend would have accepted.
+  const cutoffLimit = new Date(now.getTime() + MIN_HOURS_NOTICE * 60 * 60_000);
+  const blockingSession =
+    startAt && endAt
+      ? (eligibleSessions.find((s) => {
+          const sessionStart = sessionDateTime(s);
+          const sessionEnd = new Date(sessionStart.getTime() + s.duration * 60_000);
+          return sessionStart < cutoffLimit && sessionStart < endAt && sessionEnd > startAt;
+        }) ?? null)
+      : null;
+  const isBlocked = blockingSession !== null;
   const validRange = !!startAt && !!endAt && endAt > startAt;
   const canSubmit = validRange && reason.trim().length > 0 && !isBlocked;
 
@@ -198,12 +211,16 @@ export default function TeacherLeave() {
           }
           reloadLeaves();
           toast({ variant: "success", title: "Leave request submitted", description: "Pending admin approval." });
+          // Only clear the form once the request has actually succeeded -- resetting it
+          // unconditionally used to wipe out everything the teacher typed the instant they
+          // clicked submit, so a failed request (still typed out below) left them with an
+          // error banner and a blank form, forcing a full re-entry to retry.
+          resetForm();
         })
         .catch((err: Error) => {
           setSubmitError(err.message);
           toast({ variant: "error", title: "Couldn't submit leave request", description: err.message });
         });
-      resetForm();
       return;
     }
 
@@ -383,15 +400,20 @@ export default function TeacherLeave() {
 
             {startAt && hoursBefore !== null && (
               <InlineAlert variant={isBlocked ? "error" : "success"} className="text-sm">
-                {isBlocked ? (
+                {isBlocked && blockingSession ? (
                   <span>
-                    This leave starts in <strong>{hoursBefore.toFixed(1)} hours</strong>. Leave requests must be submitted at least{" "}
-                    {MIN_HOURS_NOTICE} hours in advance — this request cannot be submitted.
+                    This covers your <strong>{blockingSession.title}</strong> class at{" "}
+                    <strong>
+                      {formatDate(blockingSession.date, "short")}, {formatTimeLabel(blockingSession.startTime)}
+                    </strong>
+                    , which starts less than {MIN_HOURS_NOTICE} hours from now — leave affecting a class must be requested at least{" "}
+                    {MIN_HOURS_NOTICE} hours before it starts, so this request cannot be submitted.
                   </span>
                 ) : (
                   <span>
-                    You're submitting <strong>{hoursBefore.toFixed(1)} hours</strong> in advance — this meets the {MIN_HOURS_NOTICE}-hour notice
-                    requirement.
+                    {eligibleSessions.length > 0
+                      ? "No upcoming class of yours falls inside this leave window within the notice period — this request can be submitted."
+                      : `You're submitting ${hoursBefore.toFixed(1)} hours in advance.`}
                   </span>
                 )}
               </InlineAlert>
