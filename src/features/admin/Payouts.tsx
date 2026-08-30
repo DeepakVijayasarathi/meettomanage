@@ -499,21 +499,26 @@ export default function AdminPayouts() {
           {reviewPayout && (
             <>
               <DialogHeader>
-                <DialogTitle>Review {reviewPayout.teacherName}'s {reviewPayout.month} payout</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning-foreground">
+                    <AlertTriangle className="h-4 w-4" />
+                  </span>
+                  {reviewPayout.teacherName}'s {reviewPayout.month} payout
+                </DialogTitle>
                 <DialogDescription>
-                  Captured attendance for these session(s) fell well short of the scheduled class. Confirm the amount
-                  as-is or correct it — either way, a reason is logged and the flag clears once saved.
+                  Captured attendance for the session(s) below fell well short of the scheduled class. Confirm the
+                  amount as-is or correct it — either way, a reason is logged and the flag clears once saved.
                 </DialogDescription>
               </DialogHeader>
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3">
                 {reviewPayout.items.filter((i) => i.requiresReview).map((item) => {
                   const timing = reviewTiming[item.id];
                   return (
-                  <div key={item.id} className="rounded-lg border border-border p-3">
-                    <p className="text-sm text-muted-foreground">{item.note}</p>
+                  <div key={item.id} className="rounded-xl border border-warning/30 bg-warning/5 p-3.5">
+                    <p className="text-sm font-medium text-foreground">{item.note}</p>
                     {timing && (
-                      <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-foreground">
-                        <Clock className="h-3 w-3 text-muted-foreground" />
+                      <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3 shrink-0" />
                         {timing.joinedAtUtc ? (
                           <>
                             Joined {formatClockTime(timing.joinedAtUtc)}
@@ -524,7 +529,7 @@ export default function AdminPayouts() {
                         )}
                       </p>
                     )}
-                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg bg-card p-3 sm:grid-cols-2">
                       <div className="grid gap-1.5">
                         <Label htmlFor={`review-amount-${item.id}`}>Amount (₹)</Label>
                         <Input
@@ -553,7 +558,11 @@ export default function AdminPayouts() {
                   </div>
                   );
                 })}
-                {reviewError && <p className="text-sm font-medium text-destructive">{reviewError}</p>}
+                {reviewError && (
+                  <InlineAlert variant="error" className="text-sm">
+                    {reviewError}
+                  </InlineAlert>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setReviewPayout(null)}>
