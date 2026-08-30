@@ -8,7 +8,7 @@ export interface ApiHoliday {
   description: string | null;
 }
 
-export type ApiLeaveStatus = "Pending" | "Approved" | "Rejected";
+export type ApiLeaveStatus = "Pending" | "Approved" | "Rejected" | "Cancelled";
 
 export interface ApiLeaveRequest {
   id: string;
@@ -49,6 +49,11 @@ export function toFrontendLeave(leave: ApiLeaveRequest): LeaveRequest {
     reason: leave.reason,
     hoursBeforeSession: Math.round(noticeHours * 10) / 10,
     status: leave.status.toLowerCase() as LeaveRequest["status"],
+    // Kept alongside the display-friendly `date` above (not a replacement for it) so a
+    // teacher applying for a new overlapping window can be warned before they even submit,
+    // the same way the backend itself checks it — see teacher/Leave.tsx.
+    startAtUtc: leave.startAtUtc,
+    endAtUtc: leave.endAtUtc,
   };
 }
 
@@ -82,6 +87,11 @@ export async function reviewLeave(id: string, approve: boolean, reviewNote?: str
     method: "POST",
     body: JSON.stringify({ approve, reviewNote }),
   });
+}
+
+/** Teacher withdraws their own leave request — only while it's still Pending. */
+export async function cancelLeave(id: string): Promise<void> {
+  await apiFetch<void>(`/api/leave-requests/${id}`, { method: "DELETE" });
 }
 
 export async function captureAttendance(

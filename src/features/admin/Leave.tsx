@@ -13,14 +13,15 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listLeave, reviewLeave, toFrontendLeave, type ApiLeaveStatus } from "@/api/academicOps";
 import { LEAVE_REQUESTS } from "@/data/leaves";
-import { cn, formatDate, getInitials } from "@/lib/utils";
+import { cn, formatDate, formatDateRange, getInitials } from "@/lib/utils";
 import type { LeaveRequest } from "@/types";
 
-const LEAVE_STATUS_VARIANT: Record<LeaveRequest["status"], "warning" | "success" | "destructive"> = {
+const LEAVE_STATUS_VARIANT: Record<LeaveRequest["status"], "warning" | "success" | "destructive" | "muted"> = {
   pending: "warning",
   approved: "success",
   rejected: "destructive",
   blocked: "destructive",
+  cancelled: "muted",
 };
 
 const LEAVE_STATUS_LABEL: Record<LeaveRequest["status"], string> = {
@@ -28,10 +29,16 @@ const LEAVE_STATUS_LABEL: Record<LeaveRequest["status"], string> = {
   approved: "Approved",
   rejected: "Rejected",
   blocked: "Blocked (Late Request)",
+  cancelled: "Cancelled by teacher",
 };
 
 function LeaveStatusBadge({ status }: { status: LeaveRequest["status"] }) {
   return <Badge variant={LEAVE_STATUS_VARIANT[status]}>{LEAVE_STATUS_LABEL[status]}</Badge>;
+}
+
+/** row.date is only ever the leave's *start* — this is the real span, when it's known. */
+function leaveDateLabel(row: LeaveRequest): string {
+  return row.startAtUtc && row.endAtUtc ? formatDateRange(row.startAtUtc, row.endAtUtc) : formatDate(row.date, "long");
 }
 
 const STATUS_FILTER_OPTIONS: { value: ApiLeaveStatus | "all"; label: string }[] = [
@@ -87,7 +94,13 @@ export default function AdminLeave() {
 
   const today = usingApi ? new Date().toISOString().slice(0, 10) : "2026-07-09";
   const pendingCount = leaves.filter((l) => l.status === "pending").length;
-  const approvedUpcomingCount = leaves.filter((l) => l.status === "approved" && l.date >= today).length;
+  // l.date is only the leave's *start* -- comparing that alone against today undercounts a
+  // long leave that started in the past but hasn't ended yet (e.g. a month-long leave a week
+  // into its run): its start date is already "before today" even though it's still ongoing.
+  // Falls back to l.date (demo mode / no endAtUtc) the same way it always did.
+  const approvedUpcomingCount = leaves.filter(
+    (l) => l.status === "approved" && (l.endAtUtc ? l.endAtUtc.slice(0, 10) : l.date) >= today
+  ).length;
   const rejectedCount = leaves.filter((l) => l.status === "rejected").length;
 
   const filtered = useMemo(
@@ -116,7 +129,10 @@ export default function AdminLeave() {
         header: "Date",
         accessor: (row) => row.date,
         sortable: true,
-        render: (row) => <span className="text-sm">{formatDate(row.date, "long")}</span>,
+        // For a multi-day request (a week, a whole month) the start alone hides how long it
+        // actually runs, which an admin approving/rejecting it needs to see plainly, not
+        // infer from "Notice Given" or dig for.
+        render: (row) => <span className="text-sm">{leaveDateLabel(row)}</span>,
       },
       { key: "session", header: "Session", render: (row) => <span className="text-sm text-foreground">{row.session}</span> },
       { key: "reason", header: "Reason", render: (row) => <span className="text-sm text-muted-foreground">{row.reason}</span> },
@@ -214,7 +230,7 @@ export default function AdminLeave() {
         title="Approve this leave request?"
         description={
           approveTarget
-            ? `${approveTarget.teacherName}'s leave for "${approveTarget.session}" on ${formatDate(approveTarget.date, "long")} will be approved. Remember to update the calendar for that slot.`
+            ? `${approveTarget.teacherName}'s leave for "${approveTarget.session}" on ${leaveDateLabel(approveTarget)} will be approved. Remember to update the calendar for that slot.`
             : undefined
         }
         confirmLabel="Approve"
@@ -230,7 +246,7 @@ export default function AdminLeave() {
         title="Reject this leave request?"
         description={
           rejectTarget
-            ? `${rejectTarget.teacherName}'s leave request for "${rejectTarget.session}" on ${formatDate(rejectTarget.date, "long")} will be rejected. The session remains scheduled as-is.`
+            ? `${rejectTarget.teacherName}'s leave request for "${rejectTarget.session}" on ${leaveDateLabel(rejectTarget)} will be rejected. The session remains scheduled as-is.`
             : undefined
         }
         confirmLabel="Reject"

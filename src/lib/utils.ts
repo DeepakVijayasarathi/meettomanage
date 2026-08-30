@@ -48,6 +48,18 @@ export function formatDate(value: string | Date, pattern: "short" | "long" | "ti
   }
 }
 
+/**
+ * "1 Sep 2026" for a single-day span, "1 Sep 2026 – 30 Sep 2026" for a multi-day one — the
+ * calendar-day comparison is on each date's own local rendering (`formatDate`'s "short"),
+ * not a raw millisecond diff, so a same-day leave that merely spans midnight in UTC still
+ * reads as one date rather than a misleading "day 1 – day 2" range.
+ */
+export function formatDateRange(startIso: string, endIso: string): string {
+  const start = formatDate(startIso, "short");
+  const end = formatDate(endIso, "short");
+  return start === end ? start : `${start} – ${end}`;
+}
+
 /** Amount still owed on an invoice; partial payments reduce it (mock rows have no amountPaid). */
 export function invoiceBalance(invoice: { amount: number; amountPaid?: number }): number {
   return Math.max(0, invoice.amount - (invoice.amountPaid ?? 0));
