@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { useBrand } from "@/lib/branding";
@@ -30,11 +29,26 @@ const PIN_LENGTH = 4;
 // everywhere else) — a warmer, rounder headline face for the two big greeting moments.
 const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
 
+interface DemoAccount {
+  role: Role;
+  email: string;
+  pin: string;
+}
+
+// One demo login per portal role, listed on this page in demo mode so a visitor can
+// pick a role and sign in without having to know/guess credentials. Same PIN across
+// the board (it's never actually verified in demo mode) — only the email varies.
+const DEMO_ACCOUNTS: DemoAccount[] = ROLE_ORDER.map((r) => ({
+  role: r,
+  email: `${r}@meettomanage.cloud`,
+  pin: "1234",
+}));
+
 export default function Login() {
   useLightBrandScope();
   const brand = useBrand();
   const [role, setRole] = useState<Role>("admin");
-  const [email, setEmail] = useState(apiEnabled() ? "" : "demo@meettomanage.cloud");
+  const [email, setEmail] = useState(apiEnabled() ? "" : "admin@meettomanage.cloud");
   const [pin, setPin] = useState(apiEnabled() ? "" : "1234");
   const [showPin, setShowPin] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -66,6 +80,30 @@ export default function Login() {
     return <Navigate to={sessionHomePath ?? ROLE_META[sessionRole].homePath} replace />;
   }
 
+  // Demo mode has no real credential check, so a typed email that matches one of the
+  // listed demo accounts picks its role; otherwise fall back to whichever role was
+  // last selected from the list (defaults to admin).
+  function resolveDemoRole(): Role {
+    const matched = DEMO_ACCOUNTS.find((a) => a.email.toLowerCase() === email.trim().toLowerCase());
+    return matched?.role ?? role;
+  }
+
+  function enterDemoAs(demoRole: Role) {
+    setRemember(rememberMe);
+    setSessionRole(demoRole);
+    setHomePath(ROLE_META[demoRole].homePath);
+    navigate(from ?? ROLE_META[demoRole].homePath);
+  }
+
+  // Clicking a listed demo account fills the form (for visual feedback / consistency
+  // with the Sign In button) and signs straight in as that role.
+  function handleDemoAccountClick(account: DemoAccount) {
+    setEmail(account.email);
+    setPin(account.pin);
+    setRole(account.role);
+    enterDemoAs(account.role);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -73,11 +111,9 @@ export default function Login() {
     // below (and setAccessToken inside login()) all land in the right store.
     setRemember(rememberMe);
 
-    // Demo mode: no backend configured, enter as the selected preview role
+    // Demo mode: no backend configured, enter as the role implied by the typed email
     if (!apiEnabled()) {
-      setSessionRole(role);
-      setHomePath(ROLE_META[role].homePath);
-      navigate(from ?? ROLE_META[role].homePath);
+      enterDemoAs(resolveDemoRole());
       return;
     }
 
@@ -102,35 +138,20 @@ export default function Login() {
 
   return (
     <div className="theme-light-scope min-h-screen bg-white lg:grid lg:grid-cols-[3fr_2fr]">
-      {/* Left — full-bleed hero panel. This gradient is a stand-in for a real institute
-          photo (the reference design uses one) — swap this block for an <img> once a
-          licensed photo is supplied; there's no image-generation step in this pass.
-          Colours here read hsl(var(--primary))/hsl(var(--brand-accent)) via inline style
-          rather than Tailwind classes — an arbitrary-value class like bg-[#1e3a5f] bakes
-          the literal hex in at build time and can't react to a runtime brand color change,
-          which defeats the whole point of this being a white-label deployment. */}
-      <div
-        className="relative hidden overflow-hidden lg:block"
-        style={{ background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 60%, color-mix(in srgb, hsl(var(--primary)) 60%, black) 100%)" }}
-      >
-        {/* Faint dot-grid texture — pure decoration, kept theme-neutral (white at low
-            opacity) so it never needs its own brand-color wiring. */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.15]"
-          style={{
-            backgroundImage: "radial-gradient(rgba(255,255,255,0.7) 1px, transparent 1px)",
-            backgroundSize: "28px 28px",
-          }}
-        />
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{ background: "radial-gradient(circle at 25% 15%, hsl(var(--brand-accent) / 0.28), transparent 55%)" }}
+      {/* Left — full-bleed hero panel. Real institute photo (public/loginpage.png) —
+          object-cover fills the panel at any viewport height, dark gradient overlay
+          on top keeps the white headline/badge text legible over it. */}
+      <div className="relative hidden overflow-hidden lg:block">
+        <img
+          src="/loginpage.png"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
         />
         <div
           className="pointer-events-none absolute inset-0"
           style={{ background: "radial-gradient(circle at 80% 75%, hsl(var(--brand-accent) / 0.18), transparent 55%)" }}
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/10" />
 
         <p className="absolute left-10 top-8 text-xs font-medium text-white/60">© 2026 {brand.name}</p>
 
@@ -247,24 +268,37 @@ export default function Login() {
 
             {!apiEnabled() && (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="portal" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/70">
-                  <Sparkles className="h-3 w-3 text-brand-amber" /> Preview as (demo)
+                <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/70">
+                  <Sparkles className="h-3 w-3 text-brand-amber" /> Demo accounts — tap to sign in
                 </Label>
-                <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-                  <SelectTrigger id="portal" className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLE_ORDER.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        <span className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ROLE_META[r].hex }} />
-                          {ROLE_META[r].label}
+                <div className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-lg border border-brand-ink/10 p-1.5">
+                  {DEMO_ACCOUNTS.map((account) => {
+                    const meta = ROLE_META[account.role];
+                    return (
+                      <button
+                        key={account.role}
+                        type="button"
+                        onClick={() => handleDemoAccountClick(account)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-brand-ink/5",
+                          role === account.role && "bg-brand-accent/10 ring-1 ring-brand-accent/40"
+                        )}
+                      >
+                        <span
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                          style={{ backgroundColor: `${meta.hex}1A`, color: meta.hex }}
+                        >
+                          <meta.icon className="h-4 w-4" />
                         </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-brand-ink">{meta.shortLabel}</span>
+                          <span className="block truncate font-mono text-xs text-brand-ink/60">{account.email}</span>
+                        </span>
+                        <span className="shrink-0 font-mono text-xs tracking-[0.2em] text-brand-ink/40">{account.pin}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
