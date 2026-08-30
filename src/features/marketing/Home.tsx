@@ -241,6 +241,7 @@ type CategoryFilter = (typeof CATEGORY_FILTERS)[number];
 
 interface PainPoint {
   icon: LucideIcon;
+  label: string;
   pain: string;
   fix: string;
 }
@@ -248,21 +249,25 @@ interface PainPoint {
 const PAIN_POINTS: PainPoint[] = [
   {
     icon: Wallet,
+    label: "Billing",
     pain: "Fee reminders lost in a WhatsApp thread, and a child quietly drops out of class.",
     fix: "Automatic invoices and dual-gateway billing — with instant fee-suspension and restoration the moment a parent pays.",
   },
   {
     icon: HeartHandshake,
+    label: "Admissions",
     pain: "A demo booking sits in someone's inbox until the family gives up and goes elsewhere.",
     fix: "An admissions pipeline that tracks every booking from first call to enrolled family.",
   },
   {
     icon: BarChart3,
+    label: "Attendance",
     pain: "You find out a class had three no-shows a week later — if at all.",
     fix: "Live attendance and engagement scores, the moment a session ends.",
   },
   {
     icon: Layers,
+    label: "Systems",
     pain: "Teaching happens on one app, billing on another, admissions on a third.",
     fix: "One login. One role-based system. Every piece already connected.",
   },
@@ -475,7 +480,7 @@ export default function MarketingHome() {
           className="pointer-events-none absolute -right-24 -top-32 h-[28rem] w-[28rem] rounded-full"
           style={{ background: "radial-gradient(circle, rgba(249,115,22,0.10), rgba(249,115,22,0) 70%)" }}
         />
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 py-14 lg:grid-cols-2 lg:py-20">
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 py-14 lg:grid-cols-2 lg:gap-20 lg:py-20">
           <div>
           <div className="motion-safe:animate-slide-up inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
             <Sparkles className="h-3.5 w-3.5" /> Learning Management &amp; Virtual Classroom Platform
@@ -585,9 +590,12 @@ export default function MarketingHome() {
             {PAIN_POINTS.map((p, i) => (
               <Reveal key={p.pain} delayMs={i * 80}>
                 <div className="rounded-2xl border border-black/10 bg-white p-6 sm:p-7">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F6F9] text-[#5B6472]">
-                    <p.icon className="h-5 w-5" />
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F5F6F9] text-[#5B6472]">
+                      <p.icon className="h-4 w-4" />
+                    </span>
+                    <span className="text-xs font-bold uppercase tracking-wide text-[#8B93A1]">{p.label}</span>
+                  </div>
                   <div className="mt-4 flex items-start gap-3">
                     <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#B8BEC9]" />
                     <p className="text-base leading-snug text-[#5B6472] sm:text-lg">{p.pain}</p>
