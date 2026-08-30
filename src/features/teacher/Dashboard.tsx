@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { addDays, endOfWeek, isWithinInterval, parseISO, startOfDay, startOfWeek } from "date-fns";
+import { addDays, endOfWeek, isWithinInterval, parse, parseISO, startOfDay, startOfWeek } from "date-fns";
 import {
   AlertTriangle,
   ArrowRight,
@@ -33,6 +33,7 @@ import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
 import { listMyDemoBookings, toAwaitingFeedback } from "@/api/demoBookings";
+import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { isJoinable, joinHint } from "@/features/parent/utils";
@@ -64,16 +65,39 @@ const STATUS_ICON: Partial<Record<SessionStatus, typeof PartyPopper>> = {
   demo: Sparkles,
 };
 
+function parseMonth(month: string) {
+  return parse(month, "MMMM yyyy", new Date());
+}
+
 export default function TeacherDashboard() {
   const { userName } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
   const usingApi = apiEnabled();
 
-  // Live teacher data; demo mode keeps the mock roster.
-  const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(
-    () => listMySessions().then((s) => s.map(toFrontendSession)),
-    []
+  // Sessions plus every completed one's real per-child attendance, fetched together (same
+  // pattern as Attendance.tsx): there's no aggregate attendance endpoint, so the per-session
+  // one is fetched once per completed session and aggregated client-side here, bounded by
+  // how many completed sessions this teacher actually has.
+  const { data: apiSessionData, loading: sessionsLoading, error: sessionsError } = useApiData<{
+    sessions: ClassSession[];
+    attendanceBySession: Record<string, ApiSessionAttendance[]>;
+  }>(
+    async () => {
+      const sessions = await listMySessions().then((s) => s.map(toFrontendSession));
+      const completed = sessions.filter((s) => s.status === "completed");
+      const entries = await Promise.all(
+        completed.map((s) =>
+          listAttendance(s.id)
+            .then((records) => [s.id, records] as const)
+            .catch(() => [s.id, [] as ApiSessionAttendance[]] as const)
+        )
+      );
+      return { sessions, attendanceBySession: Object.fromEntries(entries) };
+    },
+    { sessions: [], attendanceBySession: {} },
+    { sessions: [], attendanceBySession: {} }
   );
+  const apiSessions = apiSessionData.sessions;
   const { data: apiPayouts, loading: payoutsLoading, error: payoutsError } = useApiData<TeacherPayout[]>(
     () => listMyPayouts().then((p) => p.map(toFrontendPayout)),
     []
@@ -105,17 +129,26 @@ export default function TeacherDashboard() {
       (s.status === "scheduled" || s.status === "completed" || s.status === "demo")
   );
 
-  // Attendance average has no aggregate endpoint yet, so it's demo-only.
   const teacherBatchIds = BATCHES.filter((b) => b.teacherId === TEACHER_ID).map((b) => b.id);
   const teacherChildren = CHILDREN.filter((c) => teacherBatchIds.includes(c.batchId));
+  const apiStudentRecords = usingApi
+    ? Object.values(apiSessionData.attendanceBySession)
+        .flat()
+        .filter((r) => r.participantType === "Student")
+    : [];
   const avgAttendance = usingApi
-    ? 0
+    ? apiStudentRecords.length > 0
+      ? Math.round((apiStudentRecords.filter((r) => r.status === "Present").length / apiStudentRecords.length) * 100)
+      : 0
     : teacherChildren.length
       ? Math.round(teacherChildren.reduce((sum, c) => sum + c.attendancePercent, 0) / teacherChildren.length)
       : 0;
 
   const payouts = usingApi ? apiPayouts : getPayoutsForTeacher(TEACHER_ID);
-  const latestPayout = payouts[payouts.length - 1];
+  // The API returns payouts newest-first; the mock array happens to be oldest-first. Sort
+  // explicitly by period rather than trusting either array's incoming order — same approach
+  // as Payout.tsx's own "latest" derivation.
+  const latestPayout = [...payouts].sort((a, b) => parseMonth(b.month).getTime() - parseMonth(a.month).getTime())[0];
 
   const pendingFeedback = usingApi ? apiPending : DEMO_FEEDBACKS.filter((f) => f.teacherName === TEACHER_NAME && !f.submitted);
 
@@ -152,9 +185,10 @@ export default function TeacherDashboard() {
         <KpiCard
           label="Student Attendance"
           value={avgAttendance ? `${avgAttendance}%` : "—"}
-          detail={usingApi && !avgAttendance ? "Not available yet" : undefined}
+          detail={usingApi && !avgAttendance ? "No completed sessions yet" : undefined}
           icon={Users}
           tone="success"
+          loading={usingApi ? sessionsLoading : undefined}
           trend={avgAttendance ? { value: avgAttendance - 90, label: "vs 90% target" } : undefined}
         />
         <KpiCard

@@ -138,6 +138,9 @@ export default function TeacherLeave() {
           toast({ variant: "success", title: "Leave request submitted", description: "Pending admin approval." });
         })
         .catch((err: Error) => {
+          // Deliberately not resetForm() here — a failed submission keeps the teacher's
+          // dates/reason in place so they can fix whatever's wrong and retry without
+          // retyping the whole request.
           setSubmitError(err.message);
           toast({ variant: "error", title: "Couldn't submit leave request", description: err.message });
         });

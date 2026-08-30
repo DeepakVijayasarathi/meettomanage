@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, DoorOpen, PartyPopper, PhoneOff, Sparkles, Users, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, PartyPopper, PhoneOff, Sparkles, Users, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
+import { useToast } from "@/hooks/use-toast";
 import { postEngagement } from "@/api/engagement";
-import { getClassroomSettings, getJitsiJoin, registerRecording } from "@/api/sessions";
+import { completeSession, getClassroomSettings, getJitsiJoin, registerRecording } from "@/api/sessions";
+import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { primeAudioUnlock } from "@/lib/sounds";
 import InteractivePanel from "./InteractivePanel";
@@ -98,6 +100,12 @@ export default function JitsiLive({
   const navigate = useNavigate();
   const { userName: accountName } = useSession();
   const userName = displayName || accountName;
+  const { toast } = useToast();
+  // Nothing else in the app ever calls POST /sessions/{id}/complete — this screen leaving
+  // is the one and only trigger, so it must actually fire exactly once per class, not get
+  // skipped (session stuck "Scheduled" forever, invisible on Attendance, payout never
+  // accrues) or double-fire (readyToClose + the Leave button both reachable in one visit).
+  const completedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [celebrating, setCelebrating] = useState(false);
@@ -123,6 +131,7 @@ export default function JitsiLive({
   const [recordingIssue, setRecordingIssue] = useState<string | null>(null);
   const recordingWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [endClassConfirmOpen, setEndClassConfirmOpen] = useState(false);
   // Sourced from Jitsi's own participantJoined/Left events rather than the SignalR
   // interactive-layer roster: a demo lead has no account and joins straight from the
   // confirmation email's Jitsi link, so they never touch the app or its hub — but
@@ -163,6 +172,32 @@ export default function JitsiLive({
 
   // The interactive layer needs a real session id for the hub group + engagement.
   const interactive = !!sessionId && GUID_RE.test(sessionId);
+
+  // "End Class" handler — the only place in the whole app that ever calls the complete-
+  // session endpoint (nothing runs this on a timer or on plain Leave, which stays a
+  // non-terminal pause). Marks the class delivered: accrues the teacher's payout for it,
+  // generates/sends the class summary. Never blocks the teacher's exit on the network call
+  // — fire-and-forget, with a toast only on a real failure so a stuck-Scheduled session
+  // doesn't silently stay invisible on Attendance/Payout with no indication anything went wrong.
+  function completeAndLeave() {
+    if (mode === "teacher" && interactive && !completedRef.current) {
+      completedRef.current = true;
+      completeSession(sessionId!)
+        .then(() => toast({ variant: "success", title: "Class ended", description: "Marked delivered — your payout for it will reflect shortly." }))
+        .catch((err: unknown) => {
+          // 400 here is almost always "already completed" (e.g. a double-click on the
+          // confirm button) — not a real failure, so nothing needs surfacing.
+          if (err instanceof ApiError && err.status === 400) return;
+          const message = err instanceof Error ? err.message : "Could not save this class's completion.";
+          toast({
+            variant: "error",
+            title: "Class ended, but completion didn't save",
+            description: `${message} Ask an admin to check "${title ?? "this class"}" if it doesn't show as delivered.`,
+          });
+        });
+    }
+    navigate(-1);
+  }
 
   function celebrate(message?: string) {
     setCelebrationMessage(message);
@@ -552,6 +587,20 @@ export default function JitsiLive({
             </div>
           )}
           <div className="h-6 w-px bg-white/10" aria-hidden="true" />
+          {/* Distinct from Leave: Leave is a non-terminal pause (rejoin any time, roster/
+              whiteboard just wait), while this is the only thing anywhere in the app that
+              marks the class delivered — accrues payout, generates/sends the summary. */}
+          {mode === "teacher" && interactive && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="gap-1.5 rounded-full border border-success/30 bg-success/15 text-success shadow-md shadow-success/10 transition-transform hover:scale-[1.03] hover:bg-success/25"
+              onClick={() => setEndClassConfirmOpen(true)}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              End Class
+            </Button>
+          )}
           <Button
             size="sm"
             variant="destructive"
@@ -569,13 +618,23 @@ export default function JitsiLive({
         title="Leave the class?"
         description={
           mode === "teacher"
-            ? "The whiteboard, quiz and roster controls will pause for your students until you rejoin. You can rejoin any time from My Classes."
+            ? "The whiteboard, quiz and roster controls will pause for your students until you rejoin. You can rejoin any time from My Classes. This does not end or complete the class — use \"End Class\" for that."
             : "You can rejoin any time before the class ends."
         }
         confirmLabel="Leave"
         destructive
         onConfirm={() => navigate(-1)}
       />
+      {mode === "teacher" && interactive && (
+        <ConfirmDialog
+          open={endClassConfirmOpen}
+          onOpenChange={setEndClassConfirmOpen}
+          title="End this class?"
+          description="This marks the class as delivered, calculates your payout for it, and emails today's summary to parents. This can't be undone."
+          confirmLabel="End Class"
+          onConfirm={completeAndLeave}
+        />
+      )}
       {/* Teacher-only, dismissible: makes a silent auto-recording failure (most commonly
           "no Jibri pool provisioned on the video server" — see docs/JITSI_ARCHITECTURE.md)
           visible instead of the teacher just never noticing the REC badge never appeared. */}

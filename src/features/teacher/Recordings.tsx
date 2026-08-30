@@ -31,6 +31,11 @@ export default function TeacherRecordings() {
   const [entries, setEntries] = useState<RecordingEntry[]>([]);
   const [loading, setLoading] = useState(usingApi);
   const [error, setError] = useState<string | null>(null);
+  // Count of completed classes whose recordings lookup actually failed (network/permission/
+  // server error) — distinct from a class that legitimately has none registered. The list
+  // endpoint returns 200 + [] for "none registered", so anything landing in the catch below
+  // is a real failure and shouldn't be silently indistinguishable from an empty result.
+  const [partialErrorCount, setPartialErrorCount] = useState(0);
   const [preview, setPreview] = useState<RecordingEntry | null>(null);
 
   useEffect(() => {
@@ -41,29 +46,29 @@ export default function TeacherRecordings() {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setPartialErrorCount(0);
 
     listMySessions()
       .then(async (apiSessions) => {
         const completed = apiSessions.map(toFrontendSession).filter((s) => s.status === "completed");
 
-        // One recordings lookup per completed class — mirrors ParentRecordings' approach;
-        // a class with nothing registered just contributes nothing rather than an error.
         const results = await Promise.all(
           completed.map(async (session) => {
             try {
               const recs = await listRecordings(session.id);
-              return recs.map((recording) => ({ recording, session }));
+              return { recs: recs.map((recording) => ({ recording, session })), failed: false };
             } catch {
-              return [];
+              return { recs: [] as RecordingEntry[], failed: true };
             }
           })
         );
 
         if (cancelled) return;
         const flat = results
-          .flat()
+          .flatMap((r) => r.recs)
           .sort((a, b) => new Date(b.recording.createdAtUtc).getTime() - new Date(a.recording.createdAtUtc).getTime());
         setEntries(flat);
+        setPartialErrorCount(results.filter((r) => r.failed).length);
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "Could not load recordings.");
@@ -103,6 +108,12 @@ export default function TeacherRecordings() {
       {usingApi && error && (
         <InlineAlert variant="warning" className="mt-4">
           Could not load recordings ({error}).
+        </InlineAlert>
+      )}
+
+      {usingApi && !error && partialErrorCount > 0 && (
+        <InlineAlert variant="warning" className="mt-4">
+          Couldn't load recordings for {partialErrorCount} of your classes — they may be missing from the list below.
         </InlineAlert>
       )}
 
