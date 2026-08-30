@@ -386,34 +386,42 @@ const NAV_LINKS = [
 /** Every answer restates a fact already stated elsewhere on this page (STATS/FEATURES/PAIN_POINTS/SECURITY_ITEMS) — no numbers or claims invented for this section alone. */
 const FAQS = [
   {
+    icon: Video,
     q: "Is this just another video-call tool?",
     a: "No — the live classroom is one part of it. Scheduling, admissions, billing and reporting all live in the same system, so a session connects straight to attendance, invoices and reports instead of sitting in its own app.",
   },
   {
+    icon: Clock,
     q: "How long can a family access a class recording?",
     a: "Recordings stay available for a 15-day window after each session, from the same portal the family already uses to check schedules and pay fees.",
   },
   {
+    icon: RefreshCw,
     q: "What happens when a fee payment is late?",
     a: "Invoices generate automatically and a family's access can suspend automatically when a payment is overdue — then restore instantly the moment they pay, no manual follow-up needed.",
   },
   {
+    icon: Lock,
     q: "Do teachers, parents and admins all use the same login screen?",
     a: "Yes. One sign-in, then each of the 8 role-based portals — admin, teacher, parent, student and more — shows only what that person needs.",
   },
   {
+    icon: ShieldCheck,
     q: "Can I control what each staff member can see or do?",
     a: "Yes — every portal is gated by permission, not just by role. A teacher's portal can't reach billing, and front-desk staff can be given exactly the access they need and nothing more.",
   },
   {
+    icon: CalendarCheck2,
     q: "How does scheduling handle a no-show or a clash?",
     a: "Batches are scheduled against a conflict-free calendar, no-shows are handled automatically, and rescheduling happens without a manual back-and-forth.",
   },
   {
+    icon: CreditCard,
     q: "How is a payment actually collected — and is it secure?",
     a: "Payments route through Razorpay or Cashfree, whichever your academy has configured, so collection isn't dependent on a single gateway going down.",
   },
   {
+    icon: Sparkles,
     q: "How do I see it before committing to anything?",
     a: "Book a free demo class. No payment details required — we match you with a teacher and send the join link by email.",
   },
@@ -987,11 +995,14 @@ export default function MarketingHome() {
             {FAQS.map((item, i) => (
               <Reveal key={item.q} delayMs={i * 60}>
                 <details className="group rounded-2xl border border-black/10 bg-[#F5F6F9] open:shadow-soft">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-bold text-[#171B22] marker:content-none [&::-webkit-details-marker]:hidden">
-                    {item.q}
+                  <summary className="flex cursor-pointer list-none items-center gap-4 px-5 py-4 text-sm font-bold text-[#171B22] marker:content-none [&::-webkit-details-marker]:hidden">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#EA580C] shadow-soft">
+                      <item.icon className="h-4 w-4" />
+                    </span>
+                    <span className="flex-1">{item.q}</span>
                     <ChevronDown className="h-4 w-4 shrink-0 text-[#5B6472] transition-transform duration-200 group-open:rotate-180" />
                   </summary>
-                  <p className="px-5 pb-5 text-sm leading-relaxed text-[#5B6472]">{item.a}</p>
+                  <p className="pb-5 pl-[4.25rem] pr-5 text-sm leading-relaxed text-[#5B6472]">{item.a}</p>
                 </details>
               </Reveal>
             ))}
