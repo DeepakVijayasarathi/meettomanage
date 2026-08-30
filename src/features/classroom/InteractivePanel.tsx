@@ -8,6 +8,7 @@ import { ClassroomHubClient, type ClassroomHubState, type HubParticipant } from 
 import { postEngagement } from "@/api/engagement";
 import { getLeaderboard, postAward } from "@/api/gamification";
 import { getQuizQuestionsForSession } from "@/api/quizQuestions";
+import { getWhiteboardActivitiesForSession, type ApiWhiteboardActivity } from "@/api/whiteboardActivities";
 import Whiteboard, { type BoardOp } from "./Whiteboard";
 import QuizOverlay from "./QuizOverlay";
 import type { LeaderboardEntry, QuizQuestion } from "./classroomData";
@@ -47,6 +48,10 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
   // department's shared ones) — replaces what used to be one hardcoded set every class
   // shared regardless of subject. Empty until it loads, or if nothing's configured yet.
   const [questionBank, setQuestionBank] = useState<QuizQuestion[]>([]);
+  // This class's resolved whiteboard activity bank, same course-then-department fallback as
+  // the quiz bank above — replaces what used to be one hardcoded fruit/letter/hotspot set
+  // every class shared regardless of subject.
+  const [activityBank, setActivityBank] = useState<ApiWhiteboardActivity[]>([]);
   // Real per-option answer counts for the current question, built from the hub's own
   // QuizAnswer broadcasts — replaces a formula that fabricated plausible-looking numbers.
   const [quizTally, setQuizTally] = useState<Record<number, number[]>>({});
@@ -176,6 +181,21 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
             correctIndex: q.options.findIndex((o) => o.isCorrect),
           }))
         );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  // Same resolution rule as the quiz bank above (or empty if nothing's configured yet —
+  // WhiteboardActivity shows an honest "no activities yet" state rather than falling back
+  // to hardcoded content).
+  useEffect(() => {
+    let cancelled = false;
+    getWhiteboardActivitiesForSession(sessionId)
+      .then((activities) => {
+        if (!cancelled) setActivityBank(activities);
       })
       .catch(() => undefined);
     return () => {
@@ -327,6 +347,8 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         <TabsContent value="board" className="mt-0 min-h-0 flex-1 overflow-hidden bg-brand-navy">
           <Whiteboard
             canDraw={canDraw}
+            mode={mode}
+            activities={activityBank}
             onBoardOp={broadcastBoardOp}
             subscribeBoardOps={subscribeBoardOps}
             onInteraction={() => postEngagement(sessionId, displayName, "WhiteboardInteraction")}

@@ -23,6 +23,7 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import WhiteboardActivity from "./WhiteboardActivity";
+import type { ApiWhiteboardActivity } from "@/api/whiteboardActivities";
 
 type ToolId = "pen" | "eraser" | "rectangle" | "circle" | "line" | "text" | "sticky" | "pan";
 
@@ -166,6 +167,10 @@ function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
 
 interface WhiteboardProps {
   canDraw: boolean;
+  mode: "teacher" | "student";
+  /** This class's resolved activity bank (Admin → Academics → Activity Bank), fetched once
+   *  by InteractivePanel — see WhiteboardActivity's own doc comment. */
+  activities: ApiWhiteboardActivity[];
   onActivityComplete?: () => void;
   /** Engagement tracking: fired for every committed stroke/text/sticky. */
   onInteraction?: () => void;
@@ -175,7 +180,7 @@ interface WhiteboardProps {
   subscribeBoardOps?: (handler: (op: BoardOp) => void) => () => void;
 }
 
-export default function Whiteboard({ canDraw, onActivityComplete, onInteraction, onBoardOp, subscribeBoardOps }: WhiteboardProps) {
+export default function Whiteboard({ canDraw, mode, activities, onActivityComplete, onInteraction, onBoardOp, subscribeBoardOps }: WhiteboardProps) {
   const [pages, setPages] = useState<Page[]>([{ id: nextId(), strokes: [] }]);
   // Mirrors `pages` for the remote-ops subscription below, which deliberately only
   // subscribes once ([subscribeBoardOps], not [pages]) — its closure over `pages` would
@@ -730,6 +735,8 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
 
         {showActivity && (
           <WhiteboardActivity
+            activities={activities}
+            mode={mode}
             onClose={() => toggleActivity(false)}
             onAllMatched={onActivityComplete}
           />
