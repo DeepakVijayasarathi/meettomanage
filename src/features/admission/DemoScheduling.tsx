@@ -161,7 +161,12 @@ export default function AdmissionDemoScheduling() {
     time.length > 0 &&
     // API mode auto-assigns a teacher when none is picked, but needs the parent's email
     (apiEnabled() ? parents[0].email.trim().length > 0 : teacherId.length > 0) &&
-    parents.every((p) => p.name.trim().length > 0 && p.phone.trim().length > 0);
+    parents.every((p) => p.name.trim().length > 0 && p.phone.trim().length > 0) &&
+    // Every parent past the first is only ever added to be invited as a participant, and the
+    // API requires an email for any adult invitee (it has no other way to send a confirmation/
+    // join link) -- requiring it here too means the success toast's "all invited parents will
+    // receive an invite" is actually true, instead of quietly dropping anyone left blank.
+    (!apiEnabled() || parents.every((p) => p.email.trim().length > 0));
 
   function resetForm() {
     setChildName("");
@@ -193,10 +198,7 @@ export default function AdmissionDemoScheduling() {
         scheduledStartAtUtc: startUtc,
         scheduledEndAtUtc: endUtc,
         participants: [
-          ...parents
-            .slice(1)
-            .filter((p) => p.email.trim().length > 0)
-            .map((p) => ({ name: p.name.trim(), email: p.email.trim(), phone: p.phone.trim() || null })),
+          ...parents.slice(1).map((p) => ({ name: p.name.trim(), email: p.email.trim(), phone: p.phone.trim() || null })),
           ...extraChildren
             .filter((name) => name.trim().length > 0)
             .map((name) => ({ name: name.trim(), email: null, phone: null, isChild: true })),
@@ -488,7 +490,7 @@ export default function AdmissionDemoScheduling() {
                 <div key={p.id} className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
                   <Input placeholder={`Parent/guardian ${idx + 1} name`} aria-label={`Parent/guardian ${idx + 1} name`} value={p.name} onChange={(e) => updateParent(p.id, "name", e.target.value)} />
                   <Input placeholder="Phone number" aria-label={`Parent/guardian ${idx + 1} phone number`} value={p.phone} onChange={(e) => updateParent(p.id, "phone", e.target.value)} />
-                  <Input placeholder="Email address" aria-label={`Parent/guardian ${idx + 1} email address`} value={p.email} onChange={(e) => updateParent(p.id, "email", e.target.value)} />
+                  <Input placeholder="Email address (required to invite)" aria-label={`Parent/guardian ${idx + 1} email address`} value={p.email} onChange={(e) => updateParent(p.id, "email", e.target.value)} />
                   <Button
                     type="button"
                     variant="ghost"

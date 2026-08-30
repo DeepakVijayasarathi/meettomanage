@@ -32,6 +32,7 @@ export interface ApiDemoBooking {
   departmentName: string | null;
   conversionStatus: ApiConversionStatus;
   followUpNotes: string | null;
+  nextFollowUpOn: string | null;
   scheduledStartAtUtc: string | null;
   scheduledEndAtUtc: string | null;
   meetingRoomId: string | null;
@@ -102,11 +103,12 @@ export function toFrontendLead(booking: ApiDemoBooking): Lead {
     recommendedCourse: booking.departmentName ?? "—",
     conversionStage: STAGE_FROM_API[booking.conversionStatus],
     lastContactedOn: demoDate,
+    nextFollowUpOn: booking.nextFollowUpOn ?? undefined,
     assignedTo: "",
     createdOn: demoDate,
-    notes: booking.followUpNotes
-      ? [{ id: `${booking.id}-notes`, date: demoDate, note: booking.followUpNotes, loggedBy: "Admission team" }]
-      : [],
+    // Real per-note date/author history is fetched separately (see getDemoFollowUpNotes) once a
+    // lead is opened -- the API no longer collapses every note ever logged into a single string.
+    notes: [],
   };
 }
 
@@ -179,12 +181,27 @@ export async function createDemoBooking(input: {
 export async function updateConversionStatus(
   id: string,
   conversionStatus: ApiConversionStatus,
-  followUpNotes?: string
+  note?: string,
+  nextFollowUpOn?: string
 ): Promise<ApiDemoBooking> {
   return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${id}/conversion-status`, {
     method: "PUT",
-    body: JSON.stringify({ conversionStatus, followUpNotes }),
+    body: JSON.stringify({ conversionStatus, note, nextFollowUpOn }),
   });
+}
+
+/** One follow-up note logged on a booking, with the actual logging user and timestamp. */
+export interface ApiDemoBookingFollowUp {
+  id: string;
+  atUtc: string;
+  loggedByName: string | null;
+  note: string;
+  nextFollowUpOn: string | null;
+}
+
+/** Every follow-up note ever logged on this booking, newest first. */
+export async function listDemoFollowUpNotes(bookingId: string): Promise<ApiDemoBookingFollowUp[]> {
+  return apiFetch<ApiDemoBookingFollowUp[]>(`/api/demo-bookings/${bookingId}/follow-up-notes`);
 }
 
 export interface ApiDemoFeedback {
