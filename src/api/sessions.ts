@@ -69,6 +69,20 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
   };
 }
 
+/**
+ * Marks a session completed — accrues the teacher's payout for it, generates/stores the
+ * class summary, and (for a batch session) emails it to parents. This is the *only* thing
+ * that ever moves a session out of Scheduled into Completed; nothing does it automatically
+ * on a timer. The live classroom (JitsiLive) is the one caller today, firing it when the
+ * teacher leaves their own class.
+ */
+export async function completeSession(sessionId: string, summary?: string): Promise<ApiClassSession> {
+  return apiFetch<ApiClassSession>(`/api/sessions/${sessionId}/complete`, {
+    method: "POST",
+    body: JSON.stringify(summary ? { summary } : {}),
+  });
+}
+
 /** Personal iCalendar feed URL (absolute) for external calendar apps — created server-side on first request. */
 export async function getCalendarFeedUrl(): Promise<string> {
   const { url } = await apiFetch<{ url: string }>("/api/sessions/calendar/feed-url");
