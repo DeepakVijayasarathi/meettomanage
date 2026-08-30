@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, Download, IndianRupee, Loader2, Settings2, UsersRound, Wallet } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Download, IndianRupee, Loader2, Settings2, UsersRound, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -20,9 +20,19 @@ import { getTeacherById } from "@/data/users";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { adjustPayoutItem, finalizePayout, listPayouts, markPayoutPaid, toFrontendPayout } from "@/api/payouts";
+import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
 import { downloadReportCsv } from "@/api/reports";
 import type { TeacherPayout, TeacherPayoutItem } from "@/types";
 import { formatCurrency, formatNumber, getInitials, toCsv } from "@/lib/utils";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
+
+function formatClockTime(isoUtc: string) {
+  const { time } = utcIsoToLocalDateTime(isoUtc);
+  const [h, m] = time.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}
 
 function downloadCsv(filename: string, csv: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -61,13 +71,30 @@ export default function AdminPayouts() {
   const [reviewReasons, setReviewReasons] = useState<Record<string, string>>({});
   const [reviewSavingId, setReviewSavingId] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  // The item's own note already says *how many* minutes were attended, but not *when* —
+  // this pulls the teacher's actual join/leave timestamps for the review dialog so the
+  // reason isn't just a generated sentence, it's the real clock times an admin can check
+  // against the scheduled slot themselves. Best-effort per item: a lookup failure just
+  // leaves that item without a timing line rather than blocking the review dialog.
+  const [reviewTiming, setReviewTiming] = useState<Record<string, ApiSessionAttendance | null>>({});
 
   function openReview(payout: TeacherPayout) {
     setReviewError(null);
     const flagged = payout.items.filter((i) => i.requiresReview);
     setReviewAmounts(Object.fromEntries(flagged.map((i) => [i.id, String(i.amount)])));
     setReviewReasons(Object.fromEntries(flagged.map((i) => [i.id, ""])));
+    setReviewTiming({});
     setReviewPayout(payout);
+
+    for (const item of flagged) {
+      if (!item.classSessionId) continue;
+      listAttendance(item.classSessionId)
+        .then((records) => {
+          const teacherRecord = records.find((r) => r.participantType === "Teacher") ?? null;
+          setReviewTiming((prev) => ({ ...prev, [item.id]: teacherRecord }));
+        })
+        .catch(() => undefined);
+    }
   }
 
   async function saveReviewItem(item: TeacherPayoutItem) {
@@ -402,9 +429,24 @@ export default function AdminPayouts() {
                 </DialogDescription>
               </DialogHeader>
               <div className="flex flex-col gap-4">
-                {reviewPayout.items.filter((i) => i.requiresReview).map((item) => (
+                {reviewPayout.items.filter((i) => i.requiresReview).map((item) => {
+                  const timing = reviewTiming[item.id];
+                  return (
                   <div key={item.id} className="rounded-lg border border-border p-3">
                     <p className="text-sm text-muted-foreground">{item.note}</p>
+                    {timing && (
+                      <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-foreground">
+                        <Clock className="h-3 w-3 text-muted-foreground" />
+                        {timing.joinedAtUtc ? (
+                          <>
+                            Joined {formatClockTime(timing.joinedAtUtc)}
+                            {timing.leftAtUtc ? ` · Left ${formatClockTime(timing.leftAtUtc)}` : " · never left before the class was marked complete"}
+                          </>
+                        ) : (
+                          "Never joined — no join time recorded at all"
+                        )}
+                      </p>
+                    )}
                     <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className="grid gap-1.5">
                         <Label htmlFor={`review-amount-${item.id}`}>Amount (₹)</Label>
@@ -432,7 +474,8 @@ export default function AdminPayouts() {
                       </Button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 {reviewError && <p className="text-sm font-medium text-destructive">{reviewError}</p>}
               </div>
               <DialogFooter>

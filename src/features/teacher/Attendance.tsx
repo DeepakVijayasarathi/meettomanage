@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, ClipboardList, IndianRupee, Users, Video, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardList, IndianRupee, Users, Video, XCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -18,6 +19,7 @@ import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
 import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import type { ClassSession, TeacherPayout } from "@/types";
 
@@ -63,6 +65,14 @@ interface SessionPayment {
   amount: number;
   status: TeacherPayout["status"];
   items: TeacherPayout["items"];
+}
+
+function formatClockTime(isoUtc: string) {
+  const { time } = utcIsoToLocalDateTime(isoUtc);
+  const [h, m] = time.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
 function sessionSubtitle(session: ClassSession) {
@@ -233,12 +243,23 @@ export default function TeacherAttendance() {
       render: (row) => {
         const payment = paymentBySession[row.id];
         if (!payment) return <span className="text-sm text-muted-foreground">—</span>;
+        const flagged = payment.items.find((i) => i.requiresReview);
         return (
           <div className="flex items-center gap-1.5">
             <span className="text-sm font-medium text-foreground">{formatCurrency(payment.amount)}</span>
             <Badge variant={payment.status === "paid" ? "success" : payment.status === "finalized" ? "default" : "warning"}>
               {payment.status === "paid" ? "Paid" : payment.status === "finalized" ? "Finalized" : "Pending"}
             </Badge>
+            {flagged && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex text-warning">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{flagged.note ?? "Flagged for admin review before this payout is finalized."}</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         );
       },
@@ -374,6 +395,7 @@ export default function TeacherAttendance() {
                       </p>
                     );
                   }
+                  const flagged = payment.items.find((i) => i.requiresReview);
                   return (
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
@@ -387,6 +409,34 @@ export default function TeacherAttendance() {
                           </Badge>
                         </div>
                       </div>
+                      {flagged &&
+                        (() => {
+                          // Same data the admin's own review dialog uses — already fetched
+                          // alongside the session list above, not a new request.
+                          const teacherRecord = apiEnabled()
+                            ? (apiData.attendanceBySession[selected.id] ?? []).find((r) => r.participantType === "Teacher")
+                            : undefined;
+                          return (
+                            // The amount above is never auto-reduced for short attendance — it's
+                            // priced off the scheduled duration and always will be — but this
+                            // specific class was flagged for a human to check before the payout
+                            // is finalized, which the amount alone gives no hint of.
+                            <div className="flex flex-col gap-1 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning-foreground">
+                              <div className="flex items-start gap-2">
+                                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                <span>{flagged.note ?? "Flagged for admin review before this payout is finalized."}</span>
+                              </div>
+                              {teacherRecord?.joinedAtUtc && (
+                                <p className="pl-5 text-foreground/80">
+                                  You joined {formatClockTime(teacherRecord.joinedAtUtc)}
+                                  {teacherRecord.leftAtUtc
+                                    ? ` · left ${formatClockTime(teacherRecord.leftAtUtc)}`
+                                    : " · were still connected when the class was marked complete"}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
                       {payment.items.length > 1 &&
                         payment.items.map((item) => (
                           <div key={item.id} className="flex items-center justify-between gap-3 pl-3 text-xs text-muted-foreground">

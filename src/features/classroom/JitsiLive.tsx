@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, DoorOpen, PartyPopper, PhoneOff, Sparkles, Users, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
 import { useToast } from "@/hooks/use-toast";
@@ -131,7 +132,6 @@ export default function JitsiLive({
   const [recordingIssue, setRecordingIssue] = useState<string | null>(null);
   const recordingWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
-  const [endClassConfirmOpen, setEndClassConfirmOpen] = useState(false);
   // Sourced from Jitsi's own participantJoined/Left events rather than the SignalR
   // interactive-layer roster: a demo lead has no account and joins straight from the
   // confirmation email's Jitsi link, so they never touch the app or its hub — but
@@ -587,20 +587,6 @@ export default function JitsiLive({
             </div>
           )}
           <div className="h-6 w-px bg-white/10" aria-hidden="true" />
-          {/* Distinct from Leave: Leave is a non-terminal pause (rejoin any time, roster/
-              whiteboard just wait), while this is the only thing anywhere in the app that
-              marks the class delivered — accrues payout, generates/sends the summary. */}
-          {mode === "teacher" && interactive && (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="gap-1.5 rounded-full border border-success/30 bg-success/15 text-success shadow-md shadow-success/10 transition-transform hover:scale-[1.03] hover:bg-success/25"
-              onClick={() => setEndClassConfirmOpen(true)}
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              End Class
-            </Button>
-          )}
           <Button
             size="sm"
             variant="destructive"
@@ -612,27 +598,65 @@ export default function JitsiLive({
           </Button>
         </div>
       </header>
-      <ConfirmDialog
-        open={leaveConfirmOpen}
-        onOpenChange={setLeaveConfirmOpen}
-        title="Leave the class?"
-        description={
-          mode === "teacher"
-            ? "The whiteboard, quiz and roster controls will pause for your students until you rejoin. You can rejoin any time from My Classes. This does not end or complete the class — use \"End Class\" for that."
-            : "You can rejoin any time before the class ends."
-        }
-        confirmLabel="Leave"
-        destructive
-        onConfirm={() => navigate(-1)}
-      />
-      {mode === "teacher" && interactive && (
+      {/* One button, one dialog: a separate "End Class" button next to Leave meant a
+          teacher could just click the familiar red Leave button out of habit and skip
+          completion entirely — silently reproducing the exact "class never marked
+          delivered" bug this whole flow exists to fix. Asking every single time removes
+          that escape hatch. Non-teachers (and non-interactive rooms, e.g. a personal
+          meeting) have nothing to complete, so they get the plain single-action dialog. */}
+      {mode === "teacher" && interactive ? (
+        <Dialog open={leaveConfirmOpen} onOpenChange={setLeaveConfirmOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Leaving the class</DialogTitle>
+              <DialogDescription>Is this class actually over, or are you just stepping away for a moment?</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="secondary"
+                className="justify-start gap-2 border border-success/30 bg-success/15 text-success hover:bg-success/25"
+                onClick={() => {
+                  setLeaveConfirmOpen(false);
+                  completeAndLeave();
+                }}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="flex flex-col items-start text-left">
+                  <span className="font-semibold">End the class</span>
+                  <span className="text-xs font-normal opacity-80">Marks it delivered, calculates your payout, emails today's summary to parents. Can't be undone.</span>
+                </span>
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  setLeaveConfirmOpen(false);
+                  navigate(-1);
+                }}
+              >
+                <PhoneOff className="h-4 w-4" />
+                <span className="flex flex-col items-start text-left">
+                  <span className="font-semibold">Just leave for now</span>
+                  <span className="text-xs font-normal opacity-80">Class stays open — whiteboard/roster pause for students until you rejoin from My Classes.</span>
+                </span>
+              </Button>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setLeaveConfirmOpen(false)}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : (
         <ConfirmDialog
-          open={endClassConfirmOpen}
-          onOpenChange={setEndClassConfirmOpen}
-          title="End this class?"
-          description="This marks the class as delivered, calculates your payout for it, and emails today's summary to parents. This can't be undone."
-          confirmLabel="End Class"
-          onConfirm={completeAndLeave}
+          open={leaveConfirmOpen}
+          onOpenChange={setLeaveConfirmOpen}
+          title="Leave the class?"
+          description="You can rejoin any time before the class ends."
+          confirmLabel="Leave"
+          destructive
+          onConfirm={() => navigate(-1)}
         />
       )}
       {/* Teacher-only, dismissible: makes a silent auto-recording failure (most commonly
