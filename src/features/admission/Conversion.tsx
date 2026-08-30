@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarCheck2, PhoneCall, PieChart, Sparkles, ThumbsDown, Trophy, Wallet } from "lucide-react";
+import { CalendarCheck2, KeyRound, PhoneCall, PieChart, Sparkles, ThumbsDown, Trophy, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
@@ -16,10 +16,18 @@ import { useApiData } from "@/api/hooks";
 import { listDemoBookings, toApiConversionStatus, toFrontendLead, updateConversionStatus } from "@/api/demoBookings";
 import { LEADS as INITIAL_LEADS, type ConversionStage, type Lead } from "./data";
 
-type BoardStage = "Demo Completed" | "Follow-up" | "Payment Pending" | "Partially Paid" | "Enrolled" | "Not Interested";
+type BoardStage =
+  | "Demo Completed"
+  | "Ready for Enrollment"
+  | "Follow-up"
+  | "Payment Pending"
+  | "Partially Paid"
+  | "Enrolled"
+  | "Not Interested";
 
 const BOARD_STAGES: BoardStage[] = [
   "Demo Completed",
+  "Ready for Enrollment",
   "Follow-up",
   "Payment Pending",
   "Partially Paid",
@@ -29,6 +37,11 @@ const BOARD_STAGES: BoardStage[] = [
 
 const STAGE_META: Record<BoardStage, { icon: LucideIcon; color: string; description: string }> = {
   "Demo Completed": { icon: CalendarCheck2, color: CHART_PALETTE[2], description: "Demo held, awaiting next step" },
+  "Ready for Enrollment": {
+    icon: KeyRound,
+    color: CHART_PALETTE[5],
+    description: "Login created and emailed — awaiting their enrollment form",
+  },
   "Follow-up": { icon: PhoneCall, color: CHART_PALETTE[6], description: "In active follow-up with the parent" },
   "Payment Pending": { icon: Wallet, color: CHART_PALETTE[3], description: "Payment link shared, awaiting payment" },
   "Partially Paid": { icon: PieChart, color: CHART_PALETTE[4], description: "Some payment received, balance due" },
@@ -56,6 +69,7 @@ export default function AdmissionConversion() {
   const columns = useMemo(() => {
     const grouped: Record<BoardStage, Lead[]> = {
       "Demo Completed": [],
+      "Ready for Enrollment": [],
       "Follow-up": [],
       "Payment Pending": [],
       "Partially Paid": [],

@@ -13,6 +13,7 @@
 export type ConversionStage =
   | "Demo Scheduled"
   | "Demo Completed"
+  | "Ready for Enrollment"
   | "Follow-up"
   | "Payment Pending"
   | "Partially Paid"
