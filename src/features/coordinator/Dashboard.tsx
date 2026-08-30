@@ -67,7 +67,16 @@ export default function CoordinatorDashboard() {
 
   const teachersOnLeaveToday = useMemo(() => {
     const ids = new Set<string>();
-    leaves.filter((l) => l.status === "approved" && l.date === TODAY).forEach((l) => ids.add(l.teacherId));
+    // l.date is only the leave's *start* -- a multi-day leave already underway (started
+    // before today, still running) needs its actual span checked, not an exact-date match,
+    // or a teacher a week into a month-long leave wrongly shows as available today.
+    leaves
+      .filter(
+        (l) =>
+          l.status === "approved" &&
+          (l.startAtUtc && l.endAtUtc ? TODAY >= l.startAtUtc.slice(0, 10) && TODAY <= l.endAtUtc.slice(0, 10) : l.date === TODAY)
+      )
+      .forEach((l) => ids.add(l.teacherId));
     sessions.filter((s) => s.date === TODAY && s.status === "leave").forEach((s) => ids.add(s.teacherId));
     return ids.size;
   }, [leaves, sessions, TODAY]);
@@ -80,7 +89,7 @@ export default function CoordinatorDashboard() {
   );
 
   const leaveByStatus = useMemo(() => {
-    const counts: Record<LeaveRequest["status"], number> = { pending: 0, approved: 0, rejected: 0, blocked: 0 };
+    const counts: Record<LeaveRequest["status"], number> = { pending: 0, approved: 0, rejected: 0, blocked: 0, cancelled: 0 };
     leaves.forEach((l) => counts[l.status]++);
     return counts;
   }, [leaves]);

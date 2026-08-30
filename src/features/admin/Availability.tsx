@@ -16,8 +16,23 @@ import { useApiData } from "@/api/hooks";
 import { listHolidays, listLeave, toFrontendLeave } from "@/api/academicOps";
 import { listTeacherOptions } from "@/api/batches";
 import { CHART_PALETTE } from "@/lib/roles";
-import { cn, formatDate, getInitials } from "@/lib/utils";
+import { cn, formatDate, formatDateRange, getInitials } from "@/lib/utils";
 import type { LeaveRequest } from "@/types";
+
+/** row.date is only ever the leave's *start* — this is the real span, when it's known. */
+function leaveDateLabel(row: LeaveRequest): string {
+  return row.startAtUtc && row.endAtUtc ? formatDateRange(row.startAtUtc, row.endAtUtc) : formatDate(row.date, "long");
+}
+
+/** Whether `dateKey` (a local "yyyy-MM-dd") falls anywhere within the leave's own span —
+ *  inclusive of its last day. Exact equality against `date` (the start only) used to mark
+ *  just the first day of a multi-day leave as covered, leaving the rest showing "Available". */
+function leaveCoversDate(leave: LeaveRequest, dateKey: string): boolean {
+  if (leave.startAtUtc && leave.endAtUtc) {
+    return dateKey >= leave.startAtUtc.slice(0, 10) && dateKey <= leave.endAtUtc.slice(0, 10);
+  }
+  return leave.date === dateKey;
+}
 
 // Deterministic reference clock for the mock universe; API mode uses the real clock.
 const NOW = new Date("2026-07-09T12:00:00");
@@ -77,7 +92,9 @@ export default function AdminAvailability() {
   const holidayDates = useMemo(() => new Set(apiHolidays.map((h) => h.date.slice(0, 10))), [apiHolidays]);
 
   const pendingCount = leaves.filter((l) => l.status === "pending").length;
-  const approvedUpcomingCount = leaves.filter((l) => l.status === "approved" && l.date >= today).length;
+  const approvedUpcomingCount = leaves.filter(
+    (l) => l.status === "approved" && (l.endAtUtc ? l.endAtUtc.slice(0, 10) : l.date) >= today
+  ).length;
   const holidaysThisMonth = useMemo(
     () =>
       usingApi
@@ -87,7 +104,7 @@ export default function AdminAvailability() {
   );
   const teachersOnLeaveToday = useMemo(() => {
     const ids = new Set<string>();
-    leaves.filter((l) => l.status === "approved" && l.date === today).forEach((l) => ids.add(l.teacherId));
+    leaves.filter((l) => l.status === "approved" && leaveCoversDate(l, today)).forEach((l) => ids.add(l.teacherId));
     if (!usingApi) SESSIONS.filter((s) => s.date === today && s.status === "leave").forEach((s) => ids.add(s.teacherId));
     return ids.size;
   }, [leaves, usingApi, today]);
@@ -101,7 +118,7 @@ export default function AdminAvailability() {
       : SESSIONS.some((s) => s.date === dateKey && s.status === "holiday");
     if (isHoliday) return "holiday";
     const isOnLeave =
-      leaves.some((l) => l.teacherId === teacherId && l.date === dateKey && l.status === "approved") ||
+      leaves.some((l) => l.teacherId === teacherId && l.status === "approved" && leaveCoversDate(l, dateKey)) ||
       (!usingApi && SESSIONS.some((s) => s.teacherId === teacherId && s.date === dateKey && s.status === "leave"));
     if (isOnLeave) return "leave";
     return "available";
@@ -252,7 +269,12 @@ export default function AdminAvailability() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teacherRoster.map((teacher) => {
             const upcomingApproved = leaves
-              .filter((l) => l.teacherId === teacher.id && l.status === "approved" && l.date >= today)
+              .filter(
+                (l) =>
+                  l.teacherId === teacher.id &&
+                  l.status === "approved" &&
+                  (l.endAtUtc ? l.endAtUtc.slice(0, 10) : l.date) >= today
+              )
               .sort((a, b) => a.date.localeCompare(b.date));
             return (
               <Card key={teacher.id}>
@@ -280,7 +302,7 @@ export default function AdminAvailability() {
                     <div className="flex flex-col gap-1.5">
                       {upcomingApproved.map((l) => (
                         <div key={l.id} className="flex items-center justify-between gap-2 rounded-lg bg-status-leave/10 px-3 py-2 text-xs">
-                          <span className="font-medium text-foreground">{formatDate(l.date, "long")}</span>
+                          <span className="font-medium text-foreground">{leaveDateLabel(l)}</span>
                           <span className="text-muted-foreground">{l.session}</span>
                         </div>
                       ))}

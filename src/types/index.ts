@@ -180,7 +180,10 @@ export interface LeaveRequest {
   session: string;
   reason: string;
   hoursBeforeSession: number;
-  status: "pending" | "approved" | "rejected" | "blocked";
+  status: "pending" | "approved" | "rejected" | "blocked" | "cancelled";
+  /** Full UTC window this leave covers — present in API mode only (see toFrontendLeave). Used to warn before submitting a new request that overlaps an existing one, the same way the backend itself blocks it. */
+  startAtUtc?: string;
+  endAtUtc?: string;
 }
 
 export interface DemoFeedback {

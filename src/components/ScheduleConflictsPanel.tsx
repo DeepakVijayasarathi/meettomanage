@@ -15,6 +15,15 @@ import { LEAVE_REQUESTS } from "@/data/leaves";
 import { startOfWeek, endOfWeek, isWithinInterval, parseISO } from "date-fns";
 import type { ClassSession, LeaveRequest } from "@/types";
 
+/** l.date is only the leave's *start* — a multi-day leave clashing with a session on, say,
+ *  its second week used to go completely undetected since only day one was ever checked. */
+function sessionFallsInLeave(s: ClassSession, l: LeaveRequest): boolean {
+  if (l.startAtUtc && l.endAtUtc) {
+    return s.date >= l.startAtUtc.slice(0, 10) && s.date <= l.endAtUtc.slice(0, 10);
+  }
+  return s.date === l.date;
+}
+
 interface AttentionItem {
   id: string;
   tone: "destructive" | "warning";
@@ -41,27 +50,27 @@ export function ScheduleConflictsPanel() {
     const weekEnd = endOfWeek(now);
 
     leaves.filter((l) => l.status === "approved").forEach((l) => {
-      const clash = sessions.find((s) => s.teacherId === l.teacherId && s.date === l.date && s.status === "scheduled");
+      const clash = sessions.find((s) => s.teacherId === l.teacherId && s.status === "scheduled" && sessionFallsInLeave(s, l));
       if (clash) {
         out.push({
           id: `approved-${l.id}`,
           tone: "destructive",
           icon: AlertTriangle,
           title: `${l.teacherName} is on approved leave, but "${clash.title}" is still scheduled`,
-          description: `${formatDate(l.date, "long")} · ${clash.startTime} — update the calendar or assign a substitute.`,
+          description: `${formatDate(clash.date, "long")} · ${clash.startTime} — update the calendar or assign a substitute.`,
         });
       }
     });
 
     leaves.filter((l) => l.status === "pending").forEach((l) => {
-      const clash = sessions.find((s) => s.teacherId === l.teacherId && s.date === l.date && s.status === "scheduled");
+      const clash = sessions.find((s) => s.teacherId === l.teacherId && s.status === "scheduled" && sessionFallsInLeave(s, l));
       if (clash) {
         out.push({
           id: `pending-${l.id}`,
           tone: "warning",
           icon: Clock,
           title: `${l.teacherName}'s leave request is pending approval`,
-          description: `Requested for ${formatDate(l.date, "long")}, overlapping "${clash.title}" at ${clash.startTime}.`,
+          description: `Requested for ${formatDate(clash.date, "long")}, overlapping "${clash.title}" at ${clash.startTime}.`,
         });
       }
     });

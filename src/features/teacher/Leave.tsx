@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Clock } from "lucide-react";
+import { Clock, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,9 +17,9 @@ import { getSessionsForTeacher } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
-import { listMyLeave, submitLeave, toFrontendLeave } from "@/api/academicOps";
+import { cancelLeave, listMyLeave, submitLeave, toFrontendLeave } from "@/api/academicOps";
 import { localToUtcIso } from "@/lib/datetime";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDateRange } from "@/lib/utils";
 import type { ClassSession, LeaveRequest } from "@/types";
 
 const TEACHER_ID = "t-1";
@@ -53,11 +54,12 @@ function addDays(dateStr: string, days: number): string {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
-const LEAVE_STATUS_VARIANT: Record<LeaveRequest["status"], "warning" | "success" | "destructive"> = {
+const LEAVE_STATUS_VARIANT: Record<LeaveRequest["status"], "warning" | "success" | "destructive" | "muted"> = {
   pending: "warning",
   approved: "success",
   rejected: "destructive",
   blocked: "destructive",
+  cancelled: "muted",
 };
 
 const LEAVE_STATUS_LABEL: Record<LeaveRequest["status"], string> = {
@@ -65,6 +67,7 @@ const LEAVE_STATUS_LABEL: Record<LeaveRequest["status"], string> = {
   approved: "Approved",
   rejected: "Rejected",
   blocked: "Blocked (Late Request)",
+  cancelled: "Cancelled",
 };
 
 function LeaveStatusBadge({ status }: { status: LeaveRequest["status"] }) {
@@ -95,6 +98,7 @@ export default function TeacherLeave() {
   const [reason, setReason] = useState("");
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<LeaveRequest | null>(null);
 
   useEffect(() => {
     if (!confirmation) return;
@@ -109,7 +113,28 @@ export default function TeacherLeave() {
   const coveredSessions = rangeValid ? eligibleSessions.filter((s) => s.date >= fromDate && s.date <= toDate) : [];
   const earliestBlocking = coveredSessions.find((s) => hoursBetween(sessionDateTime(s), now) < MIN_HOURS_NOTICE) ?? null;
   const isBlocked = !!earliestBlocking;
-  const canSubmit = rangeValid && reason.trim().length > 0 && !isBlocked;
+
+  // Nothing stopped picking a range that's already covered (in whole or in part) by an
+  // earlier request of your own — SubmitLeaveAsync rejects it server-side, but silently,
+  // only after the round trip. Checked the same way the backend does: any of my own
+  // Pending/Approved leaves whose window overlaps the selected [fromDate 00:00, toDate+1
+  // 00:00) range. API-mode leaves only — demo-mode mock rows don't carry real
+  // startAtUtc/endAtUtc.
+  const rangeStartUtc = rangeValid ? localToUtcIso(fromDate, "00:00") : null;
+  const rangeEndUtc = rangeValid ? localToUtcIso(addDays(toDate, 1), "00:00") : null;
+  const overlappingLeave =
+    apiEnabled() && rangeStartUtc && rangeEndUtc
+      ? (leaves.find(
+          (l) =>
+            (l.status === "pending" || l.status === "approved") &&
+            l.startAtUtc &&
+            l.endAtUtc &&
+            new Date(l.startAtUtc) < new Date(rangeEndUtc) &&
+            new Date(l.endAtUtc) > new Date(rangeStartUtc)
+        ) ?? null)
+      : null;
+
+  const canSubmit = rangeValid && reason.trim().length > 0 && !isBlocked && !overlappingLeave;
 
   function resetForm() {
     setFromDate("");
@@ -191,6 +216,27 @@ export default function TeacherLeave() {
     resetForm();
   }
 
+  // Matches admin/Leave.tsx's own decide(): ConfirmDialog handles busy/close-on-success and
+  // inline-error-on-reject itself off this Promise, so this rethrows rather than swallowing
+  // the error after showing the toast.
+  function handleCancel(target: LeaveRequest) {
+    if (!apiEnabled()) {
+      setLeaves((prev) => prev.map((l) => (l.id === target.id ? { ...l, status: "cancelled" } : l)));
+      return;
+    }
+    return cancelLeave(target.id)
+      .then(() => {
+        setLeaves((prev) => prev.map((l) => (l.id === target.id ? { ...l, status: "cancelled" } : l)));
+        reloadLeaves();
+        toast({ variant: "success", title: "Leave request cancelled" });
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : "Could not cancel this leave request.";
+        toast({ variant: "error", title: "Couldn't cancel leave request", description: message });
+        throw err;
+      });
+  }
+
   const columns: DataTableColumn<LeaveRequest>[] = useMemo(
     () => [
       {
@@ -198,7 +244,11 @@ export default function TeacherLeave() {
         header: "Date",
         accessor: (row) => row.date,
         sortable: true,
-        render: (row) => <span className="text-sm">{formatDate(row.date, "long")}</span>,
+        // row.date is only ever the leave's *start* — for a multi-day request the start
+        // alone hides how long it actually runs.
+        render: (row) => (
+          <span className="text-sm">{row.startAtUtc && row.endAtUtc ? formatDateRange(row.startAtUtc, row.endAtUtc) : formatDate(row.date, "long")}</span>
+        ),
       },
       { key: "session", header: "Session", render: (row) => <span className="text-sm text-foreground">{row.session}</span> },
       { key: "reason", header: "Reason", render: (row) => <span className="text-sm text-muted-foreground">{row.reason}</span> },
@@ -216,6 +266,29 @@ export default function TeacherLeave() {
         sortable: true,
         render: (row) => <LeaveStatusBadge status={row.status} />,
       },
+      {
+        key: "actions",
+        header: "",
+        // Only a Pending request is still yours to withdraw — once an admin has approved or
+        // rejected it, that decision stands (matches CancelLeaveAsync's own guard).
+        render: (row) =>
+          row.status === "pending" ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCancelTarget(row);
+              }}
+            >
+              <X className="h-3.5 w-3.5" /> Cancel
+            </Button>
+          ) : (
+            <span className="block text-right text-sm text-muted-foreground">—</span>
+          ),
+        className: "text-right",
+      },
     ],
     []
   );
@@ -224,7 +297,7 @@ export default function TeacherLeave() {
     <div>
       <PageHeader
         title="Leave Management"
-        description="Apply for leave from an upcoming class. Requests must be submitted at least 6 hours before the scheduled session."
+        description="Apply for leave over any date range. Requests must be submitted at least 6 hours before any scheduled session it covers."
         eyebrow="My Account"
       />
 
@@ -298,7 +371,19 @@ export default function TeacherLeave() {
               />
             </div>
 
-            {rangeValid && (
+            {rangeValid && overlappingLeave && (
+              <InlineAlert variant="error" className="text-sm">
+                <span>
+                  You already have a <strong>{overlappingLeave.status}</strong> leave request covering part of this range (
+                  {overlappingLeave.startAtUtc && overlappingLeave.endAtUtc
+                    ? formatDateRange(overlappingLeave.startAtUtc, overlappingLeave.endAtUtc)
+                    : formatDate(overlappingLeave.date, "short")}
+                  ) — this request cannot be submitted.
+                </span>
+              </InlineAlert>
+            )}
+
+            {rangeValid && !overlappingLeave && (
               <InlineAlert variant={isBlocked ? "error" : coveredSessions.length > 0 ? "success" : "info"} className="text-sm">
                 {isBlocked && earliestBlocking ? (
                   <span>
@@ -340,6 +425,27 @@ export default function TeacherLeave() {
           />
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!cancelTarget}
+        onOpenChange={(open) => !open && setCancelTarget(null)}
+        title="Cancel this leave request?"
+        description={
+          cancelTarget
+            ? `Your leave request for "${cancelTarget.session}" on ${
+                cancelTarget.startAtUtc && cancelTarget.endAtUtc
+                  ? formatDateRange(cancelTarget.startAtUtc, cancelTarget.endAtUtc)
+                  : formatDate(cancelTarget.date, "long")
+              } will be withdrawn. You can apply again for the same or a different range afterward.`
+            : undefined
+        }
+        confirmLabel="Cancel Request"
+        destructive
+        onConfirm={() => {
+          if (!cancelTarget) return;
+          return handleCancel(cancelTarget);
+        }}
+      />
     </div>
   );
 }
