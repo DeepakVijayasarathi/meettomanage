@@ -30,6 +30,12 @@ export function useFixedButtonCollision(buttonRef: RefObject<HTMLElement | null>
         for (const node of el.childNodes) {
           if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) return true;
         }
+        // A chart's axis/tick labels (recharts, and SVG text generally) nest their actual
+        // text a level deeper — <text><tspan>₹10k</tspan></text> — so the direct-child check
+        // above never sees it: elementsFromPoint only ever returns the outer <text>/<svg>
+        // node, never the inner <tspan>. Confirmed live: a dashboard's revenue chart sat
+        // under this button at full opacity because of exactly this gap.
+        if ((el.tagName === "text" || el.tagName === "tspan") && el.textContent?.trim()) return true;
         return false;
       });
     }
