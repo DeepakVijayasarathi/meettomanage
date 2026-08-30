@@ -251,7 +251,13 @@ export default function AdminPayouts() {
           teacherId,
           teacherName: rows[0].teacherName,
           rows: sorted,
-          totalAllTime: rows.reduce((sum, p) => sum + p.finalAmount, 0),
+          // Split instead of one combined figure -- "how much has actually gone out" and
+          // "how much is still owed" are different questions an admin asks, and a single
+          // lump total answered neither of them clearly. Pending here covers both
+          // not-yet-finalized and finalized-but-unpaid amounts -- either way, money the
+          // teacher hasn't actually received yet.
+          paidTotal: rows.filter((p) => p.status === "paid").reduce((sum, p) => sum + p.finalAmount, 0),
+          pendingTotal: rows.filter((p) => p.status !== "paid").reduce((sum, p) => sum + p.finalAmount, 0),
           pendingCount: rows.filter((p) => p.status === "pending" && !p.requiresReview).length,
           needsReviewCount: rows.filter((p) => p.requiresReview).length,
         };
@@ -410,7 +416,10 @@ export default function AdminPayouts() {
                       </Badge>
                     )}
                     {group.pendingCount > 0 && <Badge variant="warning">{group.pendingCount} pending</Badge>}
-                    <span className="text-sm font-bold text-foreground">{formatCurrency(group.totalAllTime)}</span>
+                    <div className="flex flex-col items-end leading-tight">
+                      <span className="text-sm font-bold text-success">Paid {formatCurrency(group.paidTotal)}</span>
+                      <span className="text-xs font-medium text-warning-foreground">Pending {formatCurrency(group.pendingTotal)}</span>
+                    </div>
                   </div>
                 </button>
 
