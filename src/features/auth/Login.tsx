@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
+import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
@@ -33,16 +33,29 @@ interface DemoAccount {
   role: Role;
   email: string;
   pin: string;
+  /** Overrides the backend's own `defaultRoute` for this entry. Used only for
+   *  "student": there's no separate Student account on the backend (students are
+   *  UserRole.Parent's children, not their own login — see UserRole.cs) so this entry
+   *  signs in with the Parent account's own credentials and jumps straight to
+   *  /student, a route RequireAuth already allows for role "parent". */
+  homePathOverride?: string;
 }
 
-// One demo login per portal role, listed on this page in demo mode so a visitor can
-// pick a role and sign in without having to know/guess credentials. Same PIN across
-// the board (it's never actually verified in demo mode) — only the email varies.
-const DEMO_ACCOUNTS: DemoAccount[] = ROLE_ORDER.map((r) => ({
-  role: r,
-  email: `${r}@meettomanage.cloud`,
-  pin: "1234",
-}));
+// One real login per portal role — actual accounts created in the production
+// database via Admin → Users, so this list works on the live, API-backed login page,
+// not just demo mode. Coordinator/Management are Sub Admin accounts with that
+// permission preset applied (there's no separate UserRole for them; see
+// SystemRoleSeeds in DatabaseInitializer.cs).
+const DEMO_ACCOUNTS: DemoAccount[] = [
+  { role: "admin", email: "admin@meettomanage.cloud", pin: "1234" },
+  { role: "teacher", email: "teacher@meettomanage.cloud", pin: "1268" },
+  { role: "parent", email: "parent@meettomanage.cloud", pin: "6998" },
+  { role: "subadmin", email: "subadmin@meettomanage.cloud", pin: "4892" },
+  { role: "admission", email: "admission@meettomanage.cloud", pin: "1933" },
+  { role: "coordinator", email: "coordinator@meettomanage.cloud", pin: "0887" },
+  { role: "management", email: "management@meettomanage.cloud", pin: "6032" },
+  { role: "student", email: "parent@meettomanage.cloud", pin: "6998", homePathOverride: "/student" },
+];
 
 export default function Login() {
   useLightBrandScope();
@@ -88,20 +101,50 @@ export default function Login() {
     return matched?.role ?? role;
   }
 
-  function enterDemoAs(demoRole: Role) {
-    setRemember(rememberMe);
+  function enterDemoAs(demoRole: Role, homeOverride?: string) {
+    const homePath = homeOverride ?? ROLE_META[demoRole].homePath;
     setSessionRole(demoRole);
-    setHomePath(ROLE_META[demoRole].homePath);
-    navigate(from ?? ROLE_META[demoRole].homePath);
+    setHomePath(homePath);
+    navigate(from ?? homePath);
   }
 
-  // Clicking a listed demo account fills the form (for visual feedback / consistency
-  // with the Sign In button) and signs straight in as that role.
+  // Shared by the form's own Sign In button and the demo-account list: calls the
+  // real API and lands on homeOverride when given (the "student" entry needs this —
+  // see DemoAccount.homePathOverride), otherwise the backend's own defaultRoute.
+  async function performApiLogin(loginEmail: string, loginPin: string, homeOverride?: string) {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response = await login(loginEmail, loginPin);
+      const frontendRole = toFrontendRole(response.user.role);
+      const homePath = homeOverride ?? safeInternalPath(response.defaultRoute) ?? ROLE_META[frontendRole].homePath;
+      setSessionRole(frontendRole);
+      setUserName(response.user.fullName);
+      setPermissions(response.permissions);
+      setHomePath(homePath);
+      setTimeZoneId(response.user.timeZoneId);
+      navigate(from ?? homePath);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Clicking a listed account fills the form (for visual feedback / consistency with
+  // the Sign In button) and signs straight in as that role — via the real API when
+  // one's configured, or the mock demo-mode path otherwise.
   function handleDemoAccountClick(account: DemoAccount) {
     setEmail(account.email);
     setPin(account.pin);
     setRole(account.role);
-    enterDemoAs(account.role);
+    setRemember(rememberMe);
+
+    if (!apiEnabled()) {
+      enterDemoAs(account.role, account.homePathOverride);
+      return;
+    }
+    void performApiLogin(account.email, account.pin, account.homePathOverride);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -117,23 +160,7 @@ export default function Login() {
       return;
     }
 
-    setSubmitting(true);
-    setError(null);
-    try {
-      const response = await login(email, pin);
-      const frontendRole = toFrontendRole(response.user.role);
-      const homePath = safeInternalPath(response.defaultRoute) ?? ROLE_META[frontendRole].homePath;
-      setSessionRole(frontendRole);
-      setUserName(response.user.fullName);
-      setPermissions(response.permissions);
-      setHomePath(homePath);
-      setTimeZoneId(response.user.timeZoneId);
-      navigate(from ?? homePath);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign in failed. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+    await performApiLogin(email, pin);
   }
 
   return (
@@ -266,41 +293,44 @@ export default function Login() {
               </div>
             </div>
 
-            {!apiEnabled() && (
-              <div className="flex flex-col gap-1.5">
-                <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/70">
-                  <Sparkles className="h-3 w-3 text-brand-amber" /> Demo accounts — tap to sign in
-                </Label>
-                <div className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-lg border border-brand-ink/10 p-1.5">
-                  {DEMO_ACCOUNTS.map((account) => {
-                    const meta = ROLE_META[account.role];
-                    return (
-                      <button
-                        key={account.role}
-                        type="button"
-                        onClick={() => handleDemoAccountClick(account)}
-                        className={cn(
-                          "flex items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-brand-ink/5",
-                          role === account.role && "bg-brand-accent/10 ring-1 ring-brand-accent/40"
-                        )}
+            <div className="flex flex-col gap-1.5">
+              <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/70">
+                <Sparkles className="h-3 w-3 text-brand-amber" /> Demo accounts — tap to sign in
+              </Label>
+              <div className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-lg border border-brand-ink/10 p-1.5">
+                {DEMO_ACCOUNTS.map((account) => {
+                  const meta = ROLE_META[account.role];
+                  return (
+                    <button
+                      key={account.role}
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => handleDemoAccountClick(account)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-brand-ink/5 disabled:pointer-events-none disabled:opacity-50",
+                        role === account.role && "bg-brand-accent/10 ring-1 ring-brand-accent/40"
+                      )}
+                    >
+                      <span
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                        style={{ backgroundColor: `${meta.hex}1A`, color: meta.hex }}
                       >
-                        <span
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                          style={{ backgroundColor: `${meta.hex}1A`, color: meta.hex }}
-                        >
+                        {role === account.role && submitting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
                           <meta.icon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-semibold text-brand-ink">{meta.shortLabel}</span>
-                          <span className="block truncate font-mono text-xs text-brand-ink/60">{account.email}</span>
-                        </span>
-                        <span className="shrink-0 font-mono text-xs tracking-[0.2em] text-brand-ink/40">{account.pin}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-brand-ink">{meta.shortLabel}</span>
+                        <span className="block truncate font-mono text-xs text-brand-ink/60">{account.email}</span>
+                      </span>
+                      <span className="shrink-0 font-mono text-xs tracking-[0.2em] text-brand-ink/40">{account.pin}</span>
+                    </button>
+                  );
+                })}
               </div>
-            )}
+            </div>
 
             {error && (
               <p
