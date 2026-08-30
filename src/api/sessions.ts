@@ -29,6 +29,13 @@ export interface ApiClassSession {
    * the parent-portal schedule endpoint; empty elsewhere (Admin/Teacher lists) and for
    * demo sessions not yet tied to a specific enrolled child. */
   childIds?: string[];
+  /** True when this session has at least one recording that hasn't expired yet. */
+  hasRecording: boolean;
+  /** When the (most recent, still-active) recording's viewing window ends — null if there's none, or it never expires. */
+  recordingExpiresAtUtc: string | null;
+  /** DemoBooking's own free-text child name, for a Demo-type session only — there's no Child FK to
+   * link to at booking time, so this is the only way to say whose demo a session is. */
+  demoChildName: string | null;
 }
 
 const STATUS_FROM_API: Record<ApiClassSession["status"], SessionStatus> = {
@@ -54,7 +61,9 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
 
   return {
     id: session.id,
-    title: session.batchName ?? (session.type === "Demo" ? "Demo class" : "Class session"),
+    title:
+      session.batchName ??
+      (session.type === "Demo" ? (session.demoChildName ? `Demo — ${session.demoChildName}` : "Demo class") : "Class session"),
     batchId: session.batchId ?? undefined,
     teacherId: session.teacherProfileId,
     teacherName: session.teacherName,
@@ -64,6 +73,8 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
     duration: minutes,
     status: session.type === "Demo" && session.status === "Scheduled" ? "demo" : STATUS_FROM_API[session.status],
     type: session.type === "Demo" ? "demo" : "group",
+    recordingAvailable: session.hasRecording,
+    recordingExpiresOn: session.recordingExpiresAtUtc ?? undefined,
     meetingRoomId: session.meetingRoomId ?? undefined,
     summary: session.summary ?? undefined,
   };

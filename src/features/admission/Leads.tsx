@@ -28,13 +28,14 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
   listDemoBookings,
+  listDemoFollowUpNotes,
   listParentDemoHistory,
   toApiConversionStatus,
   toFrontendLead,
   updateConversionStatus,
   type ApiParentDemoHistory,
 } from "@/api/demoBookings";
-import { LEADS as INITIAL_LEADS, type ConversionStage, type Lead } from "./data";
+import { LEADS as INITIAL_LEADS, type ConversionStage, type FollowUpNote, type Lead } from "./data";
 
 const STAGE_OPTIONS: { value: ConversionStage | "all"; label: string }[] = [
   { value: "all", label: "All stages" },
@@ -84,6 +85,36 @@ export default function AdmissionLeads() {
       cancelled = true;
     };
   }, [activeLead]);
+  // Real per-note date/author history for the open lead (API mode only) — replaces the old
+  // approach of collapsing every note ever logged into one string and reconstructing a single
+  // fake entry on reload, which lost who said what and when.
+  const [apiNotes, setApiNotes] = useState<FollowUpNote[] | null>(null);
+  useEffect(() => {
+    setApiNotes(null);
+    if (!apiEnabled() || !activeLead) return;
+    let cancelled = false;
+    listDemoFollowUpNotes(activeLead.id)
+      .then((notes) => {
+        if (cancelled) return;
+        // The API returns newest-first; flip to oldest-first here so it matches the demo-mode
+        // notes array's own convention -- the render below reverses once, for either source,
+        // to show newest-first on screen.
+        setApiNotes(
+          [...notes].reverse().map((n) => ({
+            id: n.id,
+            date: n.atUtc.slice(0, 10),
+            note: n.note,
+            loggedBy: n.loggedByName ?? "Admission team",
+            nextFollowUpDate: n.nextFollowUpOn ?? undefined,
+          }))
+        );
+      })
+      .catch(() => setApiNotes([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [activeLead]);
+  const displayNotes = apiEnabled() ? (apiNotes ?? []) : (activeLead?.notes ?? []);
   const [noteText, setNoteText] = useState("");
   const [nextFollowUp, setNextFollowUp] = useState("");
   const [justLogged, setJustLogged] = useState<string | null>(null);
@@ -108,12 +139,10 @@ export default function AdmissionLeads() {
     if (!activeLead || !noteText.trim()) return;
 
     if (apiEnabled()) {
-      // The API keeps one running notes field per booking; append and persist
-      const combined = [...activeLead.notes.map((n) => n.note), noteText.trim()].join("\n");
       setLoggingFollowUp(true);
       setFollowUpError(null);
       try {
-        await updateConversionStatus(activeLead.id, toApiConversionStatus(newStage), combined);
+        await updateConversionStatus(activeLead.id, toApiConversionStatus(newStage), noteText.trim(), nextFollowUp || undefined);
         reload();
         setJustLogged(activeLead.childName);
         setTimeout(() => setJustLogged(null), 4000);
@@ -334,10 +363,10 @@ export default function AdmissionLeads() {
                 </Card>
               )}
 
-              {activeLead.notes.length > 0 && (
+              {displayNotes.length > 0 && (
                 <Card className="bg-muted/30">
                   <CardContent className="flex max-h-40 flex-col gap-3 overflow-y-auto p-4">
-                    {[...activeLead.notes].reverse().map((n) => (
+                    {[...displayNotes].reverse().map((n) => (
                       <div key={n.id} className="text-sm">
                         <p className="text-xs font-semibold text-muted-foreground">
                           {formatDate(n.date, "long")} · {n.loggedBy}
