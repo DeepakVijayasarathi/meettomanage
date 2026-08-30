@@ -612,32 +612,36 @@ export default function JitsiLive({
               <DialogDescription>Is this class actually over, or are you just stepping away for a moment?</DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-2">
+              {/* Button's own base styling is h-10 + whitespace-nowrap (built for single-line
+                  labels) — a two-line label needs h-auto and whitespace-normal explicitly, or
+                  it forces the whole dialog wider instead of wrapping (exactly what shipped
+                  here the first time: clipped text and a horizontal scrollbar). */}
               <Button
                 variant="secondary"
-                className="justify-start gap-2 border border-success/30 bg-success/15 text-success hover:bg-success/25"
+                className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal rounded-xl border border-success/30 bg-success/15 px-3.5 py-3 text-left text-success hover:bg-success/25"
                 onClick={() => {
                   setLeaveConfirmOpen(false);
                   completeAndLeave();
                 }}
               >
-                <CheckCircle2 className="h-4 w-4" />
-                <span className="flex flex-col items-start text-left">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                <span className="flex flex-col gap-0.5">
                   <span className="font-semibold">End the class</span>
-                  <span className="text-xs font-normal opacity-80">Marks it delivered, calculates your payout, emails today's summary to parents. Can't be undone.</span>
+                  <span className="text-xs font-normal leading-snug opacity-80">Marks it delivered, calculates your payout, emails today's summary to parents. Can't be undone.</span>
                 </span>
               </Button>
               <Button
                 variant="outline"
-                className="justify-start gap-2"
+                className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal rounded-xl px-3.5 py-3 text-left"
                 onClick={() => {
                   setLeaveConfirmOpen(false);
                   navigate(-1);
                 }}
               >
-                <PhoneOff className="h-4 w-4" />
-                <span className="flex flex-col items-start text-left">
+                <PhoneOff className="mt-0.5 h-4 w-4 shrink-0" />
+                <span className="flex flex-col gap-0.5">
                   <span className="font-semibold">Just leave for now</span>
-                  <span className="text-xs font-normal opacity-80">Class stays open — whiteboard/roster pause for students until you rejoin from My Classes.</span>
+                  <span className="text-xs font-normal leading-snug opacity-80">Class stays open — whiteboard/roster pause for students until you rejoin from My Classes.</span>
                 </span>
               </Button>
             </div>
