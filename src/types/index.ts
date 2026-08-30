@@ -143,6 +143,20 @@ export interface TeacherPayout {
   items: TeacherPayoutItem[];
 }
 
+/**
+ * Status + total only — what a non-Admin role (e.g. Management, via the teacher-performance
+ * report) is allowed to see: never the itemized breakdown TeacherPayout carries, since that
+ * detail stays behind GET /api/payouts (Admin-only — "payout/salary details are Super-Admin
+ * only"). Deliberately structurally narrower than TeacherPayout, not just TeacherPayout with
+ * fields omitted, so a summary-only caller can never accidentally read line items it was
+ * never given.
+ */
+export interface TeacherPayoutSummary {
+  month: string;
+  status: "pending" | "finalized" | "paid";
+  finalAmount: number;
+}
+
 export interface TeacherPayoutItem {
   id: string;
   classSessionId: string | null;

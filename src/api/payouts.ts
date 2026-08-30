@@ -57,6 +57,14 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
+/** Shared by toFrontendPayout below and anywhere else a bare periodYear/periodMonth pair
+ *  (rather than a full ApiPayout) needs the same "August 2026" label — e.g. the Management
+ *  Teacher Snapshot report's payout summary, which only ever gets year/month + status +
+ *  total, never a full itemized payout to build one from. */
+export function formatPayoutPeriod(periodYear: number, periodMonth: number): string {
+  return `${MONTH_NAMES[periodMonth - 1]} ${periodYear}`;
+}
+
 export function toFrontendPayout(payout: ApiPayout): TeacherPayout {
   const earnings = payout.items.filter((i) => i.type === "SessionEarning");
   const waiting = payout.items
@@ -70,7 +78,7 @@ export function toFrontendPayout(payout: ApiPayout): TeacherPayout {
     id: payout.id,
     teacherId: payout.teacherProfileId,
     teacherName: payout.teacherName,
-    month: `${MONTH_NAMES[payout.periodMonth - 1]} ${payout.periodYear}`,
+    month: formatPayoutPeriod(payout.periodYear, payout.periodMonth),
     sessionsCompleted: earnings.length,
     baseAmount: earnings.reduce((sum, i) => sum + i.amount, 0),
     deductions,

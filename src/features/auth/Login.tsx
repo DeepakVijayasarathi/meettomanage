@@ -124,6 +124,12 @@ export default function Login() {
       navigate(from ?? homePath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed. Please try again.");
+      // A wrong PIN otherwise just sat there in the boxes — the visitor had to manually
+      // clear all 4 digits themselves before they could even start retyping. Clear and
+      // refocus the first box so retrying is just "type the PIN again," not "clear, then
+      // type again."
+      setPin(Array(PIN_LENGTH).fill(""));
+      pinRefs.current[0]?.focus();
     } finally {
       setSubmitting(false);
     }
