@@ -162,6 +162,16 @@ export default function JitsiLive({
   // and stays true if the request fails — so a slow/offline check never silently disables
   // recording for a teacher who already relies on it.
   const autoRecordRef = useRef(true);
+  // The init effect below only depends on [room, mode] (see its own comment on why), so
+  // anything it closes over from render — including userName — would otherwise be frozen
+  // at whatever it was on first mount. flushMedia posts engagement (talk-time, camera-on)
+  // under that name when the participant leaves; without this ref it kept attributing a
+  // parent's own account name instead of the student's, even after `displayName` resolved
+  // moments later (e.g. the parent's child list hadn't finished loading yet on first render).
+  const userNameRef = useRef(userName);
+  useEffect(() => {
+    userNameRef.current = userName;
+  }, [userName]);
 
   // So the celebration clap sound is ready on whichever gesture a student makes
   // first — joining, clicking a tab — instead of waiting for one that never comes
@@ -257,8 +267,8 @@ export default function JitsiLive({
       }
       const talkSeconds = Math.round(media.talkMs / 1000);
       const camSeconds = Math.round(media.camMs / 1000);
-      if (talkSeconds > 0) postEngagement(sessionId, userName, "TalkTimeSeconds", talkSeconds);
-      if (camSeconds > 0) postEngagement(sessionId, userName, "CameraOnSeconds", camSeconds);
+      if (talkSeconds > 0) postEngagement(sessionId, userNameRef.current, "TalkTimeSeconds", talkSeconds);
+      if (camSeconds > 0) postEngagement(sessionId, userNameRef.current, "CameraOnSeconds", camSeconds);
       media.talkMs = 0;
       media.camMs = 0;
     };
@@ -539,6 +549,20 @@ export default function JitsiLive({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, mode]);
+
+  // userName is deliberately not a dependency of the init effect above — recreating the
+  // whole Jitsi connection just to relabel yourself would drop everyone's call to reconnect
+  // over a name change. But that means a parent joining before their child list has finished
+  // loading (SessionProvider fetches it async) got initialized with userInfo.displayName
+  // still falling back to their own account name, and — since the effect never re-ran —
+  // stayed shown as themselves in Jitsi's own UI (self tile, remote participants' view) for
+  // the rest of the call even after `displayName` resolved to the student's real name a
+  // render or two later. This pushes the correction through Jitsi's own "displayName"
+  // command once it's actually known, without touching the connection itself.
+  useEffect(() => {
+    if (!jitsiReady) return;
+    jitsiApiRef.current?.executeCommand("displayName", userName);
+  }, [jitsiReady, userName]);
 
   return (
     <div className="flex h-screen flex-col bg-brand-navyDark bg-[radial-gradient(circle_at_50%_0%,rgba(124,92,252,0.10),transparent_60%)]">
