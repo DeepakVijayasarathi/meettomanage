@@ -84,7 +84,7 @@ const ROUTE_BY_ROLE_AND_TYPE: Partial<Record<Role, Partial<Record<ApiNotificatio
   admin: {
     NoShowAlert: "/admin/sessions",
     DelayedSessionAlert: "/admin/sessions",
-    LeaveStatusUpdate: "/admin/sessions",
+    LeaveStatusUpdate: "/admin/leave",
     PaymentReceived: "/admin/billing",
     General: "/admin",
   },
@@ -106,7 +106,7 @@ const ROUTE_BY_ROLE_AND_TYPE: Partial<Record<Role, Partial<Record<ApiNotificatio
  */
 const ROUTE_BY_TEMPLATE_KEY: Record<string, string> = {
   "batch-assignment": "/parent/schedule",
-  "leave-submitted-admin-alert": "/admin/sessions",
+  "leave-submitted-admin-alert": "/admin/leave",
   "weekly-kpi-digest": "/admin/reports",
   "access-request-submitted-admin-alert": "/admin/permissions",
   "access-request-reviewed": "/subadmin/permissions",
