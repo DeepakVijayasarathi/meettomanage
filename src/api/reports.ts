@@ -57,6 +57,13 @@ export interface ApiTeacherPerformance {
   upcomingSessions: number;
   studentAttendancePercent: number;
   summariesWritten: number;
+  /** Status + total only — see TeacherPayoutSummary's own doc comment on why this stays
+   *  narrower than the full payout detail GET /api/payouts (Admin-only) returns. Null when
+   *  this teacher has no payout on record at all. */
+  latestPayoutPeriodYear: number | null;
+  latestPayoutPeriodMonth: number | null;
+  latestPayoutStatus: "Pending" | "Finalized" | "Paid" | null;
+  latestPayoutAmount: number | null;
 }
 
 export interface ApiStudentAnalytics {
