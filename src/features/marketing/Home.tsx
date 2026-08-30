@@ -96,6 +96,46 @@ function HeroReel() {
   );
 }
 
+/** Landscape product-explainer video (click-to-play, same pattern as HeroReel) — a real
+    screen-recorded walkthrough plus text-card callouts, not a talking-head piece, so it's a
+    16:9 aspect-video rather than the hero's 9:16 card. */
+function ExplainerVideo() {
+  const [playing, setPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  function handlePlay() {
+    setPlaying(true);
+    videoRef.current?.play();
+  }
+
+  return (
+    <div className="relative aspect-video overflow-hidden rounded-[24px] bg-[#12151C] shadow-pop ring-4 ring-white">
+      <video
+        ref={videoRef}
+        src="/videos/explainer.mp4"
+        poster="/videos/explainer-poster.jpg"
+        className="h-full w-full object-cover"
+        controls={playing}
+        loop
+        playsInline
+        preload="none"
+      />
+      {!playing && (
+        <button
+          type="button"
+          onClick={handlePlay}
+          aria-label="Play video"
+          className="group absolute inset-0 flex items-center justify-center bg-black/10 transition-colors hover:bg-black/25"
+        >
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-[#EA580C] shadow-pop transition-transform group-hover:scale-105">
+            <Play className="h-6 w-6 translate-x-0.5" fill="currentColor" />
+          </span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Floating contact widget — links out (WhatsApp/email/Request a Demo) rather than answering
     questions itself, unlike the FAQ-matching "Ask a Doubt" bot used inside the logged-in
     portals (DoubtChatbot.tsx). This page has no other fixed-position widget to collide with. */
@@ -577,6 +617,28 @@ export default function MarketingHome() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Watch — a real screen-recorded walkthrough (landscape, product footage), distinct
+          from the hero's portrait talking-head reel. */}
+      <section className="border-t border-black/10 bg-white py-16 sm:py-20">
+        <div className="mx-auto max-w-4xl px-6">
+          <Reveal>
+            <div className="mx-auto max-w-xl text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">Watch</p>
+              <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+                See it replace five apps with one
+              </h2>
+              <p className="mt-3 text-sm text-[#5B6472]">
+                A quick walkthrough of scheduling, portals and reporting inside {brand.name}.
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal delayMs={100} className="mt-10">
+            <ExplainerVideo />
+          </Reveal>
         </div>
       </section>
 
