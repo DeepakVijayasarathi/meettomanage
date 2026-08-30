@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, DoorOpen, PartyPopper, PhoneOff, Sparkles, Users, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, PartyPopper, PhoneOff, Sparkles, UserPlus, Users, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -84,6 +84,7 @@ export default function JitsiLive({
   sessionId,
   displayName,
   joinOverride,
+  inviteUrl,
 }: {
   room: string;
   title?: string;
@@ -96,12 +97,32 @@ export default function JitsiLive({
    *  for rooms with no backing ClassSession (e.g. a member's personal meeting room),
    *  where GetJitsiJoinAsync's session-participant/join-window checks don't apply. */
   joinOverride?: { domain: string; token?: string | null };
+  /** Shows an in-call "Invite" button that copies this link — a shareable join URL with
+   *  no personal name baked in (see buildPersonalMeetingUrl's own doc comment on why not),
+   *  so anyone who opens it is asked their own name rather than joining misattributed as
+   *  whoever's account started the call. Only meaningful for a personal meeting room; a
+   *  real class session invites people through enrollment instead, so this is omitted there. */
+  inviteUrl?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { userName: accountName } = useSession();
   const userName = displayName || accountName;
   const { toast } = useToast();
+
+  async function copyInviteLink() {
+    if (!inviteUrl) return;
+    try {
+      if (!navigator.clipboard) {
+        throw new Error("Clipboard API unavailable");
+      }
+      await navigator.clipboard.writeText(inviteUrl);
+      toast({ variant: "success", title: "Invite link copied", description: "Anyone who opens it will be asked their own name before joining." });
+    } catch {
+      toast({ variant: "error", title: "Couldn't copy the invite link", description: "Check your browser's clipboard permission and try again." });
+    }
+  }
+
   // Nothing else in the app ever calls POST /sessions/{id}/complete — this screen leaving
   // is the one and only trigger, so it must actually fire exactly once per class, not get
   // skipped (session stuck "Scheduled" forever, invisible on Attendance, payout never
@@ -585,6 +606,17 @@ export default function JitsiLive({
                 </Button>
               )}
             </div>
+          )}
+          {inviteUrl && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="gap-1.5 rounded-full bg-white/10 text-white hover:bg-white/20"
+              onClick={copyInviteLink}
+              title="Copy a shareable link to this meeting"
+            >
+              <UserPlus className="h-3.5 w-3.5" /> Invite
+            </Button>
           )}
           <div className="h-6 w-px bg-white/10" aria-hidden="true" />
           <Button

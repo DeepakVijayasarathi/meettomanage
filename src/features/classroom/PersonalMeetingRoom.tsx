@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { useSession } from "@/state/session";
-import { getMyMeetingRoom, type MyMeetingRoom } from "@/api/account";
+import { buildPersonalMeetingUrl, getMyMeetingRoom, type MyMeetingRoom } from "@/api/account";
 import JitsiLive from "./JitsiLive";
 
 /**
@@ -52,6 +52,10 @@ export default function PersonalMeetingRoom() {
       mode="teacher"
       displayName={userName}
       joinOverride={{ domain: room.domain, token: room.token }}
+      // No displayName baked into this one (see buildPersonalMeetingUrl's own doc comment) --
+      // this link is meant to be shared, so whoever opens it should be asked their own name
+      // rather than joining misattributed as whoever's account started the call.
+      inviteUrl={buildPersonalMeetingUrl(room)}
     />
   );
 }
