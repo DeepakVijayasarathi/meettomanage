@@ -34,7 +34,10 @@ const TEACHER_ID = "t-1";
 interface ViewResource {
   id: string;
   title: string;
-  type: Resource["type"];
+  // "other" only ever comes from reading the API's generic ResourceType.Other back —
+  // it doesn't mean "recording" (see TYPE_FROM_API below), so it's kept out of the
+  // shared Resource["type"] union rather than mislabeled as one of its real members.
+  type: Resource["type"] | "other";
   batchName: string;
   uploadedOn: string;
   downloadable: boolean;
@@ -48,10 +51,11 @@ interface BatchOption {
   name: string;
 }
 
-const TYPE_META: Record<Resource["type"], { label: string; icon: typeof BookOpen; hex: string }> = {
+const TYPE_META: Record<Resource["type"] | "other", { label: string; icon: typeof BookOpen; hex: string }> = {
   book: { label: "Book", icon: BookOpen, hex: CHART_PALETTE[0] },
   worksheet: { label: "Worksheet", icon: FileText, hex: CHART_PALETTE[3] },
   recording: { label: "Recording", icon: Video, hex: CHART_PALETTE[4] },
+  other: { label: "Document", icon: FileText, hex: CHART_PALETTE[2] },
 };
 
 // Frontend type -> API ResourceType (recordings live in SessionRecordings; upload generic as Other)
@@ -61,10 +65,14 @@ const API_TYPE: Record<Resource["type"], ApiResourceType> = {
   recording: "Other",
 };
 
-const TYPE_FROM_API: Record<ApiResourceType, Resource["type"]> = {
+// The backend's ResourceType enum has no dedicated "recording" value — uploads made here as
+// "recording" round-trip as generic "Other", same as any other non-book/worksheet upload. So
+// reading "Other" back can't assume it was a recording; it's shown as a neutral "Document"
+// instead of claiming a type the API never actually confirmed.
+const TYPE_FROM_API: Record<ApiResourceType, Resource["type"] | "other"> = {
   ReadingBook: "book",
   Worksheet: "worksheet",
-  Other: "recording",
+  Other: "other",
 };
 
 function formatSize(bytes: number | null): string | undefined {
@@ -223,8 +231,12 @@ export default function TeacherResources() {
     setDownloadingId(resource.id);
     try {
       await downloadMyResource(resource.id, resource.title);
-    } catch {
-      setUploadError("Download failed.");
+    } catch (e) {
+      // The upload dialog is very likely closed at this point (downloads are triggered
+      // from the resource grid, not the dialog) — uploadError's paragraph only renders
+      // inside that dialog, so a failure here needs its own visible feedback: a toast.
+      const message = e instanceof Error ? e.message : "Download failed. Please try again.";
+      toast({ variant: "error", title: "Download failed", description: message });
     } finally {
       setDownloadingId(null);
     }

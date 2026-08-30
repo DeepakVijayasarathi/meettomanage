@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageCircleQuestion } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -31,6 +31,13 @@ export default function TeacherDoubts() {
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeVariant, setNoticeVariant] = useState<"success" | "error">("success");
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const pending = escalations.filter((e) => e.status === "Pending");
   const resolved = escalations.filter((e) => e.status === "Resolved");
@@ -43,6 +50,7 @@ export default function TeacherDoubts() {
   async function confirmResolve() {
     if (!resolveTarget) return;
     if (!apiEnabled()) {
+      setNoticeVariant("success");
       setNotice("Demo mode — nothing was actually resolved.");
       setResolveTarget(null);
       return;
@@ -55,6 +63,7 @@ export default function TeacherDoubts() {
       toast({ variant: "success", title: "Doubt resolved" });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not resolve that doubt.";
+      setNoticeVariant("error");
       setNotice(message);
       toast({ variant: "error", title: "Couldn't resolve doubt", description: message });
     } finally {
@@ -125,7 +134,7 @@ export default function TeacherDoubts() {
         </InlineAlert>
       )}
       {notice && (
-        <InlineAlert variant="success" className="mb-4">
+        <InlineAlert variant={noticeVariant} className="mb-4">
           {notice}
         </InlineAlert>
       )}

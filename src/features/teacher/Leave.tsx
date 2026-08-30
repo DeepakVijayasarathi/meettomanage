@@ -139,6 +139,10 @@ export default function TeacherLeave() {
   // this leave would actually cover, not the leave's own start time in the abstract. The
   // previous "leave starts within 6h = blocked" check fired even for a leave over a day
   // with no scheduled classes at all, refusing a request the backend would have accepted.
+  // Uses eligibleSessions (scheduled + demo, future-only) rather than filtering fetchedSessions
+  // by status === "scheduled" alone — the backend's own check matches on ClassSession.Status,
+  // which a Demo-type session also carries as "Scheduled", so excluding "demo" here would
+  // under-block relative to what SubmitLeaveAsync actually rejects.
   const cutoffLimit = new Date(now.getTime() + MIN_HOURS_NOTICE * 60 * 60_000);
   const blockingSession =
     startAt && endAt
@@ -218,6 +222,9 @@ export default function TeacherLeave() {
           resetForm();
         })
         .catch((err: Error) => {
+          // Deliberately not resetForm() here — a failed submission keeps the teacher's
+          // dates/reason in place so they can fix whatever's wrong and retry without
+          // retyping the whole request.
           setSubmitError(err.message);
           toast({ variant: "error", title: "Couldn't submit leave request", description: err.message });
         });
