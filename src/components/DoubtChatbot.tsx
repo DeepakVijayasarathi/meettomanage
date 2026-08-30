@@ -93,7 +93,7 @@ export function DoubtChatbot({ role }: { role: Role }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const coversContent = useFixedButtonCollision(buttonRef, [enabled, open]);
+  const { coversContent, coversInteractive } = useFixedButtonCollision(buttonRef, [enabled, open]);
 
   // Widget visibility is a public setting (readable by any signed-in role without a
   // permission check), same pattern as FloatingNotes.
@@ -268,7 +268,10 @@ export function DoubtChatbot({ role }: { role: Role }) {
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "fixed bottom-[140px] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg outline-none transition-all hover:scale-105 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:bottom-[84px] sm:right-6",
-          coversContent && !open && "opacity-30"
+          coversContent && !open && "opacity-30",
+          // See FloatingNotes' own comment: fading alone still swallowed clicks meant for an
+          // interactive control underneath (e.g. a table's pagination arrow) at any opacity.
+          coversInteractive && !open && "pointer-events-none"
         )}
         aria-label={open ? "Close Ask a Doubt" : "Ask a doubt"}
       >
