@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EmojiPickerField } from "@/components/EmojiPickerField";
 import { useApiData } from "@/api/hooks";
 import { apiEnabled } from "@/lib/api";
 import { listDepartments, type ApiDepartment } from "@/api/departments";
@@ -359,12 +360,11 @@ export default function AdminActivityBank() {
               <div role="group" aria-labelledby="wa-items-label" className="grid gap-2">
                 {items.map((item, idx) => (
                   <div key={item.key} className="flex items-center gap-2">
-                    <Input
-                      placeholder="🍎"
+                    <EmojiPickerField
                       aria-label={`Item ${idx + 1} emoji`}
                       value={item.emoji}
-                      className="w-16 text-center text-lg"
-                      onChange={(e) => setItems((prev) => prev.map((i) => (i.key === item.key ? { ...i, emoji: e.target.value } : i)))}
+                      className="w-16"
+                      onChange={(emoji) => setItems((prev) => prev.map((i) => (i.key === item.key ? { ...i, emoji } : i)))}
                     />
                     {isHotspot ? (
                       <label className="flex flex-1 items-center gap-2 text-sm text-foreground">
