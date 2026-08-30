@@ -29,7 +29,9 @@ import type { ClassSession } from "@/types";
 import { formatDate } from "@/lib/utils";
 
 const LOCKED_STATUSES: ClassSession["status"][] = ["cancelled", "completed", "holiday", "leave"];
-const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo", "rescheduled"];
+// "rescheduled" is the old record a reschedule moved off of, not a live session — leaving
+// it here duplicated the join entry alongside the new, actually-scheduled session.
+const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo"];
 
 export default function CoordinatorCalendar() {
   const { toast } = useToast();

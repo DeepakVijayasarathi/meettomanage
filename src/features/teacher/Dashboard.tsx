@@ -90,7 +90,11 @@ export default function TeacherDashboard() {
   const teacherSessions = usingApi ? apiSessions : getSessionsForTeacher(TEACHER_ID);
 
   const todaysSessions = teacherSessions
-    .filter((s) => s.date === today)
+    // "rescheduled" is the old record a reschedule moved off of — the backend keeps it
+    // (still dated today) as a historical pointer and creates a new session for the new
+    // time, so leaving it in here showed up as a second, dead "Join" entry alongside
+    // the real one.
+    .filter((s) => s.date === today && s.status !== "rescheduled")
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   const weekStart = startOfWeek(now);

@@ -119,7 +119,9 @@ export default function ParentDashboard() {
   const upcoming = useMemo(
     () =>
       sessions
-        .filter((s) => ["scheduled", "demo", "rescheduled"].includes(s.status))
+        // "rescheduled" is the old, superseded record left behind by a reschedule — the
+        // new session (status "scheduled") is the one that should actually show as upcoming.
+        .filter((s) => ["scheduled", "demo"].includes(s.status))
         .filter((s) => minutesUntilStart(s) > -s.duration)
         .sort(compareSessionAsc)
         .slice(0, 4),

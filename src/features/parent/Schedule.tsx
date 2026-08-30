@@ -91,7 +91,9 @@ export default function ParentSchedule() {
   const upcoming = useMemo(
     () =>
       sessions
-        .filter((s) => ["scheduled", "demo", "rescheduled"].includes(s.status))
+        // "rescheduled" is the old, superseded record left behind by a reschedule — the
+        // new session (status "scheduled") is the one that should actually show as upcoming.
+        .filter((s) => ["scheduled", "demo"].includes(s.status))
         // A session's status doesn't flip to "completed" the instant it ends — without this,
         // one that already ran earlier today (still "scheduled") outranks the real next class
         // in this ascending sort, since it's chronologically first. Matches the parent

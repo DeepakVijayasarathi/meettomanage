@@ -34,7 +34,9 @@ import { useSession } from "@/state/session";
 
 // Monitor-only, same as Coordinator's own Join Class (coordinator/Calendar.tsx) --
 // Admin had no way at all to drop into a live class from this screen, real or demo.
-const JOINABLE_STATUSES: SessionStatus[] = ["scheduled", "demo", "rescheduled"];
+// "rescheduled" is the old record a reschedule moved off of, not a live session — leaving
+// it here duplicated the join entry alongside the new, actually-scheduled session.
+const JOINABLE_STATUSES: SessionStatus[] = ["scheduled", "demo"];
 
 const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
   { value: "all", label: "All statuses" },
