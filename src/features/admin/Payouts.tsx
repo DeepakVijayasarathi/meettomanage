@@ -1,12 +1,24 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, Clock, Download, IndianRupee, Loader2, Settings2, UsersRound, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Download,
+  IndianRupee,
+  Loader2,
+  Settings2,
+  UsersRound,
+  Wallet,
+} from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { KpiCard } from "@/components/KpiCard";
-import { DataTable, type DataTableColumn } from "@/components/DataTable";
+import { EmptyState } from "@/components/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -189,163 +201,120 @@ export default function AdminPayouts() {
   const currentMonthLabel = format(new Date(), "MMMM yyyy");
 
   const totals = useMemo(() => {
+    // Both counts below used to run over ALL of `payouts` regardless of month -- while
+    // sitting right next to a KPI card explicitly labeled "Total Payout — <this month>".
+    // A teacher paid in a past month counted toward "Teachers Paid" forever, and a
+    // long-since-resolved pending payout from months ago kept inflating "Pending
+    // Calculations" — three cards that read as one snapshot of the same period, two of
+    // which were secretly all-time. Scoped to the same `thisMonth` set now.
     const thisMonth = payouts.filter((p) => p.month === currentMonthLabel);
-    const paidCount = payouts.filter((p) => p.status === "paid").length;
-    const pendingCount = payouts.filter((p) => p.status === "pending").length;
+    // Distinct teachers, not payout rows -- one teacher with three paid months
+    // (one row each) was counting as 3 toward a card literally titled "Teachers Paid".
+    const paidTeacherIds = new Set(thisMonth.filter((p) => p.status === "paid").map((p) => p.teacherId));
+    const pendingCount = thisMonth.filter((p) => p.status === "pending").length;
     return {
       totalThisMonth: thisMonth.reduce((sum, p) => sum + p.finalAmount, 0),
-      teachersPaid: paidCount,
+      teachersPaid: paidTeacherIds.size,
       pendingCalculations: pendingCount,
     };
   }, [payouts, currentMonthLabel]);
 
-  const columns: DataTableColumn<TeacherPayout>[] = useMemo(
-    () => [
-      {
-        key: "teacherName",
-        header: "Teacher",
-        sortable: true,
-        accessor: (row) => row.teacherName,
-        render: (row) => {
-          const teacher = getTeacherById(row.teacherId);
-          return (
-            <div className="flex items-center gap-3">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback style={{ backgroundColor: `${teacher?.avatarColor ?? "#999"}22`, color: teacher?.avatarColor ?? "#999" }}>
-                  {getInitials(row.teacherName)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-semibold text-foreground">{row.teacherName}</p>
-                <p className="text-xs text-muted-foreground">{teacher?.department ?? "—"}</p>
-              </div>
-            </div>
-          );
-        },
-      },
-      { key: "month", header: "Month", sortable: true, accessor: (row) => row.month, render: (row) => <span className="text-sm">{row.month}</span> },
-      {
-        key: "sessionsCompleted",
-        header: "Sessions",
-        sortable: true,
-        accessor: (row) => row.sessionsCompleted,
-        render: (row) => <span className="text-sm">{row.sessionsCompleted}</span>,
-      },
-      {
-        key: "baseAmount",
-        header: "Base Amount",
-        sortable: true,
-        accessor: (row) => row.baseAmount,
-        render: (row) => <span className="text-sm text-muted-foreground">{formatCurrency(row.baseAmount)}</span>,
-      },
-      {
-        key: "deductions",
-        header: "Deductions",
-        sortable: true,
-        accessor: (row) => row.deductions,
-        render: (row) => (
-          <span className={row.deductions > 0 ? "text-sm font-medium text-destructive" : "text-sm text-muted-foreground"}>
-            {row.deductions > 0 ? `-${formatCurrency(row.deductions)}` : "—"}
-          </span>
-        ),
-      },
-      {
-        key: "waitingAmountAdded",
-        header: "Waiting Added",
-        sortable: true,
-        accessor: (row) => row.waitingAmountAdded,
-        render: (row) => (
-          <span className={row.waitingAmountAdded > 0 ? "text-sm font-medium text-success" : "text-sm text-muted-foreground"}>
-            {row.waitingAmountAdded > 0 ? `+${formatCurrency(row.waitingAmountAdded)}` : "—"}
-          </span>
-        ),
-      },
-      {
-        key: "finalAmount",
-        header: "Final Amount",
-        sortable: true,
-        accessor: (row) => row.finalAmount,
-        render: (row) => <span className="text-sm font-bold text-foreground">{formatCurrency(row.finalAmount)}</span>,
-      },
-      {
-        key: "status",
-        header: "Status",
-        sortable: true,
-        accessor: (row) => row.status,
-        render: (row) => (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Badge
-              variant={row.status === "paid" ? "success" : row.status === "finalized" ? "default" : "warning"}
-              className="capitalize"
-            >
-              {row.status}
-            </Badge>
-            {row.requiresReview && (
-              <Badge variant="warning" className="gap-1">
-                <AlertTriangle className="h-3 w-3" /> Needs review
-              </Badge>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: "actions",
-        header: "",
-        render: (row) => {
-          if (row.status === "pending" && row.requiresReview) {
-            return (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-warning-foreground"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openReview(row);
-                }}
-              >
-                <AlertTriangle className="h-3.5 w-3.5" /> Review
-              </Button>
-            );
-          }
-          if (row.status === "pending") {
-            return (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busyId === row.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setConfirmTarget({ payout: row, action: "finalize" });
-                }}
-              >
-                {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
-              </Button>
-            );
-          }
-          if (row.status === "finalized") {
-            return (
-              <Button
-                size="sm"
-                disabled={busyId === row.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setConfirmTarget({ payout: row, action: "mark-paid" });
-                }}
-              >
-                {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Mark Paid"}
-              </Button>
-            );
-          }
-          return (
-            <span className="inline-flex items-center gap-1 text-xs text-success">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Paid
-            </span>
-          );
-        },
-      },
-    ],
-    [busyId]
-  );
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [collapsedTeacherIds, setCollapsedTeacherIds] = useState<Set<string>>(new Set());
+
+  function toggleTeacherGroup(teacherId: string) {
+    setCollapsedTeacherIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(teacherId)) next.delete(teacherId);
+      else next.add(teacherId);
+      return next;
+    });
+  }
+
+  /** One card per teacher instead of a flat month-by-month list -- the same teacher
+   *  repeating once per month (see the screenshot this grouping was built from: "UAT Test
+   *  Teacher" three times in a row) made it hard to see a teacher's overall standing at a
+   *  glance, or to tell how many distinct teachers were even being paid at all. */
+  const teacherGroups = useMemo(() => {
+    const byTeacher = new Map<string, TeacherPayout[]>();
+    for (const payout of payouts) {
+      const list = byTeacher.get(payout.teacherId) ?? [];
+      list.push(payout);
+      byTeacher.set(payout.teacherId, list);
+    }
+
+    const query = teacherSearch.trim().toLowerCase();
+    const groups = [...byTeacher.entries()]
+      .map(([teacherId, rows]) => {
+        const sorted = [...rows].sort((a, b) => b.month.localeCompare(a.month));
+        return {
+          teacherId,
+          teacherName: rows[0].teacherName,
+          rows: sorted,
+          totalAllTime: rows.reduce((sum, p) => sum + p.finalAmount, 0),
+          pendingCount: rows.filter((p) => p.status === "pending" && !p.requiresReview).length,
+          needsReviewCount: rows.filter((p) => p.requiresReview).length,
+        };
+      })
+      .filter((g) => !query || g.teacherName.toLowerCase().includes(query));
+
+    // Whoever needs the admin's attention floats to the top; the rest settle alphabetically.
+    return groups.sort((a, b) => {
+      const aUrgent = a.needsReviewCount > 0 ? 2 : a.pendingCount > 0 ? 1 : 0;
+      const bUrgent = b.needsReviewCount > 0 ? 2 : b.pendingCount > 0 ? 1 : 0;
+      if (aUrgent !== bUrgent) return bUrgent - aUrgent;
+      return a.teacherName.localeCompare(b.teacherName);
+    });
+  }, [payouts, teacherSearch]);
+
+  function renderStatus(row: TeacherPayout) {
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge variant={row.status === "paid" ? "success" : row.status === "finalized" ? "default" : "warning"} className="capitalize">
+          {row.status}
+        </Badge>
+        {row.requiresReview && (
+          <Badge variant="warning" className="gap-1">
+            <AlertTriangle className="h-3 w-3" /> Needs review
+          </Badge>
+        )}
+      </div>
+    );
+  }
+
+  function renderActions(row: TeacherPayout) {
+    if (row.status === "pending" && row.requiresReview) {
+      return (
+        <Button size="sm" variant="outline" className="text-warning-foreground" onClick={() => openReview(row)}>
+          <AlertTriangle className="h-3.5 w-3.5" /> Review
+        </Button>
+      );
+    }
+    if (row.status === "pending") {
+      return (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busyId === row.id}
+          onClick={() => setConfirmTarget({ payout: row, action: "finalize" })}
+        >
+          {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
+        </Button>
+      );
+    }
+    if (row.status === "finalized") {
+      return (
+        <Button size="sm" disabled={busyId === row.id} onClick={() => setConfirmTarget({ payout: row, action: "mark-paid" })}>
+          {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Mark Paid"}
+        </Button>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-success">
+        <CheckCircle2 className="h-3.5 w-3.5" /> Paid
+      </span>
+    );
+  }
 
   return (
     <div>
@@ -388,17 +357,116 @@ export default function AdminPayouts() {
         <KpiCard label="Pending Calculations" value={formatNumber(totals.pendingCalculations)} icon={Wallet} tone="warning" loading={payoutsLoading} />
       </div>
 
-      <div className="mt-6">
-        <DataTable
-          data={payouts}
-          columns={columns}
-          rowKey={(row) => row.id}
-          searchPlaceholder="Search by teacher name…"
-          emptyTitle="No payouts yet"
-          emptyDescription="Teacher payouts will appear here once sessions are delivered and calculated for a pay period."
-          error={apiEnabled() ? payoutsError : null}
-          onRetry={reloadPayouts}
+      <div className="mt-6 flex flex-col gap-3">
+        <Input
+          value={teacherSearch}
+          onChange={(e) => setTeacherSearch(e.target.value)}
+          placeholder="Search by teacher name…"
+          className="max-w-sm"
         />
+
+        {apiEnabled() && payoutsError ? null : payouts.length === 0 ? (
+          <EmptyState
+            icon={Wallet}
+            title="No payouts yet"
+            description="Teacher payouts will appear here once sessions are delivered and calculated for a pay period."
+          />
+        ) : teacherGroups.length === 0 ? (
+          <EmptyState icon={Wallet} title="No teacher matches that search" description="Try a different name." />
+        ) : (
+          teacherGroups.map((group) => {
+            const teacher = getTeacherById(group.teacherId);
+            const expanded = !collapsedTeacherIds.has(group.teacherId);
+            return (
+              <div key={group.teacherId} className="overflow-hidden rounded-xl border border-border bg-card">
+                <button
+                  type="button"
+                  onClick={() => toggleTeacherGroup(group.teacherId)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40"
+                  aria-expanded={expanded}
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    {expanded ? (
+                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarFallback style={{ backgroundColor: `${teacher?.avatarColor ?? "#999"}22`, color: teacher?.avatarColor ?? "#999" }}>
+                        {getInitials(group.teacherName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-foreground">{group.teacherName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {teacher?.department ?? "—"} · {group.rows.length} month{group.rows.length === 1 ? "" : "s"} on record
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {group.needsReviewCount > 0 && (
+                      <Badge variant="warning" className="gap-1">
+                        <AlertTriangle className="h-3 w-3" /> {group.needsReviewCount} needs review
+                      </Badge>
+                    )}
+                    {group.pendingCount > 0 && <Badge variant="warning">{group.pendingCount} pending</Badge>}
+                    <span className="text-sm font-bold text-foreground">{formatCurrency(group.totalAllTime)}</span>
+                  </div>
+                </button>
+
+                {expanded && (
+                  <div className="overflow-x-auto border-t border-border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/30 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          <th className="px-4 py-2 font-semibold">Month</th>
+                          <th className="px-4 py-2 font-semibold">Sessions</th>
+                          <th className="px-4 py-2 font-semibold">Base Amount</th>
+                          <th className="px-4 py-2 font-semibold">Deductions</th>
+                          <th className="px-4 py-2 font-semibold">Waiting Added</th>
+                          <th className="px-4 py-2 font-semibold">Final Amount</th>
+                          <th className="px-4 py-2 font-semibold">Status</th>
+                          <th className="px-4 py-2 font-semibold" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.rows.map((row) => (
+                          <tr key={row.id} className="border-b border-border last:border-0">
+                            <td className="px-4 py-2.5">{row.month}</td>
+                            <td className="px-4 py-2.5">{row.sessionsCompleted}</td>
+                            <td className="px-4 py-2.5 text-muted-foreground">{formatCurrency(row.baseAmount)}</td>
+                            <td className="px-4 py-2.5">
+                              <span className={row.deductions > 0 ? "font-medium text-destructive" : "text-muted-foreground"}>
+                                {row.deductions > 0 ? `-${formatCurrency(row.deductions)}` : "—"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span className={row.waitingAmountAdded > 0 ? "font-medium text-success" : "text-muted-foreground"}>
+                                {row.waitingAmountAdded > 0 ? `+${formatCurrency(row.waitingAmountAdded)}` : "—"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 font-bold text-foreground">{formatCurrency(row.finalAmount)}</td>
+                            <td className="px-4 py-2.5">{renderStatus(row)}</td>
+                            <td className="px-4 py-2.5">{renderActions(row)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+
+        {apiEnabled() && payoutsError && (
+          <InlineAlert variant="warning">
+            Could not load payouts ({payoutsError}).{" "}
+            <button type="button" className="underline" onClick={() => reloadPayouts()}>
+              Retry
+            </button>
+          </InlineAlert>
+        )}
       </div>
 
       <ConfirmDialog

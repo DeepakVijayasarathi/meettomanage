@@ -136,16 +136,20 @@ export default function TeacherLeave() {
           }
           reloadLeaves();
           toast({ variant: "success", title: "Leave request submitted", description: "Pending admin approval." });
+          // Only clear on actual success -- these used to run unconditionally right after
+          // the .then/.catch chain regardless of outcome, so a failed submission left the
+          // teacher looking at an error banner with an already-blanked form, forcing a full
+          // re-entry to retry despite the comment here once claiming otherwise.
+          setSessionId("");
+          setReason("");
         })
         .catch((err: Error) => {
-          // Deliberately not resetForm() here — a failed submission keeps the teacher's
-          // dates/reason in place so they can fix whatever's wrong and retry without
-          // retyping the whole request.
+          // Deliberately not resetting the form here — a failed submission keeps the
+          // teacher's selection/reason in place so they can fix whatever's wrong and retry
+          // without repicking the session and retyping the reason.
           setSubmitError(err.message);
           toast({ variant: "error", title: "Couldn't submit leave request", description: err.message });
         });
-      setSessionId("");
-      setReason("");
       return;
     }
 
