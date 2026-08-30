@@ -130,7 +130,7 @@ function ChatWidget() {
               <MessageSquare className="h-4 w-4 text-[#25D366]" /> WhatsApp us
             </a>
             <a
-              href="mailto:hello@infinityuniquers.dev"
+              href="mailto:infinityuniquers@gmail.com"
               className="flex items-center gap-2.5 rounded-xl border border-black/10 px-3.5 py-2.5 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#F5F6F9]"
             >
               <Mail className="h-4 w-4 text-[#EA580C]" /> Email us
@@ -1054,16 +1054,17 @@ export default function MarketingHome() {
             <p className="mt-4 max-w-[22ch] text-sm leading-relaxed text-[#5B6472]">
               Live teaching, scheduling, admissions and billing — one role-based system for your whole academy.
             </p>
-            <ul className="mt-5 flex flex-col gap-3">
+            <p className="mt-6 text-xs font-bold uppercase tracking-[0.06em] text-[#8B93A1]">Contact</p>
+            <ul className="mt-4 flex flex-col gap-3">
               <li>
                 <a
-                  href="mailto:hello@infinityuniquers.dev"
+                  href="mailto:infinityuniquers@gmail.com"
                   className="group flex items-center gap-2.5 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F97316]/10 text-[#EA580C] transition-colors group-hover:bg-[#F97316]/15">
                     <Mail className="h-4 w-4" />
                   </span>
-                  hello@infinityuniquers.dev
+                  infinityuniquers@gmail.com
                 </a>
               </li>
               <li>
@@ -1075,6 +1076,19 @@ export default function MarketingHome() {
                     <Phone className="h-4 w-4" />
                   </span>
                   +91 93447 73231
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://wa.me/919344773231"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center gap-2.5 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F97316]/10 text-[#EA580C] transition-colors group-hover:bg-[#F97316]/15">
+                    <MessageSquare className="h-4 w-4" />
+                  </span>
+                  WhatsApp us
                 </a>
               </li>
             </ul>
