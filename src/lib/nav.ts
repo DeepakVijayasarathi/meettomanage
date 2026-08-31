@@ -35,6 +35,7 @@ import {
   FileText,
   ScrollText,
   ShoppingBag,
+  PencilRuler,
   Sparkles,
   Video,
   Building2,
@@ -67,6 +68,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Academic Calendar", to: "/admin/calendar", icon: CalendarDays },
       { label: "Sessions", to: "/admin/sessions", icon: CalendarClock },
       { label: "Quiz Bank", to: "/admin/quiz-bank", icon: Sparkles },
+      { label: "Activity Bank", to: "/admin/activity-bank", icon: PencilRuler },
     ],
   },
   {
@@ -76,6 +78,8 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Roles & Permissions", to: "/admin/permissions", icon: ShieldCheck },
       { label: "Enrollment Review", to: "/admin/enrollments", icon: ClipboardCheck },
       { label: "Store Inquiries", to: "/admin/store-inquiries", icon: ShoppingBag },
+      { label: "Leave Management", to: "/admin/leave", icon: CalendarOff },
+      { label: "Teacher Availability", to: "/admin/availability", icon: CalendarRange },
     ],
   },
   {

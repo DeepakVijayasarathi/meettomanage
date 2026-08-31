@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 import { cn } from "@/lib/utils";
 
 export interface DataTableColumn<T> {
@@ -55,6 +56,18 @@ interface DataTableProps<T> {
     totalCount: number;
     onPageChange: (page: number) => void;
   };
+  /**
+   * Opt-in: when set (and there are no rows to show), the table body renders ErrorState
+   * instead of the ordinary "no records" EmptyState — distinguishing "the fetch that would
+   * have filled this table failed" from "the fetch succeeded and there's genuinely nothing
+   * here." Off by default, so every existing DataTable consumer is unaffected unless it
+   * passes this. If `data` is non-empty despite `error` being set (a reload failed but the
+   * previous successful page is still in hand), the table renders normally — there's more
+   * value in showing the stale-but-real rows than blanking them out to an error screen.
+   */
+  error?: string | null;
+  /** Surfaced as ErrorState's Retry action — typically the same reload()/refetch the caller already passes to useApiData. */
+  onRetry?: () => void;
 }
 
 export function DataTable<T>({
@@ -73,6 +86,8 @@ export function DataTable<T>({
   onSelectionChange,
   bulkActions,
   serverPagination,
+  error,
+  onRetry,
 }: DataTableProps<T>) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
@@ -230,16 +245,24 @@ export function DataTable<T>({
       </div>
 
       {sorted.length === 0 ? (
-        // A search that simply matched nothing shouldn't reuse the page's "no data
-        // exists at all" copy (e.g. "No demos scheduled yet") — that reads as if the
-        // list is genuinely empty rather than just filtered, which is misleading once
-        // real rows exist. Only fall back to the caller's empty copy when there's no
-        // active query, i.e. the table really has no data.
-        <EmptyState
-          icon={Search}
-          title={trimmedQuery ? `No results for "${trimmedQuery}"` : emptyTitle}
-          description={trimmedQuery ? "Try a different search term, or clear the search to see everything." : emptyDescription}
-        />
+        error ? (
+          // The fetch that would have filled this table failed — not "genuinely empty."
+          // A search query narrowing an error state to 0 rows isn't a meaningful distinction
+          // (there was nothing successfully loaded to search in the first place), so this
+          // takes priority over the "no results for {query}" branch below.
+          <ErrorState onRetry={onRetry} />
+        ) : (
+          // A search that simply matched nothing shouldn't reuse the page's "no data
+          // exists at all" copy (e.g. "No demos scheduled yet") — that reads as if the
+          // list is genuinely empty rather than just filtered, which is misleading once
+          // real rows exist. Only fall back to the caller's empty copy when there's no
+          // active query, i.e. the table really has no data.
+          <EmptyState
+            icon={Search}
+            title={trimmedQuery ? `No results for "${trimmedQuery}"` : emptyTitle}
+            description={trimmedQuery ? "Try a different search term, or clear the search to see everything." : emptyDescription}
+          />
+        )
       ) : (
         <>
           {/* Mobile: a horizontally-scrolling table is unusable on a phone (every column but

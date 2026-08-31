@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarClock, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import type { ClassSession } from "@/types";
 import { formatDate } from "@/lib/utils";
 
 export default function AdminAcademicCalendar() {
+  const { toast } = useToast();
   const [selected, setSelected] = useState<ClassSession | null>(null);
   const { data: sessions } = useApiData<ClassSession[]>(
     () => listSessions().then((items) => items.map(toFrontendSession)),
@@ -77,8 +79,11 @@ export default function AdminAcademicCalendar() {
       setHolidayDate("");
       setHolidayName("");
       reloadHolidays();
+      toast({ variant: "success", title: "Holiday added" });
     } catch (err) {
-      setHolidayError(err instanceof Error ? err.message : "Could not add the holiday.");
+      const message = err instanceof Error ? err.message : "Could not add the holiday.";
+      setHolidayError(message);
+      toast({ variant: "error", title: "Couldn't add holiday", description: message });
     } finally {
       setSavingHoliday(false);
     }
@@ -94,8 +99,11 @@ export default function AdminAcademicCalendar() {
     try {
       await deleteHoliday(id);
       reloadHolidays();
+      toast({ variant: "success", title: "Holiday removed" });
     } catch (err) {
-      setHolidayError(err instanceof Error ? err.message : "Could not remove the holiday.");
+      const message = err instanceof Error ? err.message : "Could not remove the holiday.";
+      setHolidayError(message);
+      toast({ variant: "error", title: "Couldn't remove holiday", description: message });
     } finally {
       setDeletingHolidayId(null);
     }

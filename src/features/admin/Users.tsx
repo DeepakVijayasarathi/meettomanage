@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
 import { useBrand } from "@/lib/branding";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
@@ -80,16 +81,17 @@ const FRONTEND_ROLE_TO_API: Record<string, ApiRole> = {
 
 export default function AdminUsers() {
   const brand = useBrand();
+  const { toast } = useToast();
   const {
     data: parents,
     error: parentsError,
     reload: reloadParents,
   } = useApiData(() => listUsers({ role: "Parent" }).then((r) => r.items.map(toAppUser)), PARENTS);
-  const { data: teachers, reload: reloadTeachers } = useApiData(
+  const { data: teachers, error: teachersError, reload: reloadTeachers } = useApiData(
     () => listUsers({ role: "Teacher" }).then((r) => r.items.map(toAppUser)),
     TEACHERS
   );
-  const { data: staff, reload: reloadStaff } = useApiData(
+  const { data: staff, error: staffError, reload: reloadStaff } = useApiData(
     async () => {
       const [admission, subAdmins] = await Promise.all([
         listUsers({ role: "AdmissionTeam" }),
@@ -99,7 +101,7 @@ export default function AdminUsers() {
     },
     [...ADMISSION_TEAM, ...SUB_ADMINS]
   );
-  const { data: students, reload: reloadStudents } = useApiData<StudentRow[]>(listStudents, CHILDREN);
+  const { data: students, error: studentsError, reload: reloadStudents } = useApiData<StudentRow[]>(listStudents, CHILDREN);
   const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), DEMO_DEPARTMENTS);
 
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
@@ -218,8 +220,11 @@ export default function AdminUsers() {
       reloadParents();
       reloadTeachers();
       reloadStaff();
+      toast({ variant: "success", title: "Profile updated" });
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Could not update the profile.");
+      const message = err instanceof Error ? err.message : "Could not update the profile.";
+      setEditError(message);
+      toast({ variant: "error", title: "Couldn't update profile", description: message });
     } finally {
       setEditSaving(false);
     }
@@ -242,8 +247,11 @@ export default function AdminUsers() {
       reloadParents();
       reloadTeachers();
       reloadStaff();
+      toast({ variant: "success", title: "Account deleted", description: `${deleteTarget.name}'s account was removed.` });
     } catch (err) {
-      setBanner({ ok: false, text: err instanceof Error ? err.message : "Could not delete the account." });
+      const message = err instanceof Error ? err.message : "Could not delete the account.";
+      setBanner({ ok: false, text: message });
+      toast({ variant: "error", title: "Couldn't delete account", description: message });
     }
   }
 
@@ -276,8 +284,11 @@ export default function AdminUsers() {
     try {
       const pin = await resetPin(detailUser.id);
       setPinResult({ ok: true, pin });
+      toast({ variant: "success", title: "PIN reset", description: `A new PIN was generated for ${detailUser.name}.` });
     } catch (err) {
-      setPinResult({ ok: false, message: err instanceof Error ? err.message : "Could not reset the PIN." });
+      const message = err instanceof Error ? err.message : "Could not reset the PIN.";
+      setPinResult({ ok: false, message });
+      toast({ variant: "error", title: "Couldn't reset PIN", description: message });
     } finally {
       setResettingPin(false);
     }
@@ -444,8 +455,11 @@ export default function AdminUsers() {
       reloadParents();
       reloadTeachers();
       reloadStaff();
+      toast({ variant: "success", title: "User created" });
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Could not create the user.");
+      const message = err instanceof Error ? err.message : "Could not create the user.";
+      setAddError(message);
+      toast({ variant: "error", title: "Couldn't create user", description: message });
     } finally {
       setAddSubmitting(false);
     }
@@ -635,6 +649,8 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search parents by name or email…"
             onRowClick={(row) => setDetailUser(row)}
+            emptyTitle="No parent accounts yet"
+            emptyDescription="Parent accounts are created when a student enrolls, or you can add one directly with Add User above."
             selectable
             selectedKeys={selectedParentIds}
             onSelectionChange={setSelectedParentIds}
@@ -643,6 +659,8 @@ export default function AdminUsers() {
                 <Mail className="h-3 w-3" /> Resend credentials
               </Button>
             }
+            error={apiEnabled() ? parentsError : null}
+            onRetry={reloadParents}
             toolbar={
               <BulkImportExportBar
                 entityLabel="parents"
@@ -662,6 +680,10 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search students by name…"
             onRowClick={(row) => setDetailChild(row)}
+            emptyTitle="No students enrolled yet"
+            emptyDescription="Students appear here once a parent adds a child, or you can import a batch using the button above."
+            error={apiEnabled() ? studentsError : null}
+            onRetry={reloadStudents}
             toolbar={
               <BulkImportExportBar
                 entityLabel="students"
@@ -681,6 +703,8 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search teachers by name or email…"
             onRowClick={(row) => setDetailUser(row)}
+            emptyTitle="No teacher accounts yet"
+            emptyDescription="Add your first teacher with Add User above so you can assign them to batches and sessions."
             selectable
             selectedKeys={selectedTeacherIds}
             onSelectionChange={setSelectedTeacherIds}
@@ -689,6 +713,8 @@ export default function AdminUsers() {
                 <Mail className="h-3 w-3" /> Resend credentials
               </Button>
             }
+            error={apiEnabled() ? teachersError : null}
+            onRetry={reloadTeachers}
             toolbar={
               <BulkImportExportBar
                 entityLabel="teachers"
@@ -708,6 +734,10 @@ export default function AdminUsers() {
             rowKey={(row) => row.id}
             searchPlaceholder="Search staff by name…"
             onRowClick={(row) => setDetailUser(row)}
+            emptyTitle="No admission or sub-admin accounts yet"
+            emptyDescription="Add your first staff account with Add User above."
+            error={apiEnabled() ? staffError : null}
+            onRetry={reloadStaff}
           />
         </TabsContent>
       </Tabs>
@@ -905,6 +935,7 @@ export default function AdminUsers() {
                   id="edit-first"
                   value={editForm.firstName}
                   onChange={(e) => setEditForm((f) => ({ ...f, firstName: e.target.value }))}
+                  placeholder="e.g. Simran"
                 />
               </div>
               <div className="grid gap-1.5">
@@ -913,6 +944,7 @@ export default function AdminUsers() {
                   id="edit-last"
                   value={editForm.lastName}
                   onChange={(e) => setEditForm((f) => ({ ...f, lastName: e.target.value }))}
+                  placeholder="e.g. Kaur"
                 />
               </div>
             </div>

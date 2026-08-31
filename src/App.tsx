@@ -20,6 +20,7 @@ const AdminPermissions = lazy(() => import("@/features/admin/Permissions"));
 const AdminCourses = lazy(() => import("@/features/admin/Courses"));
 const AdminDepartments = lazy(() => import("@/features/admin/Departments"));
 const AdminQuizQuestions = lazy(() => import("@/features/admin/QuizQuestions"));
+const AdminActivityBank = lazy(() => import("@/features/admin/ActivityBank"));
 const AdminBatches = lazy(() => import("@/features/admin/Batches"));
 const AdminAcademicCalendar = lazy(() => import("@/features/admin/AcademicCalendar"));
 const AdminSessions = lazy(() => import("@/features/admin/Sessions"));
@@ -36,6 +37,8 @@ const AdminProgressReports = lazy(() => import("@/features/admin/ProgressReports
 const AdminChatbot = lazy(() => import("@/features/admin/ChatbotAdmin"));
 const AdminEnrollments = lazy(() => import("@/features/admin/Enrollments"));
 const AdminStoreInquiries = lazy(() => import("@/features/admin/StoreInquiries"));
+const AdminLeave = lazy(() => import("@/features/admin/Leave"));
+const AdminAvailability = lazy(() => import("@/features/admin/Availability"));
 const AdminSettings = lazy(() => import("@/features/admin/Settings"));
 const AdminMonitoring = lazy(() => import("@/features/admin/Monitoring"));
 const AdminServerDetail = lazy(() => import("@/features/admin/ServerDetail"));
@@ -154,6 +157,7 @@ export default function App() {
               <Route path="courses" element={<AdminCourses />} />
               <Route path="departments" element={<AdminDepartments />} />
               <Route path="quiz-bank" element={<AdminQuizQuestions />} />
+              <Route path="activity-bank" element={<AdminActivityBank />} />
               <Route path="batches" element={<AdminBatches />} />
               <Route path="calendar" element={<AdminAcademicCalendar />} />
               <Route path="sessions" element={<AdminSessions />} />
@@ -170,6 +174,8 @@ export default function App() {
               <Route path="chatbot" element={<AdminChatbot />} />
               <Route path="enrollments" element={<AdminEnrollments />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
+              <Route path="leave" element={<AdminLeave />} />
+              <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="monitoring" element={<AdminMonitoring />} />
               <Route path="monitoring/:serverName" element={<AdminServerDetail />} />

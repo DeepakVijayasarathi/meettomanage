@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { cloneElement, isValidElement, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, CheckCircle2, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
 import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { COURSES } from "@/data/courses";
@@ -67,6 +67,7 @@ interface EnrollmentForm {
 }
 
 export default function ParentEnrollment() {
+  const { toast } = useToast();
   const brand = useBrand();
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -256,8 +257,13 @@ export default function ParentEnrollment() {
           markEnrollmentComplete(childId);
           setActiveChildId(childId);
           setSubmitted(true);
+          toast({ variant: "success", title: "Enrollment submitted" });
         })
-        .catch((err: Error) => setError(err.message || "Could not submit the form. Please try again."))
+        .catch((err: Error) => {
+          const message = err.message || "Could not submit the form. Please try again.";
+          setError(message);
+          toast({ variant: "error", title: "Couldn't submit enrollment", description: message });
+        })
         .finally(() => setSubmitting(false));
       return;
     }
@@ -298,7 +304,7 @@ export default function ParentEnrollment() {
           </span>
           <h2 className="text-lg font-bold text-foreground">{displayFirstName}'s enrollment is complete!</h2>
           <p className="mt-2 text-sm text-muted-foreground">Taking you to the dashboard…</p>
-          <Button className="mt-6" onClick={() => navigate("/parent")}>
+          <Button className="mt-6 !bg-brand-green !text-white hover:!bg-brand-greenDark" onClick={() => navigate("/parent")}>
             Go to Dashboard now
           </Button>
         </Card>
@@ -316,29 +322,76 @@ export default function ParentEnrollment() {
 
       <Card className="mx-auto max-w-2xl">
         <CardHeader className="gap-3">
-          <div aria-live="polite" className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-            <span>
-              Step {step + 1} of {STEPS.length}
-            </span>
-            <span>{STEPS[step]}</span>
-          </div>
-          <Progress value={((step + 1) / STEPS.length) * 100} />
+          {/* Visible to sighted users as circles + connecting lines; a screen reader gets the
+              same "Step X of Y: Label" announcement the old text-only header gave, via the
+              sr-only live region below — swapping the visual for a stepper shouldn't mean
+              losing that announcement on every Back/Next. */}
+          <p aria-live="polite" className="sr-only">
+            Step {step + 1} of {STEPS.length}: {STEPS[step]}
+          </p>
+          <ol className="flex">
+            {STEPS.map((label, i) => {
+              const isCompleted = i < step;
+              const isCurrent = i === step;
+              return (
+                <li key={label} className="relative flex-1 text-center">
+                  {/* Each item draws only its own left/right half of the connector — the
+                      previous item's right half and this item's left half meet exactly at
+                      the midpoint between the two circles, and both read the same
+                      "is the step between them done" condition so the color always agrees. */}
+                  {i > 0 && (
+                    <div className={cn("absolute left-0 right-1/2 top-4 h-0.5", i - 1 < step ? "bg-brand-green" : "bg-border")} />
+                  )}
+                  {i < STEPS.length - 1 && (
+                    <div className={cn("absolute left-1/2 right-0 top-4 h-0.5", i < step ? "bg-brand-green" : "bg-border")} />
+                  )}
+                  <span
+                    aria-current={isCurrent ? "step" : undefined}
+                    className={cn(
+                      "relative z-10 mx-auto flex h-8 w-8 items-center justify-center rounded-full border-2 bg-card text-xs font-bold transition-colors",
+                      isCompleted
+                        ? "border-brand-green bg-brand-green text-white"
+                        : isCurrent
+                          ? "border-brand-green text-brand-green"
+                          : "border-border text-muted-foreground"
+                    )}
+                  >
+                    {isCompleted ? <Check className="h-4 w-4" /> : i + 1}
+                  </span>
+                  <span
+                    className={cn(
+                      "mx-auto mt-1.5 block max-w-[6.5rem] text-[11px] font-semibold leading-tight",
+                      isCurrent ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    {label}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             {step === 0 && (
               <div className="flex flex-col gap-4">
                 <Field label="Student's full name" htmlFor="childName" required error={errors.childName}>
-                  <Input id="childName" required value={form.childName} onChange={(e) => update("childName", e.target.value)} />
+                  <Input
+                    id="childName"
+                    required
+                    value={form.childName}
+                    onChange={(e) => update("childName", e.target.value)}
+                    placeholder="e.g. Aarav Kapoor"
+                  />
                 </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Date of birth" htmlFor="dob" required error={errors.dob}>
                     <Input id="dob" type="date" required value={form.dob} onChange={(e) => update("dob", e.target.value)} />
                   </Field>
                   <Field label="Gender" htmlFor="gender" required error={errors.gender}>
-                    <Select value={form.gender} onValueChange={(v) => update("gender", v)}>
+                    <Select required value={form.gender} onValueChange={(v) => update("gender", v)}>
                       <SelectTrigger id="gender">
-                        <SelectValue placeholder="Select" />
+                        <SelectValue placeholder="Select gender" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="female">Female</SelectItem>
@@ -387,12 +440,18 @@ export default function ParentEnrollment() {
               <div className="flex flex-col gap-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Parent / guardian name" htmlFor="parentName" required error={errors.parentName}>
-                    <Input id="parentName" required value={form.parentName} onChange={(e) => update("parentName", e.target.value)} />
+                    <Input
+                      id="parentName"
+                      required
+                      value={form.parentName}
+                      onChange={(e) => update("parentName", e.target.value)}
+                      placeholder="e.g. Priya Kapoor"
+                    />
                   </Field>
                   <Field label="Relationship to student" htmlFor="relationship" required error={errors.relationship}>
-                    <Select value={form.relationship} onValueChange={(v) => update("relationship", v)}>
+                    <Select required value={form.relationship} onValueChange={(v) => update("relationship", v)}>
                       <SelectTrigger id="relationship">
-                        <SelectValue placeholder="Select" />
+                        <SelectValue placeholder="Select relationship" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="mother">Mother</SelectItem>
@@ -458,7 +517,7 @@ export default function ParentEnrollment() {
             {step === 2 && (
               <div className="flex flex-col gap-4">
                 <Field label="Course of interest" htmlFor="courseInterest" required error={errors.courseInterest}>
-                  <Select value={form.courseInterest} onValueChange={(v) => update("courseInterest", v)}>
+                  <Select required value={form.courseInterest} onValueChange={(v) => update("courseInterest", v)}>
                     <SelectTrigger id="courseInterest">
                       <SelectValue placeholder="Select a course" />
                     </SelectTrigger>
@@ -493,7 +552,7 @@ export default function ParentEnrollment() {
                 <Field label="Preferred time slot" htmlFor="preferredTime">
                   <Select value={form.preferredTime} onValueChange={(v) => update("preferredTime", v)}>
                     <SelectTrigger id="preferredTime">
-                      <SelectValue placeholder="Select (optional)" />
+                      <SelectValue placeholder="Select a time slot (optional)" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="morning">Morning (8am–12pm)</SelectItem>
@@ -548,11 +607,15 @@ export default function ParentEnrollment() {
                 <ArrowLeft className="h-4 w-4" /> Back
               </Button>
               {step < STEPS.length - 1 ? (
-                <Button type="button" onClick={handleNext}>
+                <Button type="button" onClick={handleNext} className="!bg-brand-green !text-white hover:!bg-brand-greenDark">
                   Next <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button type="submit" disabled={submitting}>
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="!bg-brand-green !text-white hover:!bg-brand-greenDark"
+                >
                   <CheckCircle2 className="h-4 w-4" /> {submitting ? "Submitting…" : "Submit & Unlock Dashboard"}
                 </Button>
               )}
@@ -577,18 +640,29 @@ function Field({
   error?: string;
   children: ReactNode;
 }) {
+  const errorId = `${htmlFor}-error`;
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={htmlFor} className={cn(error && "text-destructive")}>
         {label}
         {required && <span className="ml-0.5 text-destructive">*</span>}
       </Label>
-      {children}
+      {/* aria-describedby ties the field to its error so a screen-reader user re-focusing
+          it later (not just at the moment role="alert" first announces it) still hears
+          why it's flagged; aria-invalid mirrors the same red-border/red-label visual cue
+          programmatically. Every call site here passes exactly one form control as
+          children, so cloning in these two props is safe. */}
+      {isValidElement<{ "aria-describedby"?: string; "aria-invalid"?: boolean }>(children)
+        ? cloneElement(children, {
+            "aria-describedby": error ? errorId : undefined,
+            "aria-invalid": !!error,
+          })
+        : children}
       {/* role="alert" so a screen reader announces the failure on Next/Submit — the
           errors appear well below the button that triggered them and were otherwise
           silent (matching how Login and Store already announce their errors). */}
       {error && (
-        <p role="alert" className="text-xs font-medium text-destructive">
+        <p id={errorId} role="alert" className="text-xs font-medium text-destructive">
           {error}
         </p>
       )}

@@ -1,4 +1,5 @@
 import type { ChatMessage, ClassSession, Participant } from "@/types";
+import type { ApiWhiteboardActivity } from "@/api/whiteboardActivities";
 import { CHILDREN, getChildById } from "@/data/children";
 import { CHART_PALETTE } from "@/lib/roles";
 
@@ -95,6 +96,46 @@ export const QUIZ_BANK: QuizQuestion[] = [
     prompt: "How many sides does a triangle have?",
     options: ["2", "3", "4", "5"],
     correctIndex: 1,
+  },
+];
+
+/** Demo-mode-only stand-in for the admin-authored Activity Bank (see api/whiteboardActivities.ts)
+ *  — this mock classroom never calls the real API, so it needs its own fixture the way QUIZ_BANK
+ *  above stands in for the real quiz bank. */
+export const DEMO_ACTIVITY_BANK: ApiWhiteboardActivity[] = [
+  {
+    id: "act-1",
+    departmentId: "dept-demo",
+    departmentName: "Demo",
+    courseId: null,
+    courseName: null,
+    mode: "DragDrop",
+    prompt: "Drag the fruit to its matching first letter",
+    displayOrder: 0,
+    items: [
+      { id: "act-1-apple", emoji: "🍎", label: "A", isTarget: false, displayOrder: 0 },
+      { id: "act-1-banana", emoji: "🍌", label: "B", isTarget: false, displayOrder: 1 },
+      { id: "act-1-grapes", emoji: "🍇", label: "G", isTarget: false, displayOrder: 2 },
+      { id: "act-1-orange", emoji: "🍊", label: "O", isTarget: false, displayOrder: 3 },
+    ],
+  },
+  {
+    id: "act-2",
+    departmentId: "dept-demo",
+    departmentName: "Demo",
+    courseId: null,
+    courseName: null,
+    mode: "Hotspot",
+    prompt: "Click everything that starts with the “sh” sound",
+    displayOrder: 1,
+    items: [
+      { id: "act-2-sun", emoji: "☀️", label: null, isTarget: false, displayOrder: 0 },
+      { id: "act-2-ship", emoji: "🚢", label: null, isTarget: true, displayOrder: 1 },
+      { id: "act-2-tree", emoji: "🌳", label: null, isTarget: false, displayOrder: 2 },
+      { id: "act-2-shoe", emoji: "👟", label: null, isTarget: true, displayOrder: 3 },
+      { id: "act-2-fish", emoji: "🐟", label: null, isTarget: false, displayOrder: 4 },
+      { id: "act-2-sheep", emoji: "🐑", label: null, isTarget: true, displayOrder: 5 },
+    ],
   },
 ];
 

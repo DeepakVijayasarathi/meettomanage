@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Mail, Save, Sparkles } from "lucide-react";
 import { RichTextEditor, type RichTextEditorHandle } from "@/components/RichTextEditor";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,6 +75,7 @@ function insertAtCursor(
 }
 
 export default function EmailTemplates() {
+  const { toast } = useToast();
   const [templates, setTemplates] = useState<ApiEmailTemplate[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,8 +172,11 @@ export default function EmailTemplates() {
       await reload();
       setSavedAt(Date.now());
       setError(null);
+      toast({ variant: "success", title: "Template saved" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the template.");
+      const message = err instanceof Error ? err.message : "Could not save the template.";
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save template", description: message });
     } finally {
       setBusy(false);
     }
@@ -274,8 +279,9 @@ export default function EmailTemplates() {
                 )}
 
                 <div className="grid gap-1.5">
-                  <Label>Subject</Label>
+                  <Label htmlFor="template-subject">Subject</Label>
                   <Input
+                    id="template-subject"
                     ref={subjectRef}
                     value={subject}
                     onFocus={() => (lastFocused.current = "subject")}
@@ -334,8 +340,9 @@ export default function EmailTemplates() {
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {selected.placeholders.map((p) => (
                         <div key={p} className="grid gap-1">
-                          <Label className="font-mono text-[11px]">{p}</Label>
+                          <Label htmlFor={`sample-token-${p}`} className="font-mono text-[11px]">{p}</Label>
                           <Input
+                            id={`sample-token-${p}`}
                             value={sampleTokens[p] ?? ""}
                             placeholder={`[${p}]`}
                             onChange={(e) => setSampleTokens((prev) => ({ ...prev, [p]: e.target.value }))}

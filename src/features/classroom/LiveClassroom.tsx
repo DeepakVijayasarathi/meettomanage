@@ -8,7 +8,7 @@ import { SESSIONS } from "@/data/sessions";
 import type { ChatMessage, Participant } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { buildInitialMessages, buildParticipants, LEADERBOARD_SEED, QUIZ_BANK } from "./classroomData";
+import { buildInitialMessages, buildParticipants, DEMO_ACTIVITY_BANK, LEADERBOARD_SEED, QUIZ_BANK } from "./classroomData";
 import VideoStage from "./VideoStage";
 import Whiteboard from "./Whiteboard";
 import ParticipantsPanel from "./ParticipantsPanel";
@@ -272,6 +272,8 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
           ) : (
             <Whiteboard
               canDraw={canDrawBoard}
+              mode={mode}
+              activities={DEMO_ACTIVITY_BANK}
               onActivityComplete={() => {
                 celebrate();
                 postEngagement(sessionId, selfName, "ActivityCompleted");

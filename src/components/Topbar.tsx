@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotificationPanel } from "@/components/NotificationPanel";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSession } from "@/state/session";
 import { getInitials } from "@/lib/utils";
 
@@ -44,6 +45,7 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
       {title && <h2 className="hidden text-sm font-semibold text-foreground/80 md:block">{title}</h2>}
 
       <div className="ml-auto flex items-center gap-2">
+        <ThemeToggle />
         <NotificationPanel />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

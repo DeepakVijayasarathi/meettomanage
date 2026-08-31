@@ -99,7 +99,7 @@ export default function SubAdminReports() {
   const reportDate = usingApi ? new Date().toISOString().slice(0, 10) : "2026-07-09";
 
   // Live roster from the batches API; the demo roster only renders without a backend.
-  const { data: batchRows } = useApiData<BatchRow[]>(
+  const { data: batchRows, error: batchRowsError, reload: reloadBatchRows } = useApiData<BatchRow[]>(
     () =>
       listBatches().then((items) =>
         items.map((b) => {
@@ -308,6 +308,10 @@ export default function SubAdminReports() {
                 rowKey={(r) => r.id}
                 searchPlaceholder="Search batches, courses or teachers…"
                 pageSize={6}
+                emptyTitle="No batches in view"
+                emptyDescription="Batches you have access to will be listed here once they're scheduled."
+                error={usingApi ? batchRowsError : null}
+                onRetry={reloadBatchRows}
               />
             </CardContent>
           </Card>

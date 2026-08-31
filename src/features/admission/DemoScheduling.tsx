@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarPlus, ChevronDown, ChevronUp, Trash2, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
@@ -111,7 +112,8 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
 }
 
 export default function AdmissionDemoScheduling() {
-  const { data: apiRows, reload: reloadRows } = useApiData(
+  const { toast } = useToast();
+  const { data: apiRows, error: rowsError, reload: reloadRows } = useApiData(
     () => listDemoBookings().then((bookings) => bookings.map(bookingToRow)),
     seedRows()
   );
@@ -159,7 +161,12 @@ export default function AdmissionDemoScheduling() {
     time.length > 0 &&
     // API mode auto-assigns a teacher when none is picked, but needs the parent's email
     (apiEnabled() ? parents[0].email.trim().length > 0 : teacherId.length > 0) &&
-    parents.every((p) => p.name.trim().length > 0 && p.phone.trim().length > 0);
+    parents.every((p) => p.name.trim().length > 0 && p.phone.trim().length > 0) &&
+    // Every parent past the first is only ever added to be invited as a participant, and the
+    // API requires an email for any adult invitee (it has no other way to send a confirmation/
+    // join link) -- requiring it here too means the success toast's "all invited parents will
+    // receive an invite" is actually true, instead of quietly dropping anyone left blank.
+    (!apiEnabled() || parents.every((p) => p.email.trim().length > 0));
 
   function resetForm() {
     setChildName("");
@@ -191,10 +198,7 @@ export default function AdmissionDemoScheduling() {
         scheduledStartAtUtc: startUtc,
         scheduledEndAtUtc: endUtc,
         participants: [
-          ...parents
-            .slice(1)
-            .filter((p) => p.email.trim().length > 0)
-            .map((p) => ({ name: p.name.trim(), email: p.email.trim(), phone: p.phone.trim() || null })),
+          ...parents.slice(1).map((p) => ({ name: p.name.trim(), email: p.email.trim(), phone: p.phone.trim() || null })),
           ...extraChildren
             .filter((name) => name.trim().length > 0)
             .map((name) => ({ name: name.trim(), email: null, phone: null, isChild: true })),
@@ -205,8 +209,12 @@ export default function AdmissionDemoScheduling() {
           setActionError(null);
           setJustScheduled(childName.trim());
           resetForm();
+          toast({ variant: "success", title: "Demo scheduled" });
         })
-        .catch((err: Error) => setActionError(err.message))
+        .catch((err: Error) => {
+          setActionError(err.message);
+          toast({ variant: "error", title: "Couldn't schedule demo", description: err.message });
+        })
         .finally(() => setScheduling(false));
       return;
     }
@@ -482,7 +490,7 @@ export default function AdmissionDemoScheduling() {
                 <div key={p.id} className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
                   <Input placeholder={`Parent/guardian ${idx + 1} name`} aria-label={`Parent/guardian ${idx + 1} name`} value={p.name} onChange={(e) => updateParent(p.id, "name", e.target.value)} />
                   <Input placeholder="Phone number" aria-label={`Parent/guardian ${idx + 1} phone number`} value={p.phone} onChange={(e) => updateParent(p.id, "phone", e.target.value)} />
-                  <Input placeholder="Email address" aria-label={`Parent/guardian ${idx + 1} email address`} value={p.email} onChange={(e) => updateParent(p.id, "email", e.target.value)} />
+                  <Input placeholder="Email address (required to invite)" aria-label={`Parent/guardian ${idx + 1} email address`} value={p.email} onChange={(e) => updateParent(p.id, "email", e.target.value)} />
                   <Button
                     type="button"
                     variant="ghost"
@@ -514,11 +522,11 @@ export default function AdmissionDemoScheduling() {
               <Input id="demoTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>
+              <Label htmlFor="demo-teacher-select">
                 Teacher <span className="text-destructive">*</span>
               </Label>
               <Select value={teacherId} onValueChange={setTeacherId}>
-                <SelectTrigger>
+                <SelectTrigger id="demo-teacher-select">
                   <SelectValue placeholder="Select a teacher" />
                 </SelectTrigger>
                 <SelectContent>
@@ -561,6 +569,8 @@ export default function AdmissionDemoScheduling() {
         searchPlaceholder="Search by child, parent or teacher…"
         emptyTitle="No demos scheduled yet"
         emptyDescription="Use the form above to schedule your first demo class."
+        error={apiEnabled() ? rowsError : null}
+        onRetry={reloadRows}
       />
 
       <ConfirmDialog
@@ -578,6 +588,7 @@ export default function AdmissionDemoScheduling() {
             return updateConversionStatus(completeTarget.id, "DemoCompleted").then(() => {
               setActionError(null);
               reloadRows();
+              toast({ variant: "success", title: "Demo marked completed" });
             });
           }
           setRows((prev) => prev.map((r) => (r.id === completeTarget.id ? { ...r, status: "completed" } : r)));
@@ -600,6 +611,7 @@ export default function AdmissionDemoScheduling() {
             return updateConversionStatus(cancelTarget.id, "NotInterested").then(() => {
               setActionError(null);
               reloadRows();
+              toast({ variant: "success", title: "Demo cancelled" });
             });
           }
           setRows((prev) => prev.map((r) => (r.id === cancelTarget.id ? { ...r, status: "cancelled" } : r)));

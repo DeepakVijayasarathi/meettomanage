@@ -32,7 +32,11 @@ export function minutesUntilStart(session: ClassSession): number {
   return differenceInMinutes(sessionStart(session), now());
 }
 
-const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo", "rescheduled"];
+// "rescheduled" marks the *old* session record a reschedule moved off of — the backend
+// leaves it in place (status Rescheduled) as a historical pointer and creates a brand new
+// Scheduled session for the new time. Treating "rescheduled" as joinable made that dead
+// record show up as a second "Join" button alongside the real, new session.
+const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo"];
 
 /** A class is joinable from 10 minutes before start until its scheduled duration has elapsed. */
 export function isJoinable(session: ClassSession): boolean {

@@ -6,6 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0E7C86" />
     <title>The Reader Nest — LMS &amp; Virtual Classroom</title>
+    <script>
+      // Applies the persisted (or OS-level) theme before first paint so there's no
+      // flash of the wrong theme while React boots. Keep in sync with src/lib/theme.ts,
+      // which reads the same "trn.theme" key once the app mounts.
+      (function () {
+        try {
+          var stored = localStorage.getItem("trn.theme");
+          var isDark =
+            stored === "dark" ||
+            (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.toggle("dark", isDark);
+        } catch (e) {
+          /* localStorage/matchMedia unavailable — falls back to the light default */
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

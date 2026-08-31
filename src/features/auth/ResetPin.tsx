@@ -5,6 +5,7 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { resetPin } from "@/api/auth";
+import { useLightBrandScope } from "@/lib/theme";
 
 const PIN_LENGTH = 4;
 // Same headline face as Login.tsx (scoped to this page only, not the global font-display).
@@ -79,6 +80,7 @@ function PinBoxes({
 }
 
 export default function ResetPin() {
+  useLightBrandScope();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const token = params.get("token");
@@ -114,7 +116,7 @@ export default function ResetPin() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-brand-cream px-6">
+    <div className="theme-light-scope flex min-h-screen items-center justify-center bg-brand-cream px-6">
       <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-[0_24px_70px_-24px_rgba(43,32,20,0.22)] ring-1 ring-brand-ink/[0.04]">
         <Logo className="mb-6 justify-center" />
 

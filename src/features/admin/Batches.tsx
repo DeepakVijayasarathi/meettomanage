@@ -434,7 +434,7 @@ export default function AdminBatches() {
       </Tabs>
 
       <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-xl">
           {detail && (
             <>
               <DialogHeader>
@@ -456,7 +456,10 @@ export default function AdminBatches() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Start Date</p>
-                    <p className="mt-1 font-semibold text-foreground">{formatDate(detail.startDate, "long")}</p>
+                    {/* detail.startDate is "" until a schedule's been generated (same empty
+                        value the card view above already guards) — formatDate on "" rendered
+                        the literal text "Invalid Date" instead of a real placeholder. */}
+                    <p className="mt-1 font-semibold text-foreground">{detail.startDate ? formatDate(detail.startDate, "long") : "Not scheduled yet"}</p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
@@ -470,7 +473,7 @@ export default function AdminBatches() {
                   <Label htmlFor="batch-assign-teacher-select">Assign teacher</Label>
                   <Select value={teacherAssignment} onValueChange={setTeacherAssignment}>
                     <SelectTrigger id="batch-assign-teacher-select">
-                      <SelectValue />
+                      <SelectValue placeholder="Select teacher" />
                     </SelectTrigger>
                     <SelectContent>
                       {apiEnabled() && teacherOptions.length > 0
@@ -489,12 +492,12 @@ export default function AdminBatches() {
                 </div>
                 {apiEnabled() ? (
                   <div className="grid gap-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label>Assign students</Label>
-                      <span className="text-[11px] text-muted-foreground">Saved immediately</span>
+                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                      <Label htmlFor="batch-assign-student-select">Assign students</Label>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
                     </div>
                     <Select value="" onValueChange={handleAssignStudent} disabled={assigning || roster.length >= detail.capacity}>
-                      <SelectTrigger>
+                      <SelectTrigger id="batch-assign-student-select">
                         <SelectValue
                           placeholder={
                             roster.length >= detail.capacity
@@ -566,11 +569,11 @@ export default function AdminBatches() {
 
               {/* Session plan: bulk-creates every course session on the chosen weekdays (skips holidays) */}
               <div className="rounded-xl border border-border bg-muted/30 p-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                     <CalendarPlus className="h-4 w-4" /> Generate class schedule
                   </p>
-                  <span className="text-[11px] text-muted-foreground">Saved immediately</span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Creates all of this batch's course sessions from a start date on the selected weekdays (holidays skipped).
@@ -698,6 +701,7 @@ export default function AdminBatches() {
                   value={newCapacity}
                   disabled={newCourseIsIndividual}
                   onChange={(e) => setNewCapacity(e.target.value)}
+                  placeholder="e.g. 12"
                 />
                 {newCourseIsIndividual && (
                   <p className="text-xs text-muted-foreground">

@@ -134,11 +134,11 @@ export function AccountDialog({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="acc-first">First name</Label>
-                <Input id="acc-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={loading} />
+                <Input id="acc-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={loading} placeholder="e.g. Priya" />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="acc-last">Last name</Label>
-                <Input id="acc-last" value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={loading} />
+                <Input id="acc-last" value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={loading} placeholder="e.g. Kapoor" />
               </div>
             </div>
             <div className="flex flex-col gap-1.5">

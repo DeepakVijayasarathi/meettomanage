@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { EmptyState } from "@/components/EmptyState";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/lib/branding";
+import { useLightBrandScope } from "@/lib/theme";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
@@ -68,6 +69,7 @@ function toLocalInputValue(date: Date): string {
 }
 
 export default function Store() {
+  useLightBrandScope();
   const brand = useBrand();
   const live = apiEnabled();
   const { data: plans, loading, error: plansError, reload: reloadPlans } = useApiData<ApiStorePlan[]>(() => listStorePlans(), DEMO_PLANS);
@@ -216,7 +218,7 @@ export default function Store() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-cream text-brand-ink">
+    <div className="theme-light-scope min-h-screen bg-brand-cream text-brand-ink">
       <header className="sticky top-0 z-30 border-b border-brand-ink/10 bg-brand-cream/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link to="/" aria-label={`${brand.name} home`}>
@@ -325,22 +327,48 @@ export default function Store() {
               <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
                 <div className="grid gap-1.5">
                   <Label htmlFor="parentName">Your name</Label>
-                  <Input id="parentName" required value={form.parentName} onChange={(e) => setForm((f) => ({ ...f, parentName: e.target.value }))} />
+                  <Input
+                    id="parentName"
+                    required
+                    value={form.parentName}
+                    onChange={(e) => setForm((f) => ({ ...f, parentName: e.target.value }))}
+                    placeholder="e.g. Priya Kapoor"
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-1.5">
                     <Label htmlFor="parentEmail">Email</Label>
-                    <Input id="parentEmail" type="email" required value={form.parentEmail} onChange={(e) => setForm((f) => ({ ...f, parentEmail: e.target.value }))} />
+                    <Input
+                      id="parentEmail"
+                      type="email"
+                      required
+                      value={form.parentEmail}
+                      onChange={(e) => setForm((f) => ({ ...f, parentEmail: e.target.value }))}
+                      placeholder="you@email.com"
+                    />
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="parentPhone">Phone</Label>
-                    <Input id="parentPhone" type="tel" required value={form.parentPhone} onChange={(e) => setForm((f) => ({ ...f, parentPhone: e.target.value }))} />
+                    <Input
+                      id="parentPhone"
+                      type="tel"
+                      required
+                      value={form.parentPhone}
+                      onChange={(e) => setForm((f) => ({ ...f, parentPhone: e.target.value }))}
+                      placeholder="+91 98765 43210"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-1.5">
                     <Label htmlFor="childName">Child's name</Label>
-                    <Input id="childName" required value={form.childName} onChange={(e) => setForm((f) => ({ ...f, childName: e.target.value }))} />
+                    <Input
+                      id="childName"
+                      required
+                      value={form.childName}
+                      onChange={(e) => setForm((f) => ({ ...f, childName: e.target.value }))}
+                      placeholder="e.g. Aarav Kapoor"
+                    />
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="childAge">Child's age</Label>
@@ -394,6 +422,7 @@ export default function Store() {
                     required
                     value={demoForm.parentName}
                     onChange={(e) => setDemoForm((f) => ({ ...f, parentName: e.target.value }))}
+                    placeholder="e.g. Priya Kapoor"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -405,6 +434,7 @@ export default function Store() {
                       required
                       value={demoForm.parentEmail}
                       onChange={(e) => setDemoForm((f) => ({ ...f, parentEmail: e.target.value }))}
+                      placeholder="you@email.com"
                     />
                   </div>
                   <div className="grid gap-1.5">
@@ -415,6 +445,7 @@ export default function Store() {
                       required
                       value={demoForm.parentPhone}
                       onChange={(e) => setDemoForm((f) => ({ ...f, parentPhone: e.target.value }))}
+                      placeholder="+91 98765 43210"
                     />
                   </div>
                 </div>
@@ -426,6 +457,7 @@ export default function Store() {
                       required
                       value={demoForm.childName}
                       onChange={(e) => setDemoForm((f) => ({ ...f, childName: e.target.value }))}
+                      placeholder="e.g. Aarav Kapoor"
                     />
                   </div>
                   <div className="grid gap-1.5">
@@ -441,9 +473,9 @@ export default function Store() {
                   </div>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>Subject (optional)</Label>
+                  <Label htmlFor="demo-subject-select">Subject (optional)</Label>
                   <Select value={demoForm.department} onValueChange={(v) => setDemoForm((f) => ({ ...f, department: v }))}>
-                    <SelectTrigger>
+                    <SelectTrigger id="demo-subject-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -476,7 +508,7 @@ export default function Store() {
                     </div>
                     {demoDate && (
                       <div className="grid gap-1.5">
-                        <Label>Available times</Label>
+                        <Label id="demo-available-times-label">Available times</Label>
                         {slotsLoading ? (
                           <p className="flex items-center gap-1.5 text-xs text-brand-ink/50">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking availability…
@@ -486,7 +518,7 @@ export default function Store() {
                         ) : availableSlots.length === 0 ? (
                           <p className="text-xs text-brand-ink/50">No open slots that day — try another date.</p>
                         ) : (
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2" role="group" aria-labelledby="demo-available-times-label">
                             {availableSlots.map((slot) => {
                               const slotLocal = toLocalInputValue(new Date(slot.startAtUtc));
                               const isSelected = demoForm.preferredStart === slotLocal;

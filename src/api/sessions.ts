@@ -29,6 +29,13 @@ export interface ApiClassSession {
    * the parent-portal schedule endpoint; empty elsewhere (Admin/Teacher lists) and for
    * demo sessions not yet tied to a specific enrolled child. */
   childIds?: string[];
+  /** True when this session has at least one recording that hasn't expired yet. */
+  hasRecording: boolean;
+  /** When the (most recent, still-active) recording's viewing window ends — null if there's none, or it never expires. */
+  recordingExpiresAtUtc: string | null;
+  /** DemoBooking's own free-text child name, for a Demo-type session only — there's no Child FK to
+   * link to at booking time, so this is the only way to say whose demo a session is. */
+  demoChildName: string | null;
 }
 
 const STATUS_FROM_API: Record<ApiClassSession["status"], SessionStatus> = {
@@ -54,7 +61,9 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
 
   return {
     id: session.id,
-    title: session.batchName ?? (session.type === "Demo" ? "Demo class" : "Class session"),
+    title:
+      session.batchName ??
+      (session.type === "Demo" ? (session.demoChildName ? `Demo — ${session.demoChildName}` : "Demo class") : "Class session"),
     batchId: session.batchId ?? undefined,
     teacherId: session.teacherProfileId,
     teacherName: session.teacherName,
@@ -64,9 +73,25 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
     duration: minutes,
     status: session.type === "Demo" && session.status === "Scheduled" ? "demo" : STATUS_FROM_API[session.status],
     type: session.type === "Demo" ? "demo" : "group",
+    recordingAvailable: session.hasRecording,
+    recordingExpiresOn: session.recordingExpiresAtUtc ?? undefined,
     meetingRoomId: session.meetingRoomId ?? undefined,
     summary: session.summary ?? undefined,
   };
+}
+
+/**
+ * Marks a session completed — accrues the teacher's payout for it, generates/stores the
+ * class summary, and (for a batch session) emails it to parents. This is the *only* thing
+ * that ever moves a session out of Scheduled into Completed; nothing does it automatically
+ * on a timer. The live classroom (JitsiLive) is the one caller today, firing it when the
+ * teacher leaves their own class.
+ */
+export async function completeSession(sessionId: string, summary?: string): Promise<ApiClassSession> {
+  return apiFetch<ApiClassSession>(`/api/sessions/${sessionId}/complete`, {
+    method: "POST",
+    body: JSON.stringify(summary ? { summary } : {}),
+  });
 }
 
 /** Personal iCalendar feed URL (absolute) for external calendar apps — created server-side on first request. */
@@ -100,6 +125,15 @@ export async function registerRecording(sessionId: string, storageUrl: string, d
 /** Recordings already registered against a session (Admin/Teacher only). */
 export async function listRecordings(sessionId: string): Promise<ApiSessionRecording[]> {
   return apiFetch<ApiSessionRecording[]>(`/api/sessions/${sessionId}/recordings`);
+}
+
+/**
+ * Unregisters a recording (Admin only). Only removes the database row — the underlying
+ * file in storage isn't touched, so this stops the recording from showing up anywhere in
+ * the app rather than reclaiming storage space.
+ */
+export async function deleteRecording(sessionId: string, recordingId: string): Promise<void> {
+  await apiFetch(`/api/sessions/${sessionId}/recordings/${recordingId}`, { method: "DELETE" });
 }
 
 export interface ApiClassroomSettings {

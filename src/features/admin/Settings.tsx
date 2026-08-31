@@ -307,7 +307,7 @@ export default function AdminSettings() {
           </TabsTrigger>
         </TabsList>
         <p className="mb-4 mt-2 text-xs text-muted-foreground">
-          <ShieldAlert className="mr-1 inline h-3 w-3 align-[-1px] text-warning" />
+          <ShieldAlert className="mr-1 inline h-3 w-3 align-[-1px] text-warning-foreground" />
           Payroll and Integrations hold live payout rates and payment-gateway credentials — double-check before changing them.
         </p>
 
@@ -451,9 +451,10 @@ export default function AdminSettings() {
 
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <Label>Primary brand color</Label>
+                  <Label htmlFor="brand-primary-color">Primary brand color</Label>
                   <div className="mt-2 flex items-center gap-2">
                     <input
+                      id="brand-primary-color"
                       type="color"
                       value={brandColor}
                       onChange={(e) => setValue("brand.primaryColor", e.target.value)}
@@ -482,9 +483,10 @@ export default function AdminSettings() {
                 </div>
 
                 <div>
-                  <Label>Accent color</Label>
+                  <Label htmlFor="brand-accent-color">Accent color</Label>
                   <div className="mt-2 flex items-center gap-2">
                     <input
+                      id="brand-accent-color"
                       type="color"
                       value={accentColor}
                       onChange={(e) => setValue("brand.accentColor", e.target.value)}
@@ -828,16 +830,17 @@ function MenuManager() {
         {form && (
           <div ref={formRef} className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-4 scroll-mt-4">
             <div className="grid gap-1.5">
-              <Label>Label</Label>
-              <Input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Courses" />
+              <Label htmlFor="menu-item-label">Label</Label>
+              <Input id="menu-item-label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. Courses" />
             </div>
             <div className="grid gap-1.5">
-              <Label>Path</Label>
-              <Input value={form.path} onChange={(e) => setForm({ ...form, path: e.target.value })} placeholder={`/${portal}/…`} />
+              <Label htmlFor="menu-item-path">Path</Label>
+              <Input id="menu-item-path" value={form.path} onChange={(e) => setForm({ ...form, path: e.target.value })} placeholder={`/${portal}/…`} />
             </div>
             <div className="grid gap-1.5">
-              <Label>Section</Label>
+              <Label htmlFor="menu-item-section">Section</Label>
               <Input
+                id="menu-item-section"
                 value={form.section ?? ""}
                 onChange={(e) => setForm({ ...form, section: e.target.value || null })}
                 placeholder="Empty = top block"
@@ -880,16 +883,17 @@ function MenuManager() {
               </Select>
             </div>
             <div className="grid gap-1.5">
-              <Label>Section order</Label>
+              <Label htmlFor="menu-item-section-order">Section order</Label>
               <Input
+                id="menu-item-section-order"
                 type="number"
                 value={form.sectionOrder}
                 onChange={(e) => setForm({ ...form, sectionOrder: Number(e.target.value) })}
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>Item order</Label>
-              <Input type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })} />
+              <Label htmlFor="menu-item-sort-order">Item order</Label>
+              <Input id="menu-item-sort-order" type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })} />
             </div>
             <div className="flex items-end gap-2 pb-1">
               <Switch checked={form.isActive} onCheckedChange={(isActive) => setForm({ ...form, isActive })} />
@@ -1441,8 +1445,9 @@ function JitsiRecordingSettings() {
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5 sm:col-span-2">
-              <Label>Domain</Label>
+              <Label htmlFor="jitsi-domain">Domain</Label>
               <Input
+                id="jitsi-domain"
                 value={form.domain}
                 onChange={(e) => setForm({ ...form, domain: e.target.value })}
                 placeholder="e.g. thereadernest.co.in"
@@ -1454,17 +1459,19 @@ function JitsiRecordingSettings() {
               </p>
             </div>
             <div className="grid gap-1.5">
-              <Label>App Id</Label>
+              <Label htmlFor="jitsi-app-id">App Id</Label>
               <Input
+                id="jitsi-app-id"
                 value={form.appId}
                 onChange={(e) => setForm({ ...form, appId: e.target.value })}
                 placeholder="Optional — only for JWT-secured rooms"
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>App Secret</Label>
+              <Label htmlFor="jitsi-app-secret">App Secret</Label>
               <div className="relative">
                 <Input
+                  id="jitsi-app-secret"
                   type={revealSecret ? "text" : "password"}
                   value={form.appSecret}
                   onChange={(e) => setForm({ ...form, appSecret: e.target.value })}
@@ -1670,8 +1677,9 @@ export function IntegrationsManager() {
         {form && (
           <div ref={formRef} className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 scroll-mt-4">
             <div className="grid gap-1.5">
-              <Label>Key</Label>
+              <Label htmlFor="integration-key">Key</Label>
               <Input
+                id="integration-key"
                 value={form.key}
                 onChange={(e) => setForm({ ...form, key: e.target.value })}
                 placeholder="e.g. sms-gateway"
@@ -1680,8 +1688,8 @@ export function IntegrationsManager() {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label>Name</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. SMS Gateway" />
+              <Label htmlFor="integration-name">Name</Label>
+              <Input id="integration-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. SMS Gateway" />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="integration-category-select">Category</Label>
@@ -1699,8 +1707,9 @@ export function IntegrationsManager() {
               </Select>
             </div>
             <div className="grid gap-1.5">
-              <Label>Description</Label>
+              <Label htmlFor="integration-description">Description</Label>
               <Input
+                id="integration-description"
                 value={form.description ?? ""}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 placeholder="What this integration is for"
@@ -1709,7 +1718,7 @@ export function IntegrationsManager() {
 
             <div className="sm:col-span-2">
               <div className="mb-1.5 flex items-center justify-between">
-                <Label>Configuration fields</Label>
+                <Label id="integration-config-fields-label">Configuration fields</Label>
                 <Button
                   variant="outline"
                   size="sm"
@@ -1719,7 +1728,7 @@ export function IntegrationsManager() {
                   <Plus className="h-3.5 w-3.5" /> Add field
                 </Button>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2" role="group" aria-labelledby="integration-config-fields-label">
                 {configRows.map((row, i) => {
                   const secret = isSecretField(row.key);
                   const revealed = revealedRows.has(i);
@@ -1729,6 +1738,7 @@ export function IntegrationsManager() {
                         value={row.key}
                         onChange={(e) => setConfigRows(configRows.map((r, ri) => (ri === i ? { ...r, key: e.target.value } : r)))}
                         placeholder="field name, e.g. apiKey"
+                        aria-label={`Configuration field ${i + 1} name`}
                         className="w-48 font-mono text-xs"
                       />
                       <div className="relative flex-1">
@@ -1737,6 +1747,7 @@ export function IntegrationsManager() {
                           value={row.value}
                           onChange={(e) => setConfigRows(configRows.map((r, ri) => (ri === i ? { ...r, value: e.target.value } : r)))}
                           placeholder="value"
+                          aria-label={`Configuration field ${i + 1} value`}
                           className={cn(secret && "pr-9")}
                           autoComplete="off"
                         />

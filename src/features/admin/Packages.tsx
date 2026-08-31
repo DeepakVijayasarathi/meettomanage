@@ -48,6 +48,7 @@ const BILLING_TYPES: { value: ApiBillingType; label: string }[] = [
 ];
 
 const BILLING_CYCLES: { value: ApiBillingCycle; label: string }[] = [
+  { value: "Biweekly", label: "Every 2 weeks" },
   { value: "Monthly", label: "Monthly" },
   { value: "Quarterly", label: "Quarterly" },
   { value: "Yearly", label: "Yearly" },
@@ -98,8 +99,8 @@ const EMPTY_PLAN_FORM: PlanForm = {
 export default function AdminPackages() {
   const live = apiEnabled();
 
-  const { data: plans, loading: plansLoading, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
-  const { data: subscriptions, loading: subscriptionsLoading, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
+  const { data: plans, loading: plansLoading, error: plansError, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
+  const { data: subscriptions, loading: subscriptionsLoading, error: subscriptionsError, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
     () => listSubscriptions(),
     DEMO_SUBSCRIPTIONS
   );
@@ -460,6 +461,8 @@ export default function AdminPackages() {
               onRowClick={openEditPlan}
               emptyTitle="No package plans yet"
               emptyDescription="Create a plan to define what parents are billed and how often."
+              error={live ? plansError : null}
+              onRetry={reloadPlans}
               toolbar={
                 <div className="flex items-center gap-2">
                   <BulkImportExportBar
@@ -487,6 +490,8 @@ export default function AdminPackages() {
               searchFn={(s, q) => `${s.childName} ${s.planName}`.toLowerCase().includes(q.toLowerCase())}
               emptyTitle="No subscriptions yet"
               emptyDescription="Start a subscription to begin auto-billing a child on a plan."
+              error={live ? subscriptionsError : null}
+              onRetry={reloadSubscriptions}
               toolbar={
                 <Button onClick={openStartSubscription}>
                   <PlayCircle className="h-4 w-4" />
@@ -520,12 +525,12 @@ export default function AdminPackages() {
             </div>
 
             <div className="grid gap-1.5">
-              <Label>Course (optional)</Label>
+              <Label htmlFor="plan-course-select">Course (optional)</Label>
               <Select
                 value={planForm.courseId || "none"}
                 onValueChange={(v) => setPlanForm((f) => ({ ...f, courseId: v === "none" ? "" : v }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="plan-course-select">
                   <SelectValue placeholder="No course linked" />
                 </SelectTrigger>
                 <SelectContent>
@@ -587,6 +592,7 @@ export default function AdminPackages() {
                   min="0"
                   value={planForm.price}
                   onChange={(e) => setPlanForm((f) => ({ ...f, price: e.target.value }))}
+                  placeholder="e.g. 2500"
                 />
               </div>
               <div className="grid gap-1.5">
@@ -597,6 +603,7 @@ export default function AdminPackages() {
                   min="1"
                   value={planForm.sessionsIncluded}
                   onChange={(e) => setPlanForm((f) => ({ ...f, sessionsIncluded: e.target.value }))}
+                  placeholder="e.g. 8"
                 />
               </div>
             </div>

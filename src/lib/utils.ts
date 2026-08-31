@@ -48,6 +48,18 @@ export function formatDate(value: string | Date, pattern: "short" | "long" | "ti
   }
 }
 
+/**
+ * "1 Sep 2026" for a single-day span, "1 Sep 2026 – 30 Sep 2026" for a multi-day one — the
+ * calendar-day comparison is on each date's own local rendering (`formatDate`'s "short"),
+ * not a raw millisecond diff, so a same-day leave that merely spans midnight in UTC still
+ * reads as one date rather than a misleading "day 1 – day 2" range.
+ */
+export function formatDateRange(startIso: string, endIso: string): string {
+  const start = formatDate(startIso, "short");
+  const end = formatDate(endIso, "short");
+  return start === end ? start : `${start} – ${end}`;
+}
+
 /** Amount still owed on an invoice; partial payments reduce it (mock rows have no amountPaid). */
 export function invoiceBalance(invoice: { amount: number; amountPaid?: number }): number {
   return Math.max(0, invoice.amount - (invoice.amountPaid ?? 0));
@@ -145,6 +157,11 @@ function contrastRatio(hexA: string, hexB: string): number {
  * as 2.51:1 for others (e.g. teacher orange), well under WCAG AA's 4.5:1 minimum for
  * button-label text. Picks whichever of white or the app's dark navy ink actually
  * contrasts better against the given accent color, instead of assuming white always works.
+ *
+ * Not currently called by AppShell's accentStyle — white was chosen there as a
+ * deliberate, informed product tradeoff (brand consistency over this contrast fix, see
+ * accentStyle's own comment). Kept here, and still covered by tests, in case that
+ * tradeoff is ever revisited for some or all portals.
  */
 export function pickAccentForegroundHsl(hex: string): string {
   const white = "#FFFFFF";

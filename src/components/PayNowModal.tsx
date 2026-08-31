@@ -2,6 +2,7 @@ import { useEffect, useState, type ComponentType } from "react";
 import { Banknote, CheckCircle2, CreditCard, ExternalLink, Landmark, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { InlineAlert } from "@/components/InlineAlert";
 import { formatCurrency, safeExternalUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
@@ -319,7 +320,11 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
             <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
               <ShieldCheck className="h-8 w-8" />
             </span>
-            <h3 className="text-lg font-bold">Complete your payment</h3>
+            {/* DialogTitle (not a bare h3): Radix points the dialog's aria-labelledby at
+                whichever DialogTitle is rendered, so each of this modal's post-action
+                states needs its own — a plain heading here left the dialog with no
+                accessible name for a screen-reader user once past the initial "Pay Now" step. */}
+            <DialogTitle className="text-lg font-bold">Complete your payment</DialogTitle>
             <p className="mt-1 text-sm text-muted-foreground">
               Finish the payment in the secure Razorpay window. Your invoice updates here the moment it succeeds.
             </p>
@@ -332,7 +337,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
             <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-success">
               <CheckCircle2 className="h-8 w-8" />
             </span>
-            <h3 className="text-lg font-bold">Payment successful</h3>
+            <DialogTitle className="text-lg font-bold">Payment successful</DialogTitle>
             <p className="mt-1 text-sm text-muted-foreground">
               {formatCurrency(amount)} received{invoiceLabel ? ` for ${invoiceLabel}` : ""}. A receipt has been sent to your email and access has been restored.
             </p>
@@ -345,7 +350,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
             <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
               {status === "redirect" ? <ExternalLink className="h-8 w-8" /> : <Banknote className="h-8 w-8" />}
             </span>
-            <h3 className="text-lg font-bold">{status === "redirect" ? "Complete your payment" : "Cash payment noted"}</h3>
+            <DialogTitle className="text-lg font-bold">{status === "redirect" ? "Complete your payment" : "Cash payment noted"}</DialogTitle>
             <p className="mt-1 text-sm text-muted-foreground">{resultMessage}</p>
             {status === "redirect" && (
               <p className="mt-2 text-xs text-muted-foreground">
@@ -353,9 +358,14 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
               </p>
             )}
             {verifyNote && (
-              <p role="alert" className="mt-3 text-sm font-medium text-warning">
+              // Was a bare text-warning paragraph — the raw --warning token is meant to
+              // pair with warning-foreground as a tint background, not stand alone as
+              // foreground text; on its own it only cleared ~2.1:1 against the dialog's
+              // white surface, far under WCAG AA's 4.5:1. InlineAlert's warning variant
+              // already uses the correct, verified-accessible pairing.
+              <InlineAlert variant="warning" className="mt-3">
                 {verifyNote}
-              </p>
+              </InlineAlert>
             )}
             {status === "redirect" ? (
               <div className="mt-6 flex w-full flex-col gap-2">

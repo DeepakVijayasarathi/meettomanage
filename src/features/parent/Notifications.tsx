@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AlertCircle, AlertTriangle, BellOff, CheckCheck, CheckCircle2, Info, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -31,6 +32,7 @@ const PARENT_NOTIFICATIONS: ParentNotification[] = [
     read: false,
     type: "success",
     date: "2026-07-09",
+    route: "/parent/schedule",
   },
   {
     id: "pn-2",
@@ -40,6 +42,7 @@ const PARENT_NOTIFICATIONS: ParentNotification[] = [
     read: false,
     type: "warning",
     date: "2026-07-09",
+    route: "/parent/billing",
   },
   {
     id: "pn-3",
@@ -49,6 +52,7 @@ const PARENT_NOTIFICATIONS: ParentNotification[] = [
     read: false,
     type: "danger",
     date: "2026-07-09",
+    route: "/parent/enrollment",
   },
   {
     id: "pn-4",
@@ -58,6 +62,7 @@ const PARENT_NOTIFICATIONS: ParentNotification[] = [
     read: true,
     type: "info",
     date: "2026-07-08",
+    route: "/parent/recordings",
   },
   {
     id: "pn-5",
@@ -67,6 +72,7 @@ const PARENT_NOTIFICATIONS: ParentNotification[] = [
     read: true,
     type: "success",
     date: "2026-07-08",
+    route: "/parent/schedule",
   },
   {
     id: "pn-6",
@@ -76,6 +82,7 @@ const PARENT_NOTIFICATIONS: ParentNotification[] = [
     read: true,
     type: "info",
     date: "2026-07-08",
+    route: "/parent/schedule",
   },
   {
     id: "pn-7",
@@ -85,6 +92,7 @@ const PARENT_NOTIFICATIONS: ParentNotification[] = [
     read: true,
     type: "success",
     date: "2026-07-06",
+    route: "/parent/billing",
   },
   {
     id: "pn-8",
@@ -94,6 +102,7 @@ const PARENT_NOTIFICATIONS: ParentNotification[] = [
     read: true,
     type: "info",
     date: "2026-07-06",
+    route: "/parent/schedule",
   },
   {
     id: "pn-9",
@@ -103,6 +112,7 @@ const PARENT_NOTIFICATIONS: ParentNotification[] = [
     read: true,
     type: "warning",
     date: "2026-07-04",
+    route: "/parent/schedule",
   },
   {
     id: "pn-10",
@@ -112,6 +122,7 @@ const PARENT_NOTIFICATIONS: ParentNotification[] = [
     read: true,
     type: "info",
     date: "2026-07-02",
+    route: "/parent/resources",
   },
 ];
 
@@ -146,10 +157,11 @@ function groupByDay(list: ParentNotification[], todayIso: string, yesterdayIso: 
 }
 
 function apiToParentNotification(n: ApiNotification): ParentNotification {
-  return { ...toNotificationItem(n), date: localIsoDate(new Date(n.createdAtUtc)) };
+  return { ...toNotificationItem(n, "parent"), date: localIsoDate(new Date(n.createdAtUtc)) };
 }
 
 export default function ParentNotifications() {
+  const navigate = useNavigate();
   const usingApi = apiEnabled();
   const [items, setItems] = useState<ParentNotification[]>(usingApi ? [] : PARENT_NOTIFICATIONS);
   const [loaded, setLoaded] = useState(!usingApi);
@@ -210,6 +222,14 @@ export default function ParentNotifications() {
     }
   }
 
+  /** Same read-toggle as before, plus — when this notification is about a specific
+   *  page (fee reminder → Billing, class reschedule → Schedule, etc.) — takes the
+   *  parent there. */
+  function openItem(item: ParentNotification) {
+    toggleRead(item.id);
+    if (item.route) navigate(item.route);
+  }
+
   return (
     <div>
       <PageHeader
@@ -239,11 +259,11 @@ export default function ParentNotifications() {
         </TabsList>
 
         <TabsContent value="all">
-          {loaded && <NotificationGroups groups={groupByDay(items, todayIso, yesterdayIso)} onToggle={toggleRead} />}
+          {loaded && <NotificationGroups groups={groupByDay(items, todayIso, yesterdayIso)} onOpen={openItem} />}
         </TabsContent>
         <TabsContent value="unread">
           {loaded && (
-            <NotificationGroups groups={groupByDay(items.filter((n) => !n.read), todayIso, yesterdayIso)} onToggle={toggleRead} />
+            <NotificationGroups groups={groupByDay(items.filter((n) => !n.read), todayIso, yesterdayIso)} onOpen={openItem} />
           )}
         </TabsContent>
       </Tabs>
@@ -253,10 +273,10 @@ export default function ParentNotifications() {
 
 function NotificationGroups({
   groups,
-  onToggle,
+  onOpen,
 }: {
   groups: ReadonlyArray<readonly [string, ParentNotification[]]>;
-  onToggle: (id: string) => void;
+  onOpen: (item: ParentNotification) => void;
 }) {
   if (groups.length === 0) {
     return <EmptyState icon={BellOff} title="You're all caught up" description="No notifications to show here." />;
@@ -268,7 +288,7 @@ function NotificationGroups({
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
           <div className="flex flex-col gap-2">
             {list.map((n) => (
-              <NotificationRow key={n.id} item={n} onToggle={() => onToggle(n.id)} />
+              <NotificationRow key={n.id} item={n} onOpen={() => onOpen(n)} />
             ))}
           </div>
         </div>
@@ -277,17 +297,18 @@ function NotificationGroups({
   );
 }
 
-function NotificationRow({ item, onToggle }: { item: ParentNotification; onToggle: () => void }) {
+function NotificationRow({ item, onOpen }: { item: ParentNotification; onOpen: () => void }) {
   const Icon = TYPE_ICON[item.type];
   return (
     <button
-      onClick={onToggle}
+      onClick={onOpen}
       // Unread status is otherwise conveyed only by bold text + a color dot + a tinted
       // background — none of which reaches a screen reader on their own.
       aria-label={`${item.read ? "Read" : "Unread"}: ${item.title}. ${item.description}`}
       className={cn(
         "flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors hover:bg-muted/40",
-        item.read ? "border-border bg-card" : "border-primary/30 bg-primary/[0.04]"
+        item.read ? "border-border bg-card" : "border-primary/30 bg-primary/[0.04]",
+        item.route && "cursor-pointer"
       )}
     >
       <span className={cn("mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", TYPE_TONE[item.type])}>

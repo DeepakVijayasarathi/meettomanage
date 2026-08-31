@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CalendarClock, Plus, Users2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -33,7 +34,9 @@ import { useSession } from "@/state/session";
 
 // Monitor-only, same as Coordinator's own Join Class (coordinator/Calendar.tsx) --
 // Admin had no way at all to drop into a live class from this screen, real or demo.
-const JOINABLE_STATUSES: SessionStatus[] = ["scheduled", "demo", "rescheduled"];
+// "rescheduled" is the old record a reschedule moved off of, not a live session — leaving
+// it here duplicated the join entry alongside the new, actually-scheduled session.
+const JOINABLE_STATUSES: SessionStatus[] = ["scheduled", "demo"];
 
 const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
   { value: "all", label: "All statuses" },
@@ -48,6 +51,7 @@ const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
 ];
 
 export default function AdminSessions() {
+  const { toast } = useToast();
   const usingApi = apiEnabled();
   const { userName } = useSession();
   const { data: apiSessions, error: sessionsError, reload } = useApiData<ClassSession[]>(
@@ -106,6 +110,10 @@ export default function AdminSessions() {
 
   function notify(ok: boolean, text: string) {
     setBanner({ ok, text });
+    // Demo-mode notices ("Demo mode — session not persisted.") also route through here —
+    // still worth a toast, matching how every other demo-mode confirmation in the app
+    // gives some feedback rather than silently closing the dialog.
+    toast({ variant: ok ? "success" : "error", title: ok ? "Done" : "Something went wrong", description: text });
     setTimeout(() => setBanner(null), 5000);
   }
 
@@ -142,7 +150,9 @@ export default function AdminSessions() {
       setScheduleOpen(false);
       reload();
     } catch (err) {
-      setScheduleError(err instanceof Error ? err.message : "Could not schedule the session.");
+      const message = err instanceof Error ? err.message : "Could not schedule the session.";
+      setScheduleError(message);
+      toast({ variant: "error", title: "Couldn't schedule session", description: message });
     } finally {
       setSaving(false);
     }
@@ -400,6 +410,8 @@ export default function AdminSessions() {
         searchPlaceholder="Search sessions by title or teacher…"
         emptyTitle="No sessions in this window"
         emptyDescription="Schedule a session, or generate a batch schedule from Batches → Manage."
+        error={usingApi ? sessionsError : null}
+        onRetry={reload}
         toolbar={
           <FilterBar
             filters={[
@@ -555,9 +567,9 @@ export default function AdminSessions() {
               </DialogHeader>
               <div className="grid gap-4">
                 <div className="grid gap-1.5">
-                  <Label>Who didn't show up?</Label>
+                  <Label htmlFor="no-show-party-select">Who didn't show up?</Label>
                   <Select value={noShowParty} onValueChange={(v) => setNoShowParty(v as NoShowParty)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="no-show-party-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

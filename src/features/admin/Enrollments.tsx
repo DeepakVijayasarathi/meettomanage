@@ -70,7 +70,7 @@ function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
 }
 
 export default function AdminEnrollments() {
-  const { data: rows, reload } = useApiData<EnrollmentRow[]>(
+  const { data: rows, error: rowsError, reload } = useApiData<EnrollmentRow[]>(
     () => listEnrollmentForms().then((forms) => forms.map(toEnrollmentRow)),
     CHILDREN
   );
@@ -339,6 +339,10 @@ export default function AdminEnrollments() {
         rowKey={(row) => row.id}
         searchPlaceholder="Search by student name…"
         onRowClick={openDetail}
+        emptyTitle="No enrollments yet"
+        emptyDescription="Enrollments will appear here once a lead converts or a parent completes registration."
+        error={apiEnabled() ? rowsError : null}
+        onRetry={reload}
       />
 
       <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>

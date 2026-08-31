@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, DoorOpen, PartyPopper, PhoneOff, Sparkles, Users, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, PartyPopper, PhoneOff, Sparkles, UserPlus, Users, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
+import { useToast } from "@/hooks/use-toast";
 import { postEngagement } from "@/api/engagement";
-import { getClassroomSettings, getJitsiJoin, registerRecording } from "@/api/sessions";
+import { completeSession, getClassroomSettings, getJitsiJoin, registerRecording } from "@/api/sessions";
+import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { primeAudioUnlock } from "@/lib/sounds";
 import InteractivePanel from "./InteractivePanel";
@@ -81,6 +84,7 @@ export default function JitsiLive({
   sessionId,
   displayName,
   joinOverride,
+  inviteUrl,
 }: {
   room: string;
   title?: string;
@@ -93,11 +97,37 @@ export default function JitsiLive({
    *  for rooms with no backing ClassSession (e.g. a member's personal meeting room),
    *  where GetJitsiJoinAsync's session-participant/join-window checks don't apply. */
   joinOverride?: { domain: string; token?: string | null };
+  /** Shows an in-call "Invite" button that copies this link — a shareable join URL with
+   *  no personal name baked in (see buildPersonalMeetingUrl's own doc comment on why not),
+   *  so anyone who opens it is asked their own name rather than joining misattributed as
+   *  whoever's account started the call. Only meaningful for a personal meeting room; a
+   *  real class session invites people through enrollment instead, so this is omitted there. */
+  inviteUrl?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { userName: accountName } = useSession();
   const userName = displayName || accountName;
+  const { toast } = useToast();
+
+  async function copyInviteLink() {
+    if (!inviteUrl) return;
+    try {
+      if (!navigator.clipboard) {
+        throw new Error("Clipboard API unavailable");
+      }
+      await navigator.clipboard.writeText(inviteUrl);
+      toast({ variant: "success", title: "Invite link copied", description: "Anyone who opens it will be asked their own name before joining." });
+    } catch {
+      toast({ variant: "error", title: "Couldn't copy the invite link", description: "Check your browser's clipboard permission and try again." });
+    }
+  }
+
+  // Nothing else in the app ever calls POST /sessions/{id}/complete — this screen leaving
+  // is the one and only trigger, so it must actually fire exactly once per class, not get
+  // skipped (session stuck "Scheduled" forever, invisible on Attendance, payout never
+  // accrues) or double-fire (readyToClose + the Leave button both reachable in one visit).
+  const completedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [celebrating, setCelebrating] = useState(false);
@@ -132,6 +162,16 @@ export default function JitsiLive({
   // and stays true if the request fails — so a slow/offline check never silently disables
   // recording for a teacher who already relies on it.
   const autoRecordRef = useRef(true);
+  // The init effect below only depends on [room, mode] (see its own comment on why), so
+  // anything it closes over from render — including userName — would otherwise be frozen
+  // at whatever it was on first mount. flushMedia posts engagement (talk-time, camera-on)
+  // under that name when the participant leaves; without this ref it kept attributing a
+  // parent's own account name instead of the student's, even after `displayName` resolved
+  // moments later (e.g. the parent's child list hadn't finished loading yet on first render).
+  const userNameRef = useRef(userName);
+  useEffect(() => {
+    userNameRef.current = userName;
+  }, [userName]);
 
   // So the celebration clap sound is ready on whichever gesture a student makes
   // first — joining, clicking a tab — instead of waiting for one that never comes
@@ -163,6 +203,32 @@ export default function JitsiLive({
 
   // The interactive layer needs a real session id for the hub group + engagement.
   const interactive = !!sessionId && GUID_RE.test(sessionId);
+
+  // "End Class" handler — the only place in the whole app that ever calls the complete-
+  // session endpoint (nothing runs this on a timer or on plain Leave, which stays a
+  // non-terminal pause). Marks the class delivered: accrues the teacher's payout for it,
+  // generates/sends the class summary. Never blocks the teacher's exit on the network call
+  // — fire-and-forget, with a toast only on a real failure so a stuck-Scheduled session
+  // doesn't silently stay invisible on Attendance/Payout with no indication anything went wrong.
+  function completeAndLeave() {
+    if (mode === "teacher" && interactive && !completedRef.current) {
+      completedRef.current = true;
+      completeSession(sessionId!)
+        .then(() => toast({ variant: "success", title: "Class ended", description: "Marked delivered — your payout for it will reflect shortly." }))
+        .catch((err: unknown) => {
+          // 400 here is almost always "already completed" (e.g. a double-click on the
+          // confirm button) — not a real failure, so nothing needs surfacing.
+          if (err instanceof ApiError && err.status === 400) return;
+          const message = err instanceof Error ? err.message : "Could not save this class's completion.";
+          toast({
+            variant: "error",
+            title: "Class ended, but completion didn't save",
+            description: `${message} Ask an admin to check "${title ?? "this class"}" if it doesn't show as delivered.`,
+          });
+        });
+    }
+    navigate(-1);
+  }
 
   function celebrate(message?: string) {
     setCelebrationMessage(message);
@@ -201,8 +267,8 @@ export default function JitsiLive({
       }
       const talkSeconds = Math.round(media.talkMs / 1000);
       const camSeconds = Math.round(media.camMs / 1000);
-      if (talkSeconds > 0) postEngagement(sessionId, userName, "TalkTimeSeconds", talkSeconds);
-      if (camSeconds > 0) postEngagement(sessionId, userName, "CameraOnSeconds", camSeconds);
+      if (talkSeconds > 0) postEngagement(sessionId, userNameRef.current, "TalkTimeSeconds", talkSeconds);
+      if (camSeconds > 0) postEngagement(sessionId, userNameRef.current, "CameraOnSeconds", camSeconds);
       media.talkMs = 0;
       media.camMs = 0;
     };
@@ -333,12 +399,27 @@ export default function JitsiLive({
         media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
         // A small class reads better as a grid of faces than one spotlighted speaker.
         api?.executeCommand("setTileView", true);
-        // Auto-apply our own on-brand background as everyone's starting camera background —
-        // dynamicBrandingUrl (above) only adds it to the picker as an available *choice*;
-        // this is what actually makes it the default someone sees without picking anything,
-        // same as branding.json's src. Still just a starting point: the toolbar's own
-        // background button lets anyone turn it off or pick something else afterward.
-        api?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
+        // Auto-apply our own on-brand background as the teacher's starting camera
+        // background — dynamicBrandingUrl (above) only adds it to the picker as an
+        // available *choice*; this is what actually makes it the default someone sees
+        // without picking anything, same as branding.json's src. Still just a starting
+        // point: the toolbar's own background button lets the teacher turn it off or
+        // pick something else afterward.
+        // Students/children stay on "none" (their own real camera) instead of having
+        // this forced on them — a parent joining on a child's behalf doesn't expect the
+        // app to silently change what the child's camera shows.
+        if (mode === "teacher") {
+          api?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
+        } else {
+          // Not just "skip setting one" — Jitsi remembers the last-picked virtual
+          // background per browser (jitsi-meet.localStorage), so a child's device that
+          // got the branded background force-applied before this fix still has it saved
+          // as their "last choice" and would silently keep reapplying it on every future
+          // join even though nothing here sets it anymore. Explicitly turning it off
+          // clears that remembered choice too, actually landing on "none" rather than
+          // just not making it worse going forward.
+          api?.executeCommand("setVirtualBackground", false);
+        }
         if (mode === "teacher" && autoRecordRef.current) {
           // Auto session recording: starts when the host joins; requires Jibri
           // on the Jitsi deployment (no-op on deployments without it). Admin can
@@ -469,6 +550,20 @@ export default function JitsiLive({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, mode]);
 
+  // userName is deliberately not a dependency of the init effect above — recreating the
+  // whole Jitsi connection just to relabel yourself would drop everyone's call to reconnect
+  // over a name change. But that means a parent joining before their child list has finished
+  // loading (SessionProvider fetches it async) got initialized with userInfo.displayName
+  // still falling back to their own account name, and — since the effect never re-ran —
+  // stayed shown as themselves in Jitsi's own UI (self tile, remote participants' view) for
+  // the rest of the call even after `displayName` resolved to the student's real name a
+  // render or two later. This pushes the correction through Jitsi's own "displayName"
+  // command once it's actually known, without touching the connection itself.
+  useEffect(() => {
+    if (!jitsiReady) return;
+    jitsiApiRef.current?.executeCommand("displayName", userName);
+  }, [jitsiReady, userName]);
+
   return (
     <div className="flex h-screen flex-col bg-brand-navyDark bg-[radial-gradient(circle_at_50%_0%,rgba(124,92,252,0.10),transparent_60%)]">
       <header className="relative flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-b from-brand-navyDark/95 to-brand-navyDark/75 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-md sm:px-5">
@@ -536,6 +631,17 @@ export default function JitsiLive({
               )}
             </div>
           )}
+          {inviteUrl && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="gap-1.5 rounded-full bg-white/10 text-white hover:bg-white/20"
+              onClick={copyInviteLink}
+              title="Copy a shareable link to this meeting"
+            >
+              <UserPlus className="h-3.5 w-3.5" /> Invite
+            </Button>
+          )}
           <div className="h-6 w-px bg-white/10" aria-hidden="true" />
           <Button
             size="sm"
@@ -548,19 +654,71 @@ export default function JitsiLive({
           </Button>
         </div>
       </header>
-      <ConfirmDialog
-        open={leaveConfirmOpen}
-        onOpenChange={setLeaveConfirmOpen}
-        title="Leave the class?"
-        description={
-          mode === "teacher"
-            ? "The whiteboard, quiz and roster controls will pause for your students until you rejoin. You can rejoin any time from My Classes."
-            : "You can rejoin any time before the class ends."
-        }
-        confirmLabel="Leave"
-        destructive
-        onConfirm={() => navigate(-1)}
-      />
+      {/* One button, one dialog: a separate "End Class" button next to Leave meant a
+          teacher could just click the familiar red Leave button out of habit and skip
+          completion entirely — silently reproducing the exact "class never marked
+          delivered" bug this whole flow exists to fix. Asking every single time removes
+          that escape hatch. Non-teachers (and non-interactive rooms, e.g. a personal
+          meeting) have nothing to complete, so they get the plain single-action dialog. */}
+      {mode === "teacher" && interactive ? (
+        <Dialog open={leaveConfirmOpen} onOpenChange={setLeaveConfirmOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Leaving the class</DialogTitle>
+              <DialogDescription>Is this class actually over, or are you just stepping away for a moment?</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2">
+              {/* Button's own base styling is h-10 + whitespace-nowrap (built for single-line
+                  labels) — a two-line label needs h-auto and whitespace-normal explicitly, or
+                  it forces the whole dialog wider instead of wrapping (exactly what shipped
+                  here the first time: clipped text and a horizontal scrollbar). */}
+              <Button
+                variant="secondary"
+                className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal rounded-xl border border-success/30 bg-success/15 px-3.5 py-3 text-left text-success hover:bg-success/25"
+                onClick={() => {
+                  setLeaveConfirmOpen(false);
+                  completeAndLeave();
+                }}
+              >
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                <span className="flex flex-col gap-0.5">
+                  <span className="font-semibold">End the class</span>
+                  <span className="text-xs font-normal leading-snug opacity-80">Marks it delivered, calculates your payout, emails today's summary to parents. Can't be undone.</span>
+                </span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal rounded-xl px-3.5 py-3 text-left"
+                onClick={() => {
+                  setLeaveConfirmOpen(false);
+                  navigate(-1);
+                }}
+              >
+                <PhoneOff className="mt-0.5 h-4 w-4 shrink-0" />
+                <span className="flex flex-col gap-0.5">
+                  <span className="font-semibold">Just leave for now</span>
+                  <span className="text-xs font-normal leading-snug opacity-80">Class stays open — whiteboard/roster pause for students until you rejoin from My Classes.</span>
+                </span>
+              </Button>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setLeaveConfirmOpen(false)}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <ConfirmDialog
+          open={leaveConfirmOpen}
+          onOpenChange={setLeaveConfirmOpen}
+          title="Leave the class?"
+          description="You can rejoin any time before the class ends."
+          confirmLabel="Leave"
+          destructive
+          onConfirm={() => navigate(-1)}
+        />
+      )}
       {/* Teacher-only, dismissible: makes a silent auto-recording failure (most commonly
           "no Jibri pool provisioned on the video server" — see docs/JITSI_ARCHITECTURE.md)
           visible instead of the teacher just never noticing the REC badge never appeared. */}
@@ -683,9 +841,16 @@ export default function JitsiLive({
             </div>
           </div>
           {interactive && (
+            // max-h-[45vh] (md:max-h-none): below md the body stacks video above this
+            // panel instead of sitting side-by-side (flex-col → md:flex-row above), so
+            // without its own height cap the panel's content (Board tab's toolbar +
+            // canvas, quiz, roster) claims however much height it wants and pushes the
+            // video stage off-screen — reported as "can't see the video while changing
+            // slides." Same fix already applied to the mock classroom's aside
+            // (LiveClassroom.tsx) for the identical layout failure.
             <aside
               className={cn(
-                "flex min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 md:w-[380px]",
+                "flex max-h-[45vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 md:max-h-none md:w-[380px]",
                 !panelOpen && "hidden"
               )}
             >

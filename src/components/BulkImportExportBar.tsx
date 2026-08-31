@@ -107,7 +107,7 @@ export function BulkImportExportBar({ entityLabel, templateColumns, onImport, on
                 {result.failedCount === 0 ? (
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
                 ) : (
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-warning-foreground" />
                 )}
                 {result.succeededCount} of {result.totalRows} row{result.totalRows === 1 ? "" : "s"} imported
                 {result.failedCount > 0 && `, ${result.failedCount} failed`}.

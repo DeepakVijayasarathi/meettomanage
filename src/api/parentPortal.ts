@@ -121,7 +121,11 @@ export async function listEnrollmentForms(status?: ApiEnrollmentForm["status"]):
   return apiFetch<ApiEnrollmentForm[]>(`/api/enrollment-forms${status ? `?status=${status}` : ""}`);
 }
 
-/** Downloads the print-ready invoice document with the bearer token and saves it. */
+/**
+ * Downloads the invoice with the bearer token and saves it — the same "Bill of Supply" PDF
+ * the admin side generates (this endpoint used to return its own separate, unbranded HTML
+ * document instead).
+ */
 export async function downloadParentInvoice(invoiceId: string, invoiceNumber: string): Promise<void> {
   const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
   const token = getAccessToken();
@@ -133,7 +137,7 @@ export async function downloadParentInvoice(invoiceId: string, invoiceNumber: st
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `invoice-${invoiceNumber}.html`;
+  anchor.download = `${invoiceNumber}.pdf`;
   anchor.click();
   URL.revokeObjectURL(url);
 }

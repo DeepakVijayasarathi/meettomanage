@@ -7,7 +7,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { NAV_BY_ROLE, type NavSection } from "@/lib/nav";
 import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
-import { hexToHslTriple, pickAccentForegroundHsl } from "@/lib/utils";
+import { hexToHslTriple } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { getMyMenu, toNavSections } from "@/api/menus";
 import { listSuspensions } from "@/api/billing";
@@ -93,9 +93,13 @@ export function AppShell({ role, children }: AppShellProps) {
   const accentStyle: CSSProperties = {
     "--primary": hexToHslTriple(meta.hex),
     "--ring": hexToHslTriple(meta.hex),
-    // Not every role's accent color reaches 4.5:1 against hardcoded white button text
-    // (teacher's orange was 2.51:1) — pick whichever of white/dark-navy actually works.
-    "--primary-foreground": pickAccentForegroundHsl(meta.hex),
+    // Product call: every portal's filled surfaces (buttons, badges, the sidebar's active
+    // row) use white foreground for brand consistency, even though a few role colors
+    // (teacher's orange ~2.5:1, parent's green/subadmin+coordinator's teal ~3.2-3.4:1)
+    // measurably fail WCAG AA's 4.5:1 text-contrast minimum against pure white — see
+    // pickAccentForegroundHsl in lib/utils.ts for the contrast-aware alternative this
+    // deliberately doesn't use here.
+    "--primary-foreground": "0 0% 100%",
   } as CSSProperties;
 
   return (

@@ -23,6 +23,7 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import WhiteboardActivity from "./WhiteboardActivity";
+import type { ApiWhiteboardActivity } from "@/api/whiteboardActivities";
 
 type ToolId = "pen" | "eraser" | "rectangle" | "circle" | "line" | "text" | "sticky" | "pan";
 
@@ -62,7 +63,13 @@ export type BoardOp =
   // below) — keeps the whole class looking at the same page of a shared board, the same
   // way the strokes on it are already shared, instead of each viewer's "which page am I
   // on" being silent local-only state no one else's switch ever touched.
-  | { kind: "goToPage"; pageIndex: number };
+  | { kind: "goToPage"; pageIndex: number }
+  // Opens/closes the emoji matching activity (drag & drop / tag & match / hotspot) for
+  // the whole class, broadcast only by whoever holds board access — without this,
+  // showActivity was pure local component state, so a teacher launching the activity
+  // (and the emoji sound/visual its completion triggers) only ever saw it on their own
+  // screen; students never saw the activity appear at all.
+  | { kind: "activity"; open: boolean };
 
 interface Page {
   id: string;
@@ -160,6 +167,10 @@ function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
 
 interface WhiteboardProps {
   canDraw: boolean;
+  mode: "teacher" | "student";
+  /** This class's resolved activity bank (Admin → Academics → Activity Bank), fetched once
+   *  by InteractivePanel — see WhiteboardActivity's own doc comment. */
+  activities: ApiWhiteboardActivity[];
   onActivityComplete?: () => void;
   /** Engagement tracking: fired for every committed stroke/text/sticky. */
   onInteraction?: () => void;
@@ -169,7 +180,7 @@ interface WhiteboardProps {
   subscribeBoardOps?: (handler: (op: BoardOp) => void) => () => void;
 }
 
-export default function Whiteboard({ canDraw, onActivityComplete, onInteraction, onBoardOp, subscribeBoardOps }: WhiteboardProps) {
+export default function Whiteboard({ canDraw, mode, activities, onActivityComplete, onInteraction, onBoardOp, subscribeBoardOps }: WhiteboardProps) {
   const [pages, setPages] = useState<Page[]>([{ id: nextId(), strokes: [] }]);
   // Mirrors `pages` for the remote-ops subscription below, which deliberately only
   // subscribes once ([subscribeBoardOps], not [pages]) — its closure over `pages` would
@@ -430,6 +441,16 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     if (canDraw) onBoardOp?.({ kind: "goToPage", pageIndex: newIndex });
   }
 
+  /** Opens/closes the activity locally, and — same gating as goToPage — broadcasts it
+   *  to the class only when the toggler actually holds board access, so a passive
+   *  viewer can't end the activity for everyone. This is what makes the activity (and
+   *  the emoji sound/visual its completion triggers) show up for students at all;
+   *  previously showActivity was local-only state the broadcast never touched. */
+  function toggleActivity(open: boolean) {
+    setShowActivity(open);
+    if (canDraw) onBoardOp?.({ kind: "activity", open });
+  }
+
   // Apply remote board ops from classmates (relayed through the classroom hub).
   useEffect(() => {
     if (!subscribeBoardOps) return;
@@ -494,6 +515,9 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
           // that's still in flight, following straight to the sender's raw index could
           // point past the end of what's rendered here yet.
           setPageIndex(Math.max(0, Math.min(op.pageIndex, pagesRef.current.length - 1)));
+          break;
+        case "activity":
+          setShowActivity(op.open);
           break;
       }
     });
@@ -591,7 +615,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               showActivity ? "bg-brand-violet text-white hover:bg-brand-violet/90" : "text-white/70 hover:bg-white/10 hover:text-white"
             )}
             aria-pressed={showActivity}
-            onClick={() => setShowActivity((s) => !s)}
+            onClick={() => toggleActivity(!showActivity)}
           >
             <Puzzle className="h-3.5 w-3.5" /> Activity
           </Button>
@@ -711,7 +735,9 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
 
         {showActivity && (
           <WhiteboardActivity
-            onClose={() => setShowActivity(false)}
+            activities={activities}
+            mode={mode}
+            onClose={() => toggleActivity(false)}
             onAllMatched={onActivityComplete}
           />
         )}

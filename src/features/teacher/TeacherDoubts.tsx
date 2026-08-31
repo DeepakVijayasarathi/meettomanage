@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageCircleQuestion } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,7 @@ import { MOCK_CHAT_ESCALATIONS } from "@/data/chatbot";
  * in this first pass (see ChatEscalation's own comment on the backend).
  */
 export default function TeacherDoubts() {
+  const { toast } = useToast();
   const { data: escalations, error: loadError, reload } = useApiData<ApiChatEscalation[]>(
     () => listChatEscalations(),
     MOCK_CHAT_ESCALATIONS
@@ -29,6 +31,13 @@ export default function TeacherDoubts() {
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeVariant, setNoticeVariant] = useState<"success" | "error">("success");
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const pending = escalations.filter((e) => e.status === "Pending");
   const resolved = escalations.filter((e) => e.status === "Resolved");
@@ -41,6 +50,7 @@ export default function TeacherDoubts() {
   async function confirmResolve() {
     if (!resolveTarget) return;
     if (!apiEnabled()) {
+      setNoticeVariant("success");
       setNotice("Demo mode — nothing was actually resolved.");
       setResolveTarget(null);
       return;
@@ -50,8 +60,12 @@ export default function TeacherDoubts() {
       await resolveChatEscalation(resolveTarget.id, note);
       setResolveTarget(null);
       reload();
+      toast({ variant: "success", title: "Doubt resolved" });
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : "Could not resolve that doubt.");
+      const message = err instanceof Error ? err.message : "Could not resolve that doubt.";
+      setNoticeVariant("error");
+      setNotice(message);
+      toast({ variant: "error", title: "Couldn't resolve doubt", description: message });
     } finally {
       setSaving(false);
     }
@@ -120,17 +134,23 @@ export default function TeacherDoubts() {
         </InlineAlert>
       )}
       {notice && (
-        <InlineAlert variant="success" className="mb-4">
+        <InlineAlert variant={noticeVariant} className="mb-4">
           {notice}
         </InlineAlert>
       )}
 
       <div className="mb-6">
         <h2 className="mb-2 text-sm font-semibold text-foreground">Pending ({pending.length})</h2>
-        {pending.length === 0 ? (
+        {pending.length === 0 && !loadError ? (
           <EmptyState icon={MessageCircleQuestion} title="Nothing pending" description="Every escalated doubt has been resolved." />
         ) : (
-          <DataTable data={pending} columns={columns} rowKey={(e) => e.id} />
+          <DataTable
+            data={pending}
+            columns={columns}
+            rowKey={(e) => e.id}
+            error={apiEnabled() ? loadError : null}
+            onRetry={reload}
+          />
         )}
       </div>
 

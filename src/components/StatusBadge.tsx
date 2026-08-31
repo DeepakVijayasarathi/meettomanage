@@ -49,7 +49,13 @@ const FEE_STATUS_VARIANT: Record<string, { label: string; className: string }> =
   overdue: { label: "Overdue", className: "bg-destructive/10 text-destructive" },
   suspended: { label: "Suspended", className: "bg-destructive/15 text-destructive" },
   pending: { label: "Pending", className: "bg-warning/20 text-warning-foreground" },
-  partial: { label: "Partially Paid", className: "bg-role-admission/10 text-role-admission" },
+  // Was bg-role-admission/10 text-role-admission — role.admission (#8356E7) is a portal
+  // brand hue, not a status color, and at this pill's text-xs/font-semibold size (12px
+  // bold, below WCAG's ~18.7px-bold "large text" threshold) it only cleared ~3.98:1
+  // against the app's off-white background, short of AA's 4.5:1. Swapped to the
+  // already-AA-verified primary token, keeping "Partially Paid" visually distinct from
+  // the other fee-status pills (success/warning/destructive/muted) without a new hue.
+  partial: { label: "Partially Paid", className: "bg-primary/10 text-primary" },
   cancelled: { label: "Cancelled", className: "bg-muted text-muted-foreground" },
 };
 

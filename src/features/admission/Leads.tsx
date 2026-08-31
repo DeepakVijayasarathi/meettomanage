@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Mail, MessageSquarePlus, Phone, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -27,18 +28,20 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
   listDemoBookings,
+  listDemoFollowUpNotes,
   listParentDemoHistory,
   toApiConversionStatus,
   toFrontendLead,
   updateConversionStatus,
   type ApiParentDemoHistory,
 } from "@/api/demoBookings";
-import { LEADS as INITIAL_LEADS, type ConversionStage, type Lead } from "./data";
+import { LEADS as INITIAL_LEADS, type ConversionStage, type FollowUpNote, type Lead } from "./data";
 
 const STAGE_OPTIONS: { value: ConversionStage | "all"; label: string }[] = [
   { value: "all", label: "All stages" },
   { value: "Demo Scheduled", label: "Demo Scheduled" },
   { value: "Demo Completed", label: "Demo Completed" },
+  { value: "Ready for Enrollment", label: "Ready for Enrollment" },
   { value: "Follow-up", label: "Follow-up" },
   { value: "Payment Pending", label: "Payment Pending" },
   { value: "Partially Paid", label: "Partially Paid" },
@@ -49,6 +52,7 @@ const STAGE_OPTIONS: { value: ConversionStage | "all"; label: string }[] = [
 const STAGE_BADGE: Record<ConversionStage, BadgeProps["variant"]> = {
   "Demo Scheduled": "outline",
   "Demo Completed": "secondary",
+  "Ready for Enrollment": "default",
   "Follow-up": "warning",
   "Payment Pending": "warning",
   "Partially Paid": "secondary",
@@ -57,7 +61,8 @@ const STAGE_BADGE: Record<ConversionStage, BadgeProps["variant"]> = {
 };
 
 export default function AdmissionLeads() {
-  const { data: apiLeads, reload } = useApiData(
+  const { toast } = useToast();
+  const { data: apiLeads, error: leadsError, reload } = useApiData(
     () => listDemoBookings().then((bookings) => bookings.map(toFrontendLead)),
     INITIAL_LEADS
   );
@@ -80,6 +85,36 @@ export default function AdmissionLeads() {
       cancelled = true;
     };
   }, [activeLead]);
+  // Real per-note date/author history for the open lead (API mode only) — replaces the old
+  // approach of collapsing every note ever logged into one string and reconstructing a single
+  // fake entry on reload, which lost who said what and when.
+  const [apiNotes, setApiNotes] = useState<FollowUpNote[] | null>(null);
+  useEffect(() => {
+    setApiNotes(null);
+    if (!apiEnabled() || !activeLead) return;
+    let cancelled = false;
+    listDemoFollowUpNotes(activeLead.id)
+      .then((notes) => {
+        if (cancelled) return;
+        // The API returns newest-first; flip to oldest-first here so it matches the demo-mode
+        // notes array's own convention -- the render below reverses once, for either source,
+        // to show newest-first on screen.
+        setApiNotes(
+          [...notes].reverse().map((n) => ({
+            id: n.id,
+            date: n.atUtc.slice(0, 10),
+            note: n.note,
+            loggedBy: n.loggedByName ?? "Admission team",
+            nextFollowUpDate: n.nextFollowUpOn ?? undefined,
+          }))
+        );
+      })
+      .catch(() => setApiNotes([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [activeLead]);
+  const displayNotes = apiEnabled() ? (apiNotes ?? []) : (activeLead?.notes ?? []);
   const [noteText, setNoteText] = useState("");
   const [nextFollowUp, setNextFollowUp] = useState("");
   const [justLogged, setJustLogged] = useState<string | null>(null);
@@ -104,18 +139,19 @@ export default function AdmissionLeads() {
     if (!activeLead || !noteText.trim()) return;
 
     if (apiEnabled()) {
-      // The API keeps one running notes field per booking; append and persist
-      const combined = [...activeLead.notes.map((n) => n.note), noteText.trim()].join("\n");
       setLoggingFollowUp(true);
       setFollowUpError(null);
       try {
-        await updateConversionStatus(activeLead.id, toApiConversionStatus(newStage), combined);
+        await updateConversionStatus(activeLead.id, toApiConversionStatus(newStage), noteText.trim(), nextFollowUp || undefined);
         reload();
         setJustLogged(activeLead.childName);
         setTimeout(() => setJustLogged(null), 4000);
         setActiveLead(null);
+        toast({ variant: "success", title: "Follow-up logged" });
       } catch (err) {
-        setFollowUpError(err instanceof Error ? err.message : "Couldn't save this follow-up. Please try again.");
+        const message = err instanceof Error ? err.message : "Couldn't save this follow-up. Please try again.";
+        setFollowUpError(message);
+        toast({ variant: "error", title: "Couldn't log follow-up", description: message });
       } finally {
         setLoggingFollowUp(false);
       }
@@ -261,6 +297,10 @@ export default function AdmissionLeads() {
         rowKey={(row) => row.id}
         searchPlaceholder="Search by child, parent, phone or course…"
         onRowClick={(row) => openFollowUp(row)}
+        emptyTitle="No leads yet"
+        emptyDescription="New enquiries and demo requests will show up here as they come in."
+        error={apiEnabled() ? leadsError : null}
+        onRetry={reload}
         toolbar={
           <FilterBar
             filters={[
@@ -323,10 +363,10 @@ export default function AdmissionLeads() {
                 </Card>
               )}
 
-              {activeLead.notes.length > 0 && (
+              {displayNotes.length > 0 && (
                 <Card className="bg-muted/30">
                   <CardContent className="flex max-h-40 flex-col gap-3 overflow-y-auto p-4">
-                    {[...activeLead.notes].reverse().map((n) => (
+                    {[...displayNotes].reverse().map((n) => (
                       <div key={n.id} className="text-sm">
                         <p className="text-xs font-semibold text-muted-foreground">
                           {formatDate(n.date, "long")} · {n.loggedBy}
@@ -356,9 +396,9 @@ export default function AdmissionLeads() {
                   <Input id="nextFollowUp" type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label>Move to stage</Label>
+                  <Label htmlFor="lead-move-stage-select">Move to stage</Label>
                   <Select value={newStage} onValueChange={(v) => setNewStage(v as ConversionStage)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="lead-move-stage-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
