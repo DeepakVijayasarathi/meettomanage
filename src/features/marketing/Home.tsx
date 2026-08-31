@@ -112,8 +112,8 @@ function ExplainerVideo() {
     <div className="relative aspect-video overflow-hidden rounded-[24px] bg-[#12151C] shadow-pop ring-4 ring-white">
       <video
         ref={videoRef}
-        src="/videos/explainer.mp4"
-        poster="/videos/explainer-poster.jpg"
+        src="/videos/demovedio.mp4"
+        poster="/videos/demovedio-poster.jpg"
         className="h-full w-full object-cover"
         controls={playing}
         loop
