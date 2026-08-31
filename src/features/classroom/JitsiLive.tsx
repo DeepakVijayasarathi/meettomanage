@@ -825,12 +825,12 @@ export default function JitsiLive({
                     ) : (
                       <ul className="flex max-h-40 flex-col gap-1.5 overflow-y-auto pr-1">
                         {participants.map((p) => (
-                          <li key={p.id} className="flex items-center gap-1.5 text-sm">
+                          <li key={p.id} className="flex min-w-0 items-center gap-1.5 text-sm">
                             <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden="true">
                               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
                               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
                             </span>
-                            <span className="truncate text-white/90">{p.displayName}</span>
+                            <span className="min-w-0 flex-1 truncate text-white/90">{p.displayName}</span>
                           </li>
                         ))}
                       </ul>

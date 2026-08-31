@@ -182,7 +182,7 @@ export default function AdminQuizQuestions() {
       key: "prompt",
       header: "Question",
       render: (q) => (
-        <div className="flex items-center gap-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Sparkles className="h-4 w-4" />
           </span>
