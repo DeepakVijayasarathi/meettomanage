@@ -468,7 +468,7 @@ export default function AdminBatches() {
                 </CardContent>
               </Card>
 
-              <div className="grid gap-4">
+              <div className="grid min-w-0 gap-4">
                 <div className="grid gap-1.5">
                   <Label htmlFor="batch-assign-teacher-select">Assign teacher</Label>
                   <Select value={teacherAssignment} onValueChange={setTeacherAssignment}>
@@ -532,11 +532,11 @@ export default function AdminBatches() {
                     {rosterLoading ? (
                       <p className="text-xs text-muted-foreground">Loading roster…</p>
                     ) : roster.length > 0 ? (
-                      <ul className="mt-1 flex flex-col gap-1.5">
+                      <ul className="mt-1 flex min-w-0 flex-col gap-1.5">
                         {roster.map((s) => (
                           <li
                             key={s.enrollmentId}
-                            className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-sm"
+                            className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-sm"
                           >
                             <span className="min-w-0 flex-1 truncate">
                               {s.childName}
