@@ -3,6 +3,7 @@ import { PartyPopper, RefreshCcw, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { RecordingsDialog } from "@/components/RecordingsDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ export default function CoordinatorCalendar() {
   const [holidayOpen, setHolidayOpen] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+  const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
 
   const selected = selectedId ? sessions.find((s) => s.id === selectedId) ?? null : null;
   const locked = selected ? LOCKED_STATUSES.includes(selected.status) : true;
@@ -194,6 +196,11 @@ export default function CoordinatorCalendar() {
                 <Button variant="outline" disabled={locked} onClick={() => setRescheduleOpen(true)}>
                   <RefreshCcw className="h-4 w-4" /> Reschedule
                 </Button>
+                {selected.status === "completed" && (
+                  <Button variant="outline" onClick={() => setRecordingsFor(selected)}>
+                    <Video className="h-4 w-4" /> Recording
+                  </Button>
+                )}
                 {/* Monitor-only: the coordinator can drop into any ongoing/upcoming class or demo. */}
                 {JOINABLE_STATUSES.includes(selected.status) && selected.meetingRoomId && (
                   <Button disabled={joining} onClick={() => joinSession(selected)}>
@@ -238,6 +245,8 @@ export default function CoordinatorCalendar() {
           return doHoliday(selected).then(() => setSelectedId(null));
         }}
       />
+
+      {recordingsFor && <RecordingsDialog session={recordingsFor} onClose={() => setRecordingsFor(null)} />}
     </div>
   );
 }

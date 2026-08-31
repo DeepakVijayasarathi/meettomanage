@@ -32,6 +32,7 @@ const AdminPayouts = lazy(() => import("@/features/admin/Payouts"));
 const AdminFeeSuspension = lazy(() => import("@/features/admin/FeeSuspension"));
 const AdminReports = lazy(() => import("@/features/admin/Reports"));
 const AdminBulkEmail = lazy(() => import("@/features/admin/BulkEmail"));
+const AdminBulkEmailHistory = lazy(() => import("@/features/admin/BulkEmailHistory"));
 const AdminEmailTemplates = lazy(() => import("@/features/admin/EmailTemplates"));
 const AdminProgressReports = lazy(() => import("@/features/admin/ProgressReports"));
 const AdminChatbot = lazy(() => import("@/features/admin/ChatbotAdmin"));
@@ -169,6 +170,7 @@ export default function App() {
               <Route path="fee-suspension" element={<AdminFeeSuspension />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="bulk-email" element={<AdminBulkEmail />} />
+              <Route path="bulk-email/history" element={<AdminBulkEmailHistory />} />
               <Route path="email-templates" element={<AdminEmailTemplates />} />
               <Route path="progress-reports" element={<AdminProgressReports />} />
               <Route path="chatbot" element={<AdminChatbot />} />

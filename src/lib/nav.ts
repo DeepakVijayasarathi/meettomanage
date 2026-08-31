@@ -101,6 +101,7 @@ export const ADMIN_NAV: NavSection[] = [
     items: [
       { label: "Reports & Analytics", to: "/admin/reports", icon: BarChart3 },
       { label: "Bulk Email", to: "/admin/bulk-email", icon: Mail },
+      { label: "Bulk Email History", to: "/admin/bulk-email/history", icon: History },
       { label: "Email Templates", to: "/admin/email-templates", icon: FileText },
       { label: "Progress Reports", to: "/admin/progress-reports", icon: ScrollText },
       { label: "Doubt Chatbot", to: "/admin/chatbot", icon: MessageCircleQuestion },

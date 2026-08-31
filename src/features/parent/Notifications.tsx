@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, AlertTriangle, BellOff, CheckCheck, CheckCircle2, Info, type LucideIcon } from "lucide-react";
+import { AlertCircle, AlertTriangle, BellOff, CheckCheck, CheckCircle2, Info, Loader2, MessageSquare, Send, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
@@ -15,12 +16,19 @@ import {
   toNotificationItem,
   type ApiNotification,
 } from "@/api/notifications";
+import { replyToBulkEmail } from "@/api/reports";
 import type { NotificationItem } from "@/types";
 import { TODAY_ISO, YESTERDAY_ISO } from "./utils";
 
 interface ParentNotification extends NotificationItem {
   /** ISO date used only for day-grouping — independent of the human-readable `time` string. */
   date: string;
+  /** Set when this is one recipient's copy of a Bulk Email — offers a reply box. Absent in demo mode. */
+  bulkEmailRecipientId?: string | null;
+  /** True once the parent has already replied to this Bulk Email. */
+  hasReplied?: boolean;
+  /** The parent's own reply text, once sent this session (server doesn't echo it back on the feed). */
+  ownReply?: string;
 }
 
 const PARENT_NOTIFICATIONS: ParentNotification[] = [
@@ -157,7 +165,12 @@ function groupByDay(list: ParentNotification[], todayIso: string, yesterdayIso: 
 }
 
 function apiToParentNotification(n: ApiNotification): ParentNotification {
-  return { ...toNotificationItem(n, "parent"), date: localIsoDate(new Date(n.createdAtUtc)) };
+  return {
+    ...toNotificationItem(n, "parent"),
+    date: localIsoDate(new Date(n.createdAtUtc)),
+    bulkEmailRecipientId: n.bulkEmailRecipientId,
+    hasReplied: n.hasReplied,
+  };
 }
 
 export default function ParentNotifications() {
@@ -230,6 +243,10 @@ export default function ParentNotifications() {
     if (item.route) navigate(item.route);
   }
 
+  function handleReplied(id: string, message: string) {
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, hasReplied: true, ownReply: message } : n)));
+  }
+
   return (
     <div>
       <PageHeader
@@ -259,11 +276,17 @@ export default function ParentNotifications() {
         </TabsList>
 
         <TabsContent value="all">
-          {loaded && <NotificationGroups groups={groupByDay(items, todayIso, yesterdayIso)} onOpen={openItem} />}
+          {loaded && (
+            <NotificationGroups groups={groupByDay(items, todayIso, yesterdayIso)} onOpen={openItem} onReplied={handleReplied} />
+          )}
         </TabsContent>
         <TabsContent value="unread">
           {loaded && (
-            <NotificationGroups groups={groupByDay(items.filter((n) => !n.read), todayIso, yesterdayIso)} onOpen={openItem} />
+            <NotificationGroups
+              groups={groupByDay(items.filter((n) => !n.read), todayIso, yesterdayIso)}
+              onOpen={openItem}
+              onReplied={handleReplied}
+            />
           )}
         </TabsContent>
       </Tabs>
@@ -274,9 +297,11 @@ export default function ParentNotifications() {
 function NotificationGroups({
   groups,
   onOpen,
+  onReplied,
 }: {
   groups: ReadonlyArray<readonly [string, ParentNotification[]]>;
   onOpen: (item: ParentNotification) => void;
+  onReplied: (id: string, message: string) => void;
 }) {
   if (groups.length === 0) {
     return <EmptyState icon={BellOff} title="You're all caught up" description="No notifications to show here." />;
@@ -288,7 +313,7 @@ function NotificationGroups({
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
           <div className="flex flex-col gap-2">
             {list.map((n) => (
-              <NotificationRow key={n.id} item={n} onOpen={() => onOpen(n)} />
+              <NotificationRow key={n.id} item={n} onOpen={() => onOpen(n)} onReplied={(message) => onReplied(n.id, message)} />
             ))}
           </div>
         </div>
@@ -297,31 +322,105 @@ function NotificationGroups({
   );
 }
 
-function NotificationRow({ item, onOpen }: { item: ParentNotification; onOpen: () => void }) {
+function NotificationRow({
+  item,
+  onOpen,
+  onReplied,
+}: {
+  item: ParentNotification;
+  onOpen: () => void;
+  onReplied: (message: string) => void;
+}) {
   const Icon = TYPE_ICON[item.type];
   return (
-    <button
-      onClick={onOpen}
-      // Unread status is otherwise conveyed only by bold text + a color dot + a tinted
-      // background — none of which reaches a screen reader on their own.
-      aria-label={`${item.read ? "Read" : "Unread"}: ${item.title}. ${item.description}`}
+    <div
       className={cn(
-        "flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors hover:bg-muted/40",
-        item.read ? "border-border bg-card" : "border-primary/30 bg-primary/[0.04]",
-        item.route && "cursor-pointer"
+        "rounded-xl border px-4 py-3 transition-colors",
+        item.read ? "border-border bg-card" : "border-primary/30 bg-primary/[0.04]"
       )}
     >
-      <span className={cn("mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", TYPE_TONE[item.type])}>
-        <Icon className="h-[18px] w-[18px]" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className={cn("text-sm text-foreground", !item.read && "font-bold")}>{item.title}</p>
-          {!item.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
+      <div
+        onClick={onOpen}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
+        // Unread status is otherwise conveyed only by bold text + a color dot + a tinted
+        // background — none of which reaches a screen reader on their own.
+        aria-label={`${item.read ? "Read" : "Unread"}: ${item.title}. ${item.description}`}
+        className={cn(
+          "flex w-full items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          item.route && "cursor-pointer"
+        )}
+      >
+        <span className={cn("mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", TYPE_TONE[item.type])}>
+          <Icon className="h-[18px] w-[18px]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className={cn("text-sm text-foreground", !item.read && "font-bold")}>{item.title}</p>
+            {!item.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
+          </div>
+          <p className="mt-0.5 text-sm text-muted-foreground">{item.description}</p>
+          <p className="mt-1 text-xs text-muted-foreground/70">{item.time}</p>
         </div>
-        <p className="mt-0.5 text-sm text-muted-foreground">{item.description}</p>
-        <p className="mt-1 text-xs text-muted-foreground/70">{item.time}</p>
       </div>
-    </button>
+
+      {item.bulkEmailRecipientId && (
+        <div className="ml-12 mt-2.5 border-t border-border/60 pt-2.5" onClick={(e) => e.stopPropagation()}>
+          {item.hasReplied ? (
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <p>{item.ownReply ? <>Your reply: &quot;{item.ownReply}&quot;</> : "You've replied to this email."}</p>
+            </div>
+          ) : (
+            <BulkEmailReplyBox recipientId={item.bulkEmailRecipientId} onReplied={onReplied} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BulkEmailReplyBox({ recipientId, onReplied }: { recipientId: string; onReplied: (message: string) => void }) {
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSend() {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+    setSending(true);
+    setError(null);
+    try {
+      await replyToBulkEmail(recipientId, trimmed);
+      onReplied(trimmed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't send your reply. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Textarea
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Reply to this email…"
+        className="min-h-[70px] text-sm"
+      />
+      <div className="flex items-center justify-between gap-2">
+        {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+        <Button size="sm" className="ml-auto" disabled={!message.trim() || sending} onClick={handleSend}>
+          {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+          Reply
+        </Button>
+      </div>
+    </div>
   );
 }

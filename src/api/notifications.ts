@@ -30,6 +30,11 @@ export interface ApiNotification {
   isRead: boolean;
   createdAtUtc: string;
   readAtUtc: string | null;
+  /** Set when this is one recipient's copy of a Bulk Email — lets the parent
+   *  Notifications page offer a reply box under it. */
+  bulkEmailRecipientId: string | null;
+  /** True once the parent has already replied to this Bulk Email. */
+  hasReplied: boolean;
 }
 
 export interface ApiNotificationFeed {

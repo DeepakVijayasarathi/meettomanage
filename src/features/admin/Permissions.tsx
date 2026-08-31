@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, CheckCircle2, Mail, Plus, RotateCcw, Save, ShieldCheck, Trash2, UserCog, Wand2, XCircle } from "lucide-react";
+import { Check, CheckCircle2, Loader2, Mail, Plus, RotateCcw, Save, ShieldCheck, Trash2, UserCog, Wand2, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -103,7 +104,7 @@ export default function AdminPermissions() {
           <RolePresets menusByModule={menusByModule} />
         </TabsContent>
         <TabsContent value="access-requests">
-          <AccessRequestsPanel requests={accessRequests} reload={reloadAccessRequests} />
+          <AccessRequestsPanel requests={accessRequests} reload={reloadAccessRequests} menusByModule={menusByModule} />
         </TabsContent>
       </Tabs>
     </div>
@@ -716,7 +717,15 @@ const ACCESS_REQUEST_STATUS_STYLE: Record<ApiAccessRequest["status"], string> = 
  * here only records the decision and notifies them — the actual module grant still happens
  * from the "Relationship Managers" tab, same as any other permission change.
  */
-function AccessRequestsPanel({ requests, reload }: { requests: ApiAccessRequest[]; reload: () => void }) {
+function AccessRequestsPanel({
+  requests,
+  reload,
+  menusByModule,
+}: {
+  requests: ApiAccessRequest[];
+  reload: () => void;
+  menusByModule: Partial<Record<PermissionModuleName, string[]>>;
+}) {
   const { toast } = useToast();
   const [approveTarget, setApproveTarget] = useState<ApiAccessRequest | null>(null);
   const [rejectTarget, setRejectTarget] = useState<ApiAccessRequest | null>(null);
@@ -798,19 +807,13 @@ function AccessRequestsPanel({ requests, reload }: { requests: ApiAccessRequest[
         )}
       </CardContent>
 
-      <ConfirmDialog
-        open={!!approveTarget}
-        onOpenChange={(open) => !open && setApproveTarget(null)}
-        title="Approve this access request?"
-        description={
-          approveTarget
-            ? `${approveTarget.requestedByName} will be notified that access to ${moduleLabels(approveTarget.requestedModules)} was approved. This records the decision only — grant the modules from the Relationship Managers tab.`
-            : undefined
-        }
-        confirmLabel="Approve"
-        onConfirm={() => {
-          if (!approveTarget) return;
-          return decide(approveTarget, true);
+      <GrantAccessDialog
+        request={approveTarget}
+        menusByModule={menusByModule}
+        onClose={() => setApproveTarget(null)}
+        onGranted={() => {
+          reload();
+          toast({ variant: "success", title: "Request approved", description: "The chosen menus and rights are now live for this account." });
         }}
       />
 
@@ -831,5 +834,156 @@ function AccessRequestsPanel({ requests, reload }: { requests: ApiAccessRequest[
         }}
       />
     </Card>
+  );
+}
+
+/**
+ * Approving an access request opens this instead of a plain confirm — the admin picks
+ * exactly which menus (by module) and which rights (View/Create/Edit/Delete/Approve) the
+ * requester gets, using the same matrix as the Relationship Managers tab. Starts from the
+ * requester's *current* grants (not a blank slate) with every requested module pre-checked
+ * for View, since PUT /api/users/{id}/permissions replaces the whole set — starting from
+ * anything less would silently revoke access this person already had.
+ */
+function GrantAccessDialog({
+  request,
+  menusByModule,
+  onClose,
+  onGranted,
+}: {
+  request: ApiAccessRequest | null;
+  menusByModule: Partial<Record<PermissionModuleName, string[]>>;
+  onClose: () => void;
+  onGranted: () => void;
+}) {
+  const [matrix, setMatrix] = useState<ApiPermission[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!request) {
+      setMatrix(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    setSaveError(null);
+    getPermissions(request.requestedByUserId)
+      .then((permissions) => {
+        if (cancelled) return;
+        const expanded = expandPermissions(permissions);
+        for (const module of request.requestedModules) {
+          const grant = expanded.find((p) => p.module === module);
+          if (grant && !grant.canView) grant.canView = true;
+        }
+        setMatrix(expanded);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Could not load this account's current permissions.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [request]);
+
+  function updateMatrix(updater: (rows: ApiPermission[]) => ApiPermission[]) {
+    setMatrix((prev) => (prev ? updater(prev) : prev));
+  }
+
+  function toggle(module: PermissionModuleName, action: PermissionActionKey) {
+    updateMatrix((rows) => rows.map((p) => (p.module === module ? { ...p, [action]: !p[action] } : p)));
+  }
+
+  function toggleRow(module: PermissionModuleName) {
+    updateMatrix((rows) => {
+      const grant = rows.find((p) => p.module === module)!;
+      const allOn = PERMISSION_ACTIONS.every((a) => grant[a.key]);
+      return rows.map((p) => (p.module === module ? { ...p, ...Object.fromEntries(PERMISSION_ACTIONS.map((a) => [a.key, !allOn])) } : p));
+    });
+  }
+
+  function toggleColumn(action: PermissionActionKey) {
+    updateMatrix((rows) => {
+      const allOn = rows.every((p) => p[action]);
+      return rows.map((p) => ({ ...p, [action]: !allOn }));
+    });
+  }
+
+  function toggleAll() {
+    updateMatrix((rows) => {
+      const allOn = rows.every((p) => PERMISSION_ACTIONS.every((a) => p[a.key]));
+      return rows.map((p) => ({ ...p, ...Object.fromEntries(PERMISSION_ACTIONS.map((a) => [a.key, !allOn])) }));
+    });
+  }
+
+  async function grantAndApprove() {
+    if (!request || !matrix) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await setPermissions(request.requestedByUserId, toSparsePermissions(matrix));
+      await reviewAccessRequest(request.id, true);
+      onGranted();
+      onClose();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not grant access. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!request} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-4xl">
+        {request && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Grant access to {request.requestedByName}</DialogTitle>
+              <DialogDescription>
+                Requested: {moduleLabels(request.requestedModules)}. Pick exactly which menus and rights this account should have —
+                this replaces their entire permission set, so everything they already hold is shown below too.
+              </DialogDescription>
+            </DialogHeader>
+
+            {loading ? (
+              <div className="flex justify-center py-8 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : loadError ? (
+              <InlineAlert variant="warning">{loadError}</InlineAlert>
+            ) : matrix ? (
+              <div className="max-h-[60vh] overflow-y-auto">
+                <PermissionMatrix
+                  permissions={matrix}
+                  menusByModule={menusByModule}
+                  onToggle={toggle}
+                  onToggleRow={toggleRow}
+                  onToggleColumn={toggleColumn}
+                  onToggleAll={toggleAll}
+                />
+              </div>
+            ) : null}
+
+            {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={onClose} disabled={saving}>
+                Cancel
+              </Button>
+              <Button onClick={grantAndApprove} disabled={!matrix || loading || saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                {saving ? "Granting…" : "Grant & Approve"}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

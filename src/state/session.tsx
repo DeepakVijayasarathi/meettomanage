@@ -145,21 +145,32 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // change (or an already-open tab) doesn't leave a stale cached grant in effect. Also
   // keeps timezone in sync the same way — a change made in Account settings from another
   // tab/device shouldn't leave this one converting session times against a stale zone.
+  // getCurrentUser() also swaps in a freshly-minted token carrying these same claims (see
+  // its own comment), so this poll is what actually applies a just-approved access request
+  // without the user having to log out and back in — repeated every few minutes, not just
+  // once on mount, so it reaches an already-open tab too.
   useEffect(() => {
     if (!apiEnabled() || !role || !getAccessToken()) return;
     let cancelled = false;
-    getCurrentUser()
-      .then((response) => {
-        if (cancelled) return;
-        setPermissions(response.permissions);
-        if (response.defaultRoute) setHomePath(response.defaultRoute);
-        if (response.user.timeZoneId) setTimeZoneId(response.user.timeZoneId);
-      })
-      .catch(() => {
-        /* keep whatever was cached from login */
-      });
+
+    function refresh() {
+      getCurrentUser()
+        .then((response) => {
+          if (cancelled) return;
+          setPermissions(response.permissions);
+          if (response.defaultRoute) setHomePath(response.defaultRoute);
+          if (response.user.timeZoneId) setTimeZoneId(response.user.timeZoneId);
+        })
+        .catch(() => {
+          /* keep whatever was cached from login */
+        });
+    }
+
+    refresh();
+    const intervalId = setInterval(refresh, 3 * 60_000);
     return () => {
       cancelled = true;
+      clearInterval(intervalId);
     };
   }, [role]);
 

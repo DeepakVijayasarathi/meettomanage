@@ -48,6 +48,60 @@ export async function getBulkEmailRecipientCount(batchId?: string): Promise<numb
   return result.recipientCount;
 }
 
+export type BulkEmailScope = "AllActiveParents" | "Batch";
+
+export interface ApiBulkEmailHistoryItem {
+  id: string;
+  subject: string;
+  sentByName: string;
+  scope: BulkEmailScope;
+  batchName: string | null;
+  sentAtUtc: string;
+  totalRecipients: number;
+  successCount: number;
+  failureCount: number;
+}
+
+export interface ApiBulkEmailRecipient {
+  id: string;
+  recipientName: string;
+  email: string;
+  status: "Pending" | "Sent" | "Failed" | "Read";
+  errorMessage: string | null;
+  sentAtUtc: string | null;
+  replyMessage: string | null;
+  replyAtUtc: string | null;
+}
+
+export interface ApiBulkEmailBlastDetail {
+  id: string;
+  subject: string;
+  body: string;
+  sentByName: string;
+  scope: BulkEmailScope;
+  batchName: string | null;
+  sentAtUtc: string;
+  recipients: ApiBulkEmailRecipient[];
+}
+
+/** Past Bulk Email sends, newest first, for the admin History list. */
+export async function getBulkEmailHistory(): Promise<ApiBulkEmailHistoryItem[]> {
+  return apiFetch<ApiBulkEmailHistoryItem[]>("/api/communications/bulk-email/history");
+}
+
+/** One blast's full recipient list with delivery status and any reply. */
+export async function getBulkEmailBlastDetail(id: string): Promise<ApiBulkEmailBlastDetail> {
+  return apiFetch<ApiBulkEmailBlastDetail>(`/api/communications/bulk-email/history/${id}`);
+}
+
+/** A parent's reply to one Bulk Email they received, addressed by their recipient row id. */
+export async function replyToBulkEmail(recipientId: string, message: string): Promise<void> {
+  await apiFetch<void>(`/api/communications/bulk-email/${recipientId}/reply`, {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  });
+}
+
 export interface ApiTeacherPerformance {
   teacherProfileId: string;
   teacherName: string;

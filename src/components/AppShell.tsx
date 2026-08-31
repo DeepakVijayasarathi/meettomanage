@@ -26,7 +26,7 @@ const COLLAPSE_KEY = "trn.sidebarCollapsed";
 const SUBADMIN_PRESET_PORTALS: Role[] = ["coordinator", "admission", "management"];
 
 export function AppShell({ role, children }: AppShellProps) {
-  const { setRole } = useSession();
+  const { setRole, permissions } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -44,13 +44,11 @@ export function AppShell({ role, children }: AppShellProps) {
   // (not a separate effect keyed off apiSections) so patching it can never retrigger
   // its own effect and loop.
   const [apiSections, setApiSections] = useState<NavSection[] | null>(null);
-  useEffect(() => {
-    setApiSections(null);
-    if (!apiEnabled()) return;
-    let cancelled = false;
-    Promise.all([getMyMenu(), role === "admin" ? listSuspensions("Active") : Promise.resolve(null)])
+
+  function fetchMenu(onCancelled: () => boolean) {
+    return Promise.all([getMyMenu(), role === "admin" ? listSuspensions("Active") : Promise.resolve(null)])
       .then(([items, activeSuspensions]) => {
-        if (cancelled || items.length === 0) return;
+        if (onCancelled() || items.length === 0) return;
         const sections = toNavSections(items);
         if (activeSuspensions && activeSuspensions.length > 0) {
           for (const section of sections) {
@@ -62,12 +60,36 @@ export function AppShell({ role, children }: AppShellProps) {
         setApiSections(sections);
       })
       .catch(() => {
-        /* keep static nav */
+        /* keep static nav (or, on a later re-fetch, whatever loaded last) */
       });
+  }
+
+  useEffect(() => {
+    setApiSections(null);
+    if (!apiEnabled()) return;
+    let cancelled = false;
+    void fetchMenu(() => cancelled);
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
+
+  // Re-fetches whenever the session's permission claims change (SessionProvider refreshes
+  // these — and the token they're read from server-side — every few minutes and right after
+  // login/reload) so a just-approved access request's new menu items show up without the
+  // user having to log out and back in. Deliberately doesn't reset apiSections to null first
+  // like the role-keyed effect above — this fires often on an unchanged grant, and resetting
+  // would flash the static fallback nav on every poll instead of only actually-changed ones.
+  useEffect(() => {
+    if (!apiEnabled()) return;
+    let cancelled = false;
+    void fetchMenu(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissions]);
 
   useEffect(() => {
     // The Student View reuses AppShell purely for its themed "preview" shell —
