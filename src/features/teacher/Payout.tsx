@@ -194,13 +194,13 @@ export default function TeacherPayout() {
                   const isNegative = item.amount < 0;
                   return (
                     <div key={item.id} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
-                      <div className="flex items-start gap-2.5">
+                      <div className="flex min-w-0 items-start gap-2.5">
                         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                           <GraduationCap className="h-4 w-4" />
                         </span>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{item.className ?? typeLabel}</p>
-                          <p className="text-xs text-muted-foreground">{item.className ? `${typeLabel} · ${dateLabel}` : dateLabel}</p>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground">{item.className ?? typeLabel}</p>
+                          <p className="truncate text-xs text-muted-foreground">{item.className ? `${typeLabel} · ${dateLabel}` : dateLabel}</p>
                           {item.note && <p className="mt-1 text-xs text-muted-foreground">{item.note}</p>}
                         </div>
                       </div>

@@ -347,8 +347,8 @@ export default function AdmissionLeads() {
                     </div>
                     <div className="flex max-h-36 flex-col gap-1.5 overflow-y-auto">
                       {history.bookings.map((b) => (
-                        <div key={b.id} className="flex items-center justify-between gap-2 text-sm">
-                          <span className="truncate text-foreground">
+                        <div key={b.id} className="flex min-w-0 items-center justify-between gap-2 text-sm">
+                          <span className="min-w-0 flex-1 truncate text-foreground">
                             {b.childName}
                             <span className="text-xs text-muted-foreground">
                               {" "}

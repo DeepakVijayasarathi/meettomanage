@@ -293,7 +293,7 @@ export default function AdmissionDemoScheduling() {
         accessor: (row) => `${row.date} ${row.startTime}`,
         render: (row) => (
           <span className="text-sm text-muted-foreground">
-            {formatDate(row.date)} · {row.startTime}
+            {row.date ? `${formatDate(row.date)} · ${row.startTime}` : "—"}
           </span>
         ),
       },

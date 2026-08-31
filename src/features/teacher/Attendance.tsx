@@ -357,15 +357,15 @@ export default function TeacherAttendance() {
                   const child = getChildById(record.childId);
                   return (
                     <div key={record.childId} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar className="h-8 w-8">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <Avatar className="h-8 w-8 shrink-0">
                           <AvatarFallback style={{ backgroundColor: `${child?.avatarColor ?? "hsl(var(--muted-foreground))"}26`, color: child?.avatarColor ?? "hsl(var(--muted-foreground))" }}>
                             {child ? getInitials(child.name) : "?"}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{child?.name ?? record.childId ?? "Unknown student"}</p>
-                          {record.note && <p className="text-xs text-muted-foreground">{record.note}</p>}
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{child?.name ?? record.childId ?? "Unknown student"}</p>
+                          {record.note && <p className="truncate text-xs text-muted-foreground">{record.note}</p>}
                         </div>
                       </div>
                       <Badge variant={record.present ? "success" : "destructive"}>
