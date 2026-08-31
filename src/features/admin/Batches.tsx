@@ -586,12 +586,6 @@ export default function AdminBatches() {
                   <div className="grid gap-1.5">
                     <Label htmlFor="gen-time">Class time (IST)</Label>
                     <Input id="gen-time" type="time" value={genTime} onChange={(e) => setGenTime(e.target.value)} />
-                    <p className="text-xs text-muted-foreground">
-                      {(() => {
-                        const { time, dayShift } = istTimeToUtc(genTime);
-                        return `= ${time} UTC${dayShift < 0 ? " (previous day)" : ""}`;
-                      })()}
-                    </p>
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5">
