@@ -48,6 +48,7 @@ const BILLING_TYPES: { value: ApiBillingType; label: string }[] = [
 ];
 
 const BILLING_CYCLES: { value: ApiBillingCycle; label: string }[] = [
+  { value: "Biweekly", label: "Every 2 weeks" },
   { value: "Monthly", label: "Monthly" },
   { value: "Quarterly", label: "Quarterly" },
   { value: "Yearly", label: "Yearly" },

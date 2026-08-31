@@ -4,7 +4,7 @@ import type { Invoice } from "@/types";
 
 export type ApiInvoiceStatus = "Pending" | "PartiallyPaid" | "Paid" | "Overdue" | "Cancelled";
 export type ApiBillingType = "Subscription" | "SessionBased" | "OneTime";
-export type ApiBillingCycle = "Monthly" | "Quarterly" | "Yearly" | "OneTime";
+export type ApiBillingCycle = "Biweekly" | "Monthly" | "Quarterly" | "Yearly" | "OneTime";
 export type ApiPaymentMethod = "Card" | "Upi" | "NetBanking" | "Wallet" | "Other" | "Cash";
 
 export interface ApiInvoice {
