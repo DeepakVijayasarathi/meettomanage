@@ -48,7 +48,10 @@ const SelectContent = React.forwardRef<
       position={position}
       {...props}
     >
-      <SelectPrimitive.Viewport className={cn("p-1", position === "popper" && "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]")}>
+      {/* No min-w tied to the trigger's own (unclamped) width here — that would force the
+          viewport, and every item row inside it, wider than SelectContent's own max-w
+          clamp above, defeating it and letting long item text overflow uncapped. */}
+      <SelectPrimitive.Viewport className={cn("p-1", position === "popper" && "h-[var(--radix-select-trigger-height)] w-full")}>
         {children}
       </SelectPrimitive.Viewport>
     </SelectPrimitive.Content>
@@ -63,7 +66,12 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full min-w-0 cursor-pointer select-none items-center rounded-md py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      // Radix's ItemText strips any className/style passed to it (its children get
+      // portaled into the trigger too, so it deliberately won't take direct styling) —
+      // so the wrap/shrink rules for its rendered span have to be reached from here via
+      // [&>span:last-child] instead. Without min-w-0 the span keeps flexbox's default
+      // min-width:auto and refuses to shrink/wrap, forcing the whole popup wider.
+      "relative flex w-full min-w-0 cursor-pointer select-none items-center rounded-md py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>span:last-child]:min-w-0 [&>span:last-child]:flex-1 [&>span:last-child]:whitespace-normal [&>span:last-child]:break-words",
       className
     )}
     {...props}
@@ -73,9 +81,7 @@ const SelectItem = React.forwardRef<
         <Check className="h-4 w-4" />
       </SelectPrimitive.ItemIndicator>
     </span>
-    {/* min-w-0 lets this actually shrink/wrap inside the now width-capped popup instead
-        of forcing it wider (the classic flexbox "children won't wrap" pitfall). */}
-    <SelectPrimitive.ItemText className="min-w-0 flex-1 whitespace-normal break-words">{children}</SelectPrimitive.ItemText>
+    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 ));
 SelectItem.displayName = SelectPrimitive.Item.displayName;
