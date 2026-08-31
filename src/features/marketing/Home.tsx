@@ -411,14 +411,6 @@ const PAIN_POINTS: PainPoint[] = [
   },
 ];
 
-/** Reframes the same four PAIN_POINTS facts as a head-to-head strip — no new claims, just a second, more decision-stage lens on facts already stated above. */
-const COMPARISON_ROWS = [
-  { old: "Fee follow-ups tracked manually, easy to miss", now: "Automatic invoices, auto-suspend and instant restoration on payment" },
-  { old: "Admissions tracked in an inbox or a notebook", now: "One pipeline from first call to enrolled family" },
-  { old: "Attendance found out about days later, if at all", now: "Live attendance and engagement the moment class ends" },
-  { old: "A video app, a spreadsheet and a WhatsApp group", now: "One login, every role, already connected" },
-];
-
 const STATS: { value: string; label: string; icon: LucideIcon }[] = [
   { value: "8", label: "Role-based portals", icon: Layers },
   { value: "100%", label: "Real-time classroom", icon: Video },
@@ -541,17 +533,7 @@ const FAQS = [
   {
     icon: Lock,
     q: "Do teachers, parents and admins all use the same login screen?",
-    a: "Yes. One sign-in, then each of the 8 role-based portals — admin, teacher, parent, student and more — shows only what that person needs.",
-  },
-  {
-    icon: ShieldCheck,
-    q: "Can I control what each staff member can see or do?",
-    a: "Yes — every portal is gated by permission, not just by role. A teacher's portal can't reach billing, and front-desk staff can be given exactly the access they need and nothing more.",
-  },
-  {
-    icon: CalendarCheck2,
-    q: "How does scheduling handle a no-show or a clash?",
-    a: "Batches are scheduled against a conflict-free calendar, no-shows are handled automatically, and rescheduling happens without a manual back-and-forth.",
+    a: "Yes. One sign-in, then each of the 8 role-based portals — admin, teacher, parent, student and more — shows only what that person needs, gated by permission, not just by role.",
   },
   {
     icon: CreditCard,
@@ -776,31 +758,6 @@ export default function MarketingHome() {
               </Reveal>
             ))}
           </div>
-
-          {/* Same four facts as the cards above, restated head-to-head for a reader already
-              past "does this understand my problem" and into "why this over the alternative". */}
-          <Reveal delayMs={PAIN_POINTS.length * 80} className="mt-10">
-            <div className="overflow-hidden rounded-2xl border border-black/10 bg-white">
-              <div className="grid grid-cols-2 border-b border-black/10 bg-[#F5F6F9]">
-                <div className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-[#8B93A1] sm:px-5">The old way</div>
-                <div className="border-l border-black/10 px-4 py-3 text-xs font-bold uppercase tracking-wide text-[#EA580C] sm:px-5">
-                  {brand.name}
-                </div>
-              </div>
-              {COMPARISON_ROWS.map((row, i) => (
-                <div key={row.old} className={cn("grid grid-cols-2", i !== 0 && "border-t border-black/10")}>
-                  <div className="flex items-start gap-2 px-4 py-4 text-sm text-[#5B6472] sm:px-5">
-                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#B8BEC9]" />
-                    {row.old}
-                  </div>
-                  <div className="flex items-start gap-2 border-l border-black/10 px-4 py-4 text-sm font-semibold text-[#171B22] sm:px-5">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#EA580C]" />
-                    {row.now}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Reveal>
         </div>
       </section>
 
@@ -1071,18 +1028,21 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* Security & trust — verified architectural facts only. No ISO/SOC2/GDPR badges are
-          claimed here since none have been obtained for this product; the closing note says
-          so directly instead of staying silent about it. */}
-      <section className="bg-white py-16 sm:py-20">
+      {/* Security & integrations, merged into one section (was two) — both are short,
+          compact-card sections and neither needed its own full section's worth of padding.
+          Verified architectural facts only for security (no ISO/SOC2/GDPR claims, said
+          plainly below rather than left ambiguous); the real, fixed set of channels this
+          product ships with today for integrations, not an open marketplace. */}
+      <section id="integrations" className="scroll-mt-20 border-t border-black/10 bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">Security &amp; trust</p>
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">Security &amp; integrations</p>
             <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-              Real access control, not just a login screen
+              Real access control, built in from day one
             </h2>
             <p className="mt-3 text-sm text-[#5B6472]">
-              Every portal only shows what that role is allowed to see — and money movement has its own safeguards.
+              Every portal only shows what that role is allowed to see — and live video, payments and reminders
+              already run through the same system, not a marketplace of add-ons.
             </p>
           </div>
 
@@ -1100,33 +1060,15 @@ export default function MarketingHome() {
             ))}
           </div>
 
-          <p className="mx-auto mt-8 max-w-xl text-center text-xs text-[#8B93A1]">
+          <p className="mx-auto mt-6 max-w-xl text-center text-xs text-[#8B93A1]">
             We don't yet publish formal compliance certifications — happy to walk through our specific security setup
             on a call.
           </p>
-        </div>
-      </section>
-
-      {/* Integrations — the real, fixed set of channels this product ships with today, not an
-          open marketplace. Framed as "built in" rather than "connect your stack" since that's
-          the accurate description. */}
-      <section id="integrations" className="scroll-mt-20 border-t border-black/10 bg-[#F5F6F9] py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">Integrations</p>
-            <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-              Built in, not bolted on
-            </h2>
-            <p className="mt-3 text-sm text-[#5B6472]">
-              Live video, payments and every reminder run through the same system a family already uses to check
-              schedules and pay fees.
-            </p>
-          </div>
 
           <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {INTEGRATIONS.map((integration, i) => (
               <Reveal key={integration.name} delayMs={(i % 6) * 60}>
-                <div className="flex h-full flex-col items-center gap-2.5 rounded-2xl border border-black/10 bg-white p-5 text-center">
+                <div className="flex h-full flex-col items-center gap-2.5 rounded-2xl border border-black/10 bg-[#F5F6F9] p-5 text-center">
                   <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF3EA] text-[#EA580C]">
                     <integration.icon className="h-5 w-5" />
                   </span>
