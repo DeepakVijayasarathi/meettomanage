@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -192,6 +192,104 @@ function ChatWidget() {
       >
         {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-6 w-6" />}
       </button>
+    </div>
+  );
+}
+
+/** Session key so a visitor sees this at most once per browser session, not every page load. */
+const DEMO_POPUP_SEEN_KEY = "trn.demoPopup.seen";
+
+/**
+ * A one-time nudge toward the two real demo paths (Request a Demo / Book a Class Demo).
+ * Desktop: exit-intent (mouse leaves the top of the viewport, the classic signal a visitor
+ * is about to close the tab or switch away). Mobile has no mouse to read exit-intent from,
+ * so it falls back to a 25s on-page timer instead. Either way it fires once per session
+ * (sessionStorage, not localStorage — a genuinely new visit gets one shot at this again).
+ */
+function DemoPopup({ onBookClass }: { onBookClass: () => void }) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem(DEMO_POPUP_SEEN_KEY) === "1";
+    } catch {
+      /* sessionStorage unavailable (private mode, etc.) — just skip the one-time gate */
+    }
+    if (seen) return;
+
+    function trigger() {
+      setOpen(true);
+      try {
+        sessionStorage.setItem(DEMO_POPUP_SEEN_KEY, "1");
+      } catch {
+        /* nothing to persist to — the popup still shows for this page view either way */
+      }
+    }
+
+    function handleMouseLeave(e: MouseEvent) {
+      if (e.clientY <= 0) trigger();
+    }
+
+    document.addEventListener("mouseleave", handleMouseLeave);
+    const fallbackTimer = window.setTimeout(trigger, 25_000);
+    return () => {
+      document.removeEventListener("mouseleave", handleMouseLeave);
+      window.clearTimeout(fallbackTimer);
+    };
+  }, []);
+
+  if (!open) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Book a demo"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onClick={() => setOpen(false)}
+    >
+      <div
+        className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-pop"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label="Close"
+          className="absolute right-4 top-4 text-[#8B93A1] transition-colors hover:text-[#171B22]"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF3EA] text-[#EA580C]">
+          <Sparkles className="h-5 w-5" />
+        </span>
+        <h2 className="font-display mt-4 text-xl font-extrabold tracking-tight text-[#171B22]">
+          Before you go — see it running
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-[#5B6472]">
+          A 30-minute walkthrough for academy owners, or a free class demo if you're a parent —
+          no payment details either way.
+        </p>
+        <div className="mt-5 flex flex-col gap-2.5">
+          <Button asChild size="lg" className="w-full !bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+            <Link to="/get-started" onClick={() => setOpen(false)}>
+              Request a Demo <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            className="w-full border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5"
+            onClick={() => {
+              setOpen(false);
+              onBookClass();
+            }}
+          >
+            Book a Class Demo
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1249,6 +1347,7 @@ export default function MarketingHome() {
 
       <BookDemoDialog open={demoOpen} onOpenChange={setDemoOpen} />
       <ChatWidget />
+      <DemoPopup onBookClass={() => setDemoOpen(true)} />
     </div>
   );
 }
