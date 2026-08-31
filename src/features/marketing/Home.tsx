@@ -642,6 +642,36 @@ export default function MarketingHome() {
         </div>
       </section>
 
+      {/* More from the team's YouTube channel — an iframe embed rather than a downloaded/
+          re-hosted file, since it's meant to point at the live channel. */}
+      <section className="border-t border-black/10 bg-[#FBFBFC] py-16 sm:py-20">
+        <div className="mx-auto max-w-4xl px-6">
+          <Reveal>
+            <div className="mx-auto max-w-xl text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">From our channel</p>
+              <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+                More on how it works
+              </h2>
+            </div>
+          </Reveal>
+
+          <Reveal delayMs={100} className="mt-10">
+            <div className="overflow-hidden rounded-[24px] shadow-pop ring-4 ring-white">
+              <div className="aspect-video">
+                <iframe
+                  className="h-full w-full"
+                  src="https://www.youtube-nocookie.com/embed/VF20RdfCVbU"
+                  title={`${brand.name} — video walkthrough`}
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       {/* Pain points → solutions */}
       <section className="border-t border-black/10 bg-[#FBFBFC] py-16 sm:py-20">
         <div className="mx-auto max-w-4xl px-6">
