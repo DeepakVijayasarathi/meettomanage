@@ -566,7 +566,7 @@ export default function MarketingHome() {
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
-          <Logo wordmarkClassName="hidden sm:inline" />
+          <img src="/m2m.png" alt={brand.name} className="h-7 w-auto object-contain sm:h-9" />
 
           {/* Section anchors — desktop only. On narrow screens there's only room for the two
               CTAs (see the mobile-header wrap this replaced), so wayfinding there stays limited
