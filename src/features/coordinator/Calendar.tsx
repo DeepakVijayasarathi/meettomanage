@@ -43,6 +43,9 @@ export default function CoordinatorCalendar() {
   // LeaveManagement isn't, and GET /api/leave-requests requires it server-side. Confirmed
   // live: an account with only Sessions/Batches/Admission granted got a 403 on this page.
   const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
+  // POST /{id}/reschedule and /{id}/cancel (used here for "Mark Holiday") both require
+  // SessionCalendarManagement:Edit server-side.
+  const canEditSessions = !usingApi || hasPermission("SessionCalendarManagement", "Edit");
   const { data: apiSessions, reload } = useApiData<ClassSession[]>(
     () => listSessions().then((s) => s.map(toFrontendSession)),
     SESSIONS
@@ -198,12 +201,16 @@ export default function CoordinatorCalendar() {
                 <Button variant="outline" onClick={() => setSelectedId(null)}>
                   Close
                 </Button>
-                <Button variant="outline" disabled={locked} onClick={() => setHolidayOpen(true)}>
-                  <PartyPopper className="h-4 w-4" /> Mark Holiday
-                </Button>
-                <Button variant="outline" disabled={locked} onClick={() => setRescheduleOpen(true)}>
-                  <RefreshCcw className="h-4 w-4" /> Reschedule
-                </Button>
+                {canEditSessions && (
+                  <Button variant="outline" disabled={locked} onClick={() => setHolidayOpen(true)}>
+                    <PartyPopper className="h-4 w-4" /> Mark Holiday
+                  </Button>
+                )}
+                {canEditSessions && (
+                  <Button variant="outline" disabled={locked} onClick={() => setRescheduleOpen(true)}>
+                    <RefreshCcw className="h-4 w-4" /> Reschedule
+                  </Button>
+                )}
                 {selected.status === "completed" && (
                   <Button variant="outline" onClick={() => setRecordingsFor(selected)}>
                     <Video className="h-4 w-4" /> Recording

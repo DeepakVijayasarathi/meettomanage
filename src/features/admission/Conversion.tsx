@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CHART_PALETTE } from "@/lib/roles";
 import { cn, formatDate, getInitials } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listDemoBookings, toApiConversionStatus, toFrontendLead, updateConversionStatus } from "@/api/demoBookings";
 import { LEADS as INITIAL_LEADS, type ConversionStage, type Lead } from "./data";
@@ -57,6 +58,9 @@ function isBoardStage(stage: ConversionStage): stage is BoardStage {
 
 export default function AdmissionConversion() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // PUT /{id}/conversion-status (UpdateConversionStatus) requires Admission:Edit server-side.
+  const canMove = !apiEnabled() || hasPermission("Admission", "Edit");
   const usingApi = apiEnabled();
   const { data: apiLeads, reload } = useApiData<Lead[]>(
     () => listDemoBookings().then((b) => b.map(toFrontendLead)),
@@ -169,7 +173,11 @@ export default function AdmissionConversion() {
 
                           <p className="text-xs text-muted-foreground">Last contacted {formatDate(lead.lastContactedOn)}</p>
 
-                          <Select value={lead.conversionStage} onValueChange={(v) => moveLead(lead.id, v as BoardStage)}>
+                          <Select
+                            value={lead.conversionStage}
+                            onValueChange={(v) => moveLead(lead.id, v as BoardStage)}
+                            disabled={!canMove}
+                          >
                             <SelectTrigger className="h-8 text-xs">
                               <SelectValue />
                             </SelectTrigger>

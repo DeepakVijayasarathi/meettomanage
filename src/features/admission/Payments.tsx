@@ -10,6 +10,7 @@ import { FeeStatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { CashConfirmationsPanel } from "@/components/CashConfirmationsPanel";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listInvoiceRows, toFrontendInvoice, createPaymentLink } from "@/api/billing";
 import type { Invoice } from "@/types";
@@ -79,6 +80,9 @@ function fromInvoice(invoice: Invoice): PaymentRow {
 
 export default function AdmissionPayments() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // POST /invoices/{id}/payment-link (CreatePaymentLink) requires BillingFinance:Edit server-side.
+  const canGenerateLink = !apiEnabled() || hasPermission("BillingFinance", "Edit");
   // One page of the (forever-growing) invoice table; the status filter, totals and
   // DataTable's paging all run client-side over it. totalCount is the whole matching
   // set server-side, which is what the "Invoices" KPI should actually count.
@@ -115,7 +119,7 @@ export default function AdmissionPayments() {
 
   async function handleGenerateLink(row: PaymentRow) {
     setError(null);
-    if (!apiEnabled() || !row.apiId) {
+    if (!apiEnabled() || !row.apiId || !canGenerateLink) {
       // Demo mode: nothing real to generate — there's no gateway to call.
       return;
     }
@@ -203,26 +207,29 @@ export default function AdmissionPayments() {
       {
         key: "actions",
         header: "Actions",
-        render: (row) => (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={row.status === "paid" || row.status === "cancelled" || linkBusyId === row.id || (!apiEnabled())}
-            onClick={() => handleGenerateLink(row)}
-          >
-            {linkBusyId === row.id ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : copiedId === row.id ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-            ) : (
-              <Link2 className="h-3.5 w-3.5" />
-            )}
-            {linkBusyId === row.id ? "Generating…" : copiedId === row.id ? "Link copied" : "Generate & copy link"}
-          </Button>
-        ),
+        render: (row) =>
+          canGenerateLink ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={row.status === "paid" || row.status === "cancelled" || linkBusyId === row.id || (!apiEnabled())}
+              onClick={() => handleGenerateLink(row)}
+            >
+              {linkBusyId === row.id ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : copiedId === row.id ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+              ) : (
+                <Link2 className="h-3.5 w-3.5" />
+              )}
+              {linkBusyId === row.id ? "Generating…" : copiedId === row.id ? "Link copied" : "Generate & copy link"}
+            </Button>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          ),
       },
     ],
-    [linkBusyId, copiedId]
+    [linkBusyId, copiedId, canGenerateLink]
   );
 
   return (

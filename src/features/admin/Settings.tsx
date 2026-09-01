@@ -52,6 +52,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { cn, formatCurrency, hexToHslTriple } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { getSettings, toSettingsMap, updateSettings, type SettingCategory, type UpdateSettingItem } from "@/api/settings";
 import { getBrand, setBrand } from "@/lib/branding";
@@ -1527,6 +1528,11 @@ function JitsiRecordingSettings() {
  * rather than by which portal you're in.
  */
 export function IntegrationsManager() {
+  const { hasPermission } = useSession();
+  // Create/update/delete all require Settings:Edit server-side (IntegrationsController) --
+  // this component is shared by the Admin portal (implicit full access) and the Sub Admin
+  // Integrations page, which only gates the whole screen on Settings:View.
+  const canEdit = hasPermission("Settings", "Edit");
   const [integrations, setIntegrations] = useState<ApiIntegration[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1674,9 +1680,11 @@ export function IntegrationsManager() {
             Master list of third-party services — Email, WhatsApp, Razorpay, Cashfree, Zoom, Jitsi Meet and any custom ones you add.
           </CardDescription>
         </div>
-        <Button size="sm" onClick={startNew}>
-          <Plus className="h-3.5 w-3.5" /> Add Integration
-        </Button>
+        {canEdit && (
+          <Button size="sm" onClick={startNew}>
+            <Plus className="h-3.5 w-3.5" /> Add Integration
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         {error && <InlineAlert variant="warning">{error}</InlineAlert>}
@@ -1846,11 +1854,13 @@ export function IntegrationsManager() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Switch checked={integration.isEnabled} onCheckedChange={() => toggleEnabled(integration)} disabled={busy} />
-                        <Button variant="outline" size="sm" onClick={() => startEdit(integration)}>
-                          <Pencil className="h-3.5 w-3.5" /> Configure
-                        </Button>
-                        {!integration.isSystem && (
+                        <Switch checked={integration.isEnabled} onCheckedChange={() => toggleEnabled(integration)} disabled={busy || !canEdit} />
+                        {canEdit && (
+                          <Button variant="outline" size="sm" onClick={() => startEdit(integration)}>
+                            <Pencil className="h-3.5 w-3.5" /> Configure
+                          </Button>
+                        )}
+                        {!integration.isSystem && canEdit && (
                           <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(integration)} disabled={busy}>
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>

@@ -111,6 +111,8 @@ export default function CoordinatorAvailability() {
   // SessionCalendarManagement is guaranteed by the menu gate that got someone here, but
   // LeaveManagement isn't, and GET /api/leave-requests requires it server-side.
   const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
+  // PUT /api/leave-requests/{id}/review (Review) requires LeaveManagement:Approve server-side.
+  const canApproveLeave = !usingApi || hasPermission("LeaveManagement", "Approve");
   // Real clock in API mode; the mock universe stays pinned for reproducible demos.
   const [now] = useState(() => (usingApi ? new Date() : NOW));
   const today = format(now, "yyyy-MM-dd");
@@ -364,12 +366,18 @@ export default function CoordinatorAvailability() {
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <LeaveStatusPill status={leave.status} />
-                    <Button variant="outline" size="sm" onClick={() => setApproveTarget(leave)}>
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Approve
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setRejectTarget(leave)}>
-                      <XCircle className="h-3.5 w-3.5" /> Reject
-                    </Button>
+                    {canApproveLeave ? (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => setApproveTarget(leave)}>
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setRejectTarget(leave)}>
+                          <XCircle className="h-3.5 w-3.5" /> Reject
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Awaiting a login with Approve access</span>
+                    )}
                   </div>
                 </div>
               ))}

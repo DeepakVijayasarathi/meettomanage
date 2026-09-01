@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import {
   getDemoBooking,
@@ -92,6 +93,9 @@ function mockWorkload(currentTeacherId: string): ApiTeacherWorkload[] {
 
 export default function DemoTeacherAssignment() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // POST /{id}/teacher (ReassignTeacher) requires Admission:Edit server-side.
+  const canReassign = !apiEnabled() || hasPermission("Admission", "Edit");
   const { bookingId } = useParams<{ bookingId?: string }>();
   const navigate = useNavigate();
   const base = usePortalBase();
@@ -163,7 +167,7 @@ export default function DemoTeacherAssignment() {
   }, [pickerRows, search]);
 
   const selectedCandidate = workload.find((w) => w.teacherProfileId === candidateId) ?? null;
-  const canSubmit = !!candidateId && candidateId !== detail?.teacherId && !selectedCandidate?.isBusyAtSlot;
+  const canSubmit = canReassign && !!candidateId && candidateId !== detail?.teacherId && !selectedCandidate?.isBusyAtSlot;
 
   function handleReassign() {
     if (!detail || !candidateId || !canSubmit || submitting) return;
@@ -317,7 +321,7 @@ export default function DemoTeacherAssignment() {
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {workload.map((t) => {
                   const isCurrent = t.teacherProfileId === detail.teacherId;
-                  const disabled = isCurrent || t.isBusyAtSlot;
+                  const disabled = isCurrent || t.isBusyAtSlot || !canReassign;
                   const selected = candidateId === t.teacherProfileId;
                   return (
                     <button
@@ -351,21 +355,25 @@ export default function DemoTeacherAssignment() {
                 })}
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="reassignReason">Reason (optional, kept in the audit trail)</Label>
-                <Textarea
-                  id="reassignReason"
-                  placeholder="e.g. Original teacher called in sick"
-                  value={reasonInput}
-                  onChange={(e) => setReasonInput(e.target.value)}
-                />
-              </div>
+              {canReassign && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="reassignReason">Reason (optional, kept in the audit trail)</Label>
+                  <Textarea
+                    id="reassignReason"
+                    placeholder="e.g. Original teacher called in sick"
+                    value={reasonInput}
+                    onChange={(e) => setReasonInput(e.target.value)}
+                  />
+                </div>
+              )}
 
-              <div className="flex justify-end">
-                <Button disabled={!canSubmit || submitting} onClick={handleReassign}>
-                  <UserCog className="h-4 w-4" /> {submitting ? "Reassigning…" : "Reassign Teacher"}
-                </Button>
-              </div>
+              {canReassign && (
+                <div className="flex justify-end">
+                  <Button disabled={!canSubmit || submitting} onClick={handleReassign}>
+                    <UserCog className="h-4 w-4" /> {submitting ? "Reassigning…" : "Reassign Teacher"}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
