@@ -65,7 +65,8 @@ import {
   type ApiMenuItem,
   type SaveMenuItemRequest,
 } from "@/api/menus";
-import { PERMISSION_MODULES } from "@/api/permissions";
+import { DEMO_PERMISSION_MODULES } from "@/api/permissions";
+import { listPermissionModules } from "@/api/permissionModules";
 import {
   createIntegration,
   deleteIntegration,
@@ -687,6 +688,12 @@ function MenuManager() {
   const formRef = useRef<HTMLDivElement>(null);
 
   const iconNames = useMemo(() => Object.keys(MENU_ICONS).sort(), []);
+  // The real, current module catalog (built-in + any Admin-defined custom ones) — a menu
+  // item's gate isn't limited to the 12 built-ins any more.
+  const { data: modules } = useApiData(
+    () => listPermissionModules().then((list) => list.map((m) => ({ value: m.key, label: m.label }))),
+    [...DEMO_PERMISSION_MODULES]
+  );
 
   // Same reasoning as IntegrationsManager: the form renders above the (possibly long,
   // multi-section) item list, so editing an item further down opens a form the user
@@ -859,7 +866,7 @@ function MenuManager() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none">Unassigned — visible to everyone</SelectItem>
-                  {PERMISSION_MODULES.map((m) => (
+                  {modules.map((m) => (
                     <SelectItem key={m.value} value={m.value}>
                       {m.label}
                     </SelectItem>
@@ -946,7 +953,7 @@ function MenuManager() {
                     <TableCell>
                       {item.requiredModule ? (
                         <Badge variant="secondary">
-                          {PERMISSION_MODULES.find((m) => m.value === item.requiredModule)?.label ?? item.requiredModule}
+                          {modules.find((m) => m.value === item.requiredModule)?.label ?? item.requiredModule}
                         </Badge>
                       ) : (
                         <Badge variant="muted">Unassigned — everyone</Badge>

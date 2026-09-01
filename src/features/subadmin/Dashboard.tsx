@@ -31,7 +31,8 @@ import { listBatches, toFrontendBatch } from "@/api/batches";
 import { listSessions, toFrontendSession } from "@/api/sessions";
 import { getDashboardSummary } from "@/api/reports";
 import { listAuditLogs } from "@/api/audit";
-import { PERMISSION_MODULES, type PermissionModuleName } from "@/api/permissions";
+import { DEMO_PERMISSION_MODULES, type PermissionModuleName, type PermissionModuleOption } from "@/api/permissions";
+import { listPermissionModules } from "@/api/permissionModules";
 import { listMyAccessRequests, submitAccessRequest } from "@/api/accessRequests";
 import { BATCHES } from "@/data/batches";
 import { SESSIONS } from "@/data/sessions";
@@ -49,15 +50,12 @@ import {
 const TODAY = "2026-07-09";
 const ADMIN_CONTACT = "Ananya Rao";
 
-const MODULE_LABEL_BY_VALUE: Partial<Record<PermissionModuleName, string>> = Object.fromEntries(
-  PERMISSION_MODULES.map((m) => [m.value, m.label])
-);
-
-// requestedModules comes back as raw backend enum names ("BillingFinance"), not the display
-// labels ("Billing & Finance") shown everywhere else on this card — same mapping the Admin's
-// Access Requests panel already applies to the same field.
-function moduleLabels(modules: PermissionModuleName[]): string {
-  return modules.map((m) => MODULE_LABEL_BY_VALUE[m] ?? m).join(", ");
+// requestedModules comes back as raw module keys ("BillingFinance"), not the display labels
+// ("Billing & Finance") shown everywhere else on this card — same mapping the Admin's Access
+// Requests panel already applies to the same field.
+function moduleLabels(moduleKeys: PermissionModuleName[], catalog: readonly PermissionModuleOption[]): string {
+  const labelByValue = Object.fromEntries(catalog.map((m) => [m.value, m.label]));
+  return moduleKeys.map((m) => labelByValue[m] ?? m).join(", ");
 }
 
 function timeAgo(iso: string, nowMs: number) {
@@ -91,6 +89,12 @@ export default function SubAdminDashboard() {
   const canSeeSessions = !usingApi || hasPermission("SessionCalendarManagement", "View");
   const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
   const canSeeReports = !usingApi || hasPermission("ReportsAnalytics", "View");
+  // The real, current module catalog (built-in + any Admin-defined custom ones) — the
+  // "locked modules" / "request access" section below isn't limited to the 12 built-ins.
+  const { data: modules } = useApiData(
+    () => listPermissionModules().then((list) => list.map((m) => ({ value: m.key, label: m.label }))),
+    [...DEMO_PERMISSION_MODULES]
+  );
   // The mock universe's clock is pinned; a real login measures against the real one.
   const nowMs = usingApi ? Date.now() : new Date(`${TODAY}T23:59:59`).getTime();
   const adminContact = usingApi ? "your Admin" : `${ADMIN_CONTACT} (Admin)`;
@@ -155,7 +159,7 @@ export default function SubAdminDashboard() {
   // Real logins derive their module scope from the session's permission claims;
   // demo mode keeps the Neha persona's scripted grants.
   const scope = usingApi
-    ? PERMISSION_MODULES.reduce(
+    ? modules.reduce(
         (acc, module) => {
           const has = (action: string) => permissions.includes(`${module.value}:${action}`);
           if (has("Create") || has("Edit") || has("Delete") || has("Approve")) acc.full.push(module.label);
@@ -443,7 +447,7 @@ export default function SubAdminDashboard() {
             )}
             {usingApi && !pendingRequest && lastReviewedRequest && (
               <p className="text-[11px] text-muted-foreground">
-                Last request ({moduleLabels(lastReviewedRequest.requestedModules)}) was{" "}
+                Last request ({moduleLabels(lastReviewedRequest.requestedModules, modules)}) was{" "}
                 <strong>{lastReviewedRequest.status.toLowerCase()}</strong> on{" "}
                 {formatDate((lastReviewedRequest.reviewedAtUtc ?? lastReviewedRequest.createdAtUtc).slice(0, 10), "long")}
                 {lastReviewedRequest.reviewNote ? ` — "${lastReviewedRequest.reviewNote}"` : ""}

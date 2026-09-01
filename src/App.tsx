@@ -241,6 +241,15 @@ export default function App() {
               <Route path="revenue" element={<ManagementRevenue />} />
               <Route path="performance" element={<ManagementPerformance />} />
               <Route path="reports" element={<ManagementReports />} />
+              {/* Reuse Sub Admin's own delegated-work pages rather than building
+                  Management-specific duplicates — same components, same permission
+                  gating, just mounted under this portal too. Whether they actually
+                  appear in the sidebar is entirely up to the Menu Manager + the
+                  module grants on whichever role is assigned here, same as every
+                  other dynamic menu item. */}
+              <Route path="batches" element={<SubAdminBatches />} />
+              <Route path="users" element={<SubAdminUsers />} />
+              <Route path="audit-log" element={<SubAdminAuditLog />} />
             </Route>
 
             {/* The student view doubles as the parent's "what my child sees" preview. */}

@@ -1,7 +1,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
-import { PERMISSION_MODULES, type ApiPermission, type PermissionModuleName } from "@/api/permissions";
+import type { ApiPermission, PermissionModuleName, PermissionModuleOption } from "@/api/permissions";
 
 export const PERMISSION_ACTIONS = [
   { key: "canView", label: "View" },
@@ -22,7 +22,9 @@ function triState(values: boolean[]): boolean | "indeterminate" {
 }
 
 interface PermissionMatrixProps {
-  /** Must cover every PERMISSION_MODULES entry — pass through expandPermissions() first. */
+  /** The real, current module catalog (built-in + custom) — see listPermissionModules(). */
+  modules: readonly PermissionModuleOption[];
+  /** Must cover every `modules` entry — pass through expandPermissions() first. */
   permissions: ApiPermission[];
   /** Real menu labels gated by each module, e.g. { BillingFinance: ["Admin — Billing & Finance", "Admission — Payment Tracking"] }. */
   menusByModule?: Partial<Record<PermissionModuleName, string[]>>;
@@ -42,7 +44,7 @@ interface PermissionMatrixProps {
  * Team's own default grants), so "who can see/do what" stays defined in exactly one
  * screen for every login type.
  */
-export function PermissionMatrix({ permissions, menusByModule, onToggle, onToggleRow, onToggleColumn, onToggleAll }: PermissionMatrixProps) {
+export function PermissionMatrix({ modules, permissions, menusByModule, onToggle, onToggleRow, onToggleColumn, onToggleAll }: PermissionMatrixProps) {
   return (
     <div className="flex flex-col gap-3">
       {/* Mobile: the desktop table's min-w-[720px] (module column + 5 action columns)
@@ -60,7 +62,7 @@ export function PermissionMatrix({ permissions, menusByModule, onToggle, onToggl
           />
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Select all modules</span>
         </div>
-        {PERMISSION_MODULES.map((mod, mi) => {
+        {modules.map((mod, mi) => {
           const grant = permissions.find((p) => p.module === mod.value)!;
           const menus = menusByModule?.[mod.value] ?? [];
           return (
@@ -135,7 +137,7 @@ export function PermissionMatrix({ permissions, menusByModule, onToggle, onToggl
           </tr>
         </thead>
         <tbody>
-          {PERMISSION_MODULES.map((mod, mi) => {
+          {modules.map((mod, mi) => {
             const grant = permissions.find((p) => p.module === mod.value)!;
             const menus = menusByModule?.[mod.value] ?? [];
             return (
