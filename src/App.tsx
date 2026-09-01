@@ -250,6 +250,8 @@ export default function App() {
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="permissions" element={<SubAdminPermissions />} />
+              <Route path="integrations" element={<SubAdminIntegrations />} />
             </Route>
 
             {/* The student view doubles as the parent's "what my child sees" preview. */}
