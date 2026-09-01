@@ -67,6 +67,32 @@ export async function updateBatch(batch: ApiBatch, teacherProfileId: string): Pr
   });
 }
 
+/** Archiving is the closest thing to "delete" the API offers — batches carry enrollment/session history, so they're never hard-deleted. */
+export async function setBatchStatus(batchId: string, status: ApiBatch["status"]): Promise<ApiBatch> {
+  return apiFetch<ApiBatch>(`/api/batches/${batchId}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  });
+}
+
+/** Update a batch's own fields (course stays fixed after creation — only teacher, name, capacity and dates can change). */
+export async function updateBatchFields(
+  batch: ApiBatch,
+  fields: { name?: string; teacherProfileId?: string; capacity?: number; startDate?: string | null; endDate?: string | null }
+): Promise<ApiBatch> {
+  return apiFetch<ApiBatch>(`/api/batches/${batch.id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      courseId: batch.courseId,
+      teacherProfileId: fields.teacherProfileId ?? batch.teacherProfileId,
+      name: fields.name ?? batch.name,
+      capacity: fields.capacity ?? batch.capacity,
+      startDate: fields.startDate !== undefined ? fields.startDate : batch.startDate,
+      endDate: fields.endDate !== undefined ? fields.endDate : batch.endDate,
+    }),
+  });
+}
+
 export async function createBatch(input: {
   courseId: string;
   teacherProfileId: string;

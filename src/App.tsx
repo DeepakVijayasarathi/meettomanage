@@ -69,6 +69,8 @@ const PersonalMeetingRoom = lazy(() => import("@/features/classroom/PersonalMeet
 const SubAdminDashboard = lazy(() => import("@/features/subadmin/Dashboard"));
 const SubAdminPermissions = lazy(() => import("@/features/subadmin/Permissions"));
 const SubAdminIntegrations = lazy(() => import("@/features/subadmin/Integrations"));
+const SubAdminBatches = lazy(() => import("@/features/subadmin/Batches"));
+const SubAdminUsers = lazy(() => import("@/features/subadmin/Users"));
 const SubAdminReports = lazy(() => import("@/features/subadmin/Reports"));
 const SubAdminAuditLog = lazy(() => import("@/features/subadmin/AuditLog"));
 
@@ -210,6 +212,8 @@ export default function App() {
               <Route index element={<SubAdminDashboard />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
+              <Route path="batches" element={<SubAdminBatches />} />
+              <Route path="users" element={<SubAdminUsers />} />
               <Route path="reports" element={<SubAdminReports />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
             </Route>
