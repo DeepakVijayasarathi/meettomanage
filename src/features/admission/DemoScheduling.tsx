@@ -24,6 +24,7 @@ import { createDemoBooking, listDemoBookings, updateConversionStatus, type ApiDe
 import { formatDate, getInitials } from "@/lib/utils";
 import { getUserTimeZoneAbbreviation, localToUtcIso, utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
+import { usePortalBase } from "@/lib/portalBase";
 import type { SessionStatus } from "@/types";
 
 interface DemoParentField {
@@ -113,6 +114,7 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
 
 export default function AdmissionDemoScheduling() {
   const { toast } = useToast();
+  const base = usePortalBase();
   const { data: apiRows, error: rowsError, reload: reloadRows } = useApiData(
     () => listDemoBookings().then((bookings) => bookings.map(bookingToRow)),
     seedRows()
@@ -334,7 +336,7 @@ export default function AdmissionDemoScheduling() {
           <div className="flex items-center gap-1.5">
             {row.status === "demo" ? (
               <Button asChild variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
-                <Link to={`/admission/demo-teacher-assignment/${row.id}`}>Reassign</Link>
+                <Link to={`${base}/demo-teacher-assignment/${row.id}`}>Reassign</Link>
               </Button>
             ) : (
               <Button variant="outline" size="sm" disabled>
@@ -368,7 +370,7 @@ export default function AdmissionDemoScheduling() {
         ),
       },
     ],
-    []
+    [base]
   );
 
   return (

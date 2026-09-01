@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { SESSIONS } from "@/data/sessions";
 import { LEAVE_REQUESTS } from "@/data/leaves";
 import { useSession } from "@/state/session";
+import { usePortalBase } from "@/lib/portalBase";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
@@ -43,6 +44,7 @@ function formatTimeLabel(time: string) {
 export default function CoordinatorDashboard() {
   const { userName } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
+  const base = usePortalBase();
 
   const usingApi = apiEnabled();
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(() => listSessions().then((s) => s.map(toFrontendSession)), SESSIONS);
@@ -105,7 +107,7 @@ export default function CoordinatorDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <PersonalMeetingButton />
             <Button asChild>
-              <Link to="/coordinator/calendar">
+              <Link to={`${base}/calendar`}>
                 Open Academic Calendar <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -156,7 +158,7 @@ export default function CoordinatorDashboard() {
             <LeaveStatRow label="Rejected" value={leaveByStatus.rejected} tone="neutral" />
             <LeaveStatRow label="Blocked (late notice)" value={leaveByStatus.blocked} tone="destructive" />
             <Button asChild variant="outline" className="mt-1 w-full">
-              <Link to="/coordinator/availability">
+              <Link to={`${base}/availability`}>
                 Review leave queue <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

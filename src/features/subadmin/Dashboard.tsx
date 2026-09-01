@@ -26,6 +26,7 @@ import { useSession } from "@/state/session";
 import { formatDate, formatPercent } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
+import { usePortalBase } from "@/lib/portalBase";
 import { useApiData } from "@/api/hooks";
 import { listBatches, toFrontendBatch } from "@/api/batches";
 import { listSessions, toFrontendSession } from "@/api/sessions";
@@ -79,6 +80,7 @@ export default function SubAdminDashboard() {
   const { toast } = useToast();
   const { userName, permissions, hasPermission } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
+  const base = usePortalBase();
   const usingApi = apiEnabled();
   // Every one of these endpoints is permission-gated server-side — fetching them for a Sub
   // Admin who was never granted the matching module just produced a noisy 403 and a
@@ -188,7 +190,7 @@ export default function SubAdminDashboard() {
             color: CHART_PALETTE[2],
             stat: `${activeBatches} active batches · ${formatPercent(liveOccupancy)} avg occupancy`,
             ctaLabel: "View batch report",
-            to: "/subadmin/reports",
+            to: `${base}/reports`,
           },
         ]
       : []),
@@ -201,7 +203,7 @@ export default function SubAdminDashboard() {
             color: CHART_PALETTE[3],
             stat: `${sessionsToday} sessions today · ${formatPercent(attendanceRate)} attendance this month`,
             ctaLabel: "View attendance report",
-            to: "/subadmin/reports",
+            to: `${base}/reports`,
           },
         ]
       : []),
@@ -214,7 +216,7 @@ export default function SubAdminDashboard() {
             color: CHART_PALETTE[5],
             stat: "2 report types available in your scope",
             ctaLabel: "Open reports",
-            to: "/subadmin/reports",
+            to: `${base}/reports`,
           },
         ]
       : []),
@@ -228,7 +230,7 @@ export default function SubAdminDashboard() {
           ? `Last action ${timeAgo(recentActivity[0].timestamp, nowMs)}`
           : "No actions logged yet",
       ctaLabel: "View my activity",
-      to: "/subadmin/audit-log",
+      to: `${base}/audit-log`,
     },
   ];
 
@@ -242,7 +244,7 @@ export default function SubAdminDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <PersonalMeetingButton />
             <Button asChild variant="outline">
-              <Link to="/subadmin/permissions">
+              <Link to={`${base}/permissions`}>
                 <ShieldCheck className="h-4 w-4" />
                 View my permissions
               </Link>
@@ -273,7 +275,7 @@ export default function SubAdminDashboard() {
             </div>
           </div>
           <Button asChild size="sm" variant="soft" className="shrink-0">
-            <Link to="/subadmin/permissions">
+            <Link to={`${base}/permissions`}>
               View full permission matrix <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
@@ -369,7 +371,7 @@ export default function SubAdminDashboard() {
                 </div>
               </div>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/subadmin/audit-log">
+                <Link to={`${base}/audit-log`}>
                   View full log <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </Button>

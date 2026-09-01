@@ -12,8 +12,10 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listDemoBookings, listDemoFeedback, toAwaitingFeedback, toFrontendFeedback } from "@/api/demoBookings";
 import { formatDate, formatNumber } from "@/lib/utils";
+import { usePortalBase } from "@/lib/portalBase";
 
 export default function AdmissionDemoFeedback() {
+  const base = usePortalBase();
   const { data: feedbacks, loading, error, reload } = useApiData(
     () =>
       Promise.all([listDemoFeedback(), listDemoBookings("DemoScheduled")]).then(
@@ -97,7 +99,7 @@ export default function AdmissionDemoFeedback() {
                   {f.remarks && <p className="text-muted-foreground">{f.remarks}</p>}
 
                   <Button variant="soft" size="sm" className="mt-2 self-start" asChild>
-                    <Link to="/admission/leads">
+                    <Link to={`${base}/leads`}>
                       Start follow-up <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </Button>

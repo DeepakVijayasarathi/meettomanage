@@ -28,6 +28,7 @@ import { listDemoBookings, toFrontendLead } from "@/api/demoBookings";
 import { listSessions, toFrontendSession } from "@/api/sessions";
 import { getDashboardSummary } from "@/api/reports";
 import { useSession } from "@/state/session";
+import { usePortalBase } from "@/lib/portalBase";
 import { LEADS, getConversionFunnel, getConversionRate, getRevenueThisMonth, type Lead, type ConversionStage } from "./data";
 import type { ClassSession } from "@/types";
 
@@ -47,6 +48,7 @@ const FUNNEL_COLORS: Record<string, string> = {
 export default function AdmissionDashboard() {
   const usingApi = apiEnabled();
   const { userName } = useSession();
+  const base = usePortalBase();
   const { data: leads, loading: leadsLoading, error: leadsError } = useApiData<Lead[]>(() => listDemoBookings().then((b) => b.map(toFrontendLead)), LEADS);
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(
     () => listSessions().then((s) => s.map(toFrontendSession)),
@@ -87,7 +89,7 @@ export default function AdmissionDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <PersonalMeetingButton />
             <Button asChild>
-              <Link to="/admission/demo-scheduling">
+              <Link to={`${base}/demo-scheduling`}>
                 <CalendarClock className="h-4 w-4" />
                 Schedule a demo
               </Link>
@@ -185,7 +187,7 @@ export default function AdmissionDashboard() {
             })}
           </div>
           <Button variant="soft" size="sm" className="mt-4 w-full" asChild>
-            <Link to="/admission/conversion">
+            <Link to={`${base}/conversion`}>
               Open Kanban board <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
@@ -205,7 +207,7 @@ export default function AdmissionDashboard() {
             </div>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/admission/demo-scheduling">
+            <Link to={`${base}/demo-scheduling`}>
               View all <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>

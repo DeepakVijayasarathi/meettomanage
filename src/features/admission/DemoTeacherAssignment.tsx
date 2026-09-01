@@ -36,6 +36,7 @@ import { TEACHERS } from "@/data/users";
 import { LEADS } from "./data";
 import { formatDate, getInitials } from "@/lib/utils";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
+import { usePortalBase } from "@/lib/portalBase";
 
 interface PickerRow {
   id: string;
@@ -93,6 +94,7 @@ export default function DemoTeacherAssignment() {
   const { toast } = useToast();
   const { bookingId } = useParams<{ bookingId?: string }>();
   const navigate = useNavigate();
+  const base = usePortalBase();
   const [search, setSearch] = useState("");
   const [reasonInput, setReasonInput] = useState("");
   const [candidateId, setCandidateId] = useState<string | null>(null);
@@ -208,7 +210,7 @@ export default function DemoTeacherAssignment() {
       {bookingId && (
         <Breadcrumb
           items={[
-            { label: "Demo Scheduling", to: "/admission/demo-scheduling" },
+            { label: "Demo Scheduling", to: `${base}/demo-scheduling` },
             { label: detail?.childName ?? "Teacher Assignment" },
           ]}
         />
@@ -219,7 +221,7 @@ export default function DemoTeacherAssignment() {
         description="Override the teacher assigned to a demo — see who's free before you move it, and keep a record of why."
         actions={
           <Button asChild variant="outline" size="sm">
-            <Link to="/admission/demo-scheduling">
+            <Link to={`${base}/demo-scheduling`}>
               <ArrowLeft className="h-3.5 w-3.5" /> Back to Demo Scheduling
             </Link>
           </Button>
@@ -255,7 +257,7 @@ export default function DemoTeacherAssignment() {
                   <button
                     key={row.id}
                     type="button"
-                    onClick={() => navigate(`/admission/demo-teacher-assignment/${row.id}`)}
+                    onClick={() => navigate(`${base}/demo-teacher-assignment/${row.id}`)}
                     className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
                   >
                     <div className="flex items-center gap-3">

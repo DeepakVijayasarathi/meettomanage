@@ -208,6 +208,17 @@ export default function App() {
               <Route path="add-child" element={<ParentAddChild />} />
             </Route>
 
+            {/* Subadmin/Admission/Coordinator/Management are one shared pool of pages, not 4
+                separate apps — every one of these accounts is UserRole.SubAdmin on the
+                backend; which RoleDefinition it's assigned only decides which of these 4 URL
+                prefixes it lands on and which modules it's granted. Every non-dashboard page
+                below is mounted under all 4 portals (reusing the exact same component, not a
+                duplicate) so any Sub Admin-type role can reach any of them; whether one
+                actually shows in a given account's sidebar is entirely a Menu Manager +
+                module-grant decision (already fully dynamic), not a routing one. Each portal
+                keeps its own bespoke index Dashboard and its own bespoke "reports" page
+                (distinct content per persona, not interchangeable) — see App.tsx's own
+                Dashboard/Reports imports above for why those aren't cross-mounted too. */}
             <Route path="/subadmin" element={<RequireAuth role="subadmin"><AppShell role="subadmin"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<SubAdminDashboard />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
@@ -216,6 +227,17 @@ export default function App() {
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="reports" element={<SubAdminReports />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="calendar" element={<CoordinatorCalendar />} />
+              <Route path="availability" element={<CoordinatorAvailability />} />
+              <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
+              <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-teacher-assignment/:bookingId" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-feedback" element={<AdmissionDemoFeedback />} />
+              <Route path="leads" element={<AdmissionLeads />} />
+              <Route path="payments" element={<AdmissionPayments />} />
+              <Route path="conversion" element={<AdmissionConversion />} />
+              <Route path="revenue" element={<ManagementRevenue />} />
+              <Route path="performance" element={<ManagementPerformance />} />
             </Route>
 
             <Route path="/admission" element={<RequireAuth role="admission"><AppShell role="admission"><Outlet /></AppShell></RequireAuth>}>
@@ -228,12 +250,35 @@ export default function App() {
               <Route path="payments" element={<AdmissionPayments />} />
               <Route path="conversion" element={<AdmissionConversion />} />
               <Route path="reports" element={<AdmissionReports />} />
+              <Route path="calendar" element={<CoordinatorCalendar />} />
+              <Route path="availability" element={<CoordinatorAvailability />} />
+              <Route path="permissions" element={<SubAdminPermissions />} />
+              <Route path="integrations" element={<SubAdminIntegrations />} />
+              <Route path="batches" element={<SubAdminBatches />} />
+              <Route path="users" element={<SubAdminUsers />} />
+              <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="revenue" element={<ManagementRevenue />} />
+              <Route path="performance" element={<ManagementPerformance />} />
             </Route>
 
             <Route path="/coordinator" element={<RequireAuth role="coordinator"><AppShell role="coordinator"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<CoordinatorDashboard />} />
               <Route path="calendar" element={<CoordinatorCalendar />} />
               <Route path="availability" element={<CoordinatorAvailability />} />
+              <Route path="permissions" element={<SubAdminPermissions />} />
+              <Route path="integrations" element={<SubAdminIntegrations />} />
+              <Route path="batches" element={<SubAdminBatches />} />
+              <Route path="users" element={<SubAdminUsers />} />
+              <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
+              <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-teacher-assignment/:bookingId" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-feedback" element={<AdmissionDemoFeedback />} />
+              <Route path="leads" element={<AdmissionLeads />} />
+              <Route path="payments" element={<AdmissionPayments />} />
+              <Route path="conversion" element={<AdmissionConversion />} />
+              <Route path="revenue" element={<ManagementRevenue />} />
+              <Route path="performance" element={<ManagementPerformance />} />
             </Route>
 
             <Route path="/management" element={<RequireAuth role="management"><AppShell role="management"><Outlet /></AppShell></RequireAuth>}>
@@ -241,17 +286,20 @@ export default function App() {
               <Route path="revenue" element={<ManagementRevenue />} />
               <Route path="performance" element={<ManagementPerformance />} />
               <Route path="reports" element={<ManagementReports />} />
-              {/* Reuse Sub Admin's own delegated-work pages rather than building
-                  Management-specific duplicates — same components, same permission
-                  gating, just mounted under this portal too. Whether they actually
-                  appear in the sidebar is entirely up to the Menu Manager + the
-                  module grants on whichever role is assigned here, same as every
-                  other dynamic menu item. */}
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
+              <Route path="calendar" element={<CoordinatorCalendar />} />
+              <Route path="availability" element={<CoordinatorAvailability />} />
+              <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
+              <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-teacher-assignment/:bookingId" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-feedback" element={<AdmissionDemoFeedback />} />
+              <Route path="leads" element={<AdmissionLeads />} />
+              <Route path="payments" element={<AdmissionPayments />} />
+              <Route path="conversion" element={<AdmissionConversion />} />
             </Route>
 
             {/* The student view doubles as the parent's "what my child sees" preview. */}
