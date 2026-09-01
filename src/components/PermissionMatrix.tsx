@@ -13,6 +13,27 @@ export const PERMISSION_ACTIONS = [
 
 export type PermissionActionKey = (typeof PERMISSION_ACTIONS)[number]["key"];
 
+/**
+ * `permissions` is expected to already cover every current `modules` entry (via
+ * expandPermissions()), but the module catalog and a given matrix load from separate
+ * requests that can resolve in either order — a matrix expanded against yesterday's
+ * catalog (or the empty initial state before the first fetch resolves) won't yet have a
+ * row for a module the catalog just gained. Falling back to an all-unchecked grant here
+ * avoids crashing on that race; the real row appears next time this matrix is reloaded.
+ */
+function findGrant(permissions: ApiPermission[], moduleValue: PermissionModuleName): ApiPermission {
+  return (
+    permissions.find((p) => p.module === moduleValue) ?? {
+      module: moduleValue,
+      canView: false,
+      canCreate: false,
+      canEdit: false,
+      canDelete: false,
+      canApprove: false,
+    }
+  );
+}
+
 /** Tri-state for a select-all checkbox: fully on, fully off, or a mix. */
 function triState(values: boolean[]): boolean | "indeterminate" {
   if (values.length === 0) return false;
@@ -63,7 +84,7 @@ export function PermissionMatrix({ modules, permissions, menusByModule, onToggle
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Select all modules</span>
         </div>
         {modules.map((mod, mi) => {
-          const grant = permissions.find((p) => p.module === mod.value)!;
+          const grant = findGrant(permissions, mod.value);
           const menus = menusByModule?.[mod.value] ?? [];
           return (
             <div key={mod.value} className="rounded-xl border border-border p-4">
@@ -138,7 +159,7 @@ export function PermissionMatrix({ modules, permissions, menusByModule, onToggle
         </thead>
         <tbody>
           {modules.map((mod, mi) => {
-            const grant = permissions.find((p) => p.module === mod.value)!;
+            const grant = findGrant(permissions, mod.value);
             const menus = menusByModule?.[mod.value] ?? [];
             return (
               <tr key={mod.value} className="border-b border-border last:border-0 hover:bg-muted/30">
