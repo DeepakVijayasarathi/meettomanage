@@ -15,17 +15,19 @@ export function Logo({ className, imgClassName, showWordmark = true, variant = "
   const brand = useBrand();
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      {/* logo.png is the full square mark (the two-figure "M" handshake glyph) at higher
-          resolution for print/marketing art. logo-icon.png is the same mark, which still
-          reads cleanly at the ~36px icon size every actual <Logo> usage in the app renders. */}
+      {/* logo.png is the full lockup (mark + "Meet to Manage" wordmark baked in, on an
+          off-white matte) — used per explicit request even at the ~36px icon size every
+          <Logo> renders at, where the baked-in text reads as texture rather than a label.
+          logo-icon.png (transparent, mark only) is the better fit for that icon size and
+          remains the favicon; swap back to it if the matte/duplicate-text look is unwanted. */}
       {variant === "light" ? (
         // The mark's dark figure otherwise disappears against a dark sidebar/hero — a
         // white backing keeps both figures visible wherever this variant is used.
         <span className="flex shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
-          <img src={brand.logoUrl ?? "/logo-icon.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
+          <img src={brand.logoUrl ?? "/logo.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
         </span>
       ) : (
-        <img src={brand.logoUrl ?? "/logo-icon.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
+        <img src={brand.logoUrl ?? "/logo.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
       )}
       {showWordmark && (
         <span

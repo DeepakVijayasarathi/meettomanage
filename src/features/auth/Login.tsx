@@ -214,7 +214,7 @@ export default function Login() {
         <div className="animate-fade-in w-full max-w-sm">
           <div className="flex flex-col items-center text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-pop ring-1 ring-brand-ink/10">
-              <img src={brand.logoUrl ?? "/logo-icon.png"} alt={brand.name} className="h-11 w-11 object-contain" />
+              <img src={brand.logoUrl ?? "/logo.png"} alt={brand.name} className="h-11 w-11 object-contain" />
             </div>
             <h2 style={{ fontFamily: HEADLINE_FONT }} className="mt-4 text-3xl font-semibold tracking-tight text-brand-ink">
               Welcome back

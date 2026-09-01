@@ -483,7 +483,7 @@ export default function AdminSettings() {
 
               <div className="flex items-center gap-5">
                 <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 p-2">
-                  <img src={values["brand.logoUrl"] || "/logo-icon.png"} alt="Brand logo" className="h-full w-full object-contain" />
+                  <img src={values["brand.logoUrl"] || "/logo.png"} alt="Brand logo" className="h-full w-full object-contain" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-foreground">Logo preview</p>
