@@ -27,6 +27,7 @@ import type { BatchStatus } from "@/types";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import {
   createBatch,
@@ -99,6 +100,14 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
 
 export default function SubAdminBatches() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // View-level access already gates the whole page (via the menu); these gate the actual
+  // CRUD actions within it against the account's specific Create/Edit grant, matching what
+  // the backend itself enforces (POST needs Create, PUT/status needs Edit) — a View-only
+  // grant used to still show working-looking "New Batch"/"Save Changes"/"Archive" controls
+  // that would just 403 on click instead of never being offered.
+  const canCreate = !apiEnabled() || hasPermission("CourseBatchManagement", "Create");
+  const canEdit = !apiEnabled() || hasPermission("CourseBatchManagement", "Edit");
   const { data: batchData, error: batchError, reload } = useApiData<{ raw: ApiBatch[]; mapped: DisplayBatch[] }>(
     async () => {
       const raw = await listBatches();
@@ -258,9 +267,11 @@ export default function SubAdminBatches() {
         title="Batches"
         description="Create, edit and archive the batches assigned to you — capacity, schedule and teacher assignment."
         actions={
-          <Button onClick={() => { setCreateOpen(true); setCreateError(null); }}>
-            <Plus className="h-4 w-4" /> New Batch
-          </Button>
+          canCreate ? (
+            <Button onClick={() => { setCreateOpen(true); setCreateError(null); }}>
+              <Plus className="h-4 w-4" /> New Batch
+            </Button>
+          ) : undefined
         }
       />
 
@@ -343,12 +354,12 @@ export default function SubAdminBatches() {
               <div className="grid min-w-0 gap-4">
                 <div className="grid gap-1.5">
                   <Label htmlFor="edit-batch-name">Batch name</Label>
-                  <Input id="edit-batch-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                  <Input id="edit-batch-name" value={editName} onChange={(e) => setEditName(e.target.value)} disabled={!canEdit} />
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="grid gap-1.5">
                     <Label htmlFor="edit-batch-teacher-select">Teacher</Label>
-                    <Select value={editTeacher} onValueChange={setEditTeacher}>
+                    <Select value={editTeacher} onValueChange={setEditTeacher} disabled={!canEdit}>
                       <SelectTrigger id="edit-batch-teacher-select">
                         <SelectValue placeholder="Select teacher" />
                       </SelectTrigger>
@@ -369,28 +380,34 @@ export default function SubAdminBatches() {
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="edit-batch-capacity">Capacity</Label>
-                    <Input id="edit-batch-capacity" type="number" min={1} max={500} value={editCapacity} onChange={(e) => setEditCapacity(e.target.value)} />
+                    <Input id="edit-batch-capacity" type="number" min={1} max={500} value={editCapacity} onChange={(e) => setEditCapacity(e.target.value)} disabled={!canEdit} />
                   </div>
                 </div>
               </div>
 
               {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
               <DialogFooter className="items-center gap-3 sm:justify-between">
-                <Button
-                  variant="outline"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  disabled={archiving || isArchived}
-                  onClick={archiveCurrentBatch}
-                >
-                  <Archive className="h-4 w-4" /> {isArchived ? "Archived" : archiving ? "Archiving…" : "Archive batch"}
-                </Button>
+                {canEdit ? (
+                  <Button
+                    variant="outline"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    disabled={archiving || isArchived}
+                    onClick={archiveCurrentBatch}
+                  >
+                    <Archive className="h-4 w-4" /> {isArchived ? "Archived" : archiving ? "Archiving…" : "Archive batch"}
+                  </Button>
+                ) : (
+                  <span />
+                )}
                 <div className="flex items-center gap-2">
                   <Button variant="outline" onClick={() => setDetail(null)}>
                     Close
                   </Button>
-                  <Button onClick={saveDetail} disabled={saving || !editName.trim() || !editTeacher}>
-                    {saving ? "Saving…" : "Save Changes"}
-                  </Button>
+                  {canEdit && (
+                    <Button onClick={saveDetail} disabled={saving || !editName.trim() || !editTeacher}>
+                      {saving ? "Saving…" : "Save Changes"}
+                    </Button>
+                  )}
                 </div>
               </DialogFooter>
             </>

@@ -18,6 +18,7 @@ import { SESSIONS } from "@/data/sessions";
 import { TEACHERS } from "@/data/users";
 import { LEADS } from "./data";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
 import { createDemoBooking, listDemoBookings, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
@@ -114,6 +115,11 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
 
 export default function AdmissionDemoScheduling() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // View-level access already gates the whole page (via the menu); this gates the
+  // "Schedule a Demo" form specifically against the account's Create grant -- POST
+  // /api/demo-bookings needs Admission:Create, not just Admission:View.
+  const canCreate = !apiEnabled() || hasPermission("Admission", "Create");
   const base = usePortalBase();
   const { data: apiRows, error: rowsError, reload: reloadRows } = useApiData(
     () => listDemoBookings().then((bookings) => bookings.map(bookingToRow)),
@@ -398,6 +404,7 @@ export default function AdmissionDemoScheduling() {
         </InlineAlert>
       )}
 
+      {canCreate && (
       <Card className="mb-6">
         <CardHeader
           role="button"
@@ -563,6 +570,7 @@ export default function AdmissionDemoScheduling() {
         </CardContent>
         )}
       </Card>
+      )}
 
       <DataTable
         data={rows}
