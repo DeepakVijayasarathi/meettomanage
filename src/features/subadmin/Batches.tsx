@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Archive, CalendarDays, Layers, Moon, Plus, Rocket, Search } from "lucide-react";
+import { Archive, CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket, Search } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import {
   createBatch,
+  generateSchedule,
   listBatches,
   listTeacherOptions,
   setBatchStatus,
@@ -40,6 +41,40 @@ import {
   type DisplayBatch,
 } from "@/api/batches";
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
+
+const IST_OFFSET_MINUTES = 5 * 60 + 30; // India Standard Time is UTC+5:30, no DST
+
+/** RMs think in IST; the API stores/schedules in UTC. Converts a wall-clock
+ * "HH:mm" typed as IST into the equivalent UTC time-of-day, plus whether that
+ * shifted the calendar date back a day (only for classes between 12:00–05:29 AM IST). */
+function istTimeToUtc(hhmm: string): { time: string; dayShift: -1 | 0 } {
+  const [h, m] = hhmm.split(":").map(Number);
+  let totalMin = h * 60 + m - IST_OFFSET_MINUTES;
+  let dayShift: -1 | 0 = 0;
+  if (totalMin < 0) {
+    totalMin += 24 * 60;
+    dayShift = -1;
+  }
+  const uh = String(Math.floor(totalMin / 60)).padStart(2, "0");
+  const um = String(totalMin % 60).padStart(2, "0");
+  return { time: `${uh}:${um}`, dayShift };
+}
+
+function shiftDateString(dateStr: string, deltaDays: number): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + deltaDays);
+  return d.toISOString().slice(0, 10);
+}
+
+const WEEKDAYS = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 0, label: "Sun" },
+];
 
 const STATUS_META: Record<BatchStatus, { label: string; icon: typeof Layers; empty: string }> = {
   active: { label: "Active", icon: Layers, empty: "No active batches at the moment." },
@@ -108,6 +143,10 @@ export default function SubAdminBatches() {
   // that would just 403 on click instead of never being offered.
   const canCreate = !apiEnabled() || hasPermission("CourseBatchManagement", "Create");
   const canEdit = !apiEnabled() || hasPermission("CourseBatchManagement", "Edit");
+  // Generating a batch's class schedule calls POST /batches/{id}/generate-schedule, which the
+  // backend gates on SessionCalendarManagement:Create (not CourseBatchManagement) — a role can
+  // hold one without the other, so this needs its own check.
+  const canScheduleClasses = !apiEnabled() || hasPermission("SessionCalendarManagement", "Create");
   const { data: batchData, error: batchError, reload } = useApiData<{ raw: ApiBatch[]; mapped: DisplayBatch[] }>(
     async () => {
       const raw = await listBatches();
@@ -130,6 +169,12 @@ export default function SubAdminBatches() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
+
+  const [genDays, setGenDays] = useState<number[]>([1, 3]);
+  const [genStart, setGenStart] = useState("");
+  const [genTime, setGenTime] = useState("10:00");
+  const [genBusy, setGenBusy] = useState(false);
+  const [genResult, setGenResult] = useState<string | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -232,6 +277,30 @@ export default function SubAdminBatches() {
       toast({ variant: "error", title: "Couldn't save batch", description: message });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleGenerateSchedule() {
+    if (!detail || !genStart || genDays.length === 0) return;
+    if (!apiEnabled()) {
+      setGenResult("Demo mode — schedule not persisted.");
+      return;
+    }
+    setGenBusy(true);
+    setGenResult(null);
+    try {
+      const { time: utcTime, dayShift } = istTimeToUtc(genTime);
+      const created = await generateSchedule(detail.id, {
+        startDate: dayShift < 0 ? shiftDateString(genStart, dayShift) : genStart,
+        daysOfWeek: dayShift < 0 ? genDays.map((d) => (d + 6) % 7) : genDays,
+        startTimeUtc: `${utcTime}:00`,
+      });
+      setGenResult(`${created.length} sessions created — they now appear on the teacher's and parents' schedules.`);
+      reload();
+    } catch (err) {
+      setGenResult(err instanceof Error ? err.message : "Could not generate the schedule.");
+    } finally {
+      setGenBusy(false);
     }
   }
 
@@ -384,6 +453,55 @@ export default function SubAdminBatches() {
                   </div>
                 </div>
               </div>
+
+              {canScheduleClasses && (
+                <div className="rounded-xl border border-border bg-muted/30 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                      <CalendarPlus className="h-4 w-4" /> Generate class schedule
+                    </p>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Creates all of this batch's course sessions from a start date on the selected weekdays (holidays skipped).
+                  </p>
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gen-start">Start date</Label>
+                      <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gen-time">Class time (IST)</Label>
+                      <Input id="gen-time" type="time" value={genTime} onChange={(e) => setGenTime(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {WEEKDAYS.map((d) => (
+                      <Button
+                        key={d.value}
+                        type="button"
+                        variant="pill"
+                        size="pill"
+                        aria-pressed={genDays.includes(d.value)}
+                        onClick={() =>
+                          setGenDays((prev) => (prev.includes(d.value) ? prev.filter((v) => v !== d.value) : [...prev, d.value]))
+                        }
+                      >
+                        {d.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    size="sm"
+                    className="mt-3"
+                    disabled={genBusy || !genStart || genDays.length === 0}
+                    onClick={handleGenerateSchedule}
+                  >
+                    {genBusy ? "Generating…" : "Generate sessions"}
+                  </Button>
+                  {genResult && <p className="mt-2 text-xs font-medium text-foreground">{genResult}</p>}
+                </div>
+              )}
 
               {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
               <DialogFooter className="items-center gap-3 sm:justify-between">
