@@ -665,7 +665,7 @@ export default function MarketingHome() {
 
         {/* Hero visual: autoplaying 60-second reel, replacing the earlier static mockup. */}
         <div
-          className="motion-safe:animate-slide-up relative w-full max-w-[260px] sm:max-w-[300px]"
+          className="motion-safe:animate-slide-up relative mx-auto w-full sm:max-w-[300px]"
           style={{ animationDelay: "160ms", animationFillMode: "backwards" }}
         >
           {/* Inset (not overlapping above/left of the card via a negative offset) so it's
