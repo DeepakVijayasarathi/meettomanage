@@ -79,9 +79,15 @@ interface ActivityRow {
 
 export default function SubAdminDashboard() {
   const { toast } = useToast();
-  const { userName, permissions } = useSession();
+  const { userName, permissions, hasPermission } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
   const usingApi = apiEnabled();
+  // Sessions/Leave endpoints are permission-gated server-side (SessionCalendarManagement /
+  // LeaveManagement View) — fetching them for a Sub Admin who was never granted either module
+  // just produced a noisy 403 and a misleading "0 sessions today" stat that looked like a
+  // real zero instead of "blocked."
+  const canSeeSessions = !usingApi || hasPermission("SessionCalendarManagement", "View");
+  const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
   // The mock universe's clock is pinned; a real login measures against the real one.
   const nowMs = usingApi ? Date.now() : new Date(`${TODAY}T23:59:59`).getTime();
   const adminContact = usingApi ? "your Admin" : `${ADMIN_CONTACT} (Admin)`;
@@ -97,7 +103,10 @@ export default function SubAdminDashboard() {
   const requestSent = usingApi ? Boolean(pendingRequest) : requestedDemo;
 
   const { data: apiBatches, loading: batchesLoading, error: batchesError } = useApiData(() => listBatches().then((items) => items.map(toFrontendBatch)), []);
-  const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData(() => listSessions().then((items) => items.map(toFrontendSession)), []);
+  const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData(
+    () => (canSeeSessions ? listSessions().then((items) => items.map(toFrontendSession)) : Promise.resolve([])),
+    []
+  );
   const { data: liveSummary, loading: summaryLoading, error: summaryError } = useApiData(
     () =>
       getDashboardSummary().then((s) => ({
@@ -164,15 +173,22 @@ export default function SubAdminDashboard() {
       ctaLabel: "View batch report",
       to: "/subadmin/reports",
     },
-    {
-      id: "sessions",
-      title: "Sessions & Attendance",
-      icon: CalendarClock,
-      color: CHART_PALETTE[3],
-      stat: `${sessionsToday} sessions today · ${formatPercent(attendanceRate)} attendance this month`,
-      ctaLabel: "View attendance report",
-      to: "/subadmin/reports",
-    },
+    // Only shown when the account actually holds SessionCalendarManagement:View — otherwise
+    // this card's own data fetch above never runs, and the quick-link would misleadingly claim
+    // "0 sessions today" for a module this account was never granted, not a real zero.
+    ...(canSeeSessions
+      ? [
+          {
+            id: "sessions",
+            title: "Sessions & Attendance",
+            icon: CalendarClock,
+            color: CHART_PALETTE[3],
+            stat: `${sessionsToday} sessions today · ${formatPercent(attendanceRate)} attendance this month`,
+            ctaLabel: "View attendance report",
+            to: "/subadmin/reports",
+          },
+        ]
+      : []),
     {
       id: "reports",
       title: "Assigned Reports",
@@ -413,10 +429,15 @@ export default function SubAdminDashboard() {
         </Card>
       </div>
 
-      {/* Conflicts & attention — relocated here from the coordinator per client feedback. */}
-      <div className="mt-6">
-        <ScheduleConflictsPanel />
-      </div>
+      {/* Conflicts & attention — relocated here from the coordinator per client feedback.
+          Needs both Sessions & Calendar and Leave Management view rights (it cross-references
+          both) — without this guard an account granted only one, or neither, still fetched
+          both endpoints and got a 403 from whichever it lacked. */}
+      {canSeeSessions && canSeeLeave && (
+        <div className="mt-6">
+          <ScheduleConflictsPanel />
+        </div>
+      )}
 
       <ConfirmDialog
         open={requestOpen}
