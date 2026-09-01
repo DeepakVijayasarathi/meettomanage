@@ -82,12 +82,15 @@ export default function SubAdminDashboard() {
   const { userName, permissions, hasPermission } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
   const usingApi = apiEnabled();
-  // Sessions/Leave endpoints are permission-gated server-side (SessionCalendarManagement /
-  // LeaveManagement View) — fetching them for a Sub Admin who was never granted either module
-  // just produced a noisy 403 and a misleading "0 sessions today" stat that looked like a
-  // real zero instead of "blocked."
+  // Every one of these endpoints is permission-gated server-side — fetching them for a Sub
+  // Admin who was never granted the matching module just produced a noisy 403 and a
+  // misleading "0" stat that looked like a real zero instead of "blocked." Found by logging
+  // in as a QA test account assigned a role with only Billing & Finance granted: it still hit
+  // /api/batches, /api/sessions, /api/leave-requests and /api/reports/dashboard-summary.
+  const canSeeBatches = !usingApi || hasPermission("CourseBatchManagement", "View");
   const canSeeSessions = !usingApi || hasPermission("SessionCalendarManagement", "View");
   const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
+  const canSeeReports = !usingApi || hasPermission("ReportsAnalytics", "View");
   // The mock universe's clock is pinned; a real login measures against the real one.
   const nowMs = usingApi ? Date.now() : new Date(`${TODAY}T23:59:59`).getTime();
   const adminContact = usingApi ? "your Admin" : `${ADMIN_CONTACT} (Admin)`;
@@ -102,18 +105,23 @@ export default function SubAdminDashboard() {
   const lastReviewedRequest = myRequests.find((r) => r.status !== "Pending");
   const requestSent = usingApi ? Boolean(pendingRequest) : requestedDemo;
 
-  const { data: apiBatches, loading: batchesLoading, error: batchesError } = useApiData(() => listBatches().then((items) => items.map(toFrontendBatch)), []);
+  const { data: apiBatches, loading: batchesLoading, error: batchesError } = useApiData(
+    () => (canSeeBatches ? listBatches().then((items) => items.map(toFrontendBatch)) : Promise.resolve([])),
+    []
+  );
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData(
     () => (canSeeSessions ? listSessions().then((items) => items.map(toFrontendSession)) : Promise.resolve([])),
     []
   );
   const { data: liveSummary, loading: summaryLoading, error: summaryError } = useApiData(
     () =>
-      getDashboardSummary().then((s) => ({
-        occupancy: s.batchOccupancyPercent,
-        // Latest week with recorded attendance drives the KPI.
-        attendance: [...(s.weeklyAttendanceTrend ?? [])].reverse().find((w) => w.attendance > 0)?.attendance ?? 0,
-      })),
+      canSeeReports
+        ? getDashboardSummary().then((s) => ({
+            occupancy: s.batchOccupancyPercent,
+            // Latest week with recorded attendance drives the KPI.
+            attendance: [...(s.weeklyAttendanceTrend ?? [])].reverse().find((w) => w.attendance > 0)?.attendance ?? 0,
+          }))
+        : Promise.resolve({ occupancy: 0, attendance: 0 }),
     { occupancy: ADMIN_KPIS.batchOccupancy, attendance: ADMIN_KPIS.attendanceRate },
     { occupancy: 0, attendance: 0 }
   );
@@ -163,19 +171,23 @@ export default function SubAdminDashboard() {
     : { full: [...FULL_ACCESS_MODULES], view: [...VIEW_ONLY_MODULES], none: [...NO_ACCESS_MODULES], noneValues: [] as PermissionModuleName[] };
   const totalModules = scope.full.length + scope.view.length + scope.none.length;
 
+  // Each card only appears when the account actually holds View on its module — otherwise its
+  // data fetch above never runs, and the quick-link would misleadingly claim e.g. "0 active
+  // batches" for a module this account was never granted, not a real zero.
   const moduleCards: AssignedModuleCard[] = [
-    {
-      id: "batches",
-      title: "Batches",
-      icon: Layers,
-      color: CHART_PALETTE[2],
-      stat: `${activeBatches} active batches · ${formatPercent(liveOccupancy)} avg occupancy`,
-      ctaLabel: "View batch report",
-      to: "/subadmin/reports",
-    },
-    // Only shown when the account actually holds SessionCalendarManagement:View — otherwise
-    // this card's own data fetch above never runs, and the quick-link would misleadingly claim
-    // "0 sessions today" for a module this account was never granted, not a real zero.
+    ...(canSeeBatches
+      ? [
+          {
+            id: "batches",
+            title: "Batches",
+            icon: Layers,
+            color: CHART_PALETTE[2],
+            stat: `${activeBatches} active batches · ${formatPercent(liveOccupancy)} avg occupancy`,
+            ctaLabel: "View batch report",
+            to: "/subadmin/reports",
+          },
+        ]
+      : []),
     ...(canSeeSessions
       ? [
           {
@@ -189,15 +201,19 @@ export default function SubAdminDashboard() {
           },
         ]
       : []),
-    {
-      id: "reports",
-      title: "Assigned Reports",
-      icon: BarChart3,
-      color: CHART_PALETTE[5],
-      stat: "2 report types available in your scope",
-      ctaLabel: "Open reports",
-      to: "/subadmin/reports",
-    },
+    ...(canSeeReports
+      ? [
+          {
+            id: "reports",
+            title: "Assigned Reports",
+            icon: BarChart3,
+            color: CHART_PALETTE[5],
+            stat: "2 report types available in your scope",
+            ctaLabel: "Open reports",
+            to: "/subadmin/reports",
+          },
+        ]
+      : []),
     {
       id: "audit",
       title: "Audit Log",
@@ -260,37 +276,50 @@ export default function SubAdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* KPI row — only modules Neha plausibly has access to. No billing/payout metrics. */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="Active Batches"
-          value={String(activeBatches)}
-          icon={Layers}
-          tone="primary"
-          trend={usingApi ? undefined : { value: 2.1, label: "vs last month" }}
-          loading={kpiLoading}
-          error={kpiError}
-        />
-        <KpiCard label="Sessions Today" value={String(sessionsToday)} icon={Clock} tone="primary" loading={kpiLoading} error={kpiError} />
-        <KpiCard
-          label="Attendance Rate"
-          value={formatPercent(attendanceRate)}
-          icon={CheckCircle2}
-          tone="success"
-          trend={usingApi ? undefined : { value: 1.5, label: "vs last month" }}
-          loading={kpiLoading}
-          error={kpiError}
-        />
-        <KpiCard
-          label="Batch Occupancy"
-          value={formatPercent(liveOccupancy)}
-          icon={LayoutGrid}
-          tone="neutral"
-          trend={usingApi ? undefined : { value: 2.9, label: "vs last month" }}
-          loading={kpiLoading}
-          error={kpiError}
-        />
-      </div>
+      {/* KPI row — only modules this account can actually view. Each tile is independently
+          gated (not just the row as a whole) since a role can hold e.g. Batches but not
+          Reports, and a tile for a module with no grant would otherwise show a bare "0"
+          indistinguishable from a genuine zero. */}
+      {(canSeeBatches || canSeeSessions || canSeeReports) && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {canSeeBatches && (
+            <KpiCard
+              label="Active Batches"
+              value={String(activeBatches)}
+              icon={Layers}
+              tone="primary"
+              trend={usingApi ? undefined : { value: 2.1, label: "vs last month" }}
+              loading={kpiLoading}
+              error={kpiError}
+            />
+          )}
+          {canSeeSessions && (
+            <KpiCard label="Sessions Today" value={String(sessionsToday)} icon={Clock} tone="primary" loading={kpiLoading} error={kpiError} />
+          )}
+          {canSeeReports && (
+            <KpiCard
+              label="Attendance Rate"
+              value={formatPercent(attendanceRate)}
+              icon={CheckCircle2}
+              tone="success"
+              trend={usingApi ? undefined : { value: 1.5, label: "vs last month" }}
+              loading={kpiLoading}
+              error={kpiError}
+            />
+          )}
+          {canSeeReports && (
+            <KpiCard
+              label="Batch Occupancy"
+              value={formatPercent(liveOccupancy)}
+              icon={LayoutGrid}
+              tone="neutral"
+              trend={usingApi ? undefined : { value: 2.9, label: "vs last month" }}
+              loading={kpiLoading}
+              error={kpiError}
+            />
+          )}
+        </div>
+      )}
 
       {/* My assigned modules */}
       <div className="mt-8">
