@@ -24,6 +24,7 @@ import { cn, formatCurrency, formatCurrencyAxisTick, formatNumber } from "@/lib/
 import { COURSES } from "@/data/courses";
 import { DEPARTMENT_REVENUE, REVENUE_TREND } from "@/data/kpis";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { getDashboardSummary, type ApiDashboardSummary } from "@/api/reports";
 import { listCourses, toFrontendCourse } from "@/api/courses";
@@ -51,6 +52,11 @@ function colorForCategory(category: string): string {
 }
 
 export default function ManagementRevenue() {
+  const { hasPermission } = useSession();
+  // Reachable from any Sub Admin-type portal now (see App.tsx's shared page pool) --
+  // this page's own menu gate is ReportsAnalytics, but the course list it also shows
+  // requires CourseBatchManagement server-side, which isn't guaranteed by that grant.
+  const canSeeCourses = !apiEnabled() || hasPermission("CourseBatchManagement", "View");
   const { data: trend, loading: trendLoading, error: trendError, reload } = useApiData(() => getDashboardSummary().then((s) => s.revenueTrend), DEMO_TREND);
   const { data: deptRaw, loading: deptLoading, error: deptError } = useApiData(() => getDashboardSummary().then((s) => s.revenueByDepartment), DEMO_DEPT);
   const departmentRevenue = deptRaw.map((d, i) => ({
@@ -60,7 +66,7 @@ export default function ManagementRevenue() {
   }));
 
   const { data: courses, error: coursesError, reload: reloadCourses } = useApiData(
-    () => listCourses().then((list) => list.map(toFrontendCourse)),
+    () => (canSeeCourses ? listCourses().then((list) => list.map(toFrontendCourse)) : Promise.resolve([])),
     COURSES
   );
   // toFrontendCourse always reports revenue: 0 (courses don't carry it); join the real

@@ -37,14 +37,22 @@ const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo"];
 export default function CoordinatorCalendar() {
   const { toast } = useToast();
   const usingApi = apiEnabled();
-  const { userName } = useSession();
+  const { userName, hasPermission } = useSession();
+  // Reachable from any Sub Admin-type portal now (see App.tsx's shared page pool) --
+  // SessionCalendarManagement is guaranteed by the menu gate that got someone here, but
+  // LeaveManagement isn't, and GET /api/leave-requests requires it server-side. Confirmed
+  // live: an account with only Sessions/Batches/Admission granted got a 403 on this page.
+  const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
   const { data: apiSessions, reload } = useApiData<ClassSession[]>(
     () => listSessions().then((s) => s.map(toFrontendSession)),
     SESSIONS
   );
   const [demoSessions, setDemoSessions] = useState<ClassSession[]>(SESSIONS);
   const { data: holidays } = useApiData<ApiHoliday[]>(() => listHolidays(), []);
-  const { data: approvedLeave } = useApiData<ApiLeaveRequest[]>(() => listLeave("Approved"), []);
+  const { data: approvedLeave } = useApiData<ApiLeaveRequest[]>(
+    () => (canSeeLeave ? listLeave("Approved") : Promise.resolve([])),
+    []
+  );
   const sessions = useMemo(
     () =>
       usingApi

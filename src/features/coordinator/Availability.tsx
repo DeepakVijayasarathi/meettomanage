@@ -14,6 +14,7 @@ import { TEACHERS } from "@/data/users";
 import { SESSIONS } from "@/data/sessions";
 import { LEAVE_REQUESTS } from "@/data/leaves";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listHolidays, listLeave, reviewLeave, type ApiLeaveRequest } from "@/api/academicOps";
 import { listTeacherOptions } from "@/api/batches";
@@ -104,12 +105,17 @@ const DAY_STATE_LABEL: Record<DayState, string> = {
 
 export default function CoordinatorAvailability() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
   const usingApi = apiEnabled();
+  // Reachable from any Sub Admin-type portal now (see App.tsx's shared page pool) --
+  // SessionCalendarManagement is guaranteed by the menu gate that got someone here, but
+  // LeaveManagement isn't, and GET /api/leave-requests requires it server-side.
+  const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
   // Real clock in API mode; the mock universe stays pinned for reproducible demos.
   const [now] = useState(() => (usingApi ? new Date() : NOW));
   const today = format(now, "yyyy-MM-dd");
   const { data: apiLeaves, loading: leavesLoading, error: leavesError, reload } = useApiData<LeaveRequest[]>(
-    () => listLeave().then((items) => items.map(toFrontendLeave)),
+    () => (canSeeLeave ? listLeave().then((items) => items.map(toFrontendLeave)) : Promise.resolve([])),
     LEAVE_REQUESTS
   );
   const { data: apiTeachers, loading: teachersLoading, error: teachersError } = useApiData(() => listTeacherOptions(), []);
