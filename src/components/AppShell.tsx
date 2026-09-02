@@ -11,6 +11,9 @@ import { hexToHslTriple } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { getMyMenu, toNavSections } from "@/api/menus";
 import { listSuspensions } from "@/api/billing";
+import { getParentDashboard } from "@/api/parentPortal";
+import { useApiData } from "@/api/hooks";
+import { AccountSuspendedScreen } from "@/components/AccountSuspendedScreen";
 import type { Role } from "@/types";
 
 interface AppShellProps {
@@ -112,6 +115,18 @@ export function AppShell({ role, children }: AppShellProps) {
     localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
   }, [collapsed]);
 
+  // Fee suspension is account-wide (ParentPortalService), so it applies identically whether
+  // this is the real Parent portal or the Student "preview my child's view" reuse of it —
+  // both ride the same signed-in Parent account. Blocks the ENTIRE shell (no sidebar, no
+  // route reachable) rather than a per-page banner, since the point is nothing but payment
+  // should be reachable while suspended. Skipped for every other role — the flag would just
+  // be a meaningless false for a non-Parent account.
+  const isParentAccount = role === "parent" || role === "student";
+  const { data: isSuspended, reload: recheckSuspension } = useApiData(
+    () => (isParentAccount ? getParentDashboard().then((d) => d.isSuspended) : Promise.resolve(false)),
+    false
+  );
+
   const accentStyle: CSSProperties = {
     "--primary": hexToHslTriple(meta.hex),
     "--ring": hexToHslTriple(meta.hex),
@@ -123,6 +138,10 @@ export function AppShell({ role, children }: AppShellProps) {
     // deliberately doesn't use here.
     "--primary-foreground": "0 0% 100%",
   } as CSSProperties;
+
+  if (apiEnabled() && isParentAccount && isSuspended) {
+    return <AccountSuspendedScreen onRecheck={recheckSuspension} />;
+  }
 
   return (
     <div className="flex min-h-dvh bg-background" style={accentStyle}>
