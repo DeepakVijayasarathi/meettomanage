@@ -13,6 +13,7 @@ import {
   Layers,
   Lock,
   Mail,
+  Megaphone,
   MessageCircle,
   MessageSquare,
   PenTool,
@@ -38,6 +39,47 @@ import { useLightBrandScope } from "@/lib/theme";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useInView } from "@/hooks/useInView";
 import { cn } from "@/lib/utils";
+
+/** Cycles one word in place on a timer — used in a couple of hero spots so the same line of
+ *  copy speaks to both the institute and personal-coach audiences instead of a second badge
+ *  competing with the primary one. `colors` maps a specific word to its own text color (e.g.
+ *  "clients" in green) — words with no entry inherit the surrounding text color. A true
+ *  crossfade (fade + slide the outgoing word down and out, then the incoming word up and in)
+ *  rather than a plain cut, via a two-phase transition instead of a one-shot keyframe. Skips
+ *  the timer under prefers-reduced-motion; the word just holds on the first entry, static. */
+function CyclingWord({ words, colors }: { words: readonly string[]; colors?: Record<string, string> }) {
+  const [index, setIndex] = useState(0);
+  const [entering, setEntering] = useState(true);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let exitTimeout: ReturnType<typeof setTimeout>;
+    const id = setInterval(() => {
+      setEntering(false);
+      exitTimeout = setTimeout(() => {
+        setIndex((i) => (i + 1) % words.length);
+        setEntering(true);
+      }, 300);
+    }, 2600);
+    return () => {
+      clearInterval(id);
+      clearTimeout(exitTimeout);
+    };
+  }, [words.length]);
+
+  const word = words[index];
+  return (
+    <span
+      className={cn(
+        "inline-block transition-all duration-300 ease-out",
+        entering ? "translate-y-0 opacity-100" : "-translate-y-1.5 opacity-0",
+        colors?.[word]
+      )}
+    >
+      {word}
+    </span>
+  );
+}
 
 /** Fades and slides an element up once it scrolls into view — plays once, not on every pass. */
 function Reveal({ children, delayMs = 0, className }: { children: React.ReactNode; delayMs?: number; className?: string }) {
@@ -456,6 +498,15 @@ const SOLUTIONS: SolutionAudience[] = [
     ctaLabel: "Explore Portals",
     ctaTo: "/portal-select",
   },
+  {
+    icon: Megaphone,
+    title: "Influencers & personal-brand coaches",
+    description:
+      "Built an audience on social media or a personal following, and now converting that reach through a single online master class — with scheduling, billing and follow-up handled in one place instead of DMs and spreadsheets.",
+    chips: ["Live Classroom", "Billing & Payments"],
+    ctaLabel: "See how it works",
+    ctaTo: "/get-started?for=coach",
+  },
 ];
 
 interface SecurityItem {
@@ -509,6 +560,7 @@ const NAV_LINKS = [
   { label: "Features", href: "#features" },
   { label: "Portals", href: "#portals" },
   { label: "Solutions", href: "#solutions" },
+  { label: "Pricing", href: "/pricing" },
   { label: "FAQ", href: "#faq" },
   { label: "Blog", href: "/blog" },
 ];
@@ -566,7 +618,7 @@ export default function MarketingHome() {
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
-          <img src="/m2m.png" alt={brand.name} className="h-7 w-auto object-contain sm:h-9" />
+          <img src="/logo-full.png" alt={brand.name} className="h-14 w-auto shrink-0 object-contain sm:h-20" />
 
           {/* Section anchors — desktop only. On narrow screens there's only room for the two
               CTAs (see the mobile-header wrap this replaced), so wayfinding there stays limited
@@ -611,13 +663,16 @@ export default function MarketingHome() {
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-6 py-14 lg:grid-cols-[1.15fr_380px] lg:gap-16 lg:py-24">
           <div>
           <div className="motion-safe:animate-slide-up inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
-            <Sparkles className="h-3.5 w-3.5" /> Learning Management &amp; Virtual Classroom Platform
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>
+              <CyclingWord words={["Learning", "Coaching"]} /> Management &amp; Virtual Classroom Platform
+            </span>
           </div>
           <h1
             className="motion-safe:animate-slide-up font-display mt-5 text-4xl font-extrabold leading-[1.14] tracking-tight sm:text-5xl"
             style={{ animationDelay: "80ms", animationFillMode: "backwards" }}
           >
-            Meet your students live.
+            Meet your <CyclingWord words={["students", "clients"]} colors={{ clients: "text-[#16A34A]" }} /> live.
             <span className="text-[#EA580C]"> Manage</span> your academy end to end.
           </h1>
           <p
@@ -999,7 +1054,7 @@ export default function MarketingHome() {
             </p>
           </div>
 
-          <div className="mt-12 grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {SOLUTIONS.map((s, i) => (
               <Reveal key={s.title} delayMs={i * 100}>
                 <div className="flex h-full flex-col rounded-2xl border border-black/10 bg-white p-6">
@@ -1163,7 +1218,7 @@ export default function MarketingHome() {
       <footer className="border-t border-black/10 bg-[#F5F6F9] pb-8 pt-14">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-10 px-6 sm:grid-cols-4">
           <div className="col-span-2 sm:col-span-1">
-            <Logo imgClassName="h-8 w-8" />
+            <Logo imgClassName="h-12 w-12" />
             <p className="mt-4 max-w-[22ch] text-sm leading-relaxed text-[#5B6472]">
               Live teaching, scheduling, admissions and billing — one role-based system for your whole academy.
             </p>

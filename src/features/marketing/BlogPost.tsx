@@ -146,7 +146,7 @@ export default function BlogPost() {
 
       <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
         <div className="mx-auto flex max-w-3xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-left">
-          <Logo imgClassName="h-7 w-7" />
+          <Logo imgClassName="h-11 w-11" />
           <p className="text-xs font-medium text-[#5B6472]">© {new Date().getFullYear()} Meet to Manage. All rights reserved.</p>
         </div>
       </footer>
