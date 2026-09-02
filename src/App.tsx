@@ -11,6 +11,7 @@ const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Store = lazy(() => import("@/features/marketing/Store"));
 const Demo = lazy(() => import("@/features/marketing/Demo"));
 const GetStarted = lazy(() => import("@/features/marketing/GetStarted"));
+const Pricing = lazy(() => import("@/features/marketing/Pricing"));
 const BlogList = lazy(() => import("@/features/marketing/BlogList"));
 const BlogPost = lazy(() => import("@/features/marketing/BlogPost"));
 const Login = lazy(() => import("@/features/auth/Login"));
@@ -119,6 +120,7 @@ export default function App() {
               <Route path="/store" element={<Store />} />
               <Route path="/demo" element={<Demo />} />
               <Route path="/get-started" element={<GetStarted />} />
+              <Route path="/pricing" element={<Pricing />} />
               <Route path="/blog" element={<BlogList />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/login" element={<Login />} />

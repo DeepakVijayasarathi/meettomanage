@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, Building2, CheckCircle2, Loader2 } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Building2, CheckCircle2, Loader2, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,11 +17,25 @@ const INCLUDED = [
   "No commitment — we'll follow up to find a time that works for you",
 ];
 
+/** Same walkthrough, described for a solo coach instead of an institute — no "branches" or
+ *  "admissions team" language, since neither exists for this persona. */
+const COACH_INCLUDED = [
+  "A walkthrough of live classes, scheduling and billing — as one system",
+  "How to set up a single online master class and turn attendees into paying clients",
+  "No commitment — we'll follow up to find a time that works for you",
+];
+
 const EMPTY_FORM = { fullName: "", workEmail: "", phone: "", academyName: "", message: "" };
 
 export default function GetStarted() {
   useLightBrandScope();
   const live = apiEnabled();
+  // ?for=coach arrives from the homepage's "Influencers & personal-brand coaches" Solutions
+  // card and the Pricing page's Pay As You Grow plan — same form and same sales-assisted
+  // flow underneath, just reframed so a solo coach isn't greeted with "academy owners" copy
+  // or forced to invent an academy name they don't have.
+  const [searchParams] = useSearchParams();
+  const isCoach = searchParams.get("for") === "coach";
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +43,8 @@ export default function GetStarted() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.fullName.trim() || !form.academyName.trim()) {
-      setError("Enter your name and academy name.");
+    if (!form.fullName.trim() || (!isCoach && !form.academyName.trim())) {
+      setError(isCoach ? "Enter your name." : "Enter your name and academy name.");
       return;
     }
 
@@ -46,7 +60,7 @@ export default function GetStarted() {
         fullName: form.fullName,
         workEmail: form.workEmail,
         phone: form.phone,
-        academyName: form.academyName,
+        academyName: form.academyName.trim() || "Independent coach",
         message: form.message || undefined,
       });
       setSubmitted(true);
@@ -61,8 +75,12 @@ export default function GetStarted() {
     <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
       <Seo
         pageKey="getStarted"
-        title="Request a Demo — Meet to Manage"
-        description="Running an academy? See how Meet to Manage's live classroom, scheduling, admissions and billing work together — request a platform demo."
+        title={isCoach ? "Request a Demo for Coaches — Meet to Manage" : "Request a Demo — Meet to Manage"}
+        description={
+          isCoach
+            ? "Running a master class to grow your coaching business? See how Meet to Manage's live classroom, scheduling and billing work together — request a demo."
+            : "Running an academy? See how Meet to Manage's live classroom, scheduling, admissions and billing work together — request a platform demo."
+        }
         path="/get-started"
       />
 
@@ -81,22 +99,37 @@ export default function GetStarted() {
 
       <section className="mx-auto grid max-w-5xl grid-cols-1 gap-12 px-6 py-14 lg:grid-cols-2 lg:py-20">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
-            <Building2 className="h-3.5 w-3.5" /> For academy owners
-          </div>
+          {isCoach ? (
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
+              <Megaphone className="h-3.5 w-3.5" /> For coaches & personal brands
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
+              <Building2 className="h-3.5 w-3.5" /> For academy owners
+            </div>
+          )}
           <h1 className="font-display mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl">
-            See Meet to Manage running your academy.
+            {isCoach ? "See Meet to Manage running your master class." : "See Meet to Manage running your academy."}
           </h1>
           <p className="mt-5 max-w-md text-base leading-relaxed text-[#5B6472]">
-            This is a walkthrough of the platform itself — for academy owners deciding whether to run their business
-            on it. Looking for a free trial class for your child instead?{" "}
+            {isCoach ? (
+              <>
+                This is a walkthrough of the platform itself — for coaches deciding whether to run their online
+                master class and client bookings on it. Looking for a free trial class for your child instead?{" "}
+              </>
+            ) : (
+              <>
+                This is a walkthrough of the platform itself — for academy owners deciding whether to run their
+                business on it. Looking for a free trial class for your child instead?{" "}
+              </>
+            )}
             <Link to="/demo" className="font-semibold text-[#EA580C] hover:text-[#C2410C]">
               Book a class demo here.
             </Link>
           </p>
 
           <ul className="mt-8 flex flex-col gap-4">
-            {INCLUDED.map((item) => (
+            {(isCoach ? COACH_INCLUDED : INCLUDED).map((item) => (
               <li key={item} className="flex items-start gap-3">
                 <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FFF3EA] text-[#EA580C]">
                   <CheckCircle2 className="h-4 w-4" />
@@ -116,7 +149,9 @@ export default function GetStarted() {
               <h2 className="text-lg font-bold">Thanks — we've got it!</h2>
               <p className="mt-1.5 text-sm text-[#5B6472]">
                 {live
-                  ? "Our team will reach out shortly to find a time for your platform demo."
+                  ? isCoach
+                    ? "Our team will reach out shortly to help you get your first class live."
+                    : "Our team will reach out shortly to find a time for your platform demo."
                   : "Demo mode — no request was actually sent."}
               </p>
               <Button asChild variant="outline" className="mt-6 border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5">
@@ -160,13 +195,13 @@ export default function GetStarted() {
                 </div>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="gs-academyName">Academy name</Label>
+                <Label htmlFor="gs-academyName">{isCoach ? "Brand or coach name (optional)" : "Academy name"}</Label>
                 <Input
                   id="gs-academyName"
-                  required
+                  required={!isCoach}
                   value={form.academyName}
                   onChange={(e) => setForm((f) => ({ ...f, academyName: e.target.value }))}
-                  placeholder="e.g. Bright Step Academy"
+                  placeholder={isCoach ? "e.g. Priya Coaching, or just your name" : "e.g. Bright Step Academy"}
                 />
               </div>
               <div className="grid gap-1.5">
@@ -190,7 +225,7 @@ export default function GetStarted() {
 
       <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-left">
-          <Logo imgClassName="h-7 w-7" />
+          <Logo imgClassName="h-11 w-11" />
           <p className="text-xs font-medium text-[#5B6472]">© {new Date().getFullYear()} Meet to Manage. All rights reserved.</p>
         </div>
       </footer>

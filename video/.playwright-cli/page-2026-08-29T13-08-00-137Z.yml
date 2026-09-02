@@ -1,0 +1,48 @@
+- generic [ref=f10e3]:
+  - link "Skip to content" [ref=f10e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - complementary [ref=f10e5]:
+    - generic [ref=f10e7]:
+      - img "Meet to Manage" [ref=f10e9]
+      - generic [ref=f10e10]: Meet to Manage
+    - generic [ref=f10e11]: Teacher Portal
+    - navigation [ref=f10e14]:
+      - link "Dashboard" [ref=f10e17] [cursor=pointer]:
+        - /url: /teacher
+      - generic [ref=f10e26]:
+        - paragraph [ref=f10e27]: Teaching
+        - generic [ref=f10e28]:
+          - link "My Classes" [ref=f10e29] [cursor=pointer]:
+            - /url: /teacher/classes
+          - link "Attendance & Records" [ref=f10e37] [cursor=pointer]:
+            - /url: /teacher/attendance
+          - link "Recordings" [ref=f10e44] [cursor=pointer]:
+            - /url: /teacher/recordings
+          - link "Demo Feedback 1" [ref=f10e51] [cursor=pointer]:
+            - /url: /teacher/demo-feedback
+            - generic [ref=f10e52]: Demo Feedback
+            - generic [ref=f10e59]: "1"
+          - link "Student Doubts" [ref=f10e60] [cursor=pointer]:
+            - /url: /teacher/doubts
+      - generic [ref=f10e67]:
+        - paragraph [ref=f10e68]: My Account
+        - generic [ref=f10e69]:
+          - link "Leave Management" [ref=f10e70] [cursor=pointer]:
+            - /url: /teacher/leave
+          - link "My Payout" [ref=f10e78] [cursor=pointer]:
+            - /url: /teacher/payout
+          - link "Resources" [ref=f10e85] [cursor=pointer]:
+            - /url: /teacher/resources
+    - button "Collapse sidebar" [ref=f10e91] [cursor=pointer]: Collapse
+  - generic [ref=f10e95]:
+    - banner [ref=f10e96]:
+      - heading "Teacher Portal" [level=2] [ref=f10e97]
+      - generic [ref=f10e98]:
+        - button "Switch to dark mode" [ref=f10e99] [cursor=pointer]
+        - button "Notifications, 3 unread" [ref=f10e102] [cursor=pointer]:
+          - generic [ref=f10e106]: "3"
+        - button "Account menu for Karan Mehta" [ref=f10e107] [cursor=pointer]:
+          - generic [ref=f10e108]: KM
+    - main [ref=f10e110]
+  - button "Open my notes" [ref=f10e115] [cursor=pointer]
+  - button "Ask a doubt" [ref=f10e119] [cursor=pointer]

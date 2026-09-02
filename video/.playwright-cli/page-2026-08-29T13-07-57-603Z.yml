@@ -1,0 +1,146 @@
+- generic [ref=f9e122]:
+  - link "Skip to content" [ref=f9e123] [cursor=pointer]:
+    - /url: "#main-content"
+  - complementary [ref=f9e124]:
+    - generic [ref=f9e126]:
+      - img "Meet to Manage" [ref=f9e128]
+      - generic [ref=f9e129]: Meet to Manage
+    - generic [ref=f9e130]: Teacher Portal
+    - navigation [ref=f9e133]:
+      - link "Dashboard" [ref=f9e136] [cursor=pointer]:
+        - /url: /teacher
+      - generic [ref=f9e145]:
+        - paragraph [ref=f9e146]: Teaching
+        - generic [ref=f9e147]:
+          - link "My Classes" [ref=f9e148] [cursor=pointer]:
+            - /url: /teacher/classes
+          - link "Attendance & Records" [ref=f9e156] [cursor=pointer]:
+            - /url: /teacher/attendance
+          - link "Recordings" [ref=f9e163] [cursor=pointer]:
+            - /url: /teacher/recordings
+          - link "Demo Feedback 1" [ref=f9e170] [cursor=pointer]:
+            - /url: /teacher/demo-feedback
+            - generic [ref=f9e171]: Demo Feedback
+            - generic [ref=f9e178]: "1"
+          - link "Student Doubts" [ref=f9e179] [cursor=pointer]:
+            - /url: /teacher/doubts
+      - generic [ref=f9e186]:
+        - paragraph [ref=f9e187]: My Account
+        - generic [ref=f9e188]:
+          - link "Leave Management" [ref=f9e189] [cursor=pointer]:
+            - /url: /teacher/leave
+          - link "My Payout" [ref=f9e197] [cursor=pointer]:
+            - /url: /teacher/payout
+          - link "Resources" [ref=f9e204] [cursor=pointer]:
+            - /url: /teacher/resources
+    - button "Collapse sidebar" [ref=f9e210] [cursor=pointer]: Collapse
+  - generic [ref=f9e214]:
+    - banner [ref=f9e215]:
+      - heading "Teacher Portal" [level=2] [ref=f9e216]
+      - generic [ref=f9e217]:
+        - button "Switch to dark mode" [ref=f9e218] [cursor=pointer]
+        - button "Notifications, 3 unread" [ref=f9e221] [cursor=pointer]:
+          - generic [ref=f9e225]: "3"
+        - button "Account menu for Karan Mehta" [ref=f9e226] [cursor=pointer]:
+          - generic [ref=f9e227]: KM
+    - main [ref=f9e229]:
+      - generic [ref=f9e231]:
+        - generic [ref=f9e232]:
+          - generic [ref=f9e233]:
+            - generic [ref=f9e234]: Teacher Portal
+            - heading "Welcome back, Karan" [level=1] [ref=f9e236]
+            - paragraph [ref=f9e237]: Here's what's on your plate today — classes, payout status and anything waiting on you.
+          - link "View all classes" [ref=f9e239] [cursor=pointer]:
+            - /url: /teacher/classes
+        - generic [ref=f9e242]:
+          - generic [ref=f9e245]:
+            - paragraph [ref=f9e246]: Today's Classes
+            - paragraph [ref=f9e247]: "2"
+          - generic [ref=f9e253]:
+            - paragraph [ref=f9e254]: This Week
+            - paragraph [ref=f9e255]: "3"
+          - generic [ref=f9e260]:
+            - generic [ref=f9e262]:
+              - paragraph [ref=f9e263]: Student Attendance
+              - paragraph [ref=f9e264]: 96%
+            - generic [ref=f9e271]:
+              - generic [ref=f9e272]: 6%
+              - generic [ref=f9e276]: vs 90% target
+          - generic [ref=f9e279]:
+            - paragraph [ref=f9e280]: Payout This Month
+            - paragraph [ref=f9e281]: ₹14,550
+        - generic [ref=f9e287]:
+          - generic [ref=f9e292]:
+            - paragraph [ref=f9e293]: 1 demo feedback form pending
+            - paragraph [ref=f9e294]: Kabir Kapoor (demo on 12 Jul 2026) — feedback is mandatory after every demo class.
+          - link "Complete feedback" [ref=f9e295] [cursor=pointer]:
+            - /url: /teacher/demo-feedback
+        - generic [ref=f9e296]:
+          - generic [ref=f9e297]:
+            - generic [ref=f9e298]:
+              - heading "Today's Classes" [level=3] [ref=f9e299]
+              - paragraph [ref=f9e300]: 9 July 2026
+            - generic [ref=f9e302]:
+              - generic [ref=f9e303]:
+                - generic [ref=f9e310]:
+                  - paragraph [ref=f9e311]: Phonics 1:1 · Myra
+                  - paragraph [ref=f9e312]: Phonics-A3 1:1 Myra · 4:00 PM · 30 min
+                - generic [ref=f9e313]:
+                  - generic [ref=f9e314]: Scheduled
+                  - link "Start Class" [ref=f9e316] [cursor=pointer]:
+                    - /url: /teacher/live/s-3
+              - generic [ref=f9e317]:
+                - generic [ref=f9e324]:
+                  - paragraph [ref=f9e325]: Phonics-A1 · Session 19
+                  - paragraph [ref=f9e326]: Phonics-A1 (Mon/Wed/Fri) · 4:30 PM · 30 min
+                - generic [ref=f9e327]:
+                  - generic [ref=f9e328]: Scheduled
+                  - link "Start Class" [ref=f9e330] [cursor=pointer]:
+                    - /url: /teacher/live/s-1
+          - generic [ref=f9e331]:
+            - generic [ref=f9e332]:
+              - heading "Payout Snapshot" [level=3] [ref=f9e333]
+              - paragraph [ref=f9e334]: July 2026
+            - generic [ref=f9e336]:
+              - generic [ref=f9e337]:
+                - generic [ref=f9e338]:
+                  - paragraph [ref=f9e339]: ₹14,550
+                  - paragraph [ref=f9e340]: Final amount
+                - generic [ref=f9e341]: Pending
+              - generic [ref=f9e342]:
+                - generic [ref=f9e343]:
+                  - paragraph [ref=f9e344]: Sessions
+                  - paragraph [ref=f9e345]: "16"
+                - generic [ref=f9e346]:
+                  - paragraph [ref=f9e347]: Base Amount
+                  - paragraph [ref=f9e348]: ₹14,400
+                - generic [ref=f9e349]:
+                  - paragraph [ref=f9e350]: Deductions
+                  - paragraph [ref=f9e351]: ₹0
+                - generic [ref=f9e352]:
+                  - paragraph [ref=f9e353]: Waiting Added
+                  - paragraph [ref=f9e354]: ₹150
+              - link "View full payout history" [ref=f9e355] [cursor=pointer]:
+                - /url: /teacher/payout
+        - generic [ref=f9e358]:
+          - generic [ref=f9e359]:
+            - heading "Coming Up This Week" [level=3] [ref=f9e360]
+            - paragraph [ref=f9e361]: Next 7 days — 10 Jul 2026 to 16 Jul 2026
+          - generic [ref=f9e363]:
+            - generic [ref=f9e364]:
+              - generic [ref=f9e369]:
+                - paragraph [ref=f9e370]: Demo · Kabir Kapoor
+                - paragraph [ref=f9e371]: 12 July 2026 · 4:00 PM
+              - generic [ref=f9e372]: Demo
+            - generic [ref=f9e374]:
+              - generic [ref=f9e383]:
+                - paragraph [ref=f9e384]: Public Holiday — Independence Day Prep
+                - paragraph [ref=f9e385]: 14 July 2026 · 12:00 AM
+              - generic [ref=f9e386]: Holiday
+            - generic [ref=f9e388]:
+              - generic [ref=f9e395]:
+                - paragraph [ref=f9e396]: Karan Mehta — Approved Leave
+                - paragraph [ref=f9e397]: 15 July 2026 · 4:30 PM
+              - generic [ref=f9e398]: Teacher Leave
+  - button "Open my notes" [ref=f9e400] [cursor=pointer]
+  - button "Ask a doubt" [ref=f9e404] [cursor=pointer]

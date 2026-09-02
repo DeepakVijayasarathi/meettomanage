@@ -1,0 +1,331 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e9]:
+    - link "Skip to content" [ref=f1e10] [cursor=pointer]:
+      - /url: "#main-content"
+    - complementary [ref=f1e11]:
+      - generic [ref=f1e13]:
+        - img "Meet to Manage" [ref=f1e15]
+        - generic [ref=f1e16]: Meet to Manage
+      - generic [ref=f1e17]: Admin Portal
+      - navigation [ref=f1e20]:
+        - link "Dashboard" [ref=f1e23] [cursor=pointer]:
+          - /url: /admin
+        - generic [ref=f1e32]:
+          - paragraph [ref=f1e33]: Academics
+          - generic [ref=f1e34]:
+            - link "Courses" [ref=f1e35] [cursor=pointer]:
+              - /url: /admin/courses
+            - link "Departments" [ref=f1e41] [cursor=pointer]:
+              - /url: /admin/departments
+            - link "Batches" [ref=f1e49] [cursor=pointer]:
+              - /url: /admin/batches
+            - link "Academic Calendar" [ref=f1e57] [cursor=pointer]:
+              - /url: /admin/calendar
+            - link "Sessions" [ref=f1e63] [cursor=pointer]:
+              - /url: /admin/sessions
+            - link "Quiz Bank" [ref=f1e71] [cursor=pointer]:
+              - /url: /admin/quiz-bank
+        - generic [ref=f1e77]:
+          - paragraph [ref=f1e78]: People
+          - generic [ref=f1e79]:
+            - link "Users" [ref=f1e80] [cursor=pointer]:
+              - /url: /admin/users
+            - link "Roles & Permissions" [ref=f1e89] [cursor=pointer]:
+              - /url: /admin/permissions
+            - link "Enrollment Review" [ref=f1e96] [cursor=pointer]:
+              - /url: /admin/enrollments
+            - link "Store Inquiries" [ref=f1e104] [cursor=pointer]:
+              - /url: /admin/store-inquiries
+        - generic [ref=f1e111]:
+          - paragraph [ref=f1e112]: Content
+          - link "Content & Resources" [ref=f1e114] [cursor=pointer]:
+            - /url: /admin/resources
+        - generic [ref=f1e120]:
+          - paragraph [ref=f1e121]: Finance
+          - generic [ref=f1e122]:
+            - link "Billing & Finance" [ref=f1e123] [cursor=pointer]:
+              - /url: /admin/billing
+            - link "Packages & Subscriptions" [ref=f1e130] [cursor=pointer]:
+              - /url: /admin/packages
+            - link "Payment Gateway Mapping" [ref=f1e136] [cursor=pointer]:
+              - /url: /admin/payment-mapping
+            - link "Teacher Payouts" [ref=f1e142] [cursor=pointer]:
+              - /url: /admin/payouts
+            - link "Fee Suspension 2" [ref=f1e149] [cursor=pointer]:
+              - /url: /admin/fee-suspension
+              - generic [ref=f1e150]: Fee Suspension
+              - generic [ref=f1e156]: "2"
+        - generic [ref=f1e157]:
+          - paragraph [ref=f1e158]: Insights
+          - generic [ref=f1e159]:
+            - link "Reports & Analytics" [ref=f1e160] [cursor=pointer]:
+              - /url: /admin/reports
+            - link "Bulk Email" [ref=f1e166] [cursor=pointer]:
+              - /url: /admin/bulk-email
+            - link "Email Templates" [ref=f1e173] [cursor=pointer]:
+              - /url: /admin/email-templates
+            - link "Progress Reports" [ref=f1e180] [cursor=pointer]:
+              - /url: /admin/progress-reports
+            - link "Doubt Chatbot" [ref=f1e187] [cursor=pointer]:
+              - /url: /admin/chatbot
+        - generic [ref=f1e194]:
+          - paragraph [ref=f1e195]: System
+          - generic [ref=f1e196]:
+            - link "Settings & Branding" [ref=f1e197] [cursor=pointer]:
+              - /url: /admin/settings
+            - link "Server Monitoring" [ref=f1e204] [cursor=pointer]:
+              - /url: /admin/monitoring
+        - generic [ref=f1e210]:
+          - paragraph [ref=f1e211]: Marketing
+          - generic [ref=f1e212]:
+            - link "Demo Requests" [ref=f1e213] [cursor=pointer]:
+              - /url: /admin/demo-requests
+            - link "Blog Posts" [ref=f1e222] [cursor=pointer]:
+              - /url: /admin/blog-posts
+      - button "Collapse sidebar" [ref=f1e229] [cursor=pointer]: Collapse
+    - generic [ref=f1e233]:
+      - banner [ref=f1e234]:
+        - heading "Admin Portal" [level=2] [ref=f1e235]
+        - generic [ref=f1e236]:
+          - button "Switch to dark mode" [ref=f1e237] [cursor=pointer]
+          - button "Notifications, 3 unread" [ref=f1e240] [cursor=pointer]:
+            - generic [ref=f1e244]: "3"
+          - button "Account menu for Ananya Rao" [ref=f1e245] [cursor=pointer]:
+            - generic [ref=f1e246]: AR
+      - main [ref=f1e248]:
+        - generic [ref=f1e250]:
+          - generic [ref=f1e252]:
+            - generic [ref=f1e253]: Overview
+            - heading "Admin Dashboard" [level=1] [ref=f1e255]
+            - paragraph [ref=f1e256]: A real-time snapshot of enrollment, revenue and academic operations across Meet to Manage.
+          - generic [ref=f1e257]:
+            - heading "Growth & revenue" [level=2] [ref=f1e258]
+            - generic [ref=f1e259]:
+              - generic [ref=f1e260]:
+                - generic [ref=f1e262]:
+                  - paragraph [ref=f1e263]: Total Students
+                  - paragraph [ref=f1e264]: "312"
+                - generic [ref=f1e271]:
+                  - generic [ref=f1e272]: 6.2%
+                  - generic [ref=f1e276]: vs last month
+              - generic [ref=f1e277]:
+                - generic [ref=f1e279]:
+                  - paragraph [ref=f1e280]: Active Students
+                  - paragraph [ref=f1e281]: "268"
+                - generic [ref=f1e287]:
+                  - generic [ref=f1e288]: 3.8%
+                  - generic [ref=f1e292]: vs last month
+              - generic [ref=f1e293]:
+                - generic [ref=f1e295]:
+                  - paragraph [ref=f1e296]: Revenue This Month
+                  - paragraph [ref=f1e297]: ₹4,86,200
+                - generic [ref=f1e302]:
+                  - generic [ref=f1e303]: 8.4%
+                  - generic [ref=f1e307]: vs last month
+              - generic [ref=f1e308]:
+                - generic [ref=f1e310]:
+                  - paragraph [ref=f1e311]: New Enrollments
+                  - paragraph [ref=f1e312]: "34"
+                - generic [ref=f1e317]:
+                  - generic [ref=f1e318]: 4.1%
+                  - generic [ref=f1e322]: vs last month
+          - generic [ref=f1e323]:
+            - heading "Performance & quality" [level=2] [ref=f1e324]
+            - generic [ref=f1e325]:
+              - generic [ref=f1e326]:
+                - generic [ref=f1e328]:
+                  - paragraph [ref=f1e329]: Conversion Rate
+                  - paragraph [ref=f1e330]: 42%
+                - generic [ref=f1e335]:
+                  - generic [ref=f1e336]: 2.4%
+                  - generic [ref=f1e340]: vs last month
+              - generic [ref=f1e341]:
+                - generic [ref=f1e343]:
+                  - paragraph [ref=f1e344]: Attendance Rate
+                  - paragraph [ref=f1e345]: 91%
+                - generic [ref=f1e350]:
+                  - generic [ref=f1e351]: 1.5%
+                  - generic [ref=f1e355]: vs last month
+              - generic [ref=f1e356]:
+                - generic [ref=f1e358]:
+                  - paragraph [ref=f1e359]: Renewal Rate
+                  - paragraph [ref=f1e360]: 76%
+                - generic [ref=f1e367]:
+                  - generic [ref=f1e368]: 0.8%
+                  - generic [ref=f1e372]: vs last month
+              - generic [ref=f1e373]:
+                - generic [ref=f1e375]:
+                  - paragraph [ref=f1e376]: Refund Rate
+                  - paragraph [ref=f1e377]: 3.2%
+                - generic [ref=f1e382]:
+                  - generic [ref=f1e383]: 0.4%
+                  - generic [ref=f1e387]: vs last month
+              - generic [ref=f1e388]:
+                - generic [ref=f1e390]:
+                  - paragraph [ref=f1e391]: Teacher Utilization
+                  - paragraph [ref=f1e392]: 81%
+                - generic [ref=f1e398]:
+                  - generic [ref=f1e399]: 1.2%
+                  - generic [ref=f1e403]: vs last month
+              - generic [ref=f1e404]:
+                - generic [ref=f1e406]:
+                  - paragraph [ref=f1e407]: Batch Occupancy
+                  - paragraph [ref=f1e408]: 84%
+                - generic [ref=f1e415]:
+                  - generic [ref=f1e416]: 2.9%
+                  - generic [ref=f1e420]: vs last month
+          - generic [ref=f1e421]:
+            - generic [ref=f1e422]:
+              - generic [ref=f1e423]:
+                - generic [ref=f1e424]:
+                  - heading "Revenue Trend" [level=3] [ref=f1e425]
+                  - paragraph [ref=f1e426]: Monthly revenue, last 6 months
+                - link "View reports" [ref=f1e427] [cursor=pointer]:
+                  - /url: /admin/reports
+              - img "Revenue Trend. Monthly revenue, last 6 months" [ref=f1e431]:
+                - img [ref=f1e434]:
+                  - generic [ref=f1e438]:
+                    - generic [ref=f1e439]: Feb
+                    - generic [ref=f1e441]: Mar
+                    - generic [ref=f1e443]: Apr
+                    - generic [ref=f1e445]: May
+                    - generic [ref=f1e447]: Jun
+                    - generic [ref=f1e449]: Jul
+                  - generic [ref=f1e452]:
+                    - generic [ref=f1e453]: ₹0k
+                    - generic [ref=f1e455]: ₹150k
+                    - generic [ref=f1e457]: ₹300k
+                    - generic [ref=f1e459]: ₹450k
+                    - generic [ref=f1e461]: ₹600k
+            - generic [ref=f1e469]:
+              - generic [ref=f1e471]:
+                - heading "Department Revenue" [level=3] [ref=f1e472]
+                - paragraph [ref=f1e473]: Share of revenue by department
+              - img "Department Revenue. Share of revenue by department" [ref=f1e475]:
+                - list [ref=f1e486]:
+                  - listitem [ref=f1e487]:
+                    - generic [ref=f1e490]: Phonics
+                  - listitem [ref=f1e491]:
+                    - generic [ref=f1e494]: Maths
+            - generic [ref=f1e495]:
+              - generic [ref=f1e497]:
+                - heading "Course Revenue" [level=3] [ref=f1e498]
+                - paragraph [ref=f1e499]: Collected revenue by course, all time
+              - img "Course Revenue. Collected revenue by course, all time" [ref=f1e501]:
+                - img [ref=f1e504]:
+                  - generic [ref=f1e508]:
+                    - generic [ref=f1e509]: ₹0k
+                    - generic [ref=f1e511]: ₹150k
+                    - generic [ref=f1e513]: ₹300k
+                    - generic [ref=f1e515]: ₹450k
+                    - generic [ref=f1e517]: ₹600k
+                  - generic [ref=f1e520]:
+                    - generic [ref=f1e521]: PhonicsFoundations
+                    - generic [ref=f1e523]: Math ExplorersJr
+                    - generic [ref=f1e525]: AdvancedPhonicsMastery
+                    - generic [ref=f1e527]: MathChampions
+                    - generic [ref=f1e529]: ReadingAdventures
+                    - generic [ref=f1e531]: Creative WritingWorkshop
+                    - generic [ref=f1e533]: Public SpeakingSparks
+            - generic [ref=f1e552]:
+              - generic [ref=f1e554]:
+                - heading "Enrollment Funnel" [level=3] [ref=f1e555]
+                - paragraph [ref=f1e556]: Demo to enrollment conversion, this quarter
+              - img "Enrollment Funnel. Demo to enrollment conversion, this quarter" [ref=f1e558]:
+                - img [ref=f1e561]:
+                  - generic [ref=f1e565]:
+                    - generic [ref=f1e566]: "0"
+                    - generic [ref=f1e568]: "30"
+                    - generic [ref=f1e570]: "60"
+                    - generic [ref=f1e572]: "90"
+                    - generic [ref=f1e574]: "120"
+                  - generic [ref=f1e577]:
+                    - generic [ref=f1e578]: DemoScheduled
+                    - generic [ref=f1e580]: DemoCompleted
+                    - generic [ref=f1e582]: Follow-up
+                    - generic [ref=f1e584]: Partially Paid
+                    - generic [ref=f1e586]: Enrolled
+            - generic [ref=f1e601]:
+              - generic [ref=f1e603]:
+                - heading "Teacher Utilization" [level=3] [ref=f1e604]
+                - paragraph [ref=f1e605]: Sessions delivered vs. capacity, by teacher
+              - img "Teacher Utilization. Sessions delivered vs. capacity, by teacher" [ref=f1e607]:
+                - img [ref=f1e610]:
+                  - generic [ref=f1e614]:
+                    - generic [ref=f1e615]: Karan M.
+                    - generic [ref=f1e617]: Isha S.
+                    - generic [ref=f1e619]: Rohan V.
+                    - generic [ref=f1e621]: Meera I.
+                    - generic [ref=f1e623]: Sneha K.
+                  - generic [ref=f1e626]:
+                    - generic [ref=f1e627]: 0%
+                    - generic [ref=f1e629]: 25%
+                    - generic [ref=f1e631]: 50%
+                    - generic [ref=f1e633]: 75%
+                    - generic [ref=f1e635]: 100%
+            - generic [ref=f1e650]:
+              - generic [ref=f1e652]:
+                - heading "Attendance Trend" [level=3] [ref=f1e653]
+                - paragraph [ref=f1e654]: Weekly attendance rate, this month
+              - img "Attendance Trend. Weekly attendance rate, this month" [ref=f1e656]:
+                - img [ref=f1e659]:
+                  - generic [ref=f1e663]:
+                    - generic [ref=f1e664]: W1
+                    - generic [ref=f1e666]: W2
+                    - generic [ref=f1e668]: W3
+                    - generic [ref=f1e670]: W4
+                  - generic [ref=f1e673]:
+                    - generic [ref=f1e674]: 80%
+                    - generic [ref=f1e676]: 85%
+                    - generic [ref=f1e678]: 90%
+                    - generic [ref=f1e680]: 95%
+                    - generic [ref=f1e682]: 100%
+            - generic [ref=f1e686]:
+              - generic [ref=f1e688]:
+                - heading "Batch Occupancy by Course" [level=3] [ref=f1e689]
+                - paragraph [ref=f1e690]: Fill rate across active batches
+              - img "Batch Occupancy by Course. Fill rate across active batches" [ref=f1e692]:
+                - img [ref=f1e695]:
+                  - generic [ref=f1e699]:
+                    - generic [ref=f1e700]: Phonics
+                    - generic [ref=f1e702]: Maths
+                    - generic [ref=f1e704]: Reading
+                    - generic [ref=f1e706]: Writing
+                    - generic [ref=f1e708]: Speaking
+                  - generic [ref=f1e711]:
+                    - generic [ref=f1e712]: 0%
+                    - generic [ref=f1e714]: 25%
+                    - generic [ref=f1e716]: 50%
+                    - generic [ref=f1e718]: 75%
+                    - generic [ref=f1e720]: 100%
+          - generic [ref=f1e735]:
+            - generic [ref=f1e736]:
+              - generic [ref=f1e742]:
+                - heading "Today's Sessions" [level=3] [ref=f1e743]
+                - paragraph [ref=f1e744]: 9 July 2026
+              - generic [ref=f1e745]: 3 scheduled
+            - generic [ref=f1e746]:
+              - generic [ref=f1e747]:
+                - generic [ref=f1e748]:
+                  - generic [ref=f1e749]: "16"
+                  - generic [ref=f1e750]:
+                    - paragraph [ref=f1e751]: Phonics 1:1 · Myra
+                    - paragraph [ref=f1e752]: 16:00 · 30 min · Karan Mehta · 1 student
+                - generic [ref=f1e753]: Scheduled
+              - generic [ref=f1e755]:
+                - generic [ref=f1e756]:
+                  - generic [ref=f1e757]: "16"
+                  - generic [ref=f1e758]:
+                    - paragraph [ref=f1e759]: Phonics-A1 · Session 19
+                    - paragraph [ref=f1e760]: 16:30 · 30 min · Karan Mehta · 2 students
+                - generic [ref=f1e761]: Scheduled
+              - generic [ref=f1e763]:
+                - generic [ref=f1e764]:
+                  - generic [ref=f1e765]: "18"
+                  - generic [ref=f1e766]:
+                    - paragraph [ref=f1e767]: MathJr-B1 · Session 12
+                    - paragraph [ref=f1e768]: 18:00 · 45 min · Isha Sharma · 2 students
+                - generic [ref=f1e769]: Scheduled
+    - button "Open my notes" [ref=f1e771] [cursor=pointer]
+    - button "Ask a doubt" [ref=f1e775] [cursor=pointer]
+  - generic [ref=f1e779]: Phonics

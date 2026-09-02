@@ -1,0 +1,465 @@
+### Result
+[{"id":"01_hook","t":286},{"id":"02_one_login","t":8134},{"id":"03_admin","t":19852},{"id":"04_teacher","t":31722},{"id":"05_classroom","t":40571},{"id":"06_student","t":55914},{"id":"07_parent","t":67741},{"id":"08_coordinator","t":80343},{"id":"09_admission","t":93138},{"id":"10_subadmin","t":105733},{"id":"11_management","t":119681},{"id":"12_differentiator","t":128972},{"id":"13_cta","t":135706}]
+### Ran Playwright code
+```js
+await (// Full continuous recording for the "full feature end-to-end" Meet to Manage tour.
+// - Onboarding tone: hook -> one login/portal-select reveal -> all 8 role portals in
+//   turn -> live classroom -> differentiator -> sign-in close.
+// - Theme forced light throughout (localStorage 'trn.theme'='light'), independent of
+//   the recording machine's OS color-scheme.
+// - Demo-mode role switching via /portal-select (setRole + client-side navigate) --
+//   no real backend/credentials needed, but each role change must go back through
+//   /portal-select and click that role's card (RequireAuth checks session role
+//   against the route).
+// - Beat durations are paced from voiceover/manifest.json (actual TTS length); the
+//   exact real screen-time per beat is measured via the returned beatLog and then
+//   padded/trimmed frame-accurately in assemble.py -- the waits below just need to be
+//   in the right ballpark (>= vo_duration + planned buffer), not frame-perfect.
+async page => {
+  const PRIMARY = "#1F3B61"; // real site --primary (214 52% 25%)
+  const ACCENT = "#E63228"; // real site --brand-accent (3 79% 53%)
+  const ROLE_HEX = {
+    admin: "#1F6FE0",
+    teacher: "#F08A1D",
+    parent: "#23A455",
+    student: "#3B82F6",
+    subadmin: "#0E9C8C",
+    admission: "#8356E7",
+    coordinator: "#B8860B",
+    management: "#4F46E5",
+  };
+
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem("trn.theme", "light");
+    } catch {
+      /* storage unavailable -- theme still defaults light on first paint */
+    }
+  });
+
+  // Measures the tooltip's *actual* rendered width (same font/padding as the real
+  // callout) instead of estimating from character count.
+  async function measureCalloutWidth(text) {
+    return page.evaluate(t => {
+      const d = document.createElement("div");
+      d.style.cssText =
+        "position:fixed; left:-9999px; top:-9999px; padding:10px 18px; " +
+        "font:700 15px/1.3 'Segoe UI', system-ui, sans-serif; white-space:nowrap;";
+      d.textContent = t;
+      document.body.appendChild(d);
+      const w = d.getBoundingClientRect().width;
+      d.remove();
+      return w;
+    }, text);
+  }
+
+  // Returns the first *visible* match for a locator -- plain .first() can land on a
+  // hidden duplicate (e.g. inactive-tab content still mounted in the DOM).
+  async function firstVisible(locator) {
+    const n = await locator.count();
+    for (let i = 0; i < n; i++) {
+      const el = locator.nth(i);
+      if (await el.isVisible()) return el;
+    }
+    return null;
+  }
+
+  // (centerX, targetTopY) -- anchors the tooltip's pointer directly above the
+  // target's horizontal center, `gap` px above its top edge. `color` lets each
+  // portal beat tint its callout with that role's own brand hex (matching the
+  // app's own role color-coding) instead of one flat accent everywhere.
+  function callout(centerX, targetTopY, text, boxWidth, color = ACCENT, gap = 20) {
+    const viewportW = 1920;
+    const margin = 20;
+    const halfWidth = boxWidth / 2;
+    const boxCenterX = Math.min(Math.max(centerX, halfWidth + margin), viewportW - halfWidth - margin);
+    const pointerShift = Math.max(Math.min(centerX - boxCenterX, halfWidth - 14), -(halfWidth - 14));
+    return `
+      <div style="position:fixed; left:${boxCenterX}px; top:${targetTopY - gap}px;
+        transform: translate(-50%, -100%);">
+        <div style="display:flex; flex-direction:column; align-items:center;
+          animation: mtmCalloutIn .32s cubic-bezier(.16,1,.3,1) both;">
+          <style>
+            @keyframes mtmCalloutIn {
+              from { opacity: 0; transform: translateY(8px) scale(.9); }
+              to   { opacity: 1; transform: translateY(0) scale(1); }
+            }
+          </style>
+          <div style="padding:10px 18px; border-radius:10px;
+            background: linear-gradient(135deg, ${color}, ${PRIMARY});
+            color:#fff; font:700 15px/1.3 'Segoe UI', system-ui, sans-serif; white-space:nowrap;
+            box-shadow: 0 12px 26px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.25);">
+            ${text}
+          </div>
+          <div style="width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent;
+            border-top:8px solid ${PRIMARY}; margin-top:-1px; transform: translateX(${pointerShift}px);
+            filter: drop-shadow(0 3px 3px rgba(0,0,0,.25));"></div>
+        </div>
+      </div>`;
+  }
+
+  function animatedCard(title, subtitle, opts = {}) {
+    const logo = opts.logo
+      ? `<div style="width:84px; height:84px; border-radius:22px; margin-bottom:24px;
+          display:flex; align-items:center; justify-content:center;
+          background: linear-gradient(160deg, #fff7ed, #ffe4c7);
+          box-shadow: 0 10px 24px rgba(230,50,40,.22), inset 0 1px 0 rgba(255,255,255,.9);
+          animation: mtmPop .7s cubic-bezier(.34,1.56,.64,1) .15s both, mtmLogoPulse 2.6s ease-in-out 1.3s infinite;">
+          <img src="/logo-icon.png" style="width:50px;height:50px;object-fit:contain;" />
+        </div>`
+      : "";
+    const cta = opts.ctaLabel
+      ? `<div style="margin-top:28px; padding:14px 34px; border-radius:999px;
+          background: linear-gradient(135deg, ${PRIMARY}, ${ACCENT});
+          color:#fff; font:700 19px system-ui, sans-serif; letter-spacing:.02em;
+          box-shadow: 0 14px 30px rgba(230,50,40,.35), inset 0 1px 0 rgba(255,255,255,.3);
+          animation: mtmFadeUpDelay .7s cubic-bezier(.16,1,.3,1) .5s both, mtmCtaPulse 2.2s ease-in-out 1.5s infinite;">
+          ${opts.ctaLabel} →
+        </div>`
+      : "";
+    const url = opts.url
+      ? `<div style="margin-top:16px; font:600 16px system-ui, sans-serif; color:#64748b;
+          animation: mtmFadeUpDelay .7s cubic-bezier(.16,1,.3,1) .6s both;">${opts.url}</div>`
+      : "";
+    return `
+      <div style="position:fixed; inset:0; overflow:hidden; background:#0a0e1a;">
+        <style>
+          @keyframes mtmKenBurns {
+            from { transform: scale(1.05) translate(0%, 0%); }
+            to   { transform: scale(1.14) translate(-1%, -1%); }
+          }
+          @keyframes mtmDrift1 {
+            from { transform: translate(-6%, -4%) scale(1); }
+            to   { transform: translate(4%, 6%) scale(1.15); }
+          }
+          @keyframes mtmDrift2 {
+            from { transform: translate(5%, 4%) scale(1.1); }
+            to   { transform: translate(-4%, -6%) scale(1); }
+          }
+          @keyframes mtmFadeUp {
+            from { opacity: 0; transform: translateY(26px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes mtmFadeUpDelay {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes mtmPop {
+            0%   { opacity: 0; transform: scale(.5); }
+            65%  { opacity: 1; transform: scale(1.15); }
+            100% { opacity: 1; transform: scale(1); }
+          }
+          @keyframes mtmCardIn {
+            from { opacity: 0; transform: translateY(16px) scale(.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes mtmUnderline {
+            from { transform: scaleX(0); }
+            to   { transform: scaleX(1); }
+          }
+          @keyframes mtmLogoPulse {
+            0%, 100% { filter: drop-shadow(0 0 0 rgba(230,50,40,0)); }
+            50%      { filter: drop-shadow(0 0 22px rgba(230,50,40,.75)); }
+          }
+          @keyframes mtmCtaPulse {
+            0%, 100% { box-shadow: 0 14px 30px rgba(230,50,40,.35), 0 0 0 0 rgba(230,50,40,.5); }
+            50%      { box-shadow: 0 14px 30px rgba(230,50,40,.35), 0 0 0 14px rgba(230,50,40,0); }
+          }
+        </style>
+
+        <!-- Base: deep navy, slow Ken Burns breathing (matches the real login hero panel) -->
+        <div style="position:absolute; inset:-8%;
+          background: linear-gradient(160deg, #0a0e1a 0%, #131b2e 55%, #0a0e1a 100%);
+          animation: mtmKenBurns 10s ease-in-out infinite alternate;"></div>
+
+        <!-- Two soft drifting colour blobs -- coral accent (the pop color against navy)
+             and a cool navy-blue counterpart, mesh-gradient look. -->
+        <div style="position:absolute; width:65%; height:65%; left:-14%; top:-16%; border-radius:50%;
+          background: radial-gradient(circle, ${ACCENT}55 0%, transparent 68%);
+          filter: blur(70px); animation: mtmDrift1 13s ease-in-out infinite alternate;"></div>
+        <div style="position:absolute; width:60%; height:60%; right:-16%; bottom:-18%; border-radius:50%;
+          background: radial-gradient(circle, #3454c466 0%, transparent 68%);
+          filter: blur(80px); animation: mtmDrift2 15s ease-in-out infinite alternate;"></div>
+
+        <!-- Fine grain for a tactile, non-flat finish -->
+        <div style="position:absolute; inset:0; opacity:.05;
+          background-image: radial-gradient(rgba(255,255,255,.9) 1px, transparent 1px);
+          background-size: 22px 22px;"></div>
+
+        <!-- Vignette to pull focus to the center card -->
+        <div style="position:absolute; inset:0;
+          background: radial-gradient(ellipse at 50% 50%, transparent 35%, rgba(0,0,0,.5) 100%);"></div>
+
+        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:0 80px;">
+          <div style="max-width:1160px; border-radius:28px; overflow:hidden;
+            background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+            box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 18px 40px rgba(0,0,0,.28), 0 60px 120px rgba(0,0,0,.4);
+            animation: mtmCardIn .6s cubic-bezier(.16,1,.3,1) both;">
+            <div style="height:6px; background: linear-gradient(90deg, ${ACCENT}, #ff6b52 45%, ${PRIMARY});"></div>
+            <div style="display:flex; flex-direction:column; align-items:center; text-align:center;
+              padding:50px 76px 56px;">
+              ${logo}
+              <div style="font:800 46px/1.25 'Segoe UI', system-ui, sans-serif; color:#0f172a; max-width:920px;
+                animation: mtmFadeUp .7s cubic-bezier(.16,1,.3,1) .1s both;">${title}</div>
+              <div style="width:88px; height:4px; border-radius:2px; background:${ACCENT}; margin-top:20px;
+                transform-origin:center; animation: mtmUnderline .6s cubic-bezier(.16,1,.3,1) .4s both;"></div>
+              ${subtitle ? `<div style="margin-top:18px; font:600 21px/1.4 system-ui, sans-serif; color:#334155; max-width:820px;
+                animation: mtmFadeUpDelay .7s cubic-bezier(.16,1,.3,1) .35s both;">${subtitle}</div>` : ""}
+              ${cta}
+              ${url}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Enters a role portal from /portal-select and returns once the client-side
+  // navigation has settled. Card titles are the exact ROLE_META labels.
+  async function enterPortal(cardText) {
+    await page.goto("http://localhost:5173/portal-select", { waitUntil: "networkidle" });
+    await page.waitForTimeout(400);
+    const card = page.getByText(cardText, { exact: true }).first();
+    await card.hover();
+    await page.waitForTimeout(250);
+    await card.click();
+    await page.waitForTimeout(1400); // let the portal's own data-load skeleton resolve
+  }
+
+  async function calloutOn(locatorOrGetter, label, color, holdMs = 2200) {
+    try {
+      const loc = typeof locatorOrGetter === "function" ? await locatorOrGetter() : locatorOrGetter;
+      const bounds = loc && (await loc.boundingBox());
+      if (!bounds) return;
+      const w = await measureCalloutWidth(label);
+      const cal = await page.screencast.showOverlay(
+        callout(bounds.x + bounds.width / 2, bounds.y, label, w, color)
+      );
+      await page.waitForTimeout(holdMs);
+      await cal.dispose();
+    } catch {
+      /* target not found -- hold on the plain screen rather than fail the take */
+    }
+  }
+
+  await page.screencast.start({ path: "recordings/full-take.webm", size: { width: 1920, height: 1080 } });
+  const t0 = Date.now();
+  const beatLog = [];
+  const mark = id => beatLog.push({ id, t: Date.now() - t0 });
+
+  // ---- 01_hook (4.37s VO + 1.2s buffer) ----
+  await page.goto("about:blank");
+  await page.waitForTimeout(200);
+  mark("01_hook");
+  const hookCard = await page.screencast.showOverlay(
+    animatedCard("Your Meet to Manage account is ready.", "Here's a quick tour of everything inside.", { logo: true })
+  );
+  await page.waitForTimeout(6400);
+  await hookCard.dispose();
+
+  // ---- 02_one_login (5.21s VO + 1.5s buffer) ----
+  await page.goto("http://localhost:5173/login", { waitUntil: "networkidle" });
+  await page.waitForTimeout(500);
+  mark("02_one_login");
+  const signInCard = page.getByText("Welcome back", { exact: true });
+  try {
+    await signInCard.hover({ timeout: 2000 });
+  } catch {
+    /* ignore */
+  }
+  await page.waitForTimeout(1600);
+  await page.goto("http://localhost:5173/portal-select", { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  await page.mouse.move(960, 480);
+  await page.waitForTimeout(3800);
+
+  // ---- 03_admin (9.31s VO + 3.0s buffer) ----
+  await enterPortal("Admin Portal");
+  mark("03_admin");
+  await calloutOn(
+    async () => {
+      const el = page.getByText("Attendance Rate").locator("..").locator("..");
+      return (await el.count()) ? el : null;
+    },
+    "Real-time attendance",
+    ROLE_HEX.admin,
+    2000
+  );
+  await page.mouse.wheel(0, 380);
+  await page.waitForTimeout(2200);
+  await page.goto("http://localhost:5173/admin/reports", { waitUntil: "networkidle" });
+  await page.waitForTimeout(500);
+  const generateBtn = page.getByRole("button", { name: "Generate" });
+  await generateBtn.hover();
+  await page.waitForTimeout(250);
+  await generateBtn.click();
+  await page.waitForTimeout(1300);
+  await calloutOn(
+    page.getByRole("button", { name: /Export CSV/i }),
+    "Export as CSV",
+    ROLE_HEX.admin,
+    2200
+  );
+  await page.waitForTimeout(1400);
+
+  // ---- 04_teacher (7.63s VO + 2.5s buffer) ----
+  await enterPortal("Teacher Portal");
+  mark("04_teacher");
+  await calloutOn(
+    page.getByText("Student Attendance").locator("..").locator(".."),
+    "Attendance, tracked automatically",
+    ROLE_HEX.teacher,
+    2000
+  );
+  await page.waitForTimeout(1800);
+  await page.goto("http://localhost:5173/teacher/recordings", { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  await page.waitForTimeout(3600);
+
+  // ---- 05_classroom (9.79s VO + 2.5s buffer) ----
+  mark("05_classroom");
+  await page.goto("http://localhost:5173/teacher", { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  const startClassBtn = page.getByText("Start Class", { exact: true }).first();
+  await startClassBtn.hover();
+  await page.waitForTimeout(250);
+  await startClassBtn.click();
+  await page.waitForTimeout(2200); // classroom mounts: video tiles + leaderboard seed in
+  const whiteboardBtn = page.getByRole("button", { name: "Open whiteboard" });
+  try {
+    await whiteboardBtn.hover({ timeout: 2000 });
+    await page.waitForTimeout(250);
+    await whiteboardBtn.click();
+    await page.waitForTimeout(2600);
+  } catch {
+    /* ignore */
+  }
+  const quizBtn = page.getByRole("button", { name: "Launch live quiz" });
+  try {
+    await quizBtn.hover({ timeout: 2000 });
+    await page.waitForTimeout(250);
+    await quizBtn.click();
+    await page.waitForTimeout(2600);
+  } catch {
+    /* ignore */
+  }
+  await page.waitForTimeout(2200);
+
+  // ---- 06_student (9.17s VO + 2.0s buffer) ----
+  await enterPortal("Student Experience");
+  mark("06_student");
+  await calloutOn(
+    page.getByText("My Badges", { exact: true }),
+    "Badges for showing up",
+    ROLE_HEX.student,
+    2200
+  );
+  await page.mouse.wheel(0, 260);
+  await page.waitForTimeout(6600);
+
+  // ---- 07_parent (8.93s VO + 2.5s buffer) ----
+  await enterPortal("Parent Portal");
+  mark("07_parent");
+  await calloutOn(
+    page.getByText("Fee Status", { exact: true }),
+    "Payments, always visible",
+    ROLE_HEX.parent,
+    2000
+  );
+  await page.waitForTimeout(1800);
+  await page.goto("http://localhost:5173/parent/notifications", { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  await page.waitForTimeout(4400);
+
+  // ---- 08_coordinator (9.36s VO + 2.5s buffer) ----
+  await enterPortal("Academic Coordinator");
+  mark("08_coordinator");
+  await calloutOn(
+    page.getByText("Today's Sessions", { exact: true }),
+    "Sessions, teachers and batches",
+    ROLE_HEX.coordinator,
+    2200
+  );
+  await page.waitForTimeout(1600);
+  await page.goto("http://localhost:5173/coordinator/availability", { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  await page.waitForTimeout(4600);
+
+  // ---- 09_admission (9.24s VO + 2.5s buffer) ----
+  await enterPortal("Admission Team Portal");
+  mark("09_admission");
+  await calloutOn(
+    page.getByText("Conversion Funnel", { exact: true }),
+    "Lead to enrollment, tracked",
+    ROLE_HEX.admission,
+    2200
+  );
+  await page.waitForTimeout(1600);
+  await page.goto("http://localhost:5173/admission/demo-scheduling", { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  await page.waitForTimeout(4400);
+
+  // ---- 10_subadmin (8.86s VO + 2.5s buffer) ----
+  await enterPortal("Parent Relationship Manager");
+  mark("10_subadmin");
+  await calloutOn(
+    page.getByText(/You have access to/i),
+    "Permission-scoped, always",
+    ROLE_HEX.subadmin,
+    2200
+  );
+  await page.waitForTimeout(1800);
+  await page.goto("http://localhost:5173/subadmin/audit-log", { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  await page.waitForTimeout(5400);
+
+  // ---- 11_management (10.1s VO + 2.0s buffer) ----
+  await enterPortal("Management Dashboard");
+  mark("11_management");
+  await calloutOn(
+    page.getByText("Conversion Rate", { exact: true }),
+    "Every KPI, one screen",
+    ROLE_HEX.management,
+    2000
+  );
+  const revenueChart = page.getByText("Revenue Trend", { exact: true }).locator("..").locator("..");
+  try {
+    const bounds = await revenueChart.boundingBox();
+    if (bounds) await page.mouse.move(bounds.x + bounds.width * 0.55, bounds.y + bounds.height * 0.5);
+  } catch {
+    /* ignore */
+  }
+  await page.waitForTimeout(2600);
+  await page.mouse.wheel(0, 420);
+  await page.waitForTimeout(4300);
+
+  // ---- 12_differentiator (5.02s VO + 1.5s buffer) ----
+  await page.goto("about:blank");
+  await page.waitForTimeout(200);
+  mark("12_differentiator");
+  const diffCard = await page.screencast.showOverlay(
+    animatedCard("Eight portals. One system.", "Every screen you just saw shares the same live data.")
+  );
+  await page.waitForTimeout(6500);
+  await diffCard.dispose();
+
+  // ---- 13_cta (4.94s VO + 4.0s buffer, held long per QA rule) ----
+  await page.waitForTimeout(200);
+  mark("13_cta");
+  const ctaCard = await page.screencast.showOverlay(
+    animatedCard("Meet to Manage", "Your account is set up. Pick up right where your role starts.", {
+      logo: true,
+      ctaLabel: "Sign In",
+      url: "meettomanage.cloud",
+    })
+  );
+  await page.waitForTimeout(9000);
+  await ctaCard.dispose();
+
+  await page.screencast.stop();
+  console.log("BEATLOG:" + JSON.stringify(beatLog));
+  return beatLog;
+}
+)(page);
+```
+### Events
+- New console entries: .playwright-cli\console-2026-08-31T09-51-51-437Z.log#L160-L210

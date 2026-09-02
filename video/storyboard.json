@@ -1,0 +1,142 @@
+{
+  "product": "Meet to Manage",
+  "pronunciation": "fluid — \"Meet-tuh-Manage\", like \"meet to manage your day\" (carried over from the prior v6 project; reconfirm at VO sign-off)",
+  "audience": "Existing customers — onboarding tour of the full product, one portal at a time",
+  "tone": "walkthrough/how-to, second person (\"as an admin, you...\"), no hard sell",
+  "cta": "Sign in and explore your portal (not a sales CTA — no 'Book a Demo')",
+  "target_seconds": 165,
+  "voice": "en-US-EmmaNeural",
+  "rate": "-9%",
+  "resolution": { "width": 1920, "height": 1080 },
+  "theme": "forced light — page.addInitScript sets localStorage['trn.theme']='light' before every navigation, regardless of OS color-scheme",
+  "brand": {
+    "primary_hex": "#1F3B61",
+    "accent_hex": "#E63228",
+    "note": "real site tokens (--primary 214 52% 25%, --brand-accent 3 79% 53%), not the v6 project's #F97316 approximation. Used for chapter cards, the CTA end card, and the logo wordmark."
+  },
+  "role_colors": {
+    "admin": "#1F6FE0",
+    "teacher": "#F08A1D",
+    "parent": "#23A455",
+    "student": "#3B82F6",
+    "subadmin": "#0E9C8C",
+    "admission": "#8356E7",
+    "coordinator": "#B8860B",
+    "management": "#4F46E5"
+  },
+  "recording_mode": "single continuous take (one browser session, demo-mode role switching via /portal-select — no real backend/credentials needed). Chapter beats (01, 12, 13) use the same custom animated overlay style as v6 (fade-up text + slow Ken Burns pan on a navy/coral gradient backdrop) with crossfades between all beats. Each portal beat's callout pill is tinted with that role's own brand hex from role_colors, so the color-coding on screen matches the app's own role colors.",
+  "recording_risk_note": "RESOLVED after recon: the demo-mode Live Classroom (/teacher/live/:sessionId) is fully mocked — initials-avatar tiles, seeded participants/leaderboard, no real getUserMedia/Jitsi connection attempted. Safe to record directly, no fallback needed.",
+  "beats": [
+    {
+      "id": "01_hook",
+      "type": "chapter",
+      "vo": "Your Meet to Manage account is ready. Here's a quick tour of everything inside.",
+      "visual": "Chapter card, navy/coral gradient backdrop (matches the real login hero panel), logo pop-in.",
+      "duration_hint_s": 6
+    },
+    {
+      "id": "02_one_login",
+      "type": "screen",
+      "vo": "One login, eight role-based portals — pick yours, and your workspace opens instantly.",
+      "visual": "Live: /login — brief glance at the Sign In card, then through to /portal-select's 8-card grid (each card already shows its own role color + icon).",
+      "url": "http://localhost:5173/login",
+      "actions": ["hold on Sign In card", "navigate to /portal-select", "pan across the 8 role cards"],
+      "duration_hint_s": 9
+    },
+    {
+      "id": "03_admin",
+      "type": "screen",
+      "vo": "As an admin, enrollment, revenue and attendance update in real time, right on your dashboard. Turn any of it into a report and export it as CSV in seconds.",
+      "visual": "Live: Admin Dashboard — KPI cards, then Revenue Trend chart, callout on Attendance Rate; then Reports & Analytics — Generate a report, callout on Export CSV.",
+      "url": "http://localhost:5173/admin",
+      "actions": ["click Admin card on /portal-select", "hold on KPI row", "scroll to Revenue Trend chart", "callout on Attendance Rate", "go to Reports & Analytics", "click Generate, callout on Export CSV"],
+      "duration_hint_s": 18
+    },
+    {
+      "id": "04_teacher",
+      "type": "screen",
+      "vo": "As a teacher, your classes, attendance and payouts are all one click away. Catch up on past sessions anytime from your recordings library.",
+      "visual": "Live: Teacher Dashboard — Today's Classes, Student Attendance 96%, Payout This Month; then Recordings list.",
+      "url": "http://localhost:5173/teacher",
+      "actions": ["back to /portal-select, click Teacher Portal card", "hold on dashboard KPI row", "callout on Student Attendance", "go to /teacher/recordings", "hold on recordings list"],
+      "duration_hint_s": 16
+    },
+    {
+      "id": "05_classroom",
+      "type": "screen",
+      "vo": "Step into the live classroom itself — video, whiteboard and quizzes, together in one tab. Reactions, hand-raises and a live leaderboard keep every student engaged.",
+      "visual": "Live: /teacher/live/s-3 — fully mocked classroom (initials-avatar tiles, live Leaderboard panel already visible), toggle to Whiteboard via the toolbar, glimpse the quiz launch.",
+      "url": "http://localhost:5173/teacher/live/s-3 (reached by clicking 'Start Class' on the Teacher dashboard)",
+      "actions": ["click 'Start Class' on Teacher dashboard", "hold on video stage + Leaderboard", "click toolbar button aria-label 'Open whiteboard'", "hold on whiteboard", "click 'Launch live quiz' for a flash of the quiz overlay"],
+      "duration_hint_s": 17
+    },
+    {
+      "id": "06_student",
+      "type": "screen",
+      "vo": "As a student, every class becomes interactive — badges, quizzes and progress you can see. Join a live class or catch the recording later, whichever fits your day.",
+      "visual": "Live: Student dashboard. Callout on a progress/badge element.",
+      "url": "http://localhost:5173/student",
+      "actions": ["back to /portal-select, click Student card", "hold on dashboard", "callout on progress/badges"],
+      "duration_hint_s": 15
+    },
+    {
+      "id": "07_parent",
+      "type": "screen",
+      "vo": "As a parent, your child's schedule, payments and class recordings live in one dashboard. Add another child, or get notified the moment a new invoice is due.",
+      "visual": "Live: Parent dashboard — schedule, billing, recordings tabs/sections; glimpse of Notifications.",
+      "url": "http://localhost:5173/parent",
+      "actions": ["back to /portal-select, click Parent card", "hold on dashboard", "callout switching between schedule/billing", "glimpse Notifications"],
+      "duration_hint_s": 16
+    },
+    {
+      "id": "08_coordinator",
+      "type": "screen",
+      "vo": "Coordinators plan sessions, teacher availability and batches from a single shared calendar. Drag a session to a new slot, and every calendar updates with it.",
+      "visual": "Live: Coordinator Dashboard (Today's Sessions, Leave Requests Snapshot), then /coordinator/availability (Teacher Availability & Leave grid).",
+      "url": "http://localhost:5173/coordinator",
+      "actions": ["back to /portal-select, click Academic Coordinator card", "hold on dashboard", "callout on a scheduled session", "go to /coordinator/availability, hold on availability grid"],
+      "duration_hint_s": 15
+    },
+    {
+      "id": "09_admission",
+      "type": "screen",
+      "vo": "The admission team follows every lead from first demo to enrollment, without leaving the portal. Schedule the demo, assign the teacher, and track conversion, all from one queue.",
+      "visual": "Live: Admission Dashboard (Conversion Funnel chart, Pipeline Snapshot), then /admission/demo-scheduling table.",
+      "url": "http://localhost:5173/admission",
+      "actions": ["back to /portal-select, click Admission Team Portal card", "hold on Conversion Funnel chart", "callout on Pipeline Snapshot", "go to /admission/demo-scheduling, hold on table"],
+      "duration_hint_s": 17
+    },
+    {
+      "id": "10_subadmin",
+      "type": "screen",
+      "vo": "Relationship managers get permission-scoped access — exactly what your role allows, nothing more. Every action they take is logged automatically to the audit trail.",
+      "visual": "Live: Subadmin Dashboard ('You have access to 3 of 7 modules with full working rights'), then /subadmin/audit-log table.",
+      "url": "http://localhost:5173/subadmin",
+      "actions": ["back to /portal-select, click Parent Relationship Manager card", "hold on dashboard permission banner", "go to /subadmin/audit-log, hold on log table"],
+      "duration_hint_s": 16
+    },
+    {
+      "id": "11_management",
+      "type": "screen",
+      "vo": "Leadership sees revenue, performance and reports roll up automatically, with no separate spreadsheet. Compare this month against last, and spot the trend before it becomes a problem.",
+      "visual": "Live: Management Executive Overview — KPI row, Revenue Trend chart (hover shows a month tooltip), Revenue by Department donut, Enrollment Funnel. One page, no second URL needed.",
+      "url": "http://localhost:5173/management",
+      "actions": ["back to /portal-select, click Management Dashboard card", "hold on KPI row", "hover Revenue Trend chart to pop the tooltip", "scroll to Enrollment Funnel"],
+      "duration_hint_s": 17
+    },
+    {
+      "id": "12_differentiator",
+      "type": "chapter",
+      "vo": "Eight portals. One system. Every screen you just saw shares the same live data.",
+      "visual": "Stat overlay/chapter card: '8 role-based portals · 1 system', same style as v6's differentiator card.",
+      "duration_hint_s": 6
+    },
+    {
+      "id": "13_cta",
+      "type": "chapter",
+      "vo": "Meet to Manage — your account is set up. Sign in, and pick up right where your role starts.",
+      "visual": "End card: logo, 'Sign In' button (not 'Book a Demo'), meettomanage.cloud URL, held 3s+.",
+      "duration_hint_s": 8
+    }
+  ]
+}

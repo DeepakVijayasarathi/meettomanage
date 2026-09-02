@@ -1,0 +1,172 @@
+### Result
+[{"id":"01_hook","t":671},{"id":"02_solution","t":16555},{"id":"03_login","t":24661},{"id":"04_dashboard","t":29844},{"id":"05_scheduling","t":34443},{"id":"06_billing","t":41288},{"id":"07_reports","t":48582},{"id":"08_differentiator","t":54523},{"id":"09_cta","t":67377}]
+### Ran Playwright code
+```js
+await (// Full continuous recording for the Meet to Manage demo video.
+// Beat durations are paced from voiceover/manifest.json (actual TTS length), each
+// padded ~400-600ms so the recorded segment is never shorter than its narration.
+async page => {
+  const BRAND = "#F97316";
+
+  function callout(x, y, text) {
+    return `
+      <div style="position:absolute; top:${y}px; left:${x}px; padding:8px 16px;
+        background:${BRAND}; border-radius:8px; font:600 15px system-ui, sans-serif; color:#fff;
+        box-shadow:0 6px 18px rgba(0,0,0,0.35); white-space:nowrap;">
+        ${text}
+      </div>`;
+  }
+
+  await page.screencast.start({ path: "recordings/full-take.webm", size: { width: 1920, height: 1080 } });
+  const t0 = Date.now();
+  const beatLog = [];
+
+  // ---- 01_hook (7.18s VO) ----
+  await page.goto("http://localhost:5173/");
+  await page.waitForTimeout(400);
+  beatLog.push({ id: "01_hook", t: Date.now() - t0 });
+  await page.screencast.showChapter("Running an academy shouldn't take five different tools.", {
+    description: "Scattered schedules. Manual attendance. Fees you have to chase.",
+    duration: 7600,
+  });
+  await page.waitForTimeout(7600);
+
+  // ---- 02_solution (7.03s VO) ----
+  await page.waitForTimeout(300);
+  beatLog.push({ id: "02_solution", t: Date.now() - t0 });
+  const badge = await page.screencast.showOverlay(
+    callout(408, 176, "Learning Management &amp; Virtual Classroom Platform")
+  );
+  await page.waitForTimeout(7300);
+  await badge.dispose();
+
+  // ---- 03_login (6.19s VO) ----
+  await page.goto("http://localhost:5173/login");
+  await page.waitForTimeout(500);
+  beatLog.push({ id: "03_login", t: Date.now() - t0 });
+  const roleTrigger = page.getByRole("combobox", { name: "Preview as (demo)" });
+  await roleTrigger.hover();
+  await page.waitForTimeout(400);
+  await roleTrigger.click();
+  await page.waitForTimeout(900);
+  await page.keyboard.press("Escape"); // close back onto Admin Portal without changing it
+  await page.waitForTimeout(400);
+  const signInBtn = page.getByRole("button", { name: /Sign in to Admin/i });
+  await signInBtn.hover();
+  await page.waitForTimeout(300);
+  await signInBtn.click();
+  await page.waitForTimeout(2200); // remaining pad to cover the 6.19s beat
+
+  // ---- 04_dashboard (5.71s VO) ----
+  await page.waitForTimeout(400);
+  beatLog.push({ id: "04_dashboard", t: Date.now() - t0 });
+  try {
+    const attendanceCard = page.getByText("Attendance Rate").locator("..").locator("..");
+    const bounds = await attendanceCard.boundingBox();
+    if (bounds) {
+      const cal = await page.screencast.showOverlay(
+        callout(bounds.x, bounds.y - 40, "Real-time attendance")
+      );
+      await page.waitForTimeout(2200);
+      await cal.dispose();
+    }
+  } catch {
+    /* card not found — hold on the KPI row regardless */
+  }
+  await page.mouse.wheel(0, 380);
+  await page.waitForTimeout(3700);
+
+  // ---- 05_scheduling (5.98s VO) ----
+  await page.goto("http://localhost:5173/admin/sessions");
+  await page.waitForTimeout(500);
+  beatLog.push({ id: "05_scheduling", t: Date.now() - t0 });
+  try {
+    const scheduleBtn = page.getByRole("button", { name: /Schedule Session/i });
+    const bounds = await scheduleBtn.boundingBox();
+    if (bounds) {
+      const cal = await page.screencast.showOverlay(
+        callout(bounds.x - 40, bounds.y - 40, "Schedule in one click")
+      );
+      await page.waitForTimeout(2400);
+      await cal.dispose();
+    }
+  } catch {
+    /* ignore */
+  }
+  await page.waitForTimeout(3500);
+
+  // ---- 06_billing (6.43s VO) ----
+  await page.goto("http://localhost:5173/admin/billing");
+  await page.waitForTimeout(500);
+  beatLog.push({ id: "06_billing", t: Date.now() - t0 });
+  const allInvoicesTab = page.getByText("All Invoices", { exact: true });
+  await allInvoicesTab.click();
+  await page.waitForTimeout(900);
+  try {
+    const overduePill = page.getByText("Overdue").first();
+    const bounds = await overduePill.boundingBox();
+    if (bounds) {
+      const cal = await page.screencast.showOverlay(
+        callout(bounds.x, bounds.y - 40, "Overdue accounts flagged automatically")
+      );
+      await page.waitForTimeout(2400);
+      await cal.dispose();
+    }
+  } catch {
+    /* ignore */
+  }
+  await page.waitForTimeout(2900);
+
+  // ---- 07_reports (5.69s VO) ----
+  await page.goto("http://localhost:5173/admin/reports");
+  await page.waitForTimeout(500);
+  beatLog.push({ id: "07_reports", t: Date.now() - t0 });
+  const generateBtn = page.getByRole("button", { name: "Generate" });
+  await generateBtn.hover();
+  await page.waitForTimeout(300);
+  await generateBtn.click();
+  await page.waitForTimeout(1200);
+  try {
+    const exportBtn = page.getByRole("button", { name: /Export CSV/i });
+    const bounds = await exportBtn.boundingBox();
+    if (bounds) {
+      const cal = await page.screencast.showOverlay(
+        callout(bounds.x - 160, bounds.y - 40, "Export as CSV")
+      );
+      await page.waitForTimeout(2300);
+      await cal.dispose();
+    }
+  } catch {
+    /* ignore */
+  }
+  await page.waitForTimeout(1500);
+
+  // ---- 08_differentiator (5.69s VO) ----
+  await page.waitForTimeout(300);
+  beatLog.push({ id: "08_differentiator", t: Date.now() - t0 });
+  await page.screencast.showChapter("8 role-based portals. 1 system.", {
+    description: "Nothing stitched together after the fact.",
+    duration: 6100,
+  });
+  await page.waitForTimeout(6100);
+
+  // ---- 09_cta (7.15s VO) ----
+  await page.waitForTimeout(300);
+  beatLog.push({ id: "09_cta", t: Date.now() - t0 });
+  await page.screencast.showChapter("Meet to Manage", {
+    description: "Book your free demo at meettomanage.cloud",
+    duration: 7700,
+  });
+  await page.waitForTimeout(7700);
+
+  await page.screencast.stop();
+  return beatLog;
+}
+)(page);
+```
+### Page
+- Page URL: http://localhost:5173/admin/reports
+- Page Title: Meet to Manage
+- Console: 0 errors, 2 warnings
+### Events
+- New console entries: .playwright-cli\console-2026-08-29T13-21-43-174Z.log#L4-L18

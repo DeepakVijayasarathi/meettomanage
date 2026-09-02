@@ -1,0 +1,96 @@
+- generic [ref=f9e3]:
+  - link "Skip to content" [ref=f9e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - complementary [ref=f9e5]:
+    - generic [ref=f9e7]:
+      - img "Meet to Manage" [ref=f9e9]
+      - generic [ref=f9e10]: Meet to Manage
+    - generic [ref=f9e11]: Admin Portal
+    - navigation [ref=f9e14]:
+      - link "Dashboard" [ref=f9e17] [cursor=pointer]:
+        - /url: /admin
+      - generic [ref=f9e26]:
+        - paragraph [ref=f9e27]: Academics
+        - generic [ref=f9e28]:
+          - link "Courses" [ref=f9e29] [cursor=pointer]:
+            - /url: /admin/courses
+          - link "Departments" [ref=f9e35] [cursor=pointer]:
+            - /url: /admin/departments
+          - link "Batches" [ref=f9e43] [cursor=pointer]:
+            - /url: /admin/batches
+          - link "Academic Calendar" [ref=f9e51] [cursor=pointer]:
+            - /url: /admin/calendar
+          - link "Sessions" [ref=f9e57] [cursor=pointer]:
+            - /url: /admin/sessions
+          - link "Quiz Bank" [ref=f9e65] [cursor=pointer]:
+            - /url: /admin/quiz-bank
+      - generic [ref=f9e71]:
+        - paragraph [ref=f9e72]: People
+        - generic [ref=f9e73]:
+          - link "Users" [ref=f9e74] [cursor=pointer]:
+            - /url: /admin/users
+          - link "Roles & Permissions" [ref=f9e83] [cursor=pointer]:
+            - /url: /admin/permissions
+          - link "Enrollment Review" [ref=f9e90] [cursor=pointer]:
+            - /url: /admin/enrollments
+          - link "Store Inquiries" [ref=f9e98] [cursor=pointer]:
+            - /url: /admin/store-inquiries
+      - generic [ref=f9e105]:
+        - paragraph [ref=f9e106]: Content
+        - link "Content & Resources" [ref=f9e108] [cursor=pointer]:
+          - /url: /admin/resources
+      - generic [ref=f9e114]:
+        - paragraph [ref=f9e115]: Finance
+        - generic [ref=f9e116]:
+          - link "Billing & Finance" [ref=f9e117] [cursor=pointer]:
+            - /url: /admin/billing
+          - link "Packages & Subscriptions" [ref=f9e124] [cursor=pointer]:
+            - /url: /admin/packages
+          - link "Payment Gateway Mapping" [ref=f9e130] [cursor=pointer]:
+            - /url: /admin/payment-mapping
+          - link "Teacher Payouts" [ref=f9e136] [cursor=pointer]:
+            - /url: /admin/payouts
+          - link "Fee Suspension 2" [ref=f9e143] [cursor=pointer]:
+            - /url: /admin/fee-suspension
+            - generic [ref=f9e144]: Fee Suspension
+            - generic [ref=f9e150]: "2"
+      - generic [ref=f9e151]:
+        - paragraph [ref=f9e152]: Insights
+        - generic [ref=f9e153]:
+          - link "Reports & Analytics" [ref=f9e154] [cursor=pointer]:
+            - /url: /admin/reports
+          - link "Bulk Email" [ref=f9e160] [cursor=pointer]:
+            - /url: /admin/bulk-email
+          - link "Email Templates" [ref=f9e167] [cursor=pointer]:
+            - /url: /admin/email-templates
+          - link "Progress Reports" [ref=f9e174] [cursor=pointer]:
+            - /url: /admin/progress-reports
+          - link "Doubt Chatbot" [ref=f9e181] [cursor=pointer]:
+            - /url: /admin/chatbot
+      - generic [ref=f9e188]:
+        - paragraph [ref=f9e189]: System
+        - generic [ref=f9e190]:
+          - link "Settings & Branding" [ref=f9e191] [cursor=pointer]:
+            - /url: /admin/settings
+          - link "Server Monitoring" [ref=f9e198] [cursor=pointer]:
+            - /url: /admin/monitoring
+      - generic [ref=f9e204]:
+        - paragraph [ref=f9e205]: Marketing
+        - generic [ref=f9e206]:
+          - link "Demo Requests" [ref=f9e207] [cursor=pointer]:
+            - /url: /admin/demo-requests
+          - link "Blog Posts" [ref=f9e216] [cursor=pointer]:
+            - /url: /admin/blog-posts
+    - button "Collapse sidebar" [ref=f9e223] [cursor=pointer]: Collapse
+  - generic [ref=f9e227]:
+    - banner [ref=f9e228]:
+      - heading "Admin Portal" [level=2] [ref=f9e229]
+      - generic [ref=f9e230]:
+        - button "Switch to dark mode" [ref=f9e231] [cursor=pointer]
+        - button "Notifications, 3 unread" [ref=f9e234] [cursor=pointer]:
+          - generic [ref=f9e238]: "3"
+        - button "Account menu for Ananya Rao" [ref=f9e239] [cursor=pointer]:
+          - generic [ref=f9e240]: AR
+    - main [ref=f9e242]
+  - button "Open my notes" [ref=f9e247] [cursor=pointer]
+  - button "Ask a doubt" [ref=f9e251] [cursor=pointer]

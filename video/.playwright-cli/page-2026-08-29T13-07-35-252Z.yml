@@ -1,0 +1,61 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - paragraph: © 2026 Meet to Manage
+        - generic:
+          - generic: Live Classes
+          - generic: Attendance
+          - generic: Fees
+        - generic:
+          - heading [level=1]: Teach live. Track everything.
+          - paragraph: Classes, attendance, fees, and reports in one focused workspace for your institute.
+      - generic:
+        - generic:
+          - generic:
+            - heading [level=2]: Welcome back
+            - paragraph: Sign in to your account and continue
+          - generic:
+            - generic:
+              - generic: Email
+              - generic:
+                - textbox:
+                  - /placeholder: you@meettomanage.cloud
+                  - text: demo@meettomanage.cloud
+            - generic:
+              - generic: PIN
+              - generic:
+                - textbox:
+                  - /placeholder: Enter your PIN
+                  - text: "1234"
+                - button
+            - generic:
+              - generic: Preview as (demo)
+              - combobox [expanded]:
+                - generic: Admin Portal
+              - combobox
+            - generic:
+              - generic:
+                - checkbox [checked]
+                - checkbox [checked]
+                - text: Remember me
+              - link:
+                - /url: /forgot-password
+                - text: Forgot your PIN?
+            - button: Sign in to Admin
+          - paragraph:
+            - text: New here?
+            - link:
+              - /url: /
+              - text: Explore More
+          - paragraph: This is a demo build with mock data — no credentials are verified.
+          - paragraph: Powered by Meet to Manage
+  - listbox [ref=f9e9]:
+    - option "Admin Portal" [active] [selected] [ref=f9e10] [cursor=pointer]
+    - option "Teacher Portal" [ref=f9e18] [cursor=pointer]
+    - option "Parent Portal" [ref=f9e23] [cursor=pointer]
+    - option "Parent Relationship Manager" [ref=f9e28] [cursor=pointer]
+    - option "Admission Team Portal" [ref=f9e33] [cursor=pointer]
+    - option "Academic Coordinator" [ref=f9e38] [cursor=pointer]
+    - option "Management Dashboard" [ref=f9e43] [cursor=pointer]
+    - option "Student Experience" [ref=f9e48] [cursor=pointer]

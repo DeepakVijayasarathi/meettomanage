@@ -1,0 +1,230 @@
+- generic [ref=f2e3]:
+  - link "Skip to content" [ref=f2e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - complementary [ref=f2e5]:
+    - generic [ref=f2e7]:
+      - img "Meet to Manage" [ref=f2e9]
+      - generic [ref=f2e10]: Meet to Manage
+    - generic [ref=f2e11]: Admin Portal
+    - navigation [ref=f2e14]:
+      - link "Dashboard" [ref=f2e17] [cursor=pointer]:
+        - /url: /admin
+      - generic [ref=f2e26]:
+        - paragraph [ref=f2e27]: Academics
+        - generic [ref=f2e28]:
+          - link "Courses" [ref=f2e29] [cursor=pointer]:
+            - /url: /admin/courses
+          - link "Departments" [ref=f2e35] [cursor=pointer]:
+            - /url: /admin/departments
+          - link "Batches" [ref=f2e43] [cursor=pointer]:
+            - /url: /admin/batches
+          - link "Academic Calendar" [ref=f2e51] [cursor=pointer]:
+            - /url: /admin/calendar
+          - link "Sessions" [ref=f2e57] [cursor=pointer]:
+            - /url: /admin/sessions
+          - link "Quiz Bank" [ref=f2e65] [cursor=pointer]:
+            - /url: /admin/quiz-bank
+      - generic [ref=f2e71]:
+        - paragraph [ref=f2e72]: People
+        - generic [ref=f2e73]:
+          - link "Users" [ref=f2e74] [cursor=pointer]:
+            - /url: /admin/users
+          - link "Roles & Permissions" [ref=f2e83] [cursor=pointer]:
+            - /url: /admin/permissions
+          - link "Enrollment Review" [ref=f2e90] [cursor=pointer]:
+            - /url: /admin/enrollments
+          - link "Store Inquiries" [ref=f2e98] [cursor=pointer]:
+            - /url: /admin/store-inquiries
+      - generic [ref=f2e105]:
+        - paragraph [ref=f2e106]: Content
+        - link "Content & Resources" [ref=f2e108] [cursor=pointer]:
+          - /url: /admin/resources
+      - generic [ref=f2e114]:
+        - paragraph [ref=f2e115]: Finance
+        - generic [ref=f2e116]:
+          - link "Billing & Finance" [ref=f2e117] [cursor=pointer]:
+            - /url: /admin/billing
+          - link "Packages & Subscriptions" [ref=f2e124] [cursor=pointer]:
+            - /url: /admin/packages
+          - link "Payment Gateway Mapping" [ref=f2e130] [cursor=pointer]:
+            - /url: /admin/payment-mapping
+          - link "Teacher Payouts" [ref=f2e136] [cursor=pointer]:
+            - /url: /admin/payouts
+          - link "Fee Suspension 2" [ref=f2e143] [cursor=pointer]:
+            - /url: /admin/fee-suspension
+            - generic [ref=f2e144]: Fee Suspension
+            - generic [ref=f2e150]: "2"
+      - generic [ref=f2e151]:
+        - paragraph [ref=f2e152]: Insights
+        - generic [ref=f2e153]:
+          - link "Reports & Analytics" [ref=f2e154] [cursor=pointer]:
+            - /url: /admin/reports
+          - link "Bulk Email" [ref=f2e160] [cursor=pointer]:
+            - /url: /admin/bulk-email
+          - link "Email Templates" [ref=f2e167] [cursor=pointer]:
+            - /url: /admin/email-templates
+          - link "Progress Reports" [ref=f2e174] [cursor=pointer]:
+            - /url: /admin/progress-reports
+          - link "Doubt Chatbot" [ref=f2e181] [cursor=pointer]:
+            - /url: /admin/chatbot
+      - generic [ref=f2e188]:
+        - paragraph [ref=f2e189]: System
+        - generic [ref=f2e190]:
+          - link "Settings & Branding" [ref=f2e191] [cursor=pointer]:
+            - /url: /admin/settings
+          - link "Server Monitoring" [ref=f2e198] [cursor=pointer]:
+            - /url: /admin/monitoring
+      - generic [ref=f2e204]:
+        - paragraph [ref=f2e205]: Marketing
+        - generic [ref=f2e206]:
+          - link "Demo Requests" [ref=f2e207] [cursor=pointer]:
+            - /url: /admin/demo-requests
+          - link "Blog Posts" [ref=f2e216] [cursor=pointer]:
+            - /url: /admin/blog-posts
+    - button "Collapse sidebar" [ref=f2e223] [cursor=pointer]: Collapse
+  - generic [ref=f2e227]:
+    - banner [ref=f2e228]:
+      - heading "Admin Portal" [level=2] [ref=f2e229]
+      - generic [ref=f2e230]:
+        - button "Switch to dark mode" [ref=f2e231] [cursor=pointer]
+        - button "Notifications, 3 unread" [ref=f2e234] [cursor=pointer]:
+          - generic [ref=f2e238]: "3"
+        - button "Account menu for Ananya Rao" [ref=f2e239] [cursor=pointer]:
+          - generic [ref=f2e240]: AR
+    - main [ref=f2e242]:
+      - generic [ref=f2e255]:
+        - generic [ref=f2e257]:
+          - generic [ref=f2e258]: Finance
+          - heading "Billing & Finance" [level=1] [ref=f2e260]
+          - paragraph [ref=f2e261]: Track packages, invoices, receipts and refunds across every parent account.
+        - generic [ref=f2e262]:
+          - generic [ref=f2e265]:
+            - paragraph [ref=f2e266]: Total Revenue Collected
+            - paragraph [ref=f2e267]: ₹16,200
+          - generic [ref=f2e274]:
+            - paragraph [ref=f2e275]: Pending Invoices
+            - paragraph [ref=f2e276]: 2 · ₹5,300
+          - generic [ref=f2e283]:
+            - paragraph [ref=f2e284]: Overdue Invoices
+            - paragraph [ref=f2e285]: 2 · ₹9,700
+        - generic [ref=f2e289]:
+          - tablist [ref=f2e290]:
+            - tab "Needs Your Action" [ref=f2e291] [cursor=pointer]
+            - tab "All Invoices" [active] [selected] [ref=f2e292] [cursor=pointer]
+          - tabpanel "Needs Your Action"
+          - tabpanel "All Invoices" [ref=f2e293]:
+            - generic [ref=f2e294]:
+              - textbox "Search invoices by ID or student…" [ref=f2e297]
+              - table [ref=f2e300]:
+                - rowgroup [ref=f2e301]:
+                  - row [ref=f2e302]:
+                    - columnheader [ref=f2e303]:
+                      - button "Invoice" [ref=f2e304] [cursor=pointer]
+                    - columnheader [ref=f2e308]:
+                      - button "Department" [ref=f2e309] [cursor=pointer]
+                    - columnheader "Course" [ref=f2e313]
+                    - columnheader [ref=f2e314]:
+                      - button "Amount" [ref=f2e315] [cursor=pointer]
+                    - columnheader [ref=f2e319]:
+                      - button "Status" [ref=f2e320] [cursor=pointer]
+                    - columnheader [ref=f2e324]:
+                      - button "Issued" [ref=f2e325] [cursor=pointer]
+                    - columnheader [ref=f2e329]:
+                      - button "Due" [ref=f2e330] [cursor=pointer]
+                - rowgroup [ref=f2e334]:
+                  - button [ref=f2e335] [cursor=pointer]:
+                    - cell [ref=f2e336]:
+                      - generic [ref=f2e342]:
+                        - paragraph [ref=f2e343]: INV-2026-1001
+                        - paragraph [ref=f2e344]: Aarav Kapoor
+                    - cell "Phonics" [ref=f2e345]
+                    - cell "Phonics Foundations" [ref=f2e347]
+                    - cell "₹2,500" [ref=f2e348]
+                    - cell "Paid" [ref=f2e349]
+                    - cell "1 Jun 2026" [ref=f2e351]
+                    - cell "10 Jun 2026" [ref=f2e352]
+                  - button [ref=f2e353] [cursor=pointer]:
+                    - cell [ref=f2e354]:
+                      - generic [ref=f2e360]:
+                        - paragraph [ref=f2e361]: INV-2026-1002
+                        - paragraph [ref=f2e362]: Diya Kapoor
+                    - cell "Phonics" [ref=f2e363]
+                    - cell "Reading Adventures" [ref=f2e365]
+                    - cell "₹2,800" [ref=f2e366]
+                    - cell "Pending" [ref=f2e367]
+                    - cell "1 Jul 2026" [ref=f2e369]
+                    - cell "12 Jul 2026" [ref=f2e370]
+                  - button [ref=f2e371] [cursor=pointer]:
+                    - cell [ref=f2e372]:
+                      - generic [ref=f2e378]:
+                        - paragraph [ref=f2e379]: INV-2026-1003
+                        - paragraph [ref=f2e380]: Ishaan Singh
+                    - cell "Maths" [ref=f2e381]
+                    - cell "Math Explorers Jr" [ref=f2e383]
+                    - cell "₹3,200" [ref=f2e384]
+                    - cell "Paid" [ref=f2e385]
+                    - cell "28 Jun 2026" [ref=f2e387]
+                    - cell "5 Jul 2026" [ref=f2e388]
+                  - button [ref=f2e389] [cursor=pointer]:
+                    - cell [ref=f2e390]:
+                      - generic [ref=f2e396]:
+                        - paragraph [ref=f2e397]: INV-2026-1004
+                        - paragraph [ref=f2e398]: Ananya Gupta
+                    - cell "Phonics" [ref=f2e399]
+                    - cell "Phonics Foundations" [ref=f2e401]
+                    - cell "₹2,500" [ref=f2e402]
+                    - cell "Paid" [ref=f2e403]
+                    - cell "15 Jun 2026" [ref=f2e405]
+                    - cell "25 Jun 2026" [ref=f2e406]
+                  - button [ref=f2e407] [cursor=pointer]:
+                    - cell [ref=f2e408]:
+                      - generic [ref=f2e414]:
+                        - paragraph [ref=f2e415]: INV-2026-1005
+                        - paragraph [ref=f2e416]: Zara Khan
+                    - cell "Maths" [ref=f2e417]
+                    - cell "Math Champions" [ref=f2e419]
+                    - cell "₹5,200" [ref=f2e420]
+                    - cell "Overdue" [ref=f2e421]
+                    - cell "1 Jun 2026" [ref=f2e423]
+                    - cell "10 Jun 2026" [ref=f2e424]
+                  - button [ref=f2e425] [cursor=pointer]:
+                    - cell [ref=f2e426]:
+                      - generic [ref=f2e432]:
+                        - paragraph [ref=f2e433]: INV-2026-1006
+                        - paragraph [ref=f2e434]: Vivaan Bhatt
+                    - cell "Phonics" [ref=f2e435]
+                    - cell "Creative Writing Workshop" [ref=f2e437]
+                    - cell "₹3,000" [ref=f2e438]
+                    - cell "Paid" [ref=f2e439]
+                    - cell "20 Jun 2026" [ref=f2e441]
+                    - cell "30 Jun 2026" [ref=f2e442]
+                  - button [ref=f2e443] [cursor=pointer]:
+                    - cell [ref=f2e444]:
+                      - generic [ref=f2e450]:
+                        - paragraph [ref=f2e451]: INV-2026-1007
+                        - paragraph [ref=f2e452]: Myra Joshi
+                    - cell "Phonics" [ref=f2e453]
+                    - cell "Advanced Phonics Mastery" [ref=f2e455]
+                    - cell "₹4,500" [ref=f2e456]
+                    - cell "Overdue" [ref=f2e457]
+                    - cell "25 May 2026" [ref=f2e459]
+                    - cell "4 Jun 2026" [ref=f2e460]
+                  - button [ref=f2e461] [cursor=pointer]:
+                    - cell [ref=f2e462]:
+                      - generic [ref=f2e468]:
+                        - paragraph [ref=f2e469]: INV-2026-1008
+                        - paragraph [ref=f2e470]: Reyansh Reddy
+                    - cell "Phonics" [ref=f2e471]
+                    - cell "Phonics Foundations" [ref=f2e473]
+                    - cell "₹2,500" [ref=f2e474]
+                    - cell "Partially Paid" [ref=f2e475]
+                    - cell "18 Jun 2026" [ref=f2e477]
+                    - cell "28 Jun 2026" [ref=f2e478]
+              - generic [ref=f2e479]:
+                - generic [ref=f2e480]: Showing 1–8 of 11
+                - generic [ref=f2e481]:
+                  - button "Previous page" [disabled]
+                  - generic [ref=f2e482]: Page 1 / 2
+                  - button "Next page" [ref=f2e483] [cursor=pointer]
+  - button "Open my notes" [ref=f2e247] [cursor=pointer]
+  - button "Ask a doubt" [ref=f2e251] [cursor=pointer]

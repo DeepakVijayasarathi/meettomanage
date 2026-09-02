@@ -13,6 +13,7 @@ import {
   Layers,
   Lock,
   Mail,
+  Megaphone,
   MessageCircle,
   MessageSquare,
   PenTool,
@@ -38,6 +39,47 @@ import { useLightBrandScope } from "@/lib/theme";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useInView } from "@/hooks/useInView";
 import { cn } from "@/lib/utils";
+
+/** Cycles one word in place on a timer — used in a couple of hero spots so the same line of
+ *  copy speaks to both the institute and personal-coach audiences instead of a second badge
+ *  competing with the primary one. `colors` maps a specific word to its own text color (e.g.
+ *  "clients" in green) — words with no entry inherit the surrounding text color. A true
+ *  crossfade (fade + slide the outgoing word down and out, then the incoming word up and in)
+ *  rather than a plain cut, via a two-phase transition instead of a one-shot keyframe. Skips
+ *  the timer under prefers-reduced-motion; the word just holds on the first entry, static. */
+function CyclingWord({ words, colors }: { words: readonly string[]; colors?: Record<string, string> }) {
+  const [index, setIndex] = useState(0);
+  const [entering, setEntering] = useState(true);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let exitTimeout: ReturnType<typeof setTimeout>;
+    const id = setInterval(() => {
+      setEntering(false);
+      exitTimeout = setTimeout(() => {
+        setIndex((i) => (i + 1) % words.length);
+        setEntering(true);
+      }, 300);
+    }, 2600);
+    return () => {
+      clearInterval(id);
+      clearTimeout(exitTimeout);
+    };
+  }, [words.length]);
+
+  const word = words[index];
+  return (
+    <span
+      className={cn(
+        "inline-block transition-all duration-300 ease-out",
+        entering ? "translate-y-0 opacity-100" : "-translate-y-1.5 opacity-0",
+        colors?.[word]
+      )}
+    >
+      {word}
+    </span>
+  );
+}
 
 /** Fades and slides an element up once it scrolls into view — plays once, not on every pass. */
 function Reveal({ children, delayMs = 0, className }: { children: React.ReactNode; delayMs?: number; className?: string }) {
@@ -288,6 +330,67 @@ function DemoPopup() {
   );
 }
 
+/** Official Product Hunt "featured" badge for this exact launch post (post_id 1238365) — a
+    live SVG that shows the real, current upvote count rather than a static image, from
+    Product Hunt's own "Embed" dialog for this post. The href carries PH's own badge-campaign
+    tracking params, separate from a plain outbound link. */
+const PRODUCT_HUNT_BADGE_HREF =
+  "https://www.producthunt.com/products/meet-to-manage?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-meet-to-manage";
+const PRODUCT_HUNT_BADGE_SRC = "https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1238365&theme=light";
+
+/** Session key so a visitor who dismisses the launch banner doesn't see it again for the rest
+    of that browser session (same one-shot pattern as DEMO_POPUP_SEEN_KEY above). */
+const LAUNCH_BANNER_DISMISSED_KEY = "trn.launchBanner.dismissed";
+
+/** Dismissible top announcement bar for the Product Hunt launch, carrying the official live
+    badge (see PRODUCT_HUNT_BADGE_SRC above). Light background so the badge's own white canvas
+    doesn't sit inside a mismatched box. Reads sessionStorage synchronously on first render (no
+    flash of an already-dismissed banner); dismissal doesn't persist past the session, so a
+    later visit still sees it while the launch is current. */
+function LaunchBanner() {
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem(LAUNCH_BANNER_DISMISSED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  if (dismissed) return null;
+
+  function handleDismiss() {
+    setDismissed(true);
+    try {
+      sessionStorage.setItem(LAUNCH_BANNER_DISMISSED_KEY, "1");
+    } catch {
+      /* nothing to persist to — the banner just shows again next load */
+    }
+  }
+
+  return (
+    <div className="relative flex flex-wrap items-center justify-center gap-3 border-b border-black/10 bg-[#FFF3EA] px-10 py-2.5 text-center">
+      <p className="text-xs font-bold text-[#C2410C] sm:text-sm">🚀 We're live on Product Hunt today!</p>
+      <a href={PRODUCT_HUNT_BADGE_HREF} target="_blank" rel="noopener noreferrer">
+        <img
+          src={PRODUCT_HUNT_BADGE_SRC}
+          alt="Meet to Manage - One login instead of five apps for your academy | Product Hunt"
+          width={250}
+          height={54}
+          className="h-auto w-[180px] sm:w-[220px]"
+        />
+      </a>
+      <button
+        type="button"
+        onClick={handleDismiss}
+        aria-label="Dismiss"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C2410C]/50 transition-colors hover:text-[#C2410C]"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 /** Real product screenshots (captured from the actual admin portal in demo mode — seed/demo
     data, not a real customer's) — a plain framed image rather than a fake browser-chrome
     shell, since the screenshot already contains the app's own real header and nav. */
@@ -405,6 +508,15 @@ const PAIN_POINTS: PainPoint[] = [
   },
 ];
 
+interface ClientLogo {
+  name: string;
+  logo: string;
+}
+
+/** Real academies already teaching on the platform — short list today, structured to grow as
+    more come on board rather than a one-off, hard-to-extend layout. No invented names/counts. */
+const CLIENTS: ClientLogo[] = [{ name: "The Reader Nest", logo: "/clients/thereader.png" }];
+
 const STATS: { value: string; label: string; icon: LucideIcon }[] = [
   { value: "8", label: "Role-based portals", icon: Layers },
   { value: "100%", label: "Real-time classroom", icon: Video },
@@ -449,6 +561,15 @@ const SOLUTIONS: SolutionAudience[] = [
     chips: ["Live Classroom", "One login, every role"],
     ctaLabel: "Explore Portals",
     ctaTo: "/portal-select",
+  },
+  {
+    icon: Megaphone,
+    title: "Influencers & personal-brand coaches",
+    description:
+      "Built an audience on social media or a personal following, and now converting that reach through a single online master class — with scheduling, billing and follow-up handled in one place instead of DMs and spreadsheets.",
+    chips: ["Live Classroom", "Billing & Payments"],
+    ctaLabel: "See how it works",
+    ctaTo: "/get-started?for=coach",
   },
 ];
 
@@ -503,6 +624,7 @@ const NAV_LINKS = [
   { label: "Features", href: "#features" },
   { label: "Portals", href: "#portals" },
   { label: "Solutions", href: "#solutions" },
+  { label: "Pricing", href: "/pricing" },
   { label: "FAQ", href: "#faq" },
   { label: "Blog", href: "/blog" },
 ];
@@ -557,10 +679,12 @@ export default function MarketingHome() {
         description="Meet to Manage brings live teaching, scheduling, admissions, billing and reporting into one role-based platform for schools and academies."
         path="/"
       />
+      <LaunchBanner />
+
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
-          <Logo wordmarkClassName="hidden sm:inline" />
+          <img src="/logo-full.png" alt={brand.name} className="h-14 w-auto shrink-0 object-contain sm:h-20" />
 
           {/* Section anchors — desktop only. On narrow screens there's only room for the two
               CTAs (see the mobile-header wrap this replaced), so wayfinding there stays limited
@@ -605,13 +729,16 @@ export default function MarketingHome() {
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-6 py-14 lg:grid-cols-[1.15fr_380px] lg:gap-16 lg:py-24">
           <div>
           <div className="motion-safe:animate-slide-up inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
-            <Sparkles className="h-3.5 w-3.5" /> Learning Management &amp; Virtual Classroom Platform
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>
+              <CyclingWord words={["Learning", "Coaching"]} /> Management &amp; Virtual Classroom Platform
+            </span>
           </div>
           <h1
             className="motion-safe:animate-slide-up font-display mt-5 text-4xl font-extrabold leading-[1.14] tracking-tight sm:text-5xl"
             style={{ animationDelay: "80ms", animationFillMode: "backwards" }}
           >
-            Meet your students live.
+            Meet your <CyclingWord words={["students", "clients"]} colors={{ clients: "text-[#16A34A]" }} /> live.
             <span className="text-[#EA580C]"> Manage</span> your academy end to end.
           </h1>
           <p
@@ -659,7 +786,7 @@ export default function MarketingHome() {
 
         {/* Hero visual: autoplaying 60-second reel, replacing the earlier static mockup. */}
         <div
-          className="motion-safe:animate-slide-up relative w-full max-w-[260px] sm:max-w-[300px]"
+          className="motion-safe:animate-slide-up relative mx-auto w-full sm:max-w-[300px]"
           style={{ animationDelay: "160ms", animationFillMode: "backwards" }}
         >
           {/* Inset (not overlapping above/left of the card via a negative offset) so it's
@@ -674,9 +801,33 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* Social proof strip — no fabricated customer counts or logos exist for this product yet,
-          so this states real, verifiable platform facts instead of an invented "Trusted by..."
-          claim. Swap the eyebrow to real customer trust language once that data exists. */}
+      {/* Clients — real academies already teaching on the platform. Grows as more come on
+          board; each logo is circle-cropped onto a white background for a consistent look
+          regardless of the source file's own canvas. */}
+      <section className="border-t border-black/10 bg-white py-10 sm:py-12">
+        <div className="mx-auto max-w-6xl px-6">
+          <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#8B93A1]">
+            Academies already teaching on {brand.name}
+          </p>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
+            {CLIENTS.map((c) => (
+              <div key={c.name} className="flex items-center gap-3">
+                <img
+                  src={c.logo}
+                  alt={`${c.name} logo`}
+                  loading="lazy"
+                  className="h-14 w-14 rounded-full bg-white object-cover ring-1 ring-black/10"
+                />
+                <span className="text-sm font-bold text-[#171B22]">{c.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Social proof strip — no fabricated customer counts exist for this product beyond the
+          real clients above, so this states verifiable platform facts rather than an invented
+          "Trusted by 1,000+ academies" claim. */}
       <section className="border-y border-black/10 bg-[#F5F6F9] py-10 sm:py-12">
         <div className="mx-auto max-w-6xl px-6">
           <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#8B93A1]">What's already built in</p>
@@ -993,7 +1144,7 @@ export default function MarketingHome() {
             </p>
           </div>
 
-          <div className="mt-12 grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {SOLUTIONS.map((s, i) => (
               <Reveal key={s.title} delayMs={i * 100}>
                 <div className="flex h-full flex-col rounded-2xl border border-black/10 bg-white p-6">
@@ -1157,7 +1308,7 @@ export default function MarketingHome() {
       <footer className="border-t border-black/10 bg-[#F5F6F9] pb-8 pt-14">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-10 px-6 sm:grid-cols-4">
           <div className="col-span-2 sm:col-span-1">
-            <Logo imgClassName="h-8 w-8" />
+            <Logo imgClassName="h-12 w-12" />
             <p className="mt-4 max-w-[22ch] text-sm leading-relaxed text-[#5B6472]">
               Live teaching, scheduling, admissions and billing — one role-based system for your whole academy.
             </p>
