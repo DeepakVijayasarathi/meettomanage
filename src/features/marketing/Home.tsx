@@ -206,7 +206,7 @@ const DEMO_POPUP_SEEN_KEY = "trn.demoPopup.seen";
  * so it falls back to a 25s on-page timer instead. Either way it fires once per session
  * (sessionStorage, not localStorage — a genuinely new visit gets one shot at this again).
  */
-function DemoPopup({ onBookClass }: { onBookClass: () => void }) {
+function DemoPopup() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -231,9 +231,15 @@ function DemoPopup({ onBookClass }: { onBookClass: () => void }) {
       if (e.clientY <= 0) trigger();
     }
 
-    document.addEventListener("mouseleave", handleMouseLeave);
+    // Exit-intent only arms after a few seconds on the page — attaching it immediately
+    // was firing on completely ordinary interactions right after load (clicking the nav,
+    // glancing at the address bar), not genuine "about to leave" behavior.
+    const armTimer = window.setTimeout(() => {
+      document.addEventListener("mouseleave", handleMouseLeave);
+    }, 5_000);
     const fallbackTimer = window.setTimeout(trigger, 25_000);
     return () => {
+      window.clearTimeout(armTimer);
       document.removeEventListener("mouseleave", handleMouseLeave);
       window.clearTimeout(fallbackTimer);
     };
@@ -268,25 +274,13 @@ function DemoPopup({ onBookClass }: { onBookClass: () => void }) {
           Before you go — see it running
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-[#5B6472]">
-          A 30-minute walkthrough for academy owners, or a free class demo if you're a parent —
-          no payment details either way.
+          A 30-minute walkthrough for academy owners — no payment details required.
         </p>
-        <div className="mt-5 flex flex-col gap-2.5">
+        <div className="mt-5">
           <Button asChild size="lg" className="w-full !bg-[#F97316] !text-white hover:!bg-[#EA580C]">
             <Link to="/get-started" onClick={() => setOpen(false)}>
               Request a Demo <ArrowRight className="h-4 w-4" />
             </Link>
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            className="w-full border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5"
-            onClick={() => {
-              setOpen(false);
-              onBookClass();
-            }}
-          >
-            Book a Class Demo
           </Button>
         </div>
       </div>
@@ -1289,7 +1283,7 @@ export default function MarketingHome() {
 
       <BookDemoDialog open={demoOpen} onOpenChange={setDemoOpen} />
       <ChatWidget />
-      <DemoPopup onBookClass={() => setDemoOpen(true)} />
+      <DemoPopup />
     </div>
   );
 }
