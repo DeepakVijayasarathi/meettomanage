@@ -109,7 +109,9 @@ export interface ApiTeacherPerformance {
   sessionsCompleted: number;
   teacherNoShows: number;
   upcomingSessions: number;
-  studentAttendancePercent: number;
+  /** Null when this teacher has no completed, attendance-marked sessions yet — distinct
+   *  from a real 0%. Render as "No data", not as a default percentage. */
+  studentAttendancePercent: number | null;
   summariesWritten: number;
   /** Status + total only — see TeacherPayoutSummary's own doc comment on why this stays
    *  narrower than the full payout detail GET /api/payouts (Admin-only) returns. Null when

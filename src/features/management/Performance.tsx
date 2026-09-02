@@ -91,7 +91,10 @@ export default function ManagementPerformance() {
             joinedOn: "",
             department: (t.department ?? undefined) as AppUser["department"],
           },
-          utilization: Math.round(t.studentAttendancePercent),
+          // null (not a vacuous 100%) when the teacher has no completed, attendance-marked
+          // sessions yet — undefined here already renders "No data" below rather than a
+          // misleading full bar for a teacher who hasn't delivered anything.
+          utilization: t.studentAttendancePercent === null ? undefined : Math.round(t.studentAttendancePercent),
           sessions: t.sessionsCompleted,
           payout:
             t.latestPayoutStatus && t.latestPayoutAmount !== null

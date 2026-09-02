@@ -94,7 +94,10 @@ export default function AdminReports() {
   const { data: utilization } = useApiData<{ teacher: string; utilization: number }[]>(
     () =>
       getTeacherPerformance().then((items) =>
-        items.map((t) => ({ teacher: t.teacherName, utilization: Math.round(t.studentAttendancePercent) }))
+        // null = no completed, attendance-marked sessions yet (not a real 0%, see the DTO's
+        // doc comment) — this report has no "No data" row state, so it reports 0 rather than
+        // the old vacuous 100.
+        items.map((t) => ({ teacher: t.teacherName, utilization: t.studentAttendancePercent === null ? 0 : Math.round(t.studentAttendancePercent) }))
       ),
     TEACHER_UTILIZATION
   );
