@@ -260,11 +260,11 @@ function FaqManager() {
           </DialogHeader>
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">
             <div className="grid gap-1.5">
-              <Label htmlFor="faq-question">Question</Label>
+              <Label htmlFor="faq-question">Question <span className="text-destructive">*</span></Label>
               <Input id="faq-question" value={form.question} onChange={(e) => setForm((f) => ({ ...f, question: e.target.value }))} />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="faq-answer">Answer</Label>
+              <Label htmlFor="faq-answer">Answer <span className="text-destructive">*</span></Label>
               <Textarea
                 id="faq-answer"
                 className="min-h-[100px]"

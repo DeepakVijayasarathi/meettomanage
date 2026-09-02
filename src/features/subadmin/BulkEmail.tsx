@@ -215,12 +215,12 @@ function ComposePanel({ canSend }: { canSend: boolean }) {
           )}
 
           <div className="grid gap-1.5">
-            <Label htmlFor="email-subject">Subject</Label>
+            <Label htmlFor="email-subject">Subject <span className="text-destructive">*</span></Label>
             <Input id="email-subject" placeholder="e.g. Upcoming holiday schedule" value={subject} onChange={(e) => setSubject(e.target.value)} />
           </div>
 
           <div className="grid gap-1.5">
-            <Label htmlFor="email-body">Message</Label>
+            <Label htmlFor="email-body">Message <span className="text-destructive">*</span></Label>
             <Textarea
               id="email-body"
               placeholder="Write your announcement here…"

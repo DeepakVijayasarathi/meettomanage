@@ -279,12 +279,12 @@ export default function SubAdminCourses() {
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="course-name">Course name</Label>
+              <Label htmlFor="course-name">Course name <span className="text-destructive">*</span></Label>
               <Input id="course-name" placeholder="e.g. Grammar Foundations" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="course-category-input">Category</Label>
+                <Label htmlFor="course-category-input">Category <span className="text-destructive">*</span></Label>
                 <Combobox
                   id="course-category-input"
                   value={category}

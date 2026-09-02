@@ -303,11 +303,11 @@ export default function CoordinatorCalendar() {
             {canAddHoliday && (
               <div className="flex flex-wrap items-end gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="holiday-date">Date</Label>
+                  <Label htmlFor="holiday-date">Date <span className="text-destructive">*</span></Label>
                   <Input id="holiday-date" type="date" value={holidayDate} onChange={(e) => setHolidayDate(e.target.value)} className="w-44" />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="holiday-name">Name</Label>
+                  <Label htmlFor="holiday-name">Name <span className="text-destructive">*</span></Label>
                   <Input id="holiday-name" value={holidayName} onChange={(e) => setHolidayName(e.target.value)} placeholder="e.g. Diwali" className="w-56" />
                 </div>
                 <Button onClick={handleAddHoliday} disabled={savingHoliday || !holidayDate || !holidayName.trim()}>
@@ -497,7 +497,7 @@ export default function CoordinatorCalendar() {
             </div>
             {newType === "Regular" && (
               <div className="grid gap-1.5">
-                <Label htmlFor="cc-session-batch-select">Batch</Label>
+                <Label htmlFor="cc-session-batch-select">Batch <span className="text-destructive">*</span></Label>
                 <Select value={newBatch} onValueChange={pickBatch}>
                   <SelectTrigger id="cc-session-batch-select">
                     <SelectValue placeholder="Select batch" />
@@ -513,7 +513,7 @@ export default function CoordinatorCalendar() {
               </div>
             )}
             <div className="grid gap-1.5">
-              <Label htmlFor="cc-session-teacher-select">Teacher</Label>
+              <Label htmlFor="cc-session-teacher-select">Teacher <span className="text-destructive">*</span></Label>
               <Select value={newTeacher} onValueChange={setNewTeacher}>
                 <SelectTrigger id="cc-session-teacher-select">
                   <SelectValue placeholder="Select teacher" />
@@ -529,7 +529,7 @@ export default function CoordinatorCalendar() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="cc-ns-date">Date</Label>
+                <Label htmlFor="cc-ns-date">Date <span className="text-destructive">*</span></Label>
                 <Input id="cc-ns-date" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
               </div>
               <div className="grid gap-1.5">

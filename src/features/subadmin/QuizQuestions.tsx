@@ -301,12 +301,12 @@ export default function SubAdminQuizQuestions() {
           </DialogHeader>
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">
             <div className="grid gap-1.5">
-              <Label htmlFor="qq-prompt">Question</Label>
+              <Label htmlFor="qq-prompt">Question <span className="text-destructive">*</span></Label>
               <Input id="qq-prompt" placeholder="e.g. Which letter makes the /f/ sound in 'phone'?" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="qq-department">Department</Label>
+                <Label htmlFor="qq-department">Department <span className="text-destructive">*</span></Label>
                 <Select value={departmentId} onValueChange={(v) => { setDepartmentId(v); setCourseId("__none__"); }}>
                   <SelectTrigger id="qq-department">
                     <SelectValue placeholder="Choose a department" />
