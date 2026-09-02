@@ -222,9 +222,18 @@ export default function AdmissionReports() {
 
         <ChartCard title="Demos Per Teacher" description="Demo classes conducted, all-time">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={demosPerTeacher} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+            <BarChart data={demosPerTeacher} margin={{ left: -12, right: 12, top: 8, bottom: 24 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-              <XAxis dataKey="teacher" tickLine={false} axisLine={false} fontSize={11} interval={0} angle={-12} textAnchor="end" height={44} />
+              <XAxis
+                dataKey="teacher"
+                tickLine={false}
+                axisLine={false}
+                fontSize={10}
+                interval={demosPerTeacher.length > 12 ? Math.ceil(demosPerTeacher.length / 12) - 1 : 0}
+                angle={-90}
+                textAnchor="end"
+                height={70}
+              />
               <YAxis tickLine={false} axisLine={false} fontSize={12} width={32} allowDecimals={false} />
               <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="demos" radius={[6, 6, 0, 0]} maxBarSize={40}>

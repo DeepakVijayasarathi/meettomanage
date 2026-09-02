@@ -193,9 +193,18 @@ export default function AdminReports() {
                   <Line type="monotone" dataKey="value" stroke={CHART_PALETTE[0]} strokeWidth={2.5} dot={{ r: 4, fill: CHART_PALETTE[0] }} />
                 </LineChart>
               ) : (
-                <BarChart data={rows.map(([label, value]) => ({ label, value }))} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+                <BarChart data={rows.map(([label, value]) => ({ label, value }))} margin={{ left: -12, right: 12, top: 8, bottom: generated === "performance" ? 24 : 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} interval={0} angle={generated === "performance" ? -12 : 0} textAnchor={generated === "performance" ? "end" : "middle"} height={generated === "performance" ? 44 : 24} />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    fontSize={generated === "performance" ? 10 : 11}
+                    interval={generated === "performance" && rows.length > 12 ? Math.ceil(rows.length / 12) - 1 : 0}
+                    angle={generated === "performance" ? -90 : 0}
+                    textAnchor={generated === "performance" ? "end" : "middle"}
+                    height={generated === "performance" ? 70 : 24}
+                  />
                   <YAxis tickLine={false} axisLine={false} fontSize={12} width={48} />
                   <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
                   <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={40}>
