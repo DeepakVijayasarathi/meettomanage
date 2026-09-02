@@ -71,9 +71,24 @@ const SubAdminPermissions = lazy(() => import("@/features/subadmin/Permissions")
 const SubAdminIntegrations = lazy(() => import("@/features/subadmin/Integrations"));
 const SubAdminBatches = lazy(() => import("@/features/subadmin/Batches"));
 const SubAdminPayouts = lazy(() => import("@/features/subadmin/Payouts"));
+const SubAdminCourses = lazy(() => import("@/features/subadmin/Courses"));
+const SubAdminDepartments = lazy(() => import("@/features/subadmin/Departments"));
+const SubAdminQuizQuestions = lazy(() => import("@/features/subadmin/QuizQuestions"));
+const SubAdminActivityBank = lazy(() => import("@/features/subadmin/ActivityBank"));
+const SubAdminResources = lazy(() => import("@/features/subadmin/Resources"));
+const SubAdminPackages = lazy(() => import("@/features/subadmin/Packages"));
+const SubAdminBilling = lazy(() => import("@/features/subadmin/Billing"));
+const SubAdminEnrollments = lazy(() => import("@/features/subadmin/Enrollments"));
+const SubAdminFeeSuspension = lazy(() => import("@/features/subadmin/FeeSuspension"));
+const SubAdminPaymentMapping = lazy(() => import("@/features/subadmin/PaymentMapping"));
 const SubAdminUsers = lazy(() => import("@/features/subadmin/Users"));
 const SubAdminReports = lazy(() => import("@/features/subadmin/Reports"));
 const SubAdminAuditLog = lazy(() => import("@/features/subadmin/AuditLog"));
+const SubAdminBulkEmail = lazy(() => import("@/features/subadmin/BulkEmail"));
+const SubAdminEmailTemplates = lazy(() => import("@/features/subadmin/EmailTemplates"));
+const SubAdminChatbot = lazy(() => import("@/features/subadmin/ChatbotAdmin"));
+const SubAdminProgressReports = lazy(() => import("@/features/subadmin/ProgressReports"));
+const SubAdminStoreInquiries = lazy(() => import("@/features/subadmin/StoreInquiries"));
 
 const AdmissionDashboard = lazy(() => import("@/features/admission/Dashboard"));
 const AdmissionDemoScheduling = lazy(() => import("@/features/admission/DemoScheduling"));
@@ -226,9 +241,24 @@ export default function App() {
               <Route path="integrations" element={<SubAdminIntegrations />} />
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
+              <Route path="billing" element={<SubAdminBilling />} />
+              <Route path="enrollments" element={<SubAdminEnrollments />} />
+              <Route path="fee-suspension" element={<SubAdminFeeSuspension />} />
+              <Route path="payment-mapping" element={<SubAdminPaymentMapping />} />
+              <Route path="courses" element={<SubAdminCourses />} />
+              <Route path="departments" element={<SubAdminDepartments />} />
+              <Route path="quiz-bank" element={<SubAdminQuizQuestions />} />
+              <Route path="activity-bank" element={<SubAdminActivityBank />} />
+              <Route path="resources" element={<SubAdminResources />} />
+              <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="reports" element={<SubAdminReports />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="bulk-email" element={<SubAdminBulkEmail />} />
+              <Route path="email-templates" element={<SubAdminEmailTemplates />} />
+              <Route path="chatbot" element={<SubAdminChatbot />} />
+              <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="calendar" element={<CoordinatorCalendar />} />
               <Route path="availability" element={<CoordinatorAvailability />} />
               <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
@@ -258,8 +288,23 @@ export default function App() {
               <Route path="integrations" element={<SubAdminIntegrations />} />
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
+              <Route path="billing" element={<SubAdminBilling />} />
+              <Route path="enrollments" element={<SubAdminEnrollments />} />
+              <Route path="fee-suspension" element={<SubAdminFeeSuspension />} />
+              <Route path="payment-mapping" element={<SubAdminPaymentMapping />} />
+              <Route path="courses" element={<SubAdminCourses />} />
+              <Route path="departments" element={<SubAdminDepartments />} />
+              <Route path="quiz-bank" element={<SubAdminQuizQuestions />} />
+              <Route path="activity-bank" element={<SubAdminActivityBank />} />
+              <Route path="resources" element={<SubAdminResources />} />
+              <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="bulk-email" element={<SubAdminBulkEmail />} />
+              <Route path="email-templates" element={<SubAdminEmailTemplates />} />
+              <Route path="chatbot" element={<SubAdminChatbot />} />
+              <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="revenue" element={<ManagementRevenue />} />
               <Route path="performance" element={<ManagementPerformance />} />
             </Route>
@@ -272,8 +317,23 @@ export default function App() {
               <Route path="integrations" element={<SubAdminIntegrations />} />
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
+              <Route path="billing" element={<SubAdminBilling />} />
+              <Route path="enrollments" element={<SubAdminEnrollments />} />
+              <Route path="fee-suspension" element={<SubAdminFeeSuspension />} />
+              <Route path="payment-mapping" element={<SubAdminPaymentMapping />} />
+              <Route path="courses" element={<SubAdminCourses />} />
+              <Route path="departments" element={<SubAdminDepartments />} />
+              <Route path="quiz-bank" element={<SubAdminQuizQuestions />} />
+              <Route path="activity-bank" element={<SubAdminActivityBank />} />
+              <Route path="resources" element={<SubAdminResources />} />
+              <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="bulk-email" element={<SubAdminBulkEmail />} />
+              <Route path="email-templates" element={<SubAdminEmailTemplates />} />
+              <Route path="chatbot" element={<SubAdminChatbot />} />
+              <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
               <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
               <Route path="demo-teacher-assignment/:bookingId" element={<AdmissionDemoTeacherAssignment />} />
@@ -292,8 +352,23 @@ export default function App() {
               <Route path="reports" element={<ManagementReports />} />
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
+              <Route path="billing" element={<SubAdminBilling />} />
+              <Route path="enrollments" element={<SubAdminEnrollments />} />
+              <Route path="fee-suspension" element={<SubAdminFeeSuspension />} />
+              <Route path="payment-mapping" element={<SubAdminPaymentMapping />} />
+              <Route path="courses" element={<SubAdminCourses />} />
+              <Route path="departments" element={<SubAdminDepartments />} />
+              <Route path="quiz-bank" element={<SubAdminQuizQuestions />} />
+              <Route path="activity-bank" element={<SubAdminActivityBank />} />
+              <Route path="resources" element={<SubAdminResources />} />
+              <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="bulk-email" element={<SubAdminBulkEmail />} />
+              <Route path="email-templates" element={<SubAdminEmailTemplates />} />
+              <Route path="chatbot" element={<SubAdminChatbot />} />
+              <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
               <Route path="calendar" element={<CoordinatorCalendar />} />

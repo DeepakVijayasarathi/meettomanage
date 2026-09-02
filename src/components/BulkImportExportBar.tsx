@@ -18,6 +18,14 @@ interface BulkImportExportBarProps {
   onExport: () => Promise<void>;
   /** Called once after an import finishes (even a partial one) so the screen can reload its list. */
   onImported?: () => void;
+  /** Hides the Import button — the bulk-import endpoint is gated on the module's Create
+   *  permission, which a role can hold View without. Default true (existing admin-only
+   *  screens always have both). */
+  canImport?: boolean;
+  /** Hides the Export button — the export endpoint is gated on the module's View permission,
+   *  which every caller of this bar already has (it's what got them to the page). Exposed
+   *  mainly for symmetry with canImport. Default true. */
+  canExport?: boolean;
 }
 
 /**
@@ -26,7 +34,7 @@ interface BulkImportExportBarProps {
  * endpoints use — one bad row never blocks the rest, so results always show a
  * succeeded/failed count plus the specific row errors rather than a single pass/fail.
  */
-export function BulkImportExportBar({ entityLabel, templateColumns, onImport, onExport, onImported }: BulkImportExportBarProps) {
+export function BulkImportExportBar({ entityLabel, templateColumns, onImport, onExport, onImported, canImport = true, canExport = true }: BulkImportExportBarProps) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -82,12 +90,16 @@ export function BulkImportExportBar({ entityLabel, templateColumns, onImport, on
   return (
     <>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={openDialog}>
-          <Upload className="h-4 w-4" /> Import
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
-          <Download className="h-4 w-4" /> {exporting ? "Exporting…" : "Export"}
-        </Button>
+        {canImport && (
+          <Button variant="outline" size="sm" onClick={openDialog}>
+            <Upload className="h-4 w-4" /> Import
+          </Button>
+        )}
+        {canExport && (
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+            <Download className="h-4 w-4" /> {exporting ? "Exporting…" : "Export"}
+          </Button>
+        )}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
