@@ -119,6 +119,8 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "payroll.minAttendancePercentForReview": { category: "General", fallback: "50" },
   "payroll.noShowGraceMinutes": { category: "General", fallback: "20" },
   "notify.feeReminders": { category: "Notifications", fallback: "true" },
+  "billing.reminderDaysBeforeDue": { category: "Notifications", fallback: "3" },
+  "billing.suspensionGraceDays": { category: "Notifications", fallback: "0" },
   "notify.leaveRequests": { category: "Notifications", fallback: "true" },
   "notify.lowAttendance": { category: "Notifications", fallback: "false" },
   "notify.weeklyDigest": { category: "Notifications", fallback: "true" },
@@ -554,6 +556,44 @@ export default function AdminSettings() {
                   </div>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Fee Collection Timing</CardTitle>
+              <CardDescription>
+                These used to be fixed in code. Controls when a payment reminder goes out and how
+                long an account can stay overdue before access is automatically suspended.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="billing-reminder-days">Payment reminder lead time (days)</Label>
+                <Input
+                  id="billing-reminder-days"
+                  type="number"
+                  min={0}
+                  value={values["billing.reminderDaysBeforeDue"]}
+                  onChange={(e) => setValue("billing.reminderDaysBeforeDue", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  A reminder email goes out once an invoice is within this many days of its due date (and daily while overdue).
+                </p>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="billing-suspension-grace">Suspension grace period (days)</Label>
+                <Input
+                  id="billing-suspension-grace"
+                  type="number"
+                  min={0}
+                  value={values["billing.suspensionGraceDays"]}
+                  onChange={(e) => setValue("billing.suspensionGraceDays", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  How many days an invoice can stay overdue before the parent's account is automatically suspended. 0 = suspend as soon as it's overdue.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
