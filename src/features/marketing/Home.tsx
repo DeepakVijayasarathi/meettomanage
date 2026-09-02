@@ -336,6 +336,67 @@ function DemoPopup({ onBookClass }: { onBookClass: () => void }) {
   );
 }
 
+/** Official Product Hunt "featured" badge for this exact launch post (post_id 1238365) — a
+    live SVG that shows the real, current upvote count rather than a static image, from
+    Product Hunt's own "Embed" dialog for this post. The href carries PH's own badge-campaign
+    tracking params, separate from a plain outbound link. */
+const PRODUCT_HUNT_BADGE_HREF =
+  "https://www.producthunt.com/products/meet-to-manage?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-meet-to-manage";
+const PRODUCT_HUNT_BADGE_SRC = "https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1238365&theme=light";
+
+/** Session key so a visitor who dismisses the launch banner doesn't see it again for the rest
+    of that browser session (same one-shot pattern as DEMO_POPUP_SEEN_KEY above). */
+const LAUNCH_BANNER_DISMISSED_KEY = "trn.launchBanner.dismissed";
+
+/** Dismissible top announcement bar for the Product Hunt launch, carrying the official live
+    badge (see PRODUCT_HUNT_BADGE_SRC above). Light background so the badge's own white canvas
+    doesn't sit inside a mismatched box. Reads sessionStorage synchronously on first render (no
+    flash of an already-dismissed banner); dismissal doesn't persist past the session, so a
+    later visit still sees it while the launch is current. */
+function LaunchBanner() {
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem(LAUNCH_BANNER_DISMISSED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  if (dismissed) return null;
+
+  function handleDismiss() {
+    setDismissed(true);
+    try {
+      sessionStorage.setItem(LAUNCH_BANNER_DISMISSED_KEY, "1");
+    } catch {
+      /* nothing to persist to — the banner just shows again next load */
+    }
+  }
+
+  return (
+    <div className="relative flex flex-wrap items-center justify-center gap-3 border-b border-black/10 bg-[#FFF3EA] px-10 py-2.5 text-center">
+      <p className="text-xs font-bold text-[#C2410C] sm:text-sm">🚀 We're live on Product Hunt today!</p>
+      <a href={PRODUCT_HUNT_BADGE_HREF} target="_blank" rel="noopener noreferrer">
+        <img
+          src={PRODUCT_HUNT_BADGE_SRC}
+          alt="Meet to Manage - One login instead of five apps for your academy | Product Hunt"
+          width={250}
+          height={54}
+          className="h-auto w-[180px] sm:w-[220px]"
+        />
+      </a>
+      <button
+        type="button"
+        onClick={handleDismiss}
+        aria-label="Dismiss"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C2410C]/50 transition-colors hover:text-[#C2410C]"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 /** Real product screenshots (captured from the actual admin portal in demo mode — seed/demo
     data, not a real customer's) — a plain framed image rather than a fake browser-chrome
     shell, since the screenshot already contains the app's own real header and nav. */
@@ -452,6 +513,15 @@ const PAIN_POINTS: PainPoint[] = [
     fix: "One login. One role-based system. Every piece already connected.",
   },
 ];
+
+interface ClientLogo {
+  name: string;
+  logo: string;
+}
+
+/** Real academies already teaching on the platform — short list today, structured to grow as
+    more come on board rather than a one-off, hard-to-extend layout. No invented names/counts. */
+const CLIENTS: ClientLogo[] = [{ name: "The Reader Nest", logo: "/clients/thereader.png" }];
 
 const STATS: { value: string; label: string; icon: LucideIcon }[] = [
   { value: "8", label: "Role-based portals", icon: Layers },
@@ -615,6 +685,8 @@ export default function MarketingHome() {
         description="Meet to Manage brings live teaching, scheduling, admissions, billing and reporting into one role-based platform for schools and academies."
         path="/"
       />
+      <LaunchBanner />
+
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
@@ -735,9 +807,33 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* Social proof strip — no fabricated customer counts or logos exist for this product yet,
-          so this states real, verifiable platform facts instead of an invented "Trusted by..."
-          claim. Swap the eyebrow to real customer trust language once that data exists. */}
+      {/* Clients — real academies already teaching on the platform. Grows as more come on
+          board; each logo is circle-cropped onto a white background for a consistent look
+          regardless of the source file's own canvas. */}
+      <section className="border-t border-black/10 bg-white py-10 sm:py-12">
+        <div className="mx-auto max-w-6xl px-6">
+          <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#8B93A1]">
+            Academies already teaching on {brand.name}
+          </p>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
+            {CLIENTS.map((c) => (
+              <div key={c.name} className="flex items-center gap-3">
+                <img
+                  src={c.logo}
+                  alt={`${c.name} logo`}
+                  loading="lazy"
+                  className="h-14 w-14 rounded-full bg-white object-cover ring-1 ring-black/10"
+                />
+                <span className="text-sm font-bold text-[#171B22]">{c.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Social proof strip — no fabricated customer counts exist for this product beyond the
+          real clients above, so this states verifiable platform facts rather than an invented
+          "Trusted by 1,000+ academies" claim. */}
       <section className="border-y border-black/10 bg-[#F5F6F9] py-10 sm:py-12">
         <div className="mx-auto max-w-6xl px-6">
           <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#8B93A1]">What's already built in</p>
