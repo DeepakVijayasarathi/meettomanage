@@ -1,0 +1,71 @@
+{
+  "voice": "en-US-EmmaNeural",
+  "beats": [
+    {
+      "id": "01_hook",
+      "file": "01_hook.mp3",
+      "duration_s": 4.94
+    },
+    {
+      "id": "02_one_login",
+      "file": "02_one_login.mp3",
+      "duration_s": 5.9
+    },
+    {
+      "id": "03_admin",
+      "file": "03_admin.mp3",
+      "duration_s": 10.56
+    },
+    {
+      "id": "04_teacher",
+      "file": "04_teacher.mp3",
+      "duration_s": 8.66
+    },
+    {
+      "id": "05_classroom",
+      "file": "05_classroom.mp3",
+      "duration_s": 11.11
+    },
+    {
+      "id": "06_student",
+      "file": "06_student.mp3",
+      "duration_s": 10.42
+    },
+    {
+      "id": "07_parent",
+      "file": "07_parent.mp3",
+      "duration_s": 10.13
+    },
+    {
+      "id": "08_coordinator",
+      "file": "08_coordinator.mp3",
+      "duration_s": 10.63
+    },
+    {
+      "id": "09_admission",
+      "file": "09_admission.mp3",
+      "duration_s": 10.49
+    },
+    {
+      "id": "10_subadmin",
+      "file": "10_subadmin.mp3",
+      "duration_s": 10.03
+    },
+    {
+      "id": "11_management",
+      "file": "11_management.mp3",
+      "duration_s": 11.47
+    },
+    {
+      "id": "12_differentiator",
+      "file": "12_differentiator.mp3",
+      "duration_s": 5.71
+    },
+    {
+      "id": "13_cta",
+      "file": "13_cta.mp3",
+      "duration_s": 5.59
+    }
+  ],
+  "total_duration_s": 115.64
+}

@@ -1,0 +1,47 @@
+- generic [ref=f9e53]:
+  - generic [ref=f9e54]:
+    - paragraph [ref=f9e55]: © 2026 Meet to Manage
+    - generic [ref=f9e56]:
+      - generic [ref=f9e57]: Live Classes
+      - generic [ref=f9e63]: Attendance
+      - generic [ref=f9e69]: Fees
+    - generic [ref=f9e75]:
+      - heading "Teach live. Track everything." [level=1] [ref=f9e76]: Teach live.Track everything.
+      - paragraph [ref=f9e77]: Classes, attendance, fees, and reports in one focused workspace for your institute.
+  - generic [ref=f9e79]:
+    - generic [ref=f9e80]:
+      - img "Meet to Manage" [ref=f9e82]
+      - heading "Welcome back" [level=2] [ref=f9e83]
+      - paragraph [ref=f9e84]: Sign in to your account and continue
+    - generic [ref=f9e85]:
+      - generic [ref=f9e86]:
+        - generic [ref=f9e87]: Email
+        - textbox "Email" [ref=f9e89]:
+          - /placeholder: you@meettomanage.cloud
+          - text: demo@meettomanage.cloud
+      - generic [ref=f9e90]:
+        - generic [ref=f9e91]: PIN
+        - generic [ref=f9e92]:
+          - textbox "PIN" [ref=f9e93]:
+            - /placeholder: Enter your PIN
+            - text: "1234"
+          - button "Show PIN" [ref=f9e94] [cursor=pointer]
+      - generic [ref=f9e103]:
+        - generic [ref=f9e104]: Preview as (demo)
+        - combobox "Preview as (demo)" [active] [ref=f9e107] [cursor=pointer]:
+          - generic: Teacher Portal
+        - combobox [ref=f9e110]
+      - generic [ref=f9e111]:
+        - generic [ref=f9e112]:
+          - checkbox "Remember me" [checked] [ref=f9e113] [cursor=pointer]
+          - checkbox [checked]
+          - text: Remember me
+        - link "Forgot your PIN?" [ref=f9e114] [cursor=pointer]:
+          - /url: /forgot-password
+      - button "Sign in to Teacher" [ref=f9e115] [cursor=pointer]
+    - paragraph [ref=f9e118]:
+      - text: New here?
+      - link "Explore More" [ref=f9e119] [cursor=pointer]:
+        - /url: /
+    - paragraph [ref=f9e120]: This is a demo build with mock data — no credentials are verified.
+    - paragraph [ref=f9e121]: Powered by Meet to Manage

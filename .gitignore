@@ -5,3 +5,7 @@ dist-ssr
 .DS_Store
 *.tsbuildinfo
 .claude/
+
+# Instagram outreach lead data + generated local dashboard — real prospect PII and DM
+# history, never committed. See .claude/skills/m2m-customer-outreach/SKILL.md.
+/outreach/

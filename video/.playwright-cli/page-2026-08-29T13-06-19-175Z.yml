@@ -1,0 +1,156 @@
+- generic [ref=f7e1]:
+  - generic [ref=f7e3]:
+    - link "Skip to content" [ref=f7e4] [cursor=pointer]:
+      - /url: "#main-content"
+    - complementary [ref=f7e5]:
+      - generic [ref=f7e7]:
+        - img "Meet to Manage" [ref=f7e9]
+        - generic [ref=f7e10]: Meet to Manage
+      - generic [ref=f7e11]: Admin Portal
+      - navigation [ref=f7e14]:
+        - link "Dashboard" [ref=f7e17] [cursor=pointer]:
+          - /url: /admin
+        - generic [ref=f7e26]:
+          - paragraph [ref=f7e27]: Academics
+          - generic [ref=f7e28]:
+            - link "Courses" [ref=f7e29] [cursor=pointer]:
+              - /url: /admin/courses
+            - link "Departments" [ref=f7e35] [cursor=pointer]:
+              - /url: /admin/departments
+            - link "Batches" [ref=f7e43] [cursor=pointer]:
+              - /url: /admin/batches
+            - link "Academic Calendar" [ref=f7e51] [cursor=pointer]:
+              - /url: /admin/calendar
+            - link "Sessions" [ref=f7e57] [cursor=pointer]:
+              - /url: /admin/sessions
+            - link "Quiz Bank" [ref=f7e65] [cursor=pointer]:
+              - /url: /admin/quiz-bank
+        - generic [ref=f7e71]:
+          - paragraph [ref=f7e72]: People
+          - generic [ref=f7e73]:
+            - link "Users" [ref=f7e74] [cursor=pointer]:
+              - /url: /admin/users
+            - link "Roles & Permissions" [ref=f7e83] [cursor=pointer]:
+              - /url: /admin/permissions
+            - link "Enrollment Review" [ref=f7e90] [cursor=pointer]:
+              - /url: /admin/enrollments
+            - link "Store Inquiries" [ref=f7e98] [cursor=pointer]:
+              - /url: /admin/store-inquiries
+        - generic [ref=f7e105]:
+          - paragraph [ref=f7e106]: Content
+          - link "Content & Resources" [ref=f7e108] [cursor=pointer]:
+            - /url: /admin/resources
+        - generic [ref=f7e114]:
+          - paragraph [ref=f7e115]: Finance
+          - generic [ref=f7e116]:
+            - link "Billing & Finance" [ref=f7e117] [cursor=pointer]:
+              - /url: /admin/billing
+            - link "Packages & Subscriptions" [ref=f7e124] [cursor=pointer]:
+              - /url: /admin/packages
+            - link "Payment Gateway Mapping" [ref=f7e130] [cursor=pointer]:
+              - /url: /admin/payment-mapping
+            - link "Teacher Payouts" [ref=f7e136] [cursor=pointer]:
+              - /url: /admin/payouts
+            - link "Fee Suspension 2" [ref=f7e143] [cursor=pointer]:
+              - /url: /admin/fee-suspension
+              - generic [ref=f7e144]: Fee Suspension
+              - generic [ref=f7e150]: "2"
+        - generic [ref=f7e151]:
+          - paragraph [ref=f7e152]: Insights
+          - generic [ref=f7e153]:
+            - link "Reports & Analytics" [ref=f7e154] [cursor=pointer]:
+              - /url: /admin/reports
+            - link "Bulk Email" [ref=f7e160] [cursor=pointer]:
+              - /url: /admin/bulk-email
+            - link "Email Templates" [ref=f7e167] [cursor=pointer]:
+              - /url: /admin/email-templates
+            - link "Progress Reports" [ref=f7e174] [cursor=pointer]:
+              - /url: /admin/progress-reports
+            - link "Doubt Chatbot" [ref=f7e181] [cursor=pointer]:
+              - /url: /admin/chatbot
+        - generic [ref=f7e188]:
+          - paragraph [ref=f7e189]: System
+          - generic [ref=f7e190]:
+            - link "Settings & Branding" [ref=f7e191] [cursor=pointer]:
+              - /url: /admin/settings
+            - link "Server Monitoring" [ref=f7e198] [cursor=pointer]:
+              - /url: /admin/monitoring
+        - generic [ref=f7e204]:
+          - paragraph [ref=f7e205]: Marketing
+          - generic [ref=f7e206]:
+            - link "Demo Requests" [ref=f7e207] [cursor=pointer]:
+              - /url: /admin/demo-requests
+            - link "Blog Posts" [ref=f7e216] [cursor=pointer]:
+              - /url: /admin/blog-posts
+      - button "Collapse sidebar" [ref=f7e223] [cursor=pointer]: Collapse
+    - generic [ref=f7e227]:
+      - banner [ref=f7e228]:
+        - heading "Admin Portal" [level=2] [ref=f7e229]
+        - generic [ref=f7e230]:
+          - button "Switch to dark mode" [ref=f7e231] [cursor=pointer]
+          - button "Notifications, 3 unread" [ref=f7e234] [cursor=pointer]:
+            - generic [ref=f7e238]: "3"
+          - button "Account menu for Ananya Rao" [ref=f7e239] [cursor=pointer]:
+            - generic [ref=f7e240]: AR
+      - main [ref=f7e242]:
+        - generic [ref=f7e255]:
+          - generic [ref=f7e257]:
+            - generic [ref=f7e258]: Analytics
+            - heading "Reports & Analytics" [level=1] [ref=f7e260]
+            - paragraph [ref=f7e261]: Build a report by type, preview it, and export the results as CSV.
+          - generic [ref=f7e263]:
+            - generic [ref=f7e264]:
+              - generic [ref=f7e265]: Report type
+              - combobox "Report type" [ref=f7e266] [cursor=pointer]:
+                - generic: Revenue Report
+            - button "Generate" [active] [ref=f7e269] [cursor=pointer]
+          - generic [ref=f7e272]:
+            - generic [ref=f7e273]:
+              - heading "Revenue Report" [level=3] [ref=f7e276]
+              - img "Revenue Report chart" [ref=f7e278]:
+                - img [ref=f7e281]:
+                  - generic [ref=f7e285]:
+                    - generic [ref=f7e286]: Feb
+                    - generic [ref=f7e288]: Mar
+                    - generic [ref=f7e290]: Apr
+                    - generic [ref=f7e292]: May
+                    - generic [ref=f7e294]: Jun
+                    - generic [ref=f7e296]: Jul
+                  - generic [ref=f7e299]:
+                    - generic [ref=f7e300]: "0"
+                    - generic [ref=f7e302]: "150000"
+                    - generic [ref=f7e304]: "300000"
+                    - generic [ref=f7e306]: "450000"
+                    - generic [ref=f7e308]: "600000"
+            - generic [ref=f7e326]:
+              - generic [ref=f7e327]:
+                - paragraph [ref=f7e333]: Data Preview
+                - button "Export CSV" [ref=f7e334] [cursor=pointer]
+              - table [ref=f7e340]:
+                - rowgroup [ref=f7e341]:
+                  - row [ref=f7e342]:
+                    - columnheader "Month" [ref=f7e343]
+                    - columnheader "Revenue (₹)" [ref=f7e344]
+                - rowgroup [ref=f7e345]:
+                  - row [ref=f7e346]:
+                    - cell "Feb" [ref=f7e347]
+                    - cell "356000" [ref=f7e348]
+                  - row [ref=f7e349]:
+                    - cell "Mar" [ref=f7e350]
+                    - cell "378500" [ref=f7e351]
+                  - row [ref=f7e352]:
+                    - cell "Apr" [ref=f7e353]
+                    - cell "402100" [ref=f7e354]
+                  - row [ref=f7e355]:
+                    - cell "May" [ref=f7e356]
+                    - cell "411800" [ref=f7e357]
+                  - row [ref=f7e358]:
+                    - cell "Jun" [ref=f7e359]
+                    - cell "448900" [ref=f7e360]
+                  - row [ref=f7e361]:
+                    - cell "Jul" [ref=f7e362]
+                    - cell "486200" [ref=f7e363]
+              - paragraph [ref=f7e364]: Showing 6 rows. Export CSV downloads exactly what's previewed above.
+    - button "Open my notes" [ref=f7e247] [cursor=pointer]
+    - button "Ask a doubt" [ref=f7e251] [cursor=pointer]
+  - generic [ref=f7e365]: "0"

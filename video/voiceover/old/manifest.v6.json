@@ -1,0 +1,46 @@
+{
+  "voice": "en-US-EmmaNeural",
+  "beats": [
+    {
+      "id": "01_hook",
+      "file": "01_hook.mp3",
+      "duration_s": 5.57
+    },
+    {
+      "id": "03_login",
+      "file": "03_login.mp3",
+      "duration_s": 4.68
+    },
+    {
+      "id": "04_dashboard",
+      "file": "04_dashboard.mp3",
+      "duration_s": 5.16
+    },
+    {
+      "id": "05_scheduling",
+      "file": "05_scheduling.mp3",
+      "duration_s": 4.8
+    },
+    {
+      "id": "06_billing",
+      "file": "06_billing.mp3",
+      "duration_s": 4.75
+    },
+    {
+      "id": "07_reports",
+      "file": "07_reports.mp3",
+      "duration_s": 4.39
+    },
+    {
+      "id": "08_differentiator",
+      "file": "08_differentiator.mp3",
+      "duration_s": 5.23
+    },
+    {
+      "id": "09_cta",
+      "file": "09_cta.mp3",
+      "duration_s": 5.57
+    }
+  ],
+  "total_duration_s": 40.15
+}

@@ -1,0 +1,87 @@
+1
+00:00:00,000 --> 00:00:04,370
+Your Meet to Manage account is ready.
+Here's a quick tour of everything inside.
+
+2
+00:00:05,170 --> 00:00:10,380
+One login, eight role-based portals — pick
+yours, and your workspace opens instantly.
+
+3
+00:00:11,480 --> 00:00:20,790
+As an admin, enrollment, revenue and
+attendance update in real time, right on
+your dashboard. Turn any of it into a
+report and export it as CSV in seconds.
+
+4
+00:00:23,390 --> 00:00:31,020
+As a teacher, your classes, attendance and
+payouts are all one click away. Catch up
+on past sessions anytime from your
+recordings library.
+
+5
+00:00:33,120 --> 00:00:42,910
+Step into the live classroom itself —
+video, whiteboard and quizzes, together in
+one tab. Reactions, hand-raises and a live
+leaderboard keep every student engaged.
+
+6
+00:00:45,010 --> 00:00:54,180
+As a student, every class becomes
+interactive — badges, quizzes and progress
+you can see. Join a live class or catch
+the recording later, whichever fits your
+day.
+
+7
+00:00:55,780 --> 00:01:04,710
+As a parent, your child's schedule,
+payments and class recordings live in one
+dashboard. Add another child, or get
+notified the moment a new invoice is due.
+
+8
+00:01:06,810 --> 00:01:16,170
+Coordinators plan sessions, teacher
+availability and batches from a single
+shared calendar. Drag a session to a new
+slot, and every calendar updates with it.
+
+9
+00:01:18,270 --> 00:01:27,510
+The admission team follows every lead from
+first demo to enrollment, without leaving
+the portal. Schedule the demo, assign the
+teacher, and track conversion, all from
+one queue.
+
+10
+00:01:29,610 --> 00:01:38,470
+Relationship managers get permission-
+scoped access — exactly what your role
+allows, nothing more. Every action they
+take is logged automatically to the audit
+trail.
+
+11
+00:01:40,570 --> 00:01:50,670
+Leadership sees revenue, performance and
+reports roll up automatically, with no
+separate spreadsheet. Compare this month
+against last, and spot the trend before it
+becomes a problem.
+
+12
+00:01:52,270 --> 00:01:57,290
+Eight portals. One system. Every screen
+you just saw shares the same live data.
+
+13
+00:02:00,190 --> 00:02:05,130
+Meet to Manage — your account is set up.
+Sign in, and pick up right where your role
+starts.
