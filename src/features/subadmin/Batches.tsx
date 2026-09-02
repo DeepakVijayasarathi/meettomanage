@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Archive, CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket, Search } from "lucide-react";
+import { Archive, CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -30,14 +30,20 @@ import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import {
+  assignStudentToBatch,
   createBatch,
   generateSchedule,
+  listBatchEnrollments,
   listBatches,
   listTeacherOptions,
+  listUnassignedStudents,
+  removeStudentFromBatch,
   setBatchStatus,
   toFrontendBatch,
   updateBatchFields,
   type ApiBatch,
+  type ApiBatchStudent,
+  type ApiUnassignedChild,
   type DisplayBatch,
 } from "@/api/batches";
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
@@ -147,6 +153,9 @@ export default function SubAdminBatches() {
   // backend gates on SessionCalendarManagement:Create (not CourseBatchManagement) — a role can
   // hold one without the other, so this needs its own check.
   const canScheduleClasses = !apiEnabled() || hasPermission("SessionCalendarManagement", "Create");
+  // Moving students between batches calls POST/DELETE /batches/{id}/enrollments, which the
+  // backend gates on CourseBatchManagement:Edit — same module as the batch's own fields, so
+  // it rides on canEdit rather than needing a separate flag.
   const { data: batchData, error: batchError, reload } = useApiData<{ raw: ApiBatch[]; mapped: DisplayBatch[] }>(
     async () => {
       const raw = await listBatches();
@@ -175,6 +184,62 @@ export default function SubAdminBatches() {
   const [genTime, setGenTime] = useState("10:00");
   const [genBusy, setGenBusy] = useState(false);
   const [genResult, setGenResult] = useState<string | null>(null);
+
+  // Assign students (inside Manage dialog) — ported from admin/Batches.tsx, WBS "Course &
+  // Batch Management Flow" step 6. Previously only the Admin-only page could move a student
+  // in or out of a batch even though POST/DELETE /enrollments is CourseBatchManagement:Edit,
+  // a module RMs can already hold.
+  const [roster, setRoster] = useState<ApiBatchStudent[]>([]);
+  const [unassigned, setUnassigned] = useState<ApiUnassignedChild[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
+  const [rosterError, setRosterError] = useState<string | null>(null);
+  const [assigning, setAssigning] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  async function reloadRoster(batchId: string) {
+    if (!apiEnabled()) return;
+    setRosterLoading(true);
+    try {
+      const [students, candidates] = await Promise.all([listBatchEnrollments(batchId), listUnassignedStudents(batchId)]);
+      setRoster(students);
+      setUnassigned(candidates);
+      setRosterError(null);
+    } catch (err) {
+      setRosterError(err instanceof Error ? err.message : "Could not load the student roster.");
+    } finally {
+      setRosterLoading(false);
+    }
+  }
+
+  async function handleAssignStudent(childId: string) {
+    if (!detail || !childId) return;
+    setAssigning(true);
+    setRosterError(null);
+    try {
+      await assignStudentToBatch(detail.id, childId);
+      await reloadRoster(detail.id);
+      reload();
+    } catch (err) {
+      setRosterError(err instanceof Error ? err.message : "Could not assign this student.");
+    } finally {
+      setAssigning(false);
+    }
+  }
+
+  async function handleRemoveStudent(childId: string) {
+    if (!detail) return;
+    setRemovingId(childId);
+    setRosterError(null);
+    try {
+      await removeStudentFromBatch(detail.id, childId);
+      await reloadRoster(detail.id);
+      reload();
+    } catch (err) {
+      setRosterError(err instanceof Error ? err.message : "Could not remove this student.");
+    } finally {
+      setRemovingId(null);
+    }
+  }
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -248,6 +313,10 @@ export default function SubAdminBatches() {
     setEditTeacher(b.teacherId);
     setEditCapacity(String(b.capacity));
     setSaveError(null);
+    setRoster([]);
+    setUnassigned([]);
+    setRosterError(null);
+    void reloadRoster(b.id);
   }
 
   async function saveDetail() {
@@ -452,6 +521,79 @@ export default function SubAdminBatches() {
                     <Input id="edit-batch-capacity" type="number" min={1} max={500} value={editCapacity} onChange={(e) => setEditCapacity(e.target.value)} disabled={!canEdit} />
                   </div>
                 </div>
+
+                {apiEnabled() && (
+                  <div className="grid gap-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                      <Label htmlFor="batch-assign-student-select">Assign students</Label>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
+                    </div>
+                    {canEdit ? (
+                      <Select value="" onValueChange={handleAssignStudent} disabled={assigning || roster.length >= detail.capacity}>
+                        <SelectTrigger id="batch-assign-student-select">
+                          <SelectValue
+                            placeholder={
+                              roster.length >= detail.capacity
+                                ? "Batch is at capacity"
+                                : assigning
+                                  ? "Assigning…"
+                                  : "Search and add a student…"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {unassigned.length === 0 ? (
+                            <SelectItem value="__none" disabled>
+                              No unassigned students available
+                            </SelectItem>
+                          ) : (
+                            unassigned.map((c) => (
+                              <SelectItem key={c.childId} value={c.childId}>
+                                {c.childName} — {c.parentName}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    ) : null}
+                    <p className="text-xs text-muted-foreground">
+                      {roster.length} of {detail.capacity} seats filled.{" "}
+                      {Math.max(0, detail.capacity - roster.length)} seat
+                      {Math.max(0, detail.capacity - roster.length) === 1 ? "" : "s"} remaining.
+                    </p>
+                    {rosterError && <p className="text-xs font-medium text-destructive">{rosterError}</p>}
+
+                    {rosterLoading ? (
+                      <p className="text-xs text-muted-foreground">Loading roster…</p>
+                    ) : roster.length > 0 ? (
+                      <ul className="mt-1 flex min-w-0 flex-col gap-1.5">
+                        {roster.map((s) => (
+                          <li
+                            key={s.enrollmentId}
+                            className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-sm"
+                          >
+                            <span className="min-w-0 flex-1 truncate">
+                              {s.childName}
+                              {s.academicLevel && <span className="text-xs text-muted-foreground"> · {s.academicLevel}</span>}
+                            </span>
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveStudent(s.childId)}
+                                disabled={removingId === s.childId}
+                                title="Remove from batch"
+                                aria-label={`Remove ${s.childName} from batch`}
+                                className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                )}
               </div>
 
               {canScheduleClasses && (
