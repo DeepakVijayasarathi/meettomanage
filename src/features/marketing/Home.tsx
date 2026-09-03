@@ -314,9 +314,15 @@ function DemoPopup({ lang }: { lang: Lang }) {
       if (e.clientY <= 0) trigger();
     }
 
-    document.addEventListener("mouseleave", handleMouseLeave);
+    // Exit-intent only arms after a few seconds on the page — attaching it immediately
+    // was firing on completely ordinary interactions right after load (clicking the nav,
+    // glancing at the address bar), not genuine "about to leave" behavior.
+    const armTimer = window.setTimeout(() => {
+      document.addEventListener("mouseleave", handleMouseLeave);
+    }, 5_000);
     const fallbackTimer = window.setTimeout(trigger, 25_000);
     return () => {
+      window.clearTimeout(armTimer);
       document.removeEventListener("mouseleave", handleMouseLeave);
       window.clearTimeout(fallbackTimer);
     };
@@ -349,7 +355,7 @@ function DemoPopup({ lang }: { lang: Lang }) {
         </span>
         <h2 className="font-display mt-4 text-xl font-extrabold tracking-tight text-[#171B22]">{t.heading}</h2>
         <p className="mt-2 text-sm leading-relaxed text-[#5B6472]">{t.sub}</p>
-        <div className="mt-5 flex flex-col gap-2.5">
+        <div className="mt-5">
           <Button asChild size="lg" className="w-full !bg-[#F97316] !text-white hover:!bg-[#EA580C]">
             <Link to="/get-started" onClick={() => setOpen(false)}>
               {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
