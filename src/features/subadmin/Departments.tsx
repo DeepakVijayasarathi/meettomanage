@@ -214,7 +214,7 @@ export default function SubAdminDepartments() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={save} disabled={saving || !name.trim() || (!!editing ? !canEdit : !canCreate)}>
+            <Button onClick={save} disabled={saving || !name.trim() || (editing ? !canEdit : !canCreate)}>
               {saving ? "Saving…" : editing ? "Save changes" : "Add department"}
             </Button>
           </DialogFooter>
