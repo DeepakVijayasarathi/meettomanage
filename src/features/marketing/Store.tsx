@@ -34,7 +34,7 @@ import {
   type ApiPublicDepartment,
   type ApiStorePlan,
 } from "@/api/store";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { DEMO_DEPARTMENTS } from "@/data/departments";
 
 const DEMO_PLANS: ApiStorePlan[] = [
@@ -101,6 +101,16 @@ export default function Store() {
 
   const demoDepartment = demoForm.department === "none" ? undefined : demoForm.department;
 
+  // Optional, but if given must match the backend's own [Range(1, 18)] on DemoBookingDtos —
+  // the input's min/max attributes are cosmetic (they don't stop someone typing or pasting
+  // "60"), so without this the only feedback was a raw "One or more validation errors
+  // occurred" 400 from the server after submitting. Same fix as admission/DemoScheduling.tsx.
+  const demoChildAgeError =
+    demoForm.childAge.trim().length > 0 &&
+    (!Number.isInteger(Number(demoForm.childAge)) || Number(demoForm.childAge) < 1 || Number(demoForm.childAge) > 18)
+      ? "Age must be a whole number between 1 and 18."
+      : null;
+
   const loadAvailableSlots = useCallback(
     (date: string) => {
       if (!date) {
@@ -149,13 +159,17 @@ export default function Store() {
       setDemoError("Enter a parent name and child name.");
       return;
     }
+    if (demoChildAgeError) {
+      setDemoError(demoChildAgeError);
+      return;
+    }
     if (!demoForm.preferredStart) {
       setDemoError(live ? "Pick one of the available times below." : "Pick a date and time for the demo.");
       return;
     }
 
     if (!live) {
-      setDemoConfirmed(new Date(demoForm.preferredStart).toLocaleString());
+      setDemoConfirmed(formatDate(new Date(demoForm.preferredStart), "datetime"));
       return;
     }
 
@@ -171,7 +185,7 @@ export default function Store() {
         departmentId: demoForm.department === "none" ? undefined : demoForm.department,
         preferredStartAtUtc: new Date(demoForm.preferredStart).toISOString(),
       });
-      setDemoConfirmed(new Date(confirmation.scheduledStartAtUtc).toLocaleString());
+      setDemoConfirmed(formatDate(confirmation.scheduledStartAtUtc, "datetime"));
     } catch (err) {
       setDemoError(err instanceof Error ? err.message : "Couldn't book that slot. Please try again.");
       // Someone else likely just took it — clear the stale pick and refresh what's actually
@@ -477,10 +491,12 @@ export default function Store() {
                       id="demoChildAge"
                       type="number"
                       min={1}
-                      max={25}
+                      max={18}
                       value={demoForm.childAge}
                       onChange={(e) => setDemoForm((f) => ({ ...f, childAge: e.target.value }))}
+                      aria-invalid={!!demoChildAgeError}
                     />
+                    {demoChildAgeError && <p className="text-xs font-medium text-destructive">{demoChildAgeError}</p>}
                   </div>
                 </div>
                 <div className="grid gap-1.5">
@@ -546,7 +562,7 @@ export default function Store() {
                                       : "border-brand-ink/15 text-brand-ink hover:border-brand-green"
                                   )}
                                 >
-                                  {new Date(slot.startAtUtc).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                                  {new Date(slot.startAtUtc).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
                                 </button>
                               );
                             })}
@@ -581,7 +597,7 @@ export default function Store() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={demoSubmitting}
+                    disabled={demoSubmitting || !!demoChildAgeError}
                     className="!bg-brand-navy !text-white hover:!bg-brand-navyDark"
                   >
                     {demoSubmitting ? (
