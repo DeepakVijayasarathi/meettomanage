@@ -213,7 +213,7 @@ function ContainerLogsPanel({ serverName, services }: { serverName: string; serv
         </Button>
         {logs && (
           <span className="text-xs text-muted-foreground">
-            {logs.lines.length} line{logs.lines.length === 1 ? "" : "s"} · {new Date(logs.fetchedAtUtc).toLocaleTimeString()}
+            {logs.lines.length} line{logs.lines.length === 1 ? "" : "s"} · {new Date(logs.fetchedAtUtc).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
           </span>
         )}
       </div>
@@ -659,7 +659,7 @@ export default function AdminServerDetail() {
       )}
       {summary.generatedAtUtc && !error && (
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Last updated {new Date(summary.generatedAtUtc).toLocaleTimeString()}
+          Last updated {new Date(summary.generatedAtUtc).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
           {hubConnected ? " · live-updating" : ` · auto-refreshes every ${REFRESH_INTERVAL_MS / 1000}s`}
         </p>
       )}

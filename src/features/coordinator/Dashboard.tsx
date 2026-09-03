@@ -21,7 +21,7 @@ import { LEAVE_REQUESTS } from "@/data/leaves";
 import { useSession } from "@/state/session";
 import { usePortalBase } from "@/lib/portalBase";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listSessions, toFrontendSession } from "@/api/sessions";
@@ -34,12 +34,6 @@ const MOCK_NOW = new Date("2026-07-09T12:00:00");
 
 const PLACEHOLDER_STATUSES: SessionStatus[] = ["holiday", "leave"];
 
-function formatTimeLabel(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 export default function CoordinatorDashboard() {
   const { userName } = useSession();

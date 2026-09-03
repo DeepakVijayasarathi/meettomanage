@@ -33,7 +33,7 @@ import { buildJitsiJoinUrl } from "@/lib/jitsi";
 import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { useSession } from "@/state/session";
 import type { ClassSession } from "@/types";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
 
 const LOCKED_STATUSES: ClassSession["status"][] = ["cancelled", "completed", "holiday", "leave"];
 // "rescheduled" is the old record a reschedule moved off of, not a live session — leaving
@@ -358,7 +358,7 @@ export default function CoordinatorCalendar() {
               <DialogHeader>
                 <DialogTitle>{selected.title}</DialogTitle>
                 <DialogDescription>
-                  {formatDate(selected.date, "long")} · {selected.startTime} · {selected.duration} min
+                  {formatDate(selected.date, "long")} · {formatTimeLabel(selected.startTime)} · {selected.duration} min
                 </DialogDescription>
               </DialogHeader>
 
@@ -429,7 +429,7 @@ export default function CoordinatorCalendar() {
         title="Reschedule this session?"
         description={
           selected
-            ? `"${selected.title}" moves to ${formatDate(nextRescheduleSlot(selected).toISOString().slice(0, 10), "long")} at ${nextRescheduleSlot(selected).toTimeString().slice(0, 5)} — one week from its current slot. The teacher and parents will be notified to confirm.`
+            ? `"${selected.title}" moves to ${formatDate(nextRescheduleSlot(selected).toISOString().slice(0, 10), "long")} at ${formatTimeLabel(nextRescheduleSlot(selected).toTimeString().slice(0, 5))} — one week from its current slot. The teacher and parents will be notified to confirm.`
             : undefined
         }
         confirmLabel="Mark Rescheduled"

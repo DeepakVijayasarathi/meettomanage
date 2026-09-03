@@ -101,7 +101,7 @@ export function ResourceGauge({ icon: Icon, label, percent, detail }: { icon: ty
 }
 
 export function formatSparklineTime(timestamp: string): string {
-  return new Date(timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return new Date(timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 /**

@@ -22,18 +22,11 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { toFrontendSession } from "@/api/sessions";
 import { getParentSchedule } from "@/api/parentPortal";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, formatTimeLabel } from "@/lib/utils";
 import type { ClassSession } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart, recordingExpiryLabel } from "./utils";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function formatTimeLabel(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 /**
  * API mode has no separate "batch" entity on the client — but the recurring pattern
@@ -218,7 +211,7 @@ export default function ParentSchedule() {
               <DialogHeader>
                 <DialogTitle>{selected.title}</DialogTitle>
                 <DialogDescription>
-                  {formatDate(selected.date, "long")} · {selected.startTime} · {selected.teacherName}
+                  {formatDate(selected.date, "long")} · {formatTimeLabel(selected.startTime)} · {selected.teacherName}
                 </DialogDescription>
               </DialogHeader>
               <div className="flex items-center justify-between">
@@ -251,7 +244,7 @@ function ScheduleRow({ session }: { session: ClassSession }) {
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-foreground">{session.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatDate(session.date, "long")} · {session.startTime} · {session.teacherName}
+          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} · {session.teacherName}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -292,7 +285,7 @@ function PastRow({ session }: { session: ClassSession }) {
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-foreground">{session.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatDate(session.date, "long")} · {session.startTime} · {session.teacherName}
+          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} · {session.teacherName}
         </p>
       </div>
       <div className="flex items-center gap-2">

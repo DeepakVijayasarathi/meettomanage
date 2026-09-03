@@ -146,7 +146,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
   function handleSendMessage(text: string) {
     setMessages((prev) => [
       ...prev,
-      { id: `m-${Date.now()}`, author: "You", text, time: new Date().toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }), isSelf: true },
+      { id: `m-${Date.now()}`, author: "You", text, time: new Date().toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true }), isSelf: true },
     ]);
   }
 

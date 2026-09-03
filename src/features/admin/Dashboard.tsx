@@ -37,7 +37,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent, formatTimeLabel } from "@/lib/utils";
 import {
   ADMIN_KPIS,
   ATTENDANCE_TREND,
@@ -427,12 +427,12 @@ export default function AdminDashboard() {
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
                     style={{ backgroundColor: `${CHART_PALETTE[i % CHART_PALETTE.length]}1A`, color: CHART_PALETTE[i % CHART_PALETTE.length] }}
                   >
-                    {s.startTime.slice(0, 2)}
+                    {formatTimeLabel(s.startTime).split(":")[0]}
                   </span>
                   <div>
                     <p className="text-sm font-semibold text-foreground">{s.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {s.startTime} · {s.duration} min · {s.teacherName} · {s.childIds.length} student{s.childIds.length === 1 ? "" : "s"}
+                      {formatTimeLabel(s.startTime)} · {s.duration} min · {s.teacherName} · {s.childIds.length} student{s.childIds.length === 1 ? "" : "s"}
                     </p>
                   </div>
                 </div>

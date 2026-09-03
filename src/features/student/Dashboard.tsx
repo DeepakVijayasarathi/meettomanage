@@ -33,7 +33,7 @@ import { getSessionsForChild } from "@/data/sessions";
 import { getResourcesForBatch } from "@/data/resources";
 import { LEADERBOARD_SEED } from "@/features/classroom/classroomData";
 import { isJoinable, joinHint } from "@/features/parent/utils";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
 
 const CHILD_ID = "c-1";
 const TODAY = "2026-07-09";
@@ -110,7 +110,7 @@ export default function StudentDashboard() {
                 </span>
                 <h2 className="mt-2 text-xl font-bold text-foreground sm:text-2xl">{todaySession.title}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  With {todaySession.teacherName} · {todaySession.startTime} · {todaySession.duration} minutes
+                  With {todaySession.teacherName} · {formatTimeLabel(todaySession.startTime)} · {todaySession.duration} minutes
                   {todaySession.childIds.length > 1 && " · with a friend from your batch"}
                 </p>
               </div>
@@ -453,7 +453,7 @@ function ApiStudentDashboard() {
                 </span>
                 <h2 className="mt-2 text-xl font-bold text-foreground sm:text-2xl">{todaySession.title}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  With {todaySession.teacherName} · {todaySession.startTime} · {todaySession.duration} minutes
+                  With {todaySession.teacherName} · {formatTimeLabel(todaySession.startTime)} · {todaySession.duration} minutes
                 </p>
               </div>
             </div>

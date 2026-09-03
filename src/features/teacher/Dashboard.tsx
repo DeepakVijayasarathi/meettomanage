@@ -41,7 +41,7 @@ import { listMyDemoBookings, toAwaitingFeedback } from "@/api/demoBookings";
 import { getMyMeetingRoomShortLink } from "@/api/account";
 import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatTimeLabel } from "@/lib/utils";
 import { isJoinable, joinHint } from "@/features/parent/utils";
 import type { ClassSession, DemoFeedback, SessionStatus, TeacherPayout } from "@/types";
 
@@ -51,12 +51,6 @@ const TEACHER_NAME = "Karan Mehta";
 const NOW = new Date("2026-07-09T12:00:00");
 const TODAY = "2026-07-09";
 
-function formatTimeLabel(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 function sessionSubtitle(session: ClassSession) {
   if (session.batchId) return getBatchById(session.batchId)?.name ?? "General session";

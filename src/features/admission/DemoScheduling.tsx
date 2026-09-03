@@ -22,7 +22,7 @@ import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
 import { createDemoBooking, getDemoJoinLink, listDemoBookings, resendDemoLink, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
-import { formatDate, getInitials } from "@/lib/utils";
+import { formatDate, formatTimeLabel, getInitials } from "@/lib/utils";
 import { getUserTimeZoneAbbreviation, localToUtcIso, utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { usePortalBase } from "@/lib/portalBase";
@@ -350,7 +350,7 @@ export default function AdmissionDemoScheduling() {
         accessor: (row) => `${row.date} ${row.startTime}`,
         render: (row) => (
           <span className="text-sm text-muted-foreground">
-            {row.date ? `${formatDate(row.date)} · ${row.startTime}` : "—"}
+            {row.date ? `${formatDate(row.date)} · ${formatTimeLabel(row.startTime)}` : "—"}
           </span>
         ),
       },

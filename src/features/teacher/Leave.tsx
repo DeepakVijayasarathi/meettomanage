@@ -19,7 +19,7 @@ import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { cancelLeave, listMyLeave, submitLeave, toFrontendLeave } from "@/api/academicOps";
 import { localToUtcIso } from "@/lib/datetime";
-import { formatDate, formatDateRange } from "@/lib/utils";
+import { formatDate, formatDateRange, formatTimeLabel } from "@/lib/utils";
 import type { ClassSession, LeaveRequest } from "@/types";
 
 const TEACHER_ID = "t-1";
@@ -28,12 +28,6 @@ const TEACHER_NAME = "Karan Mehta";
 const NOW = new Date("2026-07-09T12:00:00");
 const MIN_HOURS_NOTICE = 6;
 
-function formatTimeLabel(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 // session.date/startTime are the signed-in teacher's own timezone's wall-clock values
 // (see toFrontendSession) — parse them the same way rather than the browser's own

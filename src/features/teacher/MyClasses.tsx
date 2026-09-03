@@ -21,7 +21,7 @@ import { getCourseById } from "@/data/courses";
 import { listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import { apiEnabled } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { isJoinable, joinHint } from "@/features/parent/utils";
 import type { ClassSession, SessionStatus } from "@/types";
 
@@ -44,12 +44,6 @@ const STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "leave", label: "Leave" },
 ];
 
-function formatTimeLabel(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 function sessionSubtitle(session: ClassSession) {
   if (session.batchId) return getBatchById(session.batchId)?.name ?? "General session";

@@ -27,7 +27,7 @@ import { listSessions, toFrontendSession } from "@/api/sessions";
 import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import type { ClassSession } from "@/types";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
 
 export default function AdminAcademicCalendar() {
   const { toast } = useToast();
@@ -183,7 +183,7 @@ export default function AdminAcademicCalendar() {
                 </span>
                 <DialogTitle>{selected.title}</DialogTitle>
                 <DialogDescription>
-                  {formatDate(selected.date, "long")} · {selected.startTime} · {selected.duration} min
+                  {formatDate(selected.date, "long")} · {formatTimeLabel(selected.startTime)} · {selected.duration} min
                 </DialogDescription>
               </DialogHeader>
 

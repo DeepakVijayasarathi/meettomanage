@@ -522,7 +522,7 @@ export default function AdminMonitoring() {
 
       {summary.generatedAtUtc && (
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Last updated {new Date(summary.generatedAtUtc).toLocaleTimeString()}
+          Last updated {new Date(summary.generatedAtUtc).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
           {hubConnected ? " · live-updating" : ` · auto-refreshes every ${REFRESH_INTERVAL_MS / 1000}s`}
         </p>
       )}

@@ -6,15 +6,8 @@ import { deleteRecording, listRecordings, type ApiSessionRecording } from "@/api
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useToast } from "@/hooks/use-toast";
-import { formatDate, safeExternalUrl } from "@/lib/utils";
+import { formatDate, formatTimeLabel, safeExternalUrl } from "@/lib/utils";
 import type { ClassSession } from "@/types";
-
-function formatTimeLabel(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

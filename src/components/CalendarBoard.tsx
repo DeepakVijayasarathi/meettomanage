@@ -15,7 +15,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ClassSession, SessionStatus } from "@/types";
 import { Button } from "@/components/ui/button";
 import { SESSION_STATUS_COLOR, SESSION_STATUS_LABEL } from "@/components/StatusBadge";
-import { cn } from "@/lib/utils";
+import { cn, formatTimeLabel } from "@/lib/utils";
 
 interface CalendarBoardProps {
   sessions: ClassSession[];
@@ -129,7 +129,7 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
                       )}
                     >
                       <span className="min-w-0 flex-1 truncate">
-                        {s.startTime} {s.title}
+                        {formatTimeLabel(s.startTime)} {s.title}
                       </span>
                     </button>
                   ))}

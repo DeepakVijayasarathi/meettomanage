@@ -42,7 +42,7 @@ import {
   type ApiParentDashboard,
 } from "@/api/parentPortal";
 import { toFrontendInvoice } from "@/api/billing";
-import { cn, formatCurrency, formatDate, invoiceBalance } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, formatTimeLabel, invoiceBalance } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import type { Child, ClassSession, Invoice } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart, PREFERRED_TIME_LABELS } from "./utils";
@@ -390,7 +390,7 @@ function UpcomingRow({ session }: { session: ClassSession }) {
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-foreground">{session.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatDate(session.date, "long")} · {session.startTime} · {session.teacherName}
+          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} · {session.teacherName}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">

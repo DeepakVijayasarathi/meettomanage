@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listSessions, toFrontendSession } from "@/api/sessions";
@@ -57,7 +57,7 @@ export function ScheduleConflictsPanel() {
           tone: "destructive",
           icon: AlertTriangle,
           title: `${l.teacherName} is on approved leave, but "${clash.title}" is still scheduled`,
-          description: `${formatDate(clash.date, "long")} · ${clash.startTime} — update the calendar or assign a substitute.`,
+          description: `${formatDate(clash.date, "long")} · ${formatTimeLabel(clash.startTime)} — update the calendar or assign a substitute.`,
         });
       }
     });
@@ -70,7 +70,7 @@ export function ScheduleConflictsPanel() {
           tone: "warning",
           icon: Clock,
           title: `${l.teacherName}'s leave request is pending approval`,
-          description: `Requested for ${formatDate(clash.date, "long")}, overlapping "${clash.title}" at ${clash.startTime}.`,
+          description: `Requested for ${formatDate(clash.date, "long")}, overlapping "${clash.title}" at ${formatTimeLabel(clash.startTime)}.`,
         });
       }
     });
@@ -93,7 +93,7 @@ export function ScheduleConflictsPanel() {
           tone: "destructive",
           icon: UserX,
           title: `"${s.title}" was marked No-Show`,
-          description: `${formatDate(s.date, "long")} · ${s.startTime} with ${s.teacherName} — needs a reschedule or parent follow-up.`,
+          description: `${formatDate(s.date, "long")} · ${formatTimeLabel(s.startTime)} with ${s.teacherName} — needs a reschedule or parent follow-up.`,
         });
       });
 

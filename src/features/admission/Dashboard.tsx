@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatDate, formatNumber, formatPercent, formatTimeLabel } from "@/lib/utils";
 import { SESSIONS } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -241,7 +241,7 @@ export default function AdmissionDashboard() {
                   <div>
                     <p className="text-sm font-semibold text-foreground">{s.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {s.date === TODAY ? "Today" : formatDate(s.date, "long")} · {s.startTime} · {s.teacherName}
+                      {s.date === TODAY ? "Today" : formatDate(s.date, "long")} · {formatTimeLabel(s.startTime)} · {s.teacherName}
                     </p>
                   </div>
                 </div>
