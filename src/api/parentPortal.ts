@@ -10,13 +10,24 @@ export interface ApiParentChildSummary {
   classesCompleted: number;
   classesRemaining: number;
   attendancePercent: number;
+  /** Genuinely this child's own status — a sibling's unrelated overdue invoice never marks another child suspended. */
   feeStatus: "paid" | "due" | "overdue" | "suspended";
+  /** This specific child's access is blocked (their own suspension, or an account-wide one). */
+  isSuspended: boolean;
+  /** The invoice that unlocks this child specifically. Null when not suspended, or when
+   *  blocked only by an account-wide suspension with no single invoice to point at. */
+  suspendedInvoiceId: string | null;
 }
 
 export interface ApiParentDashboard {
   parentProfileId: string;
   enrollmentFormCompleted: boolean;
+  /** True when at least one child is suspended — see each child's own isSuspended for which. */
   isSuspended: boolean;
+  /** True only when EVERY child is currently suspended — nothing on the account is reachable. */
+  allChildrenSuspended: boolean;
+  /** Set only when allChildrenSuspended is true and one invoice fixes everything; with
+   *  multiple children, resolve each one's own suspendedInvoiceId instead. */
   suspendedInvoiceId: string | null;
   children: ApiParentChildSummary[];
 }

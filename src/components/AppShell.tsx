@@ -11,7 +11,7 @@ import { hexToHslTriple } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { getMyMenu, toNavSections } from "@/api/menus";
 import { listSuspensions } from "@/api/billing";
-import { getParentDashboard } from "@/api/parentPortal";
+import { getParentDashboard, type ApiParentDashboard } from "@/api/parentPortal";
 import { useApiData } from "@/api/hooks";
 import { AccountSuspendedScreen } from "@/components/AccountSuspendedScreen";
 import type { Role } from "@/types";
@@ -29,7 +29,7 @@ const COLLAPSE_KEY = "trn.sidebarCollapsed";
 const SUBADMIN_PRESET_PORTALS: Role[] = ["coordinator", "admission", "management"];
 
 export function AppShell({ role, children }: AppShellProps) {
-  const { setRole, permissions } = useSession();
+  const { setRole, permissions, activeChildId } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -115,17 +115,23 @@ export function AppShell({ role, children }: AppShellProps) {
     localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
   }, [collapsed]);
 
-  // Fee suspension is account-wide (ParentPortalService), so it applies identically whether
-  // this is the real Parent portal or the Student "preview my child's view" reuse of it —
-  // both ride the same signed-in Parent account. Blocks the ENTIRE shell (no sidebar, no
-  // route reachable) rather than a per-page banner, since the point is nothing but payment
-  // should be reachable while suspended. Skipped for every other role — the flag would just
-  // be a meaningless false for a non-Parent account.
+  // Fee suspension is scoped per child (FeeSuspension.ChildId), not the whole account — a
+  // sibling with fees current keeps full access even while another child on the same account
+  // is suspended. Blocks the ENTIRE shell only in the two cases where nothing on it would be
+  // reachable anyway: role="student" (the "preview my child's view" reuse of this shell,
+  // always scoped to exactly one child — activeChildId) when THAT child specifically is
+  // suspended, or role="parent" when EVERY child on the account is suspended
+  // (allChildrenSuspended) — a parent with even one unaffected child instead sees the normal
+  // dashboard with that child's restriction shown per-card (ParentDashboard.tsx), not a
+  // blanket lockout of siblings who have nothing to do with the unpaid invoice. Skipped for
+  // every other role — the flags would just be meaningless for a non-Parent account.
   const isParentAccount = role === "parent" || role === "student";
-  const { data: isSuspended, reload: recheckSuspension } = useApiData(
-    () => (isParentAccount ? getParentDashboard().then((d) => d.isSuspended) : Promise.resolve(false)),
-    false
+  const { data: dashboard, reload: recheckSuspension } = useApiData<ApiParentDashboard | null>(
+    () => (isParentAccount ? getParentDashboard() : Promise.resolve(null)),
+    null
   );
+  const blockedChild = role === "student" ? dashboard?.children.find((c) => c.childId === activeChildId) : undefined;
+  const shellBlocked = role === "student" ? !!blockedChild?.isSuspended : role === "parent" ? !!dashboard?.allChildrenSuspended : false;
 
   const accentStyle: CSSProperties = {
     "--primary": hexToHslTriple(meta.hex),
@@ -139,8 +145,8 @@ export function AppShell({ role, children }: AppShellProps) {
     "--primary-foreground": "0 0% 100%",
   } as CSSProperties;
 
-  if (apiEnabled() && isParentAccount && isSuspended) {
-    return <AccountSuspendedScreen onRecheck={recheckSuspension} />;
+  if (apiEnabled() && isParentAccount && shellBlocked) {
+    return <AccountSuspendedScreen childId={blockedChild?.childId} onRecheck={recheckSuspension} />;
   }
 
   return (
