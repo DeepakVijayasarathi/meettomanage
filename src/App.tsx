@@ -161,9 +161,10 @@ export default function App() {
               path="/meet/personal"
               element={
                 // Every role the "My meeting link" / Start button (PersonalMeetingButton)
-                // actually appears on — staff who need an ad-hoc video room, not the
-                // teacher/parent/student roles, which use a real scheduled class instead.
-                <RequireAuth role="admin" also={["subadmin", "management", "coordinator", "admission"]}>
+                // actually appears on — staff (and teachers, for an ad-hoc parent chat
+                // outside a scheduled class) who need an on-demand video room. Parent/
+                // Student stay off this list — they only ever join a real scheduled class.
+                <RequireAuth role="admin" also={["subadmin", "management", "coordinator", "admission", "teacher"]}>
                   <PersonalMeetingRoom />
                 </RequireAuth>
               }

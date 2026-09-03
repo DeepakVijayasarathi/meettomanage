@@ -14,6 +14,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
 import { SessionStatusBadge } from "@/components/StatusBadge";
@@ -171,11 +172,14 @@ export default function TeacherDashboard() {
         title={`Welcome back, ${firstName}`}
         description="Here's what's on your plate today — classes, payout status and anything waiting on you."
         actions={
-          <Button asChild>
-            <Link to="/teacher/classes">
-              View all classes <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <PersonalMeetingButton />
+            <Button asChild>
+              <Link to="/teacher/classes">
+                View all classes <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         }
       />
 
