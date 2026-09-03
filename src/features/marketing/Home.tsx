@@ -34,7 +34,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { BookDemoDialog } from "@/components/BookDemoDialog";
 import { Seo } from "@/components/Seo";
 import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
@@ -270,28 +269,26 @@ const DEMO_POPUP_T = {
     dialogAria: "Book a demo",
     closeAria: "Close",
     heading: "Before you go — see it running",
-    sub: "A 30-minute walkthrough for academy owners, or a free class demo if you're a parent — no payment details either way.",
+    sub: "A 30-minute walkthrough for academy owners — no payment details required.",
     requestDemo: "Request a Demo",
-    bookClass: "Book a Class Demo",
   },
   ar: {
     dialogAria: "احجز عرضًا توضيحيًا",
     closeAria: "إغلاق",
     heading: "قبل أن تغادر — شاهدها وهي تعمل",
-    sub: "جولة مدتها 30 دقيقة لأصحاب الأكاديميات، أو حصة تجريبية مجانية إن كنت وليّ أمر — بلا بيانات دفع في الحالتين.",
+    sub: "جولة مدتها 30 دقيقة لأصحاب الأكاديميات — دون الحاجة لبيانات دفع.",
     requestDemo: "اطلب عرضًا توضيحيًا",
-    bookClass: "احجز حصة تجريبية",
   },
 };
 
 /**
- * A one-time nudge toward the two real demo paths (Request a Demo / Book a Class Demo).
- * Desktop: exit-intent (mouse leaves the top of the viewport, the classic signal a visitor
- * is about to close the tab or switch away). Mobile has no mouse to read exit-intent from,
- * so it falls back to a 25s on-page timer instead. Either way it fires once per session
- * (sessionStorage, not localStorage — a genuinely new visit gets one shot at this again).
+ * A one-time nudge toward requesting a platform demo. Desktop: exit-intent (mouse leaves
+ * the top of the viewport, the classic signal a visitor is about to close the tab or switch
+ * away). Mobile has no mouse to read exit-intent from, so it falls back to a 25s on-page
+ * timer instead. Either way it fires once per session (sessionStorage, not localStorage —
+ * a genuinely new visit gets one shot at this again).
  */
-function DemoPopup({ onBookClass, lang }: { onBookClass: () => void; lang: Lang }) {
+function DemoPopup({ lang }: { lang: Lang }) {
   const [open, setOpen] = useState(false);
   const t = DEMO_POPUP_T[lang];
 
@@ -357,17 +354,6 @@ function DemoPopup({ onBookClass, lang }: { onBookClass: () => void; lang: Lang 
             <Link to="/get-started" onClick={() => setOpen(false)}>
               {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
             </Link>
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            className="w-full border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5"
-            onClick={() => {
-              setOpen(false);
-              onBookClass();
-            }}
-          >
-            {t.bookClass}
           </Button>
         </div>
       </div>
@@ -877,8 +863,7 @@ const T = {
     faqEyebrow: "FAQ",
     faqHeading: "Questions academies ask before switching",
     ctaHeading: "Your next class, your next invoice, your next admission — one login away.",
-    ctaSub: (brand: string) => `See ${brand} running an academy before you decide anything, or book a free class for your child first — whichever you're ready for.`,
-    bookClassDemo: "Book a Class Demo",
+    ctaSub: (brand: string) => `See ${brand} running an academy before you decide anything — no payment details required.`,
     alreadyHaveAccount: "Already have an account? Sign in",
     footerTagline: "Live teaching, scheduling, admissions and billing — one role-based system for your whole academy.",
     contact: "Contact",
@@ -936,8 +921,7 @@ const T = {
     faqEyebrow: "الأسئلة الشائعة",
     faqHeading: "أسئلة تطرحها الأكاديميات قبل التحويل",
     ctaHeading: "حصتك القادمة، وفاتورتك القادمة، وقبولك القادم — على بُعد تسجيل دخول واحد.",
-    ctaSub: (brand: string) => `شاهد ${brand} وهي تُدير أكاديمية قبل أن تقرر أي شيء، أو احجز حصة مجانية لطفلك أولًا — أيهما أنت مستعد له.`,
-    bookClassDemo: "احجز حصة تجريبية",
+    ctaSub: (brand: string) => `شاهد ${brand} وهي تُدير أكاديمية قبل أن تقرر أي شيء — دون الحاجة لبيانات دفع.`,
     alreadyHaveAccount: "لديك حساب بالفعل؟ سجّل الدخول",
     footerTagline: "تدريس مباشر، وجدولة، وقبول، وفوترة — نظام واحد قائم على الأدوار لأكاديميتك بأكملها.",
     contact: "التواصل",
@@ -956,7 +940,6 @@ export default function MarketingHome() {
   const brand = useBrand();
   const [lang] = useLang();
   const t = T[lang];
-  const [demoOpen, setDemoOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("All");
 
   const features = FEATURES[lang];
@@ -1479,14 +1462,6 @@ export default function MarketingHome() {
                     {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
                   </Link>
                 </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="!bg-transparent border-white/30 !text-white hover:!bg-white/10"
-                  onClick={() => setDemoOpen(true)}
-                >
-                  {t.bookClassDemo}
-                </Button>
               </div>
               <Link to="/login" className="mt-6 inline-block text-xs font-semibold text-white/50 hover:text-white/80">
                 {t.alreadyHaveAccount}
@@ -1566,15 +1541,6 @@ export default function MarketingHome() {
                 </Link>
               </li>
               <li>
-                <button
-                  type="button"
-                  onClick={() => setDemoOpen(true)}
-                  className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
-                >
-                  {t.bookClassDemo}
-                </button>
-              </li>
-              <li>
                 <Link to="/login" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
                   {t.signIn}
                 </Link>
@@ -1604,9 +1570,8 @@ export default function MarketingHome() {
         </div>
       </footer>
 
-      <BookDemoDialog open={demoOpen} onOpenChange={setDemoOpen} />
       <ChatWidget lang={lang} />
-      <DemoPopup onBookClass={() => setDemoOpen(true)} lang={lang} />
+      <DemoPopup lang={lang} />
     </div>
   );
 }

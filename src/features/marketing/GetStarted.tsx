@@ -20,9 +20,8 @@ const T = {
     badgeAcademy: "For academy owners",
     headingCoach: "See Meet to Manage running your master class.",
     headingAcademy: "See Meet to Manage running your academy.",
-    introCoach: "This is a walkthrough of the platform itself — for coaches deciding whether to run their online master class and client bookings on it. Looking for a free trial class for your child instead? ",
-    introAcademy: "This is a walkthrough of the platform itself — for academy owners deciding whether to run their business on it. Looking for a free trial class for your child instead? ",
-    bookClassHere: "Book a class demo here.",
+    introCoach: "This is a walkthrough of the platform itself — for coaches deciding whether to run their online master class and client bookings on it.",
+    introAcademy: "This is a walkthrough of the platform itself — for academy owners deciding whether to run their business on it.",
     includedCoach: [
       "A walkthrough of live classes, scheduling and billing — as one system",
       "How to set up a single online master class and turn attendees into paying clients",
@@ -67,9 +66,8 @@ const T = {
     badgeAcademy: "لأصحاب الأكاديميات",
     headingCoach: "شاهد Meet to Manage وهي تُدير الكلاس ماستر الخاص بك.",
     headingAcademy: "شاهد Meet to Manage وهي تُدير أكاديميتك.",
-    introCoach: "هذه جولة على المنصة نفسها — للمدربين الذين يقرّرون ما إذا كانوا سيشغّلون الكلاس ماستر الإلكتروني وحجوزات عملائهم عليها. تبحث عن حصة تجريبية مجانية لطفلك بدلًا من ذلك؟ ",
-    introAcademy: "هذه جولة على المنصة نفسها — لأصحاب الأكاديميات الذين يقرّرون ما إذا كانوا سيديرون أعمالهم عليها. تبحث عن حصة تجريبية مجانية لطفلك بدلًا من ذلك؟ ",
-    bookClassHere: "احجز حصة تجريبية من هنا.",
+    introCoach: "هذه جولة على المنصة نفسها — للمدربين الذين يقرّرون ما إذا كانوا سيشغّلون الكلاس ماستر الإلكتروني وحجوزات عملائهم عليها.",
+    introAcademy: "هذه جولة على المنصة نفسها — لأصحاب الأكاديميات الذين يقرّرون ما إذا كانوا سيديرون أعمالهم عليها.",
     includedCoach: [
       "جولة على الحصص المباشرة والجدولة والفوترة — كنظام واحد",
       "كيفية إعداد كلاس ماستر إلكتروني واحد وتحويل الحاضرين إلى عملاء يدفعون",
@@ -199,9 +197,6 @@ export default function GetStarted() {
           </h1>
           <p className="mt-5 max-w-md text-base leading-relaxed text-[#5B6472]">
             {isCoach ? t.introCoach : t.introAcademy}
-            <Link to="/demo" className="font-semibold text-[#EA580C] hover:text-[#C2410C]">
-              {t.bookClassHere}
-            </Link>
           </p>
 
           <ul className="mt-8 flex flex-col gap-4">
