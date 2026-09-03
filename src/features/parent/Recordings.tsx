@@ -6,6 +6,7 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -144,7 +145,16 @@ export default function ParentRecordings() {
       {!child ? (
         <EmptyState icon={Video} title="No child selected" className="mt-6" />
       ) : loading ? (
-        <p className="mt-6 text-sm text-muted-foreground">Loading recordings…</p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <Card key={i} className="flex flex-col p-4">
+              <Skeleton className="h-10 w-10 rounded-xl" />
+              <Skeleton className="mt-3 h-4 w-3/4" />
+              <Skeleton className="mt-2 h-3 w-1/2" />
+              <Skeleton className="mt-4 h-8 w-full rounded-md" />
+            </Card>
+          ))}
+        </div>
       ) : rows.length === 0 ? (
         <EmptyState
           icon={Video}

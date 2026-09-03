@@ -285,9 +285,8 @@ export default function TeacherLeave() {
               <X className="h-3.5 w-3.5" /> Cancel
             </Button>
           ) : (
-            <span className="block text-right text-sm text-muted-foreground">—</span>
+            <span className="text-sm text-muted-foreground">—</span>
           ),
-        className: "text-right",
       },
     ],
     []

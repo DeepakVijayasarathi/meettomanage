@@ -448,7 +448,7 @@ export default function AdminEnrollments() {
 
               {approveError && <p className="text-sm font-medium text-destructive">{approveError}</p>}
 
-              <DialogFooter>
+              <DialogFooter className="flex-wrap">
                 <Button variant="outline" onClick={() => setDetail(null)}>
                   Close
                 </Button>

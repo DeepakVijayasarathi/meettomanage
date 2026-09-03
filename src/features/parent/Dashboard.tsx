@@ -45,7 +45,7 @@ import { toFrontendInvoice } from "@/api/billing";
 import { cn, formatCurrency, formatDate, invoiceBalance } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import type { Child, ClassSession, Invoice } from "@/types";
-import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart } from "./utils";
+import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart, PREFERRED_TIME_LABELS } from "./utils";
 
 const PARENT_ID = "p-1";
 
@@ -275,6 +275,11 @@ function AttendanceCard({ percent, color }: { percent: number; color: string }) 
   const tone = percent >= 90 ? "success" : percent >= 75 ? "warning" : "destructive";
   const toneClass =
     tone === "success" ? "bg-success/15 text-success" : tone === "warning" ? "bg-warning/20 text-warning-foreground" : "bg-destructive/10 text-destructive";
+  // The bar only gets to use the child's own avatarColor when attendance is healthy
+  // (matches the icon badge's "success" threshold) — once it dips into warning/destructive
+  // territory, the fill should carry the same semantic tone as the badge instead of a
+  // decorative color that hides the problem.
+  const barColor = tone === "success" ? color : tone === "warning" ? "hsl(var(--warning))" : "hsl(var(--destructive))";
   return (
     <Card className="p-5">
       <div className="flex items-start justify-between gap-3">
@@ -289,7 +294,7 @@ function AttendanceCard({ percent, color }: { percent: number; color: string }) 
       <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
           className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${Math.min(100, percent)}%`, backgroundColor: color }}
+          style={{ width: `${Math.min(100, percent)}%`, backgroundColor: barColor }}
         />
       </div>
     </Card>
@@ -363,7 +368,7 @@ function FeeCard({
             onClick={onPay}
             disabled={payDisabled}
           >
-            {invoiceLoading ? "Loading…" : invoice ? `Pay ${formatCurrency(invoiceBalance(invoice))}` : "Pay Now"}
+            {invoiceLoading ? "Checking…" : invoice ? `Pay ${formatCurrency(invoiceBalance(invoice))}` : "Unavailable"}
           </Button>
           {invoiceMissing && (
             <p className="mt-2 text-[11px] font-medium text-muted-foreground">
@@ -499,7 +504,10 @@ function PendingEnrollments({
               <PendingValue label="School" value={text("schoolName")} />
               <PendingValue label="Course" value={courseName} />
               <PendingValue label="Preferred days" value={days} />
-              <PendingValue label="Preferred time" value={text("preferredTime")} />
+              <PendingValue
+                label="Preferred time"
+                value={text("preferredTime") === "—" ? "—" : PREFERRED_TIME_LABELS[text("preferredTime")] ?? text("preferredTime")}
+              />
             </div>
 
             <p className="mt-4 text-xs text-muted-foreground">

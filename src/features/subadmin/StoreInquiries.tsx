@@ -135,9 +135,11 @@ export default function SubAdminStoreInquiries() {
         header: "",
         render: (row) =>
           !canEdit ? (
-            <span className="text-xs text-muted-foreground">—</span>
+            <div className="flex items-center justify-end gap-1">
+              <span className="text-xs text-muted-foreground">—</span>
+            </div>
           ) : (
-            <div onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" variant="outline" disabled={busyId === row.id}>

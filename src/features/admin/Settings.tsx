@@ -1901,7 +1901,13 @@ export function IntegrationsManager() {
                           </Button>
                         )}
                         {!integration.isSystem && canEdit && (
-                          <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(integration)} disabled={busy}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeleteTarget(integration)}
+                            disabled={busy}
+                            aria-label={`Delete ${integration.name}`}
+                          >
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
                         )}

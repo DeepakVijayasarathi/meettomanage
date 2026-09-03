@@ -84,7 +84,7 @@ export default function StudentDashboard() {
     <div className="font-display">
       <PageHeader
         eyebrow="Preview — what your child sees"
-        title={`Hey ${firstName}! 👋`}
+        title={`Hey ${firstName}!`}
         description={`This is a live look at the experience ${firstName} gets when he joins a class through your parent account — no separate student login needed.`}
       />
 
@@ -460,9 +460,15 @@ function ApiStudentDashboard() {
             <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
               {isJoinable(todaySession) ? (
                 <Button size="lg" asChild className="w-full sm:w-auto">
-                  <Link to="/parent/schedule">
+                  {/* Same /parent/live route + route-state shape the demo dashboard and
+                      parent/Schedule.tsx use — LiveClassroom reads state.room to join
+                      directly, so this no longer forces an extra trip through Schedule. */}
+                  <Link
+                    to={`/parent/live/${todaySession.id}`}
+                    state={todaySession.meetingRoomId ? { room: todaySession.meetingRoomId, title: todaySession.title } : undefined}
+                  >
                     <Video className="h-4 w-4" />
-                    Join from Schedule
+                    Join Class
                   </Link>
                 </Button>
               ) : (
@@ -474,7 +480,7 @@ function ApiStudentDashboard() {
                     <span tabIndex={0} className="w-full sm:w-auto">
                       <Button size="lg" variant="outline" disabled className="w-full sm:w-auto">
                         <Video className="h-4 w-4" />
-                        Join from Schedule
+                        Join Class
                       </Button>
                     </span>
                   </TooltipTrigger>

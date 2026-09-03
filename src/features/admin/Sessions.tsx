@@ -304,19 +304,21 @@ export default function AdminSessions() {
         header: "",
         render: (row) =>
           row.status === "completed" ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setRecordingsFor(row);
-              }}
-            >
-              <Video className="h-3.5 w-3.5" />
-              Recording
-            </Button>
+            <div className="flex items-center justify-end gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRecordingsFor(row);
+                }}
+              >
+                <Video className="h-3.5 w-3.5" />
+                Recording
+              </Button>
+            </div>
           ) : (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-end gap-1.5">
               {JOINABLE_STATUSES.includes(row.status) && row.meetingRoomId && (
                 <Button
                   size="sm"

@@ -207,26 +207,29 @@ export default function AdmissionPayments() {
       {
         key: "actions",
         header: "Actions",
-        render: (row) =>
-          canGenerateLink ? (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={row.status === "paid" || row.status === "cancelled" || linkBusyId === row.id || (!apiEnabled())}
-              onClick={() => handleGenerateLink(row)}
-            >
-              {linkBusyId === row.id ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : copiedId === row.id ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-              ) : (
-                <Link2 className="h-3.5 w-3.5" />
-              )}
-              {linkBusyId === row.id ? "Generating…" : copiedId === row.id ? "Link copied" : "Generate & copy link"}
-            </Button>
-          ) : (
-            <span className="text-xs text-muted-foreground">—</span>
-          ),
+        render: (row) => (
+          <div className="flex items-center justify-end gap-1.5">
+            {canGenerateLink ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={row.status === "paid" || row.status === "cancelled" || linkBusyId === row.id || (!apiEnabled())}
+                onClick={() => handleGenerateLink(row)}
+              >
+                {linkBusyId === row.id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : copiedId === row.id ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                ) : (
+                  <Link2 className="h-3.5 w-3.5" />
+                )}
+                {linkBusyId === row.id ? "Generating…" : copiedId === row.id ? "Link copied" : "Generate & copy link"}
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">—</span>
+            )}
+          </div>
+        ),
       },
     ],
     [linkBusyId, copiedId, canGenerateLink]

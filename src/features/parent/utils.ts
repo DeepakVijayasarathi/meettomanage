@@ -11,6 +11,18 @@ import { localToUtcIso } from "@/lib/datetime";
  */
 export const MOCK_NOW = new Date("2026-07-09T16:25:00");
 
+/**
+ * Value -> friendly label for the enrollment form's "Preferred time slot" select
+ * (see Enrollment.tsx). Shared here so any other screen rendering a submitted
+ * enrollment's raw preferredTime value (e.g. Dashboard's PendingEnrollments) shows
+ * the same human-readable label instead of the raw stored key ("morning").
+ */
+export const PREFERRED_TIME_LABELS: Record<string, string> = {
+  morning: "Morning (8am–12pm)",
+  afternoon: "Afternoon (12pm–4pm)",
+  evening: "Evening (4pm–8pm)",
+};
+
 export const TODAY_ISO = format(MOCK_NOW, "yyyy-MM-dd");
 export const YESTERDAY_ISO = format(subDays(MOCK_NOW, 1), "yyyy-MM-dd");
 

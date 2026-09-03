@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
 import { CHILDREN } from "@/data/children";
@@ -241,7 +241,7 @@ function ComposePanel({ canSend }: { canSend: boolean }) {
                 </>
               )}
             </p>
-            <Button disabled={!subject.trim() || !body.trim() || sending} onClick={() => setSendConfirmOpen(true)}>
+            <Button disabled={!subject.trim() || !body.trim() || sending || recipientCount === null} onClick={() => setSendConfirmOpen(true)}>
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               {sending ? "Sending…" : "Send"}
             </Button>
@@ -416,9 +416,11 @@ function HistoryPanel() {
             </div>
           ) : null}
 
-          <Button variant="outline" onClick={() => setOpenBlastId(null)}>
-            Close
-          </Button>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenBlastId(null)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

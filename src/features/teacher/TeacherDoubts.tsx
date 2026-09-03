@@ -23,10 +23,12 @@ import { MOCK_CHAT_ESCALATIONS } from "@/data/chatbot";
  */
 export default function TeacherDoubts() {
   const { toast } = useToast();
-  const { data: escalations, error: loadError, reload } = useApiData<ApiChatEscalation[]>(
+  const { data: fetchedEscalations, error: loadError, reload } = useApiData<ApiChatEscalation[]>(
     () => listChatEscalations(),
     MOCK_CHAT_ESCALATIONS
   );
+  const [escalations, setEscalations] = useState<ApiChatEscalation[]>(() => (apiEnabled() ? [] : MOCK_CHAT_ESCALATIONS));
+  useEffect(() => setEscalations(fetchedEscalations), [fetchedEscalations]);
   const [resolveTarget, setResolveTarget] = useState<ApiChatEscalation | null>(null);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -50,8 +52,16 @@ export default function TeacherDoubts() {
   async function confirmResolve() {
     if (!resolveTarget) return;
     if (!apiEnabled()) {
+      const targetId = resolveTarget.id;
+      setEscalations((prev) =>
+        prev.map((e) =>
+          e.id === targetId
+            ? { ...e, status: "Resolved", resolutionNote: note.trim() || null, resolvedByName: "You" }
+            : e
+        )
+      );
       setNoticeVariant("success");
-      setNotice("Demo mode — nothing was actually resolved.");
+      setNotice("Demo mode — doubt marked resolved locally (not persisted).");
       setResolveTarget(null);
       return;
     }

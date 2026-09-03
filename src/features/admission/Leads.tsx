@@ -387,7 +387,9 @@ export default function AdmissionLeads() {
               {canLogFollowUp ? (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="followUpNote">Log a new follow-up note</Label>
+                    <Label htmlFor="followUpNote">
+                      Log a new follow-up note <span className="text-destructive">*</span>
+                    </Label>
                     <Textarea
                       id="followUpNote"
                       placeholder="What did you discuss with the parent?"

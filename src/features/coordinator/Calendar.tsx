@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { RecordingsDialog } from "@/components/RecordingsDialog";
+import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -280,6 +281,13 @@ export default function CoordinatorCalendar() {
           ) : undefined
         }
       />
+
+      {usingApi && !canSeeLeave && (
+        <InlineAlert variant="info" className="mb-4">
+          Approved teacher leave isn&apos;t visible with this account&apos;s current permissions — the calendar below may be
+          missing leave overlays rather than showing genuinely no leave scheduled.
+        </InlineAlert>
+      )}
 
       <Card className="p-5">
         <CalendarBoard

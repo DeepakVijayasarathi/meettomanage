@@ -484,7 +484,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                       onClick={() => giveStar(participant)}
                       title={`Give ${participant.name} a star`}
                     >
-                      <Star className={cn("mr-1 h-3 w-3", justAwardedId === participant.connectionId && "fill-brand-amber")} />
+                      <Star className={cn("h-3 w-3", justAwardedId === participant.connectionId && "fill-brand-amber")} />
                       {justAwardedId === participant.connectionId ? "Given!" : "Give star"}
                     </Button>
                   )}
@@ -500,7 +500,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                       )}
                       onClick={() => toggleBoardAccess(participant)}
                     >
-                      <PencilRuler className="mr-1 h-3 w-3" />
+                      <PencilRuler className="h-3 w-3" />
                       {grantedIds.has(participant.connectionId) ? "Board on" : "Allow board"}
                     </Button>
                   )}

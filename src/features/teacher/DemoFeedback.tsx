@@ -62,7 +62,7 @@ const MOCK_COURSE_OPTIONS = COURSES.filter((c) => c.type !== "demo").map((c) => 
 
 export default function TeacherDemoFeedback() {
   const { toast } = useToast();
-  const { data: apiFeedbacks, reload } = useApiData(
+  const { data: apiFeedbacks, error: loadError, reload } = useApiData(
     () =>
       Promise.all([listMyDemoBookings(), listMyDemoFeedback()]).then(([bookings, submittedItems]) => [
         ...bookings.filter((b) => b.conversionStatus === "DemoScheduled").map(toAwaitingFeedback),
@@ -70,7 +70,7 @@ export default function TeacherDemoFeedback() {
       ]),
     MOCK_FEEDBACKS
   );
-  const { data: courseOptions } = useApiData(() => listCourseOptions(), MOCK_COURSE_OPTIONS);
+  const { data: courseOptions, error: courseOptionsError } = useApiData(() => listCourseOptions(), MOCK_COURSE_OPTIONS);
   const [feedbacks, setFeedbacks] = useState<DemoFeedback[]>(() => (apiEnabled() ? [] : MOCK_FEEDBACKS));
   useEffect(() => setFeedbacks(apiFeedbacks), [apiFeedbacks]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -152,6 +152,15 @@ export default function TeacherDemoFeedback() {
         description="Mandatory feedback after every demo class — helps the admission team place the child in the right batch."
         eyebrow="Teaching"
       />
+
+      {apiEnabled() && loadError && (
+        <InlineAlert variant="warning" className="mb-4">
+          Could not load demo feedback ({loadError}) — the lists below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </InlineAlert>
+      )}
 
       {justSubmitted && (
         <InlineAlert variant="success" bordered className="mb-5">
@@ -297,7 +306,11 @@ export default function TeacherDemoFeedback() {
                     <Label htmlFor="recommendedCourse">
                       Recommended Course <span className="text-destructive">*</span>
                     </Label>
-                    <Select value={form.recommendedCourse} onValueChange={(v) => setForm((p) => ({ ...p, recommendedCourse: v }))}>
+                    <Select
+                      value={form.recommendedCourse}
+                      onValueChange={(v) => setForm((p) => ({ ...p, recommendedCourse: v }))}
+                      disabled={apiEnabled() && !!courseOptionsError && courseOptions.length === 0}
+                    >
                       <SelectTrigger id="recommendedCourse">
                         <SelectValue placeholder="Select a course" />
                       </SelectTrigger>
@@ -309,6 +322,11 @@ export default function TeacherDemoFeedback() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {apiEnabled() && courseOptionsError && courseOptions.length === 0 && (
+                      <p className="text-xs font-medium text-destructive">
+                        Couldn't load course options ({courseOptionsError}). Refresh the page to try again.
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-1.5">

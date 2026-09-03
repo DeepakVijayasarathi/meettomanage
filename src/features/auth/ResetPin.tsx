@@ -179,8 +179,13 @@ export default function ResetPin() {
                 disabled={submitting || !canSubmit}
                 className="mt-1 !bg-brand-green !text-white hover:!bg-brand-greenDark"
               >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {submitting ? "Saving…" : "Save new PIN"}
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  "Save new PIN"
+                )}
               </Button>
             </form>
           </>

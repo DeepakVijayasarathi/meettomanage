@@ -256,7 +256,11 @@ export default function SubAdminActivityBank() {
         description="Whiteboard mini-games teachers launch during class — scope one to a specific course, or leave it department-wide to share across every course in that department. A Demo class only ever draws from its department's shared activities."
         actions={
           canCreate ? (
-            <Button onClick={openAdd} disabled={departments.length === 0}>
+            <Button
+              onClick={openAdd}
+              disabled={departments.length === 0}
+              title={departments.length === 0 ? "Add a department under Academics → Departments first" : undefined}
+            >
               <Plus className="h-4 w-4" /> Add Activity
             </Button>
           ) : undefined
@@ -334,7 +338,7 @@ export default function SubAdminActivityBank() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label htmlFor="wa-department">Department <span className="text-destructive">*</span></Label>
                 <Select value={departmentId} onValueChange={(v) => { setDepartmentId(v); setCourseId("__none__"); }}>

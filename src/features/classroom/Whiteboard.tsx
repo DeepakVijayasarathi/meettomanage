@@ -523,17 +523,24 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
     });
   }, [subscribeBoardOps]);
 
-  const maximizeButton = (
+  // `compact` shrinks the button to h-7 w-7 to match the smaller icon-button
+  // siblings in the view-only (no draw access) toolbar; the full canDraw
+  // toolbar keeps the default h-8 w-8 to match its own siblings.
+  const renderMaximizeButton = (compact = false) => (
     <Button
       size="icon"
       variant="ghost"
-      className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
+      className={cn("text-white/70 hover:bg-white/10 hover:text-white", compact ? "h-7 w-7" : "h-8 w-8")}
       title={maximized ? "Shrink the board back down" : "Make the board bigger"}
       aria-label={maximized ? "Shrink the board back down" : "Make the board bigger"}
       aria-pressed={maximized}
       onClick={() => setMaximized((m) => !m)}
     >
-      {maximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+      {maximized ? (
+        <Minimize2 className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+      ) : (
+        <Maximize2 className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+      )}
     </Button>
   );
 
@@ -660,7 +667,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
               </Button>
             )}
             <div className="ml-1 h-6 w-px bg-white/10" aria-hidden="true" />
-            {maximizeButton}
+            {renderMaximizeButton()}
           </div>
         </div>
       ) : (
@@ -696,7 +703,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
             <div className="mx-1 h-5 w-px bg-white/10" aria-hidden="true" />
-            {maximizeButton}
+            {renderMaximizeButton(true)}
           </div>
         </div>
       )}

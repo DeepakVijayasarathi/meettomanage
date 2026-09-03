@@ -3,7 +3,7 @@ import { Loader2, Mail, MessageSquare } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { useApiData } from "@/api/hooks";
 import {
@@ -152,9 +152,11 @@ export default function AdminBulkEmailHistory() {
             </div>
           ) : null}
 
-          <Button variant="outline" onClick={() => setOpenBlastId(null)}>
-            Close
-          </Button>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenBlastId(null)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

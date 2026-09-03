@@ -211,7 +211,13 @@ export default function AdminQuizQuestions() {
           <Button size="sm" variant="ghost" onClick={() => openEdit(q)}>
             Edit
           </Button>
-          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(q)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setDeleteTarget(q)}
+            aria-label={`Delete "${q.prompt}"`}
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>

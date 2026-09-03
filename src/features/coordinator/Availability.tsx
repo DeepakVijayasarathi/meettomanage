@@ -185,7 +185,7 @@ export default function CoordinatorAvailability() {
     if (!usingApi) SESSIONS.filter((s) => s.date === today && s.status === "leave").forEach((s) => ids.add(s.teacherId));
     return ids.size;
   }, [leaves, usingApi, today]);
-  const activeTeachersToday = activeTeachers.length - teachersOnLeaveToday;
+  const activeTeachersToday = Math.max(0, activeTeachers.length - teachersOnLeaveToday);
 
   const weekDays = useMemo(() => Array.from({ length: WEEK_LENGTH }, (_, i) => addDays(now, i)), [now]);
 
@@ -217,6 +217,13 @@ export default function CoordinatorAvailability() {
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
+        </InlineAlert>
+      )}
+
+      {!canSeeLeave && (
+        <InlineAlert variant="info" className="mb-4">
+          Leave data isn&apos;t visible with this account&apos;s current permissions — the leave-related figures, approval
+          queue and leave overview below appear empty rather than reflecting real leave records.
         </InlineAlert>
       )}
 
@@ -376,7 +383,7 @@ export default function CoordinatorAvailability() {
                         </Button>
                       </>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Awaiting a login with Approve access</span>
+                      <span className="text-xs text-muted-foreground">You don&apos;t have permission to approve leave requests.</span>
                     )}
                   </div>
                 </div>

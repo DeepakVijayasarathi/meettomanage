@@ -110,9 +110,11 @@ export default function AdminDepartments() {
       key: "actions",
       header: "",
       render: (d) => (
-        <Button size="sm" variant="ghost" onClick={() => openEdit(d)}>
-          Edit
-        </Button>
+        <div className="flex items-center justify-end gap-1">
+          <Button size="sm" variant="ghost" onClick={() => openEdit(d)}>
+            Edit
+          </Button>
+        </div>
       ),
     },
   ];

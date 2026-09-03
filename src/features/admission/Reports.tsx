@@ -269,7 +269,7 @@ export default function AdmissionReports() {
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="to-date">To</Label>
-            <Input id="to-date" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-40" />
+            <Input id="to-date" type="date" value={toDate} min={fromDate || undefined} onChange={(e) => setToDate(e.target.value)} className="w-40" />
           </div>
           <Button variant="outline" onClick={handleExport} disabled={rows.length === 0}>
             <Download className="h-4 w-4" />
@@ -286,6 +286,12 @@ export default function AdmissionReports() {
           <p className="text-sm font-semibold text-foreground">{REPORT_OPTIONS.find((o) => o.value === reportType)?.label}</p>
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">{rows.length} rows</span>
         </div>
+
+        {fromDate > toDate && (
+          <InlineAlert variant="warning" className="mb-3">
+            The "From" date is after the "To" date, so this range can't match any records — adjust the dates above.
+          </InlineAlert>
+        )}
 
         {reportError && (
           <InlineAlert variant="warning" className="mb-3">

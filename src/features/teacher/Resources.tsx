@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RESOURCES } from "@/data/resources";
 import { BATCHES, getBatchById } from "@/data/batches";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -256,9 +257,22 @@ export default function TeacherResources() {
               if (!open) resetUploadForm();
             }}
           >
-            <Button onClick={() => setUploadOpen(true)} disabled={usingApi && batchOptions.length === 0}>
-              <Upload className="h-4 w-4" /> Upload resource
-            </Button>
+            {usingApi && batchOptions.length === 0 ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button disabled>
+                      <Upload className="h-4 w-4" /> Upload resource
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>You have no batches assigned yet.</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button onClick={() => setUploadOpen(true)}>
+                <Upload className="h-4 w-4" /> Upload resource
+              </Button>
+            )}
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Upload a resource</DialogTitle>

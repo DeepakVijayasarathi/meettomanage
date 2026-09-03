@@ -122,7 +122,7 @@ export default function AdminStoreInquiries() {
         key: "actions",
         header: "",
         render: (row) => (
-          <div onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" disabled={busyId === row.id}>

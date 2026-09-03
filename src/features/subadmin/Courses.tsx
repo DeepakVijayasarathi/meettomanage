@@ -74,7 +74,6 @@ export default function SubAdminCourses() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const effectiveDepartmentId = departmentId || departments[0]?.id || "";
 
   function openCreate() {
     setName("");
@@ -98,8 +97,12 @@ export default function SubAdminCourses() {
       setSaveError("Duration must be a positive number of minutes.");
       return;
     }
-    if (!effectiveDepartmentId) {
-      setSaveError("Add a department under Academics → Departments before creating a course.");
+    if (!departmentId) {
+      setSaveError(
+        departments.length === 0
+          ? "Add a department under Academics → Departments before creating a course."
+          : "Department is required."
+      );
       return;
     }
 
@@ -115,7 +118,7 @@ export default function SubAdminCourses() {
       await createCourse({
         name: name.trim(),
         categoryName: category,
-        departmentId: effectiveDepartmentId,
+        departmentId,
         type,
         durationMinutes: Number(duration),
         price: Number(price) || 0,
@@ -294,8 +297,8 @@ export default function SubAdminCourses() {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="course-department-select">Department</Label>
-                <Select value={effectiveDepartmentId} onValueChange={setDepartmentId}>
+                <Label htmlFor="course-department-select">Department <span className="text-destructive">*</span></Label>
+                <Select value={departmentId} onValueChange={setDepartmentId}>
                   <SelectTrigger id="course-department-select">
                     <SelectValue placeholder="Select a department" />
                   </SelectTrigger>

@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PAYOUTS } from "@/data/payouts";
@@ -405,43 +406,43 @@ export default function SubAdminPayouts() {
                 </button>
 
                 {expanded && (
-                  <div className="overflow-x-auto border-t border-border">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/30 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          <th className="px-4 py-2 font-semibold">Month</th>
-                          <th className="px-4 py-2 font-semibold">Sessions</th>
-                          <th className="px-4 py-2 font-semibold">Base Amount</th>
-                          <th className="px-4 py-2 font-semibold">Deductions</th>
-                          <th className="px-4 py-2 font-semibold">Waiting Added</th>
-                          <th className="px-4 py-2 font-semibold">Final Amount</th>
-                          <th className="px-4 py-2 font-semibold">Status</th>
-                          <th className="px-4 py-2 font-semibold" />
-                        </tr>
-                      </thead>
-                      <tbody>
+                  <div className="border-t border-border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/30">
+                          <TableHead>Month</TableHead>
+                          <TableHead>Sessions</TableHead>
+                          <TableHead>Base Amount</TableHead>
+                          <TableHead>Deductions</TableHead>
+                          <TableHead>Waiting Added</TableHead>
+                          <TableHead>Final Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {group.rows.map((row) => (
-                          <tr key={row.id} className="border-b border-border last:border-0">
-                            <td className="px-4 py-2.5">{row.month}</td>
-                            <td className="px-4 py-2.5">{row.sessionsCompleted}</td>
-                            <td className="px-4 py-2.5 text-muted-foreground">{formatCurrency(row.baseAmount)}</td>
-                            <td className="px-4 py-2.5">
+                          <TableRow key={row.id}>
+                            <TableCell>{row.month}</TableCell>
+                            <TableCell>{row.sessionsCompleted}</TableCell>
+                            <TableCell className="text-muted-foreground">{formatCurrency(row.baseAmount)}</TableCell>
+                            <TableCell>
                               <span className={row.deductions > 0 ? "font-medium text-destructive" : "text-muted-foreground"}>
                                 {row.deductions > 0 ? `-${formatCurrency(row.deductions)}` : "—"}
                               </span>
-                            </td>
-                            <td className="px-4 py-2.5">
+                            </TableCell>
+                            <TableCell>
                               <span className={row.waitingAmountAdded > 0 ? "font-medium text-success" : "text-muted-foreground"}>
                                 {row.waitingAmountAdded > 0 ? `+${formatCurrency(row.waitingAmountAdded)}` : "—"}
                               </span>
-                            </td>
-                            <td className="px-4 py-2.5 font-bold text-foreground">{formatCurrency(row.finalAmount)}</td>
-                            <td className="px-4 py-2.5">{renderStatus(row)}</td>
-                            <td className="px-4 py-2.5">{renderActions(row)}</td>
-                          </tr>
+                            </TableCell>
+                            <TableCell className="font-bold text-foreground">{formatCurrency(row.finalAmount)}</TableCell>
+                            <TableCell>{renderStatus(row)}</TableCell>
+                            <TableCell>{renderActions(row)}</TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </div>

@@ -335,7 +335,7 @@ export default function Login() {
             >
               {submitting ? (
                 <>
-                  Signing in… <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" /> Signing in…
                 </>
               ) : apiEnabled() ? (
                 <>

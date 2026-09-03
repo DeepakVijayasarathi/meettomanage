@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/EmptyState";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/lib/branding";
@@ -380,9 +380,20 @@ export default function Store() {
                   <Textarea id="notes" rows={2} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
                 </div>
                 {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
-                <Button type="submit" disabled={submitting} className="mt-1 w-full !bg-brand-green !text-white hover:!bg-brand-greenDark">
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Enquiry"}
-                </Button>
+                <DialogFooter className="mt-1">
+                  <Button type="button" variant="outline" onClick={() => setSelectedPlan(null)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={submitting} className="!bg-brand-green !text-white hover:!bg-brand-greenDark">
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Submitting…
+                      </>
+                    ) : (
+                      "Submit Enquiry"
+                    )}
+                  </Button>
+                </DialogFooter>
               </form>
             </>
           )}
@@ -564,13 +575,24 @@ export default function Store() {
                     {demoError}
                   </p>
                 )}
-                <Button
-                  type="submit"
-                  disabled={demoSubmitting}
-                  className="mt-1 w-full !bg-brand-navy !text-white hover:!bg-brand-navyDark"
-                >
-                  {demoSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Book Demo"}
-                </Button>
+                <DialogFooter className="mt-1">
+                  <Button type="button" variant="outline" onClick={() => setDemoOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={demoSubmitting}
+                    className="!bg-brand-navy !text-white hover:!bg-brand-navyDark"
+                  >
+                    {demoSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Booking…
+                      </>
+                    ) : (
+                      "Book Demo"
+                    )}
+                  </Button>
+                </DialogFooter>
               </form>
             </>
           )}

@@ -136,7 +136,7 @@ export default function AdmissionDemoScheduling() {
   // A demo can host more than two kids — extra children join by name only.
   const [extraChildren, setExtraChildren] = useState<string[]>([]);
   const [parents, setParents] = useState<DemoParentField[]>([blankParent()]);
-  const [date, setDate] = useState("2026-07-14");
+  const [date, setDate] = useState(apiEnabled() ? new Date().toISOString().slice(0, 10) : "2026-07-14");
   const [time, setTime] = useState("16:00");
   const [teacherId, setTeacherId] = useState("");
   const [notes, setNotes] = useState("");
@@ -181,7 +181,7 @@ export default function AdmissionDemoScheduling() {
     setChildAge("");
     setExtraChildren([]);
     setParents([blankParent()]);
-    setDate("2026-07-14");
+    setDate(apiEnabled() ? new Date().toISOString().slice(0, 10) : "2026-07-14");
     setTime("16:00");
     setTeacherId("");
     setNotes("");
@@ -477,7 +477,7 @@ export default function AdmissionDemoScheduling() {
                       onClick={() => setExtraChildren((prev) => prev.filter((_, i) => i !== idx))}
                       aria-label="Remove this child"
                     >
-                      ×
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
@@ -494,12 +494,25 @@ export default function AdmissionDemoScheduling() {
                 <UserPlus className="h-3.5 w-3.5" /> Add another parent
               </Button>
             </div>
+            <div className="hidden gap-3 px-3 sm:grid sm:grid-cols-[1fr_1fr_1fr_auto]">
+              <Label className="text-xs text-muted-foreground">Name</Label>
+              <Label className="text-xs text-muted-foreground">Phone</Label>
+              <Label className="text-xs text-muted-foreground">
+                Email {apiEnabled() ? <span className="text-destructive">*</span> : "(required to invite)"}
+              </Label>
+              <span />
+            </div>
             <div className="flex flex-col gap-3">
               {parents.map((p, idx) => (
                 <div key={p.id} className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
                   <Input placeholder={`Parent/guardian ${idx + 1} name`} aria-label={`Parent/guardian ${idx + 1} name`} value={p.name} onChange={(e) => updateParent(p.id, "name", e.target.value)} />
                   <Input placeholder="Phone number" aria-label={`Parent/guardian ${idx + 1} phone number`} value={p.phone} onChange={(e) => updateParent(p.id, "phone", e.target.value)} />
-                  <Input placeholder="Email address (required to invite)" aria-label={`Parent/guardian ${idx + 1} email address`} value={p.email} onChange={(e) => updateParent(p.id, "email", e.target.value)} />
+                  <Input
+                    placeholder={apiEnabled() ? "Email address (required)" : "Email address"}
+                    aria-label={`Parent/guardian ${idx + 1} email address${apiEnabled() ? " (required)" : ""}`}
+                    value={p.email}
+                    onChange={(e) => updateParent(p.id, "email", e.target.value)}
+                  />
                   <Button
                     type="button"
                     variant="ghost"

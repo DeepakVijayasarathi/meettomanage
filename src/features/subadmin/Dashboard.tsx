@@ -214,7 +214,7 @@ export default function SubAdminDashboard() {
             title: "Assigned Reports",
             icon: BarChart3,
             color: CHART_PALETTE[5],
-            stat: "2 report types available in your scope",
+            stat: "Reports available in your scope",
             ctaLabel: "Open reports",
             to: `${base}/reports`,
           },

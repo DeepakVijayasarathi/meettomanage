@@ -228,7 +228,13 @@ export default function AdminActivityBank() {
           <Button size="sm" variant="ghost" onClick={() => openEdit(a)}>
             Edit
           </Button>
-          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(a)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setDeleteTarget(a)}
+            aria-label={`Delete "${a.prompt}"`}
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>

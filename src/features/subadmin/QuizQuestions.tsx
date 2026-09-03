@@ -246,7 +246,11 @@ export default function SubAdminQuizQuestions() {
               canImport={canCreate}
             />
             {canCreate && (
-              <Button onClick={openAdd} disabled={departments.length === 0}>
+              <Button
+                onClick={openAdd}
+                disabled={departments.length === 0}
+                title={departments.length === 0 ? "Add a department under Academics → Departments first" : undefined}
+              >
                 <Plus className="h-4 w-4" /> Add Question
               </Button>
             )}
@@ -304,7 +308,7 @@ export default function SubAdminQuizQuestions() {
               <Label htmlFor="qq-prompt">Question <span className="text-destructive">*</span></Label>
               <Input id="qq-prompt" placeholder="e.g. Which letter makes the /f/ sound in 'phone'?" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label htmlFor="qq-department">Department <span className="text-destructive">*</span></Label>
                 <Select value={departmentId} onValueChange={(v) => { setDepartmentId(v); setCourseId("__none__"); }}>

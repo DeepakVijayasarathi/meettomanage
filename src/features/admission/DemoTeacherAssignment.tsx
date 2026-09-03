@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
@@ -252,7 +253,17 @@ export default function DemoTeacherAssignment() {
             </div>
 
             {pickerLoading ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Loading upcoming demos…</p>
+              <div className="flex flex-col gap-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                    <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Skeleton className="h-3.5 w-40" />
+                      <Skeleton className="h-3 w-56" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : filteredPicker.length === 0 ? (
               <EmptyState icon={CalendarClock} title="No upcoming demos found" description="Schedule a demo first, or adjust your search." />
             ) : (
@@ -287,7 +298,18 @@ export default function DemoTeacherAssignment() {
       {/* Gated on !detail, not !detailLoading -- a background refresh after a successful
           reassignment (loadDetail again) must not unmount this whole panel and flash the
           success banner away while it's still meant to be showing. */}
-      {bookingId && detailLoading && !detail && <p className="py-10 text-center text-sm text-muted-foreground">Loading booking…</p>}
+      {bookingId && detailLoading && !detail && (
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="mt-2 h-3.5 w-64" />
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2.5">
+            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-16 w-full rounded-xl" />
+          </CardContent>
+        </Card>
+      )}
 
       {bookingId && !detailLoading && detailError && (
         <InlineAlert variant="error" bordered>{detailError}</InlineAlert>

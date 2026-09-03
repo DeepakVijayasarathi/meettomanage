@@ -702,7 +702,7 @@ export default function JitsiLive({
               </Button>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setLeaveConfirmOpen(false)}>
+              <Button variant="outline" onClick={() => setLeaveConfirmOpen(false)}>
                 Cancel
               </Button>
             </DialogFooter>

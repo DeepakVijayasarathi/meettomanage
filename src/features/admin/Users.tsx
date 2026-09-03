@@ -972,10 +972,12 @@ export default function AdminUsers() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  Changing the account type only works while there&rsquo;s no history behind it yet (e.g. a parent with no
-                  children, a teacher with no classes).
-                </p>
+                {editRole !== editUser?.role && (
+                  <p className="text-xs text-muted-foreground">
+                    Changing the account type only works while there&rsquo;s no history behind it yet (e.g. a parent with no
+                    children, a teacher with no classes).
+                  </p>
+                )}
               </div>
             )}
             {editRole === "teacher" && (

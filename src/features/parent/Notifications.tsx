@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -271,25 +272,47 @@ export default function ParentNotifications() {
 
       <Tabs defaultValue="all" className={usingApi && loadError ? "mt-4" : undefined}>
         <TabsList>
-          <TabsTrigger value="all">All ({items.length})</TabsTrigger>
-          <TabsTrigger value="unread">Unread ({unreadCount})</TabsTrigger>
+          <TabsTrigger value="all">{loaded ? `All (${items.length})` : <Skeleton className="h-4 w-14" />}</TabsTrigger>
+          <TabsTrigger value="unread">{loaded ? `Unread (${unreadCount})` : <Skeleton className="h-4 w-16" />}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all">
-          {loaded && (
+          {loaded ? (
             <NotificationGroups groups={groupByDay(items, todayIso, yesterdayIso)} onOpen={openItem} onReplied={handleReplied} />
+          ) : (
+            <NotificationSkeletonList />
           )}
         </TabsContent>
         <TabsContent value="unread">
-          {loaded && (
+          {loaded ? (
             <NotificationGroups
               groups={groupByDay(items.filter((n) => !n.read), todayIso, yesterdayIso)}
               onOpen={openItem}
               onReplied={handleReplied}
             />
+          ) : (
+            <NotificationSkeletonList />
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+/** Shown in place of NotificationGroups while the real feed is still loading (`!loaded`). */
+function NotificationSkeletonList() {
+  return (
+    <div className="flex flex-col gap-2">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3">
+          <Skeleton className="h-9 w-9 shrink-0 rounded-xl" />
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="mt-2 h-3 w-full" />
+            <Skeleton className="mt-1 h-3 w-1/4" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

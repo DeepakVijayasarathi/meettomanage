@@ -173,7 +173,13 @@ function FaqManager() {
           <Button size="sm" variant="ghost" onClick={() => openEdit(faq)}>
             Edit
           </Button>
-          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(faq)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setDeleteTarget(faq)}
+            aria-label={`Delete "${faq.question}"`}
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>

@@ -9,6 +9,7 @@ import { CalendarBoard } from "@/components/CalendarBoard";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -71,7 +72,7 @@ export default function ParentSchedule() {
       : undefined;
   const [selected, setSelected] = useState<ClassSession | null>(null);
 
-  const { data: apiSessions, error: sessionsError, reload: reloadSessions } = useApiData<ClassSession[]>(
+  const { data: apiSessions, loading: sessionsLoading, error: sessionsError, reload: reloadSessions } = useApiData<ClassSession[]>(
     () => {
       const from = new Date(Date.now() - 60 * 86400_000).toISOString();
       const to = new Date(Date.now() + 60 * 86400_000).toISOString();
@@ -167,7 +168,13 @@ export default function ParentSchedule() {
               <TabsTrigger value="calendar">Calendar</TabsTrigger>
             </TabsList>
             <TabsContent value="upcoming">
-              {upcoming.length === 0 ? (
+              {usingApi && sessionsLoading ? (
+                <div className="flex flex-col gap-3">
+                  {[0, 1, 2].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : upcoming.length === 0 ? (
                 <EmptyState icon={ListChecks} title="No upcoming sessions" description="New classes will appear here once scheduled." />
               ) : (
                 <div className="flex flex-col gap-3">
@@ -192,7 +199,9 @@ export default function ParentSchedule() {
               <CardDescription>Attendance history and recording availability</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              {past.length === 0 ? (
+              {usingApi && sessionsLoading ? (
+                [0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
+              ) : past.length === 0 ? (
                 <EmptyState icon={CalendarDays} title="No past sessions yet" />
               ) : (
                 past.map((s) => <PastRow key={s.id} session={s} />)

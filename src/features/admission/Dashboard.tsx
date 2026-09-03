@@ -105,7 +105,7 @@ export default function AdmissionDashboard() {
           value={formatNumber(demosThisWeek)}
           icon={CalendarClock}
           tone="primary"
-          trend={{ value: 18, label: "vs last week" }}
+          trend={usingApi ? undefined : { value: 18, label: "vs last week" }}
           loading={kpiLoading}
           error={kpiError}
         />
@@ -114,7 +114,7 @@ export default function AdmissionDashboard() {
           value={formatPercent(conversionRate)}
           icon={TrendingUp}
           tone="success"
-          trend={{ value: 4.5, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: 4.5, label: "vs last month" }}
           loading={kpiLoading}
           error={kpiError}
         />
@@ -123,7 +123,7 @@ export default function AdmissionDashboard() {
           value={formatNumber(pendingFollowUps)}
           icon={PhoneCall}
           tone="destructive"
-          trend={{ value: -12, label: "vs last week" }}
+          trend={usingApi ? undefined : { value: -12, label: "vs last week" }}
           loading={kpiLoading}
           error={kpiError}
         />
@@ -132,7 +132,7 @@ export default function AdmissionDashboard() {
           value={formatCurrency(revenueThisMonth)}
           icon={IndianRupee}
           tone="warning"
-          trend={{ value: 9.2, label: "this month" }}
+          trend={usingApi ? undefined : { value: 9.2, label: "this month" }}
           loading={kpiLoading}
           error={kpiError}
         />

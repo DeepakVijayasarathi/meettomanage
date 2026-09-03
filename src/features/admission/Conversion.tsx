@@ -118,13 +118,13 @@ export default function AdmissionConversion() {
       {leads.length === 0 ? (
         <EmptyState icon={Sparkles} title="No leads on the board yet" description="Leads appear here once their demo is completed." />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <div className="flex gap-4 overflow-x-auto pb-2">
           {BOARD_STAGES.map((stage) => {
             const meta = STAGE_META[stage];
             const Icon = meta.icon;
             const stageLeads = columns[stage];
             return (
-              <div key={stage} className="flex flex-col rounded-xl border border-border bg-muted/20">
+              <div key={stage} className="flex min-w-[280px] flex-1 flex-col rounded-xl border border-border bg-muted/20">
                 <div className="flex items-center gap-2.5 border-b border-border p-4">
                   <span
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"

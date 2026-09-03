@@ -339,10 +339,12 @@ export default function SubAdminPackages() {
         header: "",
         render: (p) =>
           canEdit ? (
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEditPlan(p); }}>
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </Button>
+            <div className="flex items-center justify-end gap-1">
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEditPlan(p); }}>
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </Button>
+            </div>
           ) : null,
       },
     ],
@@ -402,26 +404,30 @@ export default function SubAdminPackages() {
         header: "",
         render: (s) => {
           if (!canEdit) return null;
-          return s.status === "Active" ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              onClick={(e) => { e.stopPropagation(); setConfirmCancel(s); }}
-            >
-              <XCircle className="h-3.5 w-3.5" />
-              Cancel
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={busyId === s.id}
-              onClick={(e) => { e.stopPropagation(); void handleRenew(s); }}
-            >
-              {busyId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              Renew
-            </Button>
+          return (
+            <div className="flex items-center justify-end gap-1">
+              {s.status === "Active" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={(e) => { e.stopPropagation(); setConfirmCancel(s); }}
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  Cancel
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busyId === s.id}
+                  onClick={(e) => { e.stopPropagation(); void handleRenew(s); }}
+                >
+                  {busyId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  Renew
+                </Button>
+              )}
+            </div>
           );
         },
       },
