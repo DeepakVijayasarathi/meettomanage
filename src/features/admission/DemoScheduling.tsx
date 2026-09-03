@@ -21,7 +21,7 @@ import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
-import { createDemoBooking, listDemoBookings, resendDemoLink, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
+import { createDemoBooking, getDemoJoinLink, listDemoBookings, resendDemoLink, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
 import { formatDate, getInitials } from "@/lib/utils";
 import { getUserTimeZoneAbbreviation, localToUtcIso, utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -150,6 +150,8 @@ export default function AdmissionDemoScheduling() {
   // Tracks which row's "Resend Link" is in flight, so only that row's button shows busy --
   // multiple demos in the list could each be resent independently.
   const [resendingId, setResendingId] = useState<string | null>(null);
+  // Tracks which row's "Copy Link" is in flight / just succeeded / just failed, per row.
+  const [copyState, setCopyState] = useState<{ id: string; status: "copying" | "copied" | "failed" } | null>(null);
   const [completeTarget, setCompleteTarget] = useState<DemoRow | null>(null);
 
   const activeTeachers = teacherOptions;
@@ -269,6 +271,31 @@ export default function AdmissionDemoScheduling() {
         toast({ variant: "error", title: "Couldn't resend link", description: err.message });
       })
       .finally(() => setResendingId(null));
+  }
+
+  // Copies the parent's join link to the clipboard for manual sharing (WhatsApp, SMS) --
+  // demo mode has no real link to copy, so this is API-only.
+  function handleCopyLink(row: DemoRow) {
+    if (!apiEnabled()) {
+      toast({ variant: "error", title: "Not available in demo mode" });
+      return;
+    }
+    setCopyState({ id: row.id, status: "copying" });
+    getDemoJoinLink(row.id)
+      .then(async (joinUrl) => {
+        if (!navigator.clipboard) {
+          throw new Error("Clipboard API unavailable");
+        }
+        await navigator.clipboard.writeText(joinUrl);
+        setCopyState({ id: row.id, status: "copied" });
+      })
+      .catch((err: Error) => {
+        setCopyState({ id: row.id, status: "failed" });
+        toast({ variant: "error", title: "Couldn't copy link", description: err.message });
+      })
+      .finally(() => {
+        setTimeout(() => setCopyState((s) => (s?.id === row.id ? null : s)), 2500);
+      });
   }
 
   const columns: DataTableColumn<DemoRow>[] = useMemo(
@@ -406,11 +433,29 @@ export default function AdmissionDemoScheduling() {
             >
               {resendingId === row.id ? "Resending…" : "Resend Link"}
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={row.status !== "demo" || copyState?.id === row.id}
+              title="Copy the parent's join link to share manually"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopyLink(row);
+              }}
+            >
+              {copyState?.id === row.id
+                ? copyState.status === "copying"
+                  ? "Copying…"
+                  : copyState.status === "copied"
+                    ? "Copied"
+                    : "Failed"
+                : "Copy Link"}
+            </Button>
           </div>
         ),
       },
     ],
-    [base, resendingId]
+    [base, resendingId, copyState]
   );
 
   return (

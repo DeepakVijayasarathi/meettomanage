@@ -1,13 +1,17 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { addDays, endOfWeek, isWithinInterval, parse, parseISO, startOfDay, startOfWeek } from "date-fns";
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowRight,
   CalendarClock,
   CalendarDays,
   CalendarOff,
+  Check,
   CheckCircle2,
   Clock,
+  Link2,
   PartyPopper,
   Sparkles,
   Users,
@@ -34,6 +38,7 @@ import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
 import { listMyDemoBookings, toAwaitingFeedback } from "@/api/demoBookings";
+import { getMyMeetingRoomShortLink } from "@/api/account";
 import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -74,6 +79,25 @@ export default function TeacherDashboard() {
   const { userName } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
   const usingApi = apiEnabled();
+
+  // Copy state for a demo row's "Copy Link" -- every demo uses this teacher's own fixed
+  // personal room, so the same short-link mint used by "My meeting link" works here too.
+  const [copyLinkState, setCopyLinkState] = useState<{ sessionId: string; status: "copying" | "copied" | "failed" } | null>(null);
+  function copyDemoLink(sessionId: string) {
+    setCopyLinkState({ sessionId, status: "copying" });
+    getMyMeetingRoomShortLink()
+      .then(async ({ url }) => {
+        if (!navigator.clipboard) {
+          throw new Error("Clipboard API unavailable");
+        }
+        await navigator.clipboard.writeText(url);
+        setCopyLinkState({ sessionId, status: "copied" });
+      })
+      .catch(() => setCopyLinkState({ sessionId, status: "failed" }))
+      .finally(() => {
+        setTimeout(() => setCopyLinkState((s) => (s?.sessionId === sessionId ? null : s)), 2500);
+      });
+  }
 
   // Sessions plus every completed one's real per-child attendance, fetched together (same
   // pattern as Attendance.tsx): there's no aggregate attendance endpoint, so the per-session
@@ -266,6 +290,27 @@ export default function TeacherDashboard() {
                       </div>
                       <div className="flex items-center gap-2 sm:justify-end">
                         <SessionStatusBadge status={session.status} />
+                        {session.type === "demo" && usingApi && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={copyLinkState?.sessionId === session.id}
+                            title="Copy this demo's join link to share manually"
+                            onClick={() => copyDemoLink(session.id)}
+                          >
+                            {copyLinkState?.sessionId === session.id ? (
+                              copyLinkState.status === "copying" ? (
+                                "Copying…"
+                              ) : copyLinkState.status === "copied" ? (
+                                <Check className="h-3.5 w-3.5" />
+                              ) : (
+                                <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                              )
+                            ) : (
+                              <Link2 className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        )}
                         {joinable ? (
                           <Button asChild size="sm">
                             <Link

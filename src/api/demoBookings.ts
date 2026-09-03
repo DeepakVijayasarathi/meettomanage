@@ -172,6 +172,12 @@ export async function resendDemoLink(bookingId: string): Promise<ApiDemoBooking>
   });
 }
 
+/** The parent's join link for this demo, to copy and share manually (e.g. WhatsApp). */
+export async function getDemoJoinLink(bookingId: string): Promise<string> {
+  const { joinUrl } = await apiFetch<{ joinUrl: string }>(`/api/demo-bookings/${bookingId}/join-link`);
+  return joinUrl;
+}
+
 export async function createDemoBooking(input: {
   parentName: string;
   parentEmail: string;
