@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 import animate from "tailwindcss-animate";
 
 export default {
@@ -14,6 +15,10 @@ export default {
       fontFamily: {
         sans: ["DM Sans", "system-ui", "sans-serif"],
         display: ["Plus Jakarta Sans", "system-ui", "sans-serif"],
+        // Arabic marketing pages (lib/i18n.ts's "lang-ar" body class) — DM Sans/Plus
+        // Jakarta Sans have no Arabic glyphs, so both sans and display swap to this one
+        // face for Arabic rather than falling through to a generic system font.
+        arabic: ["Cairo", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -190,5 +195,16 @@ export default {
       },
     },
   },
-  plugins: [animate],
+  plugins: [
+    animate,
+    // `rtl:` variant, active whenever lib/i18n.ts's "lang-ar" class is on <body> (Arabic
+    // selected). `dir="rtl"` alone already mirrors flexbox/text-alignment for free, but
+    // NOT physical-direction utilities used directly in markup (ml-/mr-/pl-/pr-/left-/
+    // right-/rounded-l-/rounded-r-, or an icon like ArrowRight that should visually point
+    // the other way) — those need an explicit `rtl:` override wherever they appear.
+    // Usage: `className="ml-2 rtl:ml-0 rtl:mr-2"` or `"rtl:-scale-x-100"` to flip an icon.
+    plugin(({ addVariant }) => {
+      addVariant("rtl", ".lang-ar &");
+    }),
+  ],
 } satisfies Config;

@@ -71,27 +71,30 @@ The current product has real gaps for this persona, confirmed in code:
 
 ## 8. Pricing
 
-Two plans, live on [/pricing](../../src/features/marketing/Pricing.tsx) and linked from the homepage nav, priced in ₹ or $ via a currency toggle (USD is a rounded quoted equivalent, not a live FX conversion — see open questions):
+**Updated:** a third plan, **Solo**, now exists specifically for this segment (see [Pricing.tsx](../../src/features/marketing/Pricing.tsx)) — added after review found pure per-student metering reads as "charged per person" at solo-coach scale (20–50 clients), where the course-creator tools this persona actually benchmarks against (Kajabi, Teachable, Podia) all use a flat monthly tier instead. This segment is now expected to land on **Solo**, not Pay As You Grow.
+
+Three plans, live on [/pricing](../../src/features/marketing/Pricing.tsx) and linked from the homepage nav, priced in ₹, $ or AED via a currency toggle. **INR is the India-market anchor; USD and AED are priced independently at what those markets will bear, not FX conversions of the ₹ rate or of each other** — see open questions:
 
 | Plan | Model | Rate | Fits |
 |---|---|---|---|
-| **Pay As You Grow** | Subscription | ₹100 / $1.20 per active student / month (₹1,000 / $12 annual — 2 months free); first 10 students free | Solo/influencer coaches, small tutoring setups, growing academies — usage-based, nothing to commit to upfront |
-| **Own Brand, Own Software** | One-time license + AMC | Custom-quoted; billed once + an Annual Maintenance Contract for updates/support | Multi-branch institutes that want their own brand/domain on the platform and no recurring per-student cost |
+| **Solo** | Flat subscription | ₹999 / $29 / AED 220 per month flat (₹9,990 / $290 / AED 2,200 annual — 2 months free); first 30 active clients included, then ₹15 / $0.50 / AED 3.5 per client | Solo/influencer coaches, counselors, mentors, independent tutors — not billed per client |
+| **Pay As You Grow** | Subscription | ₹100 / $3.50 / AED 26 per active student / month (₹1,000 / $35 / AED 260 annual — 2 months free); first 10 students free | Growing academies — usage-based, nothing to commit to upfront |
+| **Own Brand, Own Software** | One-time license + AMC | Starting at ₹2,50,000 / $8,000 / AED 58,000, custom-quoted above 500 students; billed once + an Annual Maintenance Contract for updates/support | Multi-branch institutes that want their own brand/domain on the platform and no recurring per-student cost |
 
-This resolves the open question below on pricing for the solo-coach segment: they're expected to land on **Pay As You Grow**, since it has no minimum team size or setup cost, unlike the sales-quoted ownership plan aimed at larger institutes. The free-first-10-students threshold specifically targets that segment's impulse-buyer profile — see §9.
+This resolves the open question below on pricing for the solo-coach segment: they're expected to land on **Solo**, priced flat rather than per-client so it doesn't read as nickel-and-diming at this headcount, and not on the sales-quoted ownership plan aimed at larger institutes.
 
 **Volume pricing** (Pay As You Grow, steps down automatically, no renegotiation needed):
 
 | Active students | Rate / student / month |
 |---|---|
 | First 10 | Free |
-| 11–200 | ₹100 / $1.20 |
-| 201–500 | ₹85 / $1.00 |
-| 501+ | ₹70 / $0.85 |
+| 11–200 | ₹100 / $3.50 / AED 26 |
+| 201–500 | ₹85 / $3.00 / AED 22 |
+| 501+ | ₹70 / $2.50 / AED 18 |
 
 **Add-ons** (billed only to accounts that use them, keeps the headline rate low):
-- Extended recording retention, 60 days instead of the standard 15 — ₹499 / $6 per month
-- Extra WhatsApp/SMS notification credits, 1,000-pack — ₹299 / $3.50
+- Extended recording retention, 60 days instead of the standard 15 — ₹499 / $15 / AED 110 per month
+- Extra WhatsApp/SMS notification credits, 1,000-pack — ₹299 / $9 / AED 66
 
 ## 9. Go-to-market / funnel strategy
 
@@ -100,11 +103,11 @@ The marketing surfaces (Solutions card, Pricing page) point at a fast, self-serv
 **Strategy: fork the funnel by intent, don't just reskin the marketing copy.**
 
 1. **Shipped now** — cheap, no new infrastructure:
-   - The Solutions card and the Pricing page's **Pay As You Grow** CTA both link to `/get-started?for=coach`.
+   - The Solutions card and the Pricing page's **Solo** plan CTA both link to `/get-started?for=coach` (Pay As You Grow's CTA now points at the plain institute flow, since Solo is this segment's plan).
    - `GetStarted.tsx` reads that flag and swaps the eyebrow badge, headline, included-list copy and confirmation message to coach-appropriate language (no "branches," no "admissions team").
    - The `academyName` field becomes **optional**, relabeled "Brand or coach name," for the coach variant — an institute visitor still sees it as required. If left blank, the lead is recorded as "Independent coach" rather than forcing a fake academy name.
 2. **Next** — the real product gap: a "master class" scheduling type — one shareable public link, self-registration, no batches/teachers/admission-team concepts — built on the existing Smart Scheduling and Live Classroom rather than a new subsystem.
-3. **Roadmap bet** — true self-serve signup that creates the account instantly instead of routing through "our team will reach out." At solo-coach scale (₹100/student × ~20–50 clients = ₹2,000–5,000/month), the deal is too small to justify a human sales touch — a multi-day callback cycle will lose exactly the impulse-driven, audience-first buyer this segment represents.
+3. **Roadmap bet** — true self-serve signup that creates the account instantly instead of routing through "our team will reach out." At solo-coach scale (₹999/month flat on Solo), the deal is too small to justify a human sales touch — a multi-day callback cycle will lose exactly the impulse-driven, audience-first buyer this segment represents.
 
 **Validation metric:** not signups off the Solutions card, but **time from click to first live class**. If it's still a multi-day sales cycle, the segment strategy hasn't actually shipped — only the marketing has.
 
@@ -112,6 +115,7 @@ The marketing surfaces (Solutions card, Pricing page) point at a fast, self-serv
 
 - Does the public registration page need social/Instagram-bio-link integration, or is a plain shareable URL enough for v1?
 - Should leads captured through a master-class registration flow into the same Admissions CRM institutes use, or a lighter-weight version of it?
-- What's the actual license fee and AMC rate for the ownership plan? The pricing page currently shows "Custom" — needs a real number or a quoting process once decided.
-- The ₹100 = $1.20 USD rate on the pricing page is a rounded, manually-set equivalent, not a live FX conversion — needs a real policy (fixed quarterly rate? live conversion? Stripe/Paddle for USD billing alongside Razorpay/Cashfree for ₹?) before it's charged for real.
-- None of the free-first-10-students threshold, the volume-tier step-downs, or the add-on charges are enforced anywhere in billing yet ([AdminBilling.tsx](../../src/features/admin/Billing.tsx) handles course fees to parents, not platform-level SaaS billing to the academy/coach) — this is marketing/pricing-page content today, not a working meter.
+- The ownership plan now shows "Starting at ₹2,50,000 / $3,000" instead of a bare "Custom" — that number is a placeholder pending a real cost-plus-margin calculation (dev/hosting/support to stand up a white-label instance), not a validated quote.
+- USD and AED are now priced independently of ₹ (market-rate reasoning, not an FX peg — see the SAAS_RATE comment in Pricing.tsx) — but still needs a real USD/AED billing policy (Stripe/Paddle alongside Razorpay/Cashfree for ₹?) and a process for revisiting these three rates in sync as each market's numbers get validated, so they don't drift back out of the intended relationship to each other.
+- None of the free-first-10-students threshold, Solo's flat rate or included-client count, the volume-tier step-downs, or the add-on charges are enforced anywhere in billing yet ([AdminBilling.tsx](../../src/features/admin/Billing.tsx) handles course fees to parents, not platform-level SaaS billing to the academy/coach) — this is marketing/pricing-page content today, not a working meter.
+- None of the three plans' pricing has been validated against a real quote conversation — before treating any of these numbers as final, run them past a handful of the leads already in [outreach/leads.json](../../outreach/leads.json) and see what they actually push back on.

@@ -171,6 +171,17 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
+  /* Arabic marketing pages — lib/i18n.ts toggles this on <body> alongside <html dir="rtl">.
+     DM Sans/Plus Jakarta Sans have no Arabic glyphs, so both the body default and the
+     .font-display utility below swap to Cairo (loaded in index.html) for the duration of
+     this scope, rather than silently falling through to each browser's own default
+     system Arabic font, which wouldn't match the rest of the page's type rhythm.
+     font-feature-settings above is a Latin-only OpenType feature set (contextual
+     alternates/stylistic sets) — harmless but meaningless on Arabic glyphs, left as-is. */
+  .lang-ar {
+    font-family: "Cairo", system-ui, sans-serif;
+  }
+
   html {
     scroll-behavior: smooth;
   }
@@ -194,6 +205,9 @@
 @layer utilities {
   .font-display {
     font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+  .lang-ar .font-display {
+    font-family: "Cairo", system-ui, sans-serif;
   }
   /* Soft role-tinted glow behind page content; --primary is repointed per portal in AppShell. */
   .app-content-glow {

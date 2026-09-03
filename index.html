@@ -60,11 +60,24 @@
           /* localStorage/matchMedia unavailable — falls back to the light default */
         }
       })();
+      // Same no-flash treatment for the marketing site's language/direction — keep in
+      // sync with src/lib/i18n.ts, which reads the same "trn.lang" key once mounted.
+      // Unlike theme, language never auto-detects the OS/browser locale — it defaults
+      // to "en" unless the visitor explicitly chose Arabic before.
+      (function () {
+        try {
+          var storedLang = localStorage.getItem("trn.lang") === "ar" ? "ar" : "en";
+          document.documentElement.dir = storedLang === "ar" ? "rtl" : "ltr";
+          document.documentElement.lang = storedLang;
+        } catch (e) {
+          /* localStorage unavailable — falls back to the English/LTR default */
+        }
+      })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Fredoka:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Fredoka:wght@500;600;700&family=Cairo:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
   </head>

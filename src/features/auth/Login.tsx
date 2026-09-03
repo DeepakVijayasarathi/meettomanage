@@ -356,7 +356,7 @@ export default function Login() {
               type="submit"
               size="lg"
               disabled={submitting}
-              className="mt-1 w-full !bg-gradient-to-r !from-primary !to-brand-accent !text-white shadow-md transition-all hover:!opacity-90 hover:shadow-lg"
+              className="mt-1 w-full !bg-[#F97316] !text-white shadow-md transition-all hover:!bg-[#EA580C] hover:shadow-lg"
             >
               {submitting ? (
                 <>

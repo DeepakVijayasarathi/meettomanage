@@ -6,6 +6,7 @@ import { ErrorBoundary, RELOAD_GUARD_KEY } from "@/components/ErrorBoundary";
 import { applyBranding, loadBrandingFromApi } from "@/lib/branding";
 import { loadSeoSettingsFromApi } from "@/lib/seoSettings";
 import { applyInitialTheme } from "@/lib/theme";
+import { applyInitialLang } from "@/lib/i18n";
 import "@/index.css";
 
 applyBranding();
@@ -14,6 +15,8 @@ void loadSeoSettingsFromApi();
 // Re-applies the same "trn.theme" value index.html's inline script already used —
 // idempotent, just keeps this module's state and the DOM class in agreement.
 applyInitialTheme();
+// Same idempotent re-apply for language/direction — see index.html's inline script.
+applyInitialLang();
 
 // Reaching this line means the app just mounted successfully — clear ErrorBoundary's
 // one-shot auto-reload guard so a *future* stale-chunk error (after some later deploy,
