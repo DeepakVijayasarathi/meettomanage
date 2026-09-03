@@ -152,6 +152,15 @@ export default function JitsiLive({
   // a string = shown as a dismissible banner with the reason, teacher-only.
   const [recordingIssue, setRecordingIssue] = useState<string | null>(null);
   const recordingWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Teacher-only, advisory: nothing on this self-hosted Jitsi deployment actually cuts a
+  // call off at its scheduled end (no duration cap — see Docs/LONG_DURATION_SESSIONS.md),
+  // so a class quietly running long has no signal at all today. Polls rather than a single
+  // setTimeout because scheduledEndAtUtc isn't known until the async jitsi-join lookup in
+  // init() below resolves, and this effect can't depend on that without re-running the
+  // whole Jitsi connection setup.
+  const [timeUpAlerted, setTimeUpAlerted] = useState(false);
+  const timeUpFiredRef = useRef(false);
+  const scheduledEndRef = useRef<string | null>(null);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   // Sourced from Jitsi's own participantJoined/Left events rather than the SignalR
   // interactive-layer roster: a demo lead has no account and joins straight from the
@@ -292,6 +301,7 @@ export default function JitsiLive({
           joinRoom = join.room;
           joinDomain = join.domain;
           joinToken = join.token ?? undefined;
+          scheduledEndRef.current = join.scheduledEndAtUtc;
         } catch {
           /* fall back to the route-state room below */
         }
@@ -564,6 +574,24 @@ export default function JitsiLive({
     jitsiApiRef.current?.executeCommand("displayName", userName);
   }, [jitsiReady, userName]);
 
+  // Fires once, the first time a check lands at/after the scheduled end — not on every
+  // poll — so it's one toast + one persistent banner, not a repeat every 30 seconds.
+  useEffect(() => {
+    if (mode !== "teacher" || !interactive) return;
+    const check = setInterval(() => {
+      if (!scheduledEndRef.current || timeUpFiredRef.current) return;
+      if (Date.now() >= new Date(scheduledEndRef.current).getTime()) {
+        timeUpFiredRef.current = true;
+        setTimeUpAlerted(true);
+        toast({
+          title: "Scheduled class time is up",
+          description: "The call stays open — end it whenever you're actually done.",
+        });
+      }
+    }, 30_000);
+    return () => clearInterval(check);
+  }, [mode, interactive, toast]);
+
   return (
     <div className="flex h-screen flex-col bg-brand-navyDark bg-[radial-gradient(circle_at_50%_0%,rgba(124,92,252,0.10),transparent_60%)]">
       <header className="relative flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-b from-brand-navyDark/95 to-brand-navyDark/75 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-md sm:px-5">
@@ -722,6 +750,21 @@ export default function JitsiLive({
       {/* Teacher-only, dismissible: makes a silent auto-recording failure (most commonly
           "no Jibri pool provisioned on the video server" — see docs/JITSI_ARCHITECTURE.md)
           visible instead of the teacher just never noticing the REC badge never appeared. */}
+      {mode === "teacher" && timeUpAlerted && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
+          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5" />
+          <p className="flex-1">
+            This class's scheduled time is up. The call stays open as long as you need — end it from the Leave button whenever you're actually done.
+          </p>
+          <button
+            type="button"
+            onClick={() => setTimeUpAlerted(false)}
+            className="shrink-0 font-semibold underline decoration-brand-amber/50 underline-offset-2 hover:decoration-brand-amber"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {mode === "teacher" && recordingIssue && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
           <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5" />

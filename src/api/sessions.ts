@@ -156,6 +156,10 @@ export interface ApiJitsiJoin {
   domain: string;
   /** Null until an admin configures the "jitsi" integration's appId/appSecret. */
   token: string | null;
+  /** Advisory only — nothing actually cuts the call off at this time (no duration cap on
+   *  the self-hosted Jitsi deployment, see Docs/LONG_DURATION_SESSIONS.md). Used to warn
+   *  the teacher when the scheduled time is up. */
+  scheduledEndAtUtc: string;
 }
 
 /**
