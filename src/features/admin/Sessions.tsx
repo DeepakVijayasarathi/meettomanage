@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { SESSIONS } from "@/data/sessions";
 import type { ClassSession, SessionStatus } from "@/types";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
@@ -92,7 +92,15 @@ export default function AdminSessions() {
   // Reschedule dialog (real date/time picker, not just a status flip)
   const [reschedDate, setReschedDate] = useState("");
   const [reschedTime, setReschedTime] = useState("10:00");
+  // Editable duration — was previously locked to the original session's length, so shortening
+  // or lengthening a class (e.g. 30 -> 45 min) had no way to reach the API at all. The backend
+  // prices payout off ScheduledEndAtUtc - ScheduledStartAtUtc at completion time, so changing
+  // this here is what actually makes the new duration what the teacher gets paid for.
+  const [reschedDuration, setReschedDuration] = useState("45");
   const [reschedBusy, setReschedBusy] = useState(false);
+
+  const reschedDurationMinutes = Number(reschedDuration);
+  const reschedDurationValid = Number.isFinite(reschedDurationMinutes) && reschedDurationMinutes > 0;
 
   const filtered = useMemo(
     () => (statusFilter === "all" ? sessions : sessions.filter((s) => s.status === statusFilter)),
@@ -159,7 +167,7 @@ export default function AdminSessions() {
   }
 
   async function handleReschedule() {
-    if (!rescheduleTarget || !reschedDate) return;
+    if (!rescheduleTarget || !reschedDate || !reschedDurationValid) return;
     if (!usingApi) {
       setMockSessions((prev) => prev.map((s) => (s.id === rescheduleTarget.id ? { ...s, status: "rescheduled" } : s)));
       setRescheduleTarget(null);
@@ -168,9 +176,9 @@ export default function AdminSessions() {
     setReschedBusy(true);
     try {
       const start = localToUtcIso(reschedDate, reschedTime);
-      const end = new Date(new Date(start).getTime() + rescheduleTarget.duration * 60000).toISOString();
+      const end = new Date(new Date(start).getTime() + reschedDurationMinutes * 60000).toISOString();
       await rescheduleSession(rescheduleTarget.id, start, end);
-      notify(true, `"${rescheduleTarget.title}" rescheduled to ${formatDate(reschedDate)} ${reschedTime}.`);
+      notify(true, `"${rescheduleTarget.title}" rescheduled to ${formatDate(reschedDate)} ${formatTimeLabel(reschedTime)} (${reschedDurationMinutes} min).`);
       setRescheduleTarget(null);
       reload();
     } catch (err) {
@@ -266,7 +274,7 @@ export default function AdminSessions() {
         accessor: (row) => `${row.date} ${row.startTime}`,
         render: (row) => (
           <span className="text-sm text-muted-foreground">
-            {formatDate(row.date)} · {row.startTime}
+            {formatDate(row.date)} · {formatTimeLabel(row.startTime)}
           </span>
         ),
       },
@@ -341,6 +349,7 @@ export default function AdminSessions() {
                   setRescheduleTarget(row);
                   setReschedDate(row.date);
                   setReschedTime(row.startTime);
+                  setReschedDuration(String(row.duration));
                 }}
               >
                 Reschedule
@@ -541,12 +550,25 @@ export default function AdminSessions() {
                   <Label htmlFor="rs-time">New time ({getUserTimeZoneAbbreviation()})</Label>
                   <Input id="rs-time" type="time" value={reschedTime} onChange={(e) => setReschedTime(e.target.value)} />
                 </div>
+                <div className="grid gap-1.5 sm:col-span-2">
+                  <Label htmlFor="rs-duration">Duration (min)</Label>
+                  <Input
+                    id="rs-duration"
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={reschedDuration}
+                    onChange={(e) => setReschedDuration(e.target.value)}
+                    aria-invalid={!reschedDurationValid}
+                  />
+                  {!reschedDurationValid && <p className="text-xs font-medium text-destructive">Enter a duration greater than 0.</p>}
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setRescheduleTarget(null)}>
                   Close
                 </Button>
-                <Button disabled={reschedBusy || !reschedDate} onClick={handleReschedule}>
+                <Button disabled={reschedBusy || !reschedDate || !reschedDurationValid} onClick={handleReschedule}>
                   {reschedBusy ? "Rescheduling…" : "Reschedule"}
                 </Button>
               </DialogFooter>
