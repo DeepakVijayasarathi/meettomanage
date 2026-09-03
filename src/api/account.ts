@@ -1,5 +1,4 @@
 import { apiFetch } from "@/lib/api";
-import { buildJitsiJoinUrl } from "@/lib/jitsi";
 
 export interface MyAccount {
   id: string;
@@ -43,10 +42,12 @@ export async function getMyMeetingRoom(): Promise<MyMeetingRoom> {
   return apiFetch<MyMeetingRoom>("/api/users/me/meeting-room");
 }
 
-/** `displayName` is only passed (and prejoin only skipped, see buildJitsiJoinUrl) when the
- *  caller is the room owner starting their own room right now — not on the "copy link to
- *  share" path, where the eventual opener's name isn't known and baking the owner's name
- *  into a shared link would misattribute whoever actually clicks it. */
-export function buildPersonalMeetingUrl(room: MyMeetingRoom, displayName?: string): string {
-  return buildJitsiJoinUrl(room.domain, room.roomId, room.token, displayName);
+/**
+ * A short, shareable redirect to the same room getMyMeetingRoom builds — the long form
+ * (domain/room#jwt=<huge signed token>) reads as broken/suspicious pasted into WhatsApp or
+ * email. Mints a fresh one per call (backend: 6h expiry, matching the token it wraps).
+ */
+export async function getMyMeetingRoomShortLink(): Promise<{ url: string; expiresAtUtc: string }> {
+  return apiFetch<{ url: string; expiresAtUtc: string }>("/api/users/me/meeting-room/short-link");
 }
+

@@ -97,11 +97,12 @@ export default function JitsiLive({
    *  for rooms with no backing ClassSession (e.g. a member's personal meeting room),
    *  where GetJitsiJoinAsync's session-participant/join-window checks don't apply. */
   joinOverride?: { domain: string; token?: string | null };
-  /** Shows an in-call "Invite" button that copies this link — a shareable join URL with
-   *  no personal name baked in (see buildPersonalMeetingUrl's own doc comment on why not),
-   *  so anyone who opens it is asked their own name rather than joining misattributed as
-   *  whoever's account started the call. Only meaningful for a personal meeting room; a
-   *  real class session invites people through enrollment instead, so this is omitted there. */
+  /** Shows an in-call "Invite" button that copies this link — a shareable short link
+   *  (PersonalMeetingRoom.tsx fetches it via getMyMeetingRoomShortLink) with no personal
+   *  name baked in, so anyone who opens it is asked their own name rather than joining
+   *  misattributed as whoever's account started the call. Only meaningful for a personal
+   *  meeting room; a real class session invites people through enrollment instead, so this
+   *  is omitted there. */
   inviteUrl?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
