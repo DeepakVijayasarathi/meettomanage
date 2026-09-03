@@ -165,6 +165,13 @@ export async function reassignDemoTeacher(bookingId: string, teacherProfileId: s
   });
 }
 
+/** Re-sends the demo's join link to the parent, every extra invitee, and the assigned teacher. */
+export async function resendDemoLink(bookingId: string): Promise<ApiDemoBooking> {
+  return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${bookingId}/resend-link`, {
+    method: "POST",
+  });
+}
+
 export async function createDemoBooking(input: {
   parentName: string;
   parentEmail: string;

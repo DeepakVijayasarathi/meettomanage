@@ -21,7 +21,7 @@ import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
-import { createDemoBooking, listDemoBookings, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
+import { createDemoBooking, listDemoBookings, resendDemoLink, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
 import { formatDate, getInitials } from "@/lib/utils";
 import { getUserTimeZoneAbbreviation, localToUtcIso, utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -147,6 +147,9 @@ export default function AdmissionDemoScheduling() {
   // existing demos, so the demo list — not the creation form — should be what's in view.
   const [formOpen, setFormOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<DemoRow | null>(null);
+  // Tracks which row's "Resend Link" is in flight, so only that row's button shows busy --
+  // multiple demos in the list could each be resent independently.
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const [completeTarget, setCompleteTarget] = useState<DemoRow | null>(null);
 
   const activeTeachers = teacherOptions;
@@ -247,6 +250,25 @@ export default function AdmissionDemoScheduling() {
     setActionError(null);
     setJustScheduled(childName.trim());
     resetForm();
+  }
+
+  // Re-sends the demo's join link to the parent, every extra invitee, and the assigned
+  // teacher — for when a parent reports never getting (or losing) the original email. Always
+  // the teacher's fixed meeting link, so it's identical to what they already have.
+  function handleResendLink(row: DemoRow) {
+    if (!apiEnabled()) {
+      toast({ variant: "success", title: "Link resent", description: "(Demo mode — no real email is sent.)" });
+      return;
+    }
+    setResendingId(row.id);
+    resendDemoLink(row.id)
+      .then(() => {
+        toast({ variant: "success", title: "Link resent", description: `${row.childName}'s demo link was re-sent to the parent and teacher.` });
+      })
+      .catch((err: Error) => {
+        toast({ variant: "error", title: "Couldn't resend link", description: err.message });
+      })
+      .finally(() => setResendingId(null));
   }
 
   const columns: DataTableColumn<DemoRow>[] = useMemo(
@@ -372,11 +394,23 @@ export default function AdmissionDemoScheduling() {
             >
               Cancel
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={row.status !== "demo" || resendingId === row.id}
+              title="Re-send the join link to the parent and teacher"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleResendLink(row);
+              }}
+            >
+              {resendingId === row.id ? "Resending…" : "Resend Link"}
+            </Button>
           </div>
         ),
       },
     ],
-    [base]
+    [base, resendingId]
   );
 
   return (
