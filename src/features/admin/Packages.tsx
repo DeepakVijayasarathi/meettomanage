@@ -520,7 +520,7 @@ export default function AdminPackages() {
 
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="plan-name">Plan name</Label>
+              <Label htmlFor="plan-name">Plan name <span className="text-destructive">*</span></Label>
               <Input
                 id="plan-name"
                 value={planForm.name}
@@ -590,7 +590,7 @@ export default function AdminPackages() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="plan-price">Price (₹)</Label>
+                <Label htmlFor="plan-price">Price (₹) <span className="text-destructive">*</span></Label>
                 <Input
                   id="plan-price"
                   type="number"
@@ -665,7 +665,7 @@ export default function AdminPackages() {
 
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="subscription-student-select">Student</Label>
+              <Label htmlFor="subscription-student-select">Student <span className="text-destructive">*</span></Label>
               <Select value={subChildId} onValueChange={setSubChildId}>
                 <SelectTrigger id="subscription-student-select">
                   <SelectValue placeholder="Pick a student" />
@@ -682,7 +682,7 @@ export default function AdminPackages() {
             </div>
 
             <div className="grid gap-1.5">
-              <Label htmlFor="subscription-plan-select">Plan</Label>
+              <Label htmlFor="subscription-plan-select">Plan <span className="text-destructive">*</span></Label>
               <Select value={subPlanId} onValueChange={setSubPlanId}>
                 <SelectTrigger id="subscription-plan-select">
                   <SelectValue placeholder="Pick a plan" />

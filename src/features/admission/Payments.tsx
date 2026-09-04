@@ -272,7 +272,7 @@ export default function AdmissionPayments() {
         </p>
       )}
 
-      <div className="mt-8">
+      <div className="mt-6">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Pending Cash Confirmations
         </h2>
@@ -282,7 +282,7 @@ export default function AdmissionPayments() {
         <CashConfirmationsPanel />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         {error && <p role="alert" className="mb-3 text-sm font-medium text-destructive">{error}</p>}
         <DataTable
           data={filtered}

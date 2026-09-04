@@ -52,7 +52,7 @@ export default function AdmissionDemoFeedback() {
         <KpiCard label="Awaiting Teacher" value={formatNumber(pending.length)} icon={Hourglass} tone="warning" loading={loading} />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/15 text-success">
             <ClipboardCheck className="h-4 w-4" />
@@ -110,7 +110,7 @@ export default function AdmissionDemoFeedback() {
         )}
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/20 text-warning-foreground">
             <Clock className="h-4 w-4" />

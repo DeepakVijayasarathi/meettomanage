@@ -815,7 +815,7 @@ function ModuleCatalogCard({
                   type="button"
                   onClick={() => setDeleteTarget(m)}
                   aria-label={`Delete ${m.label}`}
-                  className="rounded-full p-0.5 hover:bg-primary/10"
+                  className="rounded-full p-0.5 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>

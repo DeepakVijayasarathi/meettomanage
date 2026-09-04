@@ -626,7 +626,7 @@ export default function AdminBatches() {
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="grid gap-1.5">
-                    <Label htmlFor="gen-start">Start date</Label>
+                    <Label htmlFor="gen-start">Start date <span className="text-destructive">*</span></Label>
                     <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} />
                   </div>
                   <div className="grid gap-1.5">
@@ -689,12 +689,12 @@ export default function AdminBatches() {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="nb-name">Batch name</Label>
+              <Label htmlFor="nb-name">Batch name <span className="text-destructive">*</span></Label>
               <Input id="nb-name" placeholder="e.g. Phonics Level 1 — Evening B" value={newName} onChange={(e) => setNewName(e.target.value)} />
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="new-batch-course-select">Course</Label>
+                <Label htmlFor="new-batch-course-select">Course <span className="text-destructive">*</span></Label>
                 <Select value={newCourse} onValueChange={handleNewCourseChange}>
                   <SelectTrigger id="new-batch-course-select">
                     <SelectValue placeholder="Select course" />
@@ -709,7 +709,7 @@ export default function AdminBatches() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="new-batch-teacher-select">Teacher</Label>
+                <Label htmlFor="new-batch-teacher-select">Teacher <span className="text-destructive">*</span></Label>
                 <Select value={newTeacher} onValueChange={setNewTeacher}>
                   <SelectTrigger id="new-batch-teacher-select">
                     <SelectValue placeholder="Select teacher" />
@@ -732,7 +732,7 @@ export default function AdminBatches() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="nb-capacity">Capacity</Label>
+                <Label htmlFor="nb-capacity">Capacity <span className="text-destructive">*</span></Label>
                 <Input
                   id="nb-capacity"
                   type="number"

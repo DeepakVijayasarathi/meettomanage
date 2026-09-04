@@ -180,7 +180,7 @@ export default function AdminDepartments() {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="dept-name">Name</Label>
+              <Label htmlFor="dept-name">Name <span className="text-destructive">*</span></Label>
               <Input id="dept-name" placeholder="e.g. Hindi, Abacus, Spoken English" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="grid gap-1.5">

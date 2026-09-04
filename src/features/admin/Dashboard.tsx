@@ -395,8 +395,8 @@ export default function AdminDashboard() {
               <Clock className="h-[18px] w-[18px]" />
             </span>
             <div>
-              <h3 className="text-base font-semibold text-foreground">Today&apos;s Sessions</h3>
-              <p className="text-sm text-muted-foreground">{formatDate(todayKey, "long")}</p>
+              <p className="text-sm font-semibold text-foreground">Today&apos;s Sessions</p>
+              <p className="text-xs text-muted-foreground">{formatDate(todayKey, "long")}</p>
             </div>
           </div>
           <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">

@@ -149,7 +149,7 @@ export default function CoordinatorDashboard() {
           <CardContent className="flex flex-col gap-3 pt-0">
             <LeaveStatRow label="Pending" value={leaveByStatus.pending} tone="warning" />
             <LeaveStatRow label="Approved" value={leaveByStatus.approved} tone="success" />
-            <LeaveStatRow label="Rejected" value={leaveByStatus.rejected} tone="neutral" />
+            <LeaveStatRow label="Rejected" value={leaveByStatus.rejected} tone="destructive" />
             <LeaveStatRow label="Blocked (late notice)" value={leaveByStatus.blocked} tone="destructive" />
             <Button asChild variant="outline" className="mt-1 w-full">
               <Link to={`${base}/availability`}>

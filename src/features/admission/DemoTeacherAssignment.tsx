@@ -273,7 +273,7 @@ export default function DemoTeacherAssignment() {
                     key={row.id}
                     type="button"
                     onClick={() => navigate(`${base}/demo-teacher-assignment/${row.id}`)}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
@@ -351,7 +351,7 @@ export default function DemoTeacherAssignment() {
                       type="button"
                       disabled={disabled}
                       onClick={() => setCandidateId(t.teacherProfileId)}
-                      className={`flex flex-col gap-2 rounded-xl border p-3.5 text-left transition-colors ${
+                      className={`flex flex-col gap-2 rounded-xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                         selected
                           ? "border-primary bg-primary/5 ring-1 ring-primary"
                           : disabled

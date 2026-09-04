@@ -270,12 +270,12 @@ export default function AdminCourses() {
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="course-name">Course name</Label>
+              <Label htmlFor="course-name">Course name <span className="text-destructive">*</span></Label>
               <Input id="course-name" placeholder="e.g. Grammar Foundations" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="course-category-input">Category</Label>
+                <Label htmlFor="course-category-input">Category <span className="text-destructive">*</span></Label>
                 {/* Free text + suggestions instead of a fixed list: course categories are
                     admin-defined (see ensureCategory in api/courses.ts, which reuses an
                     existing category by name or creates one), not a closed set. A native
@@ -291,7 +291,7 @@ export default function AdminCourses() {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="course-department-select">Department</Label>
+                <Label htmlFor="course-department-select">Department <span className="text-destructive">*</span></Label>
                 <Select value={effectiveDepartmentId} onValueChange={setDepartmentId}>
                   <SelectTrigger id="course-department-select">
                     <SelectValue placeholder="Select a department" />

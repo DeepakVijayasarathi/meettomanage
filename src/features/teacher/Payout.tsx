@@ -110,7 +110,7 @@ export default function TeacherPayout() {
       />
 
       {apiEnabled() && payoutsError && (
-        <InlineAlert variant="warning" className="mb-4 text-xs">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load your payout history ({payoutsError}).{" "}
           <button type="button" className="underline" onClick={() => reloadPayouts()}>
             Retry

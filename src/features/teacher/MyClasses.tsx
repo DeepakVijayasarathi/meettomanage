@@ -226,7 +226,7 @@ export default function TeacherMyClasses() {
                     label: "Status",
                     value: statusFilter,
                     onChange: setStatusFilter,
-                    className: "w-[180px]",
+                    className: "w-48",
                     placeholder: "Filter status",
                     options: STATUS_FILTERS.map((f) => ({ value: f.value, label: f.label })),
                   },

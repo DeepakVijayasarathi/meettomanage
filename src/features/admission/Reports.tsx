@@ -278,7 +278,7 @@ export default function AdmissionReports() {
         </CardContent>
       </Card>
 
-      <div className="mt-5">
+      <div className="mt-6">
         <div className="mb-3 flex items-center gap-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <FileBarChart2 className="h-4 w-4" />

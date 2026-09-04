@@ -311,7 +311,7 @@ export default function AdminPaymentMapping() {
               </DialogHeader>
               <div className="flex flex-col gap-4">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="acct-name">Account name</Label>
+                  <Label htmlFor="acct-name">Account name <span className="text-destructive">*</span></Label>
                   <Input id="acct-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -341,7 +341,7 @@ export default function AdminPaymentMapping() {
                   </div>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="acct-ref">Merchant / account reference</Label>
+                  <Label htmlFor="acct-ref">Merchant / account reference <span className="text-destructive">*</span></Label>
                   <Input
                     id="acct-ref"
                     placeholder="e.g. acc_LkzT9v2Abc123 (from the gateway dashboard)"

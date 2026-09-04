@@ -101,6 +101,15 @@ export default function Store() {
 
   const demoDepartment = demoForm.department === "none" ? undefined : demoForm.department;
 
+  // Same feedback pattern as the demo form below, matched to the backend's own
+  // [Range(1, 25)] on CreateStoreInquiryRequest.ChildAge (wider than the demo booking's
+  // 1-18, since an enrollment enquiry isn't limited to the same age band as a free demo).
+  const childAgeError =
+    form.childAge.trim().length > 0 &&
+    (!Number.isInteger(Number(form.childAge)) || Number(form.childAge) < 1 || Number(form.childAge) > 25)
+      ? "Age must be a whole number between 1 and 25."
+      : null;
+
   // Optional, but if given must match the backend's own [Range(1, 18)] on DemoBookingDtos —
   // the input's min/max attributes are cosmetic (they don't stop someone typing or pasting
   // "60"), so without this the only feedback was a raw "One or more validation errors
@@ -203,6 +212,10 @@ export default function Store() {
     // Same whitespace-only gap as the demo form above.
     if (!form.parentName.trim() || !form.childName.trim()) {
       setError("Enter a parent name and child name.");
+      return;
+    }
+    if (childAgeError) {
+      setError(childAgeError);
       return;
     }
 
@@ -386,7 +399,16 @@ export default function Store() {
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="childAge">Child's age</Label>
-                    <Input id="childAge" type="number" min={1} max={25} value={form.childAge} onChange={(e) => setForm((f) => ({ ...f, childAge: e.target.value }))} />
+                    <Input
+                      id="childAge"
+                      type="number"
+                      min={1}
+                      max={25}
+                      value={form.childAge}
+                      onChange={(e) => setForm((f) => ({ ...f, childAge: e.target.value }))}
+                      aria-invalid={!!childAgeError}
+                    />
+                    {childAgeError && <p className="text-xs font-medium text-destructive">{childAgeError}</p>}
                   </div>
                 </div>
                 <div className="grid gap-1.5">
@@ -398,7 +420,7 @@ export default function Store() {
                   <Button type="button" variant="outline" onClick={() => setSelectedPlan(null)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={submitting} className="!bg-brand-green !text-white hover:!bg-brand-greenDark">
+                  <Button type="submit" disabled={submitting || !!childAgeError} className="!bg-brand-green !text-white hover:!bg-brand-greenDark">
                     {submitting ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" /> Submitting…

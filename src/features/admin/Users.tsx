@@ -976,7 +976,7 @@ export default function AdminUsers() {
           <div className="grid gap-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="edit-first">First name</Label>
+                <Label htmlFor="edit-first">First name <span className="text-destructive">*</span></Label>
                 <Input
                   id="edit-first"
                   value={editForm.firstName}
@@ -1233,11 +1233,11 @@ export default function AdminUsers() {
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="add-name">Full name</Label>
+              <Label htmlFor="add-name">Full name <span className="text-destructive">*</span></Label>
               <Input id="add-name" placeholder="e.g. Simran Kaur" value={addName} onChange={(e) => setAddName(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="add-email">Email</Label>
+              <Label htmlFor="add-email">Email <span className="text-destructive">*</span></Label>
               <Input id="add-email" type="email" placeholder="name@example.com" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} />
             </div>
             <div className="grid gap-1.5">

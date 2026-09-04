@@ -150,7 +150,7 @@ export default function TeacherDoubts() {
       )}
 
       <div className="mb-6">
-        <h2 className="mb-2 text-sm font-semibold text-foreground">Pending ({pending.length})</h2>
+        <h2 className="mb-2 text-base font-semibold text-foreground">Pending ({pending.length})</h2>
         {pending.length === 0 && !loadError ? (
           <EmptyState icon={MessageCircleQuestion} title="Nothing pending" description="Every escalated doubt has been resolved." />
         ) : (
@@ -166,7 +166,7 @@ export default function TeacherDoubts() {
 
       {resolved.length > 0 && (
         <div>
-          <h2 className="mb-2 text-sm font-semibold text-foreground">Resolved ({resolved.length})</h2>
+          <h2 className="mb-2 text-base font-semibold text-foreground">Resolved ({resolved.length})</h2>
           <DataTable data={resolved} columns={resolvedColumns} rowKey={(e) => e.id} />
         </div>
       )}

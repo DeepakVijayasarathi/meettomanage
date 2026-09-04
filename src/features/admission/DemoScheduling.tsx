@@ -153,6 +153,9 @@ export default function AdmissionDemoScheduling() {
   // Tracks which row's "Copy Link" is in flight / just succeeded / just failed, per row.
   const [copyState, setCopyState] = useState<{ id: string; status: "copying" | "copied" | "failed" } | null>(null);
   const [completeTarget, setCompleteTarget] = useState<DemoRow | null>(null);
+  // Set once the user has tried to submit an invalid form -- gates the per-field error
+  // messages below so they don't show up before the user has even touched the form.
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   const activeTeachers = teacherOptions;
 
@@ -191,9 +194,11 @@ export default function AdmissionDemoScheduling() {
     setTeacherId("");
     setNotes("");
     setFormOpen(false);
+    setAttemptedSubmit(false);
   }
 
   function handleSchedule() {
+    setAttemptedSubmit(true);
     if (!isValid || scheduling) return;
 
     if (apiEnabled()) {
@@ -521,6 +526,9 @@ export default function AdmissionDemoScheduling() {
                 Child Name <span className="text-destructive">*</span>
               </Label>
               <Input id="childName" placeholder="e.g. Aanya Verma" value={childName} onChange={(e) => setChildName(e.target.value)} />
+              {attemptedSubmit && childName.trim().length === 0 && (
+                <p role="alert" className="text-xs text-destructive">Child name is required.</p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="childAge">Child Age</Label>
@@ -582,16 +590,30 @@ export default function AdmissionDemoScheduling() {
               <span />
             </div>
             <div className="flex flex-col gap-3">
-              {parents.map((p, idx) => (
+              {parents.map((p, idx) => {
+                const nameMissing = attemptedSubmit && p.name.trim().length === 0;
+                const phoneMissing = attemptedSubmit && p.phone.trim().length === 0;
+                const emailMissing = attemptedSubmit && apiEnabled() && p.email.trim().length === 0;
+                return (
                 <div key={p.id} className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
-                  <Input placeholder={`Parent/guardian ${idx + 1} name`} aria-label={`Parent/guardian ${idx + 1} name`} value={p.name} onChange={(e) => updateParent(p.id, "name", e.target.value)} />
-                  <Input placeholder="Phone number" aria-label={`Parent/guardian ${idx + 1} phone number`} value={p.phone} onChange={(e) => updateParent(p.id, "phone", e.target.value)} />
-                  <Input
-                    placeholder={apiEnabled() ? "Email address (required)" : "Email address"}
-                    aria-label={`Parent/guardian ${idx + 1} email address${apiEnabled() ? " (required)" : ""}`}
-                    value={p.email}
-                    onChange={(e) => updateParent(p.id, "email", e.target.value)}
-                  />
+                  <div className="flex flex-col gap-1">
+                    <Input placeholder={`Parent/guardian ${idx + 1} name`} aria-label={`Parent/guardian ${idx + 1} name`} value={p.name} onChange={(e) => updateParent(p.id, "name", e.target.value)} aria-invalid={nameMissing} />
+                    {nameMissing && <p role="alert" className="text-xs text-destructive">Name is required.</p>}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Input placeholder="Phone number" aria-label={`Parent/guardian ${idx + 1} phone number`} value={p.phone} onChange={(e) => updateParent(p.id, "phone", e.target.value)} aria-invalid={phoneMissing} />
+                    {phoneMissing && <p role="alert" className="text-xs text-destructive">Phone number is required.</p>}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Input
+                      placeholder={apiEnabled() ? "Email address (required)" : "Email address"}
+                      aria-label={`Parent/guardian ${idx + 1} email address${apiEnabled() ? " (required)" : ""}`}
+                      value={p.email}
+                      onChange={(e) => updateParent(p.id, "email", e.target.value)}
+                      aria-invalid={emailMissing}
+                    />
+                    {emailMissing && <p role="alert" className="text-xs text-destructive">Email is required to send an invite.</p>}
+                  </div>
                   <Button
                     type="button"
                     variant="ghost"
@@ -605,7 +627,8 @@ export default function AdmissionDemoScheduling() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -614,20 +637,26 @@ export default function AdmissionDemoScheduling() {
               <Label htmlFor="demoDate">
                 Date <span className="text-destructive">*</span>
               </Label>
-              <Input id="demoDate" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input id="demoDate" type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-invalid={attemptedSubmit && date.length === 0} />
+              {attemptedSubmit && date.length === 0 && (
+                <p role="alert" className="text-xs text-destructive">Date is required.</p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="demoTime">
                 Time ({getUserTimeZoneAbbreviation()}) <span className="text-destructive">*</span>
               </Label>
-              <Input id="demoTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+              <Input id="demoTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-invalid={attemptedSubmit && time.length === 0} />
+              {attemptedSubmit && time.length === 0 && (
+                <p role="alert" className="text-xs text-destructive">Time is required.</p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="demo-teacher-select">
-                Teacher <span className="text-destructive">*</span>
+                Teacher {!apiEnabled() && <span className="text-destructive">*</span>}
               </Label>
               <Select value={teacherId} onValueChange={setTeacherId}>
-                <SelectTrigger id="demo-teacher-select">
+                <SelectTrigger id="demo-teacher-select" aria-invalid={attemptedSubmit && !apiEnabled() && teacherId.length === 0}>
                   <SelectValue placeholder="Select a teacher" />
                 </SelectTrigger>
                 <SelectContent>
@@ -638,6 +667,9 @@ export default function AdmissionDemoScheduling() {
                   ))}
                 </SelectContent>
               </Select>
+              {attemptedSubmit && !apiEnabled() && teacherId.length === 0 && (
+                <p role="alert" className="text-xs text-destructive">Teacher is required.</p>
+              )}
             </div>
           </div>
 

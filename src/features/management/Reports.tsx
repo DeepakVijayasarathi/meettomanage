@@ -4,6 +4,7 @@ import { AlertCircle, Download, IndianRupee, Inbox, PieChart as PieChartIcon, Us
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatPercent, toCsv } from "@/lib/utils";
@@ -92,20 +93,21 @@ function SummaryCard({
             <Skeleton className="h-4 w-2/3" />
           </div>
         ) : error ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-            <AlertCircle className="h-5 w-5 text-destructive" />
-            <span>Couldn&apos;t load this summary.</span>
-            {onRetry && (
-              <button type="button" className="text-xs font-medium text-primary underline" onClick={onRetry}>
-                Retry
-              </button>
-            )}
-          </div>
+          <EmptyState
+            icon={AlertCircle}
+            title="Couldn't load this summary"
+            description="Something went wrong while fetching this report."
+            className="flex-1 py-10"
+            action={
+              onRetry && (
+                <button type="button" className="text-xs font-medium text-primary underline" onClick={onRetry}>
+                  Retry
+                </button>
+              )
+            }
+          />
         ) : rows.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-            <Inbox className="h-5 w-5" />
-            <span>{emptyMessage}</span>
-          </div>
+          <EmptyState icon={Inbox} title={emptyMessage} className="flex-1 py-10" />
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
             <Table>

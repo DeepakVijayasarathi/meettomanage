@@ -134,6 +134,9 @@ export default function TeacherResources() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  // Set once the user has tried to upload with a required field missing -- gates the
+  // per-field error messages below so they don't show up before the user has interacted.
+  const [uploadAttempted, setUploadAttempted] = useState(false);
 
   const batchOptions: BatchOption[] = useMemo(() => {
     if (!usingApi) return demoBatches.map((b) => ({ id: b.id, name: b.name }));
@@ -168,9 +171,11 @@ export default function TeacherResources() {
     setSelectedBatchIds(batchOptions[0]?.id ? [batchOptions[0].id] : []);
     setFile(null);
     setUploadError(null);
+    setUploadAttempted(false);
   }
 
   async function handleUpload() {
+    setUploadAttempted(true);
     if (!title.trim() || selectedBatchIds.length === 0) return;
     const batchLabel = batchOptions
       .filter((b) => selectedBatchIds.includes(b.id))
@@ -281,12 +286,24 @@ export default function TeacherResources() {
 
               <div className="flex flex-col gap-4">
                 <FileDropzone label="Drag & drop or click to upload" onFile={(f) => setFile(f)} />
+                {uploadAttempted && usingApi && !file && (
+                  <p role="alert" className="text-xs text-destructive">Please choose a file to upload.</p>
+                )}
 
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="resource-title">
                     Title <span className="text-destructive">*</span>
                   </Label>
-                  <Input id="resource-title" placeholder="e.g. Blending Sounds Worksheet — Week 4" value={title} onChange={(e) => setTitle(e.target.value)} />
+                  <Input
+                    id="resource-title"
+                    placeholder="e.g. Blending Sounds Worksheet — Week 4"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    aria-invalid={uploadAttempted && !title.trim()}
+                  />
+                  {uploadAttempted && !title.trim() && (
+                    <p role="alert" className="text-xs text-destructive">Title is required.</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -323,6 +340,9 @@ export default function TeacherResources() {
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground">Pick one or more batches — the material shows only to those batches.</p>
+                    {uploadAttempted && selectedBatchIds.length === 0 && (
+                      <p role="alert" className="text-xs text-destructive">Select at least one batch.</p>
+                    )}
                   </div>
                 </div>
 

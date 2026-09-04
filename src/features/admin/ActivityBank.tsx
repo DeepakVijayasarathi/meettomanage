@@ -315,7 +315,7 @@ export default function AdminActivityBank() {
             </div>
 
             <div className="grid gap-1.5">
-              <Label htmlFor="wa-prompt">{isHotspot ? "What should students click?" : "Instruction"}</Label>
+              <Label htmlFor="wa-prompt">{isHotspot ? "What should students click?" : "Instruction"} <span className="text-destructive">*</span></Label>
               <Input
                 id="wa-prompt"
                 placeholder={isHotspot ? "e.g. Click everything that starts with the “sh” sound" : "e.g. Drag the fruit to its matching first letter"}
@@ -326,7 +326,7 @@ export default function AdminActivityBank() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="wa-department">Department</Label>
+                <Label htmlFor="wa-department">Department <span className="text-destructive">*</span></Label>
                 <Select value={departmentId} onValueChange={(v) => { setDepartmentId(v); setCourseId("__none__"); }}>
                   <SelectTrigger id="wa-department">
                     <SelectValue placeholder="Choose a department" />
