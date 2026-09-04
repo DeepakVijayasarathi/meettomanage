@@ -878,6 +878,7 @@ const T = {
     getStarted: "Get started",
     resources: "Resources",
     blog: "Blog",
+    privacyPolicy: "Privacy Policy",
     rights: (year: number, brand: string) => `© ${year} ${brand}. All rights reserved.`,
     homeAria: "Meet to Manage home",
   },
@@ -936,6 +937,7 @@ const T = {
     getStarted: "ابدأ الآن",
     resources: "الموارد",
     blog: "المدونة",
+    privacyPolicy: "سياسة الخصوصية",
     rights: (year: number, brand: string) => `© ${year} ${brand}. جميع الحقوق محفوظة.`,
     homeAria: "الصفحة الرئيسية لـ Meet to Manage",
   },
@@ -1482,15 +1484,16 @@ export default function MarketingHome() {
         </Reveal>
       </section>
 
-      {/* Footer — every link below points at a real route or in-page section (no Privacy/
-          Terms/social links, since none of those exist yet; inventing the URLs would just
-          trade a sparse footer for a broken one). */}
+      {/* Footer — every link below points at a real route or in-page section (no Terms/
+          social links, since those don't exist yet; inventing the URLs would just trade a
+          sparse footer for a broken one). Privacy Policy sits in the bottom bar next to the
+          copyright line rather than its own column — it's the only legal link so far. */}
       <footer className="border-t border-black/10 bg-[#F5F6F9] pb-8 pt-14">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-10 px-6 sm:grid-cols-4">
           <div className="col-span-2 sm:col-span-1">
             <Logo imgClassName="h-12 w-12" />
             <p className="mt-4 max-w-[22ch] text-sm leading-relaxed text-[#5B6472]">{t.footerTagline}</p>
-            <p className="mt-6 text-xs font-bold uppercase tracking-[0.06em] text-[#8B93A1]">{t.contact}</p>
+            <p className="mt-6 text-xs font-bold uppercase tracking-[0.06em] text-[#6B7280]">{t.contact}</p>
             <ul className="mt-4 flex flex-col gap-3">
               <li>
                 <a
@@ -1576,8 +1579,11 @@ export default function MarketingHome() {
           </div>
         </div>
 
-        <div className="mx-auto mt-12 max-w-6xl border-t border-black/10 px-6 pt-6">
+        <div className="mx-auto mt-12 flex max-w-6xl flex-wrap items-center justify-between gap-3 border-t border-black/10 px-6 pt-6">
           <p className="text-xs font-medium text-[#5B6472]">{t.rights(new Date().getFullYear(), brand.name)}</p>
+          <Link to="/policy" className="text-xs font-medium text-[#5B6472] hover:text-[#EA580C]">
+            {t.privacyPolicy}
+          </Link>
         </div>
       </footer>
 

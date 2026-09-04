@@ -14,6 +14,7 @@ const GetStarted = lazy(() => import("@/features/marketing/GetStarted"));
 const Pricing = lazy(() => import("@/features/marketing/Pricing"));
 const BlogList = lazy(() => import("@/features/marketing/BlogList"));
 const BlogPost = lazy(() => import("@/features/marketing/BlogPost"));
+const PrivacyPolicy = lazy(() => import("@/features/marketing/PrivacyPolicy"));
 const Login = lazy(() => import("@/features/auth/Login"));
 const PortalSelect = lazy(() => import("@/features/auth/PortalSelect"));
 const ForgotPassword = lazy(() => import("@/features/auth/ForgotPassword"));
@@ -123,6 +124,7 @@ export default function App() {
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/blog" element={<BlogList />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
+              <Route path="/policy" element={<PrivacyPolicy />} />
               <Route path="/login" element={<Login />} />
               <Route path="/portal-select" element={<PortalSelect />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
