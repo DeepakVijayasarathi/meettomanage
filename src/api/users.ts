@@ -34,6 +34,11 @@ export async function updateStudentNotes(childId: string, notes: string): Promis
   });
 }
 
+/** Removes a mistaken/test child record. The backend refuses if it still has an active batch enrolment or unpaid invoice. */
+export async function deleteStudent(childId: string): Promise<void> {
+  await apiFetch<void>(`/api/users/students/${childId}`, { method: "DELETE" });
+}
+
 /** Admin students directory (real enrolled children). Attendance/fee show neutral defaults until those subsystems populate. */
 export async function listStudents(): Promise<StudentRow[]> {
   const students = await apiFetch<ApiStudent[]>("/api/users/students");

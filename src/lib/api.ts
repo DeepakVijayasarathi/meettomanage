@@ -38,7 +38,19 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+  let response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+
+  // A GET that 401s on the very first request of a freshly-loaded page (deep link or
+  // refresh) is retried once before treating it as a real logout — this is exactly the
+  // shape of a transient hiccup (e.g. the server's own token/claims check racing a page
+  // that fires its first request before anything has settled), and a spurious bounce to
+  // /login on an otherwise-valid session is worse than one extra round trip. A 401 on a
+  // mutating request, or a repeat 401 after the retry, is trusted as a real expired/revoked
+  // session.
+  if (response.status === 401 && token && !path.startsWith("/api/auth/") && (init?.method ?? "GET") === "GET") {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+  }
 
   // An expired/revoked token means the session is no longer authenticated: clear it
   // and land on login. Auth endpoints are exempt (a wrong PIN is also a 401).

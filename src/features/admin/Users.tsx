@@ -32,7 +32,7 @@ import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { bulkImportStudents, bulkImportUsers, changeUserRole, createUser, deleteUser, exportStudents, exportUsers, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { bulkImportStudents, bulkImportUsers, changeUserRole, createUser, deleteStudent, deleteUser, exportStudents, exportUsers, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
 import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
 import type { ApiRole } from "@/api/types";
@@ -232,6 +232,10 @@ export default function AdminUsers() {
   // Delete-account confirmation from the user detail dialog.
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
+  // Delete-child confirmation from the child detail dialog — separate from deleteTarget
+  // since a child isn't an AppUser (it has no login of its own).
+  const [deleteChildTarget, setDeleteChildTarget] = useState<Child | null>(null);
+  const [deletingChild, setDeletingChild] = useState(false);
 
   async function handleDeleteUser() {
     if (!deleteTarget) return;
@@ -252,6 +256,31 @@ export default function AdminUsers() {
       const message = err instanceof Error ? err.message : "Could not delete the account.";
       setBanner({ ok: false, text: message });
       toast({ variant: "error", title: "Couldn't delete account", description: message });
+    }
+  }
+
+  async function handleDeleteChild() {
+    if (!deleteChildTarget) return;
+    if (!apiEnabled()) {
+      setBanner({ ok: true, text: "Demo mode — no student actually removed." });
+      setDetailChild(null);
+      setDeleteChildTarget(null);
+      return;
+    }
+    setDeletingChild(true);
+    try {
+      await deleteStudent(deleteChildTarget.id);
+      setBanner({ ok: true, text: `${deleteChildTarget.name}'s record was removed.` });
+      setDetailChild(null);
+      setDeleteChildTarget(null);
+      reloadStudents();
+      toast({ variant: "success", title: "Student removed", description: `${deleteChildTarget.name}'s record was removed.` });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not remove this student.";
+      setBanner({ ok: false, text: message });
+      toast({ variant: "error", title: "Couldn't remove student", description: message });
+    } finally {
+      setDeletingChild(false);
     }
   }
 
@@ -912,6 +941,20 @@ export default function AdminUsers() {
       />
 
       <ConfirmDialog
+        open={!!deleteChildTarget}
+        onOpenChange={(open) => !open && setDeleteChildTarget(null)}
+        title="Delete this student record?"
+        description={
+          deleteChildTarget
+            ? `${deleteChildTarget.name}'s record will be removed. This is blocked if they still have an active batch enrolment or an unpaid invoice — withdraw/settle those first.`
+            : undefined
+        }
+        confirmLabel={deletingChild ? "Deleting…" : "Delete Student"}
+        destructive
+        onConfirm={handleDeleteChild}
+      />
+
+      <ConfirmDialog
         open={!!bulkConfirmIds}
         onOpenChange={(open) => !open && setBulkConfirmIds(null)}
         title={`Resend credentials to ${bulkConfirmIds?.length ?? 0} user(s)?`}
@@ -1127,34 +1170,44 @@ export default function AdminUsers() {
               </div>
 
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDetailChild(null)}>
-                  Close
-                </Button>
                 <Button
-                  disabled={savingNotes}
-                  onClick={async () => {
-                    if (!detailChild) return;
-                    // Matches handleUpdateUser/handleCreateUser's pattern elsewhere on this
-                    // page: stay clickable in demo mode and say so via the shared banner,
-                    // rather than silently greying out with no explanation.
-                    if (!apiEnabled()) {
-                      setBanner({ ok: true, text: "Demo mode — no notes actually saved." });
-                      setDetailChild(null);
-                      return;
-                    }
-                    setSavingNotes(true);
-                    try {
-                      await updateStudentNotes(detailChild.id, childNotes.trim());
-                      setDetailChild(null);
-                    } catch {
-                      /* keep dialog open on failure */
-                    } finally {
-                      setSavingNotes(false);
-                    }
-                  }}
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setDeleteChildTarget(detailChild)}
                 >
-                  {savingNotes ? "Saving…" : "Save notes"}
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete Student
                 </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setDetailChild(null)}>
+                    Close
+                  </Button>
+                  <Button
+                    disabled={savingNotes}
+                    onClick={async () => {
+                      if (!detailChild) return;
+                      // Matches handleUpdateUser/handleCreateUser's pattern elsewhere on this
+                      // page: stay clickable in demo mode and say so via the shared banner,
+                      // rather than silently greying out with no explanation.
+                      if (!apiEnabled()) {
+                        setBanner({ ok: true, text: "Demo mode — no notes actually saved." });
+                        setDetailChild(null);
+                        return;
+                      }
+                      setSavingNotes(true);
+                      try {
+                        await updateStudentNotes(detailChild.id, childNotes.trim());
+                        setDetailChild(null);
+                      } catch {
+                        /* keep dialog open on failure */
+                      } finally {
+                        setSavingNotes(false);
+                      }
+                    }}
+                  >
+                    {savingNotes ? "Saving…" : "Save notes"}
+                  </Button>
+                </div>
               </DialogFooter>
             </>
           )}
