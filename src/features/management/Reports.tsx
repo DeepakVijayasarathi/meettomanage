@@ -110,10 +110,11 @@ function SummaryCard({
           <EmptyState icon={Inbox} title={emptyMessage} className="flex-1 py-10" />
         ) : (
           <div className="relative overflow-x-auto rounded-lg border border-border">
-            {/* Static edge fade so a wide table (more columns than fit a phone screen) hints
-                there's more to scroll to, instead of just clipping a column header mid-word
-                with no visible cue it's scrollable. */}
-            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-card to-transparent sm:hidden" />
+            {/* Static edge fade so a wide table (more columns than fit this card, including on a
+                desktop 3-up grid where each card is only ~360px wide) hints there's more to
+                scroll to, instead of just clipping a column header mid-word with no visible cue
+                it's scrollable. */}
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-card to-transparent" />
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">

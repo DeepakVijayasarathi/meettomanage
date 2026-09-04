@@ -392,8 +392,12 @@ export default function AdmissionDemoScheduling() {
       {
         key: "actions",
         header: "Actions",
+        // min-w-max: without it, the browser's table auto-layout mis-measures this
+        // wrapping flex row's min-content width and can shrink the column below what
+        // even a single button needs, clipping button labels at the table's right edge
+        // instead of wrapping them onto their own line as intended.
         render: (row) => (
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex min-w-max flex-wrap items-center gap-1.5">
             {row.status === "demo" ? (
               <Button asChild variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
                 <Link to={`${base}/demo-teacher-assignment/${row.id}`}>Reassign</Link>
