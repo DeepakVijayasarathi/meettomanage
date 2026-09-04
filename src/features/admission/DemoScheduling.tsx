@@ -168,8 +168,17 @@ export default function AdmissionDemoScheduling() {
     setParents((prev) => (prev.length > 1 ? prev.filter((p) => p.id !== id) : prev));
   }
 
+  // Optional, but if given must match the backend's own [Range(1, 18)] — the input's
+  // min/max attributes are cosmetic (they don't stop someone typing or pasting "60"),
+  // so without this the only feedback was a 400 from the server after submitting.
+  const childAgeError =
+    childAge.trim().length > 0 && (!Number.isInteger(Number(childAge)) || Number(childAge) < 1 || Number(childAge) > 18)
+      ? "Age must be a whole number between 1 and 18."
+      : null;
+
   const isValid =
     childName.trim().length > 0 &&
+    !childAgeError &&
     date.length > 0 &&
     time.length > 0 &&
     // API mode auto-assigns a teacher when none is picked, but needs the parent's email
@@ -524,7 +533,17 @@ export default function AdmissionDemoScheduling() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="childAge">Child Age</Label>
-              <Input id="childAge" type="number" min={2} max={16} placeholder="e.g. 6" value={childAge} onChange={(e) => setChildAge(e.target.value)} />
+              <Input
+                id="childAge"
+                type="number"
+                min={1}
+                max={18}
+                placeholder="e.g. 6"
+                value={childAge}
+                onChange={(e) => setChildAge(e.target.value)}
+                aria-invalid={!!childAgeError}
+              />
+              {childAgeError && <p className="text-xs font-medium text-destructive">{childAgeError}</p>}
             </div>
           </div>
 
