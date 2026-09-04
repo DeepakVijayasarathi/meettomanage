@@ -219,7 +219,7 @@ function ChatWidget({ lang }: { lang: Lang }) {
               type="button"
               onClick={() => setOpen(false)}
               aria-label={t.closeAria}
-              className="text-[#8B93A1] transition-colors hover:text-[#171B22]"
+              className="text-[#6B7280] transition-colors hover:text-[#171B22]"
             >
               <X className="h-4 w-4" />
             </button>
@@ -242,7 +242,7 @@ function ChatWidget({ lang }: { lang: Lang }) {
             </a>
             <Link
               to="/get-started"
-              className="flex items-center gap-2.5 rounded-xl bg-[#F97316] px-3.5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#EA580C]"
+              className="flex items-center gap-2.5 rounded-xl bg-[#F97316] px-3.5 py-2.5 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#EA580C]"
             >
               <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /> {t.demo}
             </Link>
@@ -253,7 +253,7 @@ function ChatWidget({ lang }: { lang: Lang }) {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={t.toggleAria(open)}
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F97316] text-white shadow-pop transition-transform hover:scale-105"
+        className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F97316] text-[#171B22] shadow-pop transition-transform hover:scale-105"
       >
         {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-6 w-6" />}
       </button>
@@ -346,7 +346,7 @@ function DemoPopup({ lang }: { lang: Lang }) {
           type="button"
           onClick={() => setOpen(false)}
           aria-label={t.closeAria}
-          className="absolute right-4 top-4 text-[#8B93A1] transition-colors hover:text-[#171B22] rtl:right-auto rtl:left-4"
+          className="absolute right-4 top-4 text-[#6B7280] transition-colors hover:text-[#171B22] rtl:right-auto rtl:left-4"
         >
           <X className="h-4 w-4" />
         </button>
@@ -356,7 +356,7 @@ function DemoPopup({ lang }: { lang: Lang }) {
         <h2 className="font-display mt-4 text-xl font-extrabold tracking-tight text-[#171B22]">{t.heading}</h2>
         <p className="mt-2 text-sm leading-relaxed text-[#5B6472]">{t.sub}</p>
         <div className="mt-5">
-          <Button asChild size="lg" className="w-full !bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+          <Button asChild size="lg" className="w-full !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
             <Link to="/get-started" onClick={() => setOpen(false)}>
               {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
             </Link>
@@ -966,10 +966,15 @@ export default function MarketingHome() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
           <img src="/logo-full.png" alt={brand.name} className="h-14 w-auto shrink-0 object-contain sm:h-20" />
 
-          {/* Section anchors — desktop only. On narrow screens there's only room for the two
-              CTAs (see the mobile-header wrap this replaced), so wayfinding there stays limited
-              to scrolling; that's an acceptable trade for not cramping the primary actions. */}
-          <nav aria-label="Page sections" className="hidden items-center gap-6 lg:flex">
+          {/* Section anchors — desktop only, and gated on xl (1280px) rather than Tailwind's
+              usual lg (1024px): at 1024 the logo + all 7 links + language toggle + Sign In +
+              Request a Demo no longer fit max-w-6xl's content width, and the CTA — the whole
+              point of the header — got clipped off the right edge with the page forced into
+              horizontal scroll (verified on a real 1024x768 viewport, iPad-landscape's exact
+              width). Below xl there's only room for the two CTAs (see the mobile-header wrap
+              this replaced), so wayfinding there stays limited to scrolling; that's an
+              acceptable trade for never cramping the primary action. */}
+          <nav aria-label="Page sections" className="hidden items-center gap-6 xl:flex">
             {NAV_LINKS[lang].map((link) => (
               <a
                 key={link.href}
@@ -989,7 +994,7 @@ export default function MarketingHome() {
             <Button asChild variant="outline" className="border-[#171B22]/15 px-2.5 text-[#171B22] hover:bg-[#171B22]/5 sm:px-4">
               <Link to="/login">{t.signIn}</Link>
             </Button>
-            <Button asChild className="!bg-[#F97316] px-3 !text-white hover:!bg-[#EA580C] sm:px-4">
+            <Button asChild className="!bg-[#F97316] px-3 !text-[#171B22] hover:!bg-[#EA580C] sm:px-4">
               <Link to="/get-started">
                 <span className="sm:hidden">{t.demoShort}</span>
                 <span className="hidden sm:inline">{t.requestDemo}</span>
@@ -1035,7 +1040,7 @@ export default function MarketingHome() {
             className="motion-safe:animate-slide-up mt-8 flex flex-wrap items-center gap-3"
             style={{ animationDelay: "240ms", animationFillMode: "backwards" }}
           >
-            <Button asChild size="lg" className="!bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+            <Button asChild size="lg" className="!bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
               <Link to="/get-started">
                 {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
               </Link>
@@ -1085,7 +1090,7 @@ export default function MarketingHome() {
           regardless of the source file's own canvas. */}
       <section className="border-t border-black/10 bg-white py-10 sm:py-12">
         <div className="mx-auto max-w-6xl px-6">
-          <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#8B93A1]">
+          <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#6B7280]">
             {t.clientsHeading(brand.name)}
           </p>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
@@ -1109,7 +1114,7 @@ export default function MarketingHome() {
           "Trusted by 1,000+ academies" claim. */}
       <section className="border-y border-black/10 bg-[#F5F6F9] py-10 sm:py-12">
         <div className="mx-auto max-w-6xl px-6">
-          <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#8B93A1]">{t.statsHeading}</p>
+          <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#6B7280]">{t.statsHeading}</p>
           <div className="mt-7 grid grid-cols-2 gap-6 sm:grid-cols-4">
             {STATS[lang].map((s) => (
               <div key={s.label} className="flex flex-col items-center text-center sm:items-start sm:text-start">
@@ -1161,7 +1166,7 @@ export default function MarketingHome() {
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F5F6F9] text-[#5B6472]">
                       <p.icon className="h-4 w-4" />
                     </span>
-                    <span className="text-xs font-bold uppercase tracking-wide text-[#8B93A1]">{p.label}</span>
+                    <span className="text-xs font-bold uppercase tracking-wide text-[#6B7280]">{p.label}</span>
                   </div>
                   <div className="mt-4 flex items-start gap-3">
                     <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#B8BEC9]" />
@@ -1216,7 +1221,7 @@ export default function MarketingHome() {
             ))}
           </div>
 
-          <p className="mt-14 text-center text-xs text-[#8B93A1]">{t.productCaption}</p>
+          <p className="mt-14 text-center text-xs text-[#6B7280]">{t.productCaption}</p>
         </div>
       </section>
 
@@ -1245,7 +1250,7 @@ export default function MarketingHome() {
                   className={cn(
                     "rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors",
                     active
-                      ? "border-[#F97316] bg-[#F97316] text-white"
+                      ? "border-[#F97316] bg-[#F97316] text-[#171B22]"
                       : "border-black/10 bg-white text-[#5B6472] hover:border-[#F97316]/40 hover:text-[#171B22]"
                   )}
                 >
@@ -1398,7 +1403,7 @@ export default function MarketingHome() {
             ))}
           </div>
 
-          <p className="mx-auto mt-6 max-w-xl text-center text-xs text-[#8B93A1]">{t.securityNote}</p>
+          <p className="mx-auto mt-6 max-w-xl text-center text-xs text-[#6B7280]">{t.securityNote}</p>
 
           <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {INTEGRATIONS[lang].map((integration, i) => (
@@ -1463,7 +1468,7 @@ export default function MarketingHome() {
               <h2 className="font-display mt-5 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">{t.ctaHeading}</h2>
               <p className="mx-auto mt-3 max-w-md text-sm text-white/60">{t.ctaSub(brand.name)}</p>
               <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-                <Button asChild size="lg" className="!bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+                <Button asChild size="lg" className="!bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
                   <Link to="/get-started">
                     {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
                   </Link>
@@ -1526,7 +1531,7 @@ export default function MarketingHome() {
           </div>
 
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#8B93A1]">{t.platform}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#6B7280]">{t.platform}</p>
             <ul className="mt-4 flex flex-col gap-3">
               {NAV_LINKS[lang].slice(0, 5).map((link) => (
                 <li key={link.href}>
@@ -1539,7 +1544,7 @@ export default function MarketingHome() {
           </div>
 
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#8B93A1]">{t.getStarted}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#6B7280]">{t.getStarted}</p>
             <ul className="mt-4 flex flex-col gap-3">
               <li>
                 <Link to="/get-started" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
@@ -1560,7 +1565,7 @@ export default function MarketingHome() {
           </div>
 
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#8B93A1]">{t.resources}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#6B7280]">{t.resources}</p>
             <ul className="mt-4 flex flex-col gap-3">
               <li>
                 <Link to="/blog" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">

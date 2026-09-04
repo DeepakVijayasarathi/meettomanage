@@ -149,14 +149,14 @@ export function BookDemoForm({ onDone, onConfirmedChange }: BookDemoFormProps) {
             : `Demo mode — "booked" for ${demoConfirmed}, but nothing was actually scheduled.`}
         </p>
         {onDone ? (
-          <Button className="mt-6 !bg-[#F97316] !text-white hover:!bg-[#EA580C]" onClick={onDone}>
+          <Button className="mt-6 !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]" onClick={onDone}>
             Done
           </Button>
         ) : (
           // Standalone /demo page (no host dialog to close) — without this, a confirmed
           // booking left the visitor on a dead-end confirmation with no obvious next step
           // beyond the sticky header's own "Back home" link.
-          <Button asChild className="mt-6 !bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+          <Button asChild className="mt-6 !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
             <Link to="/">Back to home</Link>
           </Button>
         )}
@@ -176,7 +176,7 @@ export function BookDemoForm({ onDone, onConfirmedChange }: BookDemoFormProps) {
           placeholder="e.g. Priya Kapoor"
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="demoParentEmail">Email</Label>
           <Input
@@ -200,7 +200,7 @@ export function BookDemoForm({ onDone, onConfirmedChange }: BookDemoFormProps) {
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="demoChildName">Child's name</Label>
           <Input
@@ -282,7 +282,7 @@ export function BookDemoForm({ onDone, onConfirmedChange }: BookDemoFormProps) {
                         className={cn(
                           "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
                           isSelected
-                            ? "border-[#F97316] bg-[#F97316] text-white"
+                            ? "border-[#F97316] bg-[#F97316] text-[#171B22]"
                             : "border-black/15 text-[#171B22] hover:border-[#F97316]"
                         )}
                       >
@@ -315,7 +315,7 @@ export function BookDemoForm({ onDone, onConfirmedChange }: BookDemoFormProps) {
           {demoError}
         </p>
       )}
-      <Button type="submit" disabled={demoSubmitting} className="mt-1 w-full !bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+      <Button type="submit" disabled={demoSubmitting} className="mt-1 w-full !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
         {demoSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Book Demo"}
       </Button>
     </form>

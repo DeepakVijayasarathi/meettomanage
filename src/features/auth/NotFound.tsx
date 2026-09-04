@@ -2,10 +2,21 @@ import { Link } from "react-router-dom";
 import { Compass } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { Seo } from "@/components/Seo";
 
 export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-muted/30 px-6 text-center">
+      {/* nginx serves index.html (HTTP 200) for every unknown path so client-side routing
+          survives a refresh — this route is the only signal a crawler gets that the URL
+          doesn't actually resolve, so it needs its own noindex rather than inheriting
+          whatever title/description the previous page (or index.html's own defaults) left behind. */}
+      <Seo
+        title="Page Not Found — Meet to Manage"
+        description="The page you're looking for doesn't exist or has moved."
+        path="/404"
+        noindex
+      />
       <Logo />
       <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
         <Compass className="h-8 w-8" />

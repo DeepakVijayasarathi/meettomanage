@@ -166,7 +166,7 @@ export default function BlogPost() {
             <div className="mt-14 rounded-2xl border border-black/10 bg-[#F5F6F9] px-6 py-8 text-center">
               <h3 className="font-display text-lg font-bold text-[#171B22]">{t.ctaHeading}</h3>
               <p className="mx-auto mt-2 max-w-md text-sm text-[#5B6472]">{t.ctaSub}</p>
-              <Button asChild size="lg" className="mt-5 !bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+              <Button asChild size="lg" className="mt-5 !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
                 <Link to="/get-started">{t.requestDemo}</Link>
               </Button>
             </div>

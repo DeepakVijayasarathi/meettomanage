@@ -21,7 +21,7 @@ export function LanguageToggle({ className }: { className?: string }) {
             onClick={() => setLang(l)}
             className={cn(
               "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
-              active ? "bg-[#F97316] text-white" : "text-[#5B6472] hover:text-[#171B22]"
+              active ? "bg-[#F97316] text-[#171B22]" : "text-[#5B6472] hover:text-[#171B22]"
             )}
           >
             {l === "en" ? "🇬🇧 EN" : "🇦🇪 AR"}

@@ -237,7 +237,7 @@ export default function GetStarted() {
                   placeholder={t.namePlaceholder}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
                   <Label htmlFor="gs-workEmail">{t.workEmail}</Label>
                   <Input
@@ -282,7 +282,7 @@ export default function GetStarted() {
                 />
               </div>
               {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
-              <Button type="submit" disabled={submitting} className="mt-1 w-full !bg-[#F97316] !text-white hover:!bg-[#EA580C]">
+              <Button type="submit" disabled={submitting} className="mt-1 w-full !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : t.requestDemo}
               </Button>
             </form>

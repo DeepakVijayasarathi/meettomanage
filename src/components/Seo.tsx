@@ -13,10 +13,13 @@ interface SeoProps {
   path: string;
   image?: string;
   type?: "website" | "article";
+  /** Set on routes with no real content of their own (404) so a crawler that renders the
+   *  JS doesn't index them under the previous page's — or index.html's default — title. */
+  noindex?: boolean;
 }
 
 /** Per-route title, description, canonical and social-share tags (index.html carries the site-wide defaults a crawler sees before JS runs). */
-export function Seo({ pageKey, title: titleFallback, description: descriptionFallback, path, image = DEFAULT_IMAGE, type = "website" }: SeoProps) {
+export function Seo({ pageKey, title: titleFallback, description: descriptionFallback, path, image = DEFAULT_IMAGE, type = "website", noindex = false }: SeoProps) {
   const title = useSeoOverride(pageKey ?? "", "title", titleFallback);
   const description = useSeoOverride(pageKey ?? "", "description", descriptionFallback);
   const url = `${SITE_URL}${path}`;
@@ -24,6 +27,7 @@ export function Seo({ pageKey, title: titleFallback, description: descriptionFal
     <Helmet>
       <title>{title}</title>
       <meta name="description" content={description} />
+      {noindex && <meta name="robots" content="noindex, follow" />}
       <link rel="canonical" href={url} />
       <meta property="og:type" content={type} />
       <meta property="og:site_name" content="Meet to Manage" />

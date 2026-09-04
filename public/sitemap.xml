@@ -5,15 +5,32 @@
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
+  <!-- Primary conversion pages linked from every header/footer/CTA — previously missing
+       from this file even though they carry more commercial intent than /demo or /store
+       below. -->
+  <url>
+    <loc>https://meettomanage.cloud/pricing</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://meettomanage.cloud/get-started</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
   <url>
     <loc>https://meettomanage.cloud/store</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.6</priority>
   </url>
+  <!-- Not linked from any on-site nav (the "Book a Class Demo" CTA that used to point here
+       was intentionally removed — see git history), so it no longer earns a competing
+       priority against the pages above. Left in rather than removed since the URL is still
+       live and valid; lower priority/changefreq reflects that it's not a primary funnel step. -->
   <url>
     <loc>https://meettomanage.cloud/demo</loc>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.3</priority>
   </url>
   <url>
     <loc>https://meettomanage.cloud/blog</loc>
@@ -39,5 +56,10 @@
     <loc>https://meettomanage.cloud/login</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://meettomanage.cloud/policy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>

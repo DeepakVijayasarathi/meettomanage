@@ -241,7 +241,7 @@ export default function Store() {
                     placeholder="e.g. Priya Kapoor"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="grid gap-1.5">
                     <Label htmlFor="parentEmail">Email</Label>
                     <Input
@@ -265,7 +265,7 @@ export default function Store() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="grid gap-1.5">
                     <Label htmlFor="childName">Child's name</Label>
                     <Input

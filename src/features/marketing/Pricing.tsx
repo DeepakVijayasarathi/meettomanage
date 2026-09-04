@@ -249,7 +249,7 @@ function ToggleGroup<V extends string>({ options, value, onChange }: { options: 
             onClick={() => onChange(opt.value)}
             className={cn(
               "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
-              active ? "bg-[#F97316] text-white" : "text-[#5B6472] hover:text-[#171B22]"
+              active ? "bg-[#F97316] text-[#171B22]" : "text-[#5B6472] hover:text-[#171B22]"
             )}
           >
             {opt.label}
@@ -285,7 +285,7 @@ function PlanCard({ icon: Icon, eyebrow, name, price, priceNote, description, fe
       }
     >
       {highlighted && (
-        <span className="absolute -top-3 left-7 rounded-full bg-[#F97316] px-3 py-1 text-[11px] font-bold tracking-wide text-white rtl:left-auto rtl:right-7">
+        <span className="absolute -top-3 left-7 rounded-full bg-[#F97316] px-3 py-1 text-[11px] font-bold tracking-wide text-[#171B22] rtl:left-auto rtl:right-7">
           {mostFlexibleLabel}
         </span>
       )}
@@ -317,7 +317,7 @@ function PlanCard({ icon: Icon, eyebrow, name, price, priceNote, description, fe
         size="lg"
         className={
           highlighted
-            ? "mt-8 !bg-[#F97316] !text-white hover:!bg-[#EA580C]"
+            ? "mt-8 !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]"
             : "mt-8 border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5"
         }
         variant={highlighted ? undefined : "outline"}
