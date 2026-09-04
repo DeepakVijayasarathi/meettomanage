@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -330,6 +330,16 @@ export default function AdminBatches() {
     return map;
   }, [filtered]);
 
+  // Unpaginated, this rendered every batch as one unbroken card grid — with hundreds of
+  // real batches that's an enormous page (and a growing one). Paginate per status tab,
+  // independently of the others, and reset back to page 1 whenever the search/data changes
+  // out from under the current page.
+  const BATCHES_PAGE_SIZE = 12;
+  const [pageByStatus, setPageByStatus] = useState<Record<BatchStatus, number>>({ active: 1, dormant: 1, upcoming: 1 });
+  useEffect(() => {
+    setPageByStatus({ active: 1, dormant: 1, upcoming: 1 });
+  }, [filtered]);
+
   function openDetail(b: DisplayBatch) {
     setDetail(b);
     setTeacherAssignment(b.teacherId);
@@ -418,19 +428,55 @@ export default function AdminBatches() {
           ))}
         </TabsList>
 
-        {(Object.keys(STATUS_META) as BatchStatus[]).map((status) => (
-          <TabsContent key={status} value={status}>
-            {grouped[status].length === 0 ? (
-              <EmptyState icon={STATUS_META[status].icon} title={`No ${STATUS_META[status].label.toLowerCase()} batches`} description={STATUS_META[status].empty} />
-            ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {grouped[status].map((b, i) => (
-                  <BatchCard key={b.id} batch={b} index={i} onOpen={openDetail} />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        ))}
+        {(Object.keys(STATUS_META) as BatchStatus[]).map((status) => {
+          const list = grouped[status];
+          const totalPages = Math.max(1, Math.ceil(list.length / BATCHES_PAGE_SIZE));
+          const page = Math.min(pageByStatus[status], totalPages);
+          const pageRows = list.slice((page - 1) * BATCHES_PAGE_SIZE, page * BATCHES_PAGE_SIZE);
+          return (
+            <TabsContent key={status} value={status}>
+              {list.length === 0 ? (
+                <EmptyState icon={STATUS_META[status].icon} title={`No ${STATUS_META[status].label.toLowerCase()} batches`} description={STATUS_META[status].empty} />
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {pageRows.map((b, i) => (
+                      <BatchCard key={b.id} batch={b} index={i} onOpen={openDetail} />
+                    ))}
+                  </div>
+                  {list.length > BATCHES_PAGE_SIZE && (
+                    <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm text-muted-foreground">
+                      <span>
+                        Showing {(page - 1) * BATCHES_PAGE_SIZE + 1}–{Math.min(page * BATCHES_PAGE_SIZE, list.length)} of {list.length}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page <= 1}
+                          onClick={() => setPageByStatus((p) => ({ ...p, [status]: page - 1 }))}
+                        >
+                          Previous
+                        </Button>
+                        <span className="font-medium text-foreground">
+                          Page {page} / {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page >= totalPages}
+                          onClick={() => setPageByStatus((p) => ({ ...p, [status]: page + 1 }))}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </TabsContent>
+          );
+        })}
       </Tabs>
 
       <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>
