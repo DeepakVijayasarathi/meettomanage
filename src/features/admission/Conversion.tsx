@@ -118,8 +118,13 @@ export default function AdmissionConversion() {
       {leads.length === 0 ? (
         <EmptyState icon={Sparkles} title="No leads on the board yet" description="Leads appear here once their demo is completed." />
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {BOARD_STAGES.map((stage) => {
+        <div className="relative">
+          {/* Static edge fade so the board (more columns than fit a phone screen) hints there's
+              more to scroll to, instead of just clipping the next column's card mid-word with
+              no visible cue it's scrollable — same pattern as management/Reports.tsx's table. */}
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent sm:hidden" />
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {BOARD_STAGES.map((stage) => {
             const meta = STAGE_META[stage];
             const Icon = meta.icon;
             const stageLeads = columns[stage];
@@ -196,7 +201,8 @@ export default function AdmissionConversion() {
                 </div>
               </div>
             );
-          })}
+            })}
+          </div>
         </div>
       )}
     </div>

@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent } from "@/lib/utils";
 import { ADMIN_KPIS, DEPARTMENT_REVENUE, ENROLLMENT_FUNNEL, REVENUE_TREND } from "@/data/kpis";
+import { BATCHES } from "@/data/batches";
 import { useApiData } from "@/api/hooks";
 import { useSession } from "@/state/session";
 import { useBrand } from "@/lib/branding";
@@ -66,6 +67,11 @@ const DEMO_SUMMARY: ApiDashboardSummary = {
   revenueCollected: ADMIN_KPIS.revenueThisMonth,
   conversionRatePercent: ADMIN_KPIS.conversionRate,
   batchOccupancyPercent: ADMIN_KPIS.batchOccupancy,
+  // Left unset before, these fell back to EMPTY_SUMMARY's 0 — showing "42% conversion, 0
+  // enrollments" and "84% occupancy, 0 active batches" side by side in the KPI cards and
+  // summary sentence. Both mock counts already exist elsewhere in the app's demo data.
+  totalEnrollments: ADMIN_KPIS.enrollments,
+  activeBatches: BATCHES.filter((b) => b.status === "active").length,
   revenueByDepartment: DEPARTMENT_REVENUE.map((d) => ({ name: d.department, revenue: d.value })),
   revenueTrend: REVENUE_TREND,
   enrollmentFunnel: ENROLLMENT_FUNNEL,

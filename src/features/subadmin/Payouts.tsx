@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -200,7 +200,19 @@ export default function SubAdminPayouts() {
     );
   }
 
-  const currentMonthLabel = format(new Date(), "MMMM yyyy");
+  // Demo mock data is authored around a fixed set of months (e.g. June/July 2026) that fall
+  // further into the past every day relative to the real calendar -- comparing it against
+  // `new Date()` made the headline "Total Payout" KPI read as ₹0/0/0 forever once today rolled
+  // past the mock data's last month, right next to teacher cards showing real paid amounts for
+  // those "past" months. In demo mode, treat the most recent month actually present in the
+  // mock data as "this month" so the KPI always reflects the data visible below it; API mode
+  // keeps using the real current month since live data is genuinely dated to it.
+  const currentMonthLabel = apiEnabled()
+    ? format(new Date(), "MMMM yyyy")
+    : payouts.reduce<string | null>((latest, p) => {
+        if (!latest) return p.month;
+        return parse(p.month, "MMMM yyyy", new Date()) > parse(latest, "MMMM yyyy", new Date()) ? p.month : latest;
+      }, null) ?? format(new Date(), "MMMM yyyy");
 
   const totals = useMemo(() => {
     const thisMonth = payouts.filter((p) => p.month === currentMonthLabel);
@@ -370,10 +382,10 @@ export default function SubAdminPayouts() {
                 <button
                   type="button"
                   onClick={() => toggleTeacherGroup(group.teacherId)}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40"
+                  className="flex w-full flex-col items-start gap-3 px-4 py-3 text-left hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
                   aria-expanded={expanded}
                 >
-                  <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex min-w-0 w-full items-center gap-3 sm:w-auto">
                     {expanded ? (
                       <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                     ) : (
@@ -391,7 +403,7 @@ export default function SubAdminPayouts() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex w-full shrink-0 flex-wrap items-center gap-2 pl-7 sm:w-auto sm:pl-0">
                     {group.needsReviewCount > 0 && (
                       <Badge variant="warning" className="gap-1">
                         <AlertTriangle className="h-3 w-3" /> {group.needsReviewCount} needs review

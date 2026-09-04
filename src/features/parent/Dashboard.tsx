@@ -405,14 +405,14 @@ function FeeCard({
 function UpcomingRow({ session }: { session: ClassSession }) {
   const joinable = isJoinable(session);
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
-      <div className="min-w-0">
+    <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 w-full sm:w-auto">
         <p className="truncate text-sm font-semibold text-foreground">{session.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} · {session.teacherName}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
         <SessionStatusBadge status={session.status} />
         {joinable ? (
           <Button size="sm" asChild>

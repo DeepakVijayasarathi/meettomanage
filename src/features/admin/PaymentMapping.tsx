@@ -114,7 +114,7 @@ function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount
             <TableBody>
               {account.recentTransactions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-6 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={4} className="whitespace-normal py-6 text-center text-sm text-muted-foreground">
                     No transactions yet — payments collected into this account will appear here.
                   </TableCell>
                 </TableRow>

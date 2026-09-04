@@ -32,9 +32,18 @@ import { usePortalBase } from "@/lib/portalBase";
 import { LEADS, getConversionFunnel, getConversionRate, getRevenueThisMonth, type Lead, type ConversionStage } from "./data";
 import type { ClassSession } from "@/types";
 
-const TODAY = new Date().toISOString().slice(0, 10);
-const WEEK_START = new Date(Date.now() - 3 * 86400_000).toISOString().slice(0, 10);
-const WEEK_END = new Date(Date.now() + 4 * 86400_000).toISOString().slice(0, 10);
+// Demo mode's mock sessions are pinned to a fixed July 2026 week (see src/data/sessions.ts) —
+// comparing them against the real Date.now() (e.g. today) makes "Demos This Week" read as 0
+// beside a visibly non-empty pipeline snapshot below, once the real calendar has moved past
+// that week. Same fixed-"today" pattern as coordinator/Dashboard.tsx's MOCK_TODAY.
+const MOCK_TODAY = "2026-07-09";
+const TODAY = apiEnabled() ? new Date().toISOString().slice(0, 10) : MOCK_TODAY;
+const WEEK_START = apiEnabled()
+  ? new Date(Date.now() - 3 * 86400_000).toISOString().slice(0, 10)
+  : "2026-07-06";
+const WEEK_END = apiEnabled()
+  ? new Date(Date.now() + 4 * 86400_000).toISOString().slice(0, 10)
+  : "2026-07-13";
 const FUNNEL_STAGES: ConversionStage[] = ["Demo Scheduled", "Demo Completed", "Follow-up", "Enrolled", "Not Interested"];
 
 const FUNNEL_COLORS: Record<string, string> = {
