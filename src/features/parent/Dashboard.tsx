@@ -62,7 +62,7 @@ function apiChildToChild(summary: ApiParentChildSummary, enrolled: boolean, inde
     batchId: "",
     classesCompleted: summary.classesCompleted,
     classesRemaining: summary.classesRemaining,
-    attendancePercent: summary.attendancePercent,
+    attendancePercent: summary.attendancePercent ?? undefined,
     feeStatus: summary.feeStatus,
     enrollmentComplete: enrolled,
   };
@@ -271,7 +271,26 @@ export default function ParentDashboard() {
   );
 }
 
-function AttendanceCard({ percent, color }: { percent: number; color: string }) {
+function AttendanceCard({ percent, color }: { percent?: number; color: string }) {
+  // Undefined = no completed, attendance-marked sessions yet — distinct from a real 0%.
+  // Shown as a neutral "no data" state instead of guessing a tone/bar for a number that
+  // doesn't exist yet (see ParentPortalService.GetDashboardAsync's own doc comment).
+  if (percent === undefined) {
+    return (
+      <Card className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Attendance</p>
+            <p className="mt-1.5 text-2xl font-bold tracking-tight text-foreground">—</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">No classes completed yet</p>
+          </div>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <TrendingUp className="h-5 w-5" />
+          </span>
+        </div>
+      </Card>
+    );
+  }
   const tone = percent >= 90 ? "success" : percent >= 75 ? "warning" : "destructive";
   const toneClass =
     tone === "success" ? "bg-success/15 text-success" : tone === "warning" ? "bg-warning/20 text-warning-foreground" : "bg-destructive/10 text-destructive";

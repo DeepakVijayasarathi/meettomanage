@@ -194,12 +194,18 @@ export default function StudentDashboard() {
               <Flame className="h-5 w-5" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">{child.attendancePercent}%</p>
+          <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">
+            {child.attendancePercent === undefined ? "—" : `${child.attendancePercent}%`}
+          </p>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-warning" style={{ width: `${child.attendancePercent}%` }} />
+            <div className="h-full rounded-full bg-warning" style={{ width: `${child.attendancePercent ?? 0}%` }} />
           </div>
           <p className="mt-2 text-xs font-medium text-muted-foreground">
-            {child.attendancePercent >= 90 ? "You're on fire — keep it up! 🔥" : "Nice work — every class counts!"}
+            {child.attendancePercent === undefined
+              ? "No classes completed yet"
+              : child.attendancePercent >= 90
+                ? "You're on fire — keep it up! 🔥"
+                : "Nice work — every class counts!"}
           </p>
         </Card>
 
@@ -387,7 +393,9 @@ function ApiStudentDashboard() {
   const summary = dashboard?.children.find((c) => c.childId === activeChild.id);
   const classesCompleted = summary?.classesCompleted ?? 0;
   const classesRemaining = summary?.classesRemaining ?? 0;
-  const attendancePercent = Math.round(summary?.attendancePercent ?? 0);
+  // Undefined (not 0) when this child has no attendance-marked sessions yet -- distinct
+  // from a real 0%, and from the vacuous 100% this used to default to server-side.
+  const attendancePercent = summary?.attendancePercent == null ? undefined : Math.round(summary.attendancePercent);
   const totalClasses = classesCompleted + classesRemaining;
   const progressPercent = totalClasses > 0 ? Math.round((classesCompleted / totalClasses) * 100) : 0;
 
@@ -417,8 +425,8 @@ function ApiStudentDashboard() {
     { label: "First Class", icon: Sparkles, earned: classesCompleted >= 1, color: CHART_PALETTE[4] },
     { label: "Reading Rocket", icon: BookOpen, earned: classesCompleted >= 10, color: CHART_PALETTE[3] },
     { label: "Star Collector", icon: Star, earned: myStars >= 10, color: CHART_PALETTE[6] },
-    { label: "Super Streak", icon: Flame, earned: attendancePercent >= 90 && classesCompleted >= 5, color: STREAK_FLAME_RED },
-    { label: "Perfect Attendance", icon: CalendarCheck2, earned: attendancePercent >= 95 && classesCompleted >= 1, color: CHART_PALETTE[2] },
+    { label: "Super Streak", icon: Flame, earned: (attendancePercent ?? 0) >= 90 && classesCompleted >= 5, color: STREAK_FLAME_RED },
+    { label: "Perfect Attendance", icon: CalendarCheck2, earned: (attendancePercent ?? 0) >= 95 && classesCompleted >= 1, color: CHART_PALETTE[2] },
   ];
 
   const ringColor = CHART_PALETTE[0];
@@ -539,12 +547,18 @@ function ApiStudentDashboard() {
               <Flame className="h-5 w-5" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">{attendancePercent}%</p>
+          <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">
+            {attendancePercent === undefined ? "—" : `${attendancePercent}%`}
+          </p>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-warning" style={{ width: `${attendancePercent}%` }} />
+            <div className="h-full rounded-full bg-warning" style={{ width: `${attendancePercent ?? 0}%` }} />
           </div>
           <p className="mt-2 text-xs font-medium text-muted-foreground">
-            {attendancePercent >= 90 ? "You're on fire — keep it up! 🔥" : "Nice work — every class counts!"}
+            {attendancePercent === undefined
+              ? "No classes completed yet"
+              : attendancePercent >= 90
+                ? "You're on fire — keep it up! 🔥"
+                : "Nice work — every class counts!"}
           </p>
         </Card>
 

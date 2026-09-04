@@ -9,7 +9,8 @@ export interface ApiParentChildSummary {
   academicLevel: string | null;
   classesCompleted: number;
   classesRemaining: number;
-  attendancePercent: number;
+  /** Null when this child has no attendance-marked sessions yet — distinct from a real 0%. */
+  attendancePercent: number | null;
   /** Genuinely this child's own status — a sibling's unrelated overdue invoice never marks another child suspended. */
   feeStatus: "paid" | "due" | "overdue" | "suspended";
   /** This specific child's access is blocked (their own suspension, or an account-wide one). */

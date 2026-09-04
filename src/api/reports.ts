@@ -125,7 +125,8 @@ export interface ApiTeacherPerformance {
 export interface ApiStudentAnalytics {
   childId: string;
   childName: string;
-  attendancePercent: number;
+  /** Null when this child has no attendance-marked sessions yet — distinct from a real 0%. */
+  attendancePercent: number | null;
   sessionsAttended: number;
   quizAttempts: number;
   quizCorrect: number;

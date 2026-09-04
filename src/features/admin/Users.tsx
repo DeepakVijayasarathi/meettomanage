@@ -540,13 +540,16 @@ export default function AdminUsers() {
         key: "attendance",
         header: "Attendance",
         sortable: true,
-        accessor: (row) => row.attendancePercent,
-        render: (row) => (
-          <div className="flex items-center gap-2">
-            <Progress value={row.attendancePercent} className="h-1.5 w-16" />
-            <span className="text-xs font-semibold text-muted-foreground">{row.attendancePercent}%</span>
-          </div>
-        ),
+        accessor: (row) => row.attendancePercent ?? -1,
+        render: (row) =>
+          row.attendancePercent === undefined ? (
+            <span className="text-xs text-muted-foreground">—</span>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Progress value={row.attendancePercent} className="h-1.5 w-16" />
+              <span className="text-xs font-semibold text-muted-foreground">{row.attendancePercent}%</span>
+            </div>
+          ),
       },
       {
         key: "feeStatus",
@@ -1045,7 +1048,9 @@ export default function AdminUsers() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attendance</p>
-                  <p className="mt-1 font-medium text-foreground">{detailChild.attendancePercent}%</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {detailChild.attendancePercent === undefined ? "—" : `${detailChild.attendancePercent}%`}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee Status</p>

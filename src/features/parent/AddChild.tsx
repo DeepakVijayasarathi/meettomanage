@@ -137,7 +137,9 @@ export default function ParentAddChild() {
                             <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
                               <TrendingUp className="h-3 w-3" /> Attendance
                             </p>
-                            <p className="mt-0.5 font-semibold text-foreground">{child.attendancePercent}%</p>
+                            <p className="mt-0.5 font-semibold text-foreground">
+                              {child.attendancePercent === null ? "—" : `${child.attendancePercent}%`}
+                            </p>
                           </div>
                         </div>
                       </Card>

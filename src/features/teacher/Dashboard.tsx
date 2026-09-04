@@ -160,7 +160,7 @@ export default function TeacherDashboard() {
       ? Math.round((apiStudentRecords.filter((r) => r.status === "Present").length / apiStudentRecords.length) * 100)
       : 0
     : teacherChildren.length
-      ? Math.round(teacherChildren.reduce((sum, c) => sum + c.attendancePercent, 0) / teacherChildren.length)
+      ? Math.round(teacherChildren.reduce((sum, c) => sum + (c.attendancePercent ?? 0), 0) / teacherChildren.length)
       : 0;
 
   const payouts = usingApi ? apiPayouts : getPayoutsForTeacher(TEACHER_ID);

@@ -36,7 +36,8 @@ export interface Child {
   batchId: string;
   classesCompleted: number;
   classesRemaining: number;
-  attendancePercent: number;
+  /** Undefined when this child has no attendance-marked sessions yet — distinct from a real 0%. */
+  attendancePercent?: number;
   feeStatus: "paid" | "due" | "overdue" | "suspended";
   enrollmentComplete: boolean;
 }
