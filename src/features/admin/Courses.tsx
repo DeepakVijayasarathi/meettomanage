@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { BookOpen, Plus, Users2 } from "lucide-react";
+import { BookOpen, Pencil, Plus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Combobox } from "@/components/ui/combobox";
@@ -25,7 +26,18 @@ import { formatCurrency, formatNumber } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { bulkImportCourses, createCourse, exportCourses, listCategories, listCourses, toFrontendCourse, type ApiCourseCategory } from "@/api/courses";
+import {
+  bulkImportCourses,
+  createCourse,
+  exportCourses,
+  getCourse,
+  listCategories,
+  listCourses,
+  toFrontendCourse,
+  updateCourse,
+  type ApiCourse,
+  type ApiCourseCategory,
+} from "@/api/courses";
 import { listDepartments, type ApiDepartment } from "@/api/departments";
 import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 
@@ -53,13 +65,19 @@ export default function AdminCourses() {
   );
   const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), DEMO_DEPARTMENTS);
   const { data: categories } = useApiData<ApiCourseCategory[]>(() => listCategories(), []);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  // Set only when editing an existing course; carries totalSessions along untouched (the
+  // duration/type/category/department fields below are user-editable, but UpdateAsync rejects
+  // a TotalSessions change once a batch on this course already has a generated schedule).
+  const [editingCourse, setEditingCourse] = useState<ApiCourse | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
   const [category, setCategory] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [type, setType] = useState<Course["type"]>("group");
   const [duration, setDuration] = useState("30");
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [isActive, setIsActive] = useState(true);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -68,15 +86,72 @@ export default function AdminCourses() {
   // Opens the dialog on a blank form — reopening it used to still hold the previous
   // attempt's course name and price.
   function openCreate() {
+    setEditingCourse(null);
     setName("");
     setPrice("");
     setCategory("");
     setDepartmentId("");
+    setType("group");
+    setDuration("30");
+    setIsActive(true);
     setSaveError(null);
-    setCreateOpen(true);
+    setFormOpen(true);
   }
 
-  async function handleCreate() {
+  async function openEdit(row: Course) {
+    setSaveError(null);
+    setFormOpen(true);
+    if (!apiEnabled()) {
+      // Demo mode has no per-course record to fetch — best-effort populate from the row
+      // already on screen; Save below just shows the "not persisted" notice, same as Create.
+      setEditingCourse({
+        id: row.id,
+        courseCategoryId: "",
+        categoryName: row.category,
+        name: row.name,
+        description: null,
+        type: row.type === "group" ? "Group" : "Individual",
+        durationMinutes: row.duration,
+        price: row.price,
+        totalSessions: 12,
+        departmentId: "",
+        departmentName: "",
+        isActive: row.status !== "archived",
+        activeBatches: row.activeBatches,
+        totalEnrolled: row.totalEnrolled,
+        revenue: row.revenue,
+      });
+      setName(row.name);
+      setPrice(String(row.price));
+      setCategory(row.category);
+      setDepartmentId("");
+      setType(row.type);
+      setDuration(String(row.duration));
+      setIsActive(row.status !== "archived");
+      return;
+    }
+
+    setEditLoading(true);
+    try {
+      const full = await getCourse(row.id);
+      setEditingCourse(full);
+      setName(full.name);
+      setPrice(String(full.price));
+      setCategory(full.categoryName);
+      setDepartmentId(full.departmentId);
+      setType(full.type === "Individual" ? "1:1" : "group");
+      setDuration(String(full.durationMinutes));
+      setIsActive(full.isActive);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not load this course.";
+      setSaveError(message);
+      toast({ variant: "error", title: "Couldn't load course", description: message });
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
+  async function handleSave() {
     // Checked before the demo-mode short-circuit: the other way round, "Create Course" on
     // an empty form just closed the dialog with no message and no new row, which looks
     // exactly like a course that was created and then vanished.
@@ -98,31 +173,45 @@ export default function AdminCourses() {
     }
 
     if (!apiEnabled()) {
-      setNotice("Demo mode — course not persisted.");
-      setCreateOpen(false);
+      setNotice(editingCourse ? "Demo mode — changes not persisted." : "Demo mode — course not persisted.");
+      setFormOpen(false);
       return;
     }
 
     setSaving(true);
     setSaveError(null);
     try {
-      await createCourse({
-        name: name.trim(),
-        categoryName: category,
-        departmentId: effectiveDepartmentId,
-        type,
-        durationMinutes: Number(duration),
-        price: Number(price) || 0,
-      });
-      setCreateOpen(false);
+      if (editingCourse) {
+        await updateCourse(editingCourse.id, {
+          name: name.trim(),
+          categoryName: category,
+          departmentId: effectiveDepartmentId,
+          type,
+          durationMinutes: Number(duration),
+          price: Number(price) || 0,
+          totalSessions: editingCourse.totalSessions,
+          isActive,
+        });
+        toast({ variant: "success", title: "Course updated" });
+      } else {
+        await createCourse({
+          name: name.trim(),
+          categoryName: category,
+          departmentId: effectiveDepartmentId,
+          type,
+          durationMinutes: Number(duration),
+          price: Number(price) || 0,
+        });
+        toast({ variant: "success", title: "Course created" });
+      }
+      setFormOpen(false);
       setName("");
       setPrice("");
       reload();
-      toast({ variant: "success", title: "Course created" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not create the course.";
+      const message = err instanceof Error ? err.message : "Could not save the course.";
       setSaveError(message);
-      toast({ variant: "error", title: "Couldn't create course", description: message });
+      toast({ variant: "error", title: "Couldn't save course", description: message });
     } finally {
       setSaving(false);
     }
@@ -207,7 +296,20 @@ export default function AdminCourses() {
         accessor: (row) => row.status,
         render: (row) => <Badge variant={STATUS_VARIANT[row.status]} className="capitalize">{row.status}</Badge>,
       },
+      {
+        key: "actions",
+        header: "",
+        render: (row) => (
+          <div className="flex items-center justify-end gap-1">
+            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); void openEdit(row); }}>
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          </div>
+        ),
+      },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -247,6 +349,7 @@ export default function AdminCourses() {
         emptyDescription="Add your first course, or import a batch of courses using the button above."
         error={apiEnabled() ? apiError : null}
         onRetry={reload}
+        onRowClick={openEdit}
         toolbar={
           <BulkImportExportBar
             entityLabel="courses"
@@ -258,14 +361,16 @@ export default function AdminCourses() {
         }
       />
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Course</DialogTitle>
+            <DialogTitle>{editingCourse ? "Edit Course" : "Create Course"}</DialogTitle>
             <DialogDescription>
-              {apiEnabled()
-                ? "Add a new course to the catalogue."
-                : "Add a new course to the catalogue. This is a mock form — no data is persisted."}
+              {editingCourse
+                ? "Update this course's catalogue details."
+                : apiEnabled()
+                  ? "Add a new course to the catalogue."
+                  : "Add a new course to the catalogue. This is a mock form — no data is persisted."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
@@ -336,14 +441,20 @@ export default function AdminCourses() {
                 <Input id="course-price" type="number" placeholder="2500" value={price} onChange={(e) => setPrice(e.target.value)} />
               </div>
             </div>
+            {editingCourse && (
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <Checkbox checked={isActive} onCheckedChange={(v) => setIsActive(v === true)} />
+                Course is active (visible for new enrollment)
+              </label>
+            )}
           </div>
           {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+            <Button variant="outline" onClick={() => setFormOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={saving}>
-              {saving ? "Creating…" : "Create Course"}
+            <Button onClick={() => void handleSave()} disabled={saving || editLoading}>
+              {saving ? "Saving…" : editingCourse ? "Save changes" : "Create Course"}
             </Button>
           </DialogFooter>
         </DialogContent>
