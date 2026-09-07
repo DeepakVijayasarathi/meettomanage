@@ -173,17 +173,31 @@ export async function getJitsiJoin(sessionId: string): Promise<ApiJitsiJoin> {
   return apiFetch<ApiJitsiJoin>(`/api/sessions/${sessionId}/jitsi-join`);
 }
 
-/** The signed-in teacher's own sessions in a ±60-day window. */
+// A freshly-generated batch's whole schedule is created in one shot (GenerateScheduleAsync
+// places every one of the course's sessions up front, however far out that runs), but a
+// ±60-day fetch window only ever showed whatever fell inside the next/last 60 days. A batch
+// meeting once a week for a 36-session course runs ~252 days — comfortably past 60 -- so most
+// of a just-created schedule silently never showed up here at all (confirmed live: a 36-session
+// batch showed only 26 sessions on the teacher's own My Classes, exactly what a ±60-day window
+// clips a several-times-a-week course down to). The forward side is widened well past
+// GenerateScheduleAsync's own worst case (a weekly course, ~365 days) instead of another
+// arbitrary cap that would just recur for a slightly longer schedule; the backward side stays
+// tight since only recent history matters there (attendance/records lookups).
+const SESSIONS_LOOKBACK_DAYS = 60;
+const SESSIONS_LOOKAHEAD_DAYS = 400;
+
+/** The signed-in teacher's own sessions — their whole batch schedules included, not just
+ *  what falls in the next couple of months. */
 export async function listMySessions(): Promise<ApiClassSession[]> {
-  const from = new Date(Date.now() - 60 * 86400_000).toISOString();
-  const to = new Date(Date.now() + 60 * 86400_000).toISOString();
+  const from = new Date(Date.now() - SESSIONS_LOOKBACK_DAYS * 86400_000).toISOString();
+  const to = new Date(Date.now() + SESSIONS_LOOKAHEAD_DAYS * 86400_000).toISOString();
   return apiFetch<ApiClassSession[]>(`/api/sessions/mine?fromUtc=${from}&toUtc=${to}`);
 }
 
-/** Admin/coordinator calendar: every session in a ±60-day window. */
+/** Admin/coordinator calendar: every session in the same window as listMySessions. */
 export async function listSessions(): Promise<ApiClassSession[]> {
-  const from = new Date(Date.now() - 60 * 86400_000).toISOString();
-  const to = new Date(Date.now() + 60 * 86400_000).toISOString();
+  const from = new Date(Date.now() - SESSIONS_LOOKBACK_DAYS * 86400_000).toISOString();
+  const to = new Date(Date.now() + SESSIONS_LOOKAHEAD_DAYS * 86400_000).toISOString();
   return apiFetch<ApiClassSession[]>(`/api/sessions?fromUtc=${from}&toUtc=${to}`);
 }
 

@@ -33,6 +33,7 @@ import { useApiData } from "@/api/hooks";
 import { toFrontendSession } from "@/api/sessions";
 import { listCourseOptions } from "@/api/courses";
 import {
+  defaultParentScheduleWindow,
   getParentDashboard,
   getParentInvoices,
   getParentSchedule,
@@ -77,8 +78,7 @@ export default function ParentDashboard() {
   const { data: apiDash, loading: dashLoading, error: dashError } = useApiData<ApiParentDashboard | null>(() => getParentDashboard(), null, null);
   const { data: apiSessions } = useApiData<ClassSession[]>(
     () => {
-      const from = new Date(Date.now() - 60 * 86400_000).toISOString();
-      const to = new Date(Date.now() + 60 * 86400_000).toISOString();
+      const [from, to] = defaultParentScheduleWindow();
       return getParentSchedule(from, to).then((items) => items.map(toFrontendSession));
     },
     []
