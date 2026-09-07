@@ -304,7 +304,7 @@ export default function Store() {
         ) : plans.length === 0 ? (
           <EmptyState icon={BookOpen} title="No courses open for enrollment right now" description="Check back soon, or sign in if you already have an account." />
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
             {plans.map((plan) => (
               <div key={plan.id} className="flex flex-col rounded-2xl border border-brand-ink/10 bg-white p-6 shadow-[0_16px_40px_-24px_rgba(43,32,20,0.18)]">
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-green/10 text-brand-green">

@@ -254,7 +254,7 @@ export default function CoordinatorAvailability() {
           {/* Desktop: the full week-by-teacher grid. A 7-day-wide table has no honest
               mobile form, so narrow viewports get a genuinely different layout below
               rather than the same table squeezed into a horizontal-scroll strip. */}
-          <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
+          <div className="hidden overflow-x-auto rounded-xl border border-border lg:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -301,7 +301,7 @@ export default function CoordinatorAvailability() {
           </div>
 
           {/* Mobile: one card per teacher, day tiles wrap instead of scrolling sideways. */}
-          <div className="flex flex-col gap-3 md:hidden">
+          <div className="flex flex-col gap-3 lg:hidden">
             {activeTeachers.map((teacher) => (
               <div key={teacher.id} className="rounded-xl border border-border p-3">
                 <div className="mb-2.5 flex min-w-0 items-center gap-2.5">
