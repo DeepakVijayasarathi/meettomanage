@@ -153,6 +153,15 @@ export default function JitsiLive({
   // a string = shown as a dismissible banner with the reason, teacher-only.
   const [recordingIssue, setRecordingIssue] = useState<string | null>(null);
   const recordingWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // An "off" recordingStatusChanged with an error used to declare auto-recording failed the
+  // instant it arrived — but Jibri can report a transient failure (e.g. its first-picked
+  // instance was busy) and then succeed moments later on its own retry, or simply take longer
+  // than a hopeful guess at how fast recording should start. Confirmed live: the warning
+  // flashed even though recording was in fact on. Stashing the reason here instead lets the
+  // watchdog below stay the single point that actually declares failure, only once nothing
+  // has succeeded by the time it fires — the "off+error" event just supplies a real reason
+  // for that eventual message instead of a generic guess.
+  const recordingErrorReasonRef = useRef<string | null>(null);
   // Teacher-only, advisory: nothing on this self-hosted Jitsi deployment actually cuts a
   // call off at its scheduled end (no duration cap — see Docs/LONG_DURATION_SESSIONS.md),
   // so a class quietly running long has no signal at all today. Polls rather than a single
@@ -436,25 +445,31 @@ export default function JitsiLive({
           // on the Jitsi deployment (no-op on deployments without it). Admin can
           // turn this off in Settings → Integrations → Jitsi Meet ("autoRecord"),
           // which leaves recording to the manual fallback on teacher My Classes.
+          recordingErrorReasonRef.current = null;
           api?.executeCommand("startRecording", { mode: "file" });
           // startRecording has no success callback of its own — a deployment with no
           // Jibri pool (or one that's exhausted) either fires recordingStatusChanged
           // with on:false + a reason, or in some configurations fires nothing back at
           // all (Jicofo simply can't dispatch the request). Either way, if the "on"
-          // confirmation hasn't arrived within a reasonable window, treat it as failed
-          // rather than leaving the teacher to guess why no REC badge ever appeared.
+          // confirmation hasn't arrived within a generous window, treat it as failed
+          // rather than leaving the teacher to guess why no REC badge ever appeared —
+          // generous because Jibri legitimately takes a while to spin up under load,
+          // and firing this too eagerly is worse than firing it a few seconds late.
           if (recordingWatchdogRef.current) clearTimeout(recordingWatchdogRef.current);
           recordingWatchdogRef.current = setTimeout(() => {
             setRecording((current) => {
               if (!current) {
                 setRecordingIssue(
-                  "Auto-recording didn't start (likely no recording capacity on the video server). " +
-                    "This class is not being recorded automatically — use the manual \"Recording\" button on My Classes if you need one."
+                  recordingErrorReasonRef.current
+                    ? `Auto-recording failed to start (${recordingErrorReasonRef.current}). This class is not being recorded automatically — ` +
+                        'use the manual "Recording" button on My Classes if you need one.'
+                    : "Auto-recording didn't start (likely no recording capacity on the video server). " +
+                        "This class is not being recorded automatically — use the manual \"Recording\" button on My Classes if you need one."
                 );
               }
               return current;
             });
-          }, 15000);
+          }, 25000);
         }
       });
       // Auto recording registration: when the deployment publishes the recording
@@ -531,16 +546,15 @@ export default function JitsiLive({
           }
           setRecordingIssue(null);
         } else if (mode === "teacher" && autoRecordRef.current && payload?.error) {
-          // An explicit rejection reason arrived before the watchdog even fired —
-          // surface it immediately instead of waiting out the full timeout.
-          if (recordingWatchdogRef.current) {
-            clearTimeout(recordingWatchdogRef.current);
-            recordingWatchdogRef.current = null;
-          }
-          setRecordingIssue(
-            `Auto-recording failed to start (${payload.error}). This class is not being recorded automatically — ` +
-              'use the manual "Recording" button on My Classes if you need one.'
-          );
+          // Deliberately NOT declaring failure here, and NOT clearing the watchdog — an
+          // "off + error" event can be a transient hiccup Jibri recovers from on its own
+          // (its first-picked instance was busy, it retries the next one) rather than a
+          // final answer. Showing "recording failed" immediately used to flash a scary,
+          // wrong warning even on classes where recording was in fact about to start
+          // fine. Just remember the reason so the watchdog's own eventual verdict — the
+          // one place that actually declares failure, once nothing has succeeded by the
+          // time it fires — can quote it instead of a generic guess.
+          recordingErrorReasonRef.current = payload.error;
         }
       });
     }
