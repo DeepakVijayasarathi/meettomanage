@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
 import { useBrand } from "@/lib/branding";
 import { PageHeader } from "@/components/PageHeader";
@@ -32,7 +33,7 @@ import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { bulkImportStudents, bulkImportUsers, changeUserRole, createUser, deleteStudent, deleteUser, exportStudents, exportUsers, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { bulkImportStudents, bulkImportUsers, changeUserRole, createUser, deleteStudent, deleteUser, exportStudents, exportUsers, getCredentialChannels, listAllUsers, listStudents, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
 import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
 import type { ApiRole } from "@/api/types";
@@ -86,26 +87,61 @@ export default function AdminUsers() {
     data: parents,
     error: parentsError,
     reload: reloadParents,
-  } = useApiData(() => listUsers({ role: "Parent" }).then((r) => r.items.map(toAppUser)), PARENTS);
+  } = useApiData(() => listAllUsers("Parent").then((items) => items.map(toAppUser)), PARENTS);
   const { data: teachers, error: teachersError, reload: reloadTeachers } = useApiData(
-    () => listUsers({ role: "Teacher" }).then((r) => r.items.map(toAppUser)),
+    () => listAllUsers("Teacher").then((items) => items.map(toAppUser)),
     TEACHERS
   );
   const { data: staff, error: staffError, reload: reloadStaff } = useApiData(
     async () => {
-      const [admission, subAdmins] = await Promise.all([
-        listUsers({ role: "AdmissionTeam" }),
-        listUsers({ role: "SubAdmin" }),
-      ]);
-      return [...admission.items, ...subAdmins.items].map(toAppUser);
+      const [admission, subAdmins] = await Promise.all([listAllUsers("AdmissionTeam"), listAllUsers("SubAdmin")]);
+      return [...admission, ...subAdmins].map(toAppUser);
     },
     [...ADMISSION_TEAM, ...SUB_ADMINS]
   );
   const { data: students, error: studentsError, reload: reloadStudents } = useApiData<StudentRow[]>(listStudents, CHILDREN);
   const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), DEMO_DEPARTMENTS);
 
+  // Batches are organized by child, not by parent, so staff look a child up far more often
+  // than they look up a parent by name — but the Parents tab could only ever be searched by
+  // the parent's own name/email. Each parent row now also carries its children's names (shown
+  // in their own column, and picked up for free by DataTable's default search, which matches
+  // against every field on the row) so a child's name finds their parent's account directly.
+  const parentsWithChildren = useMemo(() => {
+    const childrenByParentId = new Map<string, string[]>();
+    for (const s of students) {
+      if (!s.parentId) continue;
+      const list = childrenByParentId.get(s.parentId) ?? [];
+      list.push(s.name);
+      childrenByParentId.set(s.parentId, list);
+    }
+    return parents.map((p) => ({ ...p, childrenNames: (childrenByParentId.get(p.id) ?? []).join(", ") }));
+  }, [parents, students]);
+
+  // Deep link from elsewhere in the app (e.g. a batch's roster, which has no student-detail
+  // view of its own — this same dialog is the one place email/parent/login info actually
+  // lives) straight to one student's own detail dialog, on the right tab.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepLinkStudentId = searchParams.get("studentId");
+  const [activeTab, setActiveTab] = useState(deepLinkStudentId ? "students" : "parents");
+
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
   const [detailChild, setDetailChild] = useState<Child | null>(null);
+  useEffect(() => {
+    if (!deepLinkStudentId || students.length === 0) return;
+    const match = students.find((s) => s.id === deepLinkStudentId);
+    if (match) {
+      setDetailChild(match);
+      // Consumed — closing the dialog shouldn't reopen it on the next render, and the URL
+      // shouldn't keep pointing at a specific student once it's just "the Users page" again.
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("studentId");
+        return next;
+      }, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkStudentId, students]);
   // RM special enrolment notes for the open child profile.
   const [childNotes, setChildNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
@@ -236,6 +272,10 @@ export default function AdminUsers() {
   // since a child isn't an AppUser (it has no login of its own).
   const [deleteChildTarget, setDeleteChildTarget] = useState<Child | null>(null);
   const [deletingChild, setDeletingChild] = useState(false);
+  // Set once the plain delete is refused for an active batch enrolment — previously that was a
+  // dead end (the error named the fix but nothing in this dialog could do it); confirming again
+  // from this state withdraws every active enrolment and deletes in the same call.
+  const [childDeleteNeedsWithdraw, setChildDeleteNeedsWithdraw] = useState(false);
 
   async function handleDeleteUser() {
     if (!deleteTarget) return;
@@ -269,16 +309,25 @@ export default function AdminUsers() {
     }
     setDeletingChild(true);
     try {
-      await deleteStudent(deleteChildTarget.id);
+      await deleteStudent(deleteChildTarget.id, childDeleteNeedsWithdraw);
       setBanner({ ok: true, text: `${deleteChildTarget.name}'s record was removed.` });
       setDetailChild(null);
       setDeleteChildTarget(null);
+      setChildDeleteNeedsWithdraw(false);
       reloadStudents();
       toast({ variant: "success", title: "Student removed", description: `${deleteChildTarget.name}'s record was removed.` });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not remove this student.";
-      setBanner({ ok: false, text: message });
-      toast({ variant: "error", title: "Couldn't remove student", description: message });
+      // The first refusal for this specific reason offers a one-click fix instead of leaving
+      // the admin to separately go find and withdraw the batch enrolment themselves — hitting
+      // it a second time (still refused after withdrawing) is a real, different problem, so
+      // only flip into "withdraw & retry" mode the first time.
+      if (!childDeleteNeedsWithdraw && message.includes("active batch enrolment")) {
+        setChildDeleteNeedsWithdraw(true);
+      } else {
+        setBanner({ ok: false, text: message });
+        toast({ variant: "error", title: "Couldn't remove student", description: message });
+      }
     } finally {
       setDeletingChild(false);
     }
@@ -535,6 +584,26 @@ export default function AdminUsers() {
     []
   );
 
+  // Same as userColumns but with "Department" (always blank for a parent) swapped for
+  // "Children" — both a useful column on its own (batches are organized by child) and, since
+  // it's part of the row DataTable searches against, what makes searching by a child's name find
+  // their parent's account.
+  const parentColumns = useMemo<DataTableColumn<AppUser & { childrenNames: string }>[]>(
+    () => [
+      userColumns[0],
+      userColumns[1],
+      {
+        key: "childrenNames",
+        header: "Children",
+        accessor: (row) => row.childrenNames,
+        render: (row) => (row.childrenNames ? <span className="text-sm">{row.childrenNames}</span> : <span className="text-muted-foreground">—</span>),
+      },
+      userColumns[3],
+      userColumns[4],
+    ],
+    [userColumns]
+  );
+
   const studentColumns: DataTableColumn<StudentRow>[] = useMemo(
     () => [
       {
@@ -658,7 +727,7 @@ export default function AdminUsers() {
         </InlineAlert>
       )}
 
-      <Tabs defaultValue="parents">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="parents" className="gap-1.5">
             <UsersIcon className="h-4 w-4" /> Parents
@@ -676,10 +745,10 @@ export default function AdminUsers() {
 
         <TabsContent value="parents">
           <DataTable
-            data={parents}
-            columns={userColumns}
+            data={parentsWithChildren}
+            columns={parentColumns}
             rowKey={(row) => row.id}
-            searchPlaceholder="Search parents by name or email…"
+            searchPlaceholder="Search parents by name, email or their child's name…"
             onRowClick={(row) => setDetailUser(row)}
             emptyTitle="No parent accounts yet"
             emptyDescription="Parent accounts are created when a student enrolls, or you can add one directly with Add User above."
@@ -942,14 +1011,21 @@ export default function AdminUsers() {
 
       <ConfirmDialog
         open={!!deleteChildTarget}
-        onOpenChange={(open) => !open && setDeleteChildTarget(null)}
-        title="Delete this student record?"
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteChildTarget(null);
+            setChildDeleteNeedsWithdraw(false);
+          }
+        }}
+        title={childDeleteNeedsWithdraw ? "Withdraw and delete this student record?" : "Delete this student record?"}
         description={
           deleteChildTarget
-            ? `${deleteChildTarget.name}'s record will be removed. This is blocked if they still have an active batch enrolment or an unpaid invoice — withdraw/settle those first.`
+            ? childDeleteNeedsWithdraw
+              ? `${deleteChildTarget.name} still has an active batch enrolment. Confirming will withdraw them from every batch (freeing their seat) and then remove the record.`
+              : `${deleteChildTarget.name}'s record will be removed. This is blocked if they still have an active batch enrolment or an unpaid invoice — withdraw/settle those first.`
             : undefined
         }
-        confirmLabel={deletingChild ? "Deleting…" : "Delete Student"}
+        confirmLabel={deletingChild ? "Deleting…" : childDeleteNeedsWithdraw ? "Withdraw & Delete" : "Delete Student"}
         destructive
         onConfirm={handleDeleteChild}
       />

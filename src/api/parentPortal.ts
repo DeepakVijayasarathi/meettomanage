@@ -53,6 +53,23 @@ export async function getParentSchedule(fromUtc: string, toUtc: string): Promise
   return apiFetch<ApiClassSession[]>(`/api/parent-portal/schedule?fromUtc=${fromUtc}&toUtc=${toUtc}`);
 }
 
+// A child's whole batch schedule is generated up front (see GenerateScheduleAsync on the
+// backend), however far out it runs — a 36-session weekly course spans ~252 days. A ±60-day
+// fetch window (this default's old shape) silently clipped most of a just-created schedule,
+// same bug confirmed live on the teacher's own My Classes (see listMySessions/listSessions
+// in api/sessions.ts, fixed the same way). Shared here so Schedule.tsx and Dashboard.tsx,
+// which each used to hardcode their own copy of the same ±60-day window, can't drift again.
+const SCHEDULE_LOOKBACK_DAYS = 60;
+const SCHEDULE_LOOKAHEAD_DAYS = 400;
+
+/** Default [fromUtc, toUtc] window for getParentSchedule -- recent history plus the child's
+ *  whole realistic upcoming batch schedule, not just the next couple of months. */
+export function defaultParentScheduleWindow(): [string, string] {
+  const from = new Date(Date.now() - SCHEDULE_LOOKBACK_DAYS * 86400_000).toISOString();
+  const to = new Date(Date.now() + SCHEDULE_LOOKAHEAD_DAYS * 86400_000).toISOString();
+  return [from, to];
+}
+
 export async function getParentResources(): Promise<ApiResource[]> {
   return apiFetch<ApiResource[]>("/api/parent-portal/resources");
 }

@@ -22,6 +22,7 @@ export interface HubLeaderboardEntry {
 export interface ClassroomHubEvents {
   roster: (participants: HubParticipant[]) => void;
   board: (opJson: string) => void;
+  annotation: (opJson: string) => void;
   chat: (author: string, text: string) => void;
   quizStarted: (questionIndex: number) => void;
   quizEnded: () => void;
@@ -93,6 +94,7 @@ export class ClassroomHubClient {
 
     if (handlers.roster) connection.on("Roster", handlers.roster);
     if (handlers.board) connection.on("Board", handlers.board);
+    if (handlers.annotation) connection.on("Annotation", handlers.annotation);
     if (handlers.chat) connection.on("Chat", handlers.chat);
     if (handlers.quizStarted) connection.on("QuizStarted", handlers.quizStarted);
     if (handlers.quizEnded) connection.on("QuizEnded", handlers.quizEnded);
@@ -167,6 +169,12 @@ export class ClassroomHubClient {
 
   sendBoard(opJson: string): void {
     this.send("SendBoard", opJson);
+  }
+
+  /** Teacher-only live mark drawn over the video stage (e.g. pointing something out on a
+   *  shared screen) — the server enforces the teacher-only rule and never keeps history for it. */
+  sendAnnotation(opJson: string): void {
+    this.send("SendAnnotation", opJson);
   }
 
   sendChat(text: string): void {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, DoorOpen, PartyPopper, PhoneOff, Sparkles, UserPlus, Users, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, Pencil, PartyPopper, PhoneOff, Sparkles, UserPlus, Users, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { primeAudioUnlock } from "@/lib/sounds";
 import InteractivePanel from "./InteractivePanel";
 import GamificationOverlay from "./GamificationOverlay";
+import AnnotationOverlay, { type AnnotationOverlayHandle, type AnnotationOp } from "./AnnotationOverlay";
 import type { LeaderboardEntry } from "./classroomData";
 
 // Fallback only — used for demo-mode/mock sessions and if the authorized
@@ -136,6 +137,14 @@ export default function JitsiLive({
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const celebrateAllRef = useRef<((message?: string) => void) | null>(null);
   const raiseHandRef = useRef<((raised: boolean) => void) | null>(null);
+  const sendAnnotationRef = useRef<((opJson: string) => void) | null>(null);
+  const annotationOverlayRef = useRef<AnnotationOverlayHandle>(null);
+  // Teacher-only "mark on top of what's on screen" tool — off by default so it never
+  // steals pointer events from Jitsi's own controls (screen-share picker, mute, etc.)
+  // unless the teacher deliberately turns it on. See AnnotationOverlay for why it's
+  // deliberately ephemeral (no history the way the whiteboard has).
+  const [annotateOn, setAnnotateOn] = useState(false);
+  const [annotateColor] = useState("#EF4444");
   const jitsiApiRef = useRef<{ executeCommand: (command: string, ...args: unknown[]) => void } | null>(null);
   const [lobbyEnabled, setLobbyEnabled] = useState(false);
   // jitsiApiRef being populated doesn't itself trigger a re-render (it's a ref) — this
@@ -153,6 +162,15 @@ export default function JitsiLive({
   // a string = shown as a dismissible banner with the reason, teacher-only.
   const [recordingIssue, setRecordingIssue] = useState<string | null>(null);
   const recordingWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // An "off" recordingStatusChanged with an error used to declare auto-recording failed the
+  // instant it arrived — but Jibri can report a transient failure (e.g. its first-picked
+  // instance was busy) and then succeed moments later on its own retry, or simply take longer
+  // than a hopeful guess at how fast recording should start. Confirmed live: the warning
+  // flashed even though recording was in fact on. Stashing the reason here instead lets the
+  // watchdog below stay the single point that actually declares failure, only once nothing
+  // has succeeded by the time it fires — the "off+error" event just supplies a real reason
+  // for that eventual message instead of a generic guess.
+  const recordingErrorReasonRef = useRef<string | null>(null);
   // Teacher-only, advisory: nothing on this self-hosted Jitsi deployment actually cuts a
   // call off at its scheduled end (no duration cap — see Docs/LONG_DURATION_SESSIONS.md),
   // so a class quietly running long has no signal at all today. Polls rather than a single
@@ -436,25 +454,31 @@ export default function JitsiLive({
           // on the Jitsi deployment (no-op on deployments without it). Admin can
           // turn this off in Settings → Integrations → Jitsi Meet ("autoRecord"),
           // which leaves recording to the manual fallback on teacher My Classes.
+          recordingErrorReasonRef.current = null;
           api?.executeCommand("startRecording", { mode: "file" });
           // startRecording has no success callback of its own — a deployment with no
           // Jibri pool (or one that's exhausted) either fires recordingStatusChanged
           // with on:false + a reason, or in some configurations fires nothing back at
           // all (Jicofo simply can't dispatch the request). Either way, if the "on"
-          // confirmation hasn't arrived within a reasonable window, treat it as failed
-          // rather than leaving the teacher to guess why no REC badge ever appeared.
+          // confirmation hasn't arrived within a generous window, treat it as failed
+          // rather than leaving the teacher to guess why no REC badge ever appeared —
+          // generous because Jibri legitimately takes a while to spin up under load,
+          // and firing this too eagerly is worse than firing it a few seconds late.
           if (recordingWatchdogRef.current) clearTimeout(recordingWatchdogRef.current);
           recordingWatchdogRef.current = setTimeout(() => {
             setRecording((current) => {
               if (!current) {
                 setRecordingIssue(
-                  "Auto-recording didn't start (likely no recording capacity on the video server). " +
-                    "This class is not being recorded automatically — use the manual \"Recording\" button on My Classes if you need one."
+                  recordingErrorReasonRef.current
+                    ? `Auto-recording failed to start (${recordingErrorReasonRef.current}). This class is not being recorded automatically — ` +
+                        'use the manual "Recording" button on My Classes if you need one.'
+                    : "Auto-recording didn't start (likely no recording capacity on the video server). " +
+                        "This class is not being recorded automatically — use the manual \"Recording\" button on My Classes if you need one."
                 );
               }
               return current;
             });
-          }, 15000);
+          }, 25000);
         }
       });
       // Auto recording registration: when the deployment publishes the recording
@@ -531,16 +555,15 @@ export default function JitsiLive({
           }
           setRecordingIssue(null);
         } else if (mode === "teacher" && autoRecordRef.current && payload?.error) {
-          // An explicit rejection reason arrived before the watchdog even fired —
-          // surface it immediately instead of waiting out the full timeout.
-          if (recordingWatchdogRef.current) {
-            clearTimeout(recordingWatchdogRef.current);
-            recordingWatchdogRef.current = null;
-          }
-          setRecordingIssue(
-            `Auto-recording failed to start (${payload.error}). This class is not being recorded automatically — ` +
-              'use the manual "Recording" button on My Classes if you need one.'
-          );
+          // Deliberately NOT declaring failure here, and NOT clearing the watchdog — an
+          // "off + error" event can be a transient hiccup Jibri recovers from on its own
+          // (its first-picked instance was busy, it retries the next one) rather than a
+          // final answer. Showing "recording failed" immediately used to flash a scary,
+          // wrong warning even on classes where recording was in fact about to start
+          // fine. Just remember the reason so the watchdog's own eventual verdict — the
+          // one place that actually declares failure, once nothing has succeeded by the
+          // time it fires — can quote it instead of a generic guess.
+          recordingErrorReasonRef.current = payload.error;
         }
       });
     }
@@ -794,6 +817,33 @@ export default function JitsiLive({
         <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 md:flex-row">
           <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5">
             <div ref={containerRef} className="h-full w-full" />
+            {/* Sits above the Jitsi iframe (which owns nothing above z-20 of its own) so a
+                mark drawn here shows on top of whatever's currently on screen — camera or a
+                shared screen. Renders for students too (read-only) so they see the teacher's
+                marks live; only the teacher's canDraw+active combination ever captures pointer
+                events, so it never blocks Jitsi's own controls otherwise. */}
+            <AnnotationOverlay
+              ref={annotationOverlayRef}
+              canDraw={mode === "teacher"}
+              active={annotateOn}
+              color={annotateColor}
+              onLocalOp={(op) => sendAnnotationRef.current?.(JSON.stringify(op))}
+            />
+            {mode === "teacher" && (
+              <button
+                type="button"
+                title={annotateOn ? "Stop marking on screen" : "Mark on screen — draw over the video or a shared screen"}
+                aria-label={annotateOn ? "Stop marking on screen" : "Mark on screen"}
+                aria-pressed={annotateOn}
+                onClick={() => setAnnotateOn((o) => !o)}
+                className={cn(
+                  "absolute bottom-20 right-3 z-30 flex h-10 w-10 items-center justify-center rounded-full shadow-lg ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  annotateOn ? "bg-red-500 text-white shadow-red-500/40" : "bg-brand-navy/90 text-white/80 shadow-black/30 backdrop-blur-xl"
+                )}
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
             {/* The empty room otherwise reads as broken rather than expected — every
                 screenshot of this state so far has been just a lone avatar in a large dark
                 void with nothing saying that's normal. pointer-events-none + a low z-index
@@ -904,9 +954,17 @@ export default function JitsiLive({
                 displayName={userName}
                 onCelebrate={celebrate}
                 onLeaderboard={setLeaderboard}
-                onReady={({ celebrateAll, raiseHand }) => {
+                onReady={({ celebrateAll, raiseHand, sendAnnotation }) => {
                   celebrateAllRef.current = celebrateAll;
                   raiseHandRef.current = raiseHand;
+                  sendAnnotationRef.current = sendAnnotation;
+                }}
+                onAnnotation={(opJson) => {
+                  try {
+                    annotationOverlayRef.current?.applyRemoteOp(JSON.parse(opJson) as AnnotationOp);
+                  } catch {
+                    /* malformed op from a stale client — ignore */
+                  }
                 }}
               />
             </aside>

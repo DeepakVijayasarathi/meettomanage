@@ -21,7 +21,7 @@ import { getBatchById } from "@/data/batches";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { toFrontendSession } from "@/api/sessions";
-import { getParentSchedule } from "@/api/parentPortal";
+import { defaultParentScheduleWindow, getParentSchedule } from "@/api/parentPortal";
 import { cn, formatDate, formatTimeLabel } from "@/lib/utils";
 import type { ClassSession } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart, recordingExpiryLabel } from "./utils";
@@ -67,8 +67,7 @@ export default function ParentSchedule() {
 
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError, reload: reloadSessions } = useApiData<ClassSession[]>(
     () => {
-      const from = new Date(Date.now() - 60 * 86400_000).toISOString();
-      const to = new Date(Date.now() + 60 * 86400_000).toISOString();
+      const [from, to] = defaultParentScheduleWindow();
       return getParentSchedule(from, to).then((items) => items.map(toFrontendSession));
     },
     []

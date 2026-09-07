@@ -35,8 +35,18 @@ export async function updateStudentNotes(childId: string, notes: string): Promis
 }
 
 /** Removes a mistaken/test child record. The backend refuses if it still has an active batch enrolment or unpaid invoice. */
-export async function deleteStudent(childId: string): Promise<void> {
-  await apiFetch<void>(`/api/users/students/${childId}`, { method: "DELETE" });
+/**
+ * Removes a mistaken/test child record. Refused if the child has an unpaid invoice, or (unless
+ * `withdrawFromBatches` is set) an active batch enrolment -- previously there was no way to
+ * discover or clear that blocking enrolment from this same flow: the error named the fix
+ * ("withdraw them first") but not where to do it, dead-ending an admin trying to remove a child
+ * who'd simply finished their course. Passing `withdrawFromBatches: true` (after the caller
+ * gets that exact error and asks the admin to confirm) withdraws every active enrolment and
+ * deletes in the same call.
+ */
+export async function deleteStudent(childId: string, withdrawFromBatches?: boolean): Promise<void> {
+  const query = withdrawFromBatches ? "?withdrawFromBatches=true" : "";
+  await apiFetch<void>(`/api/users/students/${childId}${query}`, { method: "DELETE" });
 }
 
 /** Admin students directory (real enrolled children). Attendance/fee show neutral defaults until those subsystems populate. */
@@ -90,6 +100,32 @@ export async function listUsers(params: {
   query.set("page", String(params.page ?? 1));
   query.set("pageSize", String(params.pageSize ?? 100));
   return apiFetch<PagedResult<ApiUser>>(`/api/users?${query}`);
+}
+
+const MAX_PAGE_SIZE = 100; // server-side hard clamp (UserService.ListAsync) — requesting more just gets clamped back to this
+
+/**
+ * Every user of one role, not just the newest 100 -- the admin Users page's search box only
+ * ever filters whatever's already been fetched (DataTable has no server-search wiring), so a
+ * single `listUsers` call silently made anyone outside the first page permanently unfindable
+ * and un-searchable. Confirmed live: a parent whose account predated the ~100 most-recently-
+ * created ones (listUsers orders newest-first) had no way to be found in the Parents tab at
+ * all, even though the account genuinely existed -- "Add User" correctly refused it as a
+ * duplicate, but there was no way to reach it to resend credentials. Students never hit this
+ * (listStudents already fetches everyone unconditionally); Parents/Teachers/Admission
+ * Team/Sub Admin all did.
+ */
+export async function listAllUsers(role: ApiRole): Promise<ApiUser[]> {
+  const all: ApiUser[] = [];
+  let page = 1;
+  for (;;) {
+    const result = await listUsers({ role, page, pageSize: MAX_PAGE_SIZE });
+    all.push(...result.items);
+    if (all.length >= result.totalCount || result.items.length === 0) {
+      return all;
+    }
+    page += 1;
+  }
 }
 
 /** Regenerates the account's temp PIN and (re)sends the onboarding welcome message over the chosen channel. */

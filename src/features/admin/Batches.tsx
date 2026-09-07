@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -38,7 +39,7 @@ import {
   listUnassignedStudents,
   removeStudentFromBatch,
   toFrontendBatch,
-  updateBatch,
+  updateBatchFields,
   type ApiBatch,
   type ApiBatchStudent,
   type ApiUnassignedChild,
@@ -62,12 +63,6 @@ function istTimeToUtc(hhmm: string): { time: string; dayShift: -1 | 0 } {
   const uh = String(Math.floor(totalMin / 60)).padStart(2, "0");
   const um = String(totalMin % 60).padStart(2, "0");
   return { time: `${uh}:${um}`, dayShift };
-}
-
-function shiftDateString(dateStr: string, deltaDays: number): string {
-  const d = new Date(`${dateStr}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + deltaDays);
-  return d.toISOString().slice(0, 10);
 }
 
 const WEEKDAYS = [
@@ -168,6 +163,13 @@ export default function AdminBatches() {
   const [saved, setSaved] = useState(false);
   const [savingDetail, setSavingDetail] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Both were previously read-only display fields with no way to correct them: a batch's real
+  // start date (e.g. one continuing mid-course from another system) could only ever be set once,
+  // by whichever date "Generate class schedule" happened to be run with; duration followed the
+  // course for every batch, with no way for one specific (e.g. smaller/paired) batch to run
+  // shorter sessions than the rest of that course's batches.
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editDuration, setEditDuration] = useState("");
 
   // New-batch dialog
   const [createOpen, setCreateOpen] = useState(false);
@@ -197,12 +199,32 @@ export default function AdminBatches() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
 
-  // Generate-schedule (inside Manage dialog)
-  const [genDays, setGenDays] = useState<number[]>([1, 3]);
+  // Generate-schedule (inside Manage dialog). Keyed by weekday, since a batch doesn't have to
+  // meet at the same time every day it runs -- e.g. Monday/Wednesday at 5 PM but Friday at
+  // noon -- a day's presence as a key is what selects it, and its value is that day's own time.
+  const [genTimeByDay, setGenTimeByDay] = useState<Record<number, string>>({ 1: "10:00", 3: "10:00" });
   const [genStart, setGenStart] = useState("");
-  const [genTime, setGenTime] = useState("10:00");
+  // Blank means "the course's own total session count" (the only behaviour before this
+  // existed) — set explicitly for a batch continuing mid-course under this portal (e.g.
+  // migrated from another system with some sessions already delivered there), so only the
+  // sessions actually still owed get scheduled instead of the course's full count.
+  const [genSessionCount, setGenSessionCount] = useState("");
   const [genBusy, setGenBusy] = useState(false);
   const [genResult, setGenResult] = useState<string | null>(null);
+
+  function toggleGenDay(day: number) {
+    setGenTimeByDay((prev) => {
+      if (day in prev) {
+        const next = { ...prev };
+        delete next[day];
+        return next;
+      }
+      // A newly-added day defaults to whichever time was picked last, for convenience when
+      // most days share a time and only one or two need to differ.
+      const times = Object.values(prev);
+      return { ...prev, [day]: times[times.length - 1] ?? "10:00" };
+    });
+  }
 
   // Assign students (inside Manage dialog) — WBS "Course & Batch Management Flow" step 6.
   const [roster, setRoster] = useState<ApiBatchStudent[]>([]);
@@ -287,6 +309,7 @@ export default function AdminBatches() {
   }
 
   async function handleGenerateSchedule() {
+    const genDays = Object.keys(genTimeByDay).map(Number);
     if (!detail || !genStart || genDays.length === 0) return;
     if (!apiEnabled()) {
       setGenResult("Demo mode — schedule not persisted.");
@@ -295,15 +318,18 @@ export default function AdminBatches() {
     setGenBusy(true);
     setGenResult(null);
     try {
-      // Admins type the class time in IST; the API schedules in UTC. A class between
-      // 12:00–05:29 AM IST falls on the previous UTC calendar date, so the start date
-      // and selected weekdays shift back a day together to keep the intended IST
-      // weekday correct (e.g. "every Tuesday at 12:30 AM IST" is Monday evening UTC).
-      const { time: utcTime, dayShift } = istTimeToUtc(genTime);
+      // Admins type each day's own class time in IST; the API schedules in UTC. A class
+      // between 12:00–05:29 AM IST falls on the previous UTC calendar date — computed per
+      // weekday, since different days can run at different times (that's the whole point of
+      // this field), so one day needing the shift doesn't affect another that doesn't.
+      const slots = genDays.map((day) => {
+        const { time: utcTime, dayShift } = istTimeToUtc(genTimeByDay[day]);
+        return { dayOfWeek: (day + dayShift + 7) % 7, startTimeUtc: `${utcTime}:00` };
+      });
       const created = await generateSchedule(detail.id, {
-        startDate: dayShift < 0 ? shiftDateString(genStart, dayShift) : genStart,
-        daysOfWeek: dayShift < 0 ? genDays.map((d) => (d + 6) % 7) : genDays,
-        startTimeUtc: `${utcTime}:00`,
+        startDate: genStart,
+        slots,
+        sessionCount: genSessionCount.trim() ? Number(genSessionCount) : undefined,
       });
       setGenResult(`${created.length} sessions created — they now appear on the teacher's and parents' schedules.`);
       reload();
@@ -343,11 +369,14 @@ export default function AdminBatches() {
   function openDetail(b: DisplayBatch) {
     setDetail(b);
     setTeacherAssignment(b.teacherId);
+    setEditStartDate(b.startDate || "");
+    setEditDuration(b.durationOverride != null ? String(b.durationOverride) : "");
     setSaved(false);
     setSavingDetail(false);
     setSaveError(null);
     setGenResult(null);
     setGenStart(b.startDate && b.startDate > new Date().toISOString().slice(0, 10) ? b.startDate : "");
+    setGenSessionCount("");
     setRoster([]);
     setUnassigned([]);
     setRosterError(null);
@@ -368,7 +397,11 @@ export default function AdminBatches() {
 
     setSavingDetail(true);
     try {
-      await updateBatch(raw, teacherAssignment);
+      await updateBatchFields(raw, {
+        teacherProfileId: teacherAssignment,
+        startDate: editStartDate.trim() || null,
+        durationMinutesOverride: editDuration.trim() ? Number(editDuration) : null,
+      });
       setSaved(true);
       reload();
       toast({ variant: "success", title: "Batch updated" });
@@ -497,22 +530,53 @@ export default function AdminBatches() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Duration</p>
-                    <p className="mt-1 font-semibold text-foreground">{detail.duration} min</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Start Date</p>
-                    {/* detail.startDate is "" until a schedule's been generated (same empty
-                        value the card view above already guards) — formatDate on "" rendered
-                        the literal text "Invalid Date" instead of a real placeholder. */}
-                    <p className="mt-1 font-semibold text-foreground">{detail.startDate ? formatDate(detail.startDate, "long") : "Not scheduled yet"}</p>
-                  </div>
-                  <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
                     <p className="mt-1 font-semibold capitalize text-foreground">{detail.status}</p>
                   </div>
+                  {!apiEnabled() && (
+                    <>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Duration</p>
+                        <p className="mt-1 font-semibold text-foreground">{detail.duration} min</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Start Date</p>
+                        {/* detail.startDate is "" until a schedule's been generated (same empty
+                            value the card view above already guards) — formatDate on "" rendered
+                            the literal text "Invalid Date" instead of a real placeholder. */}
+                        <p className="mt-1 font-semibold text-foreground">{detail.startDate ? formatDate(detail.startDate, "long") : "Not scheduled yet"}</p>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
+
+              {apiEnabled() && (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="batch-start-date">Start date</Label>
+                    <Input id="batch-start-date" type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">
+                      The batch's real start — correct this if it's continuing from another system.
+                    </p>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="batch-duration">Class duration (min)</Label>
+                    <Input
+                      id="batch-duration"
+                      type="number"
+                      min={1}
+                      max={500}
+                      placeholder={`Course default: ${detail.courseDuration ?? "—"}`}
+                      value={editDuration}
+                      onChange={(e) => setEditDuration(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Leave blank to follow the course's own {detail.courseDuration ?? "—"}-minute default.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid min-w-0 gap-4">
                 <div className="grid gap-1.5">
@@ -584,10 +648,18 @@ export default function AdminBatches() {
                             key={s.enrollmentId}
                             className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-sm"
                           >
-                            <span className="min-w-0 flex-1 truncate">
+                            {/* Deep links to the same rich student-detail dialog Admin → Users
+                                already has (email, parent details, login/credentials, RM notes,
+                                engagement) — nothing here duplicates that view, since clicking a
+                                name previously did nothing at all. */}
+                            <Link
+                              to={`/admin/users?studentId=${s.childId}`}
+                              className="min-w-0 flex-1 truncate text-left hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              title={`View ${s.childName}'s details`}
+                            >
                               {s.childName}
                               {s.academicLevel && <span className="text-xs text-muted-foreground"> · {s.academicLevel}</span>}
-                            </span>
+                            </Link>
                             <button
                               type="button"
                               onClick={() => handleRemoveStudent(s.childId)}
@@ -622,7 +694,9 @@ export default function AdminBatches() {
                   <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Creates all of this batch's course sessions from a start date on the selected weekdays (holidays skipped).
+                  Creates sessions from a start date on the selected weekdays (holidays skipped), each at its own
+                  time — e.g. Monday/Wednesday at 5 PM but Friday at noon. By default, every session of the course;
+                  set a number below for a batch continuing mid-course elsewhere.
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="grid gap-1.5">
@@ -630,10 +704,22 @@ export default function AdminBatches() {
                     <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} />
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="gen-time">Class time (IST)</Label>
-                    <Input id="gen-time" type="time" value={genTime} onChange={(e) => setGenTime(e.target.value)} />
+                    <Label htmlFor="gen-session-count">Number of sessions</Label>
+                    <Input
+                      id="gen-session-count"
+                      type="number"
+                      min={1}
+                      max={500}
+                      placeholder="Default: the course's full session count"
+                      value={genSessionCount}
+                      onChange={(e) => setGenSessionCount(e.target.value)}
+                    />
                   </div>
                 </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Session count: only what's actually still owed — e.g. 14, for a batch with 14 left of a 48-session course.
+                </p>
+
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {WEEKDAYS.map((d) => (
                     <Button
@@ -641,19 +727,36 @@ export default function AdminBatches() {
                       type="button"
                       variant="pill"
                       size="pill"
-                      aria-pressed={genDays.includes(d.value)}
-                      onClick={() =>
-                        setGenDays((prev) => (prev.includes(d.value) ? prev.filter((v) => v !== d.value) : [...prev, d.value]))
-                      }
+                      aria-pressed={d.value in genTimeByDay}
+                      onClick={() => toggleGenDay(d.value)}
                     >
                       {d.label}
                     </Button>
                   ))}
                 </div>
+
+                {Object.keys(genTimeByDay).length > 0 && (
+                  <div className="mt-3 flex flex-col gap-1.5">
+                    {WEEKDAYS.filter((d) => d.value in genTimeByDay).map((d) => (
+                      <div key={d.value} className="flex items-center gap-2">
+                        <span className="w-9 shrink-0 text-xs font-semibold text-muted-foreground">{d.label}</span>
+                        <Input
+                          type="time"
+                          aria-label={`${d.label} class time (IST)`}
+                          value={genTimeByDay[d.value]}
+                          onChange={(e) => setGenTimeByDay((prev) => ({ ...prev, [d.value]: e.target.value }))}
+                          className="h-8 max-w-[140px] text-sm"
+                        />
+                        <span className="text-xs text-muted-foreground">IST</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <Button
                   size="sm"
                   className="mt-3"
-                  disabled={genBusy || !genStart || genDays.length === 0}
+                  disabled={genBusy || !genStart || Object.keys(genTimeByDay).length === 0}
                   onClick={handleGenerateSchedule}
                 >
                   {genBusy ? "Generating…" : "Generate sessions"}
@@ -664,7 +767,7 @@ export default function AdminBatches() {
               {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
               <DialogFooter className="items-center gap-3 sm:justify-between">
                 <p className="text-xs text-muted-foreground">
-                  Only applies the teacher assignment above — student roster and schedule changes are already saved.
+                  Applies the teacher, start date and duration above — student roster and schedule changes are already saved.
                 </p>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" onClick={() => setDetail(null)}>
