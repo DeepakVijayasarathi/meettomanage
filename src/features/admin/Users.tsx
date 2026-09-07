@@ -32,7 +32,7 @@ import { cn, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { bulkImportStudents, bulkImportUsers, changeUserRole, createUser, deleteStudent, deleteUser, exportStudents, exportUsers, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import { bulkImportStudents, bulkImportUsers, changeUserRole, createUser, deleteStudent, deleteUser, exportStudents, exportUsers, getCredentialChannels, listAllUsers, listStudents, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
 import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
 import type { ApiRole } from "@/api/types";
@@ -86,18 +86,15 @@ export default function AdminUsers() {
     data: parents,
     error: parentsError,
     reload: reloadParents,
-  } = useApiData(() => listUsers({ role: "Parent" }).then((r) => r.items.map(toAppUser)), PARENTS);
+  } = useApiData(() => listAllUsers("Parent").then((items) => items.map(toAppUser)), PARENTS);
   const { data: teachers, error: teachersError, reload: reloadTeachers } = useApiData(
-    () => listUsers({ role: "Teacher" }).then((r) => r.items.map(toAppUser)),
+    () => listAllUsers("Teacher").then((items) => items.map(toAppUser)),
     TEACHERS
   );
   const { data: staff, error: staffError, reload: reloadStaff } = useApiData(
     async () => {
-      const [admission, subAdmins] = await Promise.all([
-        listUsers({ role: "AdmissionTeam" }),
-        listUsers({ role: "SubAdmin" }),
-      ]);
-      return [...admission.items, ...subAdmins.items].map(toAppUser);
+      const [admission, subAdmins] = await Promise.all([listAllUsers("AdmissionTeam"), listAllUsers("SubAdmin")]);
+      return [...admission, ...subAdmins].map(toAppUser);
     },
     [...ADMISSION_TEAM, ...SUB_ADMINS]
   );

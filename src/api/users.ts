@@ -92,6 +92,32 @@ export async function listUsers(params: {
   return apiFetch<PagedResult<ApiUser>>(`/api/users?${query}`);
 }
 
+const MAX_PAGE_SIZE = 100; // server-side hard clamp (UserService.ListAsync) — requesting more just gets clamped back to this
+
+/**
+ * Every user of one role, not just the newest 100 -- the admin Users page's search box only
+ * ever filters whatever's already been fetched (DataTable has no server-search wiring), so a
+ * single `listUsers` call silently made anyone outside the first page permanently unfindable
+ * and un-searchable. Confirmed live: a parent whose account predated the ~100 most-recently-
+ * created ones (listUsers orders newest-first) had no way to be found in the Parents tab at
+ * all, even though the account genuinely existed -- "Add User" correctly refused it as a
+ * duplicate, but there was no way to reach it to resend credentials. Students never hit this
+ * (listStudents already fetches everyone unconditionally); Parents/Teachers/Admission
+ * Team/Sub Admin all did.
+ */
+export async function listAllUsers(role: ApiRole): Promise<ApiUser[]> {
+  const all: ApiUser[] = [];
+  let page = 1;
+  for (;;) {
+    const result = await listUsers({ role, page, pageSize: MAX_PAGE_SIZE });
+    all.push(...result.items);
+    if (all.length >= result.totalCount || result.items.length === 0) {
+      return all;
+    }
+    page += 1;
+  }
+}
+
 /** Regenerates the account's temp PIN and (re)sends the onboarding welcome message over the chosen channel. */
 export async function resendCredentials(userId: string, channel: "Email" | "WhatsApp" | "Sms"): Promise<void> {
   await apiFetch<void>(`/api/users/${userId}/resend-credentials`, {
