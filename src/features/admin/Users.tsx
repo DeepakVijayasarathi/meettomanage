@@ -102,6 +102,22 @@ export default function AdminUsers() {
   const { data: students, error: studentsError, reload: reloadStudents } = useApiData<StudentRow[]>(listStudents, CHILDREN);
   const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), DEMO_DEPARTMENTS);
 
+  // Batches are organized by child, not by parent, so staff look a child up far more often
+  // than they look up a parent by name — but the Parents tab could only ever be searched by
+  // the parent's own name/email. Each parent row now also carries its children's names (shown
+  // in their own column, and picked up for free by DataTable's default search, which matches
+  // against every field on the row) so a child's name finds their parent's account directly.
+  const parentsWithChildren = useMemo(() => {
+    const childrenByParentId = new Map<string, string[]>();
+    for (const s of students) {
+      if (!s.parentId) continue;
+      const list = childrenByParentId.get(s.parentId) ?? [];
+      list.push(s.name);
+      childrenByParentId.set(s.parentId, list);
+    }
+    return parents.map((p) => ({ ...p, childrenNames: (childrenByParentId.get(p.id) ?? []).join(", ") }));
+  }, [parents, students]);
+
   // Deep link from elsewhere in the app (e.g. a batch's roster, which has no student-detail
   // view of its own — this same dialog is the one place email/parent/login info actually
   // lives) straight to one student's own detail dialog, on the right tab.
@@ -568,6 +584,26 @@ export default function AdminUsers() {
     []
   );
 
+  // Same as userColumns but with "Department" (always blank for a parent) swapped for
+  // "Children" — both a useful column on its own (batches are organized by child) and, since
+  // it's part of the row DataTable searches against, what makes searching by a child's name find
+  // their parent's account.
+  const parentColumns = useMemo<DataTableColumn<AppUser & { childrenNames: string }>[]>(
+    () => [
+      userColumns[0],
+      userColumns[1],
+      {
+        key: "childrenNames",
+        header: "Children",
+        accessor: (row) => row.childrenNames,
+        render: (row) => (row.childrenNames ? <span className="text-sm">{row.childrenNames}</span> : <span className="text-muted-foreground">—</span>),
+      },
+      userColumns[3],
+      userColumns[4],
+    ],
+    [userColumns]
+  );
+
   const studentColumns: DataTableColumn<StudentRow>[] = useMemo(
     () => [
       {
@@ -709,10 +745,10 @@ export default function AdminUsers() {
 
         <TabsContent value="parents">
           <DataTable
-            data={parents}
-            columns={userColumns}
+            data={parentsWithChildren}
+            columns={parentColumns}
             rowKey={(row) => row.id}
-            searchPlaceholder="Search parents by name or email…"
+            searchPlaceholder="Search parents by name, email or their child's name…"
             onRowClick={(row) => setDetailUser(row)}
             emptyTitle="No parent accounts yet"
             emptyDescription="Parent accounts are created when a student enrolls, or you can add one directly with Add User above."
