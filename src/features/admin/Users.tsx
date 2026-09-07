@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
 import { useBrand } from "@/lib/branding";
 import { PageHeader } from "@/components/PageHeader";
@@ -101,8 +102,30 @@ export default function AdminUsers() {
   const { data: students, error: studentsError, reload: reloadStudents } = useApiData<StudentRow[]>(listStudents, CHILDREN);
   const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), DEMO_DEPARTMENTS);
 
+  // Deep link from elsewhere in the app (e.g. a batch's roster, which has no student-detail
+  // view of its own — this same dialog is the one place email/parent/login info actually
+  // lives) straight to one student's own detail dialog, on the right tab.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepLinkStudentId = searchParams.get("studentId");
+  const [activeTab, setActiveTab] = useState(deepLinkStudentId ? "students" : "parents");
+
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
   const [detailChild, setDetailChild] = useState<Child | null>(null);
+  useEffect(() => {
+    if (!deepLinkStudentId || students.length === 0) return;
+    const match = students.find((s) => s.id === deepLinkStudentId);
+    if (match) {
+      setDetailChild(match);
+      // Consumed — closing the dialog shouldn't reopen it on the next render, and the URL
+      // shouldn't keep pointing at a specific student once it's just "the Users page" again.
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("studentId");
+        return next;
+      }, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkStudentId, students]);
   // RM special enrolment notes for the open child profile.
   const [childNotes, setChildNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
@@ -668,7 +691,7 @@ export default function AdminUsers() {
         </InlineAlert>
       )}
 
-      <Tabs defaultValue="parents">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="parents" className="gap-1.5">
             <UsersIcon className="h-4 w-4" /> Parents
