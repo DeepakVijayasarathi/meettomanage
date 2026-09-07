@@ -2,8 +2,20 @@ import { apiFetch, downloadFile } from "@/lib/api";
 import type { AppUser, Child } from "@/types";
 import { toFrontendRole, toFrontendStatus, type ApiRole, type ApiUser, type BulkImportResult, type PagedResult } from "./types";
 
-/** A students-directory row: the mock Child shape plus resolved parent/course names from the API. */
-export type StudentRow = Child & { parentName?: string; courseName?: string; rmNotes?: string };
+/** A students-directory row: the mock Child shape plus resolved parent/course names from the API.
+ *  `parentId` stays the child's ParentProfileId (the mock-data convention every other screen
+ *  already keys off). `parentUserId` is separate — the parent's actual account id (User.Id) —
+ *  because the admin Users screen's parents list comes from the Users API and is keyed by that,
+ *  not by ParentProfileId; matching a child to its parent row there needs this field. */
+export type StudentRow = Child & {
+  parentName?: string;
+  courseName?: string;
+  rmNotes?: string;
+  parentUserId?: string;
+  /** Sum of this child's Paid invoices. Zero (or undefined, in demo mode) means nothing was
+   *  ever collected — deleting them needs no refund warning. */
+  paidInvoiceTotal?: number;
+};
 
 // Stable colour per user so avatars don't change between visits
 const AVATAR_COLORS = ["#5B93E0", "#F08A1D", "#8B5CF6", "#17A9C9", "#23A455", "#EC4899", "#EAB308", "#F53BA6"];
@@ -17,6 +29,7 @@ function avatarColorFor(id: string): string {
 export interface ApiStudent {
   id: string;
   parentProfileId: string;
+  parentUserId: string;
   fullName: string;
   age: number | null;
   academicLevel: string | null;
@@ -24,6 +37,7 @@ export interface ApiStudent {
   courseName: string | null;
   rmNotes: string | null;
   isActive: boolean;
+  paidInvoiceTotal: number;
 }
 
 /** RM special enrolment notes on a child profile. */
@@ -55,6 +69,7 @@ export async function listStudents(): Promise<StudentRow[]> {
   return students.map((s) => ({
     id: s.id,
     parentId: s.parentProfileId,
+    parentUserId: s.parentUserId,
     name: s.fullName,
     age: s.age ?? 0,
     grade: s.academicLevel ?? "",
@@ -69,6 +84,7 @@ export async function listStudents(): Promise<StudentRow[]> {
     parentName: s.parentName,
     courseName: s.courseName ?? undefined,
     rmNotes: s.rmNotes ?? undefined,
+    paidInvoiceTotal: s.paidInvoiceTotal,
   }));
 }
 
