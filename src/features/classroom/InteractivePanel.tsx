@@ -27,7 +27,17 @@ interface InteractivePanelProps {
    *  raise-hand sender the host can forward its own hand-raise UI (e.g. Jitsi's native
    *  toolbar button) into — this panel owns the hub connection, so it's the only place
    *  that can actually send "RaiseHand" and reach the rest of the class. */
-  onReady?: (senders: { celebrateAll: (message?: string) => void; raiseHand: (raised: boolean) => void }) => void;
+  onReady?: (senders: {
+    celebrateAll: (message?: string) => void;
+    raiseHand: (raised: boolean) => void;
+    /** Teacher-only: broadcasts one annotation op drawn over the video stage. */
+    sendAnnotation: (opJson: string) => void;
+  }) => void;
+  /** Fires for every annotation op relayed from the teacher over the hub, so the host
+   *  (JitsiLive, which owns the video-stage overlay this panel has no access to) can
+   *  paint it. This panel owns the hub connection, so it's the only place that can
+   *  actually receive "Annotation" broadcasts. */
+  onAnnotation?: (opJson: string) => void;
 }
 
 /**
@@ -36,7 +46,7 @@ interface InteractivePanelProps {
  * board access — all synced through the classroom SignalR hub. If the hub is
  * unreachable everything still renders locally (the call itself is unaffected).
  */
-export default function InteractivePanel({ sessionId, mode, displayName, onCelebrate, onLeaderboard, onReady }: InteractivePanelProps) {
+export default function InteractivePanel({ sessionId, mode, displayName, onCelebrate, onLeaderboard, onReady, onAnnotation }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [hubDetail, setHubDetail] = useState<string | null>(null);
@@ -108,6 +118,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         },
         celebrate: (message) => onCelebrate(message ?? undefined),
         boardAccess: (allowed) => setBoardAllowed(allowed),
+        annotation: (opJson) => onAnnotation?.(opJson),
       }, (state, detail) => {
         if (!disposed) {
           setHubState(state);
@@ -127,6 +138,9 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
           // anything once it's reached the roster the rest of the class actually sees.
           raiseHand: (raised) => {
             if (client.connected) client.raiseHand(raised);
+          },
+          sendAnnotation: (opJson) => {
+            if (client.connected) client.sendAnnotation(opJson);
           },
         });
       });

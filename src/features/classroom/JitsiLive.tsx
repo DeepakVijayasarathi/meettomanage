@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, DoorOpen, PartyPopper, PhoneOff, Sparkles, UserPlus, Users, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, Pencil, PartyPopper, PhoneOff, Sparkles, UserPlus, Users, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { primeAudioUnlock } from "@/lib/sounds";
 import InteractivePanel from "./InteractivePanel";
 import GamificationOverlay from "./GamificationOverlay";
+import AnnotationOverlay, { type AnnotationOverlayHandle, type AnnotationOp } from "./AnnotationOverlay";
 import type { LeaderboardEntry } from "./classroomData";
 
 // Fallback only — used for demo-mode/mock sessions and if the authorized
@@ -136,6 +137,14 @@ export default function JitsiLive({
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const celebrateAllRef = useRef<((message?: string) => void) | null>(null);
   const raiseHandRef = useRef<((raised: boolean) => void) | null>(null);
+  const sendAnnotationRef = useRef<((opJson: string) => void) | null>(null);
+  const annotationOverlayRef = useRef<AnnotationOverlayHandle>(null);
+  // Teacher-only "mark on top of what's on screen" tool — off by default so it never
+  // steals pointer events from Jitsi's own controls (screen-share picker, mute, etc.)
+  // unless the teacher deliberately turns it on. See AnnotationOverlay for why it's
+  // deliberately ephemeral (no history the way the whiteboard has).
+  const [annotateOn, setAnnotateOn] = useState(false);
+  const [annotateColor] = useState("#EF4444");
   const jitsiApiRef = useRef<{ executeCommand: (command: string, ...args: unknown[]) => void } | null>(null);
   const [lobbyEnabled, setLobbyEnabled] = useState(false);
   // jitsiApiRef being populated doesn't itself trigger a re-render (it's a ref) — this
@@ -808,6 +817,33 @@ export default function JitsiLive({
         <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 md:flex-row">
           <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5">
             <div ref={containerRef} className="h-full w-full" />
+            {/* Sits above the Jitsi iframe (which owns nothing above z-20 of its own) so a
+                mark drawn here shows on top of whatever's currently on screen — camera or a
+                shared screen. Renders for students too (read-only) so they see the teacher's
+                marks live; only the teacher's canDraw+active combination ever captures pointer
+                events, so it never blocks Jitsi's own controls otherwise. */}
+            <AnnotationOverlay
+              ref={annotationOverlayRef}
+              canDraw={mode === "teacher"}
+              active={annotateOn}
+              color={annotateColor}
+              onLocalOp={(op) => sendAnnotationRef.current?.(JSON.stringify(op))}
+            />
+            {mode === "teacher" && (
+              <button
+                type="button"
+                title={annotateOn ? "Stop marking on screen" : "Mark on screen — draw over the video or a shared screen"}
+                aria-label={annotateOn ? "Stop marking on screen" : "Mark on screen"}
+                aria-pressed={annotateOn}
+                onClick={() => setAnnotateOn((o) => !o)}
+                className={cn(
+                  "absolute bottom-20 right-3 z-30 flex h-10 w-10 items-center justify-center rounded-full shadow-lg ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  annotateOn ? "bg-red-500 text-white shadow-red-500/40" : "bg-brand-navy/90 text-white/80 shadow-black/30 backdrop-blur-xl"
+                )}
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
             {/* The empty room otherwise reads as broken rather than expected — every
                 screenshot of this state so far has been just a lone avatar in a large dark
                 void with nothing saying that's normal. pointer-events-none + a low z-index
@@ -918,9 +954,17 @@ export default function JitsiLive({
                 displayName={userName}
                 onCelebrate={celebrate}
                 onLeaderboard={setLeaderboard}
-                onReady={({ celebrateAll, raiseHand }) => {
+                onReady={({ celebrateAll, raiseHand, sendAnnotation }) => {
                   celebrateAllRef.current = celebrateAll;
                   raiseHandRef.current = raiseHand;
+                  sendAnnotationRef.current = sendAnnotation;
+                }}
+                onAnnotation={(opJson) => {
+                  try {
+                    annotationOverlayRef.current?.applyRemoteOp(JSON.parse(opJson) as AnnotationOp);
+                  } catch {
+                    /* malformed op from a stale client — ignore */
+                  }
                 }}
               />
             </aside>
