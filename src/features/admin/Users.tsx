@@ -1151,11 +1151,15 @@ export default function AdminUsers() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
-                  <p className="mt-1 font-medium text-foreground">{getParentById(detailChild.parentId)?.name ?? "—"}</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {(detailChild as StudentRow).parentName ?? getParentById(detailChild.parentId)?.name ?? "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Course</p>
-                  <p className="mt-1 font-medium text-foreground">{getCourseById(detailChild.courseId)?.name ?? "—"}</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {(detailChild as StudentRow).courseName ?? getCourseById(detailChild.courseId)?.name ?? "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Classes Completed</p>
