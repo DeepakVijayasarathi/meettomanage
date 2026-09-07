@@ -114,13 +114,23 @@ export async function createBatch(input: {
   return apiFetch<ApiBatch>("/api/batches", { method: "POST", body: JSON.stringify(input) });
 }
 
+/** One weekday this batch meets on, and the UTC time it meets at that day — a batch doesn't
+ *  have to run at the same time every day (e.g. Monday/Wednesday at 5 PM but Friday at noon),
+ *  so each weekday carries its own time instead of one time applying to all of them. `dayOfWeek`
+ *  follows JS's own Date.getDay() convention (0 = Sunday .. 6 = Saturday), which the backend's
+ *  DayOfWeek enum shares numerically. */
+export interface GenerateScheduleSlot {
+  dayOfWeek: number;
+  startTimeUtc: string;
+}
+
 /**
- * Bulk-creates the batch's full session plan (all course sessions on the chosen
- * weekdays from the start date, skipping holidays). Returns the created sessions.
+ * Bulk-creates the batch's session plan on the chosen weekdays from the start date (skipping
+ * holidays), each at its own slot's time. Returns the created sessions.
  */
 export async function generateSchedule(
   batchId: string,
-  input: { startDate: string; daysOfWeek: number[]; startTimeUtc: string; sessionCount?: number }
+  input: { startDate: string; slots: GenerateScheduleSlot[]; sessionCount?: number }
 ): Promise<unknown[]> {
   return apiFetch<unknown[]>(`/api/batches/${batchId}/generate-schedule`, {
     method: "POST",

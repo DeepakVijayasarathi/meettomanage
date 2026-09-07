@@ -65,12 +65,6 @@ function istTimeToUtc(hhmm: string): { time: string; dayShift: -1 | 0 } {
   return { time: `${uh}:${um}`, dayShift };
 }
 
-function shiftDateString(dateStr: string, deltaDays: number): string {
-  const d = new Date(`${dateStr}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + deltaDays);
-  return d.toISOString().slice(0, 10);
-}
-
 const WEEKDAYS = [
   { value: 1, label: "Mon" },
   { value: 2, label: "Tue" },
@@ -205,10 +199,11 @@ export default function AdminBatches() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
 
-  // Generate-schedule (inside Manage dialog)
-  const [genDays, setGenDays] = useState<number[]>([1, 3]);
+  // Generate-schedule (inside Manage dialog). Keyed by weekday, since a batch doesn't have to
+  // meet at the same time every day it runs -- e.g. Monday/Wednesday at 5 PM but Friday at
+  // noon -- a day's presence as a key is what selects it, and its value is that day's own time.
+  const [genTimeByDay, setGenTimeByDay] = useState<Record<number, string>>({ 1: "10:00", 3: "10:00" });
   const [genStart, setGenStart] = useState("");
-  const [genTime, setGenTime] = useState("10:00");
   // Blank means "the course's own total session count" (the only behaviour before this
   // existed) — set explicitly for a batch continuing mid-course under this portal (e.g.
   // migrated from another system with some sessions already delivered there), so only the
@@ -216,6 +211,20 @@ export default function AdminBatches() {
   const [genSessionCount, setGenSessionCount] = useState("");
   const [genBusy, setGenBusy] = useState(false);
   const [genResult, setGenResult] = useState<string | null>(null);
+
+  function toggleGenDay(day: number) {
+    setGenTimeByDay((prev) => {
+      if (day in prev) {
+        const next = { ...prev };
+        delete next[day];
+        return next;
+      }
+      // A newly-added day defaults to whichever time was picked last, for convenience when
+      // most days share a time and only one or two need to differ.
+      const times = Object.values(prev);
+      return { ...prev, [day]: times[times.length - 1] ?? "10:00" };
+    });
+  }
 
   // Assign students (inside Manage dialog) — WBS "Course & Batch Management Flow" step 6.
   const [roster, setRoster] = useState<ApiBatchStudent[]>([]);
@@ -300,6 +309,7 @@ export default function AdminBatches() {
   }
 
   async function handleGenerateSchedule() {
+    const genDays = Object.keys(genTimeByDay).map(Number);
     if (!detail || !genStart || genDays.length === 0) return;
     if (!apiEnabled()) {
       setGenResult("Demo mode — schedule not persisted.");
@@ -308,15 +318,17 @@ export default function AdminBatches() {
     setGenBusy(true);
     setGenResult(null);
     try {
-      // Admins type the class time in IST; the API schedules in UTC. A class between
-      // 12:00–05:29 AM IST falls on the previous UTC calendar date, so the start date
-      // and selected weekdays shift back a day together to keep the intended IST
-      // weekday correct (e.g. "every Tuesday at 12:30 AM IST" is Monday evening UTC).
-      const { time: utcTime, dayShift } = istTimeToUtc(genTime);
+      // Admins type each day's own class time in IST; the API schedules in UTC. A class
+      // between 12:00–05:29 AM IST falls on the previous UTC calendar date — computed per
+      // weekday, since different days can run at different times (that's the whole point of
+      // this field), so one day needing the shift doesn't affect another that doesn't.
+      const slots = genDays.map((day) => {
+        const { time: utcTime, dayShift } = istTimeToUtc(genTimeByDay[day]);
+        return { dayOfWeek: (day + dayShift + 7) % 7, startTimeUtc: `${utcTime}:00` };
+      });
       const created = await generateSchedule(detail.id, {
-        startDate: dayShift < 0 ? shiftDateString(genStart, dayShift) : genStart,
-        daysOfWeek: dayShift < 0 ? genDays.map((d) => (d + 6) % 7) : genDays,
-        startTimeUtc: `${utcTime}:00`,
+        startDate: genStart,
+        slots,
         sessionCount: genSessionCount.trim() ? Number(genSessionCount) : undefined,
       });
       setGenResult(`${created.length} sessions created — they now appear on the teacher's and parents' schedules.`);
@@ -682,8 +694,9 @@ export default function AdminBatches() {
                   <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Creates sessions from a start date on the selected weekdays (holidays skipped) — by default, every
-                  session of the course; set a number below for a batch continuing mid-course elsewhere.
+                  Creates sessions from a start date on the selected weekdays (holidays skipped), each at its own
+                  time — e.g. Monday/Wednesday at 5 PM but Friday at noon. By default, every session of the course;
+                  set a number below for a batch continuing mid-course elsewhere.
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="grid gap-1.5">
@@ -691,10 +704,6 @@ export default function AdminBatches() {
                     <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} />
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="gen-time">Class time (IST)</Label>
-                    <Input id="gen-time" type="time" value={genTime} onChange={(e) => setGenTime(e.target.value)} />
-                  </div>
-                  <div className="grid gap-1.5 sm:col-span-2">
                     <Label htmlFor="gen-session-count">Number of sessions</Label>
                     <Input
                       id="gen-session-count"
@@ -705,11 +714,12 @@ export default function AdminBatches() {
                       value={genSessionCount}
                       onChange={(e) => setGenSessionCount(e.target.value)}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Only the sessions actually still owed — e.g. 14, for a batch with 14 left of a 48-session course.
-                    </p>
                   </div>
                 </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Session count: only what's actually still owed — e.g. 14, for a batch with 14 left of a 48-session course.
+                </p>
+
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {WEEKDAYS.map((d) => (
                     <Button
@@ -717,19 +727,36 @@ export default function AdminBatches() {
                       type="button"
                       variant="pill"
                       size="pill"
-                      aria-pressed={genDays.includes(d.value)}
-                      onClick={() =>
-                        setGenDays((prev) => (prev.includes(d.value) ? prev.filter((v) => v !== d.value) : [...prev, d.value]))
-                      }
+                      aria-pressed={d.value in genTimeByDay}
+                      onClick={() => toggleGenDay(d.value)}
                     >
                       {d.label}
                     </Button>
                   ))}
                 </div>
+
+                {Object.keys(genTimeByDay).length > 0 && (
+                  <div className="mt-3 flex flex-col gap-1.5">
+                    {WEEKDAYS.filter((d) => d.value in genTimeByDay).map((d) => (
+                      <div key={d.value} className="flex items-center gap-2">
+                        <span className="w-9 shrink-0 text-xs font-semibold text-muted-foreground">{d.label}</span>
+                        <Input
+                          type="time"
+                          aria-label={`${d.label} class time (IST)`}
+                          value={genTimeByDay[d.value]}
+                          onChange={(e) => setGenTimeByDay((prev) => ({ ...prev, [d.value]: e.target.value }))}
+                          className="h-8 max-w-[140px] text-sm"
+                        />
+                        <span className="text-xs text-muted-foreground">IST</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <Button
                   size="sm"
                   className="mt-3"
-                  disabled={genBusy || !genStart || genDays.length === 0}
+                  disabled={genBusy || !genStart || Object.keys(genTimeByDay).length === 0}
                   onClick={handleGenerateSchedule}
                 >
                   {genBusy ? "Generating…" : "Generate sessions"}
