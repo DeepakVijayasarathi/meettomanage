@@ -336,6 +336,13 @@ export default function AdminUsers() {
         setBanner({ ok: false, text: message });
         toast({ variant: "error", title: "Couldn't remove student", description: message });
       }
+      // Re-thrown so ConfirmDialog's own promise-rejection handling keeps the dialog open
+      // (busy state clears, dialog stays up) instead of treating this catch block's silent
+      // return as success and auto-closing it — which previously made the very first, blocked
+      // delete attempt look like nothing happened at all, with the "Withdraw & Delete" retry
+      // only appearing if the admin happened to reopen the dialog and notice the record was
+      // still there.
+      throw err;
     } finally {
       setDeletingChild(false);
     }
