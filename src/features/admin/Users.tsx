@@ -233,6 +233,10 @@ export default function AdminUsers() {
   // since a child isn't an AppUser (it has no login of its own).
   const [deleteChildTarget, setDeleteChildTarget] = useState<Child | null>(null);
   const [deletingChild, setDeletingChild] = useState(false);
+  // Set once the plain delete is refused for an active batch enrolment — previously that was a
+  // dead end (the error named the fix but nothing in this dialog could do it); confirming again
+  // from this state withdraws every active enrolment and deletes in the same call.
+  const [childDeleteNeedsWithdraw, setChildDeleteNeedsWithdraw] = useState(false);
 
   async function handleDeleteUser() {
     if (!deleteTarget) return;
@@ -266,16 +270,25 @@ export default function AdminUsers() {
     }
     setDeletingChild(true);
     try {
-      await deleteStudent(deleteChildTarget.id);
+      await deleteStudent(deleteChildTarget.id, childDeleteNeedsWithdraw);
       setBanner({ ok: true, text: `${deleteChildTarget.name}'s record was removed.` });
       setDetailChild(null);
       setDeleteChildTarget(null);
+      setChildDeleteNeedsWithdraw(false);
       reloadStudents();
       toast({ variant: "success", title: "Student removed", description: `${deleteChildTarget.name}'s record was removed.` });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not remove this student.";
-      setBanner({ ok: false, text: message });
-      toast({ variant: "error", title: "Couldn't remove student", description: message });
+      // The first refusal for this specific reason offers a one-click fix instead of leaving
+      // the admin to separately go find and withdraw the batch enrolment themselves — hitting
+      // it a second time (still refused after withdrawing) is a real, different problem, so
+      // only flip into "withdraw & retry" mode the first time.
+      if (!childDeleteNeedsWithdraw && message.includes("active batch enrolment")) {
+        setChildDeleteNeedsWithdraw(true);
+      } else {
+        setBanner({ ok: false, text: message });
+        toast({ variant: "error", title: "Couldn't remove student", description: message });
+      }
     } finally {
       setDeletingChild(false);
     }
@@ -939,14 +952,21 @@ export default function AdminUsers() {
 
       <ConfirmDialog
         open={!!deleteChildTarget}
-        onOpenChange={(open) => !open && setDeleteChildTarget(null)}
-        title="Delete this student record?"
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteChildTarget(null);
+            setChildDeleteNeedsWithdraw(false);
+          }
+        }}
+        title={childDeleteNeedsWithdraw ? "Withdraw and delete this student record?" : "Delete this student record?"}
         description={
           deleteChildTarget
-            ? `${deleteChildTarget.name}'s record will be removed. This is blocked if they still have an active batch enrolment or an unpaid invoice — withdraw/settle those first.`
+            ? childDeleteNeedsWithdraw
+              ? `${deleteChildTarget.name} still has an active batch enrolment. Confirming will withdraw them from every batch (freeing their seat) and then remove the record.`
+              : `${deleteChildTarget.name}'s record will be removed. This is blocked if they still have an active batch enrolment or an unpaid invoice — withdraw/settle those first.`
             : undefined
         }
-        confirmLabel={deletingChild ? "Deleting…" : "Delete Student"}
+        confirmLabel={deletingChild ? "Deleting…" : childDeleteNeedsWithdraw ? "Withdraw & Delete" : "Delete Student"}
         destructive
         onConfirm={handleDeleteChild}
       />

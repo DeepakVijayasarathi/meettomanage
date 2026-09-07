@@ -35,8 +35,18 @@ export async function updateStudentNotes(childId: string, notes: string): Promis
 }
 
 /** Removes a mistaken/test child record. The backend refuses if it still has an active batch enrolment or unpaid invoice. */
-export async function deleteStudent(childId: string): Promise<void> {
-  await apiFetch<void>(`/api/users/students/${childId}`, { method: "DELETE" });
+/**
+ * Removes a mistaken/test child record. Refused if the child has an unpaid invoice, or (unless
+ * `withdrawFromBatches` is set) an active batch enrolment -- previously there was no way to
+ * discover or clear that blocking enrolment from this same flow: the error named the fix
+ * ("withdraw them first") but not where to do it, dead-ending an admin trying to remove a child
+ * who'd simply finished their course. Passing `withdrawFromBatches: true` (after the caller
+ * gets that exact error and asks the admin to confirm) withdraws every active enrolment and
+ * deletes in the same call.
+ */
+export async function deleteStudent(childId: string, withdrawFromBatches?: boolean): Promise<void> {
+  const query = withdrawFromBatches ? "?withdrawFromBatches=true" : "";
+  await apiFetch<void>(`/api/users/students/${childId}${query}`, { method: "DELETE" });
 }
 
 /** Admin students directory (real enrolled children). Attendance/fee show neutral defaults until those subsystems populate. */
