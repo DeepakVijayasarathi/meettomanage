@@ -178,6 +178,12 @@ export default function SubAdminBatches() {
   // selects it, and its value is that day's own time.
   const [genTimeByDay, setGenTimeByDay] = useState<Record<number, string>>({ 1: "10:00", 3: "10:00" });
   const [genStart, setGenStart] = useState("");
+  // Blank means "the course's own total session count" (the only behaviour before this
+  // existed) — set explicitly for a batch continuing mid-course under this portal (e.g.
+  // migrated from another system with some sessions already delivered there), so only the
+  // sessions actually still owed get scheduled instead of the course's full count. Mirrors
+  // features/admin/Batches.tsx.
+  const [genSessionCount, setGenSessionCount] = useState("");
   const [genBusy, setGenBusy] = useState(false);
   const [genResult, setGenResult] = useState<string | null>(null);
 
@@ -331,6 +337,7 @@ export default function SubAdminBatches() {
     setEditTeacher(b.teacherId);
     setEditCapacity(String(b.capacity));
     setSaveError(null);
+    setGenSessionCount("");
     setRoster([]);
     setUnassigned([]);
     setRosterError(null);
@@ -387,6 +394,7 @@ export default function SubAdminBatches() {
       const created = await generateSchedule(detail.id, {
         startDate: genStart,
         slots,
+        sessionCount: genSessionCount.trim() ? Number(genSessionCount) : undefined,
       });
       setGenResult(`${created.length} sessions created — they now appear on the teacher's and parents' schedules.`);
       reload();
@@ -665,13 +673,32 @@ export default function SubAdminBatches() {
                     <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Creates all of this batch's course sessions from a start date on the selected weekdays (holidays
-                    skipped), each at its own time — e.g. Monday/Wednesday at 5 PM but Friday at noon.
+                    Creates sessions from a start date on the selected weekdays (holidays skipped), each at its own
+                    time — e.g. Monday/Wednesday at 5 PM but Friday at noon. By default, every session of the course;
+                    set a number below for a batch continuing mid-course elsewhere.
                   </p>
-                  <div className="mt-3 grid gap-1.5">
-                    <Label htmlFor="gen-start">Start date <span className="text-destructive">*</span></Label>
-                    <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} className="max-w-[200px]" />
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gen-start">Start date <span className="text-destructive">*</span></Label>
+                      <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gen-session-count">Number of sessions</Label>
+                      <Input
+                        id="gen-session-count"
+                        type="number"
+                        min={1}
+                        max={500}
+                        placeholder="Default: the course's full session count"
+                        value={genSessionCount}
+                        onChange={(e) => setGenSessionCount(e.target.value)}
+                      />
+                    </div>
                   </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Session count: only what's actually still owed — e.g. 14, for a batch with 14 left of a 48-session course.
+                  </p>
+
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {WEEKDAYS.map((d) => (
                       <Button
