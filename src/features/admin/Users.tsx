@@ -29,7 +29,7 @@ import { CHILDREN } from "@/data/children";
 import { getCourseById } from "@/data/courses";
 import { DEMO_DEPARTMENTS } from "@/data/departments";
 import type { AppUser, Child } from "@/types";
-import { cn, formatDate, getInitials } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, getInitials } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -110,10 +110,18 @@ export default function AdminUsers() {
   const parentsWithChildren = useMemo(() => {
     const childrenByParentId = new Map<string, string[]>();
     for (const s of students) {
-      if (!s.parentId) continue;
-      const list = childrenByParentId.get(s.parentId) ?? [];
+      // In demo mode there's only one id space, so parentUserId is unset and parentId (the
+      // mock ParentProfileId, e.g. "p-1") already matches a parent row's own id directly. In
+      // API mode the parents list here is keyed by the parent's account id (User.Id, from the
+      // Users API) which is a DIFFERENT id than the child's ParentProfileId — parentUserId is
+      // the field that actually matches those rows; keying off parentId there left every real
+      // parent's childrenNames empty, so neither the "Children" column nor searching a parent
+      // by their child's name ever worked outside demo mode.
+      const key = s.parentUserId || s.parentId;
+      if (!key) continue;
+      const list = childrenByParentId.get(key) ?? [];
       list.push(s.name);
-      childrenByParentId.set(s.parentId, list);
+      childrenByParentId.set(key, list);
     }
     return parents.map((p) => ({ ...p, childrenNames: (childrenByParentId.get(p.id) ?? []).join(", ") }));
   }, [parents, students]);
@@ -328,6 +336,13 @@ export default function AdminUsers() {
         setBanner({ ok: false, text: message });
         toast({ variant: "error", title: "Couldn't remove student", description: message });
       }
+      // Re-thrown so ConfirmDialog's own promise-rejection handling keeps the dialog open
+      // (busy state clears, dialog stays up) instead of treating this catch block's silent
+      // return as success and auto-closing it — which previously made the very first, blocked
+      // delete attempt look like nothing happened at all, with the "Withdraw & Delete" retry
+      // only appearing if the admin happened to reopen the dialog and notice the record was
+      // still there.
+      throw err;
     } finally {
       setDeletingChild(false);
     }
@@ -1020,9 +1035,20 @@ export default function AdminUsers() {
         title={childDeleteNeedsWithdraw ? "Withdraw and delete this student record?" : "Delete this student record?"}
         description={
           deleteChildTarget
-            ? childDeleteNeedsWithdraw
-              ? `${deleteChildTarget.name} still has an active batch enrolment. Confirming will withdraw them from every batch (freeing their seat) and then remove the record.`
-              : `${deleteChildTarget.name}'s record will be removed. This is blocked if they still have an active batch enrolment or an unpaid invoice — withdraw/settle those first.`
+            ? [
+                childDeleteNeedsWithdraw
+                  ? `${deleteChildTarget.name} still has an active batch enrolment. Confirming will withdraw them from every batch (freeing their seat) and then remove the record.`
+                  : `${deleteChildTarget.name}'s record will be removed. This is blocked if they still have an active batch enrolment or an unpaid invoice — withdraw/settle those first.`,
+                // Paid invoices don't block deletion (only Pending/PartiallyPaid/Overdue do), so
+                // this is the only place staff would otherwise learn that money was collected —
+                // deleting the record does NOT refund it; that stays a manual step in Billing &
+                // Finance. Shown only when there's actually something paid to call out.
+                (deleteChildTarget as StudentRow).paidInvoiceTotal
+                  ? `This student has ${formatCurrency((deleteChildTarget as StudentRow).paidInvoiceTotal!)} in paid invoices. Deleting the record will NOT refund this automatically — process a refund from Billing & Finance → Refunds if one is owed.`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" ")
             : undefined
         }
         confirmLabel={deletingChild ? "Deleting…" : childDeleteNeedsWithdraw ? "Withdraw & Delete" : "Delete Student"}
@@ -1151,11 +1177,15 @@ export default function AdminUsers() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
-                  <p className="mt-1 font-medium text-foreground">{getParentById(detailChild.parentId)?.name ?? "—"}</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {(detailChild as StudentRow).parentName ?? getParentById(detailChild.parentId)?.name ?? "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Course</p>
-                  <p className="mt-1 font-medium text-foreground">{getCourseById(detailChild.courseId)?.name ?? "—"}</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {(detailChild as StudentRow).courseName ?? getCourseById(detailChild.courseId)?.name ?? "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Classes Completed</p>

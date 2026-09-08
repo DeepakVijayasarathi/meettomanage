@@ -73,10 +73,17 @@ export function formatTimeLabel(time: string): string {
  * calendar-day comparison is on each date's own local rendering (`formatDate`'s "short"),
  * not a raw millisecond diff, so a same-day leave that merely spans midnight in UTC still
  * reads as one date rather than a misleading "day 1 – day 2" range.
+ *
+ * `endIso` is every caller's leave-request `endAtUtc`, which is stored as an *exclusive*
+ * boundary — midnight of the day AFTER the last day of leave (see Leave.tsx's own
+ * `addDays(toDate, 1)` on submit), so the overlap check against a session's start time
+ * works correctly right up through the last day. Displaying that raw timestamp showed every
+ * leave as ending one day later than the teacher actually requested; subtracting a day back
+ * off here converts it to the inclusive last day for display, matching what was submitted.
  */
 export function formatDateRange(startIso: string, endIso: string): string {
   const start = formatDate(startIso, "short");
-  const end = formatDate(endIso, "short");
+  const end = formatDate(new Date(new Date(endIso).getTime() - 86_400_000), "short");
   return start === end ? start : `${start} – ${end}`;
 }
 
