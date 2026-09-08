@@ -214,7 +214,11 @@ export function DataTable<T>({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
+        {/* sm:max-w-sm (not the old max-w-xs/320px): several callers pass a descriptive
+            placeholder ("Search parents by name, email or their child's name…") that was
+            getting hard-clipped mid-word by the input's own width well before any real
+            text was typed — looked broken on first paint, not just when full. */}
+        <div className="relative w-full sm:max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}

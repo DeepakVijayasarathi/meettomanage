@@ -112,6 +112,9 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
   // the user was actually typing, not wherever the caret happens to default to.
   const savedRange = useRef<Range | null>(null);
   const [colorOpen, setColorOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkValue, setLinkValue] = useState("");
+  const linkInputRef = useRef<HTMLInputElement>(null);
 
   // Only push `value` into the DOM when it changed from OUTSIDE this editor (a
   // template switch, or an edit made on the raw-HTML tab) — never while this
@@ -133,16 +136,38 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     emitChange();
   }
 
-  function handleLink() {
-    const url = window.prompt("Link URL (e.g. https://thereadernest.in)");
-    if (url) exec("createLink", url);
-  }
-
   function saveSelection() {
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
       savedRange.current = sel.getRangeAt(0).cloneRange();
     }
+  }
+
+  // Opens the inline URL popover instead of window.prompt(). The toolbar button's
+  // onMouseDown already preventDefault()s, so the editor's selection is still live
+  // here — capture it now (rather than waiting for the eventual onBlur, which fires
+  // only once focus actually moves to the popover's input) so it survives being
+  // restored at apply time even if onBlur's own save races oddly.
+  function handleLink() {
+    saveSelection();
+    setLinkValue("");
+    setLinkOpen(true);
+  }
+
+  function applyLink(url: string) {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+    const sel = window.getSelection();
+    if (sel && savedRange.current) {
+      sel.removeAllRanges();
+      sel.addRange(savedRange.current);
+    }
+    document.execCommand("createLink", false, trimmed);
+    emitChange();
+    setLinkOpen(false);
   }
 
   useImperativeHandle(ref, () => ({
@@ -211,9 +236,51 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
 
         <div className="mx-1 h-5 w-px bg-border" />
 
-        <ToolbarButton label="Link" onClick={handleLink}>
-          <Link2 className="h-3.5 w-3.5" />
-        </ToolbarButton>
+        <div className="relative">
+          <ToolbarButton label="Link" active={linkOpen} onClick={handleLink}>
+            <Link2 className="h-3.5 w-3.5" />
+          </ToolbarButton>
+          {linkOpen && (
+            <form
+              className="absolute left-0 top-full z-10 mt-1 flex w-64 gap-1.5 rounded-lg border border-border bg-card p-2 shadow-pop"
+              onSubmit={(e) => {
+                e.preventDefault();
+                applyLink(linkValue);
+              }}
+            >
+              <input
+                ref={linkInputRef}
+                type="url"
+                inputMode="url"
+                autoFocus
+                placeholder="https://thereadernest.in"
+                aria-label="Link URL"
+                value={linkValue}
+                onChange={(e) => setLinkValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setLinkOpen(false);
+                  }
+                }}
+                className="h-7 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <button
+                type="submit"
+                className="h-7 shrink-0 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Apply
+              </button>
+              <button
+                type="button"
+                onClick={() => setLinkOpen(false)}
+                className="h-7 shrink-0 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted"
+              >
+                Cancel
+              </button>
+            </form>
+          )}
+        </div>
         <ToolbarButton label="Remove link" onClick={() => exec("unlink")}>
           <Link2Off className="h-3.5 w-3.5" />
         </ToolbarButton>
@@ -278,7 +345,10 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           isFocused.current = false;
           saveSelection();
         }}
-        onClick={() => setColorOpen(false)}
+        onClick={() => {
+          setColorOpen(false);
+          setLinkOpen(false);
+        }}
         className="rte-surface overflow-y-auto bg-white p-3 text-sm text-slate-900 focus:outline-none"
         style={{ minHeight }}
       />

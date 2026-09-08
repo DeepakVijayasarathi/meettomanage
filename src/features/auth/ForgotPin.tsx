@@ -12,7 +12,7 @@ import { useLightBrandScope } from "@/lib/theme";
 // Same headline face as Login.tsx (scoped to this page only, not the global font-display).
 const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
 
-export default function ForgotPassword() {
+export default function ForgotPin() {
   useLightBrandScope();
   const live = apiEnabled();
   const [email, setEmail] = useState("");

@@ -99,7 +99,7 @@ export function useTheme(): UseThemeResult {
 }
 
 /**
- * For the fixed light "brand" pages (Login, ForgotPassword, ResetPin, marketing Home,
+ * For the fixed light "brand" pages (Login, ForgotPin, ResetPin, marketing Home,
  * Store) — pins the whole document to the light tokens (via .theme-light-scope in
  * index.css) for as long as the calling page is mounted, then hands the app-wide
  * preference back on unmount.

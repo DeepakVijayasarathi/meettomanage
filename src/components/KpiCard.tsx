@@ -77,7 +77,23 @@ export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "prima
               ("Demo → Enrollment Co..."). Two lines fits every title in this app without
               growing the card for the common one-line case. */}
           <p className="line-clamp-2 text-xs font-medium text-muted-foreground sm:text-sm">{label}</p>
-          <p className="mt-1.5 truncate text-xl font-bold tracking-tight text-foreground sm:text-2xl">{value}</p>
+          {/* break-words (not truncate): this is the one number the card exists to show —
+              clipping it with an ellipsis on narrow grid columns (5-up KPI rows at typical
+              desktop widths) hides the actual figure behind "₹4,86,2…". Wrapping to a
+              second line loses a little visual neatness but never hides real data.
+              A longer string (currency with lakhs separators, "₹4,86,200") also drops a
+              size step first — confirmed live that at the default size it still wrapped,
+              but mid-digit ("₹4,86,20" / "0"), which read as more broken than the plain
+              truncation it replaced; the smaller size fits every KPI value seen in this
+              app on one line in a 5-up row without needing to wrap at all. */}
+          <p
+            className={cn(
+              "mt-1.5 break-words font-bold leading-tight tracking-tight text-foreground",
+              value.length > 7 ? "text-lg sm:text-xl" : "text-xl sm:text-2xl"
+            )}
+          >
+            {value}
+          </p>
           {detail && <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">{detail}</p>}
         </div>
         {Icon && (

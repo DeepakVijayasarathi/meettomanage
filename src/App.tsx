@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { AppShell } from "@/components/AppShell";
@@ -10,7 +10,7 @@ const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Store = lazy(() => import("@/features/marketing/Store"));
 const Login = lazy(() => import("@/features/auth/Login"));
 const PortalSelect = lazy(() => import("@/features/auth/PortalSelect"));
-const ForgotPassword = lazy(() => import("@/features/auth/ForgotPassword"));
+const ForgotPin = lazy(() => import("@/features/auth/ForgotPin"));
 const ResetPin = lazy(() => import("@/features/auth/ResetPin"));
 const NotFound = lazy(() => import("@/features/auth/NotFound"));
 
@@ -133,7 +133,9 @@ export default function App() {
             <Route path="/store" element={<Store />} />
             <Route path="/login" element={<Login />} />
             <Route path="/portal-select" element={<PortalSelect />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/forgot-pin" element={<ForgotPin />} />
+            {/* Legacy path, kept as a redirect for old bookmarks/links. */}
+            <Route path="/forgot-password" element={<Navigate to="/forgot-pin" replace />} />
             <Route path="/reset-pin" element={<ResetPin />} />
 
             {/* Immersive, full-screen classroom — rendered outside the portal shell */}
