@@ -24,7 +24,7 @@ import { useApiData } from "@/api/hooks";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { formatDate } from "@/lib/utils";
-import { createUser, deleteUser, listUsers, toAppUser, updateUser } from "@/api/users";
+import { createUser, deleteUser, listAllUsers, toAppUser, updateUser } from "@/api/users";
 import { PARENTS, TEACHERS, ADMISSION_TEAM, SUB_ADMINS } from "@/data/users";
 import type { AppUser } from "@/types";
 import type { ApiRole } from "@/api/types";
@@ -76,8 +76,19 @@ export default function SubAdminUsers() {
   const canDelete = !apiEnabled() || hasPermission("UserManagement", "Delete");
   const canManage = canCreate || canEdit || canDelete;
 
+  // Fetches every user of each role, not just the newest page — a single listUsers({ pageSize })
+  // call silently made anyone outside the first (server-clamped-to-100) page permanently
+  // unfindable and un-searchable here, since this page's search box only filters whatever's
+  // already been fetched (DataTable has no server-search wiring). Mirrors the same fix applied
+  // to features/admin/Users.tsx.
   const { data: users, error, reload } = useApiData(
-    () => listUsers({ pageSize: 200 }).then((r) => r.items.map(toAppUser)),
+    () =>
+      Promise.all([
+        listAllUsers("Parent"),
+        listAllUsers("Teacher"),
+        listAllUsers("AdmissionTeam"),
+        listAllUsers("SubAdmin"),
+      ]).then((lists) => lists.flat().map(toAppUser)),
     DEMO_USERS
   );
 
