@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { AppShell } from "@/components/AppShell";
@@ -10,7 +10,7 @@ const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Store = lazy(() => import("@/features/marketing/Store"));
 const Login = lazy(() => import("@/features/auth/Login"));
 const PortalSelect = lazy(() => import("@/features/auth/PortalSelect"));
-const ForgotPassword = lazy(() => import("@/features/auth/ForgotPassword"));
+const ForgotPin = lazy(() => import("@/features/auth/ForgotPin"));
 const ResetPin = lazy(() => import("@/features/auth/ResetPin"));
 const NotFound = lazy(() => import("@/features/auth/NotFound"));
 
@@ -37,6 +37,7 @@ const AdminEmailTemplates = lazy(() => import("@/features/admin/EmailTemplates")
 const AdminProgressReports = lazy(() => import("@/features/admin/ProgressReports"));
 const AdminChatbot = lazy(() => import("@/features/admin/ChatbotAdmin"));
 const AdminEnrollments = lazy(() => import("@/features/admin/Enrollments"));
+const AdminSearchUsers = lazy(() => import("@/features/admin/SearchUsers"));
 const AdminStoreInquiries = lazy(() => import("@/features/admin/StoreInquiries"));
 const AdminLeave = lazy(() => import("@/features/admin/Leave"));
 const AdminAvailability = lazy(() => import("@/features/admin/Availability"));
@@ -133,7 +134,9 @@ export default function App() {
             <Route path="/store" element={<Store />} />
             <Route path="/login" element={<Login />} />
             <Route path="/portal-select" element={<PortalSelect />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/forgot-pin" element={<ForgotPin />} />
+            {/* Legacy path, kept as a redirect for old bookmarks/links. */}
+            <Route path="/forgot-password" element={<Navigate to="/forgot-pin" replace />} />
             <Route path="/reset-pin" element={<ResetPin />} />
 
             {/* Immersive, full-screen classroom — rendered outside the portal shell */}
@@ -194,6 +197,7 @@ export default function App() {
               <Route path="progress-reports" element={<AdminProgressReports />} />
               <Route path="chatbot" element={<AdminChatbot />} />
               <Route path="enrollments" element={<AdminEnrollments />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="leave" element={<AdminLeave />} />
               <Route path="availability" element={<AdminAvailability />} />
@@ -259,6 +263,7 @@ export default function App() {
               <Route path="email-templates" element={<SubAdminEmailTemplates />} />
               <Route path="chatbot" element={<SubAdminChatbot />} />
               <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="calendar" element={<CoordinatorCalendar />} />
               <Route path="availability" element={<CoordinatorAvailability />} />
@@ -305,6 +310,7 @@ export default function App() {
               <Route path="email-templates" element={<SubAdminEmailTemplates />} />
               <Route path="chatbot" element={<SubAdminChatbot />} />
               <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="revenue" element={<ManagementRevenue />} />
               <Route path="performance" element={<ManagementPerformance />} />
@@ -334,6 +340,7 @@ export default function App() {
               <Route path="email-templates" element={<SubAdminEmailTemplates />} />
               <Route path="chatbot" element={<SubAdminChatbot />} />
               <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
               <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
@@ -369,6 +376,7 @@ export default function App() {
               <Route path="email-templates" element={<SubAdminEmailTemplates />} />
               <Route path="chatbot" element={<SubAdminChatbot />} />
               <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />

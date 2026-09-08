@@ -132,7 +132,7 @@ export default function ResetPin() {
               Open the reset link exactly as it arrived in your email, or request a new one.
             </p>
             <Button asChild size="lg" className="mt-6 !bg-brand-green !text-white hover:!bg-brand-greenDark">
-              <Link to="/forgot-password">Request a new link</Link>
+              <Link to="/forgot-pin">Request a new link</Link>
             </Button>
           </>
         ) : done ? (

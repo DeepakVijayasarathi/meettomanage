@@ -155,7 +155,7 @@ export default function AdmissionConversion() {
                     </p>
                   ) : (
                     stageLeads.map((lead) => (
-                      <Card key={lead.id} className={cn("border-l-[3px]", "shadow-none")} style={{ borderLeftColor: meta.color }}>
+                      <Card key={lead.id} className={cn("border-l-4", "shadow-none")} style={{ borderLeftColor: meta.color }}>
                         <CardContent className="flex flex-col gap-2.5 p-3.5">
                           <div className="flex items-start gap-2.5">
                             <Avatar className="h-8 w-8">

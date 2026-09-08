@@ -336,6 +336,13 @@ export default function AdminUsers() {
         setBanner({ ok: false, text: message });
         toast({ variant: "error", title: "Couldn't remove student", description: message });
       }
+      // Re-thrown so ConfirmDialog's own promise-rejection handling keeps the dialog open
+      // (busy state clears, dialog stays up) instead of treating this catch block's silent
+      // return as success and auto-closing it — which previously made the very first, blocked
+      // delete attempt look like nothing happened at all, with the "Withdraw & Delete" retry
+      // only appearing if the admin happened to reopen the dialog and notice the record was
+      // still there.
+      throw err;
     } finally {
       setDeletingChild(false);
     }
@@ -512,7 +519,7 @@ export default function AdminUsers() {
 
     const roleOption = addUserRoleOptions.find((o) => o.key === addRole);
     if (!roleOption) {
-      setAddError("Pick a role.");
+      setAddError("Role is required.");
       return;
     }
 
@@ -1170,11 +1177,15 @@ export default function AdminUsers() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
-                  <p className="mt-1 font-medium text-foreground">{getParentById(detailChild.parentId)?.name ?? "—"}</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {(detailChild as StudentRow).parentName ?? getParentById(detailChild.parentId)?.name ?? "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Course</p>
-                  <p className="mt-1 font-medium text-foreground">{getCourseById(detailChild.courseId)?.name ?? "—"}</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {(detailChild as StudentRow).courseName ?? getCourseById(detailChild.courseId)?.name ?? "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Classes Completed</p>

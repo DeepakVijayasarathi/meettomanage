@@ -214,7 +214,12 @@ export function DataTable<T>({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
+        {/* sm:max-w-md (not sm:max-w-sm/384px, nor the old max-w-xs/320px): the longest
+            real placeholder in use, "Search parents by name, email or their child's
+            name…", still overflowed max-w-sm by ~20px (measured: 354.9px of text in
+            333.8px of available padding-adjusted width) — same hard-clip-mid-word-on-
+            first-paint symptom the max-w-sm bump was meant to fix, just past its margin. */}
+        <div className="relative w-full sm:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
