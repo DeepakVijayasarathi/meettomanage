@@ -169,6 +169,11 @@ export default function SubAdminBatches() {
   const [editName, setEditName] = useState("");
   const [editTeacher, setEditTeacher] = useState("");
   const [editCapacity, setEditCapacity] = useState("");
+  // Mirrors features/admin/Batches.tsx — the batch's real start date and a per-batch class
+  // duration override (both gated the same CourseBatchManagement:Edit as name/teacher/capacity
+  // above), for correcting a batch that's continuing from another system.
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editDuration, setEditDuration] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
@@ -336,6 +341,8 @@ export default function SubAdminBatches() {
     setEditName(b.name);
     setEditTeacher(b.teacherId);
     setEditCapacity(String(b.capacity));
+    setEditStartDate(b.startDate || "");
+    setEditDuration(b.durationOverride != null ? String(b.durationOverride) : "");
     setSaveError(null);
     setGenSessionCount("");
     setRoster([]);
@@ -361,6 +368,8 @@ export default function SubAdminBatches() {
         name: editName.trim(),
         teacherProfileId: editTeacher,
         capacity: Math.max(1, Number(editCapacity) || 1),
+        startDate: editStartDate.trim() || null,
+        durationMinutesOverride: editDuration.trim() ? Number(editDuration) : null,
       });
       toast({ variant: "success", title: "Batch updated" });
       reload();
@@ -589,6 +598,40 @@ export default function SubAdminBatches() {
                     <Input id="edit-batch-capacity" type="number" min={1} max={500} value={editCapacity} onChange={(e) => setEditCapacity(e.target.value)} disabled={!canEdit} />
                   </div>
                 </div>
+
+                {apiEnabled() && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="edit-batch-start-date">Start date</Label>
+                      <Input
+                        id="edit-batch-start-date"
+                        type="date"
+                        value={editStartDate}
+                        onChange={(e) => setEditStartDate(e.target.value)}
+                        disabled={!canEdit}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        The batch's real start — correct this if it's continuing from another system.
+                      </p>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="edit-batch-duration">Class duration (min)</Label>
+                      <Input
+                        id="edit-batch-duration"
+                        type="number"
+                        min={1}
+                        max={500}
+                        placeholder={`Course default: ${detail.courseDuration ?? "—"}`}
+                        value={editDuration}
+                        onChange={(e) => setEditDuration(e.target.value)}
+                        disabled={!canEdit}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Leave blank to follow the course's own {detail.courseDuration ?? "—"}-minute default.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {apiEnabled() && (
                   <div className="grid gap-1.5">

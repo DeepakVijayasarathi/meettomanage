@@ -148,7 +148,7 @@ export function DataTable<T>({
     onSelectionChange?.(next);
   }
 
-  function toggleAllOnPage(rows: T[], checked: boolean) {
+  function toggleAllRows(rows: T[], checked: boolean) {
     const next = new Set(selection);
     for (const row of rows) {
       const key = rowKey(row);
@@ -363,10 +363,23 @@ export function DataTable<T>({
                 <TableRow className="hover:bg-transparent">
                   {selectable && (
                     <TableHead className="w-10">
+                      {/* Selects every row matching the current search/sort — not just this
+                          page — so a bulk action (e.g. "Resend credentials") can target the
+                          whole filtered list without paging through it first. Indeterminate
+                          when some but not all matching rows are selected (e.g. after paging
+                          away with only this page's rows picked). */}
                       <Checkbox
-                        aria-label="Select all rows on this page"
-                        checked={pageRows.length > 0 && pageRows.every((row) => selection.has(rowKey(row)))}
-                        onCheckedChange={(checked) => toggleAllOnPage(pageRows, checked === true)}
+                        aria-label="Select all matching rows"
+                        checked={
+                          sorted.length === 0
+                            ? false
+                            : sorted.every((row) => selection.has(rowKey(row)))
+                              ? true
+                              : sorted.some((row) => selection.has(rowKey(row)))
+                                ? "indeterminate"
+                                : false
+                        }
+                        onCheckedChange={(checked) => toggleAllRows(sorted, checked === true)}
                       />
                     </TableHead>
                   )}
