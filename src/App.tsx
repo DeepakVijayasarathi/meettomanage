@@ -37,6 +37,7 @@ const AdminEmailTemplates = lazy(() => import("@/features/admin/EmailTemplates")
 const AdminProgressReports = lazy(() => import("@/features/admin/ProgressReports"));
 const AdminChatbot = lazy(() => import("@/features/admin/ChatbotAdmin"));
 const AdminEnrollments = lazy(() => import("@/features/admin/Enrollments"));
+const AdminSearchUsers = lazy(() => import("@/features/admin/SearchUsers"));
 const AdminStoreInquiries = lazy(() => import("@/features/admin/StoreInquiries"));
 const AdminLeave = lazy(() => import("@/features/admin/Leave"));
 const AdminAvailability = lazy(() => import("@/features/admin/Availability"));
@@ -196,6 +197,7 @@ export default function App() {
               <Route path="progress-reports" element={<AdminProgressReports />} />
               <Route path="chatbot" element={<AdminChatbot />} />
               <Route path="enrollments" element={<AdminEnrollments />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="leave" element={<AdminLeave />} />
               <Route path="availability" element={<AdminAvailability />} />
@@ -261,6 +263,7 @@ export default function App() {
               <Route path="email-templates" element={<SubAdminEmailTemplates />} />
               <Route path="chatbot" element={<SubAdminChatbot />} />
               <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="calendar" element={<CoordinatorCalendar />} />
               <Route path="availability" element={<CoordinatorAvailability />} />
@@ -307,6 +310,7 @@ export default function App() {
               <Route path="email-templates" element={<SubAdminEmailTemplates />} />
               <Route path="chatbot" element={<SubAdminChatbot />} />
               <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="revenue" element={<ManagementRevenue />} />
               <Route path="performance" element={<ManagementPerformance />} />
@@ -336,6 +340,7 @@ export default function App() {
               <Route path="email-templates" element={<SubAdminEmailTemplates />} />
               <Route path="chatbot" element={<SubAdminChatbot />} />
               <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
               <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
@@ -371,6 +376,7 @@ export default function App() {
               <Route path="email-templates" element={<SubAdminEmailTemplates />} />
               <Route path="chatbot" element={<SubAdminChatbot />} />
               <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
