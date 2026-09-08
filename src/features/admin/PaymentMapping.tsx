@@ -121,7 +121,16 @@ function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount
               ) : (
                 account.recentTransactions.map((t) => (
                   <TableRow key={t.id}>
-                    <TableCell className="font-medium">{t.invoiceNumber}</TableCell>
+                    {/* Full invoice numbers ("INV-20260903-8027F3CD") are long enough on their
+                        own to push this 4-column preview wider than its card, silently
+                        scrolling the Date column off screen with no scrollbar visible —
+                        confirmed live, "3 Sept 2026" rendered as "3 Sept 2". Truncating here
+                        (full value still available via title/hover) keeps every column,
+                        especially Date, on screen without needing to discover horizontal
+                        scroll inside a small card. */}
+                    <TableCell className="max-w-[120px] truncate font-medium" title={t.invoiceNumber}>
+                      {t.invoiceNumber}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{t.studentName ?? "—"}</TableCell>
                     <TableCell className="font-semibold">{formatCurrency(t.amount)}</TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(t.dateUtc)}</TableCell>
