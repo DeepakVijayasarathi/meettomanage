@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -29,14 +30,45 @@ import { listBatches, type ApiBatch } from "@/api/batches";
 import type { Child } from "@/types";
 import { formatCurrency, getInitials } from "@/lib/utils";
 
-/** Mock Child rows and live enrollment-form rows share one table shape. */
-type EnrollmentRow = Child & { parentName?: string; parentPhone?: string; formJson?: string; dob?: string };
+/** Mock Child rows and live enrollment-form rows share one table shape. The optional fields
+ * beyond parentName/parentPhone/formJson/dob mirror every other answer the parent enrollment
+ * form (features/parent/Enrollment.tsx) collects, so the Edit dialog below can correct any of
+ * it, not just name/DOB/grade/course. */
+type EnrollmentRow = Child & {
+  parentName?: string;
+  parentPhone?: string;
+  formJson?: string;
+  dob?: string;
+  batchType?: "group" | "individual" | "";
+  gender?: string;
+  schoolName?: string;
+  priorExperience?: string;
+  relationship?: string;
+  parentEmail?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  address?: string;
+  preferredDays?: string[];
+  preferredTime?: string;
+  allergies?: string;
+  notes?: string;
+};
+
+// Same set the parent enrollment form offers (features/parent/Enrollment.tsx) — the Edit
+// dialog corrects into the exact same value space the parent picked from.
+const EDIT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
 /** row.grade falls back to "—" when the form never answered it — rendered as a bare dash
  * inline before "Age N" it read as a stray blank field rather than a real value. Matches
  * the "(child name pending)" wording already used for a missing name. */
 function gradeLabel(grade: string): string {
   return grade === "—" ? "Grade pending" : grade;
+}
+
+function batchTypeLabel(batchType: EnrollmentRow["batchType"]): string {
+  if (batchType === "group") return "Group Batch";
+  if (batchType === "individual") return "Individual Batch";
+  return "Not selected";
 }
 
 function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
@@ -48,11 +80,12 @@ function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
   }
   const dob = typeof answers.dob === "string" ? answers.dob : undefined;
   const age = dob ? Math.max(0, Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 86400_000))) : 0;
+  const str = (key: string): string | undefined => (typeof answers[key] === "string" ? (answers[key] as string) : undefined);
   return {
     id: form.id,
     parentId: form.parentProfileId,
     parentName: form.parentName,
-    parentPhone: typeof answers.parentPhone === "string" ? answers.parentPhone : undefined,
+    parentPhone: str("parentPhone"),
     name: typeof answers.childName === "string" && answers.childName ? answers.childName : "(child name pending)",
     age,
     grade: typeof answers.grade === "string" ? answers.grade : "—",
@@ -66,6 +99,19 @@ function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
     enrollmentComplete: form.status === "Approved",
     formJson: form.formDataJson,
     dob,
+    batchType: answers.batchType === "group" || answers.batchType === "individual" ? answers.batchType : "",
+    gender: str("gender"),
+    schoolName: str("schoolName"),
+    priorExperience: str("priorExperience"),
+    relationship: str("relationship"),
+    parentEmail: str("parentEmail"),
+    emergencyContactName: str("emergencyContactName"),
+    emergencyContactPhone: str("emergencyContactPhone"),
+    address: str("address"),
+    preferredDays: Array.isArray(answers.preferredDays) ? (answers.preferredDays as string[]) : [],
+    preferredTime: str("preferredTime"),
+    allergies: str("allergies"),
+    notes: str("notes"),
   };
 }
 
@@ -83,6 +129,23 @@ export default function AdminEnrollments() {
   const [editDob, setEditDob] = useState("");
   const [editGrade, setEditGrade] = useState("");
   const [editCourse, setEditCourse] = useState("");
+  // Every other field the parent enrollment form collects — Admin corrects parent mistakes
+  // here, not just name/DOB/grade/course (see the EnrollmentRow comment above).
+  const [editBatchType, setEditBatchType] = useState<"group" | "individual" | "">("");
+  const [editGender, setEditGender] = useState("");
+  const [editSchoolName, setEditSchoolName] = useState("");
+  const [editPriorExperience, setEditPriorExperience] = useState("");
+  const [editRelationship, setEditRelationship] = useState("");
+  const [editParentName, setEditParentName] = useState("");
+  const [editParentPhone, setEditParentPhone] = useState("");
+  const [editParentEmail, setEditParentEmail] = useState("");
+  const [editEmergencyContactName, setEditEmergencyContactName] = useState("");
+  const [editEmergencyContactPhone, setEditEmergencyContactPhone] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [editPreferredDays, setEditPreferredDays] = useState<string[]>([]);
+  const [editPreferredTime, setEditPreferredTime] = useState("");
+  const [editAllergies, setEditAllergies] = useState("");
+  const [editNotes, setEditNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
@@ -134,7 +197,26 @@ export default function AdminEnrollments() {
     setEditDob(row.dob ?? "");
     setEditGrade(row.grade === "—" ? "" : row.grade);
     setEditCourse(row.courseId);
+    setEditBatchType(row.batchType ?? "");
+    setEditGender(row.gender ?? "");
+    setEditSchoolName(row.schoolName ?? "");
+    setEditPriorExperience(row.priorExperience ?? "");
+    setEditRelationship(row.relationship ?? "");
+    setEditParentName(row.parentName ?? "");
+    setEditParentPhone(row.parentPhone ?? "");
+    setEditParentEmail(row.parentEmail ?? "");
+    setEditEmergencyContactName(row.emergencyContactName ?? "");
+    setEditEmergencyContactPhone(row.emergencyContactPhone ?? "");
+    setEditAddress(row.address ?? "");
+    setEditPreferredDays(row.preferredDays ?? []);
+    setEditPreferredTime(row.preferredTime ?? "");
+    setEditAllergies(row.allergies ?? "");
+    setEditNotes(row.notes ?? "");
     setEditError(null);
+  }
+
+  function toggleEditPreferredDay(day: string) {
+    setEditPreferredDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
   }
 
   async function handleSaveEdit() {
@@ -150,6 +232,21 @@ export default function AdminEnrollments() {
     answers.dob = editDob || undefined;
     answers.grade = editGrade.trim() || undefined;
     answers.courseInterest = editCourse || undefined;
+    answers.batchType = editBatchType || undefined;
+    answers.gender = editGender || undefined;
+    answers.schoolName = editSchoolName.trim() || undefined;
+    answers.priorExperience = editPriorExperience || undefined;
+    answers.relationship = editRelationship || undefined;
+    answers.parentName = editParentName.trim() || undefined;
+    answers.parentPhone = editParentPhone.trim() || undefined;
+    answers.parentEmail = editParentEmail.trim() || undefined;
+    answers.emergencyContactName = editEmergencyContactName.trim() || undefined;
+    answers.emergencyContactPhone = editEmergencyContactPhone.trim() || undefined;
+    answers.address = editAddress.trim() || undefined;
+    answers.preferredDays = editPreferredDays;
+    answers.preferredTime = editPreferredTime || undefined;
+    answers.allergies = editAllergies.trim() || undefined;
+    answers.notes = editNotes.trim() || undefined;
 
     if (!apiEnabled()) {
       setBanner(`"${editName.trim() || "Enrollment"}" updated. (Demo only — not persisted.)`);
@@ -306,6 +403,18 @@ export default function AdminEnrollments() {
         ),
       },
       {
+        key: "batchType",
+        header: "Batch Type",
+        sortable: true,
+        accessor: (row) => batchTypeLabel(row.batchType),
+        render: (row) =>
+          row.batchType ? (
+            <Badge variant="muted">{batchTypeLabel(row.batchType)}</Badge>
+          ) : (
+            <span className="text-sm text-muted-foreground">—</span>
+          ),
+      },
+      {
         key: "status",
         header: "Status",
         sortable: true,
@@ -369,6 +478,10 @@ export default function AdminEnrollments() {
                   <p className="mt-1 font-medium text-foreground">
                     {courseOptions.find((c) => c.id === detail.courseId)?.name ?? getCourseById(detail.courseId)?.name ?? "Course pending"}
                   </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Batch Type</p>
+                  <p className="mt-1 font-medium text-foreground">{batchTypeLabel(detail.batchType)}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
@@ -497,20 +610,165 @@ export default function AdminEnrollments() {
                 <Input id="edit-grade" value={editGrade} onChange={(e) => setEditGrade(e.target.value)} placeholder="e.g. Grade 2" />
               </div>
             </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-gender">Gender</Label>
+                <Select value={editGender || "__unset"} onValueChange={(v) => setEditGender(v === "__unset" ? "" : v)}>
+                  <SelectTrigger id="edit-gender">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__unset">Not set</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-school">Current school</Label>
+                <Input id="edit-school" value={editSchoolName} onChange={(e) => setEditSchoolName(e.target.value)} placeholder="e.g. Green Valley School" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-course-select">Course interest</Label>
+                <Select value={editCourse} onValueChange={setEditCourse}>
+                  <SelectTrigger id="edit-course-select">
+                    <SelectValue placeholder="Select a course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courseOptions.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-batch-type">Batch type</Label>
+                <Select value={editBatchType || "__unset"} onValueChange={(v) => setEditBatchType(v === "__unset" ? "" : (v as "group" | "individual"))}>
+                  <SelectTrigger id="edit-batch-type">
+                    <SelectValue placeholder="Select batch type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__unset">Not set</SelectItem>
+                    <SelectItem value="group">Group Batch</SelectItem>
+                    <SelectItem value="individual">Individual Batch</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-course-select">Course interest</Label>
-              <Select value={editCourse} onValueChange={setEditCourse}>
-                <SelectTrigger id="edit-course-select">
-                  <SelectValue placeholder="Select a course" />
+              <Label htmlFor="edit-prior-experience">Prior experience</Label>
+              <Select value={editPriorExperience || "__unset"} onValueChange={(v) => setEditPriorExperience(v === "__unset" ? "" : v)}>
+                <SelectTrigger id="edit-prior-experience">
+                  <SelectValue placeholder="Select level (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  {courseOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="__unset">Not set</SelectItem>
+                  <SelectItem value="none">Complete beginner</SelectItem>
+                  <SelectItem value="some">Some exposure</SelectItem>
+                  <SelectItem value="confident">Confident / advanced</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent &amp; contact</p>
+              <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="edit-parent-name">Parent / guardian name</Label>
+                    <Input id="edit-parent-name" value={editParentName} onChange={(e) => setEditParentName(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="edit-relationship">Relationship to student</Label>
+                    <Select value={editRelationship || "__unset"} onValueChange={(v) => setEditRelationship(v === "__unset" ? "" : v)}>
+                      <SelectTrigger id="edit-relationship">
+                        <SelectValue placeholder="Select relationship" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__unset">Not set</SelectItem>
+                        <SelectItem value="mother">Mother</SelectItem>
+                        <SelectItem value="father">Father</SelectItem>
+                        <SelectItem value="guardian">Guardian</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="edit-parent-phone">Contact number</Label>
+                    <Input id="edit-parent-phone" value={editParentPhone} onChange={(e) => setEditParentPhone(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="edit-parent-email">Email</Label>
+                    <Input id="edit-parent-email" type="email" value={editParentEmail} onChange={(e) => setEditParentEmail(e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="edit-emergency-name">Emergency contact name</Label>
+                    <Input id="edit-emergency-name" value={editEmergencyContactName} onChange={(e) => setEditEmergencyContactName(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="edit-emergency-phone">Emergency contact number</Label>
+                    <Input id="edit-emergency-phone" value={editEmergencyContactPhone} onChange={(e) => setEditEmergencyContactPhone(e.target.value)} />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-address">Home address</Label>
+                  <Textarea id="edit-address" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} placeholder="Street, city, state, PIN" />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Schedule preferences</p>
+              <div className="flex flex-col gap-4">
+                <fieldset className="flex flex-col gap-1.5">
+                  <legend className="text-sm font-medium leading-none text-foreground/90">Preferred class days</legend>
+                  <div className="flex flex-wrap gap-1.5">
+                    {EDIT_DAYS.map((d) => (
+                      <Button
+                        key={d}
+                        type="button"
+                        variant="pill"
+                        size="pill"
+                        aria-pressed={editPreferredDays.includes(d)}
+                        onClick={() => toggleEditPreferredDay(d)}
+                      >
+                        {d}
+                      </Button>
+                    ))}
+                  </div>
+                </fieldset>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-preferred-time">Preferred time slot</Label>
+                  <Select value={editPreferredTime || "__unset"} onValueChange={(v) => setEditPreferredTime(v === "__unset" ? "" : v)}>
+                    <SelectTrigger id="edit-preferred-time">
+                      <SelectValue placeholder="Select a time slot (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__unset">Not set</SelectItem>
+                      <SelectItem value="morning">Morning (8am–12pm)</SelectItem>
+                      <SelectItem value="afternoon">Afternoon (12pm–4pm)</SelectItem>
+                      <SelectItem value="evening">Evening (4pm–8pm)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-allergies">Allergies or medical notes</Label>
+                  <Textarea id="edit-allergies" value={editAllergies} onChange={(e) => setEditAllergies(e.target.value)} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="edit-notes">Anything else we should know?</Label>
+                  <Textarea id="edit-notes" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+                </div>
+              </div>
             </div>
 
             {editError && <p className="text-sm font-medium text-destructive">{editError}</p>}
