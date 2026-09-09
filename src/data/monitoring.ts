@@ -60,7 +60,9 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
         { name: "jibri", active: true },
       ],
       liveCalls: { activeConferences: 2, totalParticipants: 5 },
-      recorderStatus: { totalInstances: 2, busyInstances: 1, idleInstances: 1 },
+      // Recorder status is real-only (no fabricated demo numbers) -- comes from the live
+      // Jibri autoscaler metrics via Prometheus, so demo mode shows it as absent, not fake.
+      recorderStatus: null,
       cpuHistory: mockHistory(18, 6),
       memoryHistory: mockHistory(46, 4),
       callQuality: {
