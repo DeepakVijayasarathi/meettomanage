@@ -15,6 +15,13 @@ export function PersonalMeetingButton() {
   const navigate = useNavigate();
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [busy, setBusy] = useState(false);
+  // The room itself only finishes loading once JitsiLive's own init effect resolves (external
+  // script load, join-token fetch, iframe init — a few real seconds), but this button gave zero
+  // feedback the moment it was clicked. With nothing on screen changing, a click that seemed to
+  // do nothing reads as "the click didn't register" rather than "it's working" — inviting a
+  // second, third click while still waiting. This only needs to survive the click-to-navigate
+  // gap (starting() below), not the destination page's own loading state.
+  const [starting, setStarting] = useState(false);
 
   if (!apiEnabled()) return null;
 
@@ -63,8 +70,16 @@ export function PersonalMeetingButton() {
         {copyState === "idle" && <Video className="h-3.5 w-3.5" />}
         {copyState === "copied" ? "Link copied" : copyState === "failed" ? "Couldn't copy" : "My meeting link"}
       </Button>
-      <Button size="sm" title="Start your personal meeting room now" onClick={() => navigate("/meet/personal")}>
-        Start
+      <Button
+        size="sm"
+        disabled={starting}
+        title="Start your personal meeting room now"
+        onClick={() => {
+          setStarting(true);
+          navigate("/meet/personal");
+        }}
+      >
+        {starting ? "Starting…" : "Start"}
       </Button>
     </div>
   );

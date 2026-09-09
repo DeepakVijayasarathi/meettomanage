@@ -74,6 +74,13 @@ export default function TeacherDashboard() {
   const firstName = userName.split(" ")[0] ?? userName;
   const usingApi = apiEnabled();
 
+  // "Start Class"/"Start Demo" is a plain navigation link with nothing on screen changing
+  // until JitsiLive's own init (external script load, join-token fetch, iframe init — a few
+  // real seconds) finishes — a click that visibly did nothing invites a second, third click
+  // while still waiting. Tracks which session's button was just clicked so only that one
+  // shows "Starting…" and disables itself for the moment the navigation takes to land.
+  const [startingSessionId, setStartingSessionId] = useState<string | null>(null);
+
   // Copy state for a demo row's "Copy Link" -- every demo uses this teacher's own fixed
   // personal room, so the same short-link mint used by "My meeting link" works here too.
   const [copyLinkState, setCopyLinkState] = useState<{ sessionId: string; status: "copying" | "copied" | "failed" } | null>(null);
@@ -306,12 +313,19 @@ export default function TeacherDashboard() {
                           </Button>
                         )}
                         {joinable ? (
-                          <Button asChild size="sm">
+                          <Button asChild size="sm" disabled={startingSessionId === session.id} aria-disabled={startingSessionId === session.id}>
                             <Link
                               to={`/teacher/live/${session.id}`}
                               state={session.meetingRoomId ? { room: session.meetingRoomId, title: session.title } : undefined}
+                              onClick={(e) => {
+                                if (startingSessionId === session.id) {
+                                  e.preventDefault();
+                                  return;
+                                }
+                                setStartingSessionId(session.id);
+                              }}
                             >
-                              {session.status === "demo" ? "Start Demo" : "Start Class"}
+                              {startingSessionId === session.id ? "Starting…" : session.status === "demo" ? "Start Demo" : "Start Class"}
                             </Link>
                           </Button>
                         ) : (
