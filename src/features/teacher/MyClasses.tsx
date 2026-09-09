@@ -68,6 +68,12 @@ export default function TeacherMyClasses() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<ClassSession | null>(null);
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
+  // "Start Class"/"Start Demo" navigates straight into JitsiLive, whose own init (external
+  // script load, join-token fetch, iframe init) takes a few real seconds with nothing on this
+  // page changing in the meantime — a click that visibly did nothing invites a second, third
+  // click while still waiting. Tracks which session was just clicked so only that one button
+  // disables itself and reads "Starting…" for the moment the navigation takes to land.
+  const [startingId, setStartingId] = useState<string | null>(null);
 
   // Calendar-only: holidays/leave aren't real classes, so they're kept out of allSessions
   // (the list/table view) and merged in just for the calendar's colour coding.
@@ -84,11 +90,13 @@ export default function TeacherMyClasses() {
   // Real sessions launch straight into the Jitsi room; mock sessions open the demo classroom
   const startClass = useCallback(
     (session: ClassSession) => {
+      if (startingId === session.id) return;
+      setStartingId(session.id);
       navigate(`/teacher/live/${session.id}`, {
         state: session.meetingRoomId ? { room: session.meetingRoomId, title: session.title } : undefined,
       });
     },
-    [navigate]
+    [navigate, startingId]
   );
 
   const filtered = statusFilter === "all" ? allSessions : allSessions.filter((s) => s.status === statusFilter);
@@ -147,8 +155,8 @@ export default function TeacherMyClasses() {
       header: "",
       render: (row) =>
         isJoinable(row) ? (
-          <Button size="sm" onClick={(e) => { e.stopPropagation(); startClass(row); }}>
-            {row.status === "demo" ? "Start Demo" : "Start Class"}
+          <Button size="sm" disabled={startingId === row.id} onClick={(e) => { e.stopPropagation(); startClass(row); }}>
+            {startingId === row.id ? "Starting…" : row.status === "demo" ? "Start Demo" : "Start Class"}
           </Button>
         ) : row.status === "completed" ? (
           <div className="flex items-center gap-2">
@@ -278,8 +286,8 @@ export default function TeacherMyClasses() {
                   </Button>
                 )}
                 {isJoinable(selected) ? (
-                  <Button onClick={() => startClass(selected)}>
-                    {selected.status === "demo" ? "Start Demo" : "Start Class"}
+                  <Button disabled={startingId === selected.id} onClick={() => startClass(selected)}>
+                    {startingId === selected.id ? "Starting…" : selected.status === "demo" ? "Start Demo" : "Start Class"}
                   </Button>
                 ) : (
                   isJoinableStatus(selected.status) && (
