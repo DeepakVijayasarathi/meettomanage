@@ -1,15 +1,18 @@
-import { useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { GraduationCap, Mic, Plus, Sparkles, Trash2, Users as UsersIcon, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -19,14 +22,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { UserStatusBadge } from "@/components/StatusBadge";
+import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
 import { useApiData } from "@/api/hooks";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
-import { formatDate } from "@/lib/utils";
-import { createUser, deleteUser, listUsers, toAppUser, updateUser } from "@/api/users";
-import { PARENTS, TEACHERS, ADMISSION_TEAM, SUB_ADMINS } from "@/data/users";
-import type { AppUser } from "@/types";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import {
+  createUser,
+  deleteStudent,
+  deleteUser,
+  listAllUsers,
+  listStudents,
+  toAppUser,
+  updateStudentNotes,
+  updateUser,
+  type StudentRow,
+} from "@/api/users";
+import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
+import { PARENTS, TEACHERS, ADMISSION_TEAM, SUB_ADMINS, getParentById } from "@/data/users";
+import { CHILDREN } from "@/data/children";
+import { getCourseById } from "@/data/courses";
+import type { AppUser, Child } from "@/types";
 import type { ApiRole } from "@/api/types";
 
 function getInitials(name: string): string {
@@ -76,13 +92,106 @@ export default function SubAdminUsers() {
   const canDelete = !apiEnabled() || hasPermission("UserManagement", "Delete");
   const canManage = canCreate || canEdit || canDelete;
 
+  // Fetches every user of each role, not just the newest page — a single listUsers({ pageSize })
+  // call silently made anyone outside the first (server-clamped-to-100) page permanently
+  // unfindable and un-searchable here, since this page's search box only filters whatever's
+  // already been fetched (DataTable has no server-search wiring). Mirrors the same fix applied
+  // to features/admin/Users.tsx.
   const { data: users, error, reload } = useApiData(
-    () => listUsers({ pageSize: 200 }).then((r) => r.items.map(toAppUser)),
+    () =>
+      Promise.all([
+        listAllUsers("Parent"),
+        listAllUsers("Teacher"),
+        listAllUsers("AdmissionTeam"),
+        listAllUsers("SubAdmin"),
+      ]).then((lists) => lists.flat().map(toAppUser)),
     DEMO_USERS
   );
 
+  // Students directory — mirrors the "Students" tab in features/admin/Users.tsx. Batches are
+  // organized by child, not by parent, so staff often need to look a child up directly (their
+  // attendance, fee status, RM notes) rather than going through the parent's own account.
+  const { data: students, error: studentsError, reload: reloadStudents } = useApiData<StudentRow[]>(listStudents, CHILDREN);
+
+  const [activeTab, setActiveTab] = useState("people");
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
+  const [detailChild, setDetailChild] = useState<Child | null>(null);
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // RM special enrolment notes for the open child profile.
+  const [childNotes, setChildNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  useEffect(() => {
+    setChildNotes((detailChild as StudentRow | null)?.rmNotes ?? "");
+  }, [detailChild]);
+
+  // Engagement/AI analytics for the open child profile — fetched on open rather than eagerly
+  // for the whole list, since it's a per-student aggregation query.
+  const [analytics, setAnalytics] = useState<ApiStudentAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  useEffect(() => {
+    if (!detailChild || !apiEnabled()) {
+      setAnalytics(null);
+      return;
+    }
+    let cancelled = false;
+    setAnalyticsLoading(true);
+    getStudentAnalytics(detailChild.id)
+      .then((data) => {
+        if (!cancelled) setAnalytics(data);
+      })
+      .catch(() => {
+        if (!cancelled) setAnalytics(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAnalyticsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detailChild]);
+
+  // Delete-child confirmation — separate from deleteTarget since a child isn't an AppUser
+  // (it has no login of its own).
+  const [deleteChildTarget, setDeleteChildTarget] = useState<Child | null>(null);
+  const [deletingChild, setDeletingChild] = useState(false);
+  // Set once the plain delete is refused for an active batch enrolment — confirming again from
+  // this state withdraws every active enrolment and deletes in the same call.
+  const [childDeleteNeedsWithdraw, setChildDeleteNeedsWithdraw] = useState(false);
+
+  async function handleDeleteChild() {
+    if (!deleteChildTarget) return;
+    if (!apiEnabled()) {
+      setBanner({ ok: true, text: "Demo mode — no student actually removed." });
+      setDetailChild(null);
+      setDeleteChildTarget(null);
+      return;
+    }
+    setDeletingChild(true);
+    try {
+      await deleteStudent(deleteChildTarget.id, childDeleteNeedsWithdraw);
+      setBanner({ ok: true, text: `${deleteChildTarget.name}'s record was removed.` });
+      setDetailChild(null);
+      setDeleteChildTarget(null);
+      setChildDeleteNeedsWithdraw(false);
+      reloadStudents();
+      toast({ variant: "success", title: "Student removed", description: `${deleteChildTarget.name}'s record was removed.` });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not remove this student.";
+      // The first refusal for this specific reason offers a one-click fix instead of leaving
+      // the RM to separately go find and withdraw the batch enrolment themselves — hitting it
+      // a second time (still refused after withdrawing) is a real, different problem, so only
+      // flip into "withdraw & retry" mode the first time.
+      if (!childDeleteNeedsWithdraw && message.includes("active batch enrolment")) {
+        setChildDeleteNeedsWithdraw(true);
+      } else {
+        setBanner({ ok: false, text: message });
+        toast({ variant: "error", title: "Couldn't remove student", description: message });
+      }
+    } finally {
+      setDeletingChild(false);
+    }
+  }
 
   // Add User
   const [addOpen, setAddOpen] = useState(false);
@@ -258,6 +367,66 @@ export default function SubAdminUsers() {
     []
   );
 
+  const studentColumns: DataTableColumn<StudentRow>[] = useMemo(
+    () => [
+      {
+        key: "name",
+        header: "Student",
+        sortable: true,
+        accessor: (row) => row.name,
+        render: (row) => (
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar className="h-9 w-9">
+              <AvatarFallback style={{ backgroundColor: `${row.avatarColor}22`, color: row.avatarColor }}>
+                {getInitials(row.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-foreground">{row.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {[row.grade, row.age ? `Age ${row.age}` : ""].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: "parent",
+        header: "Parent",
+        accessor: (row) => row.parentName ?? getParentById(row.parentId)?.name ?? "",
+        render: (row) => <span className="text-sm">{row.parentName ?? getParentById(row.parentId)?.name ?? "—"}</span>,
+      },
+      {
+        key: "course",
+        header: "Course",
+        render: (row) => <span className="text-sm text-muted-foreground">{row.courseName ?? getCourseById(row.courseId)?.name ?? "—"}</span>,
+      },
+      {
+        key: "attendance",
+        header: "Attendance",
+        sortable: true,
+        accessor: (row) => row.attendancePercent ?? -1,
+        render: (row) =>
+          row.attendancePercent === undefined ? (
+            <span className="text-xs text-muted-foreground">—</span>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Progress value={row.attendancePercent} className="h-1.5 w-16" />
+              <span className="text-xs font-semibold text-muted-foreground">{row.attendancePercent}%</span>
+            </div>
+          ),
+      },
+      {
+        key: "feeStatus",
+        header: "Fee Status",
+        sortable: true,
+        accessor: (row) => row.feeStatus,
+        render: (row) => <FeeStatusBadge status={row.feeStatus} />,
+      },
+    ],
+    []
+  );
+
   return (
     <div>
       <PageHeader
@@ -290,17 +459,44 @@ export default function SubAdminUsers() {
         </InlineAlert>
       )}
 
-      <DataTable
-        data={users}
-        columns={columns}
-        rowKey={(row) => row.id}
-        searchPlaceholder="Search users by name or email…"
-        emptyTitle="No users yet"
-        emptyDescription="Accounts will appear here once they're created."
-        error={apiEnabled() ? error : null}
-        onRetry={reload}
-        onRowClick={canManage ? (row) => setDetailUser(row) : undefined}
-      />
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="people" className="gap-1.5">
+            <UsersIcon className="h-4 w-4" /> People
+          </TabsTrigger>
+          <TabsTrigger value="students" className="gap-1.5">
+            <GraduationCap className="h-4 w-4" /> Students
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="people">
+          <DataTable
+            data={users}
+            columns={columns}
+            rowKey={(row) => row.id}
+            searchPlaceholder="Search users by name or email…"
+            emptyTitle="No users yet"
+            emptyDescription="Accounts will appear here once they're created."
+            error={apiEnabled() ? error : null}
+            onRetry={reload}
+            onRowClick={canManage ? (row) => setDetailUser(row) : undefined}
+          />
+        </TabsContent>
+
+        <TabsContent value="students">
+          <DataTable
+            data={students}
+            columns={studentColumns}
+            rowKey={(row) => row.id}
+            searchPlaceholder="Search students by name…"
+            onRowClick={(row) => setDetailChild(row)}
+            emptyTitle="No students enrolled yet"
+            emptyDescription="Students appear here once a parent adds a child."
+            error={apiEnabled() ? studentsError : null}
+            onRetry={reloadStudents}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* User detail dialog — only reachable when the account can act on it. */}
       <Dialog open={!!detailUser} onOpenChange={(open) => !open && setDetailUser(null)}>
@@ -337,6 +533,7 @@ export default function SubAdminUsers() {
                   </div>
                 )}
               </div>
+
               <DialogFooter className="sm:justify-between">
                 {canDelete ? (
                   <Button
@@ -370,6 +567,199 @@ export default function SubAdminUsers() {
         confirmLabel="Delete Account"
         destructive
         onConfirm={handleDeleteUser}
+      />
+
+      {/* Student detail dialog */}
+      <Dialog open={!!detailChild} onOpenChange={(open) => !open && setDetailChild(null)}>
+        <DialogContent>
+          {detailChild && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback style={{ backgroundColor: `${detailChild.avatarColor}22`, color: detailChild.avatarColor }}>
+                      {getInitials(detailChild.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <DialogTitle>{detailChild.name}</DialogTitle>
+                    <DialogDescription>
+                      {[detailChild.grade, detailChild.age ? `Age ${detailChild.age}` : ""].filter(Boolean).join(" · ")}
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
+                  <p className="mt-1 font-medium text-foreground">{getParentById(detailChild.parentId)?.name ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Course</p>
+                  <p className="mt-1 font-medium text-foreground">{getCourseById(detailChild.courseId)?.name ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Classes Completed</p>
+                  <p className="mt-1 font-medium text-foreground">{detailChild.classesCompleted}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Classes Remaining</p>
+                  <p className="mt-1 font-medium text-foreground">{detailChild.classesRemaining}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attendance</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {detailChild.attendancePercent === undefined ? "—" : `${detailChild.attendancePercent}%`}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee Status</p>
+                  <div className="mt-1">
+                    <FeeStatusBadge status={detailChild.feeStatus} />
+                  </div>
+                </div>
+              </div>
+
+              {/* AI engagement analytics — quiz accuracy, board participation, talk-time and
+                  camera attentiveness from live-classroom signals, plus generated narrative
+                  insights. */}
+              {apiEnabled() && (
+                <div className="mt-4 rounded-xl border border-border bg-muted/20 p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Engagement Analytics</p>
+                  </div>
+                  {analyticsLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading…</p>
+                  ) : !analytics ? (
+                    <p className="text-sm text-muted-foreground">No engagement data yet — appears once this student has attended a live class.</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div>
+                          <p className="text-lg font-bold text-foreground">{analytics.averageEngagementScore}</p>
+                          <p className="text-xs text-muted-foreground">Engagement score</p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold text-foreground">
+                            {analytics.quizAttempts > 0 ? Math.round((100 * analytics.quizCorrect) / analytics.quizAttempts) : 0}%
+                          </p>
+                          <p className="text-xs text-muted-foreground">Quiz accuracy ({analytics.quizAttempts} attempts)</p>
+                        </div>
+                        <div>
+                          <p className="flex items-center gap-1 text-lg font-bold text-foreground">
+                            <Mic className="h-3.5 w-3.5 text-muted-foreground" /> {Math.round(analytics.talkTimeSeconds / 60)}m
+                          </p>
+                          <p className="text-xs text-muted-foreground">Talk time</p>
+                        </div>
+                        <div>
+                          <p className="flex items-center gap-1 text-lg font-bold text-foreground">
+                            <Video className="h-3.5 w-3.5 text-muted-foreground" /> {Math.round(analytics.cameraOnSeconds / 60)}m
+                          </p>
+                          <p className="text-xs text-muted-foreground">Camera on</p>
+                        </div>
+                      </div>
+                      {analytics.insights.length > 0 && (
+                        <ul className="mt-3 flex flex-col gap-1.5 border-t border-border pt-3">
+                          {analytics.insights.map((insight, i) => (
+                            <li key={i} className="text-xs text-foreground/90">
+                              {insight}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* RM special enrolment notes — gated behind canEdit, same as the onboarding panel
+                  above (updateStudentNotes is UserManagement:Edit on the backend). */}
+              <div className="mt-2 flex flex-col gap-1.5">
+                <Label htmlFor="rm-notes">Relationship Manager notes</Label>
+                <Textarea
+                  id="rm-notes"
+                  placeholder="e.g. Enrolled during the discount window; services begin after 4 months."
+                  value={childNotes}
+                  onChange={(e) => setChildNotes(e.target.value)}
+                  rows={3}
+                  disabled={!canEdit}
+                />
+                <p className="text-xs text-muted-foreground">Shown on this child's profile to the current RM and admins.</p>
+              </div>
+
+              <DialogFooter>
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeleteChildTarget(detailChild)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete Student
+                  </Button>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setDetailChild(null)}>
+                    Close
+                  </Button>
+                  {canEdit && (
+                    <Button
+                      disabled={savingNotes}
+                      onClick={async () => {
+                        if (!detailChild) return;
+                        if (!apiEnabled()) {
+                          setBanner({ ok: true, text: "Demo mode — no notes actually saved." });
+                          setDetailChild(null);
+                          return;
+                        }
+                        setSavingNotes(true);
+                        try {
+                          await updateStudentNotes(detailChild.id, childNotes.trim());
+                          setDetailChild(null);
+                        } catch {
+                          /* keep dialog open on failure */
+                        } finally {
+                          setSavingNotes(false);
+                        }
+                      }}
+                    >
+                      {savingNotes ? "Saving…" : "Save notes"}
+                    </Button>
+                  )}
+                </div>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteChildTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteChildTarget(null);
+            setChildDeleteNeedsWithdraw(false);
+          }
+        }}
+        title={childDeleteNeedsWithdraw ? "Withdraw and delete this student record?" : "Delete this student record?"}
+        description={
+          deleteChildTarget
+            ? [
+                childDeleteNeedsWithdraw
+                  ? `${deleteChildTarget.name} still has an active batch enrolment. Confirming will withdraw them from every batch (freeing their seat) and then remove the record.`
+                  : `${deleteChildTarget.name}'s record will be removed. This is blocked if they still have an active batch enrolment or an unpaid invoice — withdraw/settle those first.`,
+                (deleteChildTarget as StudentRow).paidInvoiceTotal
+                  ? `This student has ${formatCurrency((deleteChildTarget as StudentRow).paidInvoiceTotal!)} in paid invoices. Deleting the record will NOT refund this automatically — process a refund from Billing & Finance → Refunds if one is owed.`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" ")
+            : undefined
+        }
+        confirmLabel={deletingChild ? "Deleting…" : childDeleteNeedsWithdraw ? "Withdraw & Delete" : "Delete Student"}
+        destructive
+        onConfirm={handleDeleteChild}
       />
 
       {/* Edit profile dialog */}

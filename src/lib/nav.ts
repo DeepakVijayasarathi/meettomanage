@@ -75,6 +75,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "People",
     items: [
       { label: "Users", to: "/admin/users", icon: Users },
+      { label: "Search Users", to: "/admin/search-users", icon: UserSearch },
       { label: "Roles & Permissions", to: "/admin/permissions", icon: ShieldCheck },
       { label: "Enrollment Review", to: "/admin/enrollments", icon: ClipboardCheck },
       { label: "Store Inquiries", to: "/admin/store-inquiries", icon: ShoppingBag },
@@ -178,6 +179,7 @@ export const SUBADMIN_NAV: NavSection[] = [
   {
     title: "Delegated Work",
     items: [
+      { label: "Search Users", to: "/subadmin/search-users", icon: UserSearch },
       { label: "Assigned Reports", to: "/subadmin/reports", icon: BarChart3 },
       { label: "Audit Log", to: "/subadmin/audit-log", icon: History },
     ],
@@ -199,6 +201,7 @@ export const ADMISSION_NAV: NavSection[] = [
     title: "CRM",
     items: [
       { label: "Leads & Parents", to: "/admission/leads", icon: UserSearch },
+      { label: "Search Users", to: "/admission/search-users", icon: UserSearch },
       { label: "Payment Tracking", to: "/admission/payments", icon: Link2 },
     ],
   },

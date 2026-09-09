@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2, PlayCircle, Trash2, Video } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { deleteRecording, listRecordings, type ApiSessionRecording } from "@/api/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
@@ -25,20 +26,21 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
   const [error, setError] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const canManage = apiEnabled() && GUID_RE.test(session.id);
   const canDelete = role === "admin";
 
   async function handleDelete(recordingId: string) {
-    if (!window.confirm("Delete this recording? This can't be undone.")) return;
     setDeletingId(recordingId);
     try {
       await deleteRecording(session.id, recordingId);
       setRecordings((prev) => prev.filter((r) => r.id !== recordingId));
       if (playingId === recordingId) setPlayingId(null);
       toast({ variant: "success", title: "Recording deleted" });
-    } catch {
+    } catch (err) {
       toast({ variant: "error", title: "Couldn't delete the recording", description: "Please try again." });
+      throw err;
     } finally {
       setDeletingId(null);
     }
@@ -123,7 +125,8 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
                             variant="outline"
                             disabled={deletingId === r.id}
                             title="Delete this recording"
-                            onClick={() => handleDelete(r.id)}
+                            aria-label="Delete this recording"
+                            onClick={() => setConfirmDeleteId(r.id)}
                           >
                             {deletingId === r.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -156,6 +159,18 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+        title="Delete this recording?"
+        description="This can't be undone. Parents currently viewing it will lose access immediately."
+        confirmLabel="Delete recording"
+        destructive
+        onConfirm={() => {
+          if (confirmDeleteId) return handleDelete(confirmDeleteId);
+        }}
+      />
     </Dialog>
   );
 }

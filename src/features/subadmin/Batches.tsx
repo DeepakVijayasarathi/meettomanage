@@ -169,6 +169,11 @@ export default function SubAdminBatches() {
   const [editName, setEditName] = useState("");
   const [editTeacher, setEditTeacher] = useState("");
   const [editCapacity, setEditCapacity] = useState("");
+  // Mirrors features/admin/Batches.tsx — the batch's real start date and a per-batch class
+  // duration override (both gated the same CourseBatchManagement:Edit as name/teacher/capacity
+  // above), for correcting a batch that's continuing from another system.
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editDuration, setEditDuration] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
@@ -178,6 +183,12 @@ export default function SubAdminBatches() {
   // selects it, and its value is that day's own time.
   const [genTimeByDay, setGenTimeByDay] = useState<Record<number, string>>({ 1: "10:00", 3: "10:00" });
   const [genStart, setGenStart] = useState("");
+  // Blank means "the course's own total session count" (the only behaviour before this
+  // existed) — set explicitly for a batch continuing mid-course under this portal (e.g.
+  // migrated from another system with some sessions already delivered there), so only the
+  // sessions actually still owed get scheduled instead of the course's full count. Mirrors
+  // features/admin/Batches.tsx.
+  const [genSessionCount, setGenSessionCount] = useState("");
   const [genBusy, setGenBusy] = useState(false);
   const [genResult, setGenResult] = useState<string | null>(null);
 
@@ -330,7 +341,10 @@ export default function SubAdminBatches() {
     setEditName(b.name);
     setEditTeacher(b.teacherId);
     setEditCapacity(String(b.capacity));
+    setEditStartDate(b.startDate || "");
+    setEditDuration(b.durationOverride != null ? String(b.durationOverride) : "");
     setSaveError(null);
+    setGenSessionCount("");
     setRoster([]);
     setUnassigned([]);
     setRosterError(null);
@@ -354,6 +368,8 @@ export default function SubAdminBatches() {
         name: editName.trim(),
         teacherProfileId: editTeacher,
         capacity: Math.max(1, Number(editCapacity) || 1),
+        startDate: editStartDate.trim() || null,
+        durationMinutesOverride: editDuration.trim() ? Number(editDuration) : null,
       });
       toast({ variant: "success", title: "Batch updated" });
       reload();
@@ -387,6 +403,7 @@ export default function SubAdminBatches() {
       const created = await generateSchedule(detail.id, {
         startDate: genStart,
         slots,
+        sessionCount: genSessionCount.trim() ? Number(genSessionCount) : undefined,
       });
       setGenResult(`${created.length} sessions created — they now appear on the teacher's and parents' schedules.`);
       reload();
@@ -583,6 +600,40 @@ export default function SubAdminBatches() {
                 </div>
 
                 {apiEnabled() && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="edit-batch-start-date">Start date</Label>
+                      <Input
+                        id="edit-batch-start-date"
+                        type="date"
+                        value={editStartDate}
+                        onChange={(e) => setEditStartDate(e.target.value)}
+                        disabled={!canEdit}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        The batch's real start — correct this if it's continuing from another system.
+                      </p>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="edit-batch-duration">Class duration (min)</Label>
+                      <Input
+                        id="edit-batch-duration"
+                        type="number"
+                        min={1}
+                        max={500}
+                        placeholder={`Course default: ${detail.courseDuration ?? "—"}`}
+                        value={editDuration}
+                        onChange={(e) => setEditDuration(e.target.value)}
+                        disabled={!canEdit}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Leave blank to follow the course's own {detail.courseDuration ?? "—"}-minute default.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {apiEnabled() && (
                   <div className="grid gap-1.5">
                     <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                       <Label htmlFor="batch-assign-student-select">Assign students</Label>
@@ -665,13 +716,32 @@ export default function SubAdminBatches() {
                     <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Creates all of this batch's course sessions from a start date on the selected weekdays (holidays
-                    skipped), each at its own time — e.g. Monday/Wednesday at 5 PM but Friday at noon.
+                    Creates sessions from a start date on the selected weekdays (holidays skipped), each at its own
+                    time — e.g. Monday/Wednesday at 5 PM but Friday at noon. By default, every session of the course;
+                    set a number below for a batch continuing mid-course elsewhere.
                   </p>
-                  <div className="mt-3 grid gap-1.5">
-                    <Label htmlFor="gen-start">Start date <span className="text-destructive">*</span></Label>
-                    <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} className="max-w-[200px]" />
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gen-start">Start date <span className="text-destructive">*</span></Label>
+                      <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gen-session-count">Number of sessions</Label>
+                      <Input
+                        id="gen-session-count"
+                        type="number"
+                        min={1}
+                        max={500}
+                        placeholder="Default: the course's full session count"
+                        value={genSessionCount}
+                        onChange={(e) => setGenSessionCount(e.target.value)}
+                      />
+                    </div>
                   </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Session count: only what's actually still owed — e.g. 14, for a batch with 14 left of a 48-session course.
+                  </p>
+
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {WEEKDAYS.map((d) => (
                       <Button

@@ -519,7 +519,7 @@ export default function AdminUsers() {
 
     const roleOption = addUserRoleOptions.find((o) => o.key === addRole);
     if (!roleOption) {
-      setAddError("Pick a role.");
+      setAddError("Role is required.");
       return;
     }
 
