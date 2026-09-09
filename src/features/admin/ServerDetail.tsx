@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Clock,
   Cpu,
+  Disc,
   FileText,
   Gauge,
   HardDrive,
@@ -524,6 +525,22 @@ export default function AdminServerDetail() {
               <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Users className="h-4 w-4" /> {num(server.liveCalls.totalParticipants)} participant{num(server.liveCalls.totalParticipants) === 1 ? "" : "s"}
               </span>
+            </div>
+          )}
+
+          {server.recorderStatus && (
+            <div
+              className={cn(
+                "mt-5 flex items-center justify-between gap-3 rounded-lg px-4 py-3",
+                server.recorderStatus.idleInstances === 0 ? "bg-warning/10" : "bg-muted/40"
+              )}
+            >
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <Disc className="h-4 w-4" /> Recorder — {num(server.recorderStatus.totalInstances)} online · {num(server.recorderStatus.busyInstances)} recording
+              </span>
+              <Badge variant={server.recorderStatus.idleInstances === 0 ? "warning" : "success"}>
+                {server.recorderStatus.idleInstances === 0 ? "At capacity" : `${server.recorderStatus.idleInstances} free`}
+              </Badge>
             </div>
           )}
 

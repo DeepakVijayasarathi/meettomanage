@@ -16,6 +16,12 @@ export interface ApiLiveCallSummary {
   totalParticipants: number;
 }
 
+export interface ApiRecorderStatus {
+  totalInstances: number;
+  busyInstances: number;
+  idleInstances: number;
+}
+
 export interface ApiCapacityForecast {
   isFilling: boolean;
   daysUntilFull: number | null;
@@ -54,6 +60,7 @@ export interface ApiServerStatus {
   services: ApiMonitoredService[];
   agentDataAgeSeconds: number;
   liveCalls: ApiLiveCallSummary | null;
+  recorderStatus: ApiRecorderStatus | null;
   cpuHistory: ApiTimeSeriesPoint[];
   memoryHistory: ApiTimeSeriesPoint[];
   callQuality: ApiCallQuality | null;
@@ -140,6 +147,7 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
       services: s.services,
       agentDataAgeSeconds: s.agentDataAgeSeconds,
       liveCalls: s.liveCalls,
+      recorderStatus: s.recorderStatus,
       cpuHistory: s.cpuHistory,
       memoryHistory: s.memoryHistory,
       callQuality: s.callQuality,

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Cpu,
   Database,
+  Disc,
   HardDrive,
   Lock,
   MemoryStick,
@@ -239,6 +240,27 @@ function ServerCard({ server }: { server: ServerStatus }) {
           </span>
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Users className="h-4 w-4" /> {num(server.liveCalls.totalParticipants)} participant{num(server.liveCalls.totalParticipants) === 1 ? "" : "s"}
+          </span>
+        </div>
+      )}
+
+      {server.recorderStatus && (
+        <div
+          className={cn(
+            "mt-3 flex items-center justify-between gap-3 rounded-lg px-3.5 py-2.5",
+            server.recorderStatus.idleInstances === 0 ? "bg-warning/10" : "bg-muted/40"
+          )}
+        >
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+            <Disc className="h-4 w-4" /> Recorder
+          </span>
+          <span className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span>
+              {num(server.recorderStatus.totalInstances)} online · {num(server.recorderStatus.busyInstances)} recording
+            </span>
+            <Badge variant={server.recorderStatus.idleInstances === 0 ? "warning" : "success"} className="text-[10px]">
+              {server.recorderStatus.idleInstances === 0 ? "At capacity" : `${server.recorderStatus.idleInstances} free`}
+            </Badge>
           </span>
         </div>
       )}

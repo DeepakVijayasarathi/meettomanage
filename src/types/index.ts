@@ -270,6 +270,13 @@ export interface LiveCallSummary {
   totalParticipants: number;
 }
 
+/** Jibri (recording) fleet status — one recording per instance, so busy === total means the next concurrent recording request will fail until the autoscaler adds capacity. */
+export interface RecorderStatus {
+  totalInstances: number;
+  busyInstances: number;
+  idleInstances: number;
+}
+
 export interface TimeSeriesPoint {
   timestamp: string;
   value: number;
@@ -315,6 +322,7 @@ export interface ServerStatus {
   /** How long ago the agent last wrote its status file — large even while reachable means the agent/cron is stuck. */
   agentDataAgeSeconds: number;
   liveCalls: LiveCallSummary | null;
+  recorderStatus: RecorderStatus | null;
   /** Last hour, ~2-minute steps. Empty when unreachable. */
   cpuHistory: TimeSeriesPoint[];
   memoryHistory: TimeSeriesPoint[];

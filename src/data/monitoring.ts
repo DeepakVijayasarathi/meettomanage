@@ -60,6 +60,7 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
         { name: "jibri", active: true },
       ],
       liveCalls: { activeConferences: 2, totalParticipants: 5 },
+      recorderStatus: { totalInstances: 2, busyInstances: 1, idleInstances: 1 },
       cpuHistory: mockHistory(18, 6),
       memoryHistory: mockHistory(46, 4),
       callQuality: {
@@ -99,6 +100,7 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
         { name: "nginx", active: true },
       ],
       liveCalls: null,
+      recorderStatus: null,
       cpuHistory: mockHistory(27, 8),
       memoryHistory: mockHistory(58, 3),
       callQuality: null,
