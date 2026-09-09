@@ -179,6 +179,7 @@ export const SUBADMIN_NAV: NavSection[] = [
   {
     title: "Delegated Work",
     items: [
+      { label: "Sessions", to: "/subadmin/sessions", icon: CalendarClock },
       { label: "Search Users", to: "/subadmin/search-users", icon: UserSearch },
       { label: "Assigned Reports", to: "/subadmin/reports", icon: BarChart3 },
       { label: "Audit Log", to: "/subadmin/audit-log", icon: History },
@@ -195,6 +196,7 @@ export const ADMISSION_NAV: NavSection[] = [
       { label: "Teacher Assignment", to: "/admission/demo-teacher-assignment", icon: UserCog },
       { label: "Demo Feedback", to: "/admission/demo-feedback", icon: ClipboardCheck },
       { label: "Conversion Board", to: "/admission/conversion", icon: KanbanSquare },
+      { label: "Sessions", to: "/admission/sessions", icon: CalendarClock },
     ],
   },
   {
@@ -218,6 +220,7 @@ export const COORDINATOR_NAV: NavSection[] = [
     items: [
       { label: "Academic Calendar", to: "/coordinator/calendar", icon: CalendarDays },
       { label: "Teacher Availability", to: "/coordinator/availability", icon: CalendarRange },
+      { label: "Sessions", to: "/coordinator/sessions", icon: CalendarClock },
     ],
   },
 ];
@@ -229,6 +232,7 @@ export const MANAGEMENT_NAV: NavSection[] = [
     items: [
       { label: "Revenue & Courses", to: "/management/revenue", icon: TrendingUp },
       { label: "Teacher & Batch Performance", to: "/management/performance", icon: Gauge },
+      { label: "Sessions", to: "/management/sessions", icon: CalendarClock },
     ],
   },
   {

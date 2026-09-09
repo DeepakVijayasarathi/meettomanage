@@ -71,6 +71,7 @@ const SubAdminDashboard = lazy(() => import("@/features/subadmin/Dashboard"));
 const SubAdminPermissions = lazy(() => import("@/features/subadmin/Permissions"));
 const SubAdminIntegrations = lazy(() => import("@/features/subadmin/Integrations"));
 const SubAdminBatches = lazy(() => import("@/features/subadmin/Batches"));
+const SubAdminSessions = lazy(() => import("@/features/subadmin/Sessions"));
 const SubAdminPayouts = lazy(() => import("@/features/subadmin/Payouts"));
 const SubAdminCourses = lazy(() => import("@/features/subadmin/Courses"));
 const SubAdminDepartments = lazy(() => import("@/features/subadmin/Departments"));
@@ -245,6 +246,7 @@ export default function App() {
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
               <Route path="batches" element={<SubAdminBatches />} />
+              <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
               <Route path="enrollments" element={<SubAdminEnrollments />} />
@@ -293,6 +295,7 @@ export default function App() {
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
               <Route path="batches" element={<SubAdminBatches />} />
+              <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
               <Route path="enrollments" element={<SubAdminEnrollments />} />
@@ -323,6 +326,7 @@ export default function App() {
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
               <Route path="batches" element={<SubAdminBatches />} />
+              <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
               <Route path="enrollments" element={<SubAdminEnrollments />} />
@@ -359,6 +363,7 @@ export default function App() {
               <Route path="performance" element={<ManagementPerformance />} />
               <Route path="reports" element={<ManagementReports />} />
               <Route path="batches" element={<SubAdminBatches />} />
+              <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
               <Route path="enrollments" element={<SubAdminEnrollments />} />
