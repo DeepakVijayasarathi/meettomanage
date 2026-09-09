@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
-import { SessionStatusBadge } from "@/components/StatusBadge";
+import { SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { RecordingsDialog } from "@/components/RecordingsDialog";
 import { Button } from "@/components/ui/button";
@@ -305,7 +305,7 @@ export default function AdminSessions() {
         header: "Status",
         sortable: true,
         accessor: (row) => row.status,
-        render: (row) => <SessionStatusBadge status={row.status} />,
+        render: (row) => <SessionStatusBadge status={row.status} label={noShowLabel(row)} />,
       },
       {
         key: "actions",

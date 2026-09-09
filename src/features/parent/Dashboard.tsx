@@ -16,7 +16,7 @@ import {
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
-import { FeeStatusBadge, SessionStatusBadge } from "@/components/StatusBadge";
+import { FeeStatusBadge, SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
 import { PayNowModal } from "@/components/PayNowModal";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -413,7 +413,7 @@ function UpcomingRow({ session }: { session: ClassSession }) {
         </p>
       </div>
       <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
-        <SessionStatusBadge status={session.status} />
+        <SessionStatusBadge status={session.status} label={noShowLabel(session)} />
         {joinable ? (
           <Button size="sm" asChild>
             <Link

@@ -9,7 +9,7 @@ import { FilterBar } from "@/components/FilterBar";
 import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
-import { SessionStatusBadge } from "@/components/StatusBadge";
+import { SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
 import { RecordingsDialog } from "@/components/RecordingsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -135,7 +135,7 @@ export default function TeacherMyClasses() {
       header: "Status",
       accessor: (row) => row.status,
       sortable: true,
-      render: (row) => <SessionStatusBadge status={row.status} />,
+      render: (row) => <SessionStatusBadge status={row.status} label={noShowLabel(row)} />,
     },
     {
       key: "action",
@@ -258,7 +258,7 @@ export default function TeacherMyClasses() {
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                   <span className="text-muted-foreground">Status</span>
-                  <SessionStatusBadge status={selected.status} />
+                  <SessionStatusBadge status={selected.status} label={noShowLabel(selected)} />
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                   <span className="text-muted-foreground">Roster</span>

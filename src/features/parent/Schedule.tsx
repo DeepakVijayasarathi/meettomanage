@@ -6,7 +6,7 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { CalendarBoard } from "@/components/CalendarBoard";
-import { SessionStatusBadge } from "@/components/StatusBadge";
+import { SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -214,7 +214,7 @@ export default function ParentSchedule() {
                 </DialogDescription>
               </DialogHeader>
               <div className="flex items-center justify-between">
-                <SessionStatusBadge status={selected.status} />
+                <SessionStatusBadge status={selected.status} label={noShowLabel(selected)} />
                 {isJoinable(selected) ? (
                   <Button asChild size="sm">
                     <Link
@@ -247,7 +247,7 @@ function ScheduleRow({ session }: { session: ClassSession }) {
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <SessionStatusBadge status={session.status} />
+        <SessionStatusBadge status={session.status} label={noShowLabel(session)} />
         {joinable ? (
           <Button size="sm" asChild>
             <Link
@@ -288,7 +288,7 @@ function PastRow({ session }: { session: ClassSession }) {
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <SessionStatusBadge status={session.status} />
+        <SessionStatusBadge status={session.status} label={noShowLabel(session)} />
         {recInfo ? (
           <Link
             to="/parent/resources"

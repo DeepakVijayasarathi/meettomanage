@@ -105,6 +105,10 @@ export interface ClassSession {
   meetingRoomId?: string;
   /** Teacher's class notes, or an auto-generated one from engagement data if they left it blank — set on completion. */
   summary?: string;
+  /** Set only when status is "noshow" — which side the system found missing, so a teacher
+   *  can tell at a glance whether it was them (docks pay) or the student (doesn't) instead
+   *  of a single generic "No-Show" badge reading as if it's always blaming them. */
+  noShowParty?: "teacher" | "student";
 }
 
 export interface Invoice {

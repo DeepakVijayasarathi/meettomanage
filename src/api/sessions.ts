@@ -77,6 +77,7 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
     recordingExpiresOn: session.recordingExpiresAtUtc ?? undefined,
     meetingRoomId: session.meetingRoomId ?? undefined,
     summary: session.summary ?? undefined,
+    noShowParty: session.status === "TeacherNoShow" ? "teacher" : session.status === "StudentNoShow" ? "student" : undefined,
   };
 }
 
