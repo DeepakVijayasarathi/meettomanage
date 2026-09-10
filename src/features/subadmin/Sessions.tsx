@@ -63,12 +63,18 @@ export default function SubAdminSessions() {
   const { userName, hasPermission } = useSession();
   const canSchedule = !usingApi || hasPermission("SessionCalendarManagement", "Create");
   const canManage = !usingApi || hasPermission("SessionCalendarManagement", "Edit");
+  // GET /api/batches requires CourseBatchManagement:View server-side — a delegated-portal
+  // account with only SessionCalendarManagement granted (e.g. Admission) 403's on it. Confirmed
+  // live via a fresh AdmissionTeam test account. Same gate as subadmin/Dashboard.tsx's own
+  // canSeeBatches; batches here just silently shows a blank Students column and an empty batch
+  // picker instead of a console 403 when the account lacks the grant.
+  const canSeeBatches = !usingApi || hasPermission("CourseBatchManagement", "View");
 
   const { data: apiSessions, error: sessionsError, reload } = useApiData<ClassSession[]>(
     () => listSessions().then((items) => items.map(toFrontendSession)),
     []
   );
-  const { data: batches } = useApiData(() => listBatches(), []);
+  const { data: batches } = useApiData(() => (canSeeBatches ? listBatches() : Promise.resolve([])), []);
   const { data: teachers } = useApiData(() => listTeacherOptions(), []);
 
   // Demo fallback keeps the old local mock behaviour.

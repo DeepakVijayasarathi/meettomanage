@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AppShell } from "@/components/AppShell";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Logo } from "@/components/Logo";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 
 const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Store = lazy(() => import("@/features/marketing/Store"));
@@ -129,6 +130,7 @@ export default function App() {
   return (
     <TooltipProvider delayDuration={200}>
       <BrowserRouter>
+        <AppErrorBoundary>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<MarketingHome />} />
@@ -404,6 +406,7 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </AppErrorBoundary>
       </BrowserRouter>
       <Toaster />
     </TooltipProvider>

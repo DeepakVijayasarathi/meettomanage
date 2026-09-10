@@ -127,6 +127,11 @@ export default function SubAdminEnrollments() {
   const { hasPermission } = useSession();
   const canApprove = !apiEnabled() || hasPermission("Admission", "Approve");
   const canEdit = !apiEnabled() || hasPermission("Admission", "Edit");
+  // GET /api/batches requires CourseBatchManagement:View server-side — an account that can
+  // approve enrollments (Admission:Approve) doesn't necessarily also have that grant (e.g.
+  // Admission role). Confirmed live via a fresh AdmissionTeam test account: 403 console noise
+  // and a silently-empty "place on batch" picker in the approval dialog.
+  const canSeeBatches = !apiEnabled() || hasPermission("CourseBatchManagement", "View");
 
   const { data: rows, error: rowsError, reload } = useApiData<EnrollmentRow[]>(
     () => listEnrollmentForms().then((forms) => forms.map(toEnrollmentRow)),
@@ -179,7 +184,7 @@ export default function SubAdminEnrollments() {
 
   // Open batches for the approval picker; approving with one selected places the
   // child straight on that batch's roster instead of leaving them unassigned.
-  const { data: allBatches } = useApiData<ApiBatch[]>(() => listBatches(), []);
+  const { data: allBatches } = useApiData<ApiBatch[]>(() => (canSeeBatches ? listBatches() : Promise.resolve([])), []);
   const openBatches = useMemo(
     () => allBatches.filter((b) => b.status === "Active" && b.enrolledCount < b.capacity),
     [allBatches]

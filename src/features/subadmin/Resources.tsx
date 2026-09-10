@@ -55,6 +55,10 @@ export default function SubAdminResources() {
   const { hasPermission } = useSession();
   const canCreate = !apiEnabled() || hasPermission("ContentAccessManagement", "Create");
   const canEdit = !apiEnabled() || hasPermission("ContentAccessManagement", "Edit");
+  // GET /api/batches requires CourseBatchManagement:View server-side, a separate grant from
+  // ContentAccessManagement — an account that can manage resources doesn't necessarily also
+  // have it. Same gate as subadmin/Sessions.tsx and Enrollments.tsx for the identical call.
+  const canSeeBatches = !apiEnabled() || hasPermission("CourseBatchManagement", "View");
   const { data: apiResources, error: resourcesError, reload } = useApiData(
     () => listResources().then((items) => items.map(toFrontendResource)),
     RESOURCES
@@ -62,7 +66,7 @@ export default function SubAdminResources() {
   // Access toggles stay client-side until per-resource flags land in the API
   const [resources, setResources] = useState<Resource[]>(RESOURCES);
   useEffect(() => setResources(apiResources), [apiResources]);
-  const { data: apiBatches } = useApiData(() => listBatches(), []);
+  const { data: apiBatches } = useApiData(() => (canSeeBatches ? listBatches() : Promise.resolve([])), []);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadBatch, setUploadBatch] = useState<string>("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
