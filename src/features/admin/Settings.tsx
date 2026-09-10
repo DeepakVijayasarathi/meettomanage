@@ -1387,7 +1387,7 @@ const EMPTY_INTEGRATION_FORM: SaveIntegrationRequest = {
   config: {},
 };
 
-const EMPTY_JITSI_FORM = { domain: "", appId: "", appSecret: "", autoRecord: true };
+const EMPTY_JITSI_FORM = { domain: "", appId: "", appSecret: "", autoRecord: true, defaultLobby: true };
 
 /**
  * Purpose-built form for the one integration every class actually depends on, instead of
@@ -1418,6 +1418,7 @@ function JitsiRecordingSettings() {
         appId: jitsi?.config.appId ?? "",
         appSecret: jitsi?.config.appSecret ?? "",
         autoRecord: jitsi ? (jitsi.config.autoRecord ?? "true") !== "false" : true,
+        defaultLobby: jitsi ? (jitsi.config.defaultLobby ?? "true") !== "false" : true,
       });
       setError(null);
     } catch (err) {
@@ -1447,6 +1448,7 @@ function JitsiRecordingSettings() {
           appId: form.appId.trim(),
           appSecret: form.appSecret,
           autoRecord: form.autoRecord ? "true" : "false",
+          defaultLobby: form.defaultLobby ? "true" : "false",
         },
       };
       if (integration) await updateIntegration(integration.id, request);
@@ -1546,6 +1548,17 @@ function JitsiRecordingSettings() {
                 </p>
               </div>
               <Switch checked={form.autoRecord} onCheckedChange={(autoRecord) => setForm({ ...form, autoRecord })} />
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 sm:col-span-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Start every class with the waiting room on</p>
+                <p className="text-xs text-muted-foreground">
+                  On: a student joining before the teacher waits to be let in, instead of landing in an unattended
+                  room. Off: anyone can join directly the moment class opens — the teacher can still turn the waiting
+                  room on mid-class from the call's own "Waiting Room" button either way.
+                </p>
+              </div>
+              <Switch checked={form.defaultLobby} onCheckedChange={(defaultLobby) => setForm({ ...form, defaultLobby })} />
             </div>
           </div>
         )}
