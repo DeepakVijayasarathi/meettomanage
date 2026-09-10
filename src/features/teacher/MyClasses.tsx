@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getCourseById } from "@/data/courses";
-import { listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
+import { listHolidays, listMyLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import { apiEnabled } from "@/lib/api";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
@@ -78,7 +78,13 @@ export default function TeacherMyClasses() {
   // Calendar-only: holidays/leave aren't real classes, so they're kept out of allSessions
   // (the list/table view) and merged in just for the calendar's colour coding.
   const { data: holidays } = useApiData<ApiHoliday[]>(() => listHolidays(), []);
-  const { data: approvedLeave } = useApiData<ApiLeaveRequest[]>(() => listLeave("Approved"), []);
+  // /mine (not the admin-wide /api/leave-requests) — a teacher's own calendar must only ever
+  // show their own leave, never another teacher's. Confirmed live: this previously called the
+  // unscoped admin listing, so any teacher's "My Classes" calendar showed every teacher's
+  // approved leave (name, date and reason included) — a real data-exposure bug, not just a
+  // display quirk.
+  const { data: myLeave } = useApiData<ApiLeaveRequest[]>(() => listMyLeave(), []);
+  const approvedLeave = useMemo(() => myLeave.filter((l) => l.status === "Approved"), [myLeave]);
   const calendarEvents = useMemo(
     () =>
       apiEnabled()
