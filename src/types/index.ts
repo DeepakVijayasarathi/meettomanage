@@ -310,6 +310,10 @@ export interface LiveParticipant {
   name: string;
   role: string;
   joinedAtUtc: string;
+  /** 2+ means this person holds multiple simultaneous connections (tabs/devices). */
+  connectionCount: number;
+  /** Whether attendance capture has already recorded this person's presence — false can mean it's still catching up, or that it failed. */
+  attendanceRecorded: boolean;
 }
 
 /** One live class session with everyone currently connected to it. */
@@ -320,7 +324,24 @@ export interface LiveClassSession {
   batchName: string | null;
   teacherName: string;
   startedAtUtc: string | null;
+  /** Null for a demo session. Running past this is worth flagging. */
+  scheduledEndAtUtc: string | null;
   participants: LiveParticipant[];
+}
+
+/** One of today's class sessions, live or not — for the "today's sessions" timeline. */
+export interface SessionHistoryEntry {
+  sessionId: string;
+  courseName: string;
+  batchName: string | null;
+  teacherName: string;
+  scheduledStartAtUtc: string;
+  scheduledEndAtUtc: string;
+  actualStartAtUtc: string | null;
+  actualEndAtUtc: string | null;
+  status: string;
+  attendedCount: number;
+  expectedCount: number;
 }
 
 /** A point-in-time `docker stats` sample for one container — not a counter, so it's "what is this using right now," refreshed every minute. */

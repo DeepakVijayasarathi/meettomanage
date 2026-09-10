@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import type { LiveClassSession, MonitoringSummary } from "@/types";
+import type { LiveClassSession, MonitoringSummary, SessionHistoryEntry } from "@/types";
 
 export interface ApiMonitoredService {
   name: string;
@@ -128,6 +128,8 @@ export interface ApiLiveParticipant {
   name: string;
   role: string;
   joinedAtUtc: string;
+  connectionCount: number;
+  attendanceRecorded: boolean;
 }
 
 export interface ApiLiveClassSession {
@@ -136,12 +138,32 @@ export interface ApiLiveClassSession {
   batchName: string | null;
   teacherName: string;
   startedAtUtc: string | null;
+  scheduledEndAtUtc: string | null;
   participants: ApiLiveParticipant[];
 }
 
 /** Every live class session with a connected participant right now, and who's in it — admin-only visibility into other users' real-time presence. */
 export async function getLiveUsers(): Promise<ApiLiveClassSession[]> {
   return apiFetch<ApiLiveClassSession[]>("/api/monitoring/live-users");
+}
+
+export interface ApiSessionHistoryEntry {
+  sessionId: string;
+  courseName: string;
+  batchName: string | null;
+  teacherName: string;
+  scheduledStartAtUtc: string;
+  scheduledEndAtUtc: string;
+  actualStartAtUtc: string | null;
+  actualEndAtUtc: string | null;
+  status: string;
+  attendedCount: number;
+  expectedCount: number;
+}
+
+/** Every session scheduled today (IST), live or not, with attendance counts. */
+export async function getTodaySessions(): Promise<ApiSessionHistoryEntry[]> {
+  return apiFetch<ApiSessionHistoryEntry[]>("/api/monitoring/today-sessions");
 }
 
 export function toFrontendLiveUsers(api: ApiLiveClassSession[]): LiveClassSession[] {
@@ -151,7 +173,31 @@ export function toFrontendLiveUsers(api: ApiLiveClassSession[]): LiveClassSessio
     batchName: s.batchName,
     teacherName: s.teacherName,
     startedAtUtc: s.startedAtUtc,
-    participants: s.participants.map((p) => ({ userId: p.userId, name: p.name, role: p.role, joinedAtUtc: p.joinedAtUtc })),
+    scheduledEndAtUtc: s.scheduledEndAtUtc,
+    participants: s.participants.map((p) => ({
+      userId: p.userId,
+      name: p.name,
+      role: p.role,
+      joinedAtUtc: p.joinedAtUtc,
+      connectionCount: p.connectionCount,
+      attendanceRecorded: p.attendanceRecorded,
+    })),
+  }));
+}
+
+export function toFrontendSessionHistory(api: ApiSessionHistoryEntry[]): SessionHistoryEntry[] {
+  return api.map((s) => ({
+    sessionId: s.sessionId,
+    courseName: s.courseName,
+    batchName: s.batchName,
+    teacherName: s.teacherName,
+    scheduledStartAtUtc: s.scheduledStartAtUtc,
+    scheduledEndAtUtc: s.scheduledEndAtUtc,
+    actualStartAtUtc: s.actualStartAtUtc,
+    actualEndAtUtc: s.actualEndAtUtc,
+    status: s.status,
+    attendedCount: s.attendedCount,
+    expectedCount: s.expectedCount,
   }));
 }
 

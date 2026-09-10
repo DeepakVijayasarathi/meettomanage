@@ -1,4 +1,4 @@
-import type { LiveClassSession, MonitoringSummary, TimeSeriesPoint } from "@/types";
+import type { LiveClassSession, MonitoringSummary, SessionHistoryEntry, TimeSeriesPoint } from "@/types";
 
 /** Deterministic, believable-looking last-hour trend — a gentle wave around a baseline, not noise. */
 function mockHistory(baseline: number, amplitude: number): TimeSeriesPoint[] {
@@ -142,10 +142,13 @@ export const LIVE_USERS: LiveClassSession[] = [
     batchName: "Batch A · Tue/Thu",
     teacherName: "Ananya Rao",
     startedAtUtc: minutesAgo(14),
+    scheduledEndAtUtc: new Date(Date.now() + 16 * 60_000).toISOString(),
     participants: [
-      { userId: "u-teacher-1", name: "Ananya Rao", role: "teacher", joinedAtUtc: minutesAgo(14) },
-      { userId: "u-student-1", name: "Rehan Sheikh", role: "student", joinedAtUtc: minutesAgo(13) },
-      { userId: "u-student-2", name: "Meher Kaur", role: "student", joinedAtUtc: minutesAgo(12) },
+      // Two connections for the same teacher -- demonstrates the multi-device badge.
+      { userId: "u-teacher-1", name: "Ananya Rao", role: "teacher", joinedAtUtc: minutesAgo(14), connectionCount: 2, attendanceRecorded: true },
+      { userId: "u-student-1", name: "Rehan Sheikh", role: "student", joinedAtUtc: minutesAgo(13), connectionCount: 1, attendanceRecorded: true },
+      // Just joined -- attendance capture hasn't caught up yet, demonstrating that indicator.
+      { userId: "u-student-2", name: "Meher Kaur", role: "student", joinedAtUtc: minutesAgo(12), connectionCount: 1, attendanceRecorded: false },
     ],
   },
   {
@@ -154,9 +157,71 @@ export const LIVE_USERS: LiveClassSession[] = [
     batchName: null,
     teacherName: "Vikram Nair",
     startedAtUtc: minutesAgo(3),
+    scheduledEndAtUtc: new Date(Date.now() + 27 * 60_000).toISOString(),
     participants: [
-      { userId: "u-teacher-2", name: "Vikram Nair", role: "teacher", joinedAtUtc: minutesAgo(3) },
-      { userId: "u-student-3", name: "Ishaan Verma", role: "student", joinedAtUtc: minutesAgo(2) },
+      { userId: "u-teacher-2", name: "Vikram Nair", role: "teacher", joinedAtUtc: minutesAgo(3), connectionCount: 1, attendanceRecorded: true },
+      { userId: "u-student-3", name: "Ishaan Verma", role: "student", joinedAtUtc: minutesAgo(2), connectionCount: 1, attendanceRecorded: true },
     ],
+  },
+];
+
+/** Minutes-from-now, for building a plausible today's schedule around the demo "now". */
+function minutesFromNow(minutes: number): string {
+  return new Date(Date.now() + minutes * 60_000).toISOString();
+}
+
+/** Demo-mode snapshot for the "today's sessions" timeline — a mix of completed, live, and upcoming. */
+export const SESSION_HISTORY: SessionHistoryEntry[] = [
+  {
+    sessionId: "demo-history-1",
+    courseName: "Phonics Level 1",
+    batchName: "Batch C · Mon/Wed/Fri",
+    teacherName: "Priya Menon",
+    scheduledStartAtUtc: minutesFromNow(-180),
+    scheduledEndAtUtc: minutesFromNow(-135),
+    actualStartAtUtc: minutesFromNow(-179),
+    actualEndAtUtc: minutesFromNow(-136),
+    status: "Completed",
+    attendedCount: 5,
+    expectedCount: 5,
+  },
+  {
+    sessionId: "demo-session-1",
+    courseName: "Phonics Level 2",
+    batchName: "Batch A · Tue/Thu",
+    teacherName: "Ananya Rao",
+    scheduledStartAtUtc: minutesAgo(15),
+    scheduledEndAtUtc: minutesFromNow(16),
+    actualStartAtUtc: minutesAgo(14),
+    actualEndAtUtc: null,
+    status: "InProgress",
+    attendedCount: 2,
+    expectedCount: 4,
+  },
+  {
+    sessionId: "demo-session-2",
+    courseName: "Maths Foundations",
+    batchName: null,
+    teacherName: "Vikram Nair",
+    scheduledStartAtUtc: minutesAgo(4),
+    scheduledEndAtUtc: minutesFromNow(27),
+    actualStartAtUtc: minutesAgo(3),
+    actualEndAtUtc: null,
+    status: "InProgress",
+    attendedCount: 2,
+    expectedCount: 2,
+  },
+  {
+    sessionId: "demo-history-2",
+    courseName: "Spoken English",
+    batchName: "Batch D · Daily",
+    teacherName: "Priya Menon",
+    scheduledStartAtUtc: minutesFromNow(45),
+    scheduledEndAtUtc: minutesFromNow(90),
+    actualStartAtUtc: null,
+    actualEndAtUtc: null,
+    status: "Scheduled",
+    attendedCount: 0,
+    expectedCount: 6,
   },
 ];

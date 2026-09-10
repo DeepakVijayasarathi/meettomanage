@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  Clock,
   Cpu,
   Database,
   Disc,
@@ -32,15 +33,24 @@ import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/ca
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { getMonitoringSummary, getLiveUsers, toFrontendLiveUsers, toFrontendMonitoringSummary, restartService } from "@/api/monitoring";
-import { LIVE_USERS, MONITORING_SUMMARY } from "@/data/monitoring";
+import {
+  getMonitoringSummary,
+  getLiveUsers,
+  getTodaySessions,
+  toFrontendLiveUsers,
+  toFrontendMonitoringSummary,
+  toFrontendSessionHistory,
+  restartService,
+} from "@/api/monitoring";
+import { LIVE_USERS, MONITORING_SUMMARY, SESSION_HISTORY } from "@/data/monitoring";
 import { MonitoringHubClient } from "@/lib/monitoringHub";
 import { useSession } from "@/state/session";
-import type { DatabaseInsights, LiveClassSession, MonitoringAlert, MonitoringSummary, ServerStatus } from "@/types";
+import type { CallQuality, DatabaseInsights, LiveClassSession, MonitoringAlert, MonitoringSummary, ServerStatus, SessionHistoryEntry } from "@/types";
 import {
   CapacityForecastLine,
   num,
@@ -400,7 +410,7 @@ function formatJoinedAgo(iso: string): string {
 }
 
 /** Admin-only "who's live right now" — real user identity in real-time classroom sessions, so this must never render for a role below Admin's SystemMonitoring:View grant. */
-function LiveUsersCard({ sessions, loading }: { sessions: LiveClassSession[]; loading: boolean }) {
+function LiveUsersCard({ sessions, loading, bridgeHealth }: { sessions: LiveClassSession[]; loading: boolean; bridgeHealth: CallQuality | null }) {
   if (loading) {
     return (
       <Card className="p-5">
@@ -413,40 +423,152 @@ function LiveUsersCard({ sessions, loading }: { sessions: LiveClassSession[]; lo
   return (
     <Card className="p-5">
       <CardHeader className="p-0 pb-4">
-        <CardTitle className="text-base">Live Right Now</CardTitle>
-        <CardDescription>Every user currently connected to a live class, by session.</CardDescription>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <CardTitle className="text-base">Live Right Now</CardTitle>
+            <CardDescription>Every user currently connected to a live class, by session.</CardDescription>
+          </div>
+          {/* Bridge-wide, not per-session or per-participant — JVB doesn't expose quality broken
+              down that granularly, so this is honestly labeled as the whole bridge's health
+              rather than implying it's specific to any one class below. */}
+          {bridgeHealth && (
+            <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-1.5 text-xs" title="Whole-bridge quality from JVB — not broken down per class or participant.">
+              <span className="font-medium text-muted-foreground">Bridge health</span>
+              <span className={cn("font-semibold", bridgeHealth.jvbHealthy ? "text-success" : "text-destructive")}>{bridgeHealth.jvbHealthy ? "Healthy" : "Unhealthy"}</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-foreground">{Math.round(bridgeHealth.averageRttMs)}ms RTT</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-foreground">{Math.max(bridgeHealth.incomingLossPercent, bridgeHealth.outgoingLossPercent).toFixed(1)}% loss</span>
+            </div>
+          )}
+        </div>
       </CardHeader>
       {sessions.length === 0 ? (
         <EmptyState icon={LogIn} title="No one is live" description="No class currently has a connected participant." />
       ) : (
         <div className="space-y-3">
-          {sessions.map((session) => (
-            <div key={session.sessionId} className="rounded-lg border border-border p-3.5">
-              <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    {session.courseName}
-                    {session.batchName ? ` · ${session.batchName}` : ""}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {session.teacherName}
-                    {session.startedAtUtc ? ` · started ${formatJoinedAgo(session.startedAtUtc)}` : ""}
-                  </p>
+          {sessions.map((session) => {
+            const runningOver = session.scheduledEndAtUtc ? Date.now() > new Date(session.scheduledEndAtUtc).getTime() : false;
+            return (
+              <div key={session.sessionId} className="rounded-lg border border-border p-3.5">
+                <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {session.courseName}
+                      {session.batchName ? ` · ${session.batchName}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {session.teacherName}
+                      {session.startedAtUtc ? ` · started ${formatJoinedAgo(session.startedAtUtc)}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {runningOver && (
+                      <Badge variant="warning" className="gap-1" title={`Was scheduled to end at ${new Date(session.scheduledEndAtUtc!).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}>
+                        <AlertTriangle className="h-3 w-3" /> Running over
+                      </Badge>
+                    )}
+                    <Badge variant="success" className="gap-1.5">
+                      <Users className="h-3 w-3" /> {session.participants.length}
+                    </Badge>
+                  </div>
                 </div>
-                <Badge variant="success" className="gap-1.5">
-                  <Users className="h-3 w-3" /> {session.participants.length}
-                </Badge>
+                <div className="flex flex-wrap gap-1.5">
+                  {session.participants.map((p) => (
+                    <Badge
+                      key={p.userId}
+                      variant={ROLE_BADGE_VARIANT[p.role] ?? "muted"}
+                      className="gap-1.5 text-[11px]"
+                      title={`Joined ${formatJoinedAgo(p.joinedAtUtc)}${p.connectionCount > 1 ? ` · ${p.connectionCount} simultaneous connections` : ""}${!p.attendanceRecorded ? " · attendance not yet recorded" : ""}`}
+                    >
+                      {p.name} <span className="opacity-70">· {p.role}</span>
+                      {p.connectionCount > 1 && <span className="opacity-70">· {p.connectionCount} devices</span>}
+                      {!p.attendanceRecorded && <AlertTriangle className="h-3 w-3 text-warning-foreground" />}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {session.participants.map((p) => (
-                  <Badge key={p.userId} variant={ROLE_BADGE_VARIANT[p.role] ?? "muted"} className="gap-1.5 text-[11px]" title={`Joined ${formatJoinedAgo(p.joinedAtUtc)}`}>
-                    {p.name} <span className="opacity-70">· {p.role}</span>
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+      )}
+    </Card>
+  );
+}
+
+const SESSION_STATUS_VARIANT: Record<string, "success" | "default" | "warning" | "destructive" | "muted"> = {
+  Completed: "success",
+  InProgress: "default",
+  Scheduled: "muted",
+  Cancelled: "destructive",
+  Rescheduled: "warning",
+  TeacherNoShow: "destructive",
+  StudentNoShow: "warning",
+  CarriedForward: "warning",
+};
+
+function formatClockTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
+}
+
+/** Today's full session timeline (completed, live, and upcoming) — distinct from LiveUsersCard's live-only snapshot, and durable (backed by SessionAttendance) rather than in-memory presence. */
+function TodaySessionsCard({ sessions, loading }: { sessions: SessionHistoryEntry[]; loading: boolean }) {
+  if (loading) {
+    return (
+      <Card className="p-5">
+        <Skeleton className="mb-4 h-4 w-40" />
+        <Skeleton className="h-24 w-full rounded-lg" />
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-5">
+      <CardHeader className="p-0 pb-4">
+        <CardTitle className="text-base">Today&apos;s Sessions</CardTitle>
+        <CardDescription>Every class scheduled today, completed and upcoming — attendance from durable records, not live presence.</CardDescription>
+      </CardHeader>
+      {sessions.length === 0 ? (
+        <EmptyState icon={Clock} title="No sessions today" description="Nothing scheduled for today." />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Time</TableHead>
+              <TableHead>Class</TableHead>
+              <TableHead>Teacher</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Attendance</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sessions.map((s) => (
+              <TableRow key={s.sessionId}>
+                <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                  {formatClockTime(s.scheduledStartAtUtc)} – {formatClockTime(s.scheduledEndAtUtc)}
+                </TableCell>
+                <TableCell className="text-sm font-medium text-foreground">
+                  {s.courseName}
+                  {s.batchName ? ` · ${s.batchName}` : ""}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">{s.teacherName}</TableCell>
+                <TableCell>
+                  <Badge variant={SESSION_STATUS_VARIANT[s.status] ?? "muted"} className="text-[11px]">
+                    {s.status}
+                  </Badge>
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    "text-right text-sm font-semibold",
+                    s.status === "Completed" && s.attendedCount < s.expectedCount ? "text-warning-foreground" : "text-foreground"
+                  )}
+                >
+                  {s.attendedCount} / {s.expectedCount}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
     </Card>
   );
@@ -559,6 +681,11 @@ export default function AdminMonitoring() {
     LIVE_USERS,
     []
   );
+  const { data: todaySessions, loading: todaySessionsLoading, reload: reloadTodaySessions } = useApiData(
+    () => getTodaySessions().then(toFrontendSessionHistory),
+    SESSION_HISTORY,
+    []
+  );
   const [liveSummary, setLiveSummary] = useState<MonitoringSummary | null>(null);
   const [hubConnected, setHubConnected] = useState(false);
   const summary = liveSummary ?? restSummary;
@@ -592,6 +719,12 @@ export default function AdminMonitoring() {
     const interval = setInterval(reloadLiveUsers, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [usingApi, canViewLiveUsers, reloadLiveUsers]);
+
+  useEffect(() => {
+    if (!usingApi || !canViewLiveUsers) return;
+    const interval = setInterval(reloadTodaySessions, REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [usingApi, canViewLiveUsers, reloadTodaySessions]);
 
   const totalConferences = summary.servers.reduce((sum, s) => sum + (s.liveCalls?.activeConferences ?? 0), 0);
   const totalParticipants = summary.servers.reduce((sum, s) => sum + (s.liveCalls?.totalParticipants ?? 0), 0);
@@ -668,8 +801,13 @@ export default function AdminMonitoring() {
       </div>
 
       {canViewLiveUsers && (
-        <div className="mt-6">
-          <LiveUsersCard sessions={liveUsers} loading={liveUsersLoading && liveUsers.length === 0} />
+        <div className="mt-6 space-y-5">
+          <LiveUsersCard
+            sessions={liveUsers}
+            loading={liveUsersLoading && liveUsers.length === 0}
+            bridgeHealth={summary.servers.find((s) => s.callQuality)?.callQuality ?? null}
+          />
+          <TodaySessionsCard sessions={todaySessions} loading={todaySessionsLoading && todaySessions.length === 0} />
         </div>
       )}
 
