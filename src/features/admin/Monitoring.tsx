@@ -12,6 +12,7 @@ import {
   HardDrive,
   Lock,
   MemoryStick,
+  PowerOff,
   RefreshCw,
   RotateCcw,
   Server,
@@ -25,6 +26,7 @@ import {
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,13 +35,15 @@ import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { getMonitoringSummary, toFrontendMonitoringSummary } from "@/api/monitoring";
+import { getMonitoringSummary, toFrontendMonitoringSummary, restartService } from "@/api/monitoring";
 import { MONITORING_SUMMARY } from "@/data/monitoring";
 import { MonitoringHubClient } from "@/lib/monitoringHub";
+import { useSession } from "@/state/session";
 import type { DatabaseInsights, MonitoringAlert, MonitoringSummary, ServerStatus } from "@/types";
 import {
   CapacityForecastLine,
   num,
+  RecorderControls,
   ResourceGauge,
   serviceDisplayName,
   StatTile,
@@ -132,6 +136,10 @@ function AlertsBanner({ alerts, loading }: { alerts: MonitoringAlert[]; loading:
 }
 
 function ServerCard({ server }: { server: ServerStatus }) {
+  const { hasPermission } = useSession();
+  const canManage = hasPermission("SystemMonitoring", "Edit");
+  const [restartTarget, setRestartTarget] = useState<string | null>(null);
+
   if (!server.reachable) {
     return (
       <Card className="p-5">
@@ -196,7 +204,7 @@ function ServerCard({ server }: { server: ServerStatus }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-3", num(server.swapTotalMb) > 0 && "lg:grid-cols-4")}>
         <ResourceGauge icon={Cpu} label="CPU" percent={num(server.cpuUsagePercent)} detail={`${num(server.cpuCores)} cores · load ${num(server.loadAverage1m).toFixed(2)}`} />
         <ResourceGauge
           icon={MemoryStick}
@@ -210,6 +218,14 @@ function ServerCard({ server }: { server: ServerStatus }) {
           percent={num(server.diskUsedPercent)}
           detail={`${Math.round((num(server.diskTotalGb) * num(server.diskUsedPercent)) / 100)} / ${Math.round(num(server.diskTotalGb))} GB`}
         />
+        {num(server.swapTotalMb) > 0 && (
+          <ResourceGauge
+            icon={MemoryStick}
+            label="Swap"
+            percent={num(server.swapUsedPercent)}
+            detail={`${Math.round((num(server.swapTotalMb) * num(server.swapUsedPercent)) / 100 / 1024)} / ${(num(server.swapTotalMb) / 1024).toFixed(1)} GB`}
+          />
+        )}
       </div>
       <CapacityForecastLine forecast={server.diskForecast ?? null} />
 
@@ -232,6 +248,29 @@ function ServerCard({ server }: { server: ServerStatus }) {
           <StatTile icon={HardDrive} label="Disk Write" value={`${num(server.diskWriteMbps).toFixed(1)} MB/s`} />
         </div>
       </div>
+
+      {server.containerMetrics.length > 0 && (
+        <div className="mt-4 rounded-lg border border-border p-3.5">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-semibold text-foreground">Top Processes</p>
+            <Link to={`/admin/monitoring/${encodeURIComponent(server.name)}`} className="text-[11px] font-medium text-primary hover:underline">
+              View all
+            </Link>
+          </div>
+          <div className="space-y-1.5">
+            {server.containerMetrics.slice(0, 4).map((c) => (
+              <div key={c.name} className="flex items-center justify-between gap-2 text-xs">
+                <span className="truncate font-mono text-muted-foreground" title={c.name}>
+                  {serviceDisplayName(c.name)}
+                </span>
+                <span className="shrink-0 font-semibold text-foreground">
+                  {c.cpuPercent.toFixed(1)}% CPU · {c.memoryMb >= 1024 ? `${(c.memoryMb / 1024).toFixed(1)} GB` : `${Math.round(c.memoryMb)} MB`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {server.liveCalls && (
         <div className="mt-4 flex items-center gap-4 rounded-lg bg-primary/5 px-3.5 py-2.5">
@@ -264,6 +303,7 @@ function ServerCard({ server }: { server: ServerStatus }) {
           </span>
         </div>
       )}
+      {server.recorderStatus && canManage && <RecorderControls serverName={server.name} recorderStatus={server.recorderStatus} />}
 
       {server.callQuality && (
         <div className="mt-4 rounded-lg border border-border p-3.5">
@@ -312,13 +352,37 @@ function ServerCard({ server }: { server: ServerStatus }) {
         <p className="mb-3 text-xs font-semibold text-foreground">Services</p>
         <div className="flex flex-wrap gap-1.5">
           {server.services.map((service) => (
-            <Badge key={service.name} variant={service.active ? "success" : "destructive"} className="gap-1.5 font-mono text-[11px]" title={service.name}>
-              <span className={cn("h-1.5 w-1.5 rounded-full", service.active ? "bg-success" : "bg-destructive")} />
-              {serviceDisplayName(service.name)}
-            </Badge>
+            <span key={service.name} className="inline-flex items-center overflow-hidden rounded-md border border-transparent">
+              <Badge variant={service.active ? "success" : "destructive"} className="gap-1.5 rounded-r-none font-mono text-[11px]" title={service.name}>
+                <span className={cn("h-1.5 w-1.5 rounded-full", service.active ? "bg-success" : "bg-destructive")} />
+                {serviceDisplayName(service.name)}
+              </Badge>
+              {canManage && (
+                <button
+                  type="button"
+                  title={`Restart ${serviceDisplayName(service.name)} — interrupts anything currently using it`}
+                  className="flex h-full items-center border-l border-background/40 bg-muted px-1.5 py-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setRestartTarget(service.name)}
+                >
+                  <PowerOff className="h-3 w-3" />
+                </button>
+              )}
+            </span>
           ))}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={restartTarget !== null}
+        onOpenChange={(open) => !open && setRestartTarget(null)}
+        title={`Restart ${restartTarget ? serviceDisplayName(restartTarget) : ""}?`}
+        description="This interrupts any active calls or recordings currently using this service on this server. Only do this during a quiet window."
+        confirmLabel="Restart"
+        destructive
+        onConfirm={() => {
+          if (restartTarget) return restartService(server.name, restartTarget);
+        }}
+      />
     </Card>
   );
 }

@@ -275,6 +275,10 @@ export interface RecorderStatus {
   totalInstances: number;
   busyInstances: number;
   idleInstances: number;
+  /** Admin-adjustable floor of always-warm instances. */
+  minInstances: number;
+  /** Ceiling derived from the box's actual CPU/RAM — grows on its own if the box is resized. */
+  maxInstances: number;
 }
 
 export interface TimeSeriesPoint {
@@ -300,6 +304,22 @@ export interface CapacityForecast {
   trendGbPerDay: number;
 }
 
+/** A point-in-time `docker stats` sample for one container — not a counter, so it's "what is this using right now," refreshed every minute. */
+export interface ContainerMetric {
+  name: string;
+  cpuPercent: number;
+  memoryMb: number;
+}
+
+/** Week-over-week load trend — honest direction/peak reporting for bursty signals (CPU, recording load) instead of a fake day-countdown like CapacityForecast. */
+export interface CapacityTrend {
+  cpuAvg7dPercent: number;
+  cpuPeak7dPercent: number;
+  cpuWeekOverWeekChangePercent: number;
+  /** Percent of the last 7 days spent with every Jibri instance busy — null for a server with no Jibri fleet. */
+  recordingAtCapacityPercent7d: number | null;
+}
+
 export interface ServerStatus {
   name: string;
   hostname: string;
@@ -312,6 +332,9 @@ export interface ServerStatus {
   cpuUsagePercent: number;
   memoryUsedPercent: number;
   memoryTotalMb: number;
+  /** 0 when the server has no swap configured — show the gauge only when swapTotalMb > 0. */
+  swapUsedPercent: number;
+  swapTotalMb: number;
   diskUsedPercent: number;
   diskTotalGb: number;
   networkRxMbps: number;
@@ -328,6 +351,10 @@ export interface ServerStatus {
   memoryHistory: TimeSeriesPoint[];
   callQuality: CallQuality | null;
   diskForecast: CapacityForecast | null;
+  /** Sorted by CPU descending — empty if the container-stats collector hasn't published on this box yet. */
+  containerMetrics: ContainerMetric[];
+  /** Null until there's 14 days of Prometheus history to compare against. */
+  capacityTrend: CapacityTrend | null;
 }
 
 export interface DatabaseInsights {

@@ -20,6 +20,8 @@ export interface ApiRecorderStatus {
   totalInstances: number;
   busyInstances: number;
   idleInstances: number;
+  minInstances: number;
+  maxInstances: number;
 }
 
 export interface ApiCapacityForecast {
@@ -40,6 +42,19 @@ export interface ApiCallQuality {
   jvbHealthy: boolean;
 }
 
+export interface ApiContainerMetric {
+  name: string;
+  cpuPercent: number;
+  memoryMb: number;
+}
+
+export interface ApiCapacityTrend {
+  cpuAvg7dPercent: number;
+  cpuPeak7dPercent: number;
+  cpuWeekOverWeekChangePercent: number;
+  recordingAtCapacityPercent7d: number | null;
+}
+
 export interface ApiServerStatus {
   name: string;
   hostname: string;
@@ -51,6 +66,8 @@ export interface ApiServerStatus {
   cpuUsagePercent: number;
   memoryUsedPercent: number;
   memoryTotalMb: number;
+  swapUsedPercent: number;
+  swapTotalMb: number;
   diskUsedPercent: number;
   diskTotalGb: number;
   networkRxMbps: number;
@@ -65,6 +82,8 @@ export interface ApiServerStatus {
   memoryHistory: ApiTimeSeriesPoint[];
   callQuality: ApiCallQuality | null;
   diskForecast: ApiCapacityForecast | null;
+  containerMetrics: ApiContainerMetric[];
+  capacityTrend: ApiCapacityTrend | null;
 }
 
 export interface ApiDatabaseInsights {
@@ -117,6 +136,51 @@ export async function getServerLogs(serverName: string, container: string, lines
   return apiFetch<ApiServerLogs>(`/api/monitoring/servers/${encodeURIComponent(serverName)}/logs?${params.toString()}`);
 }
 
+export interface ApiJibriControlResult {
+  server: string;
+  action: string;
+  logTail: string[];
+  performedAtUtc: string;
+}
+
+export interface ApiServiceRestartResult {
+  server: string;
+  container: string;
+  performedAtUtc: string;
+}
+
+/** Runs the Jibri autoscaler immediately instead of waiting out its next cron minute — see IServerControlService. */
+export async function rescaleJibriNow(serverName: string): Promise<ApiJibriControlResult> {
+  return apiFetch<ApiJibriControlResult>(`/api/monitoring/servers/${encodeURIComponent(serverName)}/jibri/rescale`, { method: "POST" });
+}
+
+/** Sets how many Jibri instances stay warm even while idle (clamped server-side to 1-10, and further to the CPU/RAM-derived ceiling). */
+export async function setJibriMinReplicas(serverName: string, minReplicas: number): Promise<ApiJibriControlResult> {
+  return apiFetch<ApiJibriControlResult>(`/api/monitoring/servers/${encodeURIComponent(serverName)}/jibri/min-replicas`, {
+    method: "PUT",
+    body: JSON.stringify({ minReplicas }),
+  });
+}
+
+/** Restarts one configured container on one server — interrupts anything currently using that service. */
+export async function restartService(serverName: string, container: string): Promise<ApiServiceRestartResult> {
+  return apiFetch<ApiServiceRestartResult>(`/api/monitoring/servers/${encodeURIComponent(serverName)}/services/${encodeURIComponent(container)}/restart`, {
+    method: "POST",
+  });
+}
+
+export type HistoryRange = "1h" | "24h" | "7d";
+
+export interface ApiHistoryRange {
+  cpuHistory: ApiTimeSeriesPoint[];
+  memoryHistory: ApiTimeSeriesPoint[];
+}
+
+/** CPU/memory history for one server over an admin-selected window — a longer look than the 1h the main summary already carries. */
+export async function getServerHistory(serverName: string, range: HistoryRange): Promise<ApiHistoryRange> {
+  return apiFetch<ApiHistoryRange>(`/api/monitoring/servers/${encodeURIComponent(serverName)}/history?range=${range}`);
+}
+
 export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): MonitoringSummary {
   return {
     apiHealthy: api.apiHealthy,
@@ -138,6 +202,8 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
       cpuUsagePercent: s.cpuUsagePercent,
       memoryUsedPercent: s.memoryUsedPercent,
       memoryTotalMb: s.memoryTotalMb,
+      swapUsedPercent: s.swapUsedPercent,
+      swapTotalMb: s.swapTotalMb,
       diskUsedPercent: s.diskUsedPercent,
       diskTotalGb: s.diskTotalGb,
       networkRxMbps: s.networkRxMbps,
@@ -152,6 +218,8 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
       memoryHistory: s.memoryHistory,
       callQuality: s.callQuality,
       diskForecast: s.diskForecast,
+      containerMetrics: s.containerMetrics,
+      capacityTrend: s.capacityTrend,
     })),
   };
 }

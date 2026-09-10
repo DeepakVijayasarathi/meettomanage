@@ -1,9 +1,12 @@
 /** Shared display helpers/components between the Server Monitoring list (Monitoring.tsx) and its per-server drill-down (ServerDetail.tsx). */
+import { useState } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
-import { TrendingDown, TrendingUp, type Cpu } from "lucide-react";
+import { Loader2, Minus, Plus, RotateCcw, TrendingDown, TrendingUp, type Cpu } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { CapacityForecast, TimeSeriesPoint } from "@/types";
+import { rescaleJibriNow, setJibriMinReplicas } from "@/api/monitoring";
+import type { CapacityForecast, RecorderStatus, TimeSeriesPoint } from "@/types";
 
 /** Guards every numeric field the API might not send yet on a backend that's a step behind this frontend's deploy. */
 export function num(value: number | undefined | null): number {
@@ -96,6 +99,70 @@ export function ResourceGauge({ icon: Icon, label, percent, detail }: { icon: ty
       </div>
       <Progress value={Math.min(100, percent)} indicatorClassName={TONE_BAR_CLASS[tone]} />
       <p className="mt-1 text-[11px] text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
+/** Rescale-now + min-warm-instances controls for the Jibri fleet — only render this when the caller can manage monitoring and real recorder data exists (never in demo mode, where recorderStatus is deliberately null). */
+export function RecorderControls({ serverName, recorderStatus }: { serverName: string; recorderStatus: RecorderStatus }) {
+  const [busy, setBusy] = useState<"rescale" | "min" | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  async function handleRescale() {
+    setBusy("rescale");
+    setFeedback(null);
+    try {
+      await rescaleJibriNow(serverName);
+      setFeedback("Rescale triggered.");
+    } catch (err) {
+      setFeedback(err instanceof Error ? err.message : "Rescale failed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleMinChange(next: number) {
+    setBusy("min");
+    setFeedback(null);
+    try {
+      await setJibriMinReplicas(serverName, next);
+    } catch (err) {
+      setFeedback(err instanceof Error ? err.message : "Update failed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+      <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={handleRescale} disabled={busy !== null}>
+        {busy === "rescale" ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+        Rescale now
+      </Button>
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        Min warm
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6"
+          disabled={busy !== null || recorderStatus.minInstances <= 1}
+          onClick={() => handleMinChange(recorderStatus.minInstances - 1)}
+        >
+          <Minus className="h-3 w-3" />
+        </Button>
+        <span className="w-4 text-center font-semibold text-foreground">{recorderStatus.minInstances}</span>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6"
+          disabled={busy !== null || recorderStatus.minInstances >= recorderStatus.maxInstances}
+          onClick={() => handleMinChange(recorderStatus.minInstances + 1)}
+        >
+          <Plus className="h-3 w-3" />
+        </Button>
+        <span>/ {recorderStatus.maxInstances} max</span>
+      </div>
+      {feedback && <span className="text-muted-foreground">{feedback}</span>}
     </div>
   );
 }
