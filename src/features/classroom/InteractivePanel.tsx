@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CloudOff, Hand, Loader2, PencilRuler, Sparkles, Star, Trophy, Users } from "lucide-react";
+import { CloudOff, Hand, Loader2, PencilRuler, Presentation, Sparkles, Star, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -10,10 +10,11 @@ import { getLeaderboard, postAward } from "@/api/gamification";
 import { getQuizQuestionsForSession } from "@/api/quizQuestions";
 import { getWhiteboardActivitiesForSession, type ApiWhiteboardActivity } from "@/api/whiteboardActivities";
 import Whiteboard, { type BoardOp } from "./Whiteboard";
+import PresentationViewer, { type PresentationViewerHandle } from "./PresentationViewer";
 import QuizOverlay from "./QuizOverlay";
 import type { LeaderboardEntry, QuizQuestion } from "./classroomData";
 
-type PanelTab = "board" | "quiz" | "stars" | "people";
+type PanelTab = "board" | "slides" | "quiz" | "stars" | "people";
 
 interface InteractivePanelProps {
   sessionId: string;
@@ -75,6 +76,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
 
   const hubRef = useRef<ClassroomHubClient | null>(null);
   const boardHandlers = useRef(new Set<(op: BoardOp) => void>());
+  const presentationRef = useRef<PresentationViewerHandle>(null);
 
   useEffect(() => {
     const client = new ClassroomHubClient(sessionId);
@@ -119,6 +121,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         celebrate: (message) => onCelebrate(message ?? undefined),
         boardAccess: (allowed) => setBoardAllowed(allowed),
         annotation: (opJson) => onAnnotation?.(opJson),
+        slide: (pageIndex) => presentationRef.current?.applyRemoteSlide(pageIndex),
       }, (state, detail) => {
         if (!disposed) {
           setHubState(state);
@@ -319,6 +322,12 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
               <PencilRuler className="h-3.5 w-3.5" /> Board
             </TabsTrigger>
             <TabsTrigger
+              value="slides"
+              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+            >
+              <Presentation className="h-3.5 w-3.5" /> Slides
+            </TabsTrigger>
+            <TabsTrigger
               value="quiz"
               className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
             >
@@ -376,6 +385,15 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
               postAward(sessionId, displayName, "Star");
               hubRef.current?.awardStar();
             }}
+          />
+        </TabsContent>
+
+        <TabsContent value="slides" className="mt-0 min-h-0 flex-1 overflow-hidden bg-brand-navy">
+          <PresentationViewer
+            ref={presentationRef}
+            sessionId={sessionId}
+            canPresent={mode === "teacher"}
+            onSlideChange={(pageIndex) => hubRef.current?.sendSlide(pageIndex)}
           />
         </TabsContent>
 
