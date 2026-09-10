@@ -102,6 +102,8 @@ export default {
           // hue. Shifted into the empty ~40° gap between the blue cluster (admin/student)
           // and the purple cluster (admission) — a distinct indigo, not "another purple."
           management: "#4F46E5",
+          // Kept in sync with ROLE_META.itadmin.hex in src/lib/roles.ts.
+          itadmin: "#0891B2",
         },
         status: {
           scheduled: "#EAB308",

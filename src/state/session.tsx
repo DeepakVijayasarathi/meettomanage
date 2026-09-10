@@ -77,6 +77,7 @@ const NAME_BY_ROLE: Record<Role, string> = {
   student: "Aarav Kapoor",
   coordinator: "Meera Nair",
   management: "Vikram Oberoi",
+  itadmin: "Sanjay Iyer",
 };
 
 export function SessionProvider({ children }: { children: ReactNode }) {

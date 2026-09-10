@@ -6,7 +6,8 @@ export type Role =
   | "parent"
   | "student"
   | "coordinator"
-  | "management";
+  | "management"
+  | "itadmin";
 
 export type UserStatus = "active" | "inactive" | "suspended";
 

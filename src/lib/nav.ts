@@ -41,6 +41,7 @@ import {
   Building2,
   Activity,
   MessageCircleQuestion,
+  Radar,
   type LucideIcon,
 } from "lucide-react";
 
@@ -245,6 +246,70 @@ export const STUDENT_NAV: NavSection[] = [
   { items: [{ label: "My Learning", to: "/student", icon: Sparkles, end: true }] },
 ];
 
+// Demo-mode / loading fallback for the "itadmin" portal — mirrors the *real*, DB-seeded
+// itadmin menu (DatabaseInitializer.EnsureItAdminMenuAsync), not ADMIN_NAV verbatim (that
+// static array predates a couple of backend-only additions and carries one admin-only
+// extra — "Search Users" — this list intentionally matches what IT Admin actually gets).
+export const ITADMIN_NAV: NavSection[] = [
+  { items: [{ label: "Overall Dashboard", to: "/itadmin", icon: LayoutDashboard, end: true }] },
+  {
+    title: "Academics",
+    items: [
+      { label: "Courses", to: "/itadmin/courses", icon: BookOpen },
+      { label: "Departments", to: "/itadmin/departments", icon: Building2 },
+      { label: "Batches", to: "/itadmin/batches", icon: Layers },
+      { label: "Academic Calendar", to: "/itadmin/calendar", icon: CalendarDays },
+      { label: "Sessions", to: "/itadmin/sessions", icon: CalendarClock },
+      { label: "Quiz Bank", to: "/itadmin/quiz-bank", icon: Sparkles },
+      { label: "Activity Bank", to: "/itadmin/activity-bank", icon: PencilRuler },
+    ],
+  },
+  {
+    title: "People",
+    items: [
+      { label: "Users", to: "/itadmin/users", icon: Users },
+      { label: "Roles & Permissions", to: "/itadmin/permissions", icon: ShieldCheck },
+      { label: "Enrollment Review", to: "/itadmin/enrollments", icon: ClipboardCheck },
+      { label: "Store Inquiries", to: "/itadmin/store-inquiries", icon: ShoppingBag },
+      { label: "Leave Management", to: "/itadmin/leave", icon: CalendarOff },
+      { label: "Teacher Availability", to: "/itadmin/availability", icon: CalendarRange },
+    ],
+  },
+  {
+    title: "Content",
+    items: [{ label: "Content & Resources", to: "/itadmin/resources", icon: FolderOpen }],
+  },
+  {
+    title: "Finance",
+    items: [
+      { label: "Billing & Finance", to: "/itadmin/billing", icon: Receipt },
+      { label: "Packages & Subscriptions", to: "/itadmin/packages", icon: CreditCard },
+      { label: "Payment Gateway Mapping", to: "/itadmin/payment-mapping", icon: Landmark },
+      { label: "Teacher Payouts", to: "/itadmin/payouts", icon: Wallet },
+      { label: "Fee Suspension", to: "/itadmin/fee-suspension", icon: Ban },
+    ],
+  },
+  {
+    title: "Insights",
+    items: [
+      { label: "Reports & Analytics", to: "/itadmin/reports", icon: BarChart3 },
+      { label: "Bulk Email", to: "/itadmin/bulk-email", icon: Mail },
+      { label: "Bulk Email History", to: "/itadmin/bulk-email/history", icon: History },
+      { label: "Email Templates", to: "/itadmin/email-templates", icon: FileText },
+      { label: "Progress Reports", to: "/itadmin/progress-reports", icon: ScrollText },
+      { label: "Doubt Chatbot", to: "/itadmin/chatbot", icon: MessageCircleQuestion },
+    ],
+  },
+  {
+    title: "System",
+    items: [
+      { label: "Settings & Branding", to: "/itadmin/settings", icon: Settings },
+      { label: "Server Monitoring", to: "/itadmin/monitoring", icon: Activity },
+      { label: "Class Session Logs", to: "/itadmin/class-logs", icon: Radar },
+    ],
+  },
+];
+
 export const NAV_BY_ROLE: Record<Role, NavSection[]> = {
   admin: ADMIN_NAV,
   teacher: TEACHER_NAV,
@@ -254,4 +319,5 @@ export const NAV_BY_ROLE: Record<Role, NavSection[]> = {
   coordinator: COORDINATOR_NAV,
   management: MANAGEMENT_NAV,
   student: STUDENT_NAV,
+  itadmin: ITADMIN_NAV,
 };

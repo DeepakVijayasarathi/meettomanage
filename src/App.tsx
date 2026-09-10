@@ -47,6 +47,8 @@ const AdminMonitoring = lazy(() => import("@/features/admin/Monitoring"));
 const AdminServerDetail = lazy(() => import("@/features/admin/ServerDetail"));
 const AdminClassSessionLogs = lazy(() => import("@/features/admin/ClassSessionLogs"));
 
+const ItAdminDashboard = lazy(() => import("@/features/itadmin/Dashboard"));
+
 const TeacherDashboard = lazy(() => import("@/features/teacher/Dashboard"));
 const TeacherMyClasses = lazy(() => import("@/features/teacher/MyClasses"));
 const TeacherAttendance = lazy(() => import("@/features/teacher/Attendance"));
@@ -180,6 +182,46 @@ export default function App() {
 
             <Route path="/admin" element={<RequireAuth role="admin"><AppShell role="admin"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="permissions" element={<AdminPermissions />} />
+              <Route path="courses" element={<AdminCourses />} />
+              <Route path="departments" element={<AdminDepartments />} />
+              <Route path="quiz-bank" element={<AdminQuizQuestions />} />
+              <Route path="activity-bank" element={<AdminActivityBank />} />
+              <Route path="batches" element={<AdminBatches />} />
+              <Route path="calendar" element={<AdminAcademicCalendar />} />
+              <Route path="sessions" element={<AdminSessions />} />
+              <Route path="resources" element={<AdminResources />} />
+              <Route path="billing" element={<AdminBilling />} />
+              <Route path="packages" element={<AdminPackages />} />
+              <Route path="payment-mapping" element={<AdminPaymentMapping />} />
+              <Route path="payouts" element={<AdminPayouts />} />
+              <Route path="fee-suspension" element={<AdminFeeSuspension />} />
+              <Route path="reports" element={<AdminReports />} />
+              <Route path="bulk-email" element={<AdminBulkEmail />} />
+              <Route path="bulk-email/history" element={<AdminBulkEmailHistory />} />
+              <Route path="email-templates" element={<AdminEmailTemplates />} />
+              <Route path="progress-reports" element={<AdminProgressReports />} />
+              <Route path="chatbot" element={<AdminChatbot />} />
+              <Route path="enrollments" element={<AdminEnrollments />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
+              <Route path="store-inquiries" element={<AdminStoreInquiries />} />
+              <Route path="leave" element={<AdminLeave />} />
+              <Route path="availability" element={<AdminAvailability />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="monitoring" element={<AdminMonitoring />} />
+              <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
+              <Route path="class-logs" element={<AdminClassSessionLogs />} />
+            </Route>
+
+            {/* IT Admin: a Sub Admin persona (RoleDefinition.DefaultRoute = "/itadmin"), not a
+                separate backend role — reuses every one of the Admin portal's own page
+                components (same idiom as /coordinator, /admission, /management below), so
+                whatever modules the role is granted determines what actually shows, same as
+                any other delegated portal. Only the index route differs — a distinct "Overall
+                Dashboard" instead of AdminDashboard. */}
+            <Route path="/itadmin" element={<RequireAuth role="itadmin"><AppShell role="itadmin"><Outlet /></AppShell></RequireAuth>}>
+              <Route index element={<ItAdminDashboard />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="permissions" element={<AdminPermissions />} />
               <Route path="courses" element={<AdminCourses />} />
