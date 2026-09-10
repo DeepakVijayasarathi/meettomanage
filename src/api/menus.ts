@@ -29,6 +29,7 @@ import {
   Mail,
   PencilRuler,
   Plug,
+  Radar,
   Receipt,
   ScrollText,
   Settings,
@@ -119,6 +120,7 @@ export const MENU_ICONS: Record<string, LucideIcon> = {
   Sparkles,
   Building2,
   MessageCircleQuestion,
+  Radar,
 };
 
 export function resolveMenuIcon(name: string): LucideIcon {
