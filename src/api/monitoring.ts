@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import type { MonitoringSummary } from "@/types";
+import type { LiveClassSession, MonitoringSummary } from "@/types";
 
 export interface ApiMonitoredService {
   name: string;
@@ -121,6 +121,38 @@ export interface ApiMonitoringSummary {
 
 export async function getMonitoringSummary(): Promise<ApiMonitoringSummary> {
   return apiFetch<ApiMonitoringSummary>("/api/monitoring/summary");
+}
+
+export interface ApiLiveParticipant {
+  userId: string;
+  name: string;
+  role: string;
+  joinedAtUtc: string;
+}
+
+export interface ApiLiveClassSession {
+  sessionId: string;
+  courseName: string;
+  batchName: string | null;
+  teacherName: string;
+  startedAtUtc: string | null;
+  participants: ApiLiveParticipant[];
+}
+
+/** Every live class session with a connected participant right now, and who's in it — admin-only visibility into other users' real-time presence. */
+export async function getLiveUsers(): Promise<ApiLiveClassSession[]> {
+  return apiFetch<ApiLiveClassSession[]>("/api/monitoring/live-users");
+}
+
+export function toFrontendLiveUsers(api: ApiLiveClassSession[]): LiveClassSession[] {
+  return api.map((s) => ({
+    sessionId: s.sessionId,
+    courseName: s.courseName,
+    batchName: s.batchName,
+    teacherName: s.teacherName,
+    startedAtUtc: s.startedAtUtc,
+    participants: s.participants.map((p) => ({ userId: p.userId, name: p.name, role: p.role, joinedAtUtc: p.joinedAtUtc })),
+  }));
 }
 
 export interface ApiServerLogs {

@@ -1,4 +1,4 @@
-import type { MonitoringSummary, TimeSeriesPoint } from "@/types";
+import type { LiveClassSession, MonitoringSummary, TimeSeriesPoint } from "@/types";
 
 /** Deterministic, believable-looking last-hour trend — a gentle wave around a baseline, not noise. */
 function mockHistory(baseline: number, amplitude: number): TimeSeriesPoint[] {
@@ -128,3 +128,35 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
     },
   ],
 };
+
+/** Minutes-ago relative to real "now" (unlike mockHistory's fixed anchor) so "started Xm ago" always reads as a plausible just-happened join, not a stale demo artifact. */
+function minutesAgo(minutes: number): string {
+  return new Date(Date.now() - minutes * 60_000).toISOString();
+}
+
+/** Demo-mode snapshot for the "who's live right now" admin view. */
+export const LIVE_USERS: LiveClassSession[] = [
+  {
+    sessionId: "demo-session-1",
+    courseName: "Phonics Level 2",
+    batchName: "Batch A · Tue/Thu",
+    teacherName: "Ananya Rao",
+    startedAtUtc: minutesAgo(14),
+    participants: [
+      { userId: "u-teacher-1", name: "Ananya Rao", role: "teacher", joinedAtUtc: minutesAgo(14) },
+      { userId: "u-student-1", name: "Rehan Sheikh", role: "student", joinedAtUtc: minutesAgo(13) },
+      { userId: "u-student-2", name: "Meher Kaur", role: "student", joinedAtUtc: minutesAgo(12) },
+    ],
+  },
+  {
+    sessionId: "demo-session-2",
+    courseName: "Maths Foundations",
+    batchName: null,
+    teacherName: "Vikram Nair",
+    startedAtUtc: minutesAgo(3),
+    participants: [
+      { userId: "u-teacher-2", name: "Vikram Nair", role: "teacher", joinedAtUtc: minutesAgo(3) },
+      { userId: "u-student-3", name: "Ishaan Verma", role: "student", joinedAtUtc: minutesAgo(2) },
+    ],
+  },
+];

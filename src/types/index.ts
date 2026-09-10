@@ -304,6 +304,25 @@ export interface CapacityForecast {
   trendGbPerDay: number;
 }
 
+/** One connected user in a live class, for the admin "who's live right now" view. */
+export interface LiveParticipant {
+  userId: string;
+  name: string;
+  role: string;
+  joinedAtUtc: string;
+}
+
+/** One live class session with everyone currently connected to it. */
+export interface LiveClassSession {
+  sessionId: string;
+  courseName: string;
+  /** Null for a demo session, which has no batch. */
+  batchName: string | null;
+  teacherName: string;
+  startedAtUtc: string | null;
+  participants: LiveParticipant[];
+}
+
 /** A point-in-time `docker stats` sample for one container — not a counter, so it's "what is this using right now," refreshed every minute. */
 export interface ContainerMetric {
   name: string;

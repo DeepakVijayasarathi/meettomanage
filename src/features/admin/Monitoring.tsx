@@ -11,6 +11,7 @@ import {
   Disc,
   HardDrive,
   Lock,
+  LogIn,
   MemoryStick,
   PowerOff,
   RefreshCw,
@@ -35,11 +36,11 @@ import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { getMonitoringSummary, toFrontendMonitoringSummary, restartService } from "@/api/monitoring";
-import { MONITORING_SUMMARY } from "@/data/monitoring";
+import { getMonitoringSummary, getLiveUsers, toFrontendLiveUsers, toFrontendMonitoringSummary, restartService } from "@/api/monitoring";
+import { LIVE_USERS, MONITORING_SUMMARY } from "@/data/monitoring";
 import { MonitoringHubClient } from "@/lib/monitoringHub";
 import { useSession } from "@/state/session";
-import type { DatabaseInsights, MonitoringAlert, MonitoringSummary, ServerStatus } from "@/types";
+import type { DatabaseInsights, LiveClassSession, MonitoringAlert, MonitoringSummary, ServerStatus } from "@/types";
 import {
   CapacityForecastLine,
   num,
@@ -387,6 +388,70 @@ function ServerCard({ server }: { server: ServerStatus }) {
   );
 }
 
+const ROLE_BADGE_VARIANT: Record<string, "default" | "muted"> = { teacher: "default", student: "muted" };
+
+/** "5m ago" / "1h 12m ago" — how long a participant has been connected. */
+function formatJoinedAgo(iso: string): string {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m ago`;
+}
+
+/** Admin-only "who's live right now" — real user identity in real-time classroom sessions, so this must never render for a role below Admin's SystemMonitoring:View grant. */
+function LiveUsersCard({ sessions, loading }: { sessions: LiveClassSession[]; loading: boolean }) {
+  if (loading) {
+    return (
+      <Card className="p-5">
+        <Skeleton className="mb-4 h-4 w-40" />
+        <Skeleton className="h-16 w-full rounded-lg" />
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-5">
+      <CardHeader className="p-0 pb-4">
+        <CardTitle className="text-base">Live Right Now</CardTitle>
+        <CardDescription>Every user currently connected to a live class, by session.</CardDescription>
+      </CardHeader>
+      {sessions.length === 0 ? (
+        <EmptyState icon={LogIn} title="No one is live" description="No class currently has a connected participant." />
+      ) : (
+        <div className="space-y-3">
+          {sessions.map((session) => (
+            <div key={session.sessionId} className="rounded-lg border border-border p-3.5">
+              <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {session.courseName}
+                    {session.batchName ? ` · ${session.batchName}` : ""}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {session.teacherName}
+                    {session.startedAtUtc ? ` · started ${formatJoinedAgo(session.startedAtUtc)}` : ""}
+                  </p>
+                </div>
+                <Badge variant="success" className="gap-1.5">
+                  <Users className="h-3 w-3" /> {session.participants.length}
+                </Badge>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {session.participants.map((p) => (
+                  <Badge key={p.userId} variant={ROLE_BADGE_VARIANT[p.role] ?? "muted"} className="gap-1.5 text-[11px]" title={`Joined ${formatJoinedAgo(p.joinedAtUtc)}`}>
+                    {p.name} <span className="opacity-70">· {p.role}</span>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function DatabaseInsightsCard({ insights, loading }: { insights: DatabaseInsights | null; loading: boolean }) {
   if (loading) {
     return (
@@ -482,10 +547,17 @@ function ServerCardSkeleton() {
 
 export default function AdminMonitoring() {
   const usingApi = apiEnabled();
+  const { hasPermission } = useSession();
+  const canViewLiveUsers = hasPermission("SystemMonitoring", "View");
   const { data: restSummary, loading, error, reload } = useApiData(
     () => getMonitoringSummary().then(toFrontendMonitoringSummary),
     MONITORING_SUMMARY,
     EMPTY_SUMMARY
+  );
+  const { data: liveUsers, loading: liveUsersLoading, reload: reloadLiveUsers } = useApiData(
+    () => getLiveUsers().then(toFrontendLiveUsers),
+    LIVE_USERS,
+    []
   );
   const [liveSummary, setLiveSummary] = useState<MonitoringSummary | null>(null);
   const [hubConnected, setHubConnected] = useState(false);
@@ -512,6 +584,14 @@ export default function AdminMonitoring() {
     const interval = setInterval(reload, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [usingApi, hubConnected, reload]);
+
+  // Live-users has no MonitoringHub push of its own — plain polling, only for a caller who
+  // can actually see it, since it's other users' real-time presence.
+  useEffect(() => {
+    if (!usingApi || !canViewLiveUsers) return;
+    const interval = setInterval(reloadLiveUsers, REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [usingApi, canViewLiveUsers, reloadLiveUsers]);
 
   const totalConferences = summary.servers.reduce((sum, s) => sum + (s.liveCalls?.activeConferences ?? 0), 0);
   const totalParticipants = summary.servers.reduce((sum, s) => sum + (s.liveCalls?.totalParticipants ?? 0), 0);
@@ -586,6 +666,12 @@ export default function AdminMonitoring() {
           error={error}
         />
       </div>
+
+      {canViewLiveUsers && (
+        <div className="mt-6">
+          <LiveUsersCard sessions={liveUsers} loading={liveUsersLoading && liveUsers.length === 0} />
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
         {loading && summary.servers.length === 0 ? (
