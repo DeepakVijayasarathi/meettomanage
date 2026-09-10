@@ -190,6 +190,7 @@ export default function JitsiLive({
   // and stays true if the request fails — so a slow/offline check never silently disables
   // recording for a teacher who already relies on it.
   const autoRecordRef = useRef(true);
+  const defaultLobbyRef = useRef(true);
   // The init effect below only depends on [room, mode] (see its own comment on why), so
   // anything it closes over from render — including userName — would otherwise be frozen
   // at whatever it was on first mount. flushMedia posts engagement (talk-time, camera-on)
@@ -210,7 +211,10 @@ export default function JitsiLive({
     let cancelled = false;
     getClassroomSettings()
       .then((settings) => {
-        if (!cancelled) autoRecordRef.current = settings.autoRecordEnabled;
+        if (!cancelled) {
+          autoRecordRef.current = settings.autoRecordEnabled;
+          defaultLobbyRef.current = settings.defaultLobbyEnabled;
+        }
       })
       .catch(() => undefined);
     return () => {
@@ -428,6 +432,16 @@ export default function JitsiLive({
         media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
         // A small class reads better as a grid of faces than one spotlighted speaker.
         api?.executeCommand("setTileView", true);
+        // Waiting room on by default (admin-configurable, Settings → Integrations →
+        // Jitsi Meet "defaultLobby") — a student joining before the teacher shouldn't land
+        // straight into an unattended room. Only the teacher's own join actually enables the
+        // room's lobby (toggleLobby is a moderator action); a student who arrives before the
+        // teacher already can't get further than Jitsi's own prejoin/lobby screen regardless,
+        // and re-toggling it here on the student's side would just flicker the same state.
+        if (mode === "teacher" && defaultLobbyRef.current) {
+          api?.executeCommand("toggleLobby", true);
+          setLobbyEnabled(true);
+        }
         // Auto-apply our own on-brand background as the teacher's starting camera
         // background — dynamicBrandingUrl (above) only adds it to the picker as an
         // available *choice*; this is what actually makes it the default someone sees

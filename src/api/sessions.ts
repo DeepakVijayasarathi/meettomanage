@@ -140,6 +140,10 @@ export async function deleteRecording(sessionId: string, recordingId: string): P
 export interface ApiClassroomSettings {
   domain: string;
   autoRecordEnabled: boolean;
+  /** Admin-managed via Settings → Integrations → Jitsi Meet ("defaultLobby") — on means the
+   *  teacher's own join automatically turns on the waiting room, so a student can't land
+   *  straight into an unattended room before the teacher's there. */
+  defaultLobbyEnabled: boolean;
 }
 
 /**

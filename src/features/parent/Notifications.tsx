@@ -1,14 +1,28 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, AlertTriangle, BellOff, CheckCheck, CheckCircle2, Info, Loader2, MessageSquare, Send, type LucideIcon } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  BellOff,
+  CheckCheck,
+  CheckCircle2,
+  FileText,
+  Info,
+  Loader2,
+  MessageSquare,
+  ScrollText,
+  Send,
+  type LucideIcon,
+} from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import {
   getMyNotifications,
@@ -18,6 +32,7 @@ import {
   type ApiNotification,
 } from "@/api/notifications";
 import { replyToBulkEmail } from "@/api/reports";
+import { listMyProgressReports, progressReportPeriodLabel, type ApiProgressReport } from "@/api/progressReports";
 import type { NotificationItem } from "@/types";
 import { TODAY_ISO, YESTERDAY_ISO } from "./utils";
 
@@ -183,6 +198,35 @@ export default function ParentNotifications() {
   const [version, setVersion] = useState(0);
   const unreadCount = items.filter((n) => !n.read).length;
 
+  // The page has always been titled "Notifications & Reports," but nothing ever actually
+  // fetched/rendered a report here — a sent progress report only ever reached a parent as a
+  // one-time email (ProgressReportService.SendAsync), with no way to look at it again in the
+  // app afterward even though the backend's own GET /api/progress-reports/mine (parent-scoped,
+  // Sent-only) has existed the whole time with no caller anywhere in the frontend.
+  const [reports, setReports] = useState<ApiProgressReport[]>([]);
+  const [reportsLoaded, setReportsLoaded] = useState(!usingApi);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  const [openReportId, setOpenReportId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!usingApi) return;
+    let cancelled = false;
+    listMyProgressReports()
+      .then((list) => {
+        if (cancelled) return;
+        setReports(list);
+        setReportsLoaded(true);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setReportsError(err instanceof Error ? err.message : "Request failed");
+        setReportsLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [usingApi]);
+
   // API mode: the parent's real feed (attendance, payments, reminders, reports),
   // shared with the topbar bell. The mock list is demo-only.
   useEffect(() => {
@@ -274,6 +318,9 @@ export default function ParentNotifications() {
         <TabsList>
           <TabsTrigger value="all">{loaded ? `All (${items.length})` : <Skeleton className="h-4 w-14" />}</TabsTrigger>
           <TabsTrigger value="unread">{loaded ? `Unread (${unreadCount})` : <Skeleton className="h-4 w-16" />}</TabsTrigger>
+          {usingApi && (
+            <TabsTrigger value="reports">{reportsLoaded ? `Reports (${reports.length})` : <Skeleton className="h-4 w-20" />}</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="all">
@@ -294,6 +341,65 @@ export default function ParentNotifications() {
             <NotificationSkeletonList />
           )}
         </TabsContent>
+        {usingApi && (
+          <TabsContent value="reports">
+            {reportsError && (
+              <InlineAlert variant="warning" className="mb-4">
+                Could not load reports ({reportsError}).
+              </InlineAlert>
+            )}
+            {!reportsLoaded ? (
+              <div className="flex flex-col gap-2">
+                {[0, 1].map((i) => (
+                  <div key={i} className="rounded-xl border border-border bg-card px-4 py-3">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="mt-2 h-3 w-1/4" />
+                  </div>
+                ))}
+              </div>
+            ) : reports.length === 0 ? (
+              <EmptyState
+                icon={ScrollText}
+                title="No reports yet"
+                description="A written progress report appears here once your child's teacher sends one."
+              />
+            ) : (
+              <div className="flex flex-col gap-2">
+                {reports.map((report) => {
+                  const isOpen = openReportId === report.id;
+                  return (
+                    <Card key={report.id}>
+                      <button
+                        type="button"
+                        className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() => setOpenReportId(isOpen ? null : report.id)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <FileText className="h-[18px] w-[18px]" />
+                          </span>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {report.childName} — {progressReportPeriodLabel(report)}
+                            </p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {report.sentAtUtc ? `Sent ${formatDate(report.sentAtUtc, "long")}` : "Sent"}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                      {isOpen && (
+                        <CardContent className="border-t border-border/60 pt-3">
+                          <p className="whitespace-pre-wrap text-sm text-foreground">{report.content}</p>
+                        </CardContent>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
