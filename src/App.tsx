@@ -45,6 +45,7 @@ const AdminAvailability = lazy(() => import("@/features/admin/Availability"));
 const AdminSettings = lazy(() => import("@/features/admin/Settings"));
 const AdminMonitoring = lazy(() => import("@/features/admin/Monitoring"));
 const AdminServerDetail = lazy(() => import("@/features/admin/ServerDetail"));
+const AdminClassSessionLogs = lazy(() => import("@/features/admin/ClassSessionLogs"));
 
 const TeacherDashboard = lazy(() => import("@/features/teacher/Dashboard"));
 const TeacherMyClasses = lazy(() => import("@/features/teacher/MyClasses"));
@@ -71,6 +72,7 @@ const PersonalMeetingRoom = lazy(() => import("@/features/classroom/PersonalMeet
 const SubAdminDashboard = lazy(() => import("@/features/subadmin/Dashboard"));
 const SubAdminPermissions = lazy(() => import("@/features/subadmin/Permissions"));
 const SubAdminIntegrations = lazy(() => import("@/features/subadmin/Integrations"));
+const SubAdminClassSessionLogs = lazy(() => import("@/features/subadmin/ClassSessionLogs"));
 const SubAdminBatches = lazy(() => import("@/features/subadmin/Batches"));
 const SubAdminSessions = lazy(() => import("@/features/subadmin/Sessions"));
 const SubAdminPayouts = lazy(() => import("@/features/subadmin/Payouts"));
@@ -207,6 +209,7 @@ export default function App() {
               <Route path="settings" element={<AdminSettings />} />
               <Route path="monitoring" element={<AdminMonitoring />} />
               <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
+              <Route path="class-logs" element={<AdminClassSessionLogs />} />
             </Route>
 
             <Route path="/teacher" element={<RequireAuth role="teacher"><AppShell role="teacher"><Outlet /></AppShell></RequireAuth>}>
@@ -247,6 +250,7 @@ export default function App() {
               <Route index element={<SubAdminDashboard />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
+              <Route path="class-logs" element={<SubAdminClassSessionLogs />} />
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
@@ -296,6 +300,7 @@ export default function App() {
               <Route path="availability" element={<CoordinatorAvailability />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
+              <Route path="class-logs" element={<SubAdminClassSessionLogs />} />
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
@@ -327,6 +332,7 @@ export default function App() {
               <Route path="availability" element={<CoordinatorAvailability />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
+              <Route path="class-logs" element={<SubAdminClassSessionLogs />} />
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
@@ -387,6 +393,7 @@ export default function App() {
               <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
+              <Route path="class-logs" element={<SubAdminClassSessionLogs />} />
               <Route path="calendar" element={<CoordinatorCalendar />} />
               <Route path="availability" element={<CoordinatorAvailability />} />
               <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
