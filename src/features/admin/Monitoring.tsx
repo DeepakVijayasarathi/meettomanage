@@ -6,6 +6,8 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Cpu,
   Database,
@@ -511,8 +513,44 @@ function formatClockTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
+// Sessions in one of these statuses are still relevant to a live-monitoring view (haven't
+// happened yet, or are happening right now); every other status has already concluded for
+// the day and is collapsed behind the "passed" toggle below so a busy day's finished/no-show/
+// cancelled classes don't bury what actually still needs eyes on it.
+const UNRESOLVED_SESSION_STATUSES = new Set(["Scheduled", "InProgress"]);
+
+function SessionRow({ s }: { s: SessionHistoryEntry }) {
+  return (
+    <TableRow>
+      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+        {formatClockTime(s.scheduledStartAtUtc)} – {formatClockTime(s.scheduledEndAtUtc)}
+      </TableCell>
+      <TableCell className="text-sm font-medium text-foreground">
+        {s.courseName}
+        {s.batchName ? ` · ${s.batchName}` : ""}
+      </TableCell>
+      <TableCell className="text-sm text-muted-foreground">{s.teacherName}</TableCell>
+      <TableCell>
+        <Badge variant={SESSION_STATUS_VARIANT[s.status] ?? "muted"} className="text-[11px]">
+          {s.status}
+        </Badge>
+      </TableCell>
+      <TableCell
+        className={cn(
+          "text-right text-sm font-semibold",
+          s.status === "Completed" && s.attendedCount < s.expectedCount ? "text-warning-foreground" : "text-foreground"
+        )}
+      >
+        {s.attendedCount} / {s.expectedCount}
+      </TableCell>
+    </TableRow>
+  );
+}
+
 /** Today's full session timeline (completed, live, and upcoming) — distinct from LiveUsersCard's live-only snapshot, and durable (backed by SessionAttendance) rather than in-memory presence. */
 function TodaySessionsCard({ sessions, loading }: { sessions: SessionHistoryEntry[]; loading: boolean }) {
+  const [showPassed, setShowPassed] = useState(false);
+
   if (loading) {
     return (
       <Card className="p-5">
@@ -521,6 +559,9 @@ function TodaySessionsCard({ sessions, loading }: { sessions: SessionHistoryEntr
       </Card>
     );
   }
+
+  const unresolved = sessions.filter((s) => UNRESOLVED_SESSION_STATUSES.has(s.status));
+  const passed = sessions.filter((s) => !UNRESOLVED_SESSION_STATUSES.has(s.status));
 
   return (
     <Card className="p-5">
@@ -531,44 +572,48 @@ function TodaySessionsCard({ sessions, loading }: { sessions: SessionHistoryEntr
       {sessions.length === 0 ? (
         <EmptyState icon={Clock} title="No sessions today" description="Nothing scheduled for today." />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>Time</TableHead>
-              <TableHead>Class</TableHead>
-              <TableHead>Teacher</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Attendance</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sessions.map((s) => (
-              <TableRow key={s.sessionId}>
-                <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                  {formatClockTime(s.scheduledStartAtUtc)} – {formatClockTime(s.scheduledEndAtUtc)}
-                </TableCell>
-                <TableCell className="text-sm font-medium text-foreground">
-                  {s.courseName}
-                  {s.batchName ? ` · ${s.batchName}` : ""}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{s.teacherName}</TableCell>
-                <TableCell>
-                  <Badge variant={SESSION_STATUS_VARIANT[s.status] ?? "muted"} className="text-[11px]">
-                    {s.status}
-                  </Badge>
-                </TableCell>
-                <TableCell
-                  className={cn(
-                    "text-right text-sm font-semibold",
-                    s.status === "Completed" && s.attendedCount < s.expectedCount ? "text-warning-foreground" : "text-foreground"
-                  )}
-                >
-                  {s.attendedCount} / {s.expectedCount}
-                </TableCell>
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Time</TableHead>
+                <TableHead>Class</TableHead>
+                <TableHead>Teacher</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Attendance</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {unresolved.map((s) => (
+                <SessionRow key={s.sessionId} s={s} />
+              ))}
+              {showPassed && passed.map((s) => <SessionRow key={s.sessionId} s={s} />)}
+            </TableBody>
+          </Table>
+          {unresolved.length === 0 && passed.length > 0 && !showPassed && (
+            <EmptyState icon={Clock} title="Nothing left today" description={`All ${passed.length} of today's sessions have already concluded.`} />
+          )}
+          {passed.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 gap-1.5 text-muted-foreground"
+              onClick={() => setShowPassed((v) => !v)}
+            >
+              {showPassed ? (
+                <>
+                  <ChevronUp className="h-3.5 w-3.5" />
+                  Hide {passed.length} passed session{passed.length === 1 ? "" : "s"}
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  Show {passed.length} passed session{passed.length === 1 ? "" : "s"}
+                </>
+              )}
+            </Button>
+          )}
+        </>
       )}
     </Card>
   );
