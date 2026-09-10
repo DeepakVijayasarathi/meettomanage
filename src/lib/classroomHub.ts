@@ -23,6 +23,7 @@ export interface ClassroomHubEvents {
   roster: (participants: HubParticipant[]) => void;
   board: (opJson: string) => void;
   annotation: (opJson: string) => void;
+  slide: (pageIndex: number) => void;
   chat: (author: string, text: string) => void;
   quizStarted: (questionIndex: number) => void;
   quizEnded: () => void;
@@ -95,6 +96,7 @@ export class ClassroomHubClient {
     if (handlers.roster) connection.on("Roster", handlers.roster);
     if (handlers.board) connection.on("Board", handlers.board);
     if (handlers.annotation) connection.on("Annotation", handlers.annotation);
+    if (handlers.slide) connection.on("Slide", handlers.slide);
     if (handlers.chat) connection.on("Chat", handlers.chat);
     if (handlers.quizStarted) connection.on("QuizStarted", handlers.quizStarted);
     if (handlers.quizEnded) connection.on("QuizEnded", handlers.quizEnded);
@@ -175,6 +177,12 @@ export class ClassroomHubClient {
    *  shared screen) — the server enforces the teacher-only rule and never keeps history for it. */
   sendAnnotation(opJson: string): void {
     this.send("SendAnnotation", opJson);
+  }
+
+  /** Teacher-only: broadcasts the current slide of a presented deck (Next/Previous) — the
+   *  server remembers it so a student who joins mid-class lands on the right page. */
+  sendSlide(pageIndex: number): void {
+    this.send("SendSlide", pageIndex);
   }
 
   sendChat(text: string): void {

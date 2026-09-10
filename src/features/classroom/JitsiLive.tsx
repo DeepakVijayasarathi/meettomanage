@@ -599,7 +599,12 @@ export default function JitsiLive({
   }, [jitsiReady, userName]);
 
   // Fires once, the first time a check lands at/after the scheduled end — not on every
-  // poll — so it's one toast + one persistent banner, not a repeat every 30 seconds.
+  // poll — so it's one modal prompt, not a repeat every 30 seconds. Deliberately a choice
+  // (Continue Class / Close Class), not just an advisory toast: the call was never actually
+  // going to be cut off (see the timeUpFiredRef/scheduledEndRef setup above), but a passive
+  // dismiss-only banner left the teacher to figure out on their own that continuing needed
+  // no action at all — this makes "keep teaching" as explicit and intentional a choice as
+  // ending the class.
   useEffect(() => {
     if (mode !== "teacher" || !interactive) return;
     const check = setInterval(() => {
@@ -607,14 +612,10 @@ export default function JitsiLive({
       if (Date.now() >= new Date(scheduledEndRef.current).getTime()) {
         timeUpFiredRef.current = true;
         setTimeUpAlerted(true);
-        toast({
-          title: "Scheduled class time is up",
-          description: "The call stays open — end it whenever you're actually done.",
-        });
       }
     }, 30_000);
     return () => clearInterval(check);
-  }, [mode, interactive, toast]);
+  }, [mode, interactive]);
 
   return (
     <div className="flex h-screen flex-col bg-brand-navyDark bg-[radial-gradient(circle_at_50%_0%,rgba(124,92,252,0.10),transparent_60%)]">
@@ -771,24 +772,52 @@ export default function JitsiLive({
           onConfirm={() => navigate(-1)}
         />
       )}
-      {/* Teacher-only, dismissible: makes a silent auto-recording failure (most commonly
-          "no Jibri pool provisioned on the video server" — see docs/JITSI_ARCHITECTURE.md)
-          visible instead of the teacher just never noticing the REC badge never appeared. */}
-      {mode === "teacher" && timeUpAlerted && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
-          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5" />
-          <p className="flex-1">
-            This class's scheduled time is up. The call stays open as long as you need — end it from the Leave button whenever you're actually done.
-          </p>
-          <button
-            type="button"
-            onClick={() => setTimeUpAlerted(false)}
-            className="shrink-0 font-semibold underline decoration-brand-amber/50 underline-offset-2 hover:decoration-brand-amber"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+      {/* Teacher-only, fires once at the scheduled end (see the effect above): the call was
+          never actually going to be cut off (no duration cap on this self-hosted Jitsi
+          deployment — see docs/LONG_DURATION_SESSIONS.md), so this is a deliberate choice
+          rather than a passive "time's up" notice. "Close Class" reuses completeAndLeave —
+          the exact same payout/summary-email/navigate-away logic the header's own "End the
+          class" button already runs. "Continue Class" just dismisses; nothing about the
+          call changes either way. */}
+      <Dialog open={mode === "teacher" && timeUpAlerted} onOpenChange={setTimeUpAlerted}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <span className="mb-1 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-amber/15 text-brand-amber">
+              <AlertTriangle className="h-5 w-5" />
+            </span>
+            <DialogTitle>Scheduled class time is up</DialogTitle>
+            <DialogDescription>
+              Keep teaching for as long as you need, or close the class now if you're done.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="secondary"
+              className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal rounded-xl px-3.5 py-3 text-left"
+              onClick={() => setTimeUpAlerted(false)}
+            >
+              <span className="flex flex-col gap-0.5">
+                <span className="font-semibold">Continue Class</span>
+                <span className="text-xs font-normal leading-snug opacity-80">The call stays open exactly as it is — nothing is restricted.</span>
+              </span>
+            </Button>
+            <Button
+              variant="secondary"
+              className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal rounded-xl border border-success/30 bg-success/15 px-3.5 py-3 text-left text-success hover:bg-success/25"
+              onClick={() => {
+                setTimeUpAlerted(false);
+                completeAndLeave();
+              }}
+            >
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              <span className="flex flex-col gap-0.5">
+                <span className="font-semibold">Close Class</span>
+                <span className="text-xs font-normal leading-snug opacity-80">Marks it delivered, calculates your payout, emails today's summary to parents. Can't be undone.</span>
+              </span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {mode === "teacher" && recordingIssue && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
           <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5" />

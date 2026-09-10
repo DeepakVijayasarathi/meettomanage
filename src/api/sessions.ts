@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getAccessToken, ApiError } from "@/lib/api";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import type { ClassSession, SessionStatus } from "@/types";
 
@@ -242,4 +242,40 @@ export async function cancelSession(id: string, reason: string): Promise<ApiClas
     method: "POST",
     body: JSON.stringify({ reason }),
   });
+}
+
+export interface ApiSessionPresentation {
+  id: string;
+  classSessionId: string;
+  originalFileName: string;
+  createdAtUtc: string;
+}
+
+/** Teacher-only: uploads (replacing any prior one) the PDF deck to present live in this class. */
+export async function uploadPresentation(sessionId: string, file: File): Promise<ApiSessionPresentation> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiFetch<ApiSessionPresentation>(`/api/sessions/${sessionId}/presentation`, { method: "POST", body: form });
+}
+
+/** Whether a deck has been uploaded for this session yet — null if none. */
+export async function getPresentation(sessionId: string): Promise<ApiSessionPresentation | null> {
+  return apiFetch<ApiSessionPresentation | null>(`/api/sessions/${sessionId}/presentation`);
+}
+
+/**
+ * The uploaded deck's raw bytes, for pdf.js's `getDocument({ data })` — fetched with the auth
+ * token directly (not through apiFetch, which always expects/parses a JSON body) since this
+ * is one binary PDF, not something to route through the JSON request/response pipeline.
+ */
+export async function fetchPresentationFile(sessionId: string): Promise<ArrayBuffer> {
+  const token = getAccessToken();
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/presentation/file`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, response.statusText);
+  }
+  return response.arrayBuffer();
 }
