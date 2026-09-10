@@ -6,7 +6,27 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { fetchPresentationFile, getPresentation, uploadPresentation } from "@/api/sessions";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+/**
+ * pdf.js's worker is an ES module (.mjs), which browsers refuse to run unless the server sends
+ * a JS-family Content-Type — some static hosts (this one included, confirmed live) serve every
+ * unrecognized extension as application/octet-stream, since .mjs isn't in their default MIME
+ * map. That's a hosting config fix outside this app's reach, so instead of depending on the
+ * server's headers at all, the worker's bytes are fetched once as plain text and re-wrapped in
+ * a same-origin blob: URL with an explicit correct type — the browser only cares about the type
+ * *this* code hands it, not what the original request's response header said.
+ */
+let workerReadyPromise: Promise<void> | null = null;
+function ensureWorkerReady(): Promise<void> {
+  if (!workerReadyPromise) {
+    workerReadyPromise = fetch(pdfjsWorker)
+      .then((res) => res.text())
+      .then((code) => {
+        const blob = new Blob([code], { type: "text/javascript" });
+        pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+      });
+  }
+  return workerReadyPromise;
+}
 
 export interface PresentationViewerHandle {
   /** Applies a slide index that arrived from the hub (a classmate's click, or the replay a
@@ -49,6 +69,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
   const pendingRemotePage = useRef<number | null>(null);
 
   const loadDeckBytes = useCallback(async (bytes: ArrayBuffer, name: string) => {
+    await ensureWorkerReady();
     const doc = await pdfjsLib.getDocument({ data: bytes }).promise;
     docRef.current = doc;
     setPageCount(doc.numPages);
