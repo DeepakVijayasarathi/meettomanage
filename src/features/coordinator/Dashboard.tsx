@@ -36,13 +36,20 @@ const PLACEHOLDER_STATUSES: SessionStatus[] = ["holiday", "leave"];
 
 
 export default function CoordinatorDashboard() {
-  const { userName } = useSession();
+  const { userName, hasPermission } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
   const base = usePortalBase();
 
   const usingApi = apiEnabled();
+  // GET /api/leave-requests requires LeaveManagement:View server-side. Same gate as
+  // coordinator/Availability.tsx and Calendar.tsx for the identical call — this dashboard
+  // widget was the one place still calling it unconditionally.
+  const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(() => listSessions().then((s) => s.map(toFrontendSession)), SESSIONS);
-  const { data: apiLeaves, loading: leavesLoading, error: leavesError } = useApiData<LeaveRequest[]>(() => listLeave().then((l) => l.map(toFrontendLeave)), LEAVE_REQUESTS);
+  const { data: apiLeaves, loading: leavesLoading, error: leavesError } = useApiData<LeaveRequest[]>(
+    () => (canSeeLeave ? listLeave().then((l) => l.map(toFrontendLeave)) : Promise.resolve([])),
+    LEAVE_REQUESTS
+  );
   const kpiLoading = usingApi && (sessionsLoading || leavesLoading);
   const kpiError = sessionsError || leavesError;
 

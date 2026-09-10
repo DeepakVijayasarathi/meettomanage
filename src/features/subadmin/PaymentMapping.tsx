@@ -159,10 +159,14 @@ export default function SubAdminPaymentMapping() {
   const { toast } = useToast();
   const { hasPermission } = useSession();
   const canEdit = !apiEnabled() || hasPermission("BillingFinance", "Edit");
+  // GET /api/users requires UserManagement:View — a separate grant from BillingFinance. A
+  // Coordinator/Management account without it would otherwise hit a 403 and a silently-empty
+  // parent picker here.
+  const canSeeUsers = !apiEnabled() || hasPermission("UserManagement", "View");
 
   const { data: accounts, reload: reloadAccounts } = useApiData<ApiPaymentAccount[]>(listPaymentAccounts, DEMO_ACCOUNTS);
   const { data: parents } = useApiData<AppUser[]>(
-    () => listUsers({ role: "Parent" }).then((r) => r.items.map(toAppUser)),
+    () => (canSeeUsers ? listUsers({ role: "Parent" }).then((r) => r.items.map(toAppUser)) : Promise.resolve([])),
     PARENTS
   );
 

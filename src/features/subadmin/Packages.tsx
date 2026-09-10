@@ -100,22 +100,25 @@ const EMPTY_PLAN_FORM: PlanForm = {
 /**
  * Delegated-portal Packages & Subscriptions — ported from admin/Packages.tsx.
  *
- * PackagePlansController carries a class-level [Authorize(Roles=Admin,SubAdmin)] *plus*
- * per-action [HasPermission(PermissionModule.BillingFinance, ...)] underneath (GET is View,
- * POST/bulk-import are Create, PUT is Edit, GET export is View) — SubscriptionsController is the
- * same shape (GET is View, POST is Create, renew/cancel are Edit). The class-level role check
- * isn't a bypass: every delegated portal account is UserRole.SubAdmin on the backend, so it's
- * satisfied by all four portals equally, and the real per-action gate is still HasPermission on
- * BillingFinance — a role without that module grant still gets 403'd on every one of these
- * actions despite passing the class-level check. So this page is delegable exactly like the
- * others; it just happens to share its module with Billing/Invoices rather than
- * CourseBatchManagement.
+ * PackagePlansController carries a class-level [Authorize(Roles=Admin,SubAdmin,AdmissionTeam)]
+ * *plus* per-action [HasPermission(PermissionModule.BillingFinance, ...)] underneath (GET is
+ * View, POST/bulk-import are Create, PUT is Edit, GET export is View) — SubscriptionsController
+ * is the same shape (GET is View, POST is Create, renew/cancel are Edit). The class-level role
+ * check isn't a bypass: it's satisfied by every delegated portal account this page is reachable
+ * from (SubAdmin and, since AdmissionTeam is a distinct backend role from SubAdmin, explicitly
+ * listed alongside it), and the real per-action gate is still HasPermission on BillingFinance —
+ * a role without that module grant still gets 403'd on every one of these actions despite
+ * passing the class-level check.
  */
 export default function SubAdminPackages() {
   const live = apiEnabled();
   const { hasPermission } = useSession();
   const canCreate = !live || hasPermission("BillingFinance", "Create");
   const canEdit = !live || hasPermission("BillingFinance", "Edit");
+  // GET /api/users requires UserManagement:View — a separate grant from BillingFinance. A
+  // Coordinator/Management account without it would otherwise hit a 403 and a silently-empty
+  // student list in the create/edit forms here.
+  const canSeeUsers = !live || hasPermission("UserManagement", "View");
 
   const { data: plans, loading: plansLoading, error: plansError, reload: reloadPlans } = useApiData<ApiPackagePlan[]>(() => listPackagePlans(), DEMO_PLANS);
   const { data: subscriptions, loading: subscriptionsLoading, error: subscriptionsError, reload: reloadSubscriptions } = useApiData<ApiSubscription[]>(
@@ -123,7 +126,7 @@ export default function SubAdminPackages() {
     DEMO_SUBSCRIPTIONS
   );
   const { data: courseOptions } = useApiData<ApiCourseOption[]>(() => listCourseOptions(), []);
-  const { data: students } = useApiData<StudentRow[]>(() => listStudents(), []);
+  const { data: students } = useApiData<StudentRow[]>(() => (canSeeUsers ? listStudents() : Promise.resolve([])), []);
 
   const courseNameById = useMemo(
     () => new Map(courseOptions.map((c) => [c.id, c.name] as const)),

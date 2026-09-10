@@ -132,6 +132,11 @@ export default function SubAdminEnrollments() {
   // Admission role). Confirmed live via a fresh AdmissionTeam test account: 403 console noise
   // and a silently-empty "place on batch" picker in the approval dialog.
   const canSeeBatches = !apiEnabled() || hasPermission("CourseBatchManagement", "View");
+  // GET /api/package-plans requires BillingFinance:View — also a separate grant from
+  // Admission:Approve/Edit. Admission's own default set does include BillingFinance so this
+  // doesn't 403 there, but a Coordinator/Management account reaching /coordinator/enrollments
+  // or /management/enrollments without that grant hits the same silently-empty picker.
+  const canSeeBillingPlans = !apiEnabled() || hasPermission("BillingFinance", "View");
 
   const { data: rows, error: rowsError, reload } = useApiData<EnrollmentRow[]>(
     () => listEnrollmentForms().then((forms) => forms.map(toEnrollmentRow)),
@@ -175,7 +180,7 @@ export default function SubAdminEnrollments() {
   // Active billing plans for the approval picker; approving with one selected starts
   // the child's subscription and issues the first invoice straight away.
   const { data: activePlans } = useApiData<ApiPackagePlan[]>(
-    () => listPackagePlans().then((plans) => plans.filter((p) => p.isActive)),
+    () => (canSeeBillingPlans ? listPackagePlans().then((plans) => plans.filter((p) => p.isActive)) : Promise.resolve([])),
     []
   );
   const [approvePlanId, setApprovePlanId] = useState<string>("");

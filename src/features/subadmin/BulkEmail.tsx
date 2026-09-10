@@ -78,8 +78,14 @@ export default function SubAdminBulkEmail() {
 
 function ComposePanel({ canSend }: { canSend: boolean }) {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // GET /api/batches requires CourseBatchManagement:View server-side, a separate grant from
+  // Communication (this page's own gate) — an account that can send bulk email doesn't
+  // necessarily also have it (e.g. Admission's default grant set lacks it). Same gate as
+  // subadmin/Sessions.tsx, Enrollments.tsx and Resources.tsx for the identical call.
+  const canSeeBatches = !apiEnabled() || hasPermission("CourseBatchManagement", "View");
   const { data: batchOptions } = useApiData(
-    () => listBatches().then((batches) => batches.map((b) => ({ id: b.id, name: b.name }))),
+    () => (canSeeBatches ? listBatches().then((batches) => batches.map((b) => ({ id: b.id, name: b.name }))) : Promise.resolve([])),
     MOCK_BATCH_OPTIONS
   );
   const [scope, setScope] = useState<Scope>("all");

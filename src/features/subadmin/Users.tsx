@@ -90,6 +90,10 @@ export default function SubAdminUsers() {
   const canCreate = !apiEnabled() || hasPermission("UserManagement", "Create");
   const canEdit = !apiEnabled() || hasPermission("UserManagement", "Edit");
   const canDelete = !apiEnabled() || hasPermission("UserManagement", "Delete");
+  // GET /api/reports/students/{id}/analytics requires ReportsAnalytics:View — a separate grant
+  // from UserManagement. A Coordinator/Management account without it would otherwise 403 every
+  // time it opens a student's profile.
+  const canSeeAnalytics = !apiEnabled() || hasPermission("ReportsAnalytics", "View");
   const canManage = canCreate || canEdit || canDelete;
 
   // Fetches every user of each role, not just the newest page — a single listUsers({ pageSize })
@@ -130,7 +134,7 @@ export default function SubAdminUsers() {
   const [analytics, setAnalytics] = useState<ApiStudentAnalytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   useEffect(() => {
-    if (!detailChild || !apiEnabled()) {
+    if (!detailChild || !apiEnabled() || !canSeeAnalytics) {
       setAnalytics(null);
       return;
     }
