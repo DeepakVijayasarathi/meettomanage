@@ -8,6 +8,7 @@ import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -134,7 +135,29 @@ export default function AdminLeave() {
         // infer from "Notice Given" or dig for.
         render: (row) => <span className="text-sm">{leaveDateLabel(row)}</span>,
       },
-      { key: "session", header: "Session", render: (row) => <span className="text-sm text-foreground">{row.session}</span> },
+      {
+        key: "session",
+        header: "Session",
+        render: (row) =>
+          row.isClassWise && row.sessions && row.sessions.length > 0 ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help text-sm text-foreground underline decoration-dotted underline-offset-4">{row.session}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <ul className="flex flex-col gap-0.5 text-xs">
+                  {row.sessions.map((s) => (
+                    <li key={s.sessionId}>
+                      {s.batchName ?? "Session"} · {formatDate(s.scheduledStartAtUtc, "datetime")}
+                    </li>
+                  ))}
+                </ul>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <span className="text-sm text-foreground">{row.session}</span>
+          ),
+      },
       { key: "reason", header: "Reason", render: (row) => <span className="text-sm text-muted-foreground">{row.reason}</span> },
       {
         key: "hours",

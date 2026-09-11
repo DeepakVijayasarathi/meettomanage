@@ -33,12 +33,21 @@ interface InteractivePanelProps {
     raiseHand: (raised: boolean) => void;
     /** Teacher-only: broadcasts one annotation op drawn over the video stage. */
     sendAnnotation: (opJson: string) => void;
+    /** Teacher-only: broadcasts the participant she just pinned/spotlighted in her own
+     *  Jitsi view (or null on unpin) so every student's view follows along. */
+    setPinned: (participantId: string | null) => void;
   }) => void;
   /** Fires for every annotation op relayed from the teacher over the hub, so the host
    *  (JitsiLive, which owns the video-stage overlay this panel has no access to) can
    *  paint it. This panel owns the hub connection, so it's the only place that can
    *  actually receive "Annotation" broadcasts. */
   onAnnotation?: (opJson: string) => void;
+  /** Fires whenever the teacher's pinned/spotlighted participant changes (or clears), so
+   *  the host (JitsiLive, which owns the actual Jitsi iframe API this panel has no access
+   *  to) can call `pinParticipant` on this viewer's own connection to match. This panel
+   *  owns the hub connection, so it's the only place that can actually receive "Pinned"
+   *  broadcasts. */
+  onPinChanged?: (participantId: string | null) => void;
 }
 
 /**
@@ -47,7 +56,7 @@ interface InteractivePanelProps {
  * board access — all synced through the classroom SignalR hub. If the hub is
  * unreachable everything still renders locally (the call itself is unaffected).
  */
-export default function InteractivePanel({ sessionId, mode, displayName, onCelebrate, onLeaderboard, onReady, onAnnotation }: InteractivePanelProps) {
+export default function InteractivePanel({ sessionId, mode, displayName, onCelebrate, onLeaderboard, onReady, onAnnotation, onPinChanged }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [hubDetail, setHubDetail] = useState<string | null>(null);
@@ -122,6 +131,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         boardAccess: (allowed) => setBoardAllowed(allowed),
         annotation: (opJson) => onAnnotation?.(opJson),
         slide: (pageIndex) => presentationRef.current?.applyRemoteSlide(pageIndex),
+        pinned: (participantId) => onPinChanged?.(participantId),
       }, (state, detail) => {
         if (!disposed) {
           setHubState(state);
@@ -144,6 +154,9 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
           },
           sendAnnotation: (opJson) => {
             if (client.connected) client.sendAnnotation(opJson);
+          },
+          setPinned: (participantId) => {
+            if (client.connected) client.setPinned(participantId);
           },
         });
       });

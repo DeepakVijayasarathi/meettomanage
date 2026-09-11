@@ -31,6 +31,9 @@ export interface ClassroomHubEvents {
   leaderboard: (entries: HubLeaderboardEntry[]) => void;
   celebrate: (message: string | null) => void;
   boardAccess: (allowed: boolean) => void;
+  /** Whichever participant the teacher has pinned/spotlighted in her own view (Jitsi endpoint
+   *  id), or null when she unpins — see ClassroomHub.SetPinned's own doc comment. */
+  pinned: (participantId: string | null) => void;
 }
 
 /**
@@ -104,6 +107,7 @@ export class ClassroomHubClient {
     if (handlers.leaderboard) connection.on("Leaderboard", handlers.leaderboard);
     if (handlers.celebrate) connection.on("Celebrate", handlers.celebrate);
     if (handlers.boardAccess) connection.on("BoardAccess", handlers.boardAccess);
+    if (handlers.pinned) connection.on("Pinned", handlers.pinned);
 
     // SignalR's own retry loop — surface it so the UI can stop pretending sync
     // is healthy the instant it isn't, instead of only knowing "connected" once
@@ -222,6 +226,12 @@ export class ClassroomHubClient {
 
   setBoardAccess(connectionId: string, allowed: boolean): void {
     this.send("SetBoardAccess", connectionId, allowed);
+  }
+
+  /** Teacher-only: broadcasts which participant she just pinned/spotlighted (or null on
+   *  unpin) so every student's own Jitsi view follows along — see ClassroomHub.SetPinned. */
+  setPinned(participantId: string | null): void {
+    this.send("SetPinned", participantId);
   }
 
   async disconnect(): Promise<void> {

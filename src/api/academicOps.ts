@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import type { LeaveRequest } from "@/types";
+import type { LeaveRequest, LeaveSessionSummary } from "@/types";
 
 export interface ApiHoliday {
   id: string;
@@ -9,6 +9,13 @@ export interface ApiHoliday {
 }
 
 export type ApiLeaveStatus = "Pending" | "Approved" | "Rejected" | "Cancelled";
+
+export interface ApiLeaveSessionSummary {
+  sessionId: string;
+  scheduledStartAtUtc: string;
+  scheduledEndAtUtc: string;
+  batchName: string | null;
+}
 
 export interface ApiLeaveRequest {
   id: string;
@@ -21,6 +28,24 @@ export interface ApiLeaveRequest {
   reviewNote: string | null;
   createdAtUtc: string;
   affectedSessionCount: number;
+  /** True for a class-wise leave (specific classes picked, see `sessions`) rather than a
+   *  whole day/date-range one. */
+  isClassWise: boolean;
+  sessions: ApiLeaveSessionSummary[];
+}
+
+export interface ApiLeaveAllowance {
+  id: string;
+  /** Null identifies the centre-wide default allowance. */
+  teacherProfileId: string | null;
+  teacherName: string;
+  monthlyAllowance: number;
+}
+
+export interface ApiLeaveAllowanceStatus {
+  monthlyAllowance: number;
+  usedThisMonth: number;
+  remaining: number;
 }
 
 export type ApiAttendanceStatus = "Present" | "Absent" | "Late";
@@ -45,7 +70,9 @@ export function toFrontendLeave(leave: ApiLeaveRequest): LeaveRequest {
     teacherId: leave.teacherProfileId,
     teacherName: leave.teacherName,
     date: leave.startAtUtc.slice(0, 10),
-    session: `${leave.affectedSessionCount} session(s) affected`,
+    session: leave.isClassWise
+      ? `${leave.affectedSessionCount} specific class(es)`
+      : `${leave.affectedSessionCount} session(s) affected`,
     reason: leave.reason,
     hoursBeforeSession: Math.round(noticeHours * 10) / 10,
     status: leave.status.toLowerCase() as LeaveRequest["status"],
@@ -54,6 +81,8 @@ export function toFrontendLeave(leave: ApiLeaveRequest): LeaveRequest {
     // the same way the backend itself checks it — see teacher/Leave.tsx.
     startAtUtc: leave.startAtUtc,
     endAtUtc: leave.endAtUtc,
+    isClassWise: leave.isClassWise,
+    sessions: leave.sessions as LeaveSessionSummary[],
   };
 }
 
@@ -69,13 +98,42 @@ export async function deleteHoliday(id: string): Promise<void> {
   await apiFetch<void>(`/api/holidays/${id}`, { method: "DELETE" });
 }
 
-/** Teacher applies for leave; backend enforces the 6-hour rule (auto-block). */
-export async function submitLeave(input: { startAtUtc: string; endAtUtc: string; reason: string }): Promise<ApiLeaveRequest> {
+/**
+ * Teacher applies for leave; backend enforces the 6-hour rule (auto-block). Pass either a
+ * whole day/date-range window (startAtUtc/endAtUtc) or specific classes to cancel
+ * (sessionIds) — never both, never neither, the backend rejects either mix. A class-wise
+ * request within the teacher's remaining monthly allowance (see getMyLeaveAllowanceStatus)
+ * comes back already Approved; one that exceeds it comes back Pending, same as a whole-day
+ * request always has.
+ */
+export async function submitLeave(input: {
+  startAtUtc?: string;
+  endAtUtc?: string;
+  sessionIds?: string[];
+  reason: string;
+}): Promise<ApiLeaveRequest> {
   return apiFetch<ApiLeaveRequest>("/api/leave-requests", { method: "POST", body: JSON.stringify(input) });
 }
 
 export async function listMyLeave(): Promise<ApiLeaveRequest[]> {
   return apiFetch<ApiLeaveRequest[]>("/api/leave-requests/mine");
+}
+
+/** The signed-in teacher's own remaining class-wise-cancellation quota for the current
+ *  calendar month — shown before she picks classes to cancel. */
+export async function getMyLeaveAllowanceStatus(): Promise<ApiLeaveAllowanceStatus> {
+  return apiFetch<ApiLeaveAllowanceStatus>("/api/leave-requests/mine/allowance");
+}
+
+/** Admin (or a role granted LeaveManagement) view of configured allowances — the default
+ *  card plus any per-teacher overrides. */
+export async function listLeaveAllowances(): Promise<ApiLeaveAllowance[]> {
+  return apiFetch<ApiLeaveAllowance[]>("/api/leave-allowances");
+}
+
+/** Admin-only: sets the centre default (omit teacherProfileId) or one teacher's override. */
+export async function saveLeaveAllowance(input: { teacherProfileId?: string; monthlyAllowance: number }): Promise<ApiLeaveAllowance> {
+  return apiFetch<ApiLeaveAllowance>("/api/leave-allowances", { method: "POST", body: JSON.stringify(input) });
 }
 
 export async function listLeave(status?: ApiLeaveStatus): Promise<ApiLeaveRequest[]> {

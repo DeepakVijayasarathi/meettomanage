@@ -190,6 +190,19 @@ export interface LeaveRequest {
   /** Full UTC window this leave covers — present in API mode only (see toFrontendLeave). Used to warn before submitting a new request that overlaps an existing one, the same way the backend itself blocks it. */
   startAtUtc?: string;
   endAtUtc?: string;
+  /** True for a class-wise leave (specific classes picked, see `sessions`) rather than a
+   *  whole day/date-range one. */
+  isClassWise?: boolean;
+  /** Only populated when isClassWise — the exact classes this leave covers. */
+  sessions?: LeaveSessionSummary[];
+}
+
+/** One class covered by a class-wise leave request. */
+export interface LeaveSessionSummary {
+  sessionId: string;
+  scheduledStartAtUtc: string;
+  scheduledEndAtUtc: string;
+  batchName: string | null;
 }
 
 export interface DemoFeedback {
