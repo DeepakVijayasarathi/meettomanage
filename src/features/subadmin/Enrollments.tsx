@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Download, FileEdit, GraduationCap } from "lucide-react";
+import { CheckCircle2, Download, FileEdit, GraduationCap, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ type EnrollmentRow = Child & {
   parentName?: string;
   parentPhone?: string;
   formJson?: string;
+  formStatus?: ApiEnrollmentForm["status"];
   dob?: string;
   batchType?: "group" | "individual" | "";
   gender?: string;
@@ -96,6 +98,7 @@ function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
     feeStatus: "due",
     enrollmentComplete: form.status === "Approved",
     formJson: form.formDataJson,
+    formStatus: form.status,
     dob,
     batchType: answers.batchType === "group" || answers.batchType === "individual" ? answers.batchType : "",
     gender: str("gender"),
@@ -138,12 +141,16 @@ export default function SubAdminEnrollments() {
   // or /management/enrollments without that grant hits the same silently-empty picker.
   const canSeeBillingPlans = !apiEnabled() || hasPermission("BillingFinance", "View");
 
-  const { data: rows, error: rowsError, reload } = useApiData<EnrollmentRow[]>(
+  const { data: allRows, error: rowsError, reload } = useApiData<EnrollmentRow[]>(
+    // A rejected submission (duplicate, or wrong details later refiled correctly) has no
+    // reason to stay in this working queue — rejecting it already clears it from here.
     () => listEnrollmentForms().then((forms) => forms.map(toEnrollmentRow)),
     CHILDREN
   );
+  const rows = useMemo(() => allRows.filter((r) => r.formStatus !== "Rejected"), [allRows]);
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<EnrollmentRow | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<EnrollmentRow | null>(null);
 
   // Edit dialog
   const [editRow, setEditRow] = useState<EnrollmentRow | null>(null);
@@ -317,6 +324,20 @@ export default function SubAdminEnrollments() {
       return;
     }
     setApprovedIds((prev) => new Set(prev).add(row.id));
+    setDetail(null);
+  }
+
+  // Rethrows on failure — ConfirmDialog's own onConfirm contract keeps the dialog open and
+  // shows the error inline when the promise it's given rejects.
+  async function handleReject() {
+    if (!rejectTarget) return;
+    const name = rejectTarget.name;
+    if (apiEnabled()) {
+      await reviewEnrollmentForm(rejectTarget.id, { approve: false });
+      reload();
+    }
+    setBanner(`"${name}" removed from the review queue.${apiEnabled() ? "" : " Demo mode — nothing actually changed."}`);
+    setRejectTarget(null);
     setDetail(null);
   }
 
@@ -585,6 +606,12 @@ export default function SubAdminEnrollments() {
                   </Button>
                 )}
                 {!isComplete(detail) && canApprove && (
+                  <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setRejectTarget(detail)}>
+                    <Trash2 className="h-4 w-4" />
+                    Remove
+                  </Button>
+                )}
+                {!isComplete(detail) && canApprove && (
                   <Button disabled={approving} onClick={() => handleApprove(detail)}>
                     <CheckCircle2 className="h-4 w-4" />
                     {approving ? "Approving…" : "Approve"}
@@ -595,6 +622,20 @@ export default function SubAdminEnrollments() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!rejectTarget}
+        onOpenChange={(open) => !open && setRejectTarget(null)}
+        title="Remove this enrollment?"
+        description={
+          rejectTarget
+            ? `"${rejectTarget.name}" will be removed from the review queue — use this for a duplicate or wrong submission. The parent can resubmit if it was a mistake.`
+            : undefined
+        }
+        confirmLabel="Remove"
+        destructive
+        onConfirm={handleReject}
+      />
 
       <Dialog open={!!editRow} onOpenChange={(open) => !open && setEditRow(null)}>
         <DialogContent>

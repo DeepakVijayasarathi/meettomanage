@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Download, FileEdit, GraduationCap } from "lucide-react";
+import { CheckCircle2, Download, FileEdit, GraduationCap, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ type EnrollmentRow = Child & {
   parentName?: string;
   parentPhone?: string;
   formJson?: string;
+  formStatus?: ApiEnrollmentForm["status"];
   dob?: string;
   batchType?: "group" | "individual" | "";
   gender?: string;
@@ -98,6 +100,7 @@ function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
     feeStatus: "due",
     enrollmentComplete: form.status === "Approved",
     formJson: form.formDataJson,
+    formStatus: form.status,
     dob,
     batchType: answers.batchType === "group" || answers.batchType === "individual" ? answers.batchType : "",
     gender: str("gender"),
@@ -116,12 +119,19 @@ function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
 }
 
 export default function AdminEnrollments() {
-  const { data: rows, error: rowsError, reload } = useApiData<EnrollmentRow[]>(
+  const { data: allRows, error: rowsError, reload } = useApiData<EnrollmentRow[]>(
+    // A rejected submission (e.g. a duplicate the parent accidentally filed, or one with
+    // wrong details later refiled correctly) has no reason to stay in this working queue —
+    // rejecting it already clears it from here, which is what "delete this wrong one" means
+    // in practice, without losing the record (the parent can still resubmit over a rejected
+    // form; see EnrollmentService.SubmitAsync's own comment on that).
     () => listEnrollmentForms().then((forms) => forms.map(toEnrollmentRow)),
     CHILDREN
   );
+  const rows = useMemo(() => allRows.filter((r) => r.formStatus !== "Rejected"), [allRows]);
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<EnrollmentRow | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<EnrollmentRow | null>(null);
 
   // Edit dialog
   const [editRow, setEditRow] = useState<EnrollmentRow | null>(null);
@@ -300,6 +310,21 @@ export default function AdminEnrollments() {
       return;
     }
     setApprovedIds((prev) => new Set(prev).add(row.id));
+    setDetail(null);
+  }
+
+  // Rethrows on failure — ConfirmDialog's own onConfirm contract keeps the dialog open and
+  // shows the error inline when the promise it's given rejects; swallowing it here would
+  // have closed the dialog and looked like success even when the request actually failed.
+  async function handleReject() {
+    if (!rejectTarget) return;
+    const name = rejectTarget.name;
+    if (apiEnabled()) {
+      await reviewEnrollmentForm(rejectTarget.id, { approve: false });
+      reload();
+    }
+    setBanner(`"${name}" removed from the review queue.${apiEnabled() ? "" : " Demo mode — nothing actually changed."}`);
+    setRejectTarget(null);
     setDetail(null);
   }
 
@@ -574,6 +599,12 @@ export default function AdminEnrollments() {
                   Edit
                 </Button>
                 {!isComplete(detail) && (
+                  <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setRejectTarget(detail)}>
+                    <Trash2 className="h-4 w-4" />
+                    Remove
+                  </Button>
+                )}
+                {!isComplete(detail) && (
                   <Button disabled={approving} onClick={() => handleApprove(detail)}>
                     <CheckCircle2 className="h-4 w-4" />
                     {approving ? "Approving…" : "Approve"}
@@ -784,6 +815,20 @@ export default function AdminEnrollments() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!rejectTarget}
+        onOpenChange={(open) => !open && setRejectTarget(null)}
+        title="Remove this enrollment?"
+        description={
+          rejectTarget
+            ? `"${rejectTarget.name}" will be removed from the review queue — use this for a duplicate or wrong submission. The parent can resubmit if it was a mistake.`
+            : undefined
+        }
+        confirmLabel="Remove"
+        destructive
+        onConfirm={handleReject}
+      />
     </div>
   );
 }
