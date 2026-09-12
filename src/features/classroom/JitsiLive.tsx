@@ -4,6 +4,8 @@ import { AlertTriangle, CheckCircle2, DoorOpen, Pencil, PartyPopper, PhoneOff, S
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
 import { useToast } from "@/hooks/use-toast";
@@ -246,10 +248,10 @@ export default function JitsiLive({
   // generates/sends the class summary. Never blocks the teacher's exit on the network call
   // — fire-and-forget, with a toast only on a real failure so a stuck-Scheduled session
   // doesn't silently stay invisible on Attendance/Payout with no indication anything went wrong.
-  function completeAndLeave() {
+  function completeAndLeave(summary?: string) {
     if (mode === "teacher" && interactive && !completedRef.current) {
       completedRef.current = true;
-      completeSession(sessionId!)
+      completeSession(sessionId!, summary)
         .then(() => toast({ variant: "success", title: "Class ended", description: "Marked delivered — your payout for it will reflect shortly." }))
         .catch((err: unknown) => {
           // 400 here is almost always "already completed" (e.g. a double-click on the
@@ -264,6 +266,36 @@ export default function JitsiLive({
         });
     }
     navigate(-1);
+  }
+
+  // Post-class feedback (teacher feedback: parents want to know what was actually covered,
+  // not the engagement-stats auto-summary CompleteAsync falls back to when this is skipped).
+  // Composed into the same free-text `summary` completeSession already accepts and emails to
+  // the batch's parents — no new backend field needed, just an actual prompt for content.
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackTopic, setFeedbackTopic] = useState("");
+  const [feedbackStatus, setFeedbackStatus] = useState<"completed" | "partial">("completed");
+  const [feedbackRemarks, setFeedbackRemarks] = useState("");
+
+  function openFeedbackForm() {
+    setLeaveConfirmOpen(false);
+    setTimeUpAlerted(false);
+    setFeedbackOpen(true);
+  }
+
+  function submitFeedback() {
+    const lines = [
+      feedbackTopic.trim() ? `Topic: ${feedbackTopic.trim()}` : null,
+      `Status: ${feedbackStatus === "completed" ? "Completed" : "Partially completed"}`,
+      feedbackRemarks.trim() ? `Remarks: ${feedbackRemarks.trim()}` : null,
+    ].filter((line): line is string => line !== null);
+    setFeedbackOpen(false);
+    completeAndLeave(lines.length > 0 ? lines.join("\n") : undefined);
+  }
+
+  function skipFeedback() {
+    setFeedbackOpen(false);
+    completeAndLeave();
   }
 
   function celebrate(message?: string) {
@@ -401,6 +433,10 @@ export default function JitsiLive({
           DEFAULT_BACKGROUND: "#161B33",
           MOBILE_APP_PROMO: false,
           HIDE_INVITE_MORE_HEADER: true,
+          // Teacher feedback: tile view only showed 4 students at once. Never overridden here
+          // before — the self-hosted deployment's own default interface_config.js was the only
+          // thing setting it. 3 columns gives a 3x3 = 9-tile grid before Jitsi starts paging.
+          TILE_VIEW_MAX_COLUMNS: 3,
           // Curated for a small tutoring classroom — drop enterprise features (livestream,
           // shared video/audio, security/profile, dial-in, stats) that don't apply here.
           // "recording" and "mute-everyone" are moderator-only actions — Jitsi hides them
@@ -757,10 +793,7 @@ export default function JitsiLive({
               <Button
                 variant="secondary"
                 className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal rounded-xl border border-success/30 bg-success/15 px-3.5 py-3 text-left text-success hover:bg-success/25"
-                onClick={() => {
-                  setLeaveConfirmOpen(false);
-                  completeAndLeave();
-                }}
+                onClick={openFeedbackForm}
               >
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                 <span className="flex flex-col gap-0.5">
@@ -833,10 +866,7 @@ export default function JitsiLive({
             <Button
               variant="secondary"
               className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal rounded-xl border border-success/30 bg-success/15 px-3.5 py-3 text-left text-success hover:bg-success/25"
-              onClick={() => {
-                setTimeUpAlerted(false);
-                completeAndLeave();
-              }}
+              onClick={openFeedbackForm}
             >
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
               <span className="flex flex-col gap-0.5">
@@ -845,6 +875,68 @@ export default function JitsiLive({
               </span>
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* Teacher feedback (WBS Round 2 #2): parents only ever saw an engagement-stats
+          auto-summary unless a teacher happened to type free-text into completeSession's
+          optional `summary` param — nothing ever prompted for it. This is the prompt. */}
+      <Dialog open={feedbackOpen} onOpenChange={(open) => !open && skipFeedback()}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Before you go — quick class summary</DialogTitle>
+            <DialogDescription>Sent straight to today's parents. Skip if you're in a rush.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="feedback-topic">What was taught today</Label>
+              <Textarea
+                id="feedback-topic"
+                rows={2}
+                value={feedbackTopic}
+                onChange={(e) => setFeedbackTopic(e.target.value)}
+                placeholder="e.g. Short vowel sounds, blending CVC words"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>Topic status</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-pressed={feedbackStatus === "completed"}
+                  className={cn(feedbackStatus === "completed" && "border-success bg-success/10 text-success")}
+                  onClick={() => setFeedbackStatus("completed")}
+                >
+                  Completed
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-pressed={feedbackStatus === "partial"}
+                  className={cn(feedbackStatus === "partial" && "border-brand-amber bg-brand-amber/10 text-brand-amber")}
+                  onClick={() => setFeedbackStatus("partial")}
+                >
+                  Partially completed
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="feedback-remarks">Remarks for the parent (optional)</Label>
+              <Textarea
+                id="feedback-remarks"
+                rows={2}
+                value={feedbackRemarks}
+                onChange={(e) => setFeedbackRemarks(e.target.value)}
+                placeholder="e.g. Please practice these words at home this week"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-wrap">
+            <Button variant="outline" onClick={skipFeedback}>
+              Skip
+            </Button>
+            <Button onClick={submitFeedback}>Save &amp; end class</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       {mode === "teacher" && recordingIssue && (

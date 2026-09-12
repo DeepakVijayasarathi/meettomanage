@@ -11,6 +11,10 @@ interface Stroke {
   points: Point[];
   color: string;
   width: number;
+  /** Set once a stroke stops receiving new points (local commit, or no strokeAppend for a
+   *  moment on a remote copy) — the moment its disappearing-ink countdown actually starts.
+   *  Undefined while still actively being drawn, local or remote. */
+  lastUpdatedAt?: number;
 }
 
 export type AnnotationOp =
@@ -26,8 +30,24 @@ export interface AnnotationOverlayHandle {
 let uidCounter = 0;
 const nextId = () => `mark-${Date.now()}-${uidCounter++}`;
 
-function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke, w: number, h: number) {
-  if (stroke.points.length === 0) return;
+// Disappearing ink (teacher feedback: "temporarily mark something without permanently
+// leaving the annotation"): a finished stroke holds at full opacity for a beat, then fades
+// out on its own — no explicit clear needed for a quick point-at-this. FADE_HOLD_MS is a
+// grace window after the last new point so a brief pause mid-stroke (finger lift between
+// underline segments) doesn't visibly dim before continuing.
+const FADE_HOLD_MS = 1500;
+const FADE_DURATION_MS = 1000;
+
+function strokeOpacity(stroke: Stroke, now: number): number {
+  if (stroke.lastUpdatedAt === undefined) return 1;
+  const age = now - stroke.lastUpdatedAt - FADE_HOLD_MS;
+  if (age <= 0) return 1;
+  return Math.max(0, 1 - age / FADE_DURATION_MS);
+}
+
+function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke, w: number, h: number, opacity = 1) {
+  if (stroke.points.length === 0 || opacity <= 0) return;
+  ctx.globalAlpha = opacity;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.lineWidth = stroke.width;
@@ -38,12 +58,14 @@ function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke, w: number, h:
     ctx.arc(p.x * w, p.y * h, stroke.width / 2, 0, Math.PI * 2);
     ctx.fillStyle = stroke.color;
     ctx.fill();
+    ctx.globalAlpha = 1;
     return;
   }
   ctx.beginPath();
   ctx.moveTo(stroke.points[0].x * w, stroke.points[0].y * h);
   for (const p of stroke.points.slice(1)) ctx.lineTo(p.x * w, p.y * h);
   ctx.stroke();
+  ctx.globalAlpha = 1;
 }
 
 interface AnnotationOverlayProps {
@@ -76,13 +98,40 @@ const AnnotationOverlay = forwardRef<AnnotationOverlayHandle, AnnotationOverlayP
   const sentPointCountRef = useRef(0);
   const establishedRef = useRef(false);
 
+  const fadeFrameRef = useRef<number | null>(null);
+
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (const stroke of strokesRef.current) drawStroke(ctx, stroke, canvas.width, canvas.height);
+    const now = performance.now();
+    let anyFading = false;
+    const remaining: Stroke[] = [];
+    for (const stroke of strokesRef.current) {
+      const opacity = strokeOpacity(stroke, now);
+      if (opacity <= 0) continue;
+      if (stroke.lastUpdatedAt !== undefined) anyFading = true;
+      drawStroke(ctx, stroke, canvas.width, canvas.height, opacity);
+      remaining.push(stroke);
+    }
+    if (remaining.length !== strokesRef.current.length) strokesRef.current = remaining;
     if (draftRef.current) drawStroke(ctx, draftRef.current, canvas.width, canvas.height);
+
+    // Keep redrawing on our own while anything is mid-fade — nothing else (pointer move,
+    // a network op) would otherwise trigger the next frame's slightly-more-transparent pass.
+    if (anyFading && fadeFrameRef.current === null) {
+      fadeFrameRef.current = requestAnimationFrame(() => {
+        fadeFrameRef.current = null;
+        redraw();
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (fadeFrameRef.current !== null) cancelAnimationFrame(fadeFrameRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -124,14 +173,19 @@ const AnnotationOverlay = forwardRef<AnnotationOverlayHandle, AnnotationOverlayP
     applyRemoteOp(op: AnnotationOp) {
       switch (op.kind) {
         case "stroke": {
-          const existing = strokesRef.current.findIndex((s) => s.id === op.stroke.id);
-          if (existing === -1) strokesRef.current = [...strokesRef.current, op.stroke];
-          else strokesRef.current = strokesRef.current.map((s, i) => (i === existing ? op.stroke : s));
+          // Received while its sender is still actively drawing (before their own commit) —
+          // stamped "now", not left unset, so a remote copy doesn't start fading before the
+          // teacher has even finished the mark. Refreshed again by every strokeAppend below,
+          // and for real once appends stop arriving (see FADE_HOLD_MS/strokeOpacity above).
+          const stamped: Stroke = { ...op.stroke, lastUpdatedAt: performance.now() };
+          const existing = strokesRef.current.findIndex((s) => s.id === stamped.id);
+          if (existing === -1) strokesRef.current = [...strokesRef.current, stamped];
+          else strokesRef.current = strokesRef.current.map((s, i) => (i === existing ? stamped : s));
           break;
         }
         case "strokeAppend": {
           strokesRef.current = strokesRef.current.map((s) =>
-            s.id === op.strokeId ? { ...s, points: [...s.points, ...op.points] } : s
+            s.id === op.strokeId ? { ...s, points: [...s.points, ...op.points], lastUpdatedAt: performance.now() } : s
           );
           break;
         }
@@ -189,6 +243,9 @@ const AnnotationOverlay = forwardRef<AnnotationOverlayHandle, AnnotationOverlayP
     if (!drawingRef.current || !draftRef.current) return;
     drawingRef.current = false;
     const finished = draftRef.current;
+    // The pen lifting is the actual "mark is finished" moment for the person drawing it —
+    // this is what starts its disappearing-ink countdown (see strokeOpacity/FADE_HOLD_MS).
+    finished.lastUpdatedAt = performance.now();
     draftRef.current = null;
     strokesRef.current = [...strokesRef.current, finished];
     redraw();
