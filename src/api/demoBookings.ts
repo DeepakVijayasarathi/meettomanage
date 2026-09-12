@@ -172,10 +172,16 @@ export async function resendDemoLink(bookingId: string): Promise<ApiDemoBooking>
   });
 }
 
-/** The parent's join link for this demo, to copy and share manually (e.g. WhatsApp). */
+/** The parent's join link for this demo, to copy and share manually (e.g. WhatsApp). Never expires. */
 export async function getDemoJoinLink(bookingId: string): Promise<string> {
   const { joinUrl } = await apiFetch<{ joinUrl: string }>(`/api/demo-bookings/${bookingId}/join-link`);
   return joinUrl;
+}
+
+/** Permanently removes a demo booking (a test entry, a mistaken double-booking) and frees the
+ *  teacher's slot. The API refuses this once the lead is already invoiced or Enrolled. */
+export async function deleteDemoBooking(bookingId: string): Promise<void> {
+  await apiFetch<void>(`/api/demo-bookings/${bookingId}`, { method: "DELETE" });
 }
 
 export async function createDemoBooking(input: {

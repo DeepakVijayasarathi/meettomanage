@@ -21,7 +21,7 @@ import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
-import { createDemoBooking, getDemoJoinLink, listDemoBookings, resendDemoLink, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
+import { createDemoBooking, deleteDemoBooking, getDemoJoinLink, listDemoBookings, resendDemoLink, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
 import { formatDate, formatTimeLabel, getInitials } from "@/lib/utils";
 import { getUserTimeZoneAbbreviation, localToUtcIso, utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -153,6 +153,10 @@ export default function AdmissionDemoScheduling() {
   // Tracks which row's "Copy Link" is in flight / just succeeded / just failed, per row.
   const [copyState, setCopyState] = useState<{ id: string; status: "copying" | "copied" | "failed" } | null>(null);
   const [completeTarget, setCompleteTarget] = useState<DemoRow | null>(null);
+  // Distinct from cancelTarget/"Cancel" above -- that just marks the lead NotInterested and
+  // keeps it on the list (notifying invitees); this removes the row entirely and frees the
+  // teacher's slot, for a test entry or a mistaken double-booking rather than a real cancellation.
+  const [deleteTarget, setDeleteTarget] = useState<DemoRow | null>(null);
   // Set once the user has tried to submit an invalid form -- gates the per-field error
   // messages below so they don't show up before the user has even touched the form.
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
@@ -469,6 +473,18 @@ export default function AdmissionDemoScheduling() {
                     : "Failed"
                 : "Copy Link"}
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 text-destructive hover:text-destructive"
+              title="Permanently remove this demo booking"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteTarget(row);
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </Button>
           </div>
         ),
       },
@@ -772,6 +788,32 @@ export default function AdmissionDemoScheduling() {
             });
           }
           setRows((prev) => prev.map((r) => (r.id === cancelTarget.id ? { ...r, status: "cancelled" } : r)));
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete this demo booking?"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.childName}"'s demo booking will be permanently removed and the teacher's slot freed. This can't be undone.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          if (apiEnabled()) {
+            // Returned (not caught) so ConfirmDialog shows the backend's refusal inline (e.g.
+            // "already invoiced or enrolled") instead of closing before the request settles.
+            return deleteDemoBooking(deleteTarget.id).then(() => {
+              setActionError(null);
+              reloadRows();
+              toast({ variant: "success", title: "Demo booking deleted" });
+            });
+          }
+          setRows((prev) => prev.filter((r) => r.id !== deleteTarget.id));
         }}
       />
     </div>
