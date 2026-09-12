@@ -417,6 +417,21 @@ export default function JitsiLive({
           // here for a meaningfully lower, steadier bitrate, which is what actually
           // fixes "lag" (encoder/network backlog) as opposed to visual quality.
           desktopSharingFrameRate: { min: 5, max: 15 },
+          // Teacher feedback: voice sometimes too quiet, sometimes suddenly loud/high-pitched.
+          // Never explicitly requested before — Jitsi/the browser only applied whatever a given
+          // device's own default happened to be, so behavior varied by laptop/headset instead of
+          // being consistent. Explicitly requesting all three standard WebRTC audio-processing
+          // constraints on every mic capture (not just relying on an unset default) is the
+          // standard mitigation for this class of complaint: auto-gain leveling instead of raw
+          // mic gain swings, plus echo/noise cleanup that can otherwise read as pitch/clarity
+          // artifacts. Doesn't need a Jibri/server change — applied client-side per participant.
+          constraints: {
+            audio: {
+              autoGainControl: true,
+              echoCancellation: true,
+              noiseSuppression: true,
+            },
+          },
           // A curated default virtual background (our own brand navy/violet/amber gradient,
           // offered as a preset next to Jitsi's own stock options in the camera-background
           // picker) instead of everyone starting from Jitsi's generic defaults or having to
@@ -637,6 +652,14 @@ export default function JitsiLive({
         const on = !!payload?.on;
         setScreenShareActive(on);
         if (on) setScreenShareBannerDismissed(false);
+        // Teacher feedback (grid 4→9, WBS Round 2 #25): Jitsi's own default is to drop out of
+        // tile view into a spotlighted "stage" layout the instant anyone starts screen-sharing —
+        // the shared content fills most of the screen and everyone else shrinks to a thin
+        // filmstrip, which is exactly the "PPT takes over, I can't see my students" complaint.
+        // Re-asserting tile view on every share start/stop keeps the shared screen as just one
+        // more tile in the same grid (up to the 9 TILE_VIEW_MAX_COLUMNS=3 allows) instead of
+        // letting Jitsi silently switch layouts underneath the teacher.
+        jitsiApiRef.current?.executeCommand("setTileView", true);
       });
       // Without these, a video server/room misconfiguration (e.g. the Jitsi deployment's
       // focus component rejecting the room outright) left the whole screen looking

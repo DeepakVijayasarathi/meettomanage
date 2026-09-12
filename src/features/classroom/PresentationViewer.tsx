@@ -182,12 +182,19 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
     );
   }
 
+  // Kept mounted across both the "no deck yet" and "presenting" states — it backs both the
+  // initial upload button below and the in-place "Update deck" button once presenting (Teacher
+  // feedback: PPT changes have to be made in the original file elsewhere, then brought into
+  // class — this is what lets the *bringing in* half happen without ever leaving this panel,
+  // let alone the call). handleFileSelected doesn't care which state triggered it.
+  const fileInput = <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileSelected} />;
+
   if (!fileName) {
     return canPresent ? (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <FileUp className="h-8 w-8 text-white/30" />
         <p className="text-sm text-white/50">No deck uploaded yet</p>
-        <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileSelected} />
+        {fileInput}
         <Button size="sm" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileUp className="h-3.5 w-3.5" />}
           {uploading ? "Uploading…" : "Upload PDF to present"}
@@ -203,11 +210,12 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
 
   return (
     <div className="flex h-full flex-col">
+      {fileInput}
       <div className="relative flex-1 overflow-hidden bg-white/[0.02] p-3">
         <div className="flex h-full w-full items-center justify-center">
           <canvas ref={canvasRef} className="max-h-full max-w-full rounded-md bg-white shadow-lg" />
         </div>
-        {rendering && (
+        {(rendering || uploading) && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/10">
             <Loader2 className="h-5 w-5 animate-spin text-white/60" />
           </div>
@@ -226,6 +234,22 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
               <ChevronRight className="h-4 w-4" />
             </Button>
             <div className="flex-1" />
+            {/* Re-export the edited deck to PDF, then bring it in right here — no "Stop
+                presenting" round-trip (which used to blank every student's screen back to
+                "Waiting for the teacher to present" for the whole swap) and no leaving this
+                page. Making the actual edits still has to happen in the source PPT app itself
+                (this panel only ever renders a static PDF snapshot, never the original slides),
+                but that edit no longer forces you out of the class to bring the result back in. */}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-white/70 hover:bg-white/10 hover:text-white"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileUp className="h-3.5 w-3.5" />}
+              Update deck
+            </Button>
             <Button size="sm" variant="ghost" className="text-white/50 hover:bg-white/10 hover:text-white" onClick={stopPresenting}>
               <X className="h-3.5 w-3.5" /> Stop presenting
             </Button>
