@@ -64,6 +64,12 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
   const [tab, setTab] = useState<PanelTab>("board");
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [hubDetail, setHubDetail] = useState<string | null>(null);
+  // Bumping this re-runs the connect effect below, standing up a brand new hub connection.
+  // Needed because SignalR's own withAutomaticReconnect gives up after its own backoff window
+  // and lands on "disconnected" for good — reported live (a prolonged app-server hiccup) with
+  // no way back into live sync for the rest of the class short of reloading the whole page and
+  // losing local whiteboard state. See the Retry button in the disconnected banner below.
+  const [retryToken, setRetryToken] = useState(0);
   const [roster, setRoster] = useState<HubParticipant[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [quizActive, setQuizActive] = useState(false);
@@ -171,7 +177,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
       client.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
+  }, [sessionId, retryToken]);
 
   // Seed the leaderboard from persisted awards (covers rejoin/reconnect); the hub
   // stream overwrites it as new answers come in.
@@ -375,9 +381,22 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
             </p>
           )}
           {hubState === "disconnected" && (
-            <p role="status" className="mt-1.5 px-1 text-[10px] text-white/40">
-              {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
-            </p>
+            <div className="mt-1.5 flex items-center justify-between gap-2 px-1">
+              <p role="status" className="text-[10px] text-white/40">
+                {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setHubState("reconnecting");
+                  setHubDetail(null);
+                  setRetryToken((t) => t + 1);
+                }}
+                className="shrink-0 text-[10px] font-semibold text-brand-violet underline decoration-brand-violet/50 underline-offset-2 hover:decoration-brand-violet"
+              >
+                Retry
+              </button>
+            </div>
           )}
         </div>
 
