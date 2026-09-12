@@ -186,9 +186,10 @@ export async function resendDemoLink(bookingId: string): Promise<ApiDemoBooking>
 }
 
 /** The parent's join link for this demo, to copy and share manually (e.g. WhatsApp). Never expires. */
-export async function getDemoJoinLink(bookingId: string): Promise<string> {
-  const { joinUrl } = await apiFetch<{ joinUrl: string }>(`/api/demo-bookings/${bookingId}/join-link`);
-  return joinUrl;
+/** The full stable join URL and a genuinely short /m/{slug} form of the same link (for
+ *  WhatsApp/SMS where every character counts) — both never expire on their own. */
+export async function getDemoJoinLink(bookingId: string): Promise<{ joinUrl: string; shortUrl: string }> {
+  return apiFetch<{ joinUrl: string; shortUrl: string }>(`/api/demo-bookings/${bookingId}/join-link`);
 }
 
 /** Permanently removes a demo booking (a test entry, a mistaken double-booking) and frees the
