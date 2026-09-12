@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Clock, X } from "lucide-react";
+import { CalendarCheck2, Clock, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -9,18 +9,29 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getLeavesForTeacher } from "@/data/leaves";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
-import { cancelLeave, listMyLeave, submitLeave, toFrontendLeave } from "@/api/academicOps";
+import {
+  cancelLeave,
+  getMyLeaveAllowanceStatus,
+  listMyLeave,
+  submitLeave,
+  toFrontendLeave,
+  type ApiLeaveAllowanceStatus,
+} from "@/api/academicOps";
 import { localToUtcIso } from "@/lib/datetime";
 import { formatDate, formatDateRange, formatTimeLabel } from "@/lib/utils";
 import type { ClassSession, LeaveRequest } from "@/types";
+
+const EMPTY_ALLOWANCE_STATUS: ApiLeaveAllowanceStatus = { monthlyAllowance: 0, usedThisMonth: 0, remaining: 0 };
 
 const TEACHER_ID = "t-1";
 const TEACHER_NAME = "Karan Mehta";
@@ -99,6 +110,69 @@ export default function TeacherLeave() {
     const timer = setTimeout(() => setConfirmation(null), 5000);
     return () => clearTimeout(timer);
   }, [confirmation]);
+
+  // Class-wise leave (WBS Round 2 feedback #23): cancel specific classes instead of a whole
+  // day, against the admin-configured monthly allowance below. Demo mode has no real
+  // allowance data, so this tab only appears once the API is actually connected.
+  const [applyMode, setApplyMode] = useState<"window" | "classwise">("window");
+  const [classWiseDate, setClassWiseDate] = useState("");
+  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
+  const [classWiseReason, setClassWiseReason] = useState("");
+  const [classWiseSubmitting, setClassWiseSubmitting] = useState(false);
+  const { data: allowanceStatus, reload: reloadAllowance } = useApiData(getMyLeaveAllowanceStatus, EMPTY_ALLOWANCE_STATUS);
+
+  const sessionsOnClassWiseDate = classWiseDate ? eligibleSessions.filter((s) => s.date === classWiseDate) : [];
+  const selectedCount = selectedSessionIds.size;
+  const classWiseCanSubmit = selectedCount > 0 && classWiseReason.trim().length > 0 && !classWiseSubmitting;
+
+  function toggleSession(sessionId: string, checked: boolean) {
+    setSelectedSessionIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(sessionId);
+      else next.delete(sessionId);
+      return next;
+    });
+  }
+
+  function resetClassWiseForm() {
+    setClassWiseDate("");
+    setSelectedSessionIds(new Set());
+    setClassWiseReason("");
+  }
+
+  function handleSubmitClassWise() {
+    if (!classWiseCanSubmit) return;
+    setSubmitError(null);
+    setClassWiseSubmitting(true);
+    submitLeave({ sessionIds: [...selectedSessionIds], reason: classWiseReason.trim() })
+      .then((created) => {
+        setConfirmation(
+          created.status === "Approved"
+            ? `${created.affectedSessionCount} class(es) cancelled — auto-approved within your monthly allowance.`
+            : `Request for ${created.affectedSessionCount} class(es) submitted — this exceeds your remaining monthly allowance, so it needs admin approval first.`
+        );
+        setSubmitError(null);
+        try {
+          setLeaves((prev) => [toFrontendLeave(created), ...prev]);
+        } catch {
+          /* reloadLeaves() below still picks it up from the server's own response */
+        }
+        reloadLeaves();
+        reloadAllowance();
+        toast({
+          variant: "success",
+          title: created.status === "Approved" ? "Class(es) cancelled" : "Leave request submitted",
+          description: created.status === "Approved" ? "Auto-approved within your allowance." : "Pending admin approval.",
+        });
+        resetClassWiseForm();
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : "Could not submit this leave request.";
+        setSubmitError(message);
+        toast({ variant: "error", title: "Couldn't submit leave request", description: message });
+      })
+      .finally(() => setClassWiseSubmitting(false));
+  }
 
   const rangeValid = fromDate.length > 0 && toDate.length > 0 && toDate >= fromDate;
   // Whole-day range: any of the teacher's own upcoming sessions falling on one of the
@@ -317,89 +391,201 @@ export default function TeacherLeave() {
               ? "Notice is calculated against the current time."
               : `Reference time for this demo: ${formatDate(NOW, "long")}, ${formatTimeLabel("12:00")}.`}
           </CardDescription>
+          {/* Class-wise cancellation needs real allowance data from the API, so this
+              second way to apply only appears once the API is actually connected —
+              demo mode keeps the single whole-day/range form it always had. */}
+          {apiEnabled() && (
+            <Tabs value={applyMode} onValueChange={(v) => setApplyMode(v as "window" | "classwise")} className="pt-2">
+              <TabsList>
+                <TabsTrigger value="window">Whole Day / Date Range</TabsTrigger>
+                <TabsTrigger value="classwise">Specific Classes</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {(!apiEnabled() || applyMode === "window") && (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="leaveFromDate">
+                    From date <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="leaveFromDate"
+                    type="date"
+                    min={todayStr}
+                    value={fromDate}
+                    onChange={(e) => {
+                      setFromDate(e.target.value);
+                      // A "to" date earlier than the newly-picked "from" date is meaningless —
+                      // snap it forward instead of leaving an invalid range silently in place.
+                      if (toDate && toDate < e.target.value) setToDate(e.target.value);
+                    }}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="leaveToDate">
+                    To date <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="leaveToDate"
+                    type="date"
+                    min={fromDate || todayStr}
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="leaveFromDate">
-                  From date <span className="text-destructive">*</span>
+                <Label htmlFor="reason">
+                  Reason <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="reason"
+                  placeholder="Briefly describe your reason for leave"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                />
+              </div>
+
+              {rangeValid && overlappingLeave && (
+                <InlineAlert variant="error" className="text-sm">
+                  <span>
+                    You already have a <strong>{overlappingLeave.status}</strong> leave request covering part of this range (
+                    {overlappingLeave.startAtUtc && overlappingLeave.endAtUtc
+                      ? formatDateRange(overlappingLeave.startAtUtc, overlappingLeave.endAtUtc)
+                      : formatDate(overlappingLeave.date, "short")}
+                    ) — this request cannot be submitted.
+                  </span>
+                </InlineAlert>
+              )}
+
+              {rangeValid && !overlappingLeave && (
+                <InlineAlert variant={isBlocked ? "error" : coveredSessions.length > 0 ? "success" : "info"} className="text-sm">
+                  {isBlocked && earliestBlocking ? (
+                    <span>
+                      This covers a class on {formatDate(earliestBlocking.date, "long")} at {formatTimeLabel(earliestBlocking.startTime)}, which
+                      starts in <strong>{hoursBetween(sessionDateTime(earliestBlocking), now).toFixed(1)} hours</strong>. Leave requests must be
+                      submitted at least {MIN_HOURS_NOTICE} hours before a scheduled class — this request cannot be submitted.
+                    </span>
+                  ) : coveredSessions.length > 0 ? (
+                    <span>
+                      This covers <strong>{coveredSessions.length} scheduled session(s)</strong>, each with enough notice — you're clear to submit.
+                    </span>
+                  ) : (
+                    <span>No scheduled sessions fall in this range yet — the leave will still be recorded for these dates.</span>
+                  )}
+                </InlineAlert>
+              )}
+
+              <div>
+                <Button disabled={!canSubmit} onClick={handleSubmit}>
+                  Submit Leave Request
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {apiEnabled() && applyMode === "classwise" && (
+            <div className="flex flex-col gap-4">
+              <InlineAlert variant={allowanceStatus.remaining > 0 ? "info" : "warning"} className="text-sm">
+                <span>
+                  You have <strong>{allowanceStatus.remaining}</strong> of <strong>{allowanceStatus.monthlyAllowance}</strong> class-wise
+                  cancellations left this calendar month. Pick classes within that limit and they're cancelled immediately — no admin
+                  approval needed; beyond it, your request still goes through for admin review, same as whole-day leave.
+                </span>
+              </InlineAlert>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="classWiseDate">
+                  Class date <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  id="leaveFromDate"
+                  id="classWiseDate"
                   type="date"
                   min={todayStr}
-                  value={fromDate}
+                  value={classWiseDate}
                   onChange={(e) => {
-                    setFromDate(e.target.value);
-                    // A "to" date earlier than the newly-picked "from" date is meaningless —
-                    // snap it forward instead of leaving an invalid range silently in place.
-                    if (toDate && toDate < e.target.value) setToDate(e.target.value);
+                    setClassWiseDate(e.target.value);
+                    setSelectedSessionIds(new Set());
                   }}
                 />
               </div>
+
+              {classWiseDate && (
+                <div className="flex flex-col gap-1.5">
+                  <Label>
+                    Classes on {formatDate(classWiseDate, "long")} <span className="text-destructive">*</span>
+                  </Label>
+                  {sessionsOnClassWiseDate.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+                      You have no scheduled classes on this date.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
+                      {sessionsOnClassWiseDate.map((session) => {
+                        const tooSoon = hoursBetween(sessionDateTime(session), now) < MIN_HOURS_NOTICE;
+                        return (
+                          <label
+                            key={session.id}
+                            className={`flex items-center gap-3 px-3 py-2.5 text-sm ${tooSoon ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-muted/40"}`}
+                          >
+                            <Checkbox
+                              checked={selectedSessionIds.has(session.id)}
+                              disabled={tooSoon}
+                              onCheckedChange={(checked) => toggleSession(session.id, checked === true)}
+                            />
+                            <span className="flex-1">
+                              <span className="font-medium text-foreground">{session.title}</span>{" "}
+                              <span className="text-muted-foreground">· {formatTimeLabel(session.startTime)}</span>
+                            </span>
+                            {tooSoon && <span className="text-xs font-medium text-destructive">Too soon (needs {MIN_HOURS_NOTICE}h notice)</span>}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="leaveToDate">
-                  To date <span className="text-destructive">*</span>
+                <Label htmlFor="classWiseReason">
+                  Reason <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="leaveToDate"
-                  type="date"
-                  min={fromDate || todayStr}
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
+                <Textarea
+                  id="classWiseReason"
+                  placeholder="Briefly describe your reason for cancelling these classes"
+                  value={classWiseReason}
+                  onChange={(e) => setClassWiseReason(e.target.value)}
                 />
               </div>
+
+              {selectedCount > 0 && (
+                <InlineAlert variant={selectedCount <= allowanceStatus.remaining ? "success" : "warning"} className="text-sm">
+                  {selectedCount <= allowanceStatus.remaining ? (
+                    <span>
+                      <strong>{selectedCount} class(es)</strong> selected — within your remaining allowance, so this will be cancelled
+                      immediately on submit.
+                    </span>
+                  ) : (
+                    <span>
+                      <strong>{selectedCount} class(es)</strong> selected, but only <strong>{allowanceStatus.remaining}</strong> remain in
+                      your allowance this month — this request will need admin approval instead of being immediate.
+                    </span>
+                  )}
+                </InlineAlert>
+              )}
+
+              <div>
+                <Button disabled={!classWiseCanSubmit} onClick={handleSubmitClassWise}>
+                  <CalendarCheck2 className="h-4 w-4" />
+                  {classWiseSubmitting ? "Submitting…" : "Cancel Selected Classes"}
+                </Button>
+              </div>
             </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="reason">
-                Reason <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                id="reason"
-                placeholder="Briefly describe your reason for leave"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-              />
-            </div>
-
-            {rangeValid && overlappingLeave && (
-              <InlineAlert variant="error" className="text-sm">
-                <span>
-                  You already have a <strong>{overlappingLeave.status}</strong> leave request covering part of this range (
-                  {overlappingLeave.startAtUtc && overlappingLeave.endAtUtc
-                    ? formatDateRange(overlappingLeave.startAtUtc, overlappingLeave.endAtUtc)
-                    : formatDate(overlappingLeave.date, "short")}
-                  ) — this request cannot be submitted.
-                </span>
-              </InlineAlert>
-            )}
-
-            {rangeValid && !overlappingLeave && (
-              <InlineAlert variant={isBlocked ? "error" : coveredSessions.length > 0 ? "success" : "info"} className="text-sm">
-                {isBlocked && earliestBlocking ? (
-                  <span>
-                    This covers a class on {formatDate(earliestBlocking.date, "long")} at {formatTimeLabel(earliestBlocking.startTime)}, which
-                    starts in <strong>{hoursBetween(sessionDateTime(earliestBlocking), now).toFixed(1)} hours</strong>. Leave requests must be
-                    submitted at least {MIN_HOURS_NOTICE} hours before a scheduled class — this request cannot be submitted.
-                  </span>
-                ) : coveredSessions.length > 0 ? (
-                  <span>
-                    This covers <strong>{coveredSessions.length} scheduled session(s)</strong>, each with enough notice — you're clear to submit.
-                  </span>
-                ) : (
-                  <span>No scheduled sessions fall in this range yet — the leave will still be recorded for these dates.</span>
-                )}
-              </InlineAlert>
-            )}
-
-            <div>
-              <Button disabled={!canSubmit} onClick={handleSubmit}>
-                Submit Leave Request
-              </Button>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

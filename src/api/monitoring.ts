@@ -208,10 +208,16 @@ export interface ApiServerLogs {
   fetchedAtUtc: string;
 }
 
-/** Error-filtered `docker logs` tail for one container on one server, fetched over SSH server-side — see IServerLogService. */
+/**
+ * Error-filtered `docker logs` tail for one container on one server, fetched over SSH server-side
+ * — see IServerLogService. serverName travels as a query param, not a path segment: both real
+ * server names ("Jitsi / Video", "App / API") contain "/", and ASP.NET Core's routing never
+ * decodes %2F back to "/" in a route value even when properly percent-encoded here — a path
+ * segment 400s on every real server. Confirmed broken in production before this fix.
+ */
 export async function getServerLogs(serverName: string, container: string, lines = 300): Promise<ApiServerLogs> {
-  const params = new URLSearchParams({ container, lines: String(lines) });
-  return apiFetch<ApiServerLogs>(`/api/monitoring/servers/${encodeURIComponent(serverName)}/logs?${params.toString()}`);
+  const params = new URLSearchParams({ serverName, container, lines: String(lines) });
+  return apiFetch<ApiServerLogs>(`/api/monitoring/servers/logs?${params.toString()}`);
 }
 
 export interface ApiJibriControlResult {
@@ -227,14 +233,14 @@ export interface ApiServiceRestartResult {
   performedAtUtc: string;
 }
 
-/** Runs the Jibri autoscaler immediately instead of waiting out its next cron minute — see IServerControlService. */
+/** Runs the Jibri autoscaler immediately instead of waiting out its next cron minute — see IServerControlService. serverName is a query param; see getServerLogs for why. */
 export async function rescaleJibriNow(serverName: string): Promise<ApiJibriControlResult> {
-  return apiFetch<ApiJibriControlResult>(`/api/monitoring/servers/${encodeURIComponent(serverName)}/jibri/rescale`, { method: "POST" });
+  return apiFetch<ApiJibriControlResult>(`/api/monitoring/servers/jibri/rescale?serverName=${encodeURIComponent(serverName)}`, { method: "POST" });
 }
 
 /** Sets how many Jibri instances stay warm even while idle (clamped server-side to 1-10, and further to the CPU/RAM-derived ceiling). */
 export async function setJibriMinReplicas(serverName: string, minReplicas: number): Promise<ApiJibriControlResult> {
-  return apiFetch<ApiJibriControlResult>(`/api/monitoring/servers/${encodeURIComponent(serverName)}/jibri/min-replicas`, {
+  return apiFetch<ApiJibriControlResult>(`/api/monitoring/servers/jibri/min-replicas?serverName=${encodeURIComponent(serverName)}`, {
     method: "PUT",
     body: JSON.stringify({ minReplicas }),
   });
@@ -242,7 +248,8 @@ export async function setJibriMinReplicas(serverName: string, minReplicas: numbe
 
 /** Restarts one configured container on one server — interrupts anything currently using that service. */
 export async function restartService(serverName: string, container: string): Promise<ApiServiceRestartResult> {
-  return apiFetch<ApiServiceRestartResult>(`/api/monitoring/servers/${encodeURIComponent(serverName)}/services/${encodeURIComponent(container)}/restart`, {
+  const params = new URLSearchParams({ serverName, container });
+  return apiFetch<ApiServiceRestartResult>(`/api/monitoring/servers/services/restart?${params.toString()}`, {
     method: "POST",
   });
 }
@@ -256,7 +263,8 @@ export interface ApiHistoryRange {
 
 /** CPU/memory history for one server over an admin-selected window — a longer look than the 1h the main summary already carries. */
 export async function getServerHistory(serverName: string, range: HistoryRange): Promise<ApiHistoryRange> {
-  return apiFetch<ApiHistoryRange>(`/api/monitoring/servers/${encodeURIComponent(serverName)}/history?range=${range}`);
+  const params = new URLSearchParams({ serverName, range });
+  return apiFetch<ApiHistoryRange>(`/api/monitoring/servers/history?${params.toString()}`);
 }
 
 export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): MonitoringSummary {

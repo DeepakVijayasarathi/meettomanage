@@ -138,6 +138,10 @@ export default function JitsiLive({
   const celebrateAllRef = useRef<((message?: string) => void) | null>(null);
   const raiseHandRef = useRef<((raised: boolean) => void) | null>(null);
   const sendAnnotationRef = useRef<((opJson: string) => void) | null>(null);
+  // Teacher-only: broadcasts her own pin/spotlight choice to the class (see the
+  // pinnedEndpointChanged listener below) — set once InteractivePanel's hub connection
+  // is ready, same pattern as the other senders it hands back via onReady.
+  const setPinnedRef = useRef<((participantId: string | null) => void) | null>(null);
   const annotationOverlayRef = useRef<AnnotationOverlayHandle>(null);
   // Teacher-only "mark on top of what's on screen" tool — off by default so it never
   // steals pointer events from Jitsi's own controls (screen-share picker, mute, etc.)
@@ -538,6 +542,17 @@ export default function JitsiLive({
       });
       api.addListener("participantLeft", (payload) => {
         setParticipants((prev) => prev.filter((p) => p.id !== payload?.id));
+      });
+      // Jitsi's native pin is purely local to whichever browser clicked it — a teacher
+      // pinning herself while screen-sharing used to show "Pinned" on her own screen only,
+      // with every student still seeing her in the small tile, since nothing relayed that
+      // choice anywhere else. Forwarding the teacher's own pin changes over the classroom
+      // hub (setPinnedRef, wired once InteractivePanel's connection is ready) is what makes
+      // a student's own view actually follow along — see InteractivePanel's onPinChanged.
+      // A student pinning someone locally for their own view is deliberately left alone.
+      api.addListener("pinnedEndpointChanged", (payload) => {
+        if (mode !== "teacher") return;
+        setPinnedRef.current?.(payload?.id ?? null);
       });
       // Jitsi's own signal for a dropped media/XMPP connection mid-call — the video
       // tiles freeze silently otherwise, with nothing in our own chrome saying why.
@@ -997,10 +1012,11 @@ export default function JitsiLive({
                 displayName={userName}
                 onCelebrate={celebrate}
                 onLeaderboard={setLeaderboard}
-                onReady={({ celebrateAll, raiseHand, sendAnnotation }) => {
+                onReady={({ celebrateAll, raiseHand, sendAnnotation, setPinned }) => {
                   celebrateAllRef.current = celebrateAll;
                   raiseHandRef.current = raiseHand;
                   sendAnnotationRef.current = sendAnnotation;
+                  setPinnedRef.current = setPinned;
                 }}
                 onAnnotation={(opJson) => {
                   try {
@@ -1009,6 +1025,10 @@ export default function JitsiLive({
                     /* malformed op from a stale client — ignore */
                   }
                 }}
+                // Applies the teacher's pin choice to this viewer's own Jitsi connection —
+                // executeCommand("pinParticipant", null) is Jitsi's own documented way to
+                // clear a pin, so the teacher unpinning correctly un-spotlights here too.
+                onPinChanged={(participantId) => jitsiApiRef.current?.executeCommand("pinParticipant", participantId)}
               />
             </aside>
           )}
