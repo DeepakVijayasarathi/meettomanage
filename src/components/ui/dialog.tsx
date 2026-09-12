@@ -25,8 +25,14 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    /** Set false for a genuinely mandatory dialog (paired with onEscapeKeyDown/onInteractOutside
+     *  preventDefault on the caller's own side) — without this, the always-rendered "X" was the
+     *  one dismissal path neither of those props could block. Defaults true: every other dialog
+     *  in the app keeps its close button exactly as before. */
+    showCloseButton?: boolean;
+  }
+>(({ className, children, onOpenAutoFocus, onCloseAutoFocus, showCloseButton = true, ...props }, ref) => {
   // On close, Radix's modal Content hands focus to <DialogTrigger> — but every dialog in
   // this app is controlled by an `open` prop next to a plain <Button>, so that trigger ref
   // is always null and focus fell through to <body>. A keyboard user closing a dialog lost
@@ -65,10 +71,12 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md opacity-60 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
+      {showCloseButton && (
+        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md opacity-60 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
+      )}
     </DialogPrimitive.Content>
   </DialogPortal>
   );

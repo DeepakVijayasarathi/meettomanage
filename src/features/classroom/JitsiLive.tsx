@@ -1039,29 +1039,28 @@ export default function JitsiLive({
           a browser security rule no app can bypass), so this is the closest thing to mandatory
           within what's actually allowed -- it stays up until the teacher clicks through the
           browser's own picker, not until they click ours away. */}
-      {/* The earlier ask: a popup right at join, before recording has necessarily even started.
-          One click is unavoidable (browser rule, see the remarks above the banner below) — this
-          is that click, asked for clearly instead of only via a passive banner later on. "Skip
-          for now" doesn't block the class; the banner below still nudges again once recording
-          is actually running, in case they skipped here. */}
-      <Dialog open={shareScreenPromptOpen} onOpenChange={setShareScreenPromptOpen}>
-        <DialogContent className="max-w-sm">
+      {/* Mandatory, not optional (teacher feedback): no "Skip", no Escape key, no clicking
+          outside — the only way out is actually clicking Share, same principle as the banner
+          below. This still isn't a true zero-click auto-share (see the remarks above the banner
+          below on why no browser allows that), but it's now genuinely mandatory within what a
+          click-through modal actually can enforce. Closes itself once screenSharingStatusChanged
+          fires — that's the *browser's* confirmation sharing actually started, not just that the
+          button was clicked (declining the picker, or a getDisplayMedia error, leaves this open). */}
+      <Dialog open={shareScreenPromptOpen} onOpenChange={() => {}}>
+        <DialogContent
+          className="max-w-sm"
+          showCloseButton={false}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
-            <DialogTitle>Share your screen?</DialogTitle>
+            <DialogTitle>Share your screen to start</DialogTitle>
             <DialogDescription>
-              Sharing this tab (choose <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives students a clearer view.
+              Required before the class can proceed. Sharing this tab (choose <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives students a clearer view.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShareScreenPromptOpen(false)}>
-              Skip for now
-            </Button>
-            <Button
-              onClick={() => {
-                jitsiApiRef.current?.executeCommand("toggleShareScreen");
-                setShareScreenPromptOpen(false);
-              }}
-            >
+            <Button onClick={() => jitsiApiRef.current?.executeCommand("toggleShareScreen")}>
               Share screen
             </Button>
           </DialogFooter>
