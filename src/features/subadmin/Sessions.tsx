@@ -99,12 +99,14 @@ export default function SubAdminSessions() {
   const [saving, setSaving] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
-  // Reschedule dialog (real date/time picker, not just a status flip) — duration is editable
-  // here too, same reasoning as admin/Sessions.tsx: the backend prices payout off
-  // ScheduledEndAtUtc - ScheduledStartAtUtc at completion time.
+  // Edit session dialog (date/time picker plus teacher/batch overrides — was "Reschedule",
+  // time-only) — duration is editable here too, same reasoning as admin/Sessions.tsx: the
+  // backend prices payout off ScheduledEndAtUtc - ScheduledStartAtUtc at completion time.
   const [reschedDate, setReschedDate] = useState("");
   const [reschedTime, setReschedTime] = useState("10:00");
   const [reschedDuration, setReschedDuration] = useState("45");
+  const [reschedTeacher, setReschedTeacher] = useState("");
+  const [reschedBatch, setReschedBatch] = useState("");
   const [reschedBusy, setReschedBusy] = useState(false);
 
   const reschedDurationMinutes = Number(reschedDuration);
@@ -180,8 +182,11 @@ export default function SubAdminSessions() {
     try {
       const start = localToUtcIso(reschedDate, reschedTime);
       const end = new Date(new Date(start).getTime() + reschedDurationMinutes * 60000).toISOString();
-      await rescheduleSession(rescheduleTarget.id, start, end);
-      notify(true, `"${rescheduleTarget.title}" rescheduled to ${formatDate(reschedDate)} ${formatTimeLabel(reschedTime)} (${reschedDurationMinutes} min).`);
+      await rescheduleSession(rescheduleTarget.id, start, end, {
+        teacherProfileId: reschedTeacher && reschedTeacher !== rescheduleTarget.teacherId ? reschedTeacher : undefined,
+        batchId: reschedBatch && reschedBatch !== (rescheduleTarget.batchId ?? "") ? reschedBatch : undefined,
+      });
+      notify(true, `"${rescheduleTarget.title}" updated to ${formatDate(reschedDate)} ${formatTimeLabel(reschedTime)} (${reschedDurationMinutes} min).`);
       setRescheduleTarget(null);
       reload();
     } catch (err) {
@@ -329,9 +334,11 @@ export default function SubAdminSessions() {
                       setReschedDate(row.date);
                       setReschedTime(row.startTime);
                       setReschedDuration(String(row.duration));
+                      setReschedTeacher(row.teacherId);
+                      setReschedBatch(row.batchId ?? "");
                     }}
                   >
-                    Reschedule
+                    Edit
                   </Button>
                   <Button
                     variant="outline"
@@ -500,15 +507,15 @@ export default function SubAdminSessions() {
         </DialogContent>
       </Dialog>
 
-      {/* Reschedule with a real new slot */}
+      {/* Edit session: date/time/duration plus, now, teacher/batch — was time-only "Reschedule" */}
       <Dialog open={!!rescheduleTarget} onOpenChange={(open) => !open && setRescheduleTarget(null)}>
         <DialogContent className="max-w-sm">
           {rescheduleTarget && (
             <>
               <DialogHeader>
-                <DialogTitle>Reschedule session</DialogTitle>
+                <DialogTitle>Edit session</DialogTitle>
                 <DialogDescription>
-                  "{rescheduleTarget.title}" — pick the new slot. Parents and the teacher see the change immediately.
+                  "{rescheduleTarget.title}" — parents and the teacher see the change immediately.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -533,13 +540,45 @@ export default function SubAdminSessions() {
                   />
                   {!reschedDurationValid && <p className="text-xs font-medium text-destructive">Enter a duration greater than 0.</p>}
                 </div>
+                {rescheduleTarget.type !== "demo" && (
+                  <div className="grid gap-1.5 sm:col-span-2">
+                    <Label htmlFor="rs-batch">Batch</Label>
+                    <Select value={reschedBatch} onValueChange={setReschedBatch}>
+                      <SelectTrigger id="rs-batch">
+                        <SelectValue placeholder="Select batch" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {batches.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name} · {b.courseName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="grid gap-1.5 sm:col-span-2">
+                  <Label htmlFor="rs-teacher">Teacher</Label>
+                  <Select value={reschedTeacher} onValueChange={setReschedTeacher}>
+                    <SelectTrigger id="rs-teacher">
+                      <SelectValue placeholder="Select teacher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers.map((t) => (
+                        <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
+                          {t.fullName} {t.departmentName ? `· ${t.departmentName}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setRescheduleTarget(null)}>
                   Close
                 </Button>
                 <Button disabled={reschedBusy || !reschedDate || !reschedDurationValid} onClick={handleReschedule}>
-                  {reschedBusy ? "Rescheduling…" : "Reschedule"}
+                  {reschedBusy ? "Saving…" : "Save"}
                 </Button>
               </DialogFooter>
             </>

@@ -170,6 +170,9 @@ export default function AdminBatches() {
   // shorter sessions than the rest of that course's batches.
   const [editStartDate, setEditStartDate] = useState("");
   const [editDuration, setEditDuration] = useState("");
+  // Renaming a batch — the API already supported it (updateBatchFields' name field), the
+  // detail dialog just never exposed an input for it.
+  const [editName, setEditName] = useState("");
 
   // New-batch dialog
   const [createOpen, setCreateOpen] = useState(false);
@@ -369,6 +372,7 @@ export default function AdminBatches() {
   function openDetail(b: DisplayBatch) {
     setDetail(b);
     setTeacherAssignment(b.teacherId);
+    setEditName(b.name);
     setEditStartDate(b.startDate || "");
     setEditDuration(b.durationOverride != null ? String(b.durationOverride) : "");
     setSaved(false);
@@ -398,6 +402,7 @@ export default function AdminBatches() {
     setSavingDetail(true);
     try {
       await updateBatchFields(raw, {
+        name: editName.trim() || undefined,
         teacherProfileId: teacherAssignment,
         startDate: editStartDate.trim() || null,
         durationMinutesOverride: editDuration.trim() ? Number(editDuration) : null,
@@ -553,6 +558,10 @@ export default function AdminBatches() {
 
               {apiEnabled() && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="grid gap-1.5 sm:col-span-2">
+                    <Label htmlFor="batch-name">Batch name</Label>
+                    <Input id="batch-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                  </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="batch-start-date">Start date</Label>
                     <Input id="batch-start-date" type="date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} />

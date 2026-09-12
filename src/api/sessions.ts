@@ -217,14 +217,23 @@ export async function scheduleSession(input: {
   return apiFetch<ApiClassSession>("/api/sessions", { method: "POST", body: JSON.stringify(input) });
 }
 
+/** Edits a session: new date/time (always) plus, optionally, a new teacher and/or batch —
+ *  omit either to leave it as-is. Creates a fresh linked calendar entry under the hood (same
+ *  as a plain time-only reschedule always has), so history stays traceable either way. */
 export async function rescheduleSession(
   id: string,
   scheduledStartAtUtc: string,
-  scheduledEndAtUtc: string
+  scheduledEndAtUtc: string,
+  overrides?: { teacherProfileId?: string; batchId?: string }
 ): Promise<ApiClassSession> {
   return apiFetch<ApiClassSession>(`/api/sessions/${id}/reschedule`, {
     method: "POST",
-    body: JSON.stringify({ scheduledStartAtUtc, scheduledEndAtUtc }),
+    body: JSON.stringify({
+      scheduledStartAtUtc,
+      scheduledEndAtUtc,
+      teacherProfileId: overrides?.teacherProfileId,
+      batchId: overrides?.batchId,
+    }),
   });
 }
 
