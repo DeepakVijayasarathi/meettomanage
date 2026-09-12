@@ -346,6 +346,11 @@ export default function JitsiLive({
       talkSince: 0,
       camMs: 0,
       camSince: 0,
+      // Durable "was the whiteboard actually captured" signal (see the screen-share nudge
+      // banner below and EngagementEventType.ScreenShareSeconds) -- not scored, just recorded
+      // so it's checkable after the fact without opening the video.
+      screenShareMs: 0,
+      screenShareSince: 0,
     };
     const flushMedia = () => {
       const now = Date.now();
@@ -357,12 +362,19 @@ export default function JitsiLive({
         media.camMs += now - media.camSince;
         media.camSince = 0;
       }
+      if (media.screenShareSince) {
+        media.screenShareMs += now - media.screenShareSince;
+        media.screenShareSince = 0;
+      }
       const talkSeconds = Math.round(media.talkMs / 1000);
       const camSeconds = Math.round(media.camMs / 1000);
+      const screenShareSeconds = Math.round(media.screenShareMs / 1000);
       if (talkSeconds > 0) postEngagement(sessionId, userNameRef.current, "TalkTimeSeconds", talkSeconds);
       if (camSeconds > 0) postEngagement(sessionId, userNameRef.current, "CameraOnSeconds", camSeconds);
+      if (screenShareSeconds > 0) postEngagement(sessionId, userNameRef.current, "ScreenShareSeconds", screenShareSeconds);
       media.talkMs = 0;
       media.camMs = 0;
+      media.screenShareMs = 0;
     };
 
     async function init() {
@@ -643,6 +655,13 @@ export default function JitsiLive({
         const on = !!payload?.on;
         setScreenShareActive(on);
         if (on) setShareScreenPromptOpen(false);
+        const now = Date.now();
+        if (on) {
+          media.screenShareSince ||= now;
+        } else if (media.screenShareSince) {
+          media.screenShareMs += now - media.screenShareSince;
+          media.screenShareSince = 0;
+        }
       });
       // Without these, a video server/room misconfiguration (e.g. the Jitsi deployment's
       // focus component rejecting the room outright) left the whole screen looking
