@@ -186,10 +186,6 @@ export default function JitsiLive({
   // tab, which Jitsi already treats as normal recordable content. Tracks Jitsi's own
   // screenSharingStatusChanged event so the nudge banner below can reappear if sharing stops.
   const [screenShareActive, setScreenShareActive] = useState(false);
-  // Dismissible without being permanently silenced: cleared again on the next successful
-  // share-start, so if the teacher shares then later stops mid-class, the reminder comes back
-  // rather than staying dismissed for the rest of the call.
-  const [screenShareBannerDismissed, setScreenShareBannerDismissed] = useState(false);
   const recordingWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // An "off" recordingStatusChanged with an error used to declare auto-recording failed the
   // instant it arrived — but Jibri can report a transient failure (e.g. its first-picked
@@ -633,11 +629,7 @@ export default function JitsiLive({
       // tiles freeze silently otherwise, with nothing in our own chrome saying why.
       api.addListener("connectionInterrupted", () => setCallDegraded(true));
       api.addListener("connectionRestored", () => setCallDegraded(false));
-      api.addListener("screenSharingStatusChanged", (payload) => {
-        const on = !!payload?.on;
-        setScreenShareActive(on);
-        if (on) setScreenShareBannerDismissed(false);
-      });
+      api.addListener("screenSharingStatusChanged", (payload) => setScreenShareActive(!!payload?.on));
       // Without these, a video server/room misconfiguration (e.g. the Jitsi deployment's
       // focus component rejecting the room outright) left the whole screen looking
       // "normal" — just a static avatar with no call ever connecting, no explanation, and
@@ -1009,8 +1001,12 @@ export default function JitsiLive({
           normal recordable stage content, the same as it does for anyone else's shared screen.
           Shown only to the real teacher (never the recording observer, which has no one to
           click it) and only once a recording is actually running -- no point nagging before
-          there's anything to include the whiteboard in. */}
-      {mode === "teacher" && !isRecordingObserver && recording && !screenShareActive && !screenShareBannerDismissed && (
+          there's anything to include the whiteboard in. Deliberately non-dismissible: a real
+          zero-click auto-share is impossible (getDisplayMedia requires a genuine user gesture,
+          a browser security rule no app can bypass), so this is the closest thing to mandatory
+          within what's actually allowed -- it stays up until the teacher clicks through the
+          browser's own picker, not until they click ours away. */}
+      {mode === "teacher" && !isRecordingObserver && recording && !screenShareActive && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md">
           <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
           <p className="flex-1">
@@ -1022,13 +1018,6 @@ export default function JitsiLive({
             className="shrink-0 font-semibold underline decoration-brand-violet/50 underline-offset-2 hover:decoration-brand-violet"
           >
             Share screen
-          </button>
-          <button
-            type="button"
-            onClick={() => setScreenShareBannerDismissed(true)}
-            className="shrink-0 font-semibold underline decoration-brand-violet/50 underline-offset-2 hover:decoration-brand-violet"
-          >
-            Dismiss
           </button>
         </div>
       )}
