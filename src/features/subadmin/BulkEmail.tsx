@@ -26,8 +26,11 @@ import {
   sendBulkEmail,
   getBulkEmailHistory,
   getBulkEmailBlastDetail,
+  getEmailHistory,
   type ApiBulkEmailBlastDetail,
   type ApiBulkEmailHistoryItem,
+  type ApiEmailHistoryItem,
+  type EmailNotificationType,
 } from "@/api/reports";
 import { formatDate } from "@/lib/utils";
 
@@ -297,7 +300,68 @@ function ComposePanel({ canSend }: { canSend: boolean }) {
   );
 }
 
+const TYPE_LABELS: Record<EmailNotificationType, string> = {
+  BookingConfirmation: "Booking Confirmation",
+  SessionReminder: "Session Reminder",
+  NoShowAlert: "No-Show Alert",
+  DelayedSessionAlert: "Delayed Session Alert",
+  PaymentReminder: "Payment Reminder",
+  PaymentReceived: "Payment Received",
+  FeeSuspension: "Fee Suspension",
+  LeaveStatusUpdate: "Leave Status Update",
+  AttendanceUpdate: "Attendance Update",
+  PerformanceSummary: "Performance Summary",
+  PayoutStatement: "Payout Statement",
+  General: "General",
+};
+
+/** "Bulk" and "All" are this screen's own view modes; every other value is a real
+ *  NotificationType, narrowing "All" down to just that one type. */
+type ViewFilter = "Bulk" | "All" | EmailNotificationType;
+
+const VIEW_OPTIONS: { value: ViewFilter; label: string }[] = [
+  { value: "Bulk", label: "Bulk Email" },
+  { value: "All", label: "All Emails" },
+  ...(Object.entries(TYPE_LABELS) as [EmailNotificationType, string][]).map(([value, label]) => ({ value, label })),
+];
+
 function HistoryPanel() {
+  // Defaults to Bulk Email (today's behavior) -- switching this is what loads every other
+  // email ever sent to a user instead, itself narrowed to one type or left at "All Emails".
+  const [view, setView] = useState<ViewFilter>("Bulk");
+
+  return (
+    <div className="mt-5">
+      <div className="mb-4 flex items-center gap-2">
+        <Label htmlFor="bulk-email-history-view" className="text-sm text-muted-foreground">
+          Show
+        </Label>
+        <Select value={view} onValueChange={(v) => setView(v as ViewFilter)}>
+          <SelectTrigger id="bulk-email-history-view" className="w-64">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {VIEW_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {view === "Bulk" ? (
+        <BulkEmailSubPanel />
+      ) : (
+        // Keyed by the filter so switching type/"All" remounts fresh instead of needing its
+        // own effect to trigger a refetch — useApiData only refetches on its own reload().
+        <OtherEmailsSubPanel key={view} type={view === "All" ? undefined : view} />
+      )}
+    </div>
+  );
+}
+
+function BulkEmailSubPanel() {
   const { data: history, loading, error, reload } = useApiData(getBulkEmailHistory, []);
   const [openBlastId, setOpenBlastId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ApiBulkEmailBlastDetail | null>(null);
@@ -355,7 +419,7 @@ function HistoryPanel() {
   ];
 
   return (
-    <div className="mt-5">
+    <>
       <DataTable
         data={history}
         columns={columns}
@@ -429,6 +493,81 @@ function HistoryPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
+  );
+}
+
+/** Every individual (non-Bulk-Email) email sent to a user — reminders, booking confirmations,
+ *  payment notices, and the rest of NotificationType — one row per recipient per send. */
+function OtherEmailsSubPanel({ type }: { type?: EmailNotificationType }) {
+  const { data: emails, loading, error, reload } = useApiData(() => getEmailHistory(type), []);
+
+  const columns: DataTableColumn<ApiEmailHistoryItem>[] = [
+    {
+      key: "subject",
+      header: "Subject",
+      sortable: true,
+      accessor: (row) => row.subject ?? "",
+      render: (row) => (
+        <div className="flex items-center gap-2 font-medium text-foreground">
+          <Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          {row.subject ?? "(no subject)"}
+        </div>
+      ),
+    },
+    {
+      key: "recipient",
+      header: "Recipient",
+      sortable: true,
+      accessor: (row) => row.recipientName,
+      render: (row) => (
+        <div>
+          <p className="text-sm text-foreground">{row.recipientName}</p>
+          <p className="text-xs text-muted-foreground">{row.recipientEmail}</p>
+        </div>
+      ),
+    },
+    {
+      key: "type",
+      header: "Type",
+      sortable: true,
+      accessor: (row) => TYPE_LABELS[row.type],
+      render: (row) => <Badge variant="outline">{TYPE_LABELS[row.type]}</Badge>,
+    },
+    {
+      key: "sentAtUtc",
+      header: "Sent on",
+      sortable: true,
+      accessor: (row) => new Date(row.sentAtUtc ?? row.createdAtUtc).getTime(),
+      render: (row) => formatDate(row.sentAtUtc ?? row.createdAtUtc, "datetime"),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (row) => <Badge variant={STATUS_VARIANT[row.status]}>{row.status}</Badge>,
+    },
+  ];
+
+  return (
+    <>
+      <DataTable
+        data={emails}
+        columns={columns}
+        rowKey={(row) => row.id}
+        searchPlaceholder="Search by subject or recipient…"
+        searchFn={(row, q) =>
+          (row.subject ?? "").toLowerCase().includes(q.toLowerCase()) || row.recipientName.toLowerCase().includes(q.toLowerCase())
+        }
+        emptyTitle="No emails found"
+        emptyDescription="Reminders, confirmations and other system emails will show up here as they're sent."
+        error={error}
+        onRetry={reload}
+      />
+      {loading && emails.length === 0 && !error && (
+        <div className="flex justify-center py-10 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </div>
+      )}
+    </>
   );
 }

@@ -94,6 +94,40 @@ export async function getBulkEmailBlastDetail(id: string): Promise<ApiBulkEmailB
   return apiFetch<ApiBulkEmailBlastDetail>(`/api/communications/bulk-email/history/${id}`);
 }
 
+/** Every NotificationType the backend can tag an individual email with — mirrors the .NET enum. */
+export type EmailNotificationType =
+  | "BookingConfirmation"
+  | "SessionReminder"
+  | "NoShowAlert"
+  | "DelayedSessionAlert"
+  | "PaymentReminder"
+  | "PaymentReceived"
+  | "FeeSuspension"
+  | "LeaveStatusUpdate"
+  | "AttendanceUpdate"
+  | "PerformanceSummary"
+  | "PayoutStatement"
+  | "General";
+
+export interface ApiEmailHistoryItem {
+  id: string;
+  recipientName: string;
+  recipientEmail: string;
+  subject: string | null;
+  type: EmailNotificationType;
+  templateKey: string | null;
+  status: "Pending" | "Sent" | "Failed" | "Read";
+  sentAtUtc: string | null;
+  createdAtUtc: string;
+}
+
+/** Every individual (non-Bulk-Email) email ever sent, newest first — "Bulk Email History"'s
+ *  other view. Omit `type` for every type; the 500-row cap matches the backend's own default. */
+export async function getEmailHistory(type?: EmailNotificationType): Promise<ApiEmailHistoryItem[]> {
+  const query = type ? `?type=${encodeURIComponent(type)}` : "";
+  return apiFetch<ApiEmailHistoryItem[]>(`/api/communications/email-history${query}`);
+}
+
 /** A parent's reply to one Bulk Email they received, addressed by their recipient row id. */
 export async function replyToBulkEmail(recipientId: string, message: string): Promise<void> {
   await apiFetch<void>(`/api/communications/bulk-email/${recipientId}/reply`, {

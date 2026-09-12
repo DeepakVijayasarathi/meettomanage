@@ -88,6 +88,8 @@ export default function JitsiLive({
   displayName,
   joinOverride,
   inviteUrl,
+  isRecordingObserver,
+  hubToken,
 }: {
   room: string;
   title?: string;
@@ -107,6 +109,15 @@ export default function JitsiLive({
    *  meeting room; a real class session invites people through enrollment instead, so this
    *  is omitted there. */
   inviteUrl?: string;
+  /** Set only by RecordingObserver.tsx: this is Jibri's own headless browser, not a human.
+   *  Suppresses actions that only make sense for a real teacher and would otherwise double up
+   *  with (or fight) the very Jibri recording that's already capturing this page — a second
+   *  auto-started recording, a duplicate recording registration, a Leave button nobody can
+   *  click, a "back" navigation with no history to go back to. */
+  isRecordingObserver?: boolean;
+  /** Passed through to InteractivePanel's ClassroomHubClient in place of getAccessToken() —
+   *  see ClassroomHubClient's own doc comment. Only meaningful alongside isRecordingObserver. */
+  hubToken?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -158,6 +169,8 @@ export default function JitsiLive({
   // Jitsi has actually loaded, instead of looking clickable and silently no-oping.
   const [jitsiReady, setJitsiReady] = useState(false);
   const [callDegraded, setCallDegraded] = useState(false);
+  // Recording-observer only — see the readyToClose listener below.
+  const [callEnded, setCallEnded] = useState(false);
   const [recording, setRecording] = useState(false);
   // Auto-recording has no success confirmation of its own — startRecording is a fire-and-
   // forget IFrame command, so the only signals that it actually took are recordingStatusChanged
@@ -167,6 +180,12 @@ export default function JitsiLive({
   // apart from "recording is fine, just not showing." Null = nothing wrong (or not attempted);
   // a string = shown as a dismissible banner with the reason, teacher-only.
   const [recordingIssue, setRecordingIssue] = useState<string | null>(null);
+  // Jibri only ever records the room's own stage/dominant view -- it can't see our whiteboard/
+  // quiz overlay, which lives in a separate cross-origin-iframed page it has no access to. The
+  // one reliable fix that needs no server-side changes: have the teacher screen-share this same
+  // tab, which Jitsi already treats as normal recordable content. Tracks Jitsi's own
+  // screenSharingStatusChanged event so the nudge banner below can reappear if sharing stops.
+  const [screenShareActive, setScreenShareActive] = useState(false);
   const recordingWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // An "off" recordingStatusChanged with an error used to declare auto-recording failed the
   // instant it arrived — but Jibri can report a transient failure (e.g. its first-picked
@@ -452,7 +471,7 @@ export default function JitsiLive({
             "raisehand",
             "tileview",
             "videobackgroundblur",
-            ...(mode === "teacher" ? (["recording", "mute-everyone"] as const) : []),
+            ...(mode === "teacher" && !isRecordingObserver ? (["recording", "mute-everyone"] as const) : []),
             "fullscreen",
             "settings",
             // Deliberately no "hangup" here — our own Leave button (header, top-right)
@@ -466,7 +485,16 @@ export default function JitsiLive({
       });
       jitsiApiRef.current = api;
       setJitsiReady(true);
-      api.addListener("readyToClose", () => navigate(-1));
+      // The recording observer has no browser history to go back to (Jibri navigated here
+      // directly via nginx's proxy, not through the app's own router) -- navigate(-1) on this
+      // route is undefined-ish. Just mark the call ended and stop; there's nowhere else to send it.
+      api.addListener("readyToClose", () => {
+        if (isRecordingObserver) {
+          setCallEnded(true);
+        } else {
+          navigate(-1);
+        }
+      });
       api.addListener("videoConferenceJoined", (payload) => {
         media.selfId = payload?.id ?? "";
         media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
@@ -503,7 +531,10 @@ export default function JitsiLive({
           // just not making it worse going forward.
           api?.executeCommand("setVirtualBackground", false);
         }
-        if (mode === "teacher" && autoRecordRef.current) {
+        // Skipped for the recording observer -- it only ever renders because a recording is
+        // already running (it's Jibri's own capture of this exact call), so firing this again
+        // would double-start it against the same room.
+        if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver) {
           // Auto session recording: starts when the host joins; requires Jibri
           // on the Jitsi deployment (no-op on deployments without it). Admin can
           // turn this off in Settings → Integrations → Jitsi Meet ("autoRecord"),
@@ -538,7 +569,11 @@ export default function JitsiLive({
       // Auto recording registration: when the deployment publishes the recording
       // link, file it against the session (drives the 15-day parent window).
       api.addListener("recordingLinkAvailable", (payload) => {
-        if (mode === "teacher" && interactive && payload?.link) {
+        // Skipped for the recording observer -- Jibri's own finalize-recording webhook
+        // (FinalizeJibriRecordingAsync) is the single source of truth for registering this
+        // recording; registering it again here too would create a duplicate SessionRecording
+        // row for the same file.
+        if (mode === "teacher" && interactive && !isRecordingObserver && payload?.link) {
           registerRecording(sessionId!, payload.link).catch(() => undefined);
           setRecordingIssue(null);
         }
@@ -594,6 +629,7 @@ export default function JitsiLive({
       // tiles freeze silently otherwise, with nothing in our own chrome saying why.
       api.addListener("connectionInterrupted", () => setCallDegraded(true));
       api.addListener("connectionRestored", () => setCallDegraded(false));
+      api.addListener("screenSharingStatusChanged", (payload) => setScreenShareActive(!!payload?.on));
       // Without these, a video server/room misconfiguration (e.g. the Jitsi deployment's
       // focus component rejecting the room outright) left the whole screen looking
       // "normal" — just a static avatar with no call ever connecting, no explanation, and
@@ -760,16 +796,22 @@ export default function JitsiLive({
               <UserPlus className="h-3.5 w-3.5" /> Invite
             </Button>
           )}
-          <div className="h-6 w-px bg-white/10" aria-hidden="true" />
-          <Button
-            size="sm"
-            variant="destructive"
-            className="gap-1.5 rounded-full shadow-md shadow-destructive/30 transition-transform hover:scale-[1.03]"
-            onClick={() => setLeaveConfirmOpen(true)}
-          >
-            <PhoneOff className="h-4 w-4" />
-            Leave
-          </Button>
+          {/* No Leave button for the recording observer -- there's no human to click it, and
+              the token it joined with is moderator: false anyway. */}
+          {!isRecordingObserver && (
+            <>
+              <div className="h-6 w-px bg-white/10" aria-hidden="true" />
+              <Button
+                size="sm"
+                variant="destructive"
+                className="gap-1.5 rounded-full shadow-md shadow-destructive/30 transition-transform hover:scale-[1.03]"
+                onClick={() => setLeaveConfirmOpen(true)}
+              >
+                <PhoneOff className="h-4 w-4" />
+                Leave
+              </Button>
+            </>
+          )}
         </div>
       </header>
       {/* One button, one dialog: a separate "End Class" button next to Leave meant a
@@ -952,7 +994,43 @@ export default function JitsiLive({
           </button>
         </div>
       )}
-      {error ? (
+      {/* Jibri (the recording bot) only ever sees this room's own video/stage view -- it has
+          no access to our whiteboard/quiz overlay, which lives behind a cross-origin iframe
+          boundary no server-side fix can cross. Screen-sharing this same tab is the one
+          reliable way to get it into the recording: Jitsi already treats a screen-share as
+          normal recordable stage content, the same as it does for anyone else's shared screen.
+          Shown only to the real teacher (never the recording observer, which has no one to
+          click it) and only once a recording is actually running -- no point nagging before
+          there's anything to include the whiteboard in. Deliberately non-dismissible: a real
+          zero-click auto-share is impossible (getDisplayMedia requires a genuine user gesture,
+          a browser security rule no app can bypass), so this is the closest thing to mandatory
+          within what's actually allowed -- it stays up until the teacher clicks through the
+          browser's own picker, not until they click ours away. */}
+      {mode === "teacher" && !isRecordingObserver && recording && !screenShareActive && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md">
+          <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
+          <p className="flex-1">
+            Share your screen (choose <span className="font-semibold">This Tab</span>) so the recording includes your whiteboard and quiz.
+          </p>
+          <button
+            type="button"
+            onClick={() => jitsiApiRef.current?.executeCommand("toggleShareScreen")}
+            className="shrink-0 font-semibold underline decoration-brand-violet/50 underline-offset-2 hover:decoration-brand-violet"
+          >
+            Share screen
+          </button>
+        </div>
+      )}
+      {callEnded ? (
+        // Recording observer only (see the readyToClose listener) -- an inert end state with
+        // nowhere to navigate to, since Jibri opened this page directly, not through the app's
+        // own router.
+        <div className="flex flex-1 items-center justify-center px-6">
+          <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm text-white/60 shadow-2xl shadow-black/40 backdrop-blur-md">
+            <p className="font-medium">Call ended.</p>
+          </div>
+        </div>
+      ) : error ? (
         <div className="flex flex-1 items-center justify-center px-6">
           <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-5 py-4 text-sm text-red-200 shadow-2xl shadow-black/40 backdrop-blur-md">
             <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-red-300" />
@@ -1102,6 +1180,7 @@ export default function JitsiLive({
                 sessionId={sessionId!}
                 mode={mode}
                 displayName={userName}
+                hubToken={hubToken}
                 onCelebrate={celebrate}
                 onLeaderboard={setLeaderboard}
                 onReady={({ celebrateAll, raiseHand, sendAnnotation, setPinned }) => {

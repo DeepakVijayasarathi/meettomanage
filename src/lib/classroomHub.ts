@@ -75,9 +75,14 @@ export class ClassroomHubClient {
   private connection: HubConnection | null = null;
   private disposed = false;
   private readonly sessionId: string;
+  private readonly hubTokenOverride?: string;
 
-  constructor(sessionId: string) {
+  /** hubTokenOverride is set only by the Jibri recording-observer page (RecordingObserver.tsx),
+   *  whose anonymous session has no real access token in localStorage — it authenticates with
+   *  its own short-lived CreateRecordingObserverHubToken instead of getAccessToken(). */
+  constructor(sessionId: string, hubTokenOverride?: string) {
     this.sessionId = sessionId;
+    this.hubTokenOverride = hubTokenOverride;
   }
 
   async connect(
@@ -90,7 +95,7 @@ export class ClassroomHubClient {
 
     const connection = new HubConnectionBuilder()
       .withUrl(`${baseUrl}/hubs/classroom`, {
-        accessTokenFactory: () => getAccessToken() ?? "",
+        accessTokenFactory: () => this.hubTokenOverride ?? getAccessToken() ?? "",
       })
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Warning)

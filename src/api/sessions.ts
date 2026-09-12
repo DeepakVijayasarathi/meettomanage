@@ -178,6 +178,26 @@ export async function getJitsiJoin(sessionId: string): Promise<ApiJitsiJoin> {
   return apiFetch<ApiJitsiJoin>(`/api/sessions/${sessionId}/jitsi-join`);
 }
 
+export interface ApiRecordingObserverJoin {
+  sessionId: string;
+  room: string;
+  domain: string;
+  token: string | null;
+  hubToken: string | null;
+  expiresAtUtc: string;
+}
+
+/**
+ * Called by RecordingObserver.tsx — the page nginx on the Jitsi server proxies Jibri's own
+ * headless-Chrome navigation to instead of the bare Jitsi Meet SPA (see
+ * docs/JITSI_ARCHITECTURE.md's recording-observer section). No signed-in caller; the backend
+ * authorizes by "is there an InProgress ClassSession for this room right now" instead.
+ * Returns undefined (backend 204s) when there's no such session — nothing for Jibri to join.
+ */
+export async function getRecordingObserverJoin(room: string): Promise<ApiRecordingObserverJoin | undefined> {
+  return apiFetch<ApiRecordingObserverJoin | undefined>(`/api/sessions/recordings/observer-join?room=${encodeURIComponent(room)}`);
+}
+
 // A freshly-generated batch's whole schedule is created in one shot (GenerateScheduleAsync
 // places every one of the course's sessions up front, however far out that runs), but a
 // ±60-day fetch window only ever showed whatever fell inside the next/last 60 days. A batch

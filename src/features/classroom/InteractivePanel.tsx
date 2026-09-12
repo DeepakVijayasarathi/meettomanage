@@ -20,6 +20,10 @@ interface InteractivePanelProps {
   sessionId: string;
   mode: "teacher" | "student";
   displayName: string;
+  /** Set only by the Jibri recording-observer page (RecordingObserver.tsx via JitsiLive.tsx),
+   *  whose anonymous session has no real access token — authenticates the hub connection with
+   *  this short-lived CreateRecordingObserverHubToken instead. */
+  hubToken?: string;
   /** Bubble a celebration up so it overlays the video, not just the panel. */
   onCelebrate: (message?: string) => void;
   /** Live leaderboard for the celebration overlay. */
@@ -56,7 +60,7 @@ interface InteractivePanelProps {
  * board access — all synced through the classroom SignalR hub. If the hub is
  * unreachable everything still renders locally (the call itself is unaffected).
  */
-export default function InteractivePanel({ sessionId, mode, displayName, onCelebrate, onLeaderboard, onReady, onAnnotation, onPinChanged }: InteractivePanelProps) {
+export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onPinChanged }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [hubDetail, setHubDetail] = useState<string | null>(null);
@@ -88,7 +92,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
   const presentationRef = useRef<PresentationViewerHandle>(null);
 
   useEffect(() => {
-    const client = new ClassroomHubClient(sessionId);
+    const client = new ClassroomHubClient(sessionId, hubToken);
     hubRef.current = client;
     let disposed = false;
 

@@ -70,6 +70,7 @@ const ParentAddChild = lazy(() => import("@/features/parent/AddChild"));
 
 const LiveClassroom = lazy(() => import("@/features/classroom/LiveClassroom"));
 const PersonalMeetingRoom = lazy(() => import("@/features/classroom/PersonalMeetingRoom"));
+const RecordingObserver = lazy(() => import("@/features/classroom/RecordingObserver"));
 
 const SubAdminDashboard = lazy(() => import("@/features/subadmin/Dashboard"));
 const SubAdminPermissions = lazy(() => import("@/features/subadmin/Permissions"));
@@ -167,6 +168,11 @@ export default function App() {
                 </RequireAuth>
               }
             />
+            {/* Loaded only by Jibri's own headless Chrome (proxied here by nginx on the Jitsi
+                server — see docs/JITSI_ARCHITECTURE.md's recording-observer section), never by
+                a real signed-in user — deliberately outside RequireAuth, which would otherwise
+                bounce Jibri's anonymous session to /login. */}
+            <Route path="/recording/observer/:roomName" element={<RecordingObserver />} />
             <Route
               path="/meet/personal"
               element={
