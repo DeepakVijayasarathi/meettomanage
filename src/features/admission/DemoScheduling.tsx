@@ -355,11 +355,11 @@ export default function AdmissionDemoScheduling() {
     }
     setCopyState({ id: row.id, status: "copying" });
     getDemoJoinLink(row.id)
-      .then(async (joinUrl) => {
+      .then(async ({ shortUrl }) => {
         if (!navigator.clipboard) {
           throw new Error("Clipboard API unavailable");
         }
-        await navigator.clipboard.writeText(joinUrl);
+        await navigator.clipboard.writeText(shortUrl);
         setCopyState({ id: row.id, status: "copied" });
       })
       .catch((err: Error) => {
