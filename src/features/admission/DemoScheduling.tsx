@@ -7,6 +7,7 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,7 @@ import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
-import { createDemoBooking, deleteDemoBooking, getDemoJoinLink, listDemoBookings, resendDemoLink, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
+import { createDemoBooking, deleteDemoBooking, getDemoJoinLink, listDemoBookings, rescheduleDemoBooking, resendDemoLink, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
 import { formatDate, formatTimeLabel, getInitials } from "@/lib/utils";
 import { getUserTimeZoneAbbreviation, localToUtcIso, utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
@@ -44,6 +45,9 @@ interface DemoRow {
   parents: DemoParentField[];
   date: string;
   startTime: string;
+  /** Only present for a real API-backed booking (needs both UTC timestamps) — used to
+   *  prefill the reschedule dialog's duration field. */
+  durationMinutes?: number;
   teacherId: string;
   teacherName: string;
   status: SessionStatus;
@@ -105,6 +109,10 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
     ],
     date: ist ? ist.date : "",
     startTime: ist ? ist.time : "",
+    durationMinutes:
+      booking.scheduledStartAtUtc && booking.scheduledEndAtUtc
+        ? Math.round((new Date(booking.scheduledEndAtUtc).getTime() - new Date(booking.scheduledStartAtUtc).getTime()) / 60000)
+        : undefined,
     teacherId: booking.teacherProfileId ?? "",
     teacherName: booking.teacherName ?? "Auto-assigned",
     status,
@@ -160,6 +168,53 @@ export default function AdmissionDemoScheduling() {
   // Set once the user has tried to submit an invalid form -- gates the per-field error
   // messages below so they don't show up before the user has even touched the form.
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+
+  // Reschedule dialog — was previously the one thing missing here: Cancel kills the lead,
+  // Delete loses the record, and neither actually just moves a wrongly-booked demo to a
+  // different date/time the way regular sessions' own Reschedule already can.
+  const [rescheduleTarget, setRescheduleTarget] = useState<DemoRow | null>(null);
+  const [reschedDate, setReschedDate] = useState("");
+  const [reschedTime, setReschedTime] = useState("10:00");
+  const [reschedDuration, setReschedDuration] = useState("30");
+  const [reschedBusy, setReschedBusy] = useState(false);
+  const [reschedError, setReschedError] = useState<string | null>(null);
+  const reschedDurationMinutes = Number(reschedDuration);
+  const reschedDurationValid = Number.isFinite(reschedDurationMinutes) && reschedDurationMinutes > 0;
+
+  function openReschedule(row: DemoRow) {
+    setReschedError(null);
+    setReschedDate(row.date);
+    setReschedTime(row.startTime);
+    setReschedDuration(String(row.durationMinutes ?? 30));
+    setRescheduleTarget(row);
+  }
+
+  async function handleReschedule() {
+    if (!rescheduleTarget || !reschedDate || !reschedDurationValid) return;
+    if (!apiEnabled()) {
+      toast({ variant: "success", title: "Done", description: "Demo mode — nothing actually rescheduled." });
+      setRescheduleTarget(null);
+      return;
+    }
+    setReschedBusy(true);
+    setReschedError(null);
+    try {
+      const start = localToUtcIso(reschedDate, reschedTime);
+      const end = new Date(new Date(start).getTime() + reschedDurationMinutes * 60000).toISOString();
+      await rescheduleDemoBooking(rescheduleTarget.id, start, end);
+      toast({
+        variant: "success",
+        title: "Rescheduled",
+        description: `${rescheduleTarget.childName}'s demo moved to ${formatDate(reschedDate)} ${formatTimeLabel(reschedTime)} — the parent and teacher have been emailed the new time.`,
+      });
+      setRescheduleTarget(null);
+      reloadRows();
+    } catch (err) {
+      setReschedError(err instanceof Error ? err.message : "Could not reschedule this demo.");
+    } finally {
+      setReschedBusy(false);
+    }
+  }
 
   const activeTeachers = teacherOptions;
 
@@ -420,6 +475,17 @@ export default function AdmissionDemoScheduling() {
                 Reassign
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={row.status !== "demo"}
+              onClick={(e) => {
+                e.stopPropagation();
+                openReschedule(row);
+              }}
+            >
+              Reschedule
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -745,6 +811,53 @@ export default function AdmissionDemoScheduling() {
         error={apiEnabled() ? rowsError : null}
         onRetry={reloadRows}
       />
+
+      <Dialog open={!!rescheduleTarget} onOpenChange={(open) => !open && setRescheduleTarget(null)}>
+        <DialogContent className="max-w-sm">
+          {rescheduleTarget && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Reschedule demo</DialogTitle>
+                <DialogDescription>
+                  "{rescheduleTarget.childName}" — pick the new slot. The parent and teacher are emailed the change immediately.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="demo-rs-date">New date</Label>
+                  <Input id="demo-rs-date" type="date" value={reschedDate} onChange={(e) => setReschedDate(e.target.value)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="demo-rs-time">New time ({getUserTimeZoneAbbreviation()})</Label>
+                  <Input id="demo-rs-time" type="time" value={reschedTime} onChange={(e) => setReschedTime(e.target.value)} />
+                </div>
+                <div className="grid gap-1.5 sm:col-span-2">
+                  <Label htmlFor="demo-rs-duration">Duration (min)</Label>
+                  <Input
+                    id="demo-rs-duration"
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={reschedDuration}
+                    onChange={(e) => setReschedDuration(e.target.value)}
+                    aria-invalid={!reschedDurationValid}
+                  />
+                  {!reschedDurationValid && <p className="text-xs font-medium text-destructive">Enter a duration greater than 0.</p>}
+                </div>
+              </div>
+              {reschedError && <p className="text-sm font-medium text-destructive">{reschedError}</p>}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setRescheduleTarget(null)}>
+                  Close
+                </Button>
+                <Button disabled={reschedBusy || !reschedDate || !reschedDurationValid} onClick={handleReschedule}>
+                  {reschedBusy ? "Rescheduling…" : "Reschedule"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={!!completeTarget}

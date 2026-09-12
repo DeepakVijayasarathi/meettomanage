@@ -165,6 +165,19 @@ export async function reassignDemoTeacher(bookingId: string, teacherProfileId: s
   });
 }
 
+/** Moves a still-scheduled demo to a new date/time — re-checks the teacher's availability and
+ *  the holiday calendar server-side, then re-sends the confirmation emails with the new time. */
+export async function rescheduleDemoBooking(
+  bookingId: string,
+  scheduledStartAtUtc: string,
+  scheduledEndAtUtc: string
+): Promise<ApiDemoBooking> {
+  return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${bookingId}/reschedule`, {
+    method: "PUT",
+    body: JSON.stringify({ scheduledStartAtUtc, scheduledEndAtUtc }),
+  });
+}
+
 /** Re-sends the demo's join link to the parent, every extra invitee, and the assigned teacher. */
 export async function resendDemoLink(bookingId: string): Promise<ApiDemoBooking> {
   return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${bookingId}/resend-link`, {
