@@ -42,6 +42,16 @@ export interface ApiCallQuality {
   jvbHealthy: boolean;
 }
 
+export interface ApiTurnStatus {
+  credentialsHealthy: boolean;
+  lastRefreshedAtUtc: string | null;
+  secondsSinceRefresh: number;
+  credentialsTtlSeconds: number;
+  iceSucceededTotal: number;
+  iceSucceededRelayedTotal: number;
+  relayedUsagePercent: number;
+}
+
 export interface ApiContainerMetric {
   name: string;
   cpuPercent: number;
@@ -81,6 +91,7 @@ export interface ApiServerStatus {
   cpuHistory: ApiTimeSeriesPoint[];
   memoryHistory: ApiTimeSeriesPoint[];
   callQuality: ApiCallQuality | null;
+  turnStatus: ApiTurnStatus | null;
   diskForecast: ApiCapacityForecast | null;
   containerMetrics: ApiContainerMetric[];
   capacityTrend: ApiCapacityTrend | null;
@@ -303,6 +314,7 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
       cpuHistory: s.cpuHistory,
       memoryHistory: s.memoryHistory,
       callQuality: s.callQuality,
+      turnStatus: s.turnStatus,
       diskForecast: s.diskForecast,
       containerMetrics: s.containerMetrics,
       capacityTrend: s.capacityTrend,

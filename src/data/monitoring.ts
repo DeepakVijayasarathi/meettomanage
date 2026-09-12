@@ -78,6 +78,9 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
         jvbStressPercent: 12,
         jvbHealthy: true,
       },
+      // Real-only, like recorderStatus above -- comes from the TURN refresh script's own
+      // textfile-collector metric, so demo mode shows it as absent, not fake.
+      turnStatus: null,
       diskForecast: { isFilling: false, daysUntilFull: null, trendGbPerDay: 0.3 },
       containerMetrics: [
         { name: "docker-jitsi-meet-jvb-1", cpuPercent: 12.9, memoryMb: 376 },
@@ -118,6 +121,7 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
       cpuHistory: mockHistory(27, 8),
       memoryHistory: mockHistory(58, 3),
       callQuality: null,
+      turnStatus: null,
       diskForecast: { isFilling: true, daysUntilFull: 46.5, trendGbPerDay: -0.9 },
       containerMetrics: [
         { name: "readernestbackend", cpuPercent: 8.4, memoryMb: 149 },

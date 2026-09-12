@@ -318,6 +318,21 @@ export interface CapacityForecast {
   trendGbPerDay: number;
 }
 
+/** Health of the Cloudflare Calls TURN fallback for participants whose network blocks direct UDP to the JVB. */
+export interface TurnStatus {
+  /** False means the last refresh is older than its own TTL — Prosody may be advertising expired credentials, most likely because the refresh cron stopped running. */
+  credentialsHealthy: boolean;
+  lastRefreshedAtUtc: string | null;
+  secondsSinceRefresh: number;
+  credentialsTtlSeconds: number;
+  /** Total ICE negotiations JVB has completed successfully since it last started. */
+  iceSucceededTotal: number;
+  /** Of those, how many selected a relayed (TURN) candidate pair — i.e. actually needed the fallback. */
+  iceSucceededRelayedTotal: number;
+  /** 0 when iceSucceededTotal is 0 (no data yet), not a divide-by-zero NaN. */
+  relayedUsagePercent: number;
+}
+
 /** One connected user in a live class, for the admin "who's live right now" view. */
 export interface LiveParticipant {
   userId: string;
@@ -404,6 +419,7 @@ export interface ServerStatus {
   cpuHistory: TimeSeriesPoint[];
   memoryHistory: TimeSeriesPoint[];
   callQuality: CallQuality | null;
+  turnStatus: TurnStatus | null;
   diskForecast: CapacityForecast | null;
   /** Sorted by CPU descending — empty if the container-stats collector hasn't published on this box yet. */
   containerMetrics: ContainerMetric[];

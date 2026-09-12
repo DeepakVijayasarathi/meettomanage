@@ -12,6 +12,7 @@ import {
   MemoryStick,
   PowerOff,
   RefreshCw,
+  Router,
   Server,
   TrendingDown,
   TrendingUp,
@@ -42,7 +43,7 @@ import { getMonitoringSummary, getServerHistory, getServerLogs, restartService, 
 import { MONITORING_SUMMARY } from "@/data/monitoring";
 import { MonitoringHubClient } from "@/lib/monitoringHub";
 import { useSession } from "@/state/session";
-import type { CallQuality, MonitoringSummary, TimeSeriesPoint } from "@/types";
+import type { CallQuality, MonitoringSummary, TimeSeriesPoint, TurnStatus } from "@/types";
 import {
   CapacityForecastLine,
   formatAgeShort,
@@ -121,6 +122,23 @@ function callQualityScore(cq: CallQuality): { label: string; tone: "success" | "
     return { label: "Fair", tone: "warning" };
   }
   return { label: "Excellent", tone: "success" };
+}
+
+/** "5m"/"3h 20m" — TURN credential ages/TTLs span hours, unlike formatAgeShort's minute-only granularity. */
+function formatDurationShort(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const totalMinutes = Math.round(seconds / 60);
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+}
+
+/** Whether the Cloudflare TURN fallback is actually usable right now, from the credential freshness alone. */
+function turnHealthLabel(turn: TurnStatus): { label: string; tone: "success" | "warning" | "destructive" } {
+  if (!turn.credentialsHealthy) return { label: "Credentials expired", tone: "destructive" };
+  if (turn.secondsSinceRefresh > turn.credentialsTtlSeconds * 0.75) return { label: "Refresh due soon", tone: "warning" };
+  return { label: "Healthy", tone: "success" };
 }
 
 /** Item descriptions for the Latest Data table — a Zabbix "item description" tooltip, since the raw metric names alone don't say what they measure. */
@@ -639,6 +657,54 @@ export default function AdminServerDetail() {
                   <StatTile icon={Video} label="Sending Video" value={`${num(server.callQuality.endpointsSendingVideo)}`} />
                   <StatTile icon={Users} label="Sending Audio" value={`${num(server.callQuality.endpointsSendingAudio)}`} />
                 </div>
+              </Card>
+            </div>
+          )}
+
+          {server.turnStatus && (
+            <div className="mt-5">
+              <Card className="p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">TURN Relay (Cloudflare Calls)</CardTitle>
+                    <CardDescription>Fallback path for participants whose network blocks direct UDP to the bridge.</CardDescription>
+                  </div>
+                  <Badge variant={turnHealthLabel(server.turnStatus).tone}>{turnHealthLabel(server.turnStatus).label}</Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <StatTile
+                    icon={RefreshCw}
+                    label="Credentials Refreshed"
+                    value={`${formatDurationShort(server.turnStatus.secondsSinceRefresh)} ago`}
+                    tone={server.turnStatus.credentialsHealthy ? "success" : "destructive"}
+                  />
+                  <StatTile
+                    icon={Clock}
+                    label="Credential TTL"
+                    value={formatDurationShort(server.turnStatus.credentialsTtlSeconds)}
+                  />
+                  <StatTile
+                    icon={Router}
+                    label="Relayed Connections"
+                    value={`${num(server.turnStatus.relayedUsagePercent).toFixed(1)}%`}
+                    tone={server.turnStatus.relayedUsagePercent > 0 ? "warning" : "success"}
+                  />
+                  <StatTile
+                    icon={Activity}
+                    label="ICE Successes"
+                    value={`${num(server.turnStatus.iceSucceededTotal)} total`}
+                  />
+                  <StatTile
+                    icon={Wifi}
+                    label="Used TURN Relay"
+                    value={`${num(server.turnStatus.iceSucceededRelayedTotal)} of ${num(server.turnStatus.iceSucceededTotal)}`}
+                  />
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  "Relayed Connections" is the share of successful calls that needed the TURN fallback because a direct
+                  path to this server wasn't available — these are the participants who would likely have had no
+                  working audio/video before this fallback was added.
+                </p>
               </Card>
             </div>
           )}
