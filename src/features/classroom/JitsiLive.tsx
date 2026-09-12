@@ -186,6 +186,11 @@ export default function JitsiLive({
   // tab, which Jitsi already treats as normal recordable content. Tracks Jitsi's own
   // screenSharingStatusChanged event so the nudge banner below can reappear if sharing stops.
   const [screenShareActive, setScreenShareActive] = useState(false);
+  // Popup asking the teacher to share their screen right when the class starts — a click is
+  // unavoidable (getDisplayMedia requires a real user gesture, a browser rule no app can
+  // bypass), but a modal right at join is a clearer, earlier ask than waiting for the
+  // post-recording banner further down to be the first nudge.
+  const [shareScreenPromptOpen, setShareScreenPromptOpen] = useState(false);
   const recordingWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // An "off" recordingStatusChanged with an error used to declare auto-recording failed the
   // instant it arrived — but Jibri can report a transient failure (e.g. its first-picked
@@ -531,6 +536,11 @@ export default function JitsiLive({
           // just not making it worse going forward.
           api?.executeCommand("setVirtualBackground", false);
         }
+        // Prompt to share the screen right at join — skipped for the recording observer (it's
+        // Jibri's own silent capture bot, nobody there to click anything).
+        if (mode === "teacher" && !isRecordingObserver) {
+          setShareScreenPromptOpen(true);
+        }
         // Skipped for the recording observer -- it only ever renders because a recording is
         // already running (it's Jibri's own capture of this exact call), so firing this again
         // would double-start it against the same room.
@@ -629,7 +639,11 @@ export default function JitsiLive({
       // tiles freeze silently otherwise, with nothing in our own chrome saying why.
       api.addListener("connectionInterrupted", () => setCallDegraded(true));
       api.addListener("connectionRestored", () => setCallDegraded(false));
-      api.addListener("screenSharingStatusChanged", (payload) => setScreenShareActive(!!payload?.on));
+      api.addListener("screenSharingStatusChanged", (payload) => {
+        const on = !!payload?.on;
+        setScreenShareActive(on);
+        if (on) setShareScreenPromptOpen(false);
+      });
       // Without these, a video server/room misconfiguration (e.g. the Jitsi deployment's
       // focus component rejecting the room outright) left the whole screen looking
       // "normal" — just a static avatar with no call ever connecting, no explanation, and
@@ -1006,6 +1020,34 @@ export default function JitsiLive({
           a browser security rule no app can bypass), so this is the closest thing to mandatory
           within what's actually allowed -- it stays up until the teacher clicks through the
           browser's own picker, not until they click ours away. */}
+      {/* The earlier ask: a popup right at join, before recording has necessarily even started.
+          One click is unavoidable (browser rule, see the remarks above the banner below) — this
+          is that click, asked for clearly instead of only via a passive banner later on. "Skip
+          for now" doesn't block the class; the banner below still nudges again once recording
+          is actually running, in case they skipped here. */}
+      <Dialog open={shareScreenPromptOpen} onOpenChange={setShareScreenPromptOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Share your screen?</DialogTitle>
+            <DialogDescription>
+              Sharing this tab (choose <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives students a clearer view.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShareScreenPromptOpen(false)}>
+              Skip for now
+            </Button>
+            <Button
+              onClick={() => {
+                jitsiApiRef.current?.executeCommand("toggleShareScreen");
+                setShareScreenPromptOpen(false);
+              }}
+            >
+              Share screen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {mode === "teacher" && !isRecordingObserver && recording && !screenShareActive && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md">
           <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
