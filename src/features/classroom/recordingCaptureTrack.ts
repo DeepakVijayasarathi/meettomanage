@@ -93,25 +93,20 @@ export async function startRecordingCapture(room: string): Promise<RecordingCapt
     return NOOP_HANDLE;
   }
 
-  // Chrome's --auto-select-desktop-capture-source=<pattern> flag (set by the bot's own
-  // Playwright launch args) auto-picks a capture source by matching this exact string against
-  // capturable sources' titles -- confirmed live that without this, getDisplayMedia() below
-  // throws "NotReadableError: Could not start video source" because nothing matches. Must be
-  // set before calling getDisplayMedia so Chrome sees it at picker time.
-  document.title = "recording-render";
-
   let stream: MediaStream;
   try {
-    // Scoped to "this tab" -- normally requires a user gesture and shows a picker, but the
-    // bot's own Playwright launch flags (--auto-select-desktop-capture-source, plus
-    // context.grantPermissions) auto-grant this for its own automated browser context, so it
-    // never actually prompts here. In any other context (a stray real browser tab) this
-    // simply rejects, caught below, and capture never starts.
+    // Captures the whole (virtual, Xvfb) display, not just this tab -- confirmed live that
+    // tab-capture (`preferCurrentTab`) throws "NotReadableError: Could not start video source"
+    // in this bot's headless/automated setup regardless of title-matching tricks, while
+    // full-screen capture works reliably. The bot's own Playwright launch flags
+    // (--auto-select-desktop-capture-source="Entire screen", run headed under Xvfb so there's
+    // a real framebuffer to capture, plus context.grantPermissions) auto-grant this without a
+    // real picker ever showing. Since the browser window fills the whole (single-tab) virtual
+    // display, this captures the same content a tab-capture would have. In any other context
+    // (a stray real browser tab) this simply rejects, caught below, and capture never starts.
     stream = await navigator.mediaDevices.getDisplayMedia({
       video: { frameRate: 15 },
       audio: false,
-      // @ts-expect-error -- preferCurrentTab is Chrome-specific and not yet in lib.dom.d.ts.
-      preferCurrentTab: true,
     });
   } catch {
     return NOOP_HANDLE;
