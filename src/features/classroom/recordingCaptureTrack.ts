@@ -15,8 +15,14 @@
 declare global {
   interface Window {
     __recordingRenderXmpp__?: {
-      /** e.g. "hidden.meet.jitsi" -- the XMPP domain this connects to, not the public Jitsi domain. */
+      /** e.g. "hidden.meet.jitsi" -- the XMPP virtual host this connects to, NOT a real
+       *  public DNS name (confirmed live: loading a script from it throws
+       *  ERR_NAME_NOT_RESOLVED). Used only for hosts.domain/muc in the JitsiConnection
+       *  options below -- see webDomain for where the actual served JS lives. */
       domain: string;
+      /** e.g. "thereadernest.co.in" -- the real, publicly-resolvable Jitsi web domain that
+       *  actually serves /libs/lib-jitsi-meet.min.js. Distinct from `domain` above. */
+      webDomain: string;
       /** e.g. "wss://thereadernest.co.in/xmpp-websocket" -- same websocket endpoint everyone else uses. */
       serviceUrl: string;
       username: string;
@@ -96,7 +102,7 @@ export async function startRecordingCapture(room: string): Promise<RecordingCapt
   }
 
   try {
-    await loadLibJitsiMeet(xmpp.domain);
+    await loadLibJitsiMeet(xmpp.webDomain);
   } catch {
     stream.getTracks().forEach((t) => t.stop());
     return NOOP_HANDLE;
