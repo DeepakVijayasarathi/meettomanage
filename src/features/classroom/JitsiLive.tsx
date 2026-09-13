@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, DoorOpen, Pencil, PartyPopper, PhoneOff, Sparkles, UserPlus, Users, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, Loader2, Pencil, PartyPopper, PhoneOff, Sparkles, UserPlus, Users, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -144,6 +144,13 @@ export default function JitsiLive({
   // accrues) or double-fire (readyToClose + the Leave button both reachable in one visit).
   const completedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  // Non-fatal, auto-clearing: shown while conference.authenticationRequired's own retry
+  // (see the conferenceFailed listener below) is in flight, instead of the full-screen
+  // `error` state -- that one replaces the whole call UI, which would be a false "it's
+  // broken" verdict for a failure this app already knows is often transient (confirmed
+  // live: the exact same room/token has gone from rejected to accepted within minutes,
+  // with nothing on our side changing in between).
+  const [reconnecting, setReconnecting] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [celebrating, setCelebrating] = useState(false);
   const [celebrationMessage, setCelebrationMessage] = useState<string | undefined>(undefined);
@@ -326,6 +333,11 @@ export default function JitsiLive({
   useEffect(() => {
     let api: JitsiExternalApi | undefined;
     let cancelled = false;
+    // conference.authenticationRequired retry budget -- see the conferenceFailed listener.
+    // Lives here (not a ref) so it resets naturally whenever this effect re-runs (room/mode
+    // change), same lifetime as `api`/`cancelled` above.
+    let authRetryCount = 0;
+    const MAX_AUTH_RETRIES = 4;
 
     // Talk-time & camera attentiveness: accumulated from Jitsi media signals,
     // flushed as engagement events when the participant leaves.
@@ -517,6 +529,7 @@ export default function JitsiLive({
         }
       });
       api.addListener("videoConferenceJoined", (payload) => {
+        setReconnecting(null);
         media.selfId = payload?.id ?? "";
         media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
         // A small class reads better as a grid of faces than one spotlighted speaker.
@@ -674,6 +687,30 @@ export default function JitsiLive({
       // init() itself falls back to, since a failed conference makes the rest of the
       // screen (interactive panel included) meaningless without a working call underneath.
       api.addListener("conferenceFailed", (payload) => {
+        // conference.authenticationRequired is the Jitsi-side name for a Prosody token
+        // rejection ("not authorized user domain") -- confirmed, repeatedly, to be
+        // transient on this deployment: the exact same room/token has failed and then
+        // succeeded again minutes apart with nothing on the app side changing in between.
+        // A momentary server-side hiccup shouldn't strand someone on a dead screen when
+        // simply trying again (with a freshly re-authorized token, same as a manual
+        // rejoin) stands a real chance of working -- so retry a bounded number of times
+        // before surfacing the hard failure state.
+        if (payload?.error === "conference.authenticationRequired" && !cancelled && authRetryCount < MAX_AUTH_RETRIES) {
+          authRetryCount++;
+          setReconnecting(
+            authRetryCount === 1
+              ? "Reconnecting to the video server…"
+              : `Reconnecting to the video server… (attempt ${authRetryCount} of ${MAX_AUTH_RETRIES})`
+          );
+          api?.dispose();
+          jitsiApiRef.current = null;
+          setJitsiReady(false);
+          setTimeout(() => {
+            if (!cancelled) init().catch((err: Error) => setError(err.message));
+          }, 2000 * authRetryCount);
+          return;
+        }
+        setReconnecting(null);
         setError(
           `The video call couldn't connect (${payload?.error ?? "unknown error"}). ` +
             "Try rejoining — if this keeps happening, the video server may be down."
@@ -1038,6 +1075,12 @@ export default function JitsiLive({
           >
             Dismiss
           </button>
+        </div>
+      )}
+      {reconnecting && !error && (
+        <div className="mx-3 mt-3 flex shrink-0 items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+          <p className="flex-1">{reconnecting}</p>
         </div>
       )}
       {callEnded ? (
