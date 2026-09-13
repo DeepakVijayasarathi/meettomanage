@@ -138,7 +138,6 @@ export function DataTable<T>({
       el.removeEventListener("scroll", updateScrollShadow);
       observer.disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function toggleRow(key: string, checked: boolean) {

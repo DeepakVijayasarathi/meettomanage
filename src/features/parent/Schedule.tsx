@@ -55,14 +55,20 @@ export default function ParentSchedule() {
   const usingApi = apiEnabled();
   const mockChild = getChildById(activeChildId);
   const sessionChild = sessionChildren.find((c) => c.id === activeChildId) ?? sessionChildren[0];
-  // Normalized active child (real in API mode, mock otherwise) — just id + name.
-  const child = usingApi
-    ? sessionChild
-      ? { id: sessionChild.id, name: sessionChild.name }
-      : undefined
-    : mockChild
-      ? { id: mockChild.id, name: mockChild.name }
-      : undefined;
+  // Normalized active child (real in API mode, mock otherwise) — just id + name. Memoized
+  // so its identity stays stable across renders when the underlying id/name haven't
+  // changed, since it's used as a dependency of the `sessions` useMemo below.
+  const child = useMemo(
+    () =>
+      usingApi
+        ? sessionChild
+          ? { id: sessionChild.id, name: sessionChild.name }
+          : undefined
+        : mockChild
+          ? { id: mockChild.id, name: mockChild.name }
+          : undefined,
+    [usingApi, sessionChild, mockChild]
+  );
   const [selected, setSelected] = useState<ClassSession | null>(null);
 
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError, reload: reloadSessions } = useApiData<ClassSession[]>(

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { CalendarClock, Loader2, Plus, Users2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
@@ -120,14 +120,17 @@ export default function AdminSessions() {
     return map;
   }, [batches]);
 
-  function notify(ok: boolean, text: string) {
+  // useCallback (deps: just the stable `toast`) so joinSession below — which needs to be
+  // stable itself to sit in the columns useMemo's deps — can depend on it without
+  // recomputing every render.
+  const notify = useCallback((ok: boolean, text: string) => {
     setBanner({ ok, text });
     // Demo-mode notices ("Demo mode — session not persisted.") also route through here —
     // still worth a toast, matching how every other demo-mode confirmation in the app
     // gives some feedback rather than silently closing the dialog.
     toast({ variant: ok ? "success" : "error", title: ok ? "Done" : "Something went wrong", description: text });
     setTimeout(() => setBanner(null), 5000);
-  }
+  }, [toast]);
 
   // When a batch is picked, default the teacher to the batch's teacher.
   function pickBatch(batchId: string) {
@@ -236,7 +239,7 @@ export default function AdminSessions() {
     }
   }
 
-  async function joinSession(session: ClassSession) {
+  const joinSession = useCallback(async (session: ClassSession) => {
     if (!usingApi) {
       notify(true, "Demo mode — no live class to actually join.");
       return;
@@ -250,7 +253,7 @@ export default function AdminSessions() {
     } finally {
       setJoiningId(null);
     }
-  }
+  }, [usingApi, notify, userName]);
 
   const columns: DataTableColumn<ClassSession>[] = useMemo(
     () => [
@@ -392,7 +395,7 @@ export default function AdminSessions() {
           ),
       },
     ],
-    [enrolledByBatchId]
+    [enrolledByBatchId, joiningId, joinSession]
   );
 
   return (

@@ -31,13 +31,21 @@ export default function ParentRecordings() {
   const usingApi = apiEnabled();
   const mockChild = getChildById(activeChildId);
   const sessionChild = sessionChildren.find((c) => c.id === activeChildId) ?? sessionChildren[0];
-  const child = usingApi
-    ? sessionChild
-      ? { id: sessionChild.id, name: sessionChild.name }
-      : undefined
-    : mockChild
-      ? { id: mockChild.id, name: mockChild.name }
-      : undefined;
+  // Memoized so `child` keeps a stable identity across renders when the underlying id/name
+  // haven't actually changed — otherwise this object-literal-per-render would make every
+  // downstream hook that depends on `child` (the useEffect and useMemo below) recompute on
+  // every unrelated render if `child` were added to their deps.
+  const child = useMemo(
+    () =>
+      usingApi
+        ? sessionChild
+          ? { id: sessionChild.id, name: sessionChild.name }
+          : undefined
+        : mockChild
+          ? { id: mockChild.id, name: mockChild.name }
+          : undefined,
+    [usingApi, sessionChild, mockChild]
+  );
   const isEnrolled = usingApi ? (sessionChild?.enrollmentComplete ?? false) : mockChild ? enrolledChildIds.includes(mockChild.id) : false;
 
   const [entries, setEntries] = useState<RecordingEntry[]>([]);
@@ -98,7 +106,7 @@ export default function ParentRecordings() {
     return () => {
       cancelled = true;
     };
-  }, [usingApi, child?.id]);
+  }, [usingApi, child]);
 
   const demoEntries = useMemo<RecordingEntry[]>(() => {
     if (usingApi || !child) return [];

@@ -163,7 +163,7 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
       return next;
     });
     setActiveId((prev) => (subAdmins.some((s) => s.id === prev) ? prev : subAdmins[0].id));
-  }, [subAdmins]);
+  }, [subAdmins, modules]);
 
   useEffect(() => {
     if (!apiEnabled() || !activeId) return;
@@ -188,7 +188,7 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
     return () => {
       cancelled = true;
     };
-  }, [activeId, loadingSubAdmins, subAdmins]);
+  }, [activeId, loadingSubAdmins, subAdmins, modules]);
 
   useEffect(() => {
     if (!apiEnabled()) return;
@@ -762,7 +762,6 @@ function ModuleCatalogCard({
 
   useEffect(() => {
     void reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleCreate() {
@@ -1061,7 +1060,7 @@ function GrantAccessDialog({
     return () => {
       cancelled = true;
     };
-  }, [request]);
+  }, [request, modules]);
 
   function updateMatrix(updater: (rows: ApiPermission[]) => ApiPermission[]) {
     setMatrix((prev) => (prev ? updater(prev) : prev));

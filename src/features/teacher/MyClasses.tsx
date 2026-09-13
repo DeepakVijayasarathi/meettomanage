@@ -190,7 +190,7 @@ export default function TeacherMyClasses() {
         ),
     },
     ],
-    [startClass]
+    [startClass, startingId]
   );
 
   return (

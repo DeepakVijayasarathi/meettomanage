@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarPlus, ChevronDown, ChevronUp, Loader2, Trash2, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -330,7 +330,10 @@ export default function AdmissionDemoScheduling() {
   // Re-sends the demo's join link to the parent, every extra invitee, and the assigned
   // teacher — for when a parent reports never getting (or losing) the original email. Always
   // the teacher's fixed meeting link, so it's identical to what they already have.
-  function handleResendLink(row: DemoRow) {
+  // useCallback keeps this identity stable across renders (it only ever reads the row
+  // passed in at call time, plus the module-level `toast` and stable setState setters) so
+  // it can be safely included in the columns useMemo's deps below without defeating it.
+  const handleResendLink = useCallback((row: DemoRow) => {
     if (!apiEnabled()) {
       toast({ variant: "success", title: "Link resent", description: "(Demo mode — no real email is sent.)" });
       return;
@@ -344,11 +347,11 @@ export default function AdmissionDemoScheduling() {
         toast({ variant: "error", title: "Couldn't resend link", description: err.message });
       })
       .finally(() => setResendingId(null));
-  }
+  }, [toast]);
 
   // Copies the parent's join link to the clipboard for manual sharing (WhatsApp, SMS) --
   // demo mode has no real link to copy, so this is API-only.
-  function handleCopyLink(row: DemoRow) {
+  const handleCopyLink = useCallback((row: DemoRow) => {
     if (!apiEnabled()) {
       toast({ variant: "error", title: "Not available in demo mode" });
       return;
@@ -369,7 +372,7 @@ export default function AdmissionDemoScheduling() {
       .finally(() => {
         setTimeout(() => setCopyState((s) => (s?.id === row.id ? null : s)), 2500);
       });
-  }
+  }, [toast]);
 
   const columns: DataTableColumn<DemoRow>[] = useMemo(
     () => [
@@ -555,7 +558,7 @@ export default function AdmissionDemoScheduling() {
         ),
       },
     ],
-    [base, resendingId, copyState]
+    [base, resendingId, copyState, handleResendLink, handleCopyLink]
   );
 
   return (

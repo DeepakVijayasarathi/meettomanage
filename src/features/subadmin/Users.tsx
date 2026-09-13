@@ -177,7 +177,7 @@ export default function SubAdminUsers() {
     return () => {
       cancelled = true;
     };
-  }, [detailChild]);
+  }, [detailChild, canSeeAnalytics]);
 
   // Delete-child confirmation — separate from deleteTarget since a child isn't an AppUser
   // (it has no login of its own).

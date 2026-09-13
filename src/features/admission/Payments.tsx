@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { CheckCircle2, IndianRupee, Link2, ListChecks, Loader2, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
@@ -117,7 +117,10 @@ export default function AdmissionPayments() {
     return { paid, outstanding, partial, total: invoiceData.totalCount };
   }, [rows, invoiceData.totalCount]);
 
-  async function handleGenerateLink(row: PaymentRow) {
+  // useCallback (deps: canGenerateLink, toast — the only reactive values it closes over;
+  // row is passed in at call time) keeps this stable so it can join the columns useMemo's
+  // deps below without forcing a recompute on every unrelated render.
+  const handleGenerateLink = useCallback(async (row: PaymentRow) => {
     setError(null);
     if (!apiEnabled() || !row.apiId || !canGenerateLink) {
       // Demo mode: nothing real to generate — there's no gateway to call.
@@ -137,7 +140,7 @@ export default function AdmissionPayments() {
     } finally {
       setLinkBusyId(null);
     }
-  }
+  }, [canGenerateLink, toast]);
 
   const columns: DataTableColumn<PaymentRow>[] = useMemo(
     () => [
@@ -232,7 +235,7 @@ export default function AdmissionPayments() {
         ),
       },
     ],
-    [linkBusyId, copiedId, canGenerateLink]
+    [linkBusyId, copiedId, canGenerateLink, handleGenerateLink]
   );
 
   return (

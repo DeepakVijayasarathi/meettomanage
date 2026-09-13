@@ -319,8 +319,14 @@ export default function AdminServerDetail() {
     };
   }, [usingApi, server, historyRange]);
 
-  const activeCpuHistory = historyRange === "1h" ? server?.cpuHistory ?? [] : rangeHistory?.cpuHistory ?? [];
-  const activeMemoryHistory = historyRange === "1h" ? server?.memoryHistory ?? [] : rangeHistory?.memoryHistory ?? [];
+  const activeCpuHistory = useMemo(
+    () => (historyRange === "1h" ? server?.cpuHistory ?? [] : rangeHistory?.cpuHistory ?? []),
+    [historyRange, server, rangeHistory]
+  );
+  const activeMemoryHistory = useMemo(
+    () => (historyRange === "1h" ? server?.memoryHistory ?? [] : rangeHistory?.memoryHistory ?? []),
+    [historyRange, server, rangeHistory]
+  );
   const historyData = useMemo(() => mergeHistories(activeCpuHistory, activeMemoryHistory), [activeCpuHistory, activeMemoryHistory]);
   const cpuSummary = useMemo(() => summarize(activeCpuHistory), [activeCpuHistory]);
   const memorySummary = useMemo(() => summarize(activeMemoryHistory), [activeMemoryHistory]);
