@@ -137,6 +137,7 @@ export async function startRecordingCapture(room: string): Promise<RecordingCapt
   stream.getVideoTracks()[0]?.addEventListener("ended", cleanup);
 
   connection.addEventListener(JitsiMeetJS.ConnectionEvents.CONNECTION_ESTABLISHED, () => {
+    console.log("[recordingCaptureTrack] CONNECTION_ESTABLISHED");
     if (disposed) return;
     conference = connection.initJitsiConference(room, {});
     conference.join();
@@ -144,10 +145,14 @@ export async function startRecordingCapture(room: string): Promise<RecordingCapt
     // build during integration testing -- this is the one piece that couldn't be verified
     // without a live hidden-domain account provisioned yet.
     const track = { getType: () => "video", stream, videoType: "camera" };
-    conference.addTrack(track).catch(() => undefined);
+    conference.addTrack(track).catch((err) => console.error("[recordingCaptureTrack] addTrack failed", err));
   });
-  connection.addEventListener(JitsiMeetJS.ConnectionEvents.CONNECTION_FAILED, cleanup);
+  connection.addEventListener(JitsiMeetJS.ConnectionEvents.CONNECTION_FAILED, (...args: unknown[]) => {
+    console.error("[recordingCaptureTrack] CONNECTION_FAILED", ...args);
+    cleanup();
+  });
 
+  console.log("[recordingCaptureTrack] connecting", { domain: xmpp.domain, serviceUrl: xmpp.serviceUrl });
   connection.connect({ id: xmpp.username, password: xmpp.password });
 
   return { dispose: cleanup };
