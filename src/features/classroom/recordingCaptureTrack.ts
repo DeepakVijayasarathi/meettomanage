@@ -93,6 +93,13 @@ export async function startRecordingCapture(room: string): Promise<RecordingCapt
     return NOOP_HANDLE;
   }
 
+  // Chrome's --auto-select-desktop-capture-source=<pattern> flag (set by the bot's own
+  // Playwright launch args) auto-picks a capture source by matching this exact string against
+  // capturable sources' titles -- confirmed live that without this, getDisplayMedia() below
+  // throws "NotReadableError: Could not start video source" because nothing matches. Must be
+  // set before calling getDisplayMedia so Chrome sees it at picker time.
+  document.title = "recording-render";
+
   let stream: MediaStream;
   try {
     // Scoped to "this tab" -- normally requires a user gesture and shows a picker, but the
@@ -125,8 +132,17 @@ export async function startRecordingCapture(room: string): Promise<RecordingCapt
 
   JitsiMeetJS.init({ disableAudioLevels: true });
 
+  // Hidden-domain participants authenticate under a different XMPP virtual host (xmpp.domain,
+  // e.g. "hidden.meet.jitsi") but join the exact same shared MUC as every real participant --
+  // confirmed live against the real client's own served config.js: `hosts.muc` is
+  // "muc.meet.jitsi" (the fixed Jitsi-internal XMPP domain, unrelated to the public web
+  // domain), never a hidden-domain-scoped MUC. `hosts.focus` must be set explicitly too --
+  // otherwise lib-jitsi-meet defaults it to `focus.${hosts.domain}` (i.e. "focus.hidden.meet
+  // .jitsi", a component that doesn't exist), which surfaced live as a Prosody
+  // "Communication with remote domains is not enabled" error when sending the conference
+  // request.
   const connection = new JitsiMeetJS.JitsiConnection(null, null, {
-    hosts: { domain: xmpp.domain, muc: `conference.${xmpp.domain}` },
+    hosts: { domain: xmpp.domain, muc: "muc.meet.jitsi", focus: "focus.meet.jitsi" },
     serviceUrl: xmpp.serviceUrl,
   });
 
