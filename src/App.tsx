@@ -25,6 +25,7 @@ const AdminActivityBank = lazy(() => import("@/features/admin/ActivityBank"));
 const AdminBatches = lazy(() => import("@/features/admin/Batches"));
 const AdminAcademicCalendar = lazy(() => import("@/features/admin/AcademicCalendar"));
 const AdminSessions = lazy(() => import("@/features/admin/Sessions"));
+const AdminRecordings = lazy(() => import("@/features/admin/Recordings"));
 const AdminResources = lazy(() => import("@/features/admin/Resources"));
 const AdminBilling = lazy(() => import("@/features/admin/Billing"));
 const AdminPackages = lazy(() => import("@/features/admin/Packages"));
@@ -205,6 +206,7 @@ export default function App() {
               <Route path="batches" element={<AdminBatches />} />
               <Route path="calendar" element={<AdminAcademicCalendar />} />
               <Route path="sessions" element={<AdminSessions />} />
+              <Route path="recordings" element={<AdminRecordings />} />
               <Route path="resources" element={<AdminResources />} />
               <Route path="billing" element={<AdminBilling />} />
               <Route path="packages" element={<AdminPackages />} />
@@ -245,6 +247,7 @@ export default function App() {
               <Route path="batches" element={<AdminBatches />} />
               <Route path="calendar" element={<AdminAcademicCalendar />} />
               <Route path="sessions" element={<AdminSessions />} />
+              <Route path="recordings" element={<AdminRecordings />} />
               <Route path="resources" element={<AdminResources />} />
               <Route path="billing" element={<AdminBilling />} />
               <Route path="packages" element={<AdminPackages />} />
