@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, Plus } from "lucide-react";
+import { Building2, Loader2, Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -215,7 +215,7 @@ export default function SubAdminDepartments() {
               Cancel
             </Button>
             <Button onClick={save} disabled={saving || !name.trim() || (editing ? !canEdit : !canCreate)}>
-              {saving ? "Saving…" : editing ? "Save changes" : "Add department"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : editing ? "Save changes" : "Add department"}
             </Button>
           </DialogFooter>
         </DialogContent>

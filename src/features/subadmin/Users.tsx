@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, Mic, Plus, Sparkles, Trash2, Users as UsersIcon, Video } from "lucide-react";
+import { GraduationCap, Loader2, Mic, Plus, Sparkles, Trash2, Users as UsersIcon, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -729,7 +729,7 @@ export default function SubAdminUsers() {
                         }
                       }}
                     >
-                      {savingNotes ? "Saving…" : "Save notes"}
+                      {savingNotes && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {savingNotes ? "Saving…" : "Save notes"}
                     </Button>
                   )}
                 </div>
@@ -811,7 +811,7 @@ export default function SubAdminUsers() {
               Cancel
             </Button>
             <Button onClick={handleUpdateUser} disabled={editSaving}>
-              {editSaving ? "Saving…" : "Save Changes"}
+              {editSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {editSaving ? "Saving…" : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -868,7 +868,7 @@ export default function SubAdminUsers() {
               Cancel
             </Button>
             <Button onClick={handleCreateUser} disabled={addSubmitting}>
-              {addSubmitting ? "Creating…" : "Create User"}
+              {addSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {addSubmitting ? "Creating…" : "Create User"}
             </Button>
           </DialogFooter>
         </DialogContent>

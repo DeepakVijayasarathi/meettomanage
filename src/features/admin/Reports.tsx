@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, FileBarChart2, Sparkles } from "lucide-react";
+import { Download, FileBarChart2, Loader2, Sparkles } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -230,7 +230,7 @@ export default function AdminReports() {
                   <p className="text-sm font-semibold text-foreground">Data Preview</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
-                  <Download className="h-3.5 w-3.5" />
+                  {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                   {exporting ? "Exporting…" : "Export CSV"}
                 </Button>
               </div>

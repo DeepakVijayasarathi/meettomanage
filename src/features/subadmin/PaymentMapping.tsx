@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpenText, Building2, Calculator, ChevronDown, Landmark, Link2, Pencil, ShieldCheck, Sparkles } from "lucide-react";
+import { BookOpenText, Building2, Calculator, ChevronDown, Landmark, Link2, Loader2, Pencil, ShieldCheck, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -384,7 +384,7 @@ export default function SubAdminPaymentMapping() {
                   onClick={() => (apiEnabled() ? setEditConfirmOpen(true) : saveAccountEdit())}
                   disabled={editSaving || !editName.trim() || !editRef.trim()}
                 >
-                  {editSaving ? "Saving…" : "Save account"}
+                  {editSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {editSaving ? "Saving…" : "Save account"}
                 </Button>
               </DialogFooter>
             </>
@@ -465,7 +465,7 @@ export default function SubAdminPaymentMapping() {
                     onClick={() => (apiEnabled() ? setMappingConfirmOpen(true) : saveMapping())}
                     disabled={saving || !effectiveParent || !effectiveAccount}
                   >
-                    <Landmark className="h-4 w-4" />
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Landmark className="h-4 w-4" />}
                     {saving ? "Saving…" : "Save Mapping"}
                   </Button>
                 </div>

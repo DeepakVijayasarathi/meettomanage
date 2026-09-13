@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  CheckCircle2,
-  ClipboardCheck,
-  Clock,
-  GraduationCap,
-  Sparkles,
-} from "lucide-react";
+import { CheckCircle2, ClipboardCheck, Clock, GraduationCap, Loader2, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -371,7 +365,7 @@ export default function TeacherDemoFeedback() {
                   Cancel
                 </Button>
                 <Button disabled={!isValid || submitting} onClick={handleSubmit}>
-                  {submitting ? "Submitting…" : "Submit Feedback"}
+                  {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {submitting ? "Submitting…" : "Submit Feedback"}
                 </Button>
               </DialogFooter>
             </>

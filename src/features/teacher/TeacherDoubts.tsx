@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MessageCircleQuestion } from "lucide-react";
+import { Loader2, MessageCircleQuestion } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
@@ -186,7 +186,7 @@ export default function TeacherDoubts() {
               Cancel
             </Button>
             <Button onClick={confirmResolve} disabled={saving}>
-              {saving ? "Saving…" : "Mark resolved"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : "Mark resolved"}
             </Button>
           </DialogFooter>
         </DialogContent>

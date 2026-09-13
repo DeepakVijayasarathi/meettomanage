@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarClock, Plus, Users2, Video } from "lucide-react";
+import { CalendarClock, Loader2, Plus, Users2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -533,7 +533,7 @@ export default function AdminSessions() {
               disabled={saving || !newTeacher || !newDate || !durationValid || (newType === "Regular" && !newBatch)}
               onClick={handleSchedule}
             >
-              {saving ? "Scheduling…" : "Schedule"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Scheduling…" : "Schedule"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -610,7 +610,7 @@ export default function AdminSessions() {
                   Close
                 </Button>
                 <Button disabled={reschedBusy || !reschedDate || !reschedDurationValid} onClick={handleReschedule}>
-                  {reschedBusy ? "Saving…" : "Save"}
+                  {reschedBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {reschedBusy ? "Saving…" : "Save"}
                 </Button>
               </DialogFooter>
             </>
@@ -658,7 +658,7 @@ export default function AdminSessions() {
                   Close
                 </Button>
                 <Button variant="destructive" disabled={noShowBusy} onClick={handleMarkNoShow}>
-                  {noShowBusy ? "Recording…" : "Mark No-Show"}
+                  {noShowBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {noShowBusy ? "Recording…" : "Mark No-Show"}
                 </Button>
               </DialogFooter>
             </>

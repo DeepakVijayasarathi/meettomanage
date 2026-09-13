@@ -1152,7 +1152,7 @@ export default function AdminUsers() {
               Cancel
             </Button>
             <Button onClick={handleUpdateUser} disabled={editSaving}>
-              {editSaving ? "Saving…" : "Save Changes"}
+              {editSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {editSaving ? "Saving…" : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1311,7 +1311,7 @@ export default function AdminUsers() {
                       }
                     }}
                   >
-                    {savingNotes ? "Saving…" : "Save notes"}
+                    {savingNotes && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {savingNotes ? "Saving…" : "Save notes"}
                   </Button>
                 </div>
               </DialogFooter>
@@ -1389,7 +1389,7 @@ export default function AdminUsers() {
               Cancel
             </Button>
             <Button onClick={handleCreateUser} disabled={addSubmitting}>
-              {addSubmitting ? "Creating…" : "Create User"}
+              {addSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {addSubmitting ? "Creating…" : "Create User"}
             </Button>
           </DialogFooter>
         </DialogContent>

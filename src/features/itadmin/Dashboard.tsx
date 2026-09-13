@@ -17,7 +17,6 @@ import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
 import { usePortalBase } from "@/lib/portalBase";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
@@ -75,7 +74,6 @@ function formatCountdown(iso: string): string {
 }
 
 export default function ItAdminDashboard() {
-  const usingApi = apiEnabled();
   const { userName } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
   const base = usePortalBase();

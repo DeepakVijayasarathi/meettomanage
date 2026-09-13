@@ -1,27 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Activity,
-  AlertTriangle,
-  Clock,
-  Cpu,
-  Disc,
-  FileText,
-  Gauge,
-  HardDrive,
-  MemoryStick,
-  PowerOff,
-  RefreshCw,
-  Router,
-  Server,
-  TrendingDown,
-  TrendingUp,
-  Users,
-  Video,
-  Wifi,
-  WifiOff,
-  Zap,
-} from "lucide-react";
+import { Activity, AlertTriangle, Clock, Cpu, Disc, FileText, Gauge, HardDrive, Loader2, MemoryStick, PowerOff, RefreshCw, Router, Server, TrendingDown, TrendingUp, Users, Video, Wifi, WifiOff, Zap } from "lucide-react";
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Legend, ReferenceLine, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
@@ -233,7 +212,7 @@ function ContainerLogsPanel({ serverName, services }: { serverName: string; serv
         </Select>
         <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading}>
           <FileText className={cn("h-3.5 w-3.5", loading && "animate-pulse")} />
-          {loading ? "Fetching…" : "Fetch logs"}
+          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {loading ? "Fetching…" : "Fetch logs"}
         </Button>
         {logs && (
           <span className="text-xs text-muted-foreground">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookOpen, ClipboardList, Upload, Video } from "lucide-react";
+import { BookOpen, ClipboardList, Loader2, Upload, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -291,7 +291,7 @@ export default function SubAdminResources() {
               Cancel
             </Button>
             <Button disabled={!pendingFile || uploading} onClick={handleUpload}>
-              {uploading ? "Uploading…" : "Upload"}
+              {uploading && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {uploading ? "Uploading…" : "Upload"}
             </Button>
           </DialogFooter>
         </DialogContent>

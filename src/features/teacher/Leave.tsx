@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarCheck2, Clock, X } from "lucide-react";
+import { CalendarCheck2, Clock, Loader2, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -580,7 +580,7 @@ export default function TeacherLeave() {
 
               <div>
                 <Button disabled={!classWiseCanSubmit} onClick={handleSubmitClassWise}>
-                  <CalendarCheck2 className="h-4 w-4" />
+                  {classWiseSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck2 className="h-4 w-4" />}
                   {classWiseSubmitting ? "Submitting…" : "Cancel Selected Classes"}
                 </Button>
               </div>

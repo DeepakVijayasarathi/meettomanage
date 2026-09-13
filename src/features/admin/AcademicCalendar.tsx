@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarClock, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Loader2, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarBoard } from "@/components/CalendarBoard";
@@ -145,7 +145,7 @@ export default function AdminAcademicCalendar() {
               <Input id="holiday-name" value={holidayName} onChange={(e) => setHolidayName(e.target.value)} placeholder="e.g. Diwali" className="w-56" />
             </div>
             <Button onClick={handleAddHoliday} disabled={savingHoliday || !holidayDate || !holidayName.trim()}>
-              <Plus className="h-4 w-4" /> {savingHoliday ? "Adding…" : "Add Holiday"}
+              {savingHoliday ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}{savingHoliday ? "Adding…" : "Add Holiday"}
             </Button>
           </div>
           {holidayError && <p className="text-sm font-medium text-destructive">{holidayError}</p>}

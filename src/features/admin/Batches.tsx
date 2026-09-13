@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket, Search, X } from "lucide-react";
+import { CalendarDays, CalendarPlus, Layers, Loader2, Moon, Plus, Rocket, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -768,7 +768,8 @@ export default function AdminBatches() {
                   disabled={genBusy || !genStart || Object.keys(genTimeByDay).length === 0}
                   onClick={handleGenerateSchedule}
                 >
-                  {genBusy ? "Generating…" : "Generate sessions"}
+                  {genBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {genBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {genBusy ? "Generating…" : "Generate sessions"}
                 </Button>
                 {genResult && <p className="mt-2 text-xs font-medium text-foreground">{genResult}</p>}
               </div>
@@ -783,6 +784,7 @@ export default function AdminBatches() {
                     Close
                   </Button>
                   <Button onClick={saveDetail} disabled={savingDetail}>
+                    {savingDetail && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     {saved ? "Saved!" : savingDetail ? "Saving…" : "Save Changes"}
                   </Button>
                 </div>
@@ -873,7 +875,8 @@ export default function AdminBatches() {
               Cancel
             </Button>
             <Button disabled={creating || !newName.trim() || !newCourse || !newTeacher} onClick={handleCreate}>
-              {creating ? "Creating…" : "Create Batch"}
+              {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {creating ? "Creating…" : "Create Batch"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,18 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  AlertTriangle,
-  ArrowRight,
-  CalendarClock,
-  CheckCircle2,
-  Clock3,
-  PlayCircle,
-  Sparkles,
-  TrendingUp,
-  Video,
-  Wallet,
-  XCircle,
-} from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Clock3, Loader2, PlayCircle, Sparkles, TrendingUp, Video, Wallet, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
@@ -387,7 +375,7 @@ function FeeCard({
             onClick={onPay}
             disabled={payDisabled}
           >
-            {invoiceLoading ? "Checking…" : invoice ? `Pay ${formatCurrency(invoiceBalance(invoice))}` : "Unavailable"}
+            {invoiceLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {invoiceLoading ? "Checking…" : invoice ? `Pay ${formatCurrency(invoiceBalance(invoice))}` : "Unavailable"}
           </Button>
           {invoiceMissing && (
             <p className="mt-2 text-[11px] font-medium text-muted-foreground">

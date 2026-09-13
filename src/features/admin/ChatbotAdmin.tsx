@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageCircleQuestion, Plus, Trash2, Users } from "lucide-react";
+import { Loader2, MessageCircleQuestion, Plus, Trash2, Users } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -274,7 +274,7 @@ function FaqManager() {
               Cancel
             </Button>
             <Button onClick={save} disabled={saving}>
-              {saving ? "Saving…" : editing ? "Save changes" : "Add FAQ"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : editing ? "Save changes" : "Add FAQ"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -413,7 +413,7 @@ function EscalationsPanel() {
               Cancel
             </Button>
             <Button onClick={confirmResolve} disabled={saving}>
-              {saving ? "Saving…" : "Mark resolved"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : "Mark resolved"}
             </Button>
           </DialogFooter>
         </DialogContent>

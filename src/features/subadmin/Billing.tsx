@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, FileText, IndianRupee, TimerReset, Undo2 } from "lucide-react";
+import { AlertTriangle, FileText, IndianRupee, Loader2, TimerReset, Undo2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -379,14 +379,14 @@ export default function SubAdminBilling() {
             <>
               {live && detail.apiId && (
                 <Button variant="outline" onClick={downloadPdf} disabled={pdfDownloading}>
-                  <FileText className="h-4 w-4" />
+                  {pdfDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
                   {pdfDownloading ? "Downloading…" : "Download PDF"}
                 </Button>
               )}
               {live && detail.apiId && canRecordPayment && detail.status !== "paid" && detail.status !== "cancelled" && (
                 recording ? (
                   <Button onClick={reviewPayment} disabled={saving}>
-                    {saving ? "Recording…" : "Confirm payment"}
+                    {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Recording…" : "Confirm payment"}
                   </Button>
                 ) : (
                   <Button onClick={() => setRecording(true)}>
@@ -466,7 +466,7 @@ export default function SubAdminBilling() {
                       {refundError && <p className="text-sm font-medium text-destructive">{refundError}</p>}
                       <div className="flex items-center gap-2">
                         <Button size="sm" disabled={refundSubmitting} onClick={submitRefund}>
-                          {refundSubmitting ? "Requesting…" : "Submit refund request"}
+                          {refundSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {refundSubmitting ? "Requesting…" : "Submit refund request"}
                         </Button>
                         <Button size="sm" variant="ghost" disabled={refundSubmitting} onClick={() => setRefundTargetId(null)}>
                           Cancel

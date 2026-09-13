@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarPlus, ChevronDown, ChevronUp, Trash2, UserPlus, Users2 } from "lucide-react";
+import { CalendarPlus, ChevronDown, ChevronUp, Loader2, Trash2, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -793,7 +793,7 @@ export default function AdmissionDemoScheduling() {
               Clear
             </Button>
             <Button disabled={!isValid || scheduling} onClick={handleSchedule}>
-              <CalendarPlus className="h-4 w-4" /> {scheduling ? "Scheduling…" : "Schedule Demo"}
+              {scheduling ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarPlus className="h-4 w-4" />}{scheduling ? "Scheduling…" : "Schedule Demo"}
             </Button>
           </div>
         </CardContent>
@@ -851,7 +851,7 @@ export default function AdmissionDemoScheduling() {
                   Close
                 </Button>
                 <Button disabled={reschedBusy || !reschedDate || !reschedDurationValid} onClick={handleReschedule}>
-                  {reschedBusy ? "Rescheduling…" : "Reschedule"}
+                  {reschedBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {reschedBusy ? "Rescheduling…" : "Reschedule"}
                 </Button>
               </DialogFooter>
             </>

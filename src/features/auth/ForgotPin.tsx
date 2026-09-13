@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Mail, ShieldQuestion } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Mail, ShieldQuestion } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,7 +108,7 @@ export default function ForgotPin() {
                 disabled={submitting || !email.trim()}
                 className="mt-1 !bg-brand-green !text-white hover:!bg-brand-greenDark"
               >
-                {submitting ? "Sending…" : "Send reset link"}
+                {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {submitting ? "Sending…" : "Send reset link"}
               </Button>
             </form>
             <p className="mt-4 text-xs text-brand-ink/70">

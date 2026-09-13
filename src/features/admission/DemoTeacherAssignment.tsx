@@ -1,12 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import {
-  ArrowLeft,
-  CalendarClock,
-  History,
-  Search,
-  UserCog,
-} from "lucide-react";
+import { ArrowLeft, CalendarClock, History, Loader2, Search, UserCog } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -392,7 +386,7 @@ export default function DemoTeacherAssignment() {
               {canReassign && (
                 <div className="flex justify-end">
                   <Button disabled={!canSubmit || submitting} onClick={handleReassign}>
-                    <UserCog className="h-4 w-4" /> {submitting ? "Reassigning…" : "Reassign Teacher"}
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCog className="h-4 w-4" />}{submitting ? "Reassigning…" : "Reassign Teacher"}
                   </Button>
                 </div>
               )}

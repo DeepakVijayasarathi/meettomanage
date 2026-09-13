@@ -673,7 +673,7 @@ export default function SubAdminPackages() {
               Close
             </Button>
             <Button onClick={() => void savePlan()} disabled={savingPlan || !live || (editingPlan ? !canEdit : !canCreate)}>
-              {savingPlan ? "Saving…" : editingPlan ? "Save changes" : "Create plan"}
+              {savingPlan && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {savingPlan ? "Saving…" : editingPlan ? "Save changes" : "Create plan"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -749,7 +749,7 @@ export default function SubAdminPackages() {
               Close
             </Button>
             <Button onClick={() => void startSubscription()} disabled={savingSub || !live || !canCreate}>
-              {savingSub ? "Starting…" : "Start subscription"}
+              {savingSub && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {savingSub ? "Starting…" : "Start subscription"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Download, Eye, EyeOff, FileText, FolderOpen, Upload, Video } from "lucide-react";
+import { BookOpen, Download, Eye, EyeOff, FileText, FolderOpen, Loader2, Upload, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { FileDropzone } from "@/components/FileDropzone";
@@ -357,7 +357,7 @@ export default function TeacherResources() {
                   Cancel
                 </Button>
                 <Button disabled={!title.trim() || selectedBatchIds.length === 0 || submitting} onClick={handleUpload}>
-                  {submitting ? "Uploading…" : "Upload"}
+                  {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {submitting ? "Uploading…" : "Upload"}
                 </Button>
               </DialogFooter>
             </DialogContent>

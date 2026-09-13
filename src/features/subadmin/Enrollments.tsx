@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Download, FileEdit, GraduationCap, Trash2 } from "lucide-react";
+import { CheckCircle2, Download, FileEdit, GraduationCap, Loader2, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -613,7 +613,7 @@ export default function SubAdminEnrollments() {
                 )}
                 {!isComplete(detail) && canApprove && (
                   <Button disabled={approving} onClick={() => handleApprove(detail)}>
-                    <CheckCircle2 className="h-4 w-4" />
+                    {approving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                     {approving ? "Approving…" : "Approve"}
                   </Button>
                 )}
@@ -831,7 +831,7 @@ export default function SubAdminEnrollments() {
               Cancel
             </Button>
             <Button disabled={saving} onClick={handleSaveEdit}>
-              {saving ? "Saving…" : "Save changes"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : "Save changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

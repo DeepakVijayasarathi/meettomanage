@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { PartyPopper, Plus, RefreshCcw, Trash2, Video } from "lucide-react";
+import { Loader2, PartyPopper, Plus, RefreshCcw, Trash2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -319,7 +319,7 @@ export default function CoordinatorCalendar() {
                   <Input id="holiday-name" value={holidayName} onChange={(e) => setHolidayName(e.target.value)} placeholder="e.g. Diwali" className="w-56" />
                 </div>
                 <Button onClick={handleAddHoliday} disabled={savingHoliday || !holidayDate || !holidayName.trim()}>
-                  <Plus className="h-4 w-4" /> {savingHoliday ? "Adding…" : "Add Holiday"}
+                  {savingHoliday ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}{savingHoliday ? "Adding…" : "Add Holiday"}
                 </Button>
               </div>
             )}
@@ -555,7 +555,7 @@ export default function CoordinatorCalendar() {
               disabled={scheduling || !newTeacher || !newDate || !durationValid || (newType === "Regular" && !newBatch)}
               onClick={handleScheduleSession}
             >
-              {scheduling ? "Scheduling…" : "Schedule"}
+              {scheduling && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {scheduling ? "Scheduling…" : "Schedule"}
             </Button>
           </DialogFooter>
         </DialogContent>

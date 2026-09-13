@@ -1,20 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Download,
-  LogIn,
-  LogOut,
-  Radar,
-  RefreshCw,
-  ShieldAlert,
-  UserPlus,
-  Users,
-  Video,
-  WifiOff,
-  type LucideIcon,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Download, Loader2, LogIn, LogOut, Radar, RefreshCw, ShieldAlert, type LucideIcon, UserPlus, Users, Video, WifiOff } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -488,7 +473,7 @@ export default function SubAdminClassSessionLogs() {
               ]}
             >
               <Button variant="outline" size="sm" disabled={exporting} onClick={handleExport}>
-                <Download className="h-3.5 w-3.5" />
+                {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                 {exporting ? "Exporting…" : "Export CSV"}
               </Button>
             </FilterBar>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Archive, CalendarDays, CalendarPlus, Layers, Moon, Plus, Rocket, Search, X } from "lucide-react";
+import { Archive, CalendarDays, CalendarPlus, Layers, Loader2, Moon, Plus, Rocket, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -779,7 +779,7 @@ export default function SubAdminBatches() {
                     disabled={genBusy || !genStart || Object.keys(genTimeByDay).length === 0}
                     onClick={handleGenerateSchedule}
                   >
-                    {genBusy ? "Generating…" : "Generate sessions"}
+                    {genBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {genBusy ? "Generating…" : "Generate sessions"}
                   </Button>
                   {genResult && <p className="mt-2 text-xs font-medium text-foreground">{genResult}</p>}
                 </div>
@@ -805,7 +805,7 @@ export default function SubAdminBatches() {
                   </Button>
                   {canEdit && (
                     <Button onClick={saveDetail} disabled={saving || !editName.trim() || !editTeacher}>
-                      {saving ? "Saving…" : "Save Changes"}
+                      {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : "Save Changes"}
                     </Button>
                   )}
                 </div>
@@ -893,7 +893,7 @@ export default function SubAdminBatches() {
               Cancel
             </Button>
             <Button disabled={creating || !newName.trim() || !newCourse || !newTeacher} onClick={handleCreate}>
-              {creating ? "Creating…" : "Create Batch"}
+              {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {creating ? "Creating…" : "Create Batch"}
             </Button>
           </DialogFooter>
         </DialogContent>

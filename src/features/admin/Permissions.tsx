@@ -294,7 +294,7 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
     return (
       <Card>
         <CardContent className="py-10 text-center text-sm text-muted-foreground">
-          {loadingSubAdmins ? "Loading relationship managers…" : "No relationship manager accounts yet. Create one from the Users page first."}
+          {loadingSubAdmins && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {loadingSubAdmins ? "Loading relationship managers…" : "No relationship manager accounts yet. Create one from the Users page first."}
         </CardContent>
       </Card>
     );
@@ -363,7 +363,7 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
                   Reset
                 </Button>
                 <Button size="sm" onClick={saveProfile} disabled={saving}>
-                  {savedTick ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedTick ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
                   {saving ? "Saving…" : savedTick ? "Saved" : "Save Changes"}
                 </Button>
               </div>
@@ -705,7 +705,7 @@ function RolePresets({ menusByModule, modules, reloadModules }: MenusByModulePro
                 )}
               </div>
               <Button size="sm" onClick={save} disabled={busy || !draft.name || !draft.displayName}>
-                {savedTick ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedTick ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
                 {busy ? "Saving…" : savedTick ? "Saved" : isNew ? "Create Role" : "Save Role"}
               </Button>
             </div>
@@ -850,7 +850,7 @@ function ModuleCatalogCard({
             <Input id="module-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What this module is for" />
           </div>
           <Button size="sm" onClick={handleCreate} disabled={creating || !key.trim() || !label.trim()}>
-            <Plus className="h-3.5 w-3.5" /> {creating ? "Adding…" : "Add module"}
+            {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}{creating ? "Adding…" : "Add module"}
           </Button>
         </div>
       </CardContent>

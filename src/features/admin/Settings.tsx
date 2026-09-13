@@ -1,32 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  Bell,
-  Building2,
-  CalendarOff,
-  CheckCircle2,
-  CreditCard,
-  Eye,
-  EyeOff,
-  Globe2,
-  ListTree,
-  Mail,
-  MessageCircle,
-  Palette,
-  Pencil,
-  Plug,
-  Plus,
-  Puzzle,
-  Save,
-  Settings2,
-  ShieldAlert,
-  StickyNote,
-  Trash2,
-  Video,
-  Wallet,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { Bell, Building2, CalendarOff, CheckCircle2, CreditCard, Eye, EyeOff, Globe2, ListTree, Loader2, Mail, MessageCircle, Palette, Pencil, Plug, Plus, Puzzle, Save, Settings2, ShieldAlert, StickyNote, Trash2, type LucideIcon, Video, Wallet, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -277,7 +251,7 @@ export default function AdminSettings() {
         actions={
           HEADER_SAVE_TABS.has(activeTab) ? (
             <Button onClick={saveAll} disabled={saving}>
-              {saved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
               {saving ? "Saving…" : saved ? "Saved!" : "Save Changes"}
             </Button>
           ) : (
@@ -1294,7 +1268,7 @@ function PayoutRatesManager() {
                   Cancel
                 </Button>
                 <Button onClick={handleSave} disabled={saving || !!rateError}>
-                  {saved ? <CheckCircle2 className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle2 className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
                   {saving ? "Saving…" : saved ? "Saved!" : "Save Rate Card"}
                 </Button>
               </DialogFooter>
@@ -1518,7 +1492,7 @@ function LeaveAllowanceManager() {
                   Cancel
                 </Button>
                 <Button onClick={handleSave} disabled={saving || !!allowanceError}>
-                  {saved ? <CheckCircle2 className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle2 className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
                   {saving ? "Saving…" : saved ? "Saved!" : "Save Allowance"}
                 </Button>
               </DialogFooter>

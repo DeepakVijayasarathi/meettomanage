@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Mail, MessageSquarePlus, Phone, Sparkles } from "lucide-react";
+import { Loader2, Mail, MessageSquarePlus, Phone, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -434,7 +434,7 @@ export default function AdmissionLeads() {
                 </Button>
                 {canLogFollowUp && (
                   <Button disabled={!noteText.trim() || loggingFollowUp} onClick={handleLogFollowUp}>
-                    <MessageSquarePlus className="h-4 w-4" /> {loggingFollowUp ? "Saving…" : "Save follow-up"}
+                    {loggingFollowUp ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquarePlus className="h-4 w-4" />}{loggingFollowUp ? "Saving…" : "Save follow-up"}
                   </Button>
                 )}
               </DialogFooter>

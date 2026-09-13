@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BookOpen, Pencil, Plus, Users2 } from "lucide-react";
+import { BookOpen, Loader2, Pencil, Plus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -462,7 +462,7 @@ export default function SubAdminCourses() {
               Cancel
             </Button>
             <Button onClick={() => void handleSave()} disabled={saving || editLoading}>
-              {saving ? "Saving…" : editingCourse ? "Save changes" : "Create Course"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : editingCourse ? "Save changes" : "Create Course"}
             </Button>
           </DialogFooter>
         </DialogContent>
