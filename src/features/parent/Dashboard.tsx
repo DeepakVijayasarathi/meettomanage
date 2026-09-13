@@ -450,7 +450,13 @@ function RecentRow({ session }: { session: ClassSession }) {
           {formatDate(session.date, "long")} · {session.teacherName}
         </p>
         {session.recordingAvailable && (
-          <Link to="/parent/resources" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+          // Class recordings live on their own dedicated page (Resources is for
+          // teacher-uploaded worksheets/books/videos, a separate thing — Resources.tsx's own
+          // description points here too). This used to send a parent who clicked straight from
+          // the dashboard to Resources instead, which never has recordings on it — reading
+          // "No reading books yet" there, a parent had every reason to conclude the recording
+          // didn't exist at all rather than that this link just went to the wrong page.
+          <Link to="/parent/recordings" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
             <PlayCircle className="h-3 w-3" /> Recording available
           </Link>
         )}
