@@ -9,8 +9,7 @@ export type EngagementType =
   | "HandRaise"
   | "AttentionPing"
   | "TalkTimeSeconds"
-  | "CameraOnSeconds"
-  | "ScreenShareSeconds";
+  | "CameraOnSeconds";
 
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

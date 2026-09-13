@@ -180,17 +180,6 @@ export default function JitsiLive({
   // apart from "recording is fine, just not showing." Null = nothing wrong (or not attempted);
   // a string = shown as a dismissible banner with the reason, teacher-only.
   const [recordingIssue, setRecordingIssue] = useState<string | null>(null);
-  // Jibri only ever records the room's own stage/dominant view -- it can't see our whiteboard/
-  // quiz overlay, which lives in a separate cross-origin-iframed page it has no access to. The
-  // one reliable fix that needs no server-side changes: have the teacher screen-share this same
-  // tab, which Jitsi already treats as normal recordable content. Tracks Jitsi's own
-  // screenSharingStatusChanged event so the nudge banner below can reappear if sharing stops.
-  const [screenShareActive, setScreenShareActive] = useState(false);
-  // Popup asking the teacher to share their screen right when the class starts — a click is
-  // unavoidable (getDisplayMedia requires a real user gesture, a browser rule no app can
-  // bypass), but a modal right at join is a clearer, earlier ask than waiting for the
-  // post-recording banner further down to be the first nudge.
-  const [shareScreenPromptOpen, setShareScreenPromptOpen] = useState(false);
   const recordingWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // An "off" recordingStatusChanged with an error used to declare auto-recording failed the
   // instant it arrived — but Jibri can report a transient failure (e.g. its first-picked
@@ -346,11 +335,6 @@ export default function JitsiLive({
       talkSince: 0,
       camMs: 0,
       camSince: 0,
-      // Durable "was the whiteboard actually captured" signal (see the screen-share nudge
-      // banner below and EngagementEventType.ScreenShareSeconds) -- not scored, just recorded
-      // so it's checkable after the fact without opening the video.
-      screenShareMs: 0,
-      screenShareSince: 0,
     };
     const flushMedia = () => {
       const now = Date.now();
@@ -362,19 +346,12 @@ export default function JitsiLive({
         media.camMs += now - media.camSince;
         media.camSince = 0;
       }
-      if (media.screenShareSince) {
-        media.screenShareMs += now - media.screenShareSince;
-        media.screenShareSince = 0;
-      }
       const talkSeconds = Math.round(media.talkMs / 1000);
       const camSeconds = Math.round(media.camMs / 1000);
-      const screenShareSeconds = Math.round(media.screenShareMs / 1000);
       if (talkSeconds > 0) postEngagement(sessionId, userNameRef.current, "TalkTimeSeconds", talkSeconds);
       if (camSeconds > 0) postEngagement(sessionId, userNameRef.current, "CameraOnSeconds", camSeconds);
-      if (screenShareSeconds > 0) postEngagement(sessionId, userNameRef.current, "ScreenShareSeconds", screenShareSeconds);
       media.talkMs = 0;
       media.camMs = 0;
-      media.screenShareMs = 0;
     };
 
     async function init() {
@@ -575,11 +552,6 @@ export default function JitsiLive({
           // just not making it worse going forward.
           api?.executeCommand("setVirtualBackground", false);
         }
-        // Prompt to share the screen right at join — skipped for the recording observer (it's
-        // Jibri's own silent capture bot, nobody there to click anything).
-        if (mode === "teacher" && !isRecordingObserver) {
-          setShareScreenPromptOpen(true);
-        }
         // Skipped for the recording observer -- it only ever renders because a recording is
         // already running (it's Jibri's own capture of this exact call), so firing this again
         // would double-start it against the same room.
@@ -678,17 +650,7 @@ export default function JitsiLive({
       // tiles freeze silently otherwise, with nothing in our own chrome saying why.
       api.addListener("connectionInterrupted", () => setCallDegraded(true));
       api.addListener("connectionRestored", () => setCallDegraded(false));
-      api.addListener("screenSharingStatusChanged", (payload) => {
-        const on = !!payload?.on;
-        setScreenShareActive(on);
-        if (on) setShareScreenPromptOpen(false);
-        const now = Date.now();
-        if (on) {
-          media.screenShareSince ||= now;
-        } else if (media.screenShareSince) {
-          media.screenShareMs += now - media.screenShareSince;
-          media.screenShareSince = 0;
-        }
+      api.addListener("screenSharingStatusChanged", () => {
         // Teacher feedback (grid 4→9, WBS Round 2 #25): Jitsi's own default is to drop out of
         // tile view into a spotlighted "stage" layout the instant anyone starts screen-sharing —
         // the shared content fills most of the screen and everyone else shrinks to a thin
@@ -1059,60 +1021,6 @@ export default function JitsiLive({
             className="shrink-0 font-semibold underline decoration-brand-amber/50 underline-offset-2 hover:decoration-brand-amber"
           >
             Dismiss
-          </button>
-        </div>
-      )}
-      {/* Jibri (the recording bot) only ever sees this room's own video/stage view -- it has
-          no access to our whiteboard/quiz overlay, which lives behind a cross-origin iframe
-          boundary no server-side fix can cross. Screen-sharing this same tab is the one
-          reliable way to get it into the recording: Jitsi already treats a screen-share as
-          normal recordable stage content, the same as it does for anyone else's shared screen.
-          Shown only to the real teacher (never the recording observer, which has no one to
-          click it) and only once a recording is actually running -- no point nagging before
-          there's anything to include the whiteboard in. Deliberately non-dismissible: a real
-          zero-click auto-share is impossible (getDisplayMedia requires a genuine user gesture,
-          a browser security rule no app can bypass), so this is the closest thing to mandatory
-          within what's actually allowed -- it stays up until the teacher clicks through the
-          browser's own picker, not until they click ours away. */}
-      {/* Mandatory, not optional (teacher feedback): no "Skip", no Escape key, no clicking
-          outside — the only way out is actually clicking Share, same principle as the banner
-          below. This still isn't a true zero-click auto-share (see the remarks above the banner
-          below on why no browser allows that), but it's now genuinely mandatory within what a
-          click-through modal actually can enforce. Closes itself once screenSharingStatusChanged
-          fires — that's the *browser's* confirmation sharing actually started, not just that the
-          button was clicked (declining the picker, or a getDisplayMedia error, leaves this open). */}
-      <Dialog open={shareScreenPromptOpen} onOpenChange={() => {}}>
-        <DialogContent
-          className="max-w-sm"
-          showCloseButton={false}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle>Share your screen to start</DialogTitle>
-            <DialogDescription>
-              Required before the class can proceed. Sharing this tab (choose <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives students a clearer view.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => jitsiApiRef.current?.executeCommand("toggleShareScreen")}>
-              Share screen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {mode === "teacher" && !isRecordingObserver && recording && !screenShareActive && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md">
-          <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
-          <p className="flex-1">
-            Share your screen (choose <span className="font-semibold">This Tab</span>) so the recording includes your whiteboard and quiz.
-          </p>
-          <button
-            type="button"
-            onClick={() => jitsiApiRef.current?.executeCommand("toggleShareScreen")}
-            className="shrink-0 font-semibold underline decoration-brand-violet/50 underline-offset-2 hover:decoration-brand-violet"
-          >
-            Share screen
           </button>
         </div>
       )}
