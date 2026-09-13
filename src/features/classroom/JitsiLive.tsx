@@ -397,8 +397,20 @@ export default function JitsiLive({
           joinDomain = join.domain;
           joinToken = join.token ?? undefined;
           scheduledEndRef.current = join.scheduledEndAtUtc;
-        } catch {
-          /* fall back to the route-state room below */
+        } catch (err) {
+          // A real ApiError means the request reached the backend and was explicitly
+          // rejected (not signed in, not a participant, join window not open yet, class
+          // already ended, ...) -- silently falling back to a token-less guest join here
+          // used to hide that rejection entirely: the user would land in Jitsi's own
+          // anonymous-guest flow (prompted for a name, stuck in the moderator lobby with
+          // no one to admit them) with no indication why, making a legitimate, deterministic
+          // rejection look like a flaky server. Only a genuine network/offline failure
+          // (no ApiError, the request never got a response) still falls back to a
+          // best-effort room-only join, matching demo-mode/offline behavior.
+          if (err instanceof ApiError) {
+            toast({ variant: "error", title: "Couldn't join the class", description: err.message });
+            return;
+          }
         }
       }
 
