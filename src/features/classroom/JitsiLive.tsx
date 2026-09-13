@@ -338,6 +338,10 @@ export default function JitsiLive({
   useEffect(() => {
     let api: JitsiExternalApi | undefined;
     let cancelled = false;
+    // Set inside init() once joinRoom is known, removed in this effect's own cleanup below --
+    // see where it's registered (right by the other recording-render triggers) for why this
+    // exists at all.
+    let pagehideHandler: (() => void) | undefined;
     // conference.authenticationRequired retry budget -- see the conferenceFailed listener.
     // Lives here (not a ref) so it resets naturally whenever this effect re-runs (room/mode
     // change), same lifetime as `api`/`cancelled` above.
@@ -676,6 +680,19 @@ export default function JitsiLive({
         // connection) running for a class that's no longer happening.
         if (mode === "teacher" && !isRecordingObserver) stopRecordingRender(joinRoom);
       });
+      // A second, independent safety net -- confirmed live that the one above isn't enough on
+      // its own: videoConferenceLeft is posted by Jitsi's own iframe script, which needs to
+      // still be running to fire it at all. A tab closing or navigating away can tear the whole
+      // page down before that postMessage ever gets sent, let alone before stopRecordingRender's
+      // own fetch completes -- confirmed live, a real class's render-bot context was left
+      // running indefinitely with no stop ever received. pagehide (not beforeunload, which
+      // modern browsers increasingly restrict and which breaks back/forward-cache eligibility)
+      // fires reliably on tab close and navigation, and stopRecordingRender's own
+      // `keepalive: true` fetch is what actually lets the request complete after that.
+      pagehideHandler = () => {
+        if (mode === "teacher" && !isRecordingObserver) stopRecordingRender(joinRoom);
+      };
+      window.addEventListener("pagehide", pagehideHandler);
       api.addListener("participantJoined", (payload) => {
         const id = payload?.id;
         if (!id) return;
@@ -794,6 +811,7 @@ export default function JitsiLive({
         clearTimeout(recordingWatchdogRef.current);
         recordingWatchdogRef.current = null;
       }
+      if (pagehideHandler) window.removeEventListener("pagehide", pagehideHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, mode]);

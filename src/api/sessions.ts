@@ -227,10 +227,21 @@ export function startRecordingRender(room: string): void {
   apiFetch<void>(`/api/sessions/recording-render/start?room=${encodeURIComponent(room)}`, { method: "POST" }).catch(() => undefined);
 }
 
-/** Counterpart to {@link startRecordingRender} — called when recording stops or the teacher leaves. */
+/**
+ * Counterpart to {@link startRecordingRender} — called when recording stops or the teacher
+ * leaves. `keepalive: true` matters here specifically -- confirmed live that a real teacher
+ * closing the tab or navigating away can tear the page down before a plain fetch() completes,
+ * leaving the recording-render bot's capture running with no stop ever received (it only self-
+ * recovers via a 3-hour safety cap on the bot's own side, not promptly). keepalive is fetch's
+ * standard mechanism for exactly this -- the browser guarantees the request is sent even as the
+ * initiating page unloads, and unlike navigator.sendBeacon() it still supports the Authorization
+ * header this endpoint requires. Also called directly from a pagehide listener below, not just
+ * the IFrame API's own videoConferenceLeft/recordingStatusChanged events, since those depend on
+ * Jitsi's iframe script still running to even fire.
+ */
 export function stopRecordingRender(room: string): void {
   if (!apiEnabled()) return;
-  apiFetch<void>(`/api/sessions/recording-render/stop?room=${encodeURIComponent(room)}`, { method: "POST" }).catch(() => undefined);
+  apiFetch<void>(`/api/sessions/recording-render/stop?room=${encodeURIComponent(room)}`, { method: "POST", keepalive: true }).catch(() => undefined);
 }
 
 // A freshly-generated batch's whole schedule is created in one shot (GenerateScheduleAsync
