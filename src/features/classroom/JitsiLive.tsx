@@ -10,7 +10,7 @@ import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
 import { useToast } from "@/hooks/use-toast";
 import { postEngagement } from "@/api/engagement";
-import { completeSession, getClassroomSettings, getJitsiJoin, registerRecording } from "@/api/sessions";
+import { completeSession, getClassroomSettings, getJitsiJoin, registerRecording, startRecordingRender, stopRecordingRender } from "@/api/sessions";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { primeAudioUnlock } from "@/lib/sounds";
@@ -625,7 +625,14 @@ export default function JitsiLive({
           media.camSince ||= now;
         }
       });
-      api.addListener("videoConferenceLeft", () => flushMedia());
+      api.addListener("videoConferenceLeft", () => {
+        flushMedia();
+        // Safety net alongside recordingStatusChanged's own stop call: a teacher leaving
+        // mid-recording (closing the tab, network drop) may never get a clean "off" event,
+        // which would otherwise leave the render bot's browser context (and its own Jitsi
+        // connection) running for a class that's no longer happening.
+        if (mode === "teacher" && !isRecordingObserver) stopRecordingRender(joinRoom);
+      });
       api.addListener("participantJoined", (payload) => {
         const id = payload?.id;
         if (!id) return;
@@ -678,6 +685,15 @@ export default function JitsiLive({
       api.addListener("recordingStatusChanged", (payload) => {
         const isOn = !!payload?.on;
         setRecording(isOn);
+        // Tells the recording-render bot to start/stop capturing the whiteboard/quiz overlay
+        // as its own separate, silent participant — see recordingCaptureTrack.ts and
+        // docs/JITSI_ARCHITECTURE.md's recording-render section. Skipped for the recording
+        // observer itself (Jibri's own video capture, an unrelated mechanism) and for
+        // students, who never see this event fire true in the first place.
+        if (mode === "teacher" && !isRecordingObserver) {
+          if (isOn) startRecordingRender(joinRoom);
+          else stopRecordingRender(joinRoom);
+        }
         if (isOn) {
           // Confirmed running — cancel the watchdog and clear any earlier warning.
           if (recordingWatchdogRef.current) {

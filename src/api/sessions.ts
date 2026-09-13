@@ -1,4 +1,4 @@
-import { apiFetch, getAccessToken, ApiError } from "@/lib/api";
+import { apiEnabled, apiFetch, getAccessToken, ApiError } from "@/lib/api";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import type { ClassSession, SessionStatus } from "@/types";
 
@@ -214,6 +214,23 @@ export interface ApiRecordingRenderJoin {
  */
 export async function getRecordingRenderJoin(room: string): Promise<ApiRecordingRenderJoin | undefined> {
   return apiFetch<ApiRecordingRenderJoin | undefined>(`/api/sessions/recordings/render-join?room=${encodeURIComponent(room)}`);
+}
+
+/**
+ * Called by JitsiLive.tsx the moment its own recordingStatusChanged listener sees a real
+ * Jibri recording actually start — tells the recording-render bot to join this room and
+ * start capturing the whiteboard/quiz overlay. Fire-and-forget, like postEngagement: this is
+ * a best-effort enhancement, never something a class's recording should depend on.
+ */
+export function startRecordingRender(room: string): void {
+  if (!apiEnabled()) return;
+  apiFetch<void>(`/api/sessions/recording-render/start?room=${encodeURIComponent(room)}`, { method: "POST" }).catch(() => undefined);
+}
+
+/** Counterpart to {@link startRecordingRender} — called when recording stops or the teacher leaves. */
+export function stopRecordingRender(room: string): void {
+  if (!apiEnabled()) return;
+  apiFetch<void>(`/api/sessions/recording-render/stop?room=${encodeURIComponent(room)}`, { method: "POST" }).catch(() => undefined);
 }
 
 // A freshly-generated batch's whole schedule is created in one shot (GenerateScheduleAsync
