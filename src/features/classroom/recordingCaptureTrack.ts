@@ -104,8 +104,12 @@ export async function startRecordingCapture(room: string): Promise<RecordingCapt
     // real picker ever showing. Since the browser window fills the whole (single-tab) virtual
     // display, this captures the same content a tab-capture would have. In any other context
     // (a stray real browser tab) this simply rejects, caught below, and capture never starts.
+    // 7fps is plenty for a whiteboard/quiz/gamification overlay -- it changes on discrete
+    // strokes and state transitions, never continuous motion, so halving the frame rate from
+    // the original 15 costs no perceptible quality in the archived recording while roughly
+    // halving this tab's encode CPU and the bandwidth it sends to JVB.
     stream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: 15 },
+      video: { frameRate: 7 },
       audio: false,
     });
   } catch {
