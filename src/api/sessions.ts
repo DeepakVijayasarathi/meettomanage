@@ -157,6 +157,12 @@ export async function getClassroomSettings(): Promise<ApiClassroomSettings> {
 }
 
 export interface ApiJitsiJoin {
+  /** The session this join is actually for — echoes back whatever id was asked for, UNLESS
+   *  that one has since been rescheduled (edited), in which case this is whatever it turned
+   *  into. Callers MUST switch to using this id for anything else session-scoped for the rest
+   *  of the call (the classroom hub join, engagement posts, complete-session, recording
+   *  registration) — see JitsiLive.tsx's own use of it for why. */
+  sessionId: string;
   room: string;
   domain: string;
   /** Null until an admin configures the "jitsi" integration's appId/appSecret. */
