@@ -229,19 +229,28 @@ export function startRecordingRender(room: string): void {
 
 /**
  * Counterpart to {@link startRecordingRender} — called when recording stops or the teacher
- * leaves. `keepalive: true` matters here specifically -- confirmed live that a real teacher
- * closing the tab or navigating away can tear the page down before a plain fetch() completes,
- * leaving the recording-render bot's capture running with no stop ever received (it only self-
- * recovers via a 3-hour safety cap on the bot's own side, not promptly). keepalive is fetch's
- * standard mechanism for exactly this -- the browser guarantees the request is sent even as the
- * initiating page unloads, and unlike navigator.sendBeacon() it still supports the Authorization
- * header this endpoint requires. Also called directly from a pagehide listener below, not just
- * the IFrame API's own videoConferenceLeft/recordingStatusChanged events, since those depend on
- * Jitsi's iframe script still running to even fire.
+ * leaves, including directly from a pagehide listener (JitsiLive.tsx) so it fires even when the
+ * IFrame API's own videoConferenceLeft/recordingStatusChanged events never do (they need
+ * Jitsi's iframe script to still be running to fire at all).
+ *
+ * Deliberately NOT routed through apiFetch, and deliberately not carrying an Authorization
+ * header -- confirmed live this matters: a keepalive fetch (fetch's standard mechanism for a
+ * request that must survive the page unloading) carrying a custom header forces a CORS
+ * preflight, since this call crosses from thereadernest.in to api.thereadernest.in, and a real
+ * page-unload keepalive fetch that needs a preflight was confirmed live to simply never arrive
+ * -- the extra round trip doesn't get the same "let it finish" guarantee a simple request does.
+ * Passing the token in the query string instead (same access_token convention already used for
+ * SignalR, which can't send headers either -- see Program.cs's JwtBearerEvents) keeps this a
+ * CORS "simple request" (no custom headers, no body), which was confirmed live to actually reach
+ * the backend during a real pagehide.
  */
 export function stopRecordingRender(room: string): void {
   if (!apiEnabled()) return;
-  apiFetch<void>(`/api/sessions/recording-render/stop?room=${encodeURIComponent(room)}`, { method: "POST", keepalive: true }).catch(() => undefined);
+  const token = getAccessToken();
+  if (!token) return;
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  const url = `${baseUrl}/api/sessions/recording-render/stop?room=${encodeURIComponent(room)}&access_token=${encodeURIComponent(token)}`;
+  fetch(url, { method: "POST", keepalive: true }).catch(() => undefined);
 }
 
 // A freshly-generated batch's whole schedule is created in one shot (GenerateScheduleAsync
