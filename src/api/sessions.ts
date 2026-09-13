@@ -198,6 +198,24 @@ export async function getRecordingObserverJoin(room: string): Promise<ApiRecordi
   return apiFetch<ApiRecordingObserverJoin | undefined>(`/api/sessions/recordings/observer-join?room=${encodeURIComponent(room)}`);
 }
 
+export interface ApiRecordingRenderJoin {
+  sessionId: string;
+  room: string;
+  hubToken: string;
+  expiresAtUtc: string;
+}
+
+/**
+ * Called by RecordingRender.tsx — the headless whiteboard/quiz capture bot's own page, loaded
+ * by a Playwright-driven browser (see docs/JITSI_ARCHITECTURE.md's recording-render section),
+ * never by a real person. Same anonymous-by-necessity, IP-allowlisted shape as
+ * getRecordingObserverJoin, but only ever needs ClassroomHub access — the bot joins Jitsi
+ * itself separately, via its own fixed hidden-domain XMPP account, not a per-request token.
+ */
+export async function getRecordingRenderJoin(room: string): Promise<ApiRecordingRenderJoin | undefined> {
+  return apiFetch<ApiRecordingRenderJoin | undefined>(`/api/sessions/recordings/render-join?room=${encodeURIComponent(room)}`);
+}
+
 // A freshly-generated batch's whole schedule is created in one shot (GenerateScheduleAsync
 // places every one of the course's sessions up front, however far out that runs), but a
 // ±60-day fetch window only ever showed whatever fell inside the next/last 60 days. A batch
