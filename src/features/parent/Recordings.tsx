@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { SESSIONS } from "@/data/sessions";
@@ -216,7 +217,7 @@ export default function ParentRecordings() {
                 </DialogDescription>
               </DialogHeader>
               {preview.recording.storageUrl ? (
-                <video controls className="aspect-video w-full rounded-xl bg-black" src={preview.recording.storageUrl} />
+                <VideoPlayer src={preview.recording.storageUrl} />
               ) : (
                 <div className="flex aspect-video items-center justify-center rounded-xl bg-muted/60">
                   <PlayCircle className="h-12 w-12 text-muted-foreground/60" />

@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { apiEnabled } from "@/lib/api";
 import { listMySessions, listRecordings, toFrontendSession, type ApiSessionRecording } from "@/api/sessions";
 import { getSessionsForTeacher } from "@/data/sessions";
@@ -162,7 +163,7 @@ export default function TeacherRecordings() {
                 <DialogDescription>Recorded {formatDate(preview.session.date, "long")}</DialogDescription>
               </DialogHeader>
               {preview.recording.storageUrl ? (
-                <video controls className="aspect-video w-full rounded-xl bg-black" src={preview.recording.storageUrl} />
+                <VideoPlayer src={preview.recording.storageUrl} />
               ) : (
                 <div className="flex aspect-video items-center justify-center rounded-xl bg-muted/60">
                   <PlayCircle className="h-12 w-12 text-muted-foreground/60" />

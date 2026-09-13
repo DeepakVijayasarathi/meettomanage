@@ -3,6 +3,7 @@ import { Loader2, PlayCircle, Trash2, Video } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { deleteRecording, listRecordings, type ApiSessionRecording } from "@/api/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
@@ -142,9 +143,7 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
                         ? `Visible to parents until ${formatDate(r.expiresAtUtc.slice(0, 10), "long")}`
                         : "Registered"}
                     </p>
-                    {isPlaying && safeUrl && (
-                      <video controls autoPlay className="mt-3 aspect-video w-full rounded-xl bg-black" src={safeUrl} />
-                    )}
+                    {isPlaying && safeUrl && <VideoPlayer src={safeUrl} autoPlay className="mt-3" />}
                   </div>
                   );
                 })}
