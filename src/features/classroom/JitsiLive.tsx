@@ -753,10 +753,10 @@ export default function JitsiLive({
         const isOn = !!payload?.on;
         setRecording(isOn);
         // Tells the recording-render bot to start/stop capturing the whiteboard/quiz overlay
-        // as its own separate, silent participant — see recordingCaptureTrack.ts and
-        // docs/JITSI_ARCHITECTURE.md's recording-render section. Skipped for the recording
-        // observer itself (Jibri's own video capture, an unrelated mechanism) and for
-        // students, who never see this event fire true in the first place.
+        // to its own local file, later composited alongside Jibri's own recording by
+        // finalize-recording.sh — see docs/JITSI_ARCHITECTURE.md's recording-render section.
+        // Skipped for the recording observer itself (Jibri's own video capture, an unrelated
+        // mechanism) and for students, who never see this event fire true in the first place.
         if (mode === "teacher" && !isRecordingObserver) {
           if (isOn) startRecordingRender(joinRoom);
           else stopRecordingRender(joinRoom);
@@ -1186,13 +1186,19 @@ export default function JitsiLive({
               // A labeled pill, not a bare icon circle — the earlier icon-only version was
               // the one a live screenshot showed getting missed entirely; text removes any
               // doubt about what the button does. bottom-20 (not bottom-3) clears Jitsi's
-              // own toolbar the same way the empty-room hint above does.
+              // own toolbar the same way the empty-room hint above does. right-3 (not left-3)
+              // -- confirmed live via screenshot: Jitsi's own native "wants to join" lobby-knock
+              // notification renders in this exact bottom-left region of its iframe, which we
+              // can't reposition (cross-origin), so left-3 meant the two collided every time a
+              // student knocked. The top-right corner is already claimed by the
+              // leaderboard/Joined cards, so bottom-right is the one corner genuinely free of
+              // both our own overlays and Jitsi's native ones.
               <button
                 type="button"
                 title="Send a celebration to the class"
                 aria-label="Send a celebration to the class"
                 onClick={() => (celebrateAllRef.current ?? celebrate)("Great job, everyone! 🎉")}
-                className="group absolute bottom-20 left-3 z-20 flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-amber to-brand-violet px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-violet/40 ring-1 ring-white/20 transition-all hover:shadow-xl hover:shadow-brand-violet/50 hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="group absolute bottom-20 right-3 z-20 flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-amber to-brand-violet px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-violet/40 ring-1 ring-white/20 transition-all hover:shadow-xl hover:shadow-brand-violet/50 hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <PartyPopper className="h-4 w-4 transition-transform group-hover:rotate-12" />
                 Celebrate
