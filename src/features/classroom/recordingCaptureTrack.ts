@@ -31,7 +31,16 @@ declare global {
     JitsiMeetJS?: {
       init: (options: Record<string, unknown>) => void;
       JitsiConnection: new (appId: string | null, token: string | null, options: Record<string, unknown>) => JitsiConnectionLike;
-      ConnectionEvents: { CONNECTION_ESTABLISHED: string; CONNECTION_FAILED: string };
+      // Confirmed live against the actual served lib-jitsi-meet.min.js: connection events
+      // live under events.connection (values like "connection.connectionEstablished"), NOT
+      // a flat top-level ConnectionEvents object -- that assumption threw
+      // "Cannot read properties of undefined (reading 'CONNECTION_ESTABLISHED')" in production.
+      events: { connection: { CONNECTION_ESTABLISHED: string; CONNECTION_FAILED: string } };
+      // Confirmed live against the served build's own source: takes an array of
+      // {stream, mediaType} descriptors (mediaType matching MediaStreamTrack.kind, i.e.
+      // "video"/"audio") and returns the real local-track objects addTrack expects --
+      // NOT a hand-built {getType, stream, videoType} object as originally guessed.
+      createLocalTracksFromMediaStreams: (streams: { stream: MediaStream; mediaType: string; videoType?: string }[]) => Promise<unknown[]>;
     };
   }
 }
@@ -136,18 +145,25 @@ export async function startRecordingCapture(room: string): Promise<RecordingCapt
   // down rather than silently publish a frozen last frame forever.
   stream.getVideoTracks()[0]?.addEventListener("ended", cleanup);
 
-  connection.addEventListener(JitsiMeetJS.ConnectionEvents.CONNECTION_ESTABLISHED, () => {
+  connection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_ESTABLISHED, async () => {
     console.log("[recordingCaptureTrack] CONNECTION_ESTABLISHED");
     if (disposed) return;
     conference = connection.initJitsiConference(room, {});
     conference.join();
-    // Confirm the exact createLocalTrack construction against the served lib-jitsi-meet
-    // build during integration testing -- this is the one piece that couldn't be verified
-    // without a live hidden-domain account provisioned yet.
-    const track = { getType: () => "video", stream, videoType: "camera" };
-    conference.addTrack(track).catch((err) => console.error("[recordingCaptureTrack] addTrack failed", err));
+    try {
+      // videoType: "desktop" (not "camera") since this is a tab-capture stream, not a real
+      // camera -- matches how a manual screen-share would have been categorized.
+      const tracks = await JitsiMeetJS.createLocalTracksFromMediaStreams([{ stream, mediaType: "video", videoType: "desktop" }]);
+      if (disposed) return;
+      for (const track of tracks) {
+        await conference.addTrack(track);
+      }
+      console.log("[recordingCaptureTrack] published", tracks.length, "track(s)");
+    } catch (err) {
+      console.error("[recordingCaptureTrack] track creation/publish failed", err);
+    }
   });
-  connection.addEventListener(JitsiMeetJS.ConnectionEvents.CONNECTION_FAILED, (...args: unknown[]) => {
+  connection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_FAILED, (...args: unknown[]) => {
     console.error("[recordingCaptureTrack] CONNECTION_FAILED", ...args);
     cleanup();
   });
