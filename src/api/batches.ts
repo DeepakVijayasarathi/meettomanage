@@ -176,3 +176,27 @@ export async function assignStudentToBatch(batchId: string, childId: string): Pr
 export async function removeStudentFromBatch(batchId: string, childId: string): Promise<void> {
   await apiFetch<void>(`/api/batches/${batchId}/enrollments/${childId}`, { method: "DELETE" });
 }
+
+export interface ReconcileStaleSessionTeacherConflict {
+  batchId: string;
+  batchName: string;
+  teacherProfileId: string;
+  reason: string;
+}
+
+export interface ReconcileStaleSessionTeachersResult {
+  batchesFixed: number;
+  sessionsMoved: number;
+  conflicts: ReconcileStaleSessionTeacherConflict[];
+}
+
+/**
+ * One-time data repair for batches reassigned before UpdateAsync's teacher-reassignment cascade
+ * existed: moves any still-undelivered session that's out of sync with its own batch's current
+ * teacher onto that teacher. Safe to call more than once — nothing left to fix is a no-op.
+ */
+export async function reconcileStaleSessionTeachers(): Promise<ReconcileStaleSessionTeachersResult> {
+  return apiFetch<ReconcileStaleSessionTeachersResult>("/api/batches/reconcile-stale-teachers", {
+    method: "POST",
+  });
+}

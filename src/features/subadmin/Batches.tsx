@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Archive, CalendarDays, CalendarPlus, Layers, Loader2, Moon, Plus, Rocket, Search, X } from "lucide-react";
+import { Archive, CalendarDays, CalendarPlus, Layers, Loader2, Moon, Plus, Rocket, Search, Wrench, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +39,7 @@ import {
   listBatches,
   listTeacherOptions,
   listUnassignedStudents,
+  reconcileStaleSessionTeachers,
   removeStudentFromBatch,
   setBatchStatus,
   toFrontendBatch,
@@ -183,6 +184,38 @@ export default function SubAdminBatches() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
+
+  // One-time repair for batches reassigned before the teacher-reassignment cascade fix existed —
+  // their already-generated sessions were left pointing at the old teacher (see BatchService's
+  // ReconcileStaleSessionTeachersAsync). Gated behind canEdit, same as reassigning a teacher in
+  // the first place. Safe to click more than once; a clean batch is a no-op.
+  const [reconciling, setReconciling] = useState(false);
+
+  async function handleReconcile() {
+    setReconciling(true);
+    try {
+      const result = await reconcileStaleSessionTeachers();
+      if (result.sessionsMoved === 0 && result.conflicts.length === 0) {
+        toast({ variant: "success", title: "Nothing to repair", description: "Every batch's sessions already match their current teacher." });
+      } else {
+        const parts = [
+          result.sessionsMoved > 0
+            ? `Moved ${result.sessionsMoved} session(s) across ${result.batchesFixed} batch(es) onto their current teacher.`
+            : undefined,
+          result.conflicts.length > 0
+            ? `${result.conflicts.length} batch(es) skipped — new teacher already booked: ${result.conflicts.map((c) => c.batchName).join(", ")}.`
+            : undefined,
+        ].filter(Boolean);
+        toast({ variant: result.conflicts.length > 0 ? "default" : "success", title: "Repair complete", description: parts.join(" ") });
+      }
+      reload();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not run the repair.";
+      toast({ variant: "error", title: "Repair failed", description: message });
+    } finally {
+      setReconciling(false);
+    }
+  }
 
   // Keyed by weekday, since a batch doesn't have to meet at the same time every day it runs —
   // e.g. Monday/Wednesday at 5 PM but Friday at noon — a day's presence as a key is what
@@ -452,11 +485,24 @@ export default function SubAdminBatches() {
         title="Batches"
         description="Create, edit and archive the batches assigned to you — capacity, schedule and teacher assignment."
         actions={
-          canCreate ? (
-            <Button onClick={() => { setCreateOpen(true); setCreateError(null); }}>
-              <Plus className="h-4 w-4" /> New Batch
-            </Button>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <Button
+                variant="outline"
+                onClick={handleReconcile}
+                disabled={reconciling}
+                title="Fix any batch whose already-scheduled sessions still show a previous teacher after a reassignment"
+              >
+                {reconciling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+                Repair stale teacher assignments
+              </Button>
+            )}
+            {canCreate && (
+              <Button onClick={() => { setCreateOpen(true); setCreateError(null); }}>
+                <Plus className="h-4 w-4" /> New Batch
+              </Button>
+            )}
+          </div>
         }
       />
 
