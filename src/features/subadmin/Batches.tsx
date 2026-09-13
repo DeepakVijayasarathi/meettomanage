@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Archive, CalendarDays, CalendarPlus, Layers, Loader2, Moon, Plus, Rocket, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -27,6 +28,7 @@ import type { BatchStatus } from "@/types";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
+import { usePortalBase } from "@/lib/portalBase";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import {
@@ -136,6 +138,10 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
 export default function SubAdminBatches() {
   const { toast } = useToast();
   const { hasPermission } = useSession();
+  // This page is mounted at 4 different portal prefixes (subadmin/admission/coordinator/
+  // management — see App.tsx), so a link to "Users" can't be hardcoded to /subadmin/users;
+  // it has to resolve against whichever portal is actually showing this page.
+  const base = usePortalBase();
   // View-level access already gates the whole page (via the menu); these gate the actual
   // CRUD actions within it against the account's specific Create/Edit grant, matching what
   // the backend itself enforces (POST needs Create, PUT/status needs Edit) — a View-only
@@ -683,10 +689,19 @@ export default function SubAdminBatches() {
                             key={s.enrollmentId}
                             className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-sm"
                           >
-                            <span className="min-w-0 flex-1 truncate">
+                            {/* Deep links to the same rich student-detail dialog Users already has
+                                (email, parent details, login/credentials, RM notes, engagement) —
+                                mirrors admin/Batches.tsx; this row used to be plain unclickable
+                                text, leaving RM/Coordinator/Admission/Management with no way to
+                                see a batch student's details from here at all. */}
+                            <Link
+                              to={`${base}/users?studentId=${s.childId}`}
+                              className="min-w-0 flex-1 truncate text-left hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              title={`View ${s.childName}'s details`}
+                            >
                               {s.childName}
                               {s.academicLevel && <span className="text-xs text-muted-foreground"> · {s.academicLevel}</span>}
-                            </span>
+                            </Link>
                             {canEdit && (
                               <button
                                 type="button"
