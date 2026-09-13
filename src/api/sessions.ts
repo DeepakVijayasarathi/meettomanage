@@ -233,16 +233,18 @@ export function startRecordingRender(room: string): void {
  * IFrame API's own videoConferenceLeft/recordingStatusChanged events never do (they need
  * Jitsi's iframe script to still be running to fire at all).
  *
- * Deliberately NOT routed through apiFetch, and deliberately not carrying an Authorization
- * header -- confirmed live this matters: a keepalive fetch (fetch's standard mechanism for a
- * request that must survive the page unloading) carrying a custom header forces a CORS
- * preflight, since this call crosses from thereadernest.in to api.thereadernest.in, and a real
- * page-unload keepalive fetch that needs a preflight was confirmed live to simply never arrive
- * -- the extra round trip doesn't get the same "let it finish" guarantee a simple request does.
- * Passing the token in the query string instead (same access_token convention already used for
- * SignalR, which can't send headers either -- see Program.cs's JwtBearerEvents) keeps this a
- * CORS "simple request" (no custom headers, no body), which was confirmed live to actually reach
- * the backend during a real pagehide.
+ * Uses navigator.sendBeacon(), not fetch(..., {keepalive:true}) -- confirmed live, the hard way,
+ * that keepalive isn't actually reliable for this: instrumenting the real page proved the fetch
+ * call itself genuinely fires (right URL, valid token, confirmed via a monkey-patched
+ * window.fetch) during a real pagehide, yet the request never once reached the backend (checked
+ * directly in nginx's own access log -- zero hits, ever, across every real test today).
+ * keepalive's cross-origin-during-actual-unload reliability has known gaps in Chromium that
+ * plain fetch retries don't paper over. sendBeacon is the purpose-built browser API for exactly
+ * this -- "send a small POST that must survive the page going away" -- and doesn't need a
+ * request body here since room + auth already travel in the query string (same access_token
+ * convention already used for SignalR, which can't send headers either -- see Program.cs's
+ * JwtBearerEvents); sendBeacon can't set custom headers at all, which is exactly why that
+ * convention had to exist before this could switch to it.
  */
 export function stopRecordingRender(room: string): void {
   if (!apiEnabled()) return;
@@ -250,7 +252,13 @@ export function stopRecordingRender(room: string): void {
   if (!token) return;
   const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
   const url = `${baseUrl}/api/sessions/recording-render/stop?room=${encodeURIComponent(room)}&access_token=${encodeURIComponent(token)}`;
-  fetch(url, { method: "POST", keepalive: true }).catch(() => undefined);
+  if (navigator.sendBeacon(url)) return;
+  // sendBeacon returning false means the browser refused to queue it (over its own pending-
+  // beacon quota) -- fall back to a plain fetch rather than silently dropping the stop signal.
+  // Not keepalive: true here specifically, since that's the exact mechanism just proven
+  // unreliable for this -- a plain fetch at least has a chance if the page isn't actually
+  // unloading yet (e.g. this path being hit from a normal in-app event, not pagehide).
+  fetch(url, { method: "POST" }).catch(() => undefined);
 }
 
 // A freshly-generated batch's whole schedule is created in one shot (GenerateScheduleAsync
