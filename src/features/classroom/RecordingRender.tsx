@@ -4,20 +4,20 @@ import { apiEnabled } from "@/lib/api";
 import { getRecordingRenderJoin, type ApiRecordingRenderJoin } from "@/api/sessions";
 import InteractivePanel from "./InteractivePanel";
 import GamificationOverlay from "./GamificationOverlay";
-import { startRecordingCapture, type RecordingCaptureHandle } from "./recordingCaptureTrack";
 import type { LeaderboardEntry } from "./classroomData";
 
 /**
  * Loaded only by the recording-render bot's own headless Playwright browser (see
  * docs/JITSI_ARCHITECTURE.md's recording-render section) — never by a real person. Renders
  * exactly what a student's InteractivePanel shows (whiteboard, quiz, gamification), reusing
- * those components directly rather than reimplementing their rendering, then captures this
- * tab's own rendered content via getDisplayMedia (auto-granted for this automated browser
- * context, never prompting) and publishes it as a video track into the same Jitsi room,
- * joined separately by the bot process itself through Jitsi's hidden XMPP domain — see
- * recordingCaptureTrack.ts. This page never touches the Jitsi IFrame API or JitsiLive.tsx at
- * all; it has no video call UI of its own, since the bot's video connection is a completely
- * separate, silent participant real teachers/students never see.
+ * those components directly rather than reimplementing their rendering. The bot records this
+ * page's own content locally (Playwright's recordVideo) and hands that file off to
+ * finalize-recording.sh to composite alongside Jibri's own recording -- this page itself has no
+ * idea it's being recorded and never touches Jitsi at all. (An earlier version published this
+ * capture as a live Jitsi video track from a hidden-domain participant; confirmed live that a
+ * hidden-domain participant's video can never appear in Jibri's own recording regardless of how
+ * it's published, since isHidden() gates tile rendering for every client, Jibri's own included
+ * -- see bot.js's own header comment for the full root-cause writeup.)
  */
 export default function RecordingRender() {
   const { roomName } = useParams<{ roomName: string }>();
@@ -48,26 +48,6 @@ export default function RecordingRender() {
       cancelled = true;
     };
   }, [roomName]);
-
-  // Starts capturing + publishing this tab's own render as soon as the page is ready — the
-  // bot process that navigated here already only does so once a class is actually recording,
-  // so there's no separate "wait for recording to start" gate needed on this side.
-  useEffect(() => {
-    if (!ready || !join) return;
-    let handle: RecordingCaptureHandle | null = null;
-    let cancelled = false;
-    startRecordingCapture(join.room).then((h) => {
-      if (cancelled) {
-        h.dispose();
-      } else {
-        handle = h;
-      }
-    });
-    return () => {
-      cancelled = true;
-      handle?.dispose();
-    };
-  }, [ready, join]);
 
   const handleCelebrate = useCallback((message?: string) => {
     setCelebrationMessage(message);

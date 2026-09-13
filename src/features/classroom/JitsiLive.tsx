@@ -723,10 +723,10 @@ export default function JitsiLive({
         const isOn = !!payload?.on;
         setRecording(isOn);
         // Tells the recording-render bot to start/stop capturing the whiteboard/quiz overlay
-        // as its own separate, silent participant — see recordingCaptureTrack.ts and
-        // docs/JITSI_ARCHITECTURE.md's recording-render section. Skipped for the recording
-        // observer itself (Jibri's own video capture, an unrelated mechanism) and for
-        // students, who never see this event fire true in the first place.
+        // to its own local file, later composited alongside Jibri's own recording by
+        // finalize-recording.sh — see docs/JITSI_ARCHITECTURE.md's recording-render section.
+        // Skipped for the recording observer itself (Jibri's own video capture, an unrelated
+        // mechanism) and for students, who never see this event fire true in the first place.
         if (mode === "teacher" && !isRecordingObserver) {
           if (isOn) startRecordingRender(joinRoom);
           else stopRecordingRender(joinRoom);
