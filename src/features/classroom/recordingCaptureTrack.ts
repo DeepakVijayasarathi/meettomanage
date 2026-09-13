@@ -168,8 +168,16 @@ export async function startRecordingCapture(room: string): Promise<RecordingCapt
     cleanup();
   });
 
-  console.log("[recordingCaptureTrack] connecting", { domain: xmpp.domain, serviceUrl: xmpp.serviceUrl });
-  connection.connect({ id: xmpp.username, password: xmpp.password });
+  // Strophe's connect() sets its own `this.jid` (and derives `this.domain` from it) straight
+  // from this `id`, so it must be a full JID -- confirmed live against the served
+  // lib-jitsi-meet.min.js: passing a bare username here left `this.domain` empty, so the
+  // opening stream's `to` attribute never actually named "hidden.meet.jitsi", and the server
+  // fell back to a virtual host without a usable SASL mechanism list, surfacing as
+  // "Server did not offer a supported authentication mechanism" despite PLAIN genuinely being
+  // enabled on the real hidden.meet.jitsi host.
+  const jid = `${xmpp.username}@${xmpp.domain}`;
+  console.log("[recordingCaptureTrack] connecting", { jid, serviceUrl: xmpp.serviceUrl });
+  connection.connect({ id: jid, password: xmpp.password });
 
   return { dispose: cleanup };
 }
