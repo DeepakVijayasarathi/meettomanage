@@ -198,69 +198,6 @@ export async function getRecordingObserverJoin(room: string): Promise<ApiRecordi
   return apiFetch<ApiRecordingObserverJoin | undefined>(`/api/sessions/recordings/observer-join?room=${encodeURIComponent(room)}`);
 }
 
-export interface ApiRecordingRenderJoin {
-  sessionId: string;
-  room: string;
-  hubToken: string;
-  expiresAtUtc: string;
-}
-
-/**
- * Called by RecordingRender.tsx — the headless whiteboard/quiz capture bot's own page, loaded
- * by a Playwright-driven browser (see docs/JITSI_ARCHITECTURE.md's recording-render section),
- * never by a real person. Same anonymous-by-necessity, IP-allowlisted shape as
- * getRecordingObserverJoin, but only ever needs ClassroomHub access — the bot joins Jitsi
- * itself separately, via its own fixed hidden-domain XMPP account, not a per-request token.
- */
-export async function getRecordingRenderJoin(room: string): Promise<ApiRecordingRenderJoin | undefined> {
-  return apiFetch<ApiRecordingRenderJoin | undefined>(`/api/sessions/recordings/render-join?room=${encodeURIComponent(room)}`);
-}
-
-/**
- * Called by JitsiLive.tsx the moment its own recordingStatusChanged listener sees a real
- * Jibri recording actually start — tells the recording-render bot to join this room and
- * start capturing the whiteboard/quiz overlay. Fire-and-forget, like postEngagement: this is
- * a best-effort enhancement, never something a class's recording should depend on.
- */
-export function startRecordingRender(room: string): void {
-  if (!apiEnabled()) return;
-  apiFetch<void>(`/api/sessions/recording-render/start?room=${encodeURIComponent(room)}`, { method: "POST" }).catch(() => undefined);
-}
-
-/**
- * Counterpart to {@link startRecordingRender} — called when recording stops or the teacher
- * leaves, including directly from a pagehide listener (JitsiLive.tsx) so it fires even when the
- * IFrame API's own videoConferenceLeft/recordingStatusChanged events never do (they need
- * Jitsi's iframe script to still be running to fire at all).
- *
- * Uses navigator.sendBeacon(), not fetch(..., {keepalive:true}) -- confirmed live, the hard way,
- * that keepalive isn't actually reliable for this: instrumenting the real page proved the fetch
- * call itself genuinely fires (right URL, valid token, confirmed via a monkey-patched
- * window.fetch) during a real pagehide, yet the request never once reached the backend (checked
- * directly in nginx's own access log -- zero hits, ever, across every real test today).
- * keepalive's cross-origin-during-actual-unload reliability has known gaps in Chromium that
- * plain fetch retries don't paper over. sendBeacon is the purpose-built browser API for exactly
- * this -- "send a small POST that must survive the page going away" -- and doesn't need a
- * request body here since room + auth already travel in the query string (same access_token
- * convention already used for SignalR, which can't send headers either -- see Program.cs's
- * JwtBearerEvents); sendBeacon can't set custom headers at all, which is exactly why that
- * convention had to exist before this could switch to it.
- */
-export function stopRecordingRender(room: string): void {
-  if (!apiEnabled()) return;
-  const token = getAccessToken();
-  if (!token) return;
-  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-  const url = `${baseUrl}/api/sessions/recording-render/stop?room=${encodeURIComponent(room)}&access_token=${encodeURIComponent(token)}`;
-  if (navigator.sendBeacon(url)) return;
-  // sendBeacon returning false means the browser refused to queue it (over its own pending-
-  // beacon quota) -- fall back to a plain fetch rather than silently dropping the stop signal.
-  // Not keepalive: true here specifically, since that's the exact mechanism just proven
-  // unreliable for this -- a plain fetch at least has a chance if the page isn't actually
-  // unloading yet (e.g. this path being hit from a normal in-app event, not pagehide).
-  fetch(url, { method: "POST" }).catch(() => undefined);
-}
-
 // A freshly-generated batch's whole schedule is created in one shot (GenerateScheduleAsync
 // places every one of the course's sessions up front, however far out that runs), but a
 // ±60-day fetch window only ever showed whatever fell inside the next/last 60 days. A batch

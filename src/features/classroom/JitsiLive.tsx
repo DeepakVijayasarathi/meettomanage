@@ -10,7 +10,7 @@ import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
 import { useToast } from "@/hooks/use-toast";
 import { postEngagement } from "@/api/engagement";
-import { completeSession, getClassroomSettings, getJitsiJoin, registerRecording, startRecordingRender, stopRecordingRender } from "@/api/sessions";
+import { completeSession, getClassroomSettings, getJitsiJoin, registerRecording } from "@/api/sessions";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { primeAudioUnlock } from "@/lib/sounds";
@@ -349,10 +349,6 @@ export default function JitsiLive({
   useEffect(() => {
     let api: JitsiExternalApi | undefined;
     let cancelled = false;
-    // Set inside init() once joinRoom is known, removed in this effect's own cleanup below --
-    // see where it's registered (right by the other recording-render triggers) for why this
-    // exists at all.
-    let pagehideHandler: (() => void) | undefined;
     // conference.authenticationRequired retry budget -- see the conferenceFailed listener.
     // Lives here (not a ref) so it resets naturally whenever this effect re-runs (room/mode
     // change), same lifetime as `api`/`cancelled` above.
@@ -702,25 +698,7 @@ export default function JitsiLive({
       });
       api.addListener("videoConferenceLeft", () => {
         flushMedia();
-        // Safety net alongside recordingStatusChanged's own stop call: a teacher leaving
-        // mid-recording (closing the tab, network drop) may never get a clean "off" event,
-        // which would otherwise leave the render bot's browser context (and its own Jitsi
-        // connection) running for a class that's no longer happening.
-        if (mode === "teacher" && !isRecordingObserver) stopRecordingRender(joinRoom);
       });
-      // A second, independent safety net -- confirmed live that the one above isn't enough on
-      // its own: videoConferenceLeft is posted by Jitsi's own iframe script, which needs to
-      // still be running to fire it at all. A tab closing or navigating away can tear the whole
-      // page down before that postMessage ever gets sent, let alone before stopRecordingRender's
-      // own fetch completes -- confirmed live, a real class's render-bot context was left
-      // running indefinitely with no stop ever received. pagehide (not beforeunload, which
-      // modern browsers increasingly restrict and which breaks back/forward-cache eligibility)
-      // fires reliably on tab close and navigation, and stopRecordingRender's own
-      // `keepalive: true` fetch is what actually lets the request complete after that.
-      pagehideHandler = () => {
-        if (mode === "teacher" && !isRecordingObserver) stopRecordingRender(joinRoom);
-      };
-      window.addEventListener("pagehide", pagehideHandler);
       api.addListener("participantJoined", (payload) => {
         const id = payload?.id;
         if (!id) return;
@@ -807,15 +785,6 @@ export default function JitsiLive({
       api.addListener("recordingStatusChanged", (payload) => {
         const isOn = !!payload?.on;
         setRecording(isOn);
-        // Tells the recording-render bot to start/stop capturing the whiteboard/quiz overlay
-        // to its own local file, later composited alongside Jibri's own recording by
-        // finalize-recording.sh — see docs/JITSI_ARCHITECTURE.md's recording-render section.
-        // Skipped for the recording observer itself (Jibri's own video capture, an unrelated
-        // mechanism) and for students, who never see this event fire true in the first place.
-        if (mode === "teacher" && !isRecordingObserver) {
-          if (isOn) startRecordingRender(joinRoom);
-          else stopRecordingRender(joinRoom);
-        }
         if (isOn) {
           // Confirmed running — cancel the watchdog and clear any earlier warning.
           if (recordingWatchdogRef.current) {
@@ -849,7 +818,6 @@ export default function JitsiLive({
         clearTimeout(recordingWatchdogRef.current);
         recordingWatchdogRef.current = null;
       }
-      if (pagehideHandler) window.removeEventListener("pagehide", pagehideHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, mode]);
