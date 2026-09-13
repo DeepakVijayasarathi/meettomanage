@@ -290,8 +290,10 @@ function PastRow({ session }: { session: ClassSession }) {
       <div className="flex items-center gap-2">
         <SessionStatusBadge status={session.status} label={noShowLabel(session)} />
         {recInfo ? (
+          // Same fix as parent/Dashboard.tsx's RecentRow: recordings live on their own
+          // dedicated page, not Resources (teacher-uploaded worksheets/books/videos).
           <Link
-            to="/parent/resources"
+            to="/parent/recordings"
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors",
               recInfo.expired ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary hover:bg-primary/15"
