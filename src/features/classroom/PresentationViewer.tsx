@@ -1,9 +1,10 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { ChevronLeft, ChevronRight, FileUp, Loader2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileUp, Loader2, Maximize2, Minimize2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { fetchPresentationFile, getPresentation, uploadPresentation } from "@/api/sessions";
 
 /**
@@ -59,6 +60,18 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
   const [pageCount, setPageCount] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
   const [rendering, setRendering] = useState(false);
+  // Same "fill the viewport on demand" affordance the Whiteboard tab already has — a deck
+  // otherwise lives in the same ~380px side panel, cramped for anyone at the back of the room
+  // to actually read the slide (teacher feedback: wanted the same full-screen option here too).
+  const [maximized, setMaximized] = useState(false);
+  useEffect(() => {
+    if (!maximized) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMaximized(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [maximized]);
 
   const docRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -99,7 +112,11 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
     };
   }, [sessionId, loadDeckBytes]);
 
-  // Render the current page to the canvas whenever it changes or the deck first loads.
+  // Render the current page to the canvas whenever it changes, the deck first loads, or the
+  // panel is maximized/restored — `maximized` changes the canvas's own parent size (see the
+  // wrapping div below) without touching pageIndex/pageCount, so it has to be a dependency
+  // here too or toggling full-screen would just stretch the last, smaller-resolution render
+  // via CSS instead of re-rendering pdf.js's output crisp at the new, much larger size.
   useEffect(() => {
     const doc = docRef.current;
     const canvas = canvasRef.current;
@@ -127,7 +144,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
     return () => {
       cancelled = true;
     };
-  }, [pageIndex, pageCount]);
+  }, [pageIndex, pageCount, maximized]);
 
   useImperativeHandle(ref, () => ({
     applyRemoteSlide(remotePageIndex: number) {
@@ -174,6 +191,22 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
     setPageIndex(0);
   }
 
+  // Same button in both toolbars below (presenter and view-only) — mirrors
+  // Whiteboard.tsx's own renderMaximizeButton so the two tabs behave identically.
+  const renderMaximizeButton = () => (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="text-white/70 hover:bg-white/10 hover:text-white"
+      title={maximized ? "Shrink the slide back down" : "Make the slide bigger"}
+      aria-label={maximized ? "Shrink the slide back down" : "Make the slide bigger"}
+      aria-pressed={maximized}
+      onClick={() => setMaximized((m) => !m)}
+    >
+      {maximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+    </Button>
+  );
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center text-white/40">
@@ -209,7 +242,9 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
   }
 
   return (
-    <div className="flex h-full flex-col">
+    // Same full-viewport overlay pattern as Whiteboard.tsx's own `maximized` — fills the whole
+    // screen on demand instead of the ~380px side panel this otherwise lives in.
+    <div className={cn("flex h-full flex-col", maximized && "fixed inset-0 z-40 h-screen bg-brand-navy p-4")}>
       {fileInput}
       <div className="relative flex-1 overflow-hidden bg-white/[0.02] p-3">
         <div className="flex h-full w-full items-center justify-center">
@@ -233,6 +268,8 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
             <Button size="sm" variant="ghost" className="text-white/70 hover:bg-white/10 hover:text-white" disabled={pageIndex === pageCount - 1} onClick={() => goTo(pageIndex + 1)}>
               <ChevronRight className="h-4 w-4" />
             </Button>
+            <div className="mx-1 h-5 w-px bg-white/10" aria-hidden="true" />
+            {renderMaximizeButton()}
             <div className="flex-1" />
             {/* Re-export the edited deck to PDF, then bring it in right here — no "Stop
                 presenting" round-trip (which used to blank every student's screen back to
@@ -255,9 +292,12 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
             </Button>
           </>
         ) : (
-          <span className="w-full text-center text-xs text-white/40">
-            {pageIndex + 1} / {pageCount} — following the teacher
-          </span>
+          <>
+            <span className="flex-1 text-center text-xs text-white/40">
+              {pageIndex + 1} / {pageCount} — following the teacher
+            </span>
+            {renderMaximizeButton()}
+          </>
         )}
       </div>
     </div>
