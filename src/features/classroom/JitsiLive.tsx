@@ -244,6 +244,25 @@ export default function JitsiLive({
     userNameRef.current = userName;
   }, [userName]);
 
+  // The id actually in use for everything session-scoped from here on — starts as the
+  // `sessionId` prop, but getJitsiJoin (in init() below) can hand back a DIFFERENT one when
+  // this class has since been edited/rescheduled: the prop is whatever this component's own
+  // caller already had (e.g. a portal list fetched before the edit), and staying on that stale
+  // id is exactly the bug this exists to prevent — a teacher and a student each ending up on a
+  // different-but-both-"valid" session id for what they think is the same class lands them in
+  // the same Jitsi video room (the room carries over on a reschedule) but two different
+  // ClassroomHub groups, so neither's People roster or whiteboard ever reaches the other even
+  // though the call itself looks completely normal to both. State (not just a ref) because
+  // InteractivePanel's own `sessionId` prop has to re-render with the resolved value; mirrored
+  // into a ref too since the init effect below only depends on [room, mode] (see its own
+  // comment) and would otherwise close over whatever this was at mount, same reason userNameRef
+  // exists.
+  const [effectiveSessionId, setEffectiveSessionId] = useState(sessionId);
+  const effectiveSessionIdRef = useRef(effectiveSessionId);
+  useEffect(() => {
+    effectiveSessionIdRef.current = effectiveSessionId;
+  }, [effectiveSessionId]);
+
   // So the celebration clap sound is ready on whichever gesture a student makes
   // first — joining, clicking a tab — instead of waiting for one that never comes
   // before the class's first celebration and landing silently for that student.
@@ -287,7 +306,7 @@ export default function JitsiLive({
   function completeAndLeave(summary?: string) {
     if (mode === "teacher" && interactive && !completedRef.current) {
       completedRef.current = true;
-      completeSession(sessionId!, summary)
+      completeSession(effectiveSessionId!, summary)
         .then(() => toast({ variant: "success", title: "Class ended", description: "Marked delivered — your payout for it will reflect shortly." }))
         .catch((err: unknown) => {
           // 400 here is almost always "already completed" (e.g. a double-click on the
@@ -386,9 +405,13 @@ export default function JitsiLive({
       const talkSeconds = Math.round(media.talkMs / 1000);
       const camSeconds = Math.round(media.camMs / 1000);
       const screenShareSeconds = Math.round(media.screenShareMs / 1000);
-      if (talkSeconds > 0) postEngagement(sessionId, userNameRef.current, "TalkTimeSeconds", talkSeconds);
-      if (camSeconds > 0) postEngagement(sessionId, userNameRef.current, "CameraOnSeconds", camSeconds);
-      if (screenShareSeconds > 0) postEngagement(sessionId, userNameRef.current, "ScreenShareSeconds", screenShareSeconds);
+      // effectiveSessionIdRef, not the sessionId prop this closure was created with — see its
+      // own doc comment; this can still be running well after getJitsiJoin resolved a
+      // different, current id for an edited class.
+      const engagementSessionId = effectiveSessionIdRef.current;
+      if (talkSeconds > 0) postEngagement(engagementSessionId, userNameRef.current, "TalkTimeSeconds", talkSeconds);
+      if (camSeconds > 0) postEngagement(engagementSessionId, userNameRef.current, "CameraOnSeconds", camSeconds);
+      if (screenShareSeconds > 0) postEngagement(engagementSessionId, userNameRef.current, "ScreenShareSeconds", screenShareSeconds);
       media.talkMs = 0;
       media.camMs = 0;
       media.screenShareMs = 0;
@@ -414,6 +437,15 @@ export default function JitsiLive({
           joinDomain = join.domain;
           joinToken = join.token ?? undefined;
           scheduledEndRef.current = join.scheduledEndAtUtc;
+          // See effectiveSessionIdRef's own doc comment: this class may have been edited
+          // since whatever gave this component its `sessionId` prop was fetched — join.sessionId
+          // is whatever it's actually become, and everything session-scoped from here on
+          // (the ClassroomHub join below, engagement posts, complete-session, recording
+          // registration) has to follow it, not the possibly-stale prop.
+          if (join.sessionId && join.sessionId !== effectiveSessionIdRef.current) {
+            effectiveSessionIdRef.current = join.sessionId;
+            setEffectiveSessionId(join.sessionId);
+          }
         } catch (err) {
           // A real ApiError means the request reached the backend and was explicitly
           // rejected (not signed in, not a participant, join window not open yet, class
@@ -655,7 +687,9 @@ export default function JitsiLive({
         // recording; registering it again here too would create a duplicate SessionRecording
         // row for the same file.
         if (mode === "teacher" && interactive && !isRecordingObserver && payload?.link) {
-          registerRecording(sessionId!, payload.link).catch(() => undefined);
+          // effectiveSessionIdRef, not the sessionId prop this closure was created with —
+          // see its own doc comment.
+          registerRecording(effectiveSessionIdRef.current!, payload.link).catch(() => undefined);
           setRecordingIssue(null);
         }
       });
@@ -1362,7 +1396,7 @@ export default function JitsiLive({
               )}
             >
               <InteractivePanel
-                sessionId={sessionId!}
+                sessionId={effectiveSessionId!}
                 mode={mode}
                 displayName={userName}
                 hubToken={hubToken}
