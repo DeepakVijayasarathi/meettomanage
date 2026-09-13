@@ -40,6 +40,8 @@ type JitsiExternalApi = {
       on?: boolean;
       displayName?: string;
       handRaised?: boolean;
+      // participantRoleChanged only: "moderator" or "none" (Jitsi's own two roles).
+      role?: string;
       // recordingStatusChanged only: Jitsi's own reason when a recording request is
       // rejected or drops (e.g. "resource-constraint", "service-unavailable" — no Jibri
       // free in the pool; "error" — a generic Jibri-side failure).
@@ -217,6 +219,9 @@ export default function JitsiLive({
   // recording for a teacher who already relies on it.
   const autoRecordRef = useRef(true);
   const defaultLobbyRef = useRef(true);
+  // Guards the one-time enable-lobby-on-join attempt below (see participantRoleChanged) so a
+  // role event that fires more than once in one call never issues the command twice.
+  const lobbyEnableAttemptedRef = useRef(false);
   // The init effect below only depends on [room, mode] (see its own comment on why), so
   // anything it closes over from render — including userName — would otherwise be frozen
   // at whatever it was on first mount. flushMedia posts engagement (talk-time, camera-on)
@@ -540,10 +545,24 @@ export default function JitsiLive({
         // room's lobby (toggleLobby is a moderator action); a student who arrives before the
         // teacher already can't get further than Jitsi's own prejoin/lobby screen regardless,
         // and re-toggling it here on the student's side would just flicker the same state.
-        if (mode === "teacher" && defaultLobbyRef.current) {
-          api?.executeCommand("toggleLobby", true);
-          setLobbyEnabled(true);
-        }
+        //
+        // Deliberately NOT fired here, synchronously, on videoConferenceJoined: reported live —
+        // everyone leaves the call, both rejoin, and even the *teacher* lands on Jitsi's own
+        // "ask to join" / "waiting for a moderator" screen for her own room. Likely cause: this
+        // deployment doesn't yet have secure-domain JWT room auth wired up server-side (see
+        // docs/JITSI_ARCHITECTURE.md's "production hardening" item, and toggleWaitingRoom's own
+        // note above) — moderator is granted by Jitsi/Prosody's own anonymous-domain "first to
+        // (re)join an empty room" rule, not by our signed token's own moderator claim.
+        // videoConferenceJoined fires the instant OUR client believes it's in the room, which
+        // can race ahead of Prosody actually finishing that grant — toggling lobby on before it
+        // lands risks the room ending up with lobby enabled but its own enabler not yet
+        // recognized as the moderator who can bypass it. participantRoleChanged (below) is
+        // Jitsi's own confirmation that the grant has landed; waiting for it costs nothing when
+        // auth *is* configured server-side (it then fires effectively at once) and removes this
+        // specific self-lockout race when it isn't. Doesn't fix the underlying case where
+        // Prosody hands the role to whoever's connection actually lands first on a fresh empty
+        // room regardless of app role — that needs the server-side JWT room auth this was
+        // always meant to get eventually.
         // Auto-apply our own on-brand background as the teacher's starting camera
         // background — dynamicBrandingUrl (above) only adds it to the picker as an
         // available *choice*; this is what actually makes it the default someone sees
@@ -619,6 +638,17 @@ export default function JitsiLive({
       api.addListener("raiseHandUpdated", (payload) => {
         if (payload?.id !== media.selfId) return;
         raiseHandRef.current?.(!!payload?.handRaised);
+      });
+      // Jitsi's own confirmation that OUR grant of the moderator role has actually landed —
+      // see the long comment on videoConferenceJoined above for why enabling the lobby waits
+      // for this instead of firing the instant we believe we've joined.
+      api.addListener("participantRoleChanged", (payload) => {
+        if (payload?.id !== media.selfId || payload?.role !== "moderator") return;
+        if (mode === "teacher" && defaultLobbyRef.current && !lobbyEnableAttemptedRef.current) {
+          lobbyEnableAttemptedRef.current = true;
+          api?.executeCommand("toggleLobby", true);
+          setLobbyEnabled(true);
+        }
       });
       api.addListener("dominantSpeakerChanged", (payload) => {
         const now = Date.now();
