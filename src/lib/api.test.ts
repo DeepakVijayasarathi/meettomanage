@@ -75,6 +75,11 @@ describe("apiFetch", () => {
   it("on a 401 outside /api/auth/*, clears the session and redirects to /login", async () => {
     setAccessToken("stale-token");
     localStorage.setItem("trn.role", "admin");
+    // A GET 401 is retried once before being trusted as a real expired session (see
+    // apiFetch's own comment) — both the initial request and the retry need a mocked
+    // response, or the second `fetch()` call resolves to undefined and blows up on
+    // `response.status` before ever reaching the assertion below.
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: "Unauthorized" }, 401));
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ detail: "Unauthorized" }, 401));
 
     await expect(apiFetch("/api/sessions")).rejects.toBeInstanceOf(ApiError);
