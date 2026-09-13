@@ -1228,6 +1228,15 @@ export default function JitsiLive({
               onLocalOp={(op) => sendAnnotationRef.current?.(JSON.stringify(op))}
             />
             {mode === "teacher" && (
+              // bottom-32, not bottom-20 — the Celebrate button below sits at bottom-20
+              // right-3 too (same corner, same reasoning: clear of Jitsi's own toolbar and
+              // its bottom-left lobby-knock notification). Both being teacher-only and both
+              // able to show at once (this one whenever the class is live, Celebrate whenever
+              // the Interactive panel is on), they were rendering directly on top of each
+              // other at identical coordinates — confirmed from a live screenshot, the pill
+              // sitting right over this circle. Stacked with a 48px gap (h-10 button + 8px)
+              // instead, this one above since Celebrate is the more frequently-reached-for
+              // control of the two.
               <button
                 type="button"
                 title={annotateOn ? "Stop marking on screen" : "Mark on screen — draw over the video or a shared screen"}
@@ -1235,7 +1244,7 @@ export default function JitsiLive({
                 aria-pressed={annotateOn}
                 onClick={() => setAnnotateOn((o) => !o)}
                 className={cn(
-                  "absolute bottom-20 right-3 z-30 flex h-10 w-10 items-center justify-center rounded-full shadow-lg ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "absolute bottom-32 right-3 z-30 flex h-10 w-10 items-center justify-center rounded-full shadow-lg ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   annotateOn ? "bg-red-500 text-white shadow-red-500/40" : "bg-brand-navy/90 text-white/80 shadow-black/30 backdrop-blur-xl"
                 )}
               >
