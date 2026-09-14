@@ -350,7 +350,14 @@ export default function SubAdminBatches() {
       });
       setBanner(`Batch "${newName.trim()}" created.`);
       setCreateOpen(false);
+      // Full reset, not just name/start — the Teacher and Course selects previously stayed on
+      // whatever was picked for the last batch, so creating several batches back-to-back (the
+      // common case) could silently carry the wrong teacher over to the next one unless someone
+      // noticed and reselected it every time.
       setNewName("");
+      setNewCourse("");
+      setNewTeacher("");
+      setNewCapacity("8");
       setNewStart("");
       reload();
     } catch (err) {
