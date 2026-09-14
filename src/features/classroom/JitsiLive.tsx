@@ -189,12 +189,42 @@ export default function JitsiLive({
   // apart from "recording is fine, just not showing." Null = nothing wrong (or not attempted);
   // a string = shown as a dismissible banner with the reason, teacher-only.
   const [recordingIssue, setRecordingIssue] = useState<string | null>(null);
+  // How many times the auto-record retry loop below has re-issued startRecording for this
+  // class. A rejection ("no Jibri available") is a final answer for that specific request —
+  // Jicofo doesn't quietly retry it against a newly-freed instance on its own — so getting
+  // real resilience out of a brief capacity blip (another class's recording finishing a few
+  // seconds later) requires the frontend to actually ask again, not just wait longer.
+  const recordingRetryCountRef = useRef(0);
   // Jibri only ever records the room's own stage/dominant view -- it can't see our whiteboard/
   // quiz overlay, which lives in a separate cross-origin-iframed page it has no access to. The
   // one reliable fix that needs no server-side changes: have the teacher screen-share this same
   // tab, which Jitsi already treats as normal recordable content. Tracks Jitsi's own
   // screenSharingStatusChanged event so the nudge banner below can reappear if sharing stops.
   const [screenShareActive, setScreenShareActive] = useState(false);
+  // Teacher-reported live: screen-sharing showed as active on the teacher's own side, but
+  // students never saw it. screenSharingStatusChanged only reflects local capture (getDisplayMedia
+  // succeeded) -- it says nothing about whether that track actually survived to the students'
+  // end. A connection blip is a known way for exactly this to happen: the main call's audio/video
+  // silently re-negotiates and recovers (connectionRestored fires, callDegraded clears), but the
+  // screen-share track -- added separately, after the initial join -- doesn't always come back
+  // with it, leaving the teacher's local UI still saying "Sharing" while nothing is arriving on
+  // the other end. Since a fresh share requires a real user gesture (browser security -- see the
+  // mandatory share-screen dialog above), this can't be silently auto-recovered; the most this can
+  // do is tell the teacher it happened and prompt them to restart it themselves.
+  const [shareMayHaveDroppedSince, setShareMayHaveDroppedSince] = useState(false);
+  // Teacher feedback: "not sure if this is required or if there's an issue with the setup" --
+  // a click on Share screen that gets no browser picker at all (or an instantly-cancelled one)
+  // gives zero feedback here: the mandatory dialog just sits there looking unchanged, since it
+  // only ever closes on the browser's own screenSharingStatusChanged "on" confirmation (see the
+  // long comment above the dialog on why it can't do better than that). The single most common
+  // real cause of a silent failure like that is macOS's own separate Screen Recording OS
+  // permission (distinct from the getUserMedia camera/mic prompt) being off for this browser --
+  // Chrome/Safari then either shows no sources or silently no-ops instead of a catchable error.
+  // A few seconds after any click with still no "on", surface that specific, actionable hint
+  // instead of leaving the teacher to re-click the same button wondering if it's even doing
+  // anything.
+  const [shareAttempted, setShareAttempted] = useState(false);
+  const [showShareOsHint, setShowShareOsHint] = useState(false);
   // Popup asking the teacher to share their screen right when the class starts — a click is
   // unavoidable (getDisplayMedia requires a real user gesture, a browser rule no app can
   // bypass), but a modal right at join is a clearer, earlier ask than waiting for the
@@ -373,6 +403,52 @@ export default function JitsiLive({
     // change), same lifetime as `api`/`cancelled` above.
     let authRetryCount = 0;
     const MAX_AUTH_RETRIES = 4;
+
+    // Auto-record retry budget: 3 retries at 12s apart (~48s total) before giving up and
+    // telling the teacher. Long enough to ride out a brief capacity blip (another class's
+    // recording finishing a few seconds later frees up exactly the Jibri this one needed),
+    // short enough that a teacher who does need the manual fallback isn't left guessing for
+    // a full minute-plus first.
+    const RECORDING_RETRY_INTERVAL_MS = 12000;
+    const MAX_RECORDING_RETRIES = 3;
+
+    function attemptStartRecording() {
+      // jitsiApiRef.current, not the closed-over `api` -- the first call (from
+      // videoConferenceJoined, below) always has a fresh `api`, but a retry runs from
+      // inside the watchdog's own setTimeout, which can land in the narrow window between
+      // an auth-retry's api?.dispose() and its reassignment to the new instance. The
+      // closed-over `api` still points at the disposed instance for that window;
+      // jitsiApiRef.current is explicitly nulled out for the same window and just no-ops.
+      jitsiApiRef.current?.executeCommand("startRecording", { mode: "file" });
+      // startRecording has no success callback of its own — a deployment with no Jibri
+      // pool (or one that's exhausted) either fires recordingStatusChanged with on:false +
+      // a reason, or in some configurations fires nothing back at all (Jicofo simply can't
+      // dispatch the request). Either way, wait a bounded window for the "on" confirmation;
+      // if it hasn't arrived, a rejection here is a final answer for THIS specific request
+      // (Jicofo doesn't quietly retry it against a newly-freed instance on its own), so
+      // actually re-issuing the command — not just waiting longer — is what gives a brief
+      // capacity blip a real chance to resolve before the teacher sees anything.
+      if (recordingWatchdogRef.current) clearTimeout(recordingWatchdogRef.current);
+      recordingWatchdogRef.current = setTimeout(() => {
+        setRecording((current) => {
+          if (!current) {
+            if (recordingRetryCountRef.current < MAX_RECORDING_RETRIES) {
+              recordingRetryCountRef.current += 1;
+              attemptStartRecording();
+            } else {
+              setRecordingIssue(
+                recordingErrorReasonRef.current
+                  ? `Auto-recording failed to start (${recordingErrorReasonRef.current}). This class is not being recorded automatically — ` +
+                      'use the manual "Recording" button on My Classes if you need one.'
+                  : "Auto-recording didn't start (likely no recording capacity on the video server). " +
+                      "This class is not being recorded automatically — use the manual \"Recording\" button on My Classes if you need one."
+              );
+            }
+          }
+          return current;
+        });
+      }, RECORDING_RETRY_INTERVAL_MS);
+    }
 
     // Talk-time & camera attentiveness: accumulated from Jitsi media signals,
     // flushed as engagement events when the participant leaves.
@@ -628,7 +704,28 @@ export default function JitsiLive({
         // this forced on them — a parent joining on a child's behalf doesn't expect the
         // app to silently change what the child's camera shows.
         if (mode === "teacher") {
-          api?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
+          // Teacher-reported live: "I can't see myself while teaching, only the students" --
+          // students and their own self-view were unaffected, pointing at this specific call,
+          // not the underlying camera/track. videoConferenceJoined fires the instant Jitsi
+          // believes the room is joined, which can be before the local video track's own
+          // self-view render pipeline has actually spun up; applying a virtual background
+          // (a canvas compositing over that self-view, not a swap of the outgoing track
+          // itself) right at that instant is a known way to leave just the local self-view
+          // stuck blank while the real, unprocessed camera keeps transmitting fine to
+          // everyone else -- exactly this symptom. A short delay gives the self-view
+          // pipeline a moment to actually exist before compositing on top of it.
+          setTimeout(() => {
+            // jitsiApiRef.current, not the closed-over `api` -- both get reassigned to the
+            // same new instance on an auth retry (conferenceFailed, below), so that alone
+            // wouldn't matter, but there's a narrow window between api?.dispose() and that
+            // reassignment where the closed-over `api` still points at the now-disposed
+            // instance (calling into it is a real risk, not just theoretical), while
+            // jitsiApiRef.current is explicitly nulled out for that exact same window and
+            // simply no-ops here instead.
+            if (!cancelled) {
+              jitsiApiRef.current?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
+            }
+          }, 1200);
         } else {
           // Not just "skip setting one" — Jitsi remembers the last-picked virtual
           // background per browser (jitsi-meet.localStorage), so a child's device that
@@ -640,43 +737,35 @@ export default function JitsiLive({
           api?.executeCommand("setVirtualBackground", false);
         }
         // Prompt to share the screen right at join — skipped for the recording observer (it's
-        // Jibri's own silent capture bot, nobody there to click anything).
-        if (mode === "teacher" && !isRecordingObserver) {
+        // Jibri's own silent capture bot, nobody there to click anything) and for a call with
+        // no Interactive panel at all (the Personal Meeting Room -- no sessionId, so `interactive`
+        // is false). Teacher-reported live: this fired every time on the personal link too,
+        // demanding a screen share "to continue" with no way to skip it, even though the entire
+        // reason it exists is to get the whiteboard/quiz overlay into the recording -- neither of
+        // which the Personal Meeting Room has, so there was never anything worth sharing for.
+        if (mode === "teacher" && !isRecordingObserver && interactive) {
           setShareScreenPromptOpen(true);
         }
         // Skipped for the recording observer -- it only ever renders because a recording is
         // already running (it's Jibri's own capture of this exact call), so firing this again
-        // would double-start it against the same room.
+        // would double-start it against the same room. Also skipped if we already believe
+        // recording is active: videoConferenceJoined fires again on every RECONNECT (a
+        // network blip, not just the very first join), and the room's recording keeps
+        // running across that blip since it's tied to the conference, not this one
+        // participant's connection. Confirmed live: re-issuing startRecording here on
+        // reconnect got a guaranteed "unexpected-request" rejection from Jicofo (recording
+        // already in progress) — and with the retry loop below, that turned one harmless
+        // reconnect into three doomed retries and a scary "recording failed" banner for a
+        // class that was, the whole time, being recorded just fine.
         if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver) {
-          // Auto session recording: starts when the host joins; requires Jibri
-          // on the Jitsi deployment (no-op on deployments without it). Admin can
-          // turn this off in Settings → Integrations → Jitsi Meet ("autoRecord"),
-          // which leaves recording to the manual fallback on teacher My Classes.
-          recordingErrorReasonRef.current = null;
-          api?.executeCommand("startRecording", { mode: "file" });
-          // startRecording has no success callback of its own — a deployment with no
-          // Jibri pool (or one that's exhausted) either fires recordingStatusChanged
-          // with on:false + a reason, or in some configurations fires nothing back at
-          // all (Jicofo simply can't dispatch the request). Either way, if the "on"
-          // confirmation hasn't arrived within a generous window, treat it as failed
-          // rather than leaving the teacher to guess why no REC badge ever appeared —
-          // generous because Jibri legitimately takes a while to spin up under load,
-          // and firing this too eagerly is worse than firing it a few seconds late.
-          if (recordingWatchdogRef.current) clearTimeout(recordingWatchdogRef.current);
-          recordingWatchdogRef.current = setTimeout(() => {
-            setRecording((current) => {
-              if (!current) {
-                setRecordingIssue(
-                  recordingErrorReasonRef.current
-                    ? `Auto-recording failed to start (${recordingErrorReasonRef.current}). This class is not being recorded automatically — ` +
-                        'use the manual "Recording" button on My Classes if you need one.'
-                    : "Auto-recording didn't start (likely no recording capacity on the video server). " +
-                        "This class is not being recorded automatically — use the manual \"Recording\" button on My Classes if you need one."
-                );
-              }
-              return current;
-            });
-          }, 25000);
+          setRecording((alreadyRecording) => {
+            if (!alreadyRecording) {
+              recordingErrorReasonRef.current = null;
+              recordingRetryCountRef.current = 0;
+              attemptStartRecording();
+            }
+            return alreadyRecording;
+          });
         }
       });
       // Auto recording registration: when the deployment publishes the recording
@@ -766,11 +855,24 @@ export default function JitsiLive({
       // Jitsi's own signal for a dropped media/XMPP connection mid-call — the video
       // tiles freeze silently otherwise, with nothing in our own chrome saying why.
       api.addListener("connectionInterrupted", () => setCallDegraded(true));
-      api.addListener("connectionRestored", () => setCallDegraded(false));
+      api.addListener("connectionRestored", () => {
+        setCallDegraded(false);
+        // The screen-share track doesn't always survive a reconnect the way the main
+        // call does — see shareMayHaveDroppedSince above. media.screenShareSince is
+        // truthy only while a share was active going into the interruption.
+        if (media.screenShareSince) setShareMayHaveDroppedSince(true);
+      });
       api.addListener("screenSharingStatusChanged", (payload) => {
         const on = !!payload?.on;
         setScreenShareActive(on);
-        if (on) setShareScreenPromptOpen(false);
+        if (on) {
+          setShareScreenPromptOpen(false);
+          setShareAttempted(false);
+          setShowShareOsHint(false);
+        }
+        // Any deliberate stop/restart here (as opposed to the automatic flag set above)
+        // means the teacher has acted on the warning already, one way or another.
+        setShareMayHaveDroppedSince(false);
         const now = Date.now();
         if (on) {
           media.screenShareSince ||= now;
@@ -879,6 +981,15 @@ export default function JitsiLive({
     if (!jitsiReady) return;
     jitsiApiRef.current?.executeCommand("displayName", userName);
   }, [jitsiReady, userName]);
+
+  // See shareAttempted/showShareOsHint above: give a clicked-but-nothing-happened share
+  // attempt a few seconds to actually resolve (screenSharingStatusChanged flips the dialog
+  // closed) before assuming it silently failed and surfacing the OS-permission hint.
+  useEffect(() => {
+    if (!shareAttempted || !shareScreenPromptOpen) return;
+    const timer = setTimeout(() => setShowShareOsHint(true), 6000);
+    return () => clearTimeout(timer);
+  }, [shareAttempted, shareScreenPromptOpen]);
 
   // Fires once, the first time a check lands at/after the scheduled end — not on every
   // poll — so it's one modal prompt, not a repeat every 30 seconds. Deliberately a choice
@@ -1234,14 +1345,42 @@ export default function JitsiLive({
               Required before the class can proceed. Sharing this tab (choose <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives students a clearer view.
             </DialogDescription>
           </DialogHeader>
+          {showShareOsHint && (
+            <p className="rounded-lg bg-brand-amber/10 px-3 py-2 text-xs text-brand-amber">
+              Nothing happening after you click Share? On a Mac, check System Settings → Privacy &amp; Security → Screen Recording and make sure your browser is allowed — that's a separate permission from camera/microphone and browsers often fail silently when it's off.
+            </p>
+          )}
           <DialogFooter>
-            <Button onClick={() => jitsiApiRef.current?.executeCommand("toggleShareScreen")}>
+            <Button
+              onClick={() => {
+                setShareAttempted(true);
+                jitsiApiRef.current?.executeCommand("toggleShareScreen");
+              }}
+            >
               Share screen
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {mode === "teacher" && !isRecordingObserver && recording && !screenShareActive && (
+      {mode === "teacher" && !isRecordingObserver && screenShareActive && shareMayHaveDroppedSince && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
+          <WifiOff className="h-4 w-4 shrink-0 translate-y-0.5" />
+          <p className="flex-1">
+            Your connection dropped briefly while you were sharing your screen — students may no longer be seeing it, even though it still shows as shared here. Stop sharing, then share again to be sure.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              jitsiApiRef.current?.executeCommand("toggleShareScreen");
+              setShareMayHaveDroppedSince(false);
+            }}
+            className="shrink-0 font-semibold underline decoration-brand-amber/50 underline-offset-2 hover:decoration-brand-amber"
+          >
+            Stop sharing
+          </button>
+        </div>
+      )}
+      {mode === "teacher" && !isRecordingObserver && interactive && recording && !screenShareActive && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md">
           <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
           <p className="flex-1">
@@ -1309,11 +1448,16 @@ export default function JitsiLive({
                 aria-pressed={annotateOn}
                 onClick={() => setAnnotateOn((o) => !o)}
                 className={cn(
-                  "absolute bottom-32 right-3 z-30 flex h-10 w-10 items-center justify-center rounded-full shadow-lg ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "absolute bottom-32 right-3 z-30 flex h-10 items-center justify-center gap-1.5 rounded-full px-3 shadow-lg ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   annotateOn ? "bg-red-500 text-white shadow-red-500/40" : "bg-brand-navy/90 text-white/80 shadow-black/30 backdrop-blur-xl"
                 )}
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-4 w-4 shrink-0" />
+                {/* Icon-only was too easy to miss (teacher feedback: "I cannot see the annotate
+                    option anywhere") — a plain floating circle with no label, away from the
+                    main toolbar. A text label earns its width while it matters most: during an
+                    actual screen share, which is also when the button has something to draw on. */}
+                {screenShareActive && <span className="text-xs font-semibold">{annotateOn ? "Marking" : "Annotate"}</span>}
               </button>
             )}
             {/* The empty room otherwise reads as broken rather than expected — every
