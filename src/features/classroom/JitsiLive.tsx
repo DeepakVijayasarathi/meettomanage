@@ -722,15 +722,24 @@ export default function JitsiLive({
         }
         // Skipped for the recording observer -- it only ever renders because a recording is
         // already running (it's Jibri's own capture of this exact call), so firing this again
-        // would double-start it against the same room.
+        // would double-start it against the same room. Also skipped if we already believe
+        // recording is active: videoConferenceJoined fires again on every RECONNECT (a
+        // network blip, not just the very first join), and the room's recording keeps
+        // running across that blip since it's tied to the conference, not this one
+        // participant's connection. Confirmed live: re-issuing startRecording here on
+        // reconnect got a guaranteed "unexpected-request" rejection from Jicofo (recording
+        // already in progress) — and with the retry loop below, that turned one harmless
+        // reconnect into three doomed retries and a scary "recording failed" banner for a
+        // class that was, the whole time, being recorded just fine.
         if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver) {
-          // Auto session recording: starts when the host joins; requires Jibri
-          // on the Jitsi deployment (no-op on deployments without it). Admin can
-          // turn this off in Settings → Integrations → Jitsi Meet ("autoRecord"),
-          // which leaves recording to the manual fallback on teacher My Classes.
-          recordingErrorReasonRef.current = null;
-          recordingRetryCountRef.current = 0;
-          attemptStartRecording();
+          setRecording((alreadyRecording) => {
+            if (!alreadyRecording) {
+              recordingErrorReasonRef.current = null;
+              recordingRetryCountRef.current = 0;
+              attemptStartRecording();
+            }
+            return alreadyRecording;
+          });
         }
       });
       // Auto recording registration: when the deployment publishes the recording
