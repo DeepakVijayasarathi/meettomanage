@@ -413,7 +413,13 @@ export default function JitsiLive({
     const MAX_RECORDING_RETRIES = 3;
 
     function attemptStartRecording() {
-      api?.executeCommand("startRecording", { mode: "file" });
+      // jitsiApiRef.current, not the closed-over `api` -- the first call (from
+      // videoConferenceJoined, below) always has a fresh `api`, but a retry runs from
+      // inside the watchdog's own setTimeout, which can land in the narrow window between
+      // an auth-retry's api?.dispose() and its reassignment to the new instance. The
+      // closed-over `api` still points at the disposed instance for that window;
+      // jitsiApiRef.current is explicitly nulled out for the same window and just no-ops.
+      jitsiApiRef.current?.executeCommand("startRecording", { mode: "file" });
       // startRecording has no success callback of its own — a deployment with no Jibri
       // pool (or one that's exhausted) either fires recordingStatusChanged with on:false +
       // a reason, or in some configurations fires nothing back at all (Jicofo simply can't
@@ -709,8 +715,15 @@ export default function JitsiLive({
           // everyone else -- exactly this symptom. A short delay gives the self-view
           // pipeline a moment to actually exist before compositing on top of it.
           setTimeout(() => {
+            // jitsiApiRef.current, not the closed-over `api` -- both get reassigned to the
+            // same new instance on an auth retry (conferenceFailed, below), so that alone
+            // wouldn't matter, but there's a narrow window between api?.dispose() and that
+            // reassignment where the closed-over `api` still points at the now-disposed
+            // instance (calling into it is a real risk, not just theoretical), while
+            // jitsiApiRef.current is explicitly nulled out for that exact same window and
+            // simply no-ops here instead.
             if (!cancelled) {
-              api?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
+              jitsiApiRef.current?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
             }
           }, 1200);
         } else {
