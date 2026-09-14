@@ -212,6 +212,19 @@ export default function JitsiLive({
   // mandatory share-screen dialog above), this can't be silently auto-recovered; the most this can
   // do is tell the teacher it happened and prompt them to restart it themselves.
   const [shareMayHaveDroppedSince, setShareMayHaveDroppedSince] = useState(false);
+  // Teacher feedback: "not sure if this is required or if there's an issue with the setup" --
+  // a click on Share screen that gets no browser picker at all (or an instantly-cancelled one)
+  // gives zero feedback here: the mandatory dialog just sits there looking unchanged, since it
+  // only ever closes on the browser's own screenSharingStatusChanged "on" confirmation (see the
+  // long comment above the dialog on why it can't do better than that). The single most common
+  // real cause of a silent failure like that is macOS's own separate Screen Recording OS
+  // permission (distinct from the getUserMedia camera/mic prompt) being off for this browser --
+  // Chrome/Safari then either shows no sources or silently no-ops instead of a catchable error.
+  // A few seconds after any click with still no "on", surface that specific, actionable hint
+  // instead of leaving the teacher to re-click the same button wondering if it's even doing
+  // anything.
+  const [shareAttempted, setShareAttempted] = useState(false);
+  const [showShareOsHint, setShowShareOsHint] = useState(false);
   // Popup asking the teacher to share their screen right when the class starts — a click is
   // unavoidable (getDisplayMedia requires a real user gesture, a browser rule no app can
   // bypass), but a modal right at join is a clearer, earlier ask than waiting for the
@@ -829,7 +842,11 @@ export default function JitsiLive({
       api.addListener("screenSharingStatusChanged", (payload) => {
         const on = !!payload?.on;
         setScreenShareActive(on);
-        if (on) setShareScreenPromptOpen(false);
+        if (on) {
+          setShareScreenPromptOpen(false);
+          setShareAttempted(false);
+          setShowShareOsHint(false);
+        }
         // Any deliberate stop/restart here (as opposed to the automatic flag set above)
         // means the teacher has acted on the warning already, one way or another.
         setShareMayHaveDroppedSince(false);
@@ -941,6 +958,15 @@ export default function JitsiLive({
     if (!jitsiReady) return;
     jitsiApiRef.current?.executeCommand("displayName", userName);
   }, [jitsiReady, userName]);
+
+  // See shareAttempted/showShareOsHint above: give a clicked-but-nothing-happened share
+  // attempt a few seconds to actually resolve (screenSharingStatusChanged flips the dialog
+  // closed) before assuming it silently failed and surfacing the OS-permission hint.
+  useEffect(() => {
+    if (!shareAttempted || !shareScreenPromptOpen) return;
+    const timer = setTimeout(() => setShowShareOsHint(true), 6000);
+    return () => clearTimeout(timer);
+  }, [shareAttempted, shareScreenPromptOpen]);
 
   // Fires once, the first time a check lands at/after the scheduled end — not on every
   // poll — so it's one modal prompt, not a repeat every 30 seconds. Deliberately a choice
@@ -1296,8 +1322,18 @@ export default function JitsiLive({
               Required before the class can proceed. Sharing this tab (choose <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives students a clearer view.
             </DialogDescription>
           </DialogHeader>
+          {showShareOsHint && (
+            <p className="rounded-lg bg-brand-amber/10 px-3 py-2 text-xs text-brand-amber">
+              Nothing happening after you click Share? On a Mac, check System Settings → Privacy &amp; Security → Screen Recording and make sure your browser is allowed — that's a separate permission from camera/microphone and browsers often fail silently when it's off.
+            </p>
+          )}
           <DialogFooter>
-            <Button onClick={() => jitsiApiRef.current?.executeCommand("toggleShareScreen")}>
+            <Button
+              onClick={() => {
+                setShareAttempted(true);
+                jitsiApiRef.current?.executeCommand("toggleShareScreen");
+              }}
+            >
               Share screen
             </Button>
           </DialogFooter>
