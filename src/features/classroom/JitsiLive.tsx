@@ -651,8 +651,13 @@ export default function JitsiLive({
           api?.executeCommand("setVirtualBackground", false);
         }
         // Prompt to share the screen right at join — skipped for the recording observer (it's
-        // Jibri's own silent capture bot, nobody there to click anything).
-        if (mode === "teacher" && !isRecordingObserver) {
+        // Jibri's own silent capture bot, nobody there to click anything) and for a call with
+        // no Interactive panel at all (the Personal Meeting Room -- no sessionId, so `interactive`
+        // is false). Teacher-reported live: this fired every time on the personal link too,
+        // demanding a screen share "to continue" with no way to skip it, even though the entire
+        // reason it exists is to get the whiteboard/quiz overlay into the recording -- neither of
+        // which the Personal Meeting Room has, so there was never anything worth sharing for.
+        if (mode === "teacher" && !isRecordingObserver && interactive) {
           setShareScreenPromptOpen(true);
         }
         // Skipped for the recording observer -- it only ever renders because a recording is
@@ -1248,7 +1253,7 @@ export default function JitsiLive({
           </button>
         </div>
       )}
-      {mode === "teacher" && !isRecordingObserver && recording && !screenShareActive && (
+      {mode === "teacher" && !isRecordingObserver && interactive && recording && !screenShareActive && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md">
           <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
           <p className="flex-1">
