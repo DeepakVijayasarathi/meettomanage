@@ -134,6 +134,14 @@ export function getInitials(name: string) {
   return initials(name);
 }
 
+// Same shape already used in parent/Enrollment.tsx's own local copy — shared here so every
+// email field validates consistently instead of each form re-deciding what "valid" means.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+export function isValidEmail(value: string): boolean {
+  return EMAIL_RE.test(value.trim());
+}
+
 /** Converts a #rrggbb hex color into an "H S% L%" triple for CSS var use. */
 export function hexToHslTriple(hex: string): string {
   const clean = hex.replace("#", "");

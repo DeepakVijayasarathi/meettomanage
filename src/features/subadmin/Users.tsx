@@ -27,7 +27,7 @@ import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
 import { useApiData } from "@/api/hooks";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, isValidEmail } from "@/lib/utils";
 import {
   createUser,
   deleteStudent,
@@ -245,9 +245,13 @@ export default function SubAdminUsers() {
       setAddError("Name and email are required.");
       return;
     }
+    if (!isValidEmail(addEmail)) {
+      setAddError("Enter a valid email address.");
+      return;
+    }
     const roleOption = ADD_USER_ROLES.find((o) => o.key === addRole);
     if (!roleOption) {
-      setAddError("Pick a role.");
+      setAddError("Role is required.");
       return;
     }
     if (!apiEnabled()) {

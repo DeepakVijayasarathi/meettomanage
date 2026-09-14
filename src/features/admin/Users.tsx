@@ -29,7 +29,7 @@ import { CHILDREN } from "@/data/children";
 import { getCourseById } from "@/data/courses";
 import { DEMO_DEPARTMENTS } from "@/data/departments";
 import type { AppUser, Child } from "@/types";
-import { cn, formatCurrency, formatDate, getInitials } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, getInitials, isValidEmail } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -514,6 +514,10 @@ export default function AdminUsers() {
     const [firstName, ...rest] = addName.trim().split(/\s+/);
     if (!firstName || !addEmail.trim()) {
       setAddError("Name and email are required.");
+      return;
+    }
+    if (!isValidEmail(addEmail)) {
+      setAddError("Enter a valid email address.");
       return;
     }
 

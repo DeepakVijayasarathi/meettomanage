@@ -23,7 +23,7 @@ import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
 import { createDemoBooking, deleteDemoBooking, getDemoJoinLink, listDemoBookings, rescheduleDemoBooking, resendDemoLink, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
-import { formatDate, formatTimeLabel, getInitials } from "@/lib/utils";
+import { formatDate, formatTimeLabel, getInitials, isValidEmail } from "@/lib/utils";
 import { getUserTimeZoneAbbreviation, localToUtcIso, utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { usePortalBase } from "@/lib/portalBase";
@@ -244,13 +244,16 @@ export default function AdmissionDemoScheduling() {
     date.length > 0 &&
     time.length > 0 &&
     // API mode auto-assigns a teacher when none is picked, but needs the parent's email
-    (apiEnabled() ? parents[0].email.trim().length > 0 : teacherId.length > 0) &&
+    (apiEnabled() ? isValidEmail(parents[0].email) : teacherId.length > 0) &&
     parents.every((p) => p.name.trim().length > 0 && p.phone.trim().length > 0) &&
     // Every parent past the first is only ever added to be invited as a participant, and the
     // API requires an email for any adult invitee (it has no other way to send a confirmation/
     // join link) -- requiring it here too means the success toast's "all invited parents will
     // receive an invite" is actually true, instead of quietly dropping anyone left blank.
-    (!apiEnabled() || parents.every((p) => p.email.trim().length > 0));
+    // A well-formed check, not just non-empty -- a typo'd address doesn't error here, it just
+    // silently never reaches anyone, so it needs to be caught before submit, same reasoning
+    // as admin/subadmin Users.tsx's own Add User form.
+    (!apiEnabled() || parents.every((p) => isValidEmail(p.email)));
 
   function resetForm() {
     setChildName("");
@@ -702,6 +705,7 @@ export default function AdmissionDemoScheduling() {
                 const nameMissing = attemptedSubmit && p.name.trim().length === 0;
                 const phoneMissing = attemptedSubmit && p.phone.trim().length === 0;
                 const emailMissing = attemptedSubmit && apiEnabled() && p.email.trim().length === 0;
+                const emailInvalid = attemptedSubmit && apiEnabled() && p.email.trim().length > 0 && !isValidEmail(p.email);
                 return (
                 <div key={p.id} className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
                   <div className="flex flex-col gap-1">
@@ -718,9 +722,10 @@ export default function AdmissionDemoScheduling() {
                       aria-label={`Parent/guardian ${idx + 1} email address${apiEnabled() ? " (required)" : ""}`}
                       value={p.email}
                       onChange={(e) => updateParent(p.id, "email", e.target.value)}
-                      aria-invalid={emailMissing}
+                      aria-invalid={emailMissing || emailInvalid}
                     />
                     {emailMissing && <p role="alert" className="text-xs text-destructive">Email is required to send an invite.</p>}
+                    {emailInvalid && <p role="alert" className="text-xs text-destructive">Enter a valid email address.</p>}
                   </div>
                   <Button
                     type="button"
