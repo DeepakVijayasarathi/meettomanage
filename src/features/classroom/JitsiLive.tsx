@@ -195,6 +195,17 @@ export default function JitsiLive({
   // tab, which Jitsi already treats as normal recordable content. Tracks Jitsi's own
   // screenSharingStatusChanged event so the nudge banner below can reappear if sharing stops.
   const [screenShareActive, setScreenShareActive] = useState(false);
+  // Teacher-reported live: screen-sharing showed as active on the teacher's own side, but
+  // students never saw it. screenSharingStatusChanged only reflects local capture (getDisplayMedia
+  // succeeded) -- it says nothing about whether that track actually survived to the students'
+  // end. A connection blip is a known way for exactly this to happen: the main call's audio/video
+  // silently re-negotiates and recovers (connectionRestored fires, callDegraded clears), but the
+  // screen-share track -- added separately, after the initial join -- doesn't always come back
+  // with it, leaving the teacher's local UI still saying "Sharing" while nothing is arriving on
+  // the other end. Since a fresh share requires a real user gesture (browser security -- see the
+  // mandatory share-screen dialog above), this can't be silently auto-recovered; the most this can
+  // do is tell the teacher it happened and prompt them to restart it themselves.
+  const [shareMayHaveDroppedSince, setShareMayHaveDroppedSince] = useState(false);
   // Popup asking the teacher to share their screen right when the class starts — a click is
   // unavoidable (getDisplayMedia requires a real user gesture, a browser rule no app can
   // bypass), but a modal right at join is a clearer, earlier ask than waiting for the
@@ -756,11 +767,20 @@ export default function JitsiLive({
       // Jitsi's own signal for a dropped media/XMPP connection mid-call — the video
       // tiles freeze silently otherwise, with nothing in our own chrome saying why.
       api.addListener("connectionInterrupted", () => setCallDegraded(true));
-      api.addListener("connectionRestored", () => setCallDegraded(false));
+      api.addListener("connectionRestored", () => {
+        setCallDegraded(false);
+        // The screen-share track doesn't always survive a reconnect the way the main
+        // call does — see shareMayHaveDroppedSince above. media.screenShareSince is
+        // truthy only while a share was active going into the interruption.
+        if (media.screenShareSince) setShareMayHaveDroppedSince(true);
+      });
       api.addListener("screenSharingStatusChanged", (payload) => {
         const on = !!payload?.on;
         setScreenShareActive(on);
         if (on) setShareScreenPromptOpen(false);
+        // Any deliberate stop/restart here (as opposed to the automatic flag set above)
+        // means the teacher has acted on the warning already, one way or another.
+        setShareMayHaveDroppedSince(false);
         const now = Date.now();
         if (on) {
           media.screenShareSince ||= now;
@@ -1210,6 +1230,24 @@ export default function JitsiLive({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {mode === "teacher" && !isRecordingObserver && screenShareActive && shareMayHaveDroppedSince && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
+          <WifiOff className="h-4 w-4 shrink-0 translate-y-0.5" />
+          <p className="flex-1">
+            Your connection dropped briefly while you were sharing your screen — students may no longer be seeing it, even though it still shows as shared here. Stop sharing, then share again to be sure.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              jitsiApiRef.current?.executeCommand("toggleShareScreen");
+              setShareMayHaveDroppedSince(false);
+            }}
+            className="shrink-0 font-semibold underline decoration-brand-amber/50 underline-offset-2 hover:decoration-brand-amber"
+          >
+            Stop sharing
+          </button>
+        </div>
+      )}
       {mode === "teacher" && !isRecordingObserver && recording && !screenShareActive && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md">
           <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
@@ -1278,11 +1316,16 @@ export default function JitsiLive({
                 aria-pressed={annotateOn}
                 onClick={() => setAnnotateOn((o) => !o)}
                 className={cn(
-                  "absolute bottom-32 right-3 z-30 flex h-10 w-10 items-center justify-center rounded-full shadow-lg ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "absolute bottom-32 right-3 z-30 flex h-10 items-center justify-center gap-1.5 rounded-full px-3 shadow-lg ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   annotateOn ? "bg-red-500 text-white shadow-red-500/40" : "bg-brand-navy/90 text-white/80 shadow-black/30 backdrop-blur-xl"
                 )}
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-4 w-4 shrink-0" />
+                {/* Icon-only was too easy to miss (teacher feedback: "I cannot see the annotate
+                    option anywhere") — a plain floating circle with no label, away from the
+                    main toolbar. A text label earns its width while it matters most: during an
+                    actual screen share, which is also when the button has something to draw on. */}
+                {screenShareActive && <span className="text-xs font-semibold">{annotateOn ? "Marking" : "Annotate"}</span>}
               </button>
             )}
             {/* The empty room otherwise reads as broken rather than expected — every
