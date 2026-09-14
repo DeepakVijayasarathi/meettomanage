@@ -82,6 +82,7 @@ export default function SubAdminSessions() {
   const sessions = usingApi ? apiSessions : mockSessions;
 
   const [statusFilter, setStatusFilter] = useState<SessionStatus | "all">("all");
+  const [dateFilter, setDateFilter] = useState("");
   const [rescheduleTarget, setRescheduleTarget] = useState<ClassSession | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ClassSession | null>(null);
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
@@ -113,8 +114,11 @@ export default function SubAdminSessions() {
   const reschedDurationValid = Number.isFinite(reschedDurationMinutes) && reschedDurationMinutes > 0;
 
   const filtered = useMemo(
-    () => (statusFilter === "all" ? sessions : sessions.filter((s) => s.status === statusFilter)),
-    [sessions, statusFilter]
+    () =>
+      sessions
+        .filter((s) => statusFilter === "all" || s.status === statusFilter)
+        .filter((s) => !dateFilter || s.date === dateFilter),
+    [sessions, statusFilter, dateFilter]
   );
 
   // Same batch-headcount join as admin/Sessions.tsx — admin/teacher session lists never
@@ -415,7 +419,20 @@ export default function SubAdminSessions() {
                 options: STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label })),
               },
             ]}
-          />
+          >
+            <Input
+              type="date"
+              aria-label="Filter by date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="w-44"
+            />
+            {dateFilter && (
+              <Button variant="ghost" size="sm" className="h-9 px-2 text-xs text-muted-foreground" onClick={() => setDateFilter("")}>
+                Clear date
+              </Button>
+            )}
+          </FilterBar>
         }
       />
 
