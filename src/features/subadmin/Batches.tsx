@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Archive, CalendarDays, CalendarPlus, Layers, Loader2, Moon, Plus, Rocket, Search, Wrench, X } from "lucide-react";
+import { Archive, CalendarDays, CalendarPlus, Layers, Loader2, Moon, Plus, Rocket, Search, Trash2, Wrench, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,6 +35,7 @@ import { useApiData } from "@/api/hooks";
 import {
   assignStudentToBatch,
   createBatch,
+  deleteBatch,
   generateSchedule,
   listBatchEnrollments,
   listBatches,
@@ -150,6 +152,10 @@ export default function SubAdminBatches() {
   // that would just 403 on click instead of never being offered.
   const canCreate = !apiEnabled() || hasPermission("CourseBatchManagement", "Create");
   const canEdit = !apiEnabled() || hasPermission("CourseBatchManagement", "Edit");
+  // Deleting a batch (DELETE /batches/{id}) is gated on its own CourseBatchManagement:Delete
+  // grant — separate from Edit/Archive, since it's a stronger, harder-to-reverse action a Sub
+  // Admin/RM preset might not want to hand out even to someone who can otherwise edit batches.
+  const canDelete = !apiEnabled() || hasPermission("CourseBatchManagement", "Delete");
   // Generating a batch's class schedule calls POST /batches/{id}/generate-schedule, which the
   // backend gates on SessionCalendarManagement:Create (not CourseBatchManagement) — a role can
   // hold one without the other, so this needs its own check.
@@ -184,6 +190,11 @@ export default function SubAdminBatches() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
+  // Delete (soft-delete — removes the batch from every list; rejected while it still has an
+  // active student). A separate confirm-target from `detail` so the ConfirmDialog can be shown
+  // on top of the Manage dialog without closing it first.
+  const [deleteTarget, setDeleteTarget] = useState<DisplayBatch | null>(null);
+  const [deletingBatch, setDeletingBatch] = useState(false);
 
   // One-time repair for batches reassigned before the teacher-reassignment cascade fix existed —
   // their already-generated sessions were left pointing at the old teacher (see BatchService's
@@ -472,6 +483,28 @@ export default function SubAdminBatches() {
       toast({ variant: "error", title: "Couldn't archive batch", description: message });
     } finally {
       setArchiving(false);
+    }
+  }
+
+  async function confirmDeleteBatch() {
+    if (!deleteTarget) return;
+    if (!apiEnabled()) {
+      toast({ variant: "success", title: "Batch deleted (demo only — not persisted)" });
+      setDetail(null);
+      return;
+    }
+    setDeletingBatch(true);
+    try {
+      await deleteBatch(deleteTarget.id);
+      toast({ variant: "success", title: "Batch deleted" });
+      reload();
+      setDetail(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not delete this batch.";
+      setSaveError(message);
+      toast({ variant: "error", title: "Couldn't delete batch", description: message });
+    } finally {
+      setDeletingBatch(false);
     }
   }
 
@@ -848,15 +881,28 @@ export default function SubAdminBatches() {
 
               {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
               <DialogFooter className="items-center gap-3 sm:justify-between">
-                {canEdit ? (
-                  <Button
-                    variant="outline"
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    disabled={archiving || isArchived}
-                    onClick={archiveCurrentBatch}
-                  >
-                    <Archive className="h-4 w-4" /> {isArchived ? "Archived" : archiving ? "Archiving…" : "Archive batch"}
-                  </Button>
+                {canEdit || canDelete ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canEdit && (
+                      <Button
+                        variant="outline"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={archiving || isArchived}
+                        onClick={archiveCurrentBatch}
+                      >
+                        <Archive className="h-4 w-4" /> {isArchived ? "Archived" : archiving ? "Archiving…" : "Archive batch"}
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button
+                        variant="outline"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setDeleteTarget(detail)}
+                      >
+                        <Trash2 className="h-4 w-4" /> Delete batch
+                      </Button>
+                    )}
+                  </div>
                 ) : (
                   <span />
                 )}
@@ -875,6 +921,36 @@ export default function SubAdminBatches() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete this batch?"
+        description={
+          deleteTarget ? (
+            <div className="space-y-2 text-left">
+              <p>
+                <span className="font-medium text-foreground">"{deleteTarget.name}"</span> will be removed from
+                every list. This can't be undone from here.
+              </p>
+              <ul className="list-disc space-y-0.5 pl-4">
+                <li>
+                  Teacher assigned:{" "}
+                  <span className="font-medium text-foreground">{deleteTarget.teacherName ?? "Unassigned"}</span>
+                </li>
+                <li>
+                  Course: <span className="font-medium text-foreground">{deleteTarget.courseName ?? "—"}</span>
+                </li>
+                <li>Any of its still-scheduled upcoming sessions will be cancelled, not deleted.</li>
+              </ul>
+              <p>Refused while it still has an active student — withdraw them (or move them to another batch) first.</p>
+            </div>
+          ) : undefined
+        }
+        confirmLabel={deletingBatch ? "Deleting…" : "Delete"}
+        destructive
+        onConfirm={confirmDeleteBatch}
+      />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md">

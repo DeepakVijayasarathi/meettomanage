@@ -68,12 +68,17 @@ export async function listTeacherOptions(): Promise<TeacherOption[]> {
   return apiFetch<TeacherOption[]>("/api/users/teachers");
 }
 
-/** Archiving is the closest thing to "delete" the API offers — batches carry enrollment/session history, so they're never hard-deleted. */
+/** Archiving keeps the batch's history fully visible (just under a different status) — for actually removing one from every list, see deleteBatch below. */
 export async function setBatchStatus(batchId: string, status: ApiBatch["status"]): Promise<ApiBatch> {
   return apiFetch<ApiBatch>(`/api/batches/${batchId}/status`, {
     method: "PUT",
     body: JSON.stringify({ status }),
   });
+}
+
+/** Soft-deletes the batch — excluded from every future list. Rejected (400) while it still has an active student; withdraw them (or move them to another batch) first. */
+export async function deleteBatch(batchId: string): Promise<void> {
+  await apiFetch<void>(`/api/batches/${batchId}`, { method: "DELETE" });
 }
 
 /** Update a batch's own fields (course stays fixed after creation — only teacher, name, capacity, dates and duration override can change). */

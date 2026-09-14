@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, CalendarPlus, Layers, Loader2, Moon, Plus, Rocket, Search, Wrench, X } from "lucide-react";
+import { CalendarDays, CalendarPlus, Layers, Loader2, Moon, Plus, Rocket, Search, Trash2, Wrench, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +33,7 @@ import { useApiData } from "@/api/hooks";
 import {
   assignStudentToBatch,
   createBatch,
+  deleteBatch,
   generateSchedule,
   listBatchEnrollments,
   listBatches,
@@ -164,6 +166,11 @@ export default function AdminBatches() {
   const [saved, setSaved] = useState(false);
   const [savingDetail, setSavingDetail] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Delete (soft-delete — removes the batch from every list; rejected while it still has an
+  // active student). A separate confirm-target from `detail` so the ConfirmDialog can be shown
+  // on top of the Manage dialog without closing it first.
+  const [deleteTarget, setDeleteTarget] = useState<DisplayBatch | null>(null);
+  const [deletingBatch, setDeletingBatch] = useState(false);
   // Both were previously read-only display fields with no way to correct them: a batch's real
   // start date (e.g. one continuing mid-course from another system) could only ever be set once,
   // by whichever date "Generate class schedule" happened to be run with; duration followed the
@@ -449,6 +456,28 @@ export default function AdminBatches() {
       toast({ variant: "error", title: "Couldn't save batch", description: message });
     } finally {
       setSavingDetail(false);
+    }
+  }
+
+  async function confirmDeleteBatch() {
+    if (!deleteTarget) return;
+    if (!apiEnabled()) {
+      toast({ variant: "success", title: "Batch deleted (demo only — not persisted)" });
+      setDetail(null);
+      return;
+    }
+    setDeletingBatch(true);
+    try {
+      await deleteBatch(deleteTarget.id);
+      toast({ variant: "success", title: "Batch deleted" });
+      reload();
+      setDetail(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not delete this batch.";
+      setSaveError(message);
+      toast({ variant: "error", title: "Couldn't delete batch", description: message });
+    } finally {
+      setDeletingBatch(false);
     }
   }
 
@@ -814,9 +843,19 @@ export default function AdminBatches() {
 
               {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
               <DialogFooter className="items-center gap-3 sm:justify-between">
-                <p className="text-xs text-muted-foreground">
-                  Applies the teacher, start date and duration above — student roster and schedule changes are already saved.
-                </p>
+                <div className="flex flex-col items-start gap-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    Applies the teacher, start date and duration above — student roster and schedule changes are already saved.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => setDeleteTarget(detail)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Delete batch
+                  </Button>
+                </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" onClick={() => setDetail(null)}>
                     Close
@@ -831,6 +870,36 @@ export default function AdminBatches() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete this batch?"
+        description={
+          deleteTarget ? (
+            <div className="space-y-2 text-left">
+              <p>
+                <span className="font-medium text-foreground">"{deleteTarget.name}"</span> will be removed from
+                every list. This can't be undone from here.
+              </p>
+              <ul className="list-disc space-y-0.5 pl-4">
+                <li>
+                  Teacher assigned:{" "}
+                  <span className="font-medium text-foreground">{deleteTarget.teacherName ?? "Unassigned"}</span>
+                </li>
+                <li>
+                  Course: <span className="font-medium text-foreground">{deleteTarget.courseName ?? "—"}</span>
+                </li>
+                <li>Any of its still-scheduled upcoming sessions will be cancelled, not deleted.</li>
+              </ul>
+              <p>Refused while it still has an active student — withdraw them (or move them to another batch) first.</p>
+            </div>
+          ) : undefined
+        }
+        confirmLabel={deletingBatch ? "Deleting…" : "Delete"}
+        destructive
+        onConfirm={confirmDeleteBatch}
+      />
 
       {/* New batch */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
