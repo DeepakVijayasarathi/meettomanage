@@ -58,8 +58,8 @@ export default function AdminSessions() {
     () => listSessions().then((items) => items.map(toFrontendSession)),
     []
   );
-  const { data: batches } = useApiData(() => listBatches(), []);
-  const { data: teachers } = useApiData(() => listTeacherOptions(), []);
+  const { data: batches } = useApiData(() => listBatches(), [], undefined, { cacheKey: "batches" });
+  const { data: teachers } = useApiData(() => listTeacherOptions(), [], undefined, { cacheKey: "teacherOptions" });
 
   // Demo fallback keeps the old local mock behaviour.
   const [mockSessions, setMockSessions] = useState<ClassSession[]>(SESSIONS);

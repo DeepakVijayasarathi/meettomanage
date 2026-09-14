@@ -52,7 +52,7 @@ export default function AdminResources() {
   useEffect(() => setResources(apiResources), [apiResources]);
   // Real batches for the upload dialog — the old mock BATCHES ids don't exist in the live
   // DB, so picking one and sending it as BatchId would have targeted a batch that isn't there.
-  const { data: apiBatches } = useApiData(() => listBatches(), []);
+  const { data: apiBatches } = useApiData(() => listBatches(), [], undefined, { cacheKey: "batches" });
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadBatch, setUploadBatch] = useState<string>("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);

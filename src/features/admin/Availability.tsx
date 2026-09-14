@@ -69,7 +69,7 @@ export default function AdminAvailability() {
     () => listLeave().then((items) => items.map(toFrontendLeave)),
     LEAVE_REQUESTS
   );
-  const { data: apiTeachers, loading: teachersLoading, error: teachersError } = useApiData(() => listTeacherOptions(), []);
+  const { data: apiTeachers, loading: teachersLoading, error: teachersError } = useApiData(() => listTeacherOptions(), [], undefined, { cacheKey: "teacherOptions" });
   const { data: apiHolidays, loading: holidaysLoading, error: holidaysError } = useApiData(() => listHolidays(), []);
   const kpiLoading = leavesLoading || teachersLoading || holidaysLoading;
   const loadError = leavesError || teachersError || holidaysError;

@@ -165,7 +165,7 @@ export default function SubAdminBatches() {
     { raw: [], mapped: BATCHES },
     { raw: [], mapped: [] }
   );
-  const { data: teacherOptions } = useApiData(() => listTeacherOptions(), []);
+  const { data: teacherOptions } = useApiData(() => listTeacherOptions(), [], undefined, { cacheKey: "teacherOptions" });
   const { data: courseOptions } = useApiData<ApiCourseOption[]>(
     () => listCourseOptions(),
     COURSES.map((c) => ({ id: c.id, name: c.name, type: c.type === "group" ? ("Group" as const) : ("Individual" as const) }))

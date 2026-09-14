@@ -151,7 +151,7 @@ export default function AdminBatches() {
     { raw: [], mapped: BATCHES },
     { raw: [], mapped: [] }
   );
-  const { data: teacherOptions } = useApiData(() => listTeacherOptions(), []);
+  const { data: teacherOptions } = useApiData(() => listTeacherOptions(), [], undefined, { cacheKey: "teacherOptions" });
 
   const { data: courseOptions } = useApiData<ApiCourseOption[]>(
     () => listCourseOptions(),

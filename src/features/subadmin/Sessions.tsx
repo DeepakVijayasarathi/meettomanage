@@ -75,7 +75,7 @@ export default function SubAdminSessions() {
     []
   );
   const { data: batches } = useApiData(() => (canSeeBatches ? listBatches() : Promise.resolve([])), []);
-  const { data: teachers } = useApiData(() => listTeacherOptions(), []);
+  const { data: teachers } = useApiData(() => listTeacherOptions(), [], undefined, { cacheKey: "teacherOptions" });
 
   // Demo fallback keeps the old local mock behaviour.
   const [mockSessions, setMockSessions] = useState<ClassSession[]>(SESSIONS);

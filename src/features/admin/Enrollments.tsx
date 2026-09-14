@@ -177,7 +177,7 @@ export default function AdminEnrollments() {
 
   // Open batches for the approval picker; approving with one selected places the
   // child straight on that batch's roster instead of leaving them unassigned.
-  const { data: allBatches } = useApiData<ApiBatch[]>(() => listBatches(), []);
+  const { data: allBatches } = useApiData<ApiBatch[]>(() => listBatches(), [], undefined, { cacheKey: "batches" });
   const openBatches = useMemo(
     () => allBatches.filter((b) => b.status === "Active" && b.enrolledCount < b.capacity),
     [allBatches]

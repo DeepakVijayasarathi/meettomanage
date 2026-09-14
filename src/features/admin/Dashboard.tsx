@@ -51,6 +51,7 @@ import {
 import { SESSIONS } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
+import { useMemo } from "react";
 import { useApiData } from "@/api/hooks";
 import { getDashboardSummary } from "@/api/reports";
 import { listSessions, toFrontendSession } from "@/api/sessions";
@@ -86,9 +87,13 @@ export default function AdminDashboard() {
     () => listSessions().then((items) => items.map(toFrontendSession)),
     []
   );
-  const todaySessions = (usingApi ? apiSessions : SESSIONS)
-    .filter((s) => s.date === todayKey)
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const todaySessions = useMemo(
+    () =>
+      (usingApi ? apiSessions : SESSIONS)
+        .filter((s) => s.date === todayKey)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    [usingApi, apiSessions, todayKey]
+  );
   // Live aggregates replace the mock KPI block and charts when the API is configured
   const { data: dashboard, loading: dashboardLoading, error: dashboardError } = useApiData(
     () =>
