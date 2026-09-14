@@ -189,6 +189,12 @@ export default function JitsiLive({
   // apart from "recording is fine, just not showing." Null = nothing wrong (or not attempted);
   // a string = shown as a dismissible banner with the reason, teacher-only.
   const [recordingIssue, setRecordingIssue] = useState<string | null>(null);
+  // How many times the auto-record retry loop below has re-issued startRecording for this
+  // class. A rejection ("no Jibri available") is a final answer for that specific request —
+  // Jicofo doesn't quietly retry it against a newly-freed instance on its own — so getting
+  // real resilience out of a brief capacity blip (another class's recording finishing a few
+  // seconds later) requires the frontend to actually ask again, not just wait longer.
+  const recordingRetryCountRef = useRef(0);
   // Jibri only ever records the room's own stage/dominant view -- it can't see our whiteboard/
   // quiz overlay, which lives in a separate cross-origin-iframed page it has no access to. The
   // one reliable fix that needs no server-side changes: have the teacher screen-share this same
@@ -384,6 +390,46 @@ export default function JitsiLive({
     // change), same lifetime as `api`/`cancelled` above.
     let authRetryCount = 0;
     const MAX_AUTH_RETRIES = 4;
+
+    // Auto-record retry budget: 3 retries at 12s apart (~48s total) before giving up and
+    // telling the teacher. Long enough to ride out a brief capacity blip (another class's
+    // recording finishing a few seconds later frees up exactly the Jibri this one needed),
+    // short enough that a teacher who does need the manual fallback isn't left guessing for
+    // a full minute-plus first.
+    const RECORDING_RETRY_INTERVAL_MS = 12000;
+    const MAX_RECORDING_RETRIES = 3;
+
+    function attemptStartRecording() {
+      api?.executeCommand("startRecording", { mode: "file" });
+      // startRecording has no success callback of its own — a deployment with no Jibri
+      // pool (or one that's exhausted) either fires recordingStatusChanged with on:false +
+      // a reason, or in some configurations fires nothing back at all (Jicofo simply can't
+      // dispatch the request). Either way, wait a bounded window for the "on" confirmation;
+      // if it hasn't arrived, a rejection here is a final answer for THIS specific request
+      // (Jicofo doesn't quietly retry it against a newly-freed instance on its own), so
+      // actually re-issuing the command — not just waiting longer — is what gives a brief
+      // capacity blip a real chance to resolve before the teacher sees anything.
+      if (recordingWatchdogRef.current) clearTimeout(recordingWatchdogRef.current);
+      recordingWatchdogRef.current = setTimeout(() => {
+        setRecording((current) => {
+          if (!current) {
+            if (recordingRetryCountRef.current < MAX_RECORDING_RETRIES) {
+              recordingRetryCountRef.current += 1;
+              attemptStartRecording();
+            } else {
+              setRecordingIssue(
+                recordingErrorReasonRef.current
+                  ? `Auto-recording failed to start (${recordingErrorReasonRef.current}). This class is not being recorded automatically — ` +
+                      'use the manual "Recording" button on My Classes if you need one.'
+                  : "Auto-recording didn't start (likely no recording capacity on the video server). " +
+                      "This class is not being recorded automatically — use the manual \"Recording\" button on My Classes if you need one."
+              );
+            }
+          }
+          return current;
+        });
+      }, RECORDING_RETRY_INTERVAL_MS);
+    }
 
     // Talk-time & camera attentiveness: accumulated from Jitsi media signals,
     // flushed as engagement events when the participant leaves.
@@ -639,7 +685,21 @@ export default function JitsiLive({
         // this forced on them — a parent joining on a child's behalf doesn't expect the
         // app to silently change what the child's camera shows.
         if (mode === "teacher") {
-          api?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
+          // Teacher-reported live: "I can't see myself while teaching, only the students" --
+          // students and their own self-view were unaffected, pointing at this specific call,
+          // not the underlying camera/track. videoConferenceJoined fires the instant Jitsi
+          // believes the room is joined, which can be before the local video track's own
+          // self-view render pipeline has actually spun up; applying a virtual background
+          // (a canvas compositing over that self-view, not a swap of the outgoing track
+          // itself) right at that instant is a known way to leave just the local self-view
+          // stuck blank while the real, unprocessed camera keeps transmitting fine to
+          // everyone else -- exactly this symptom. A short delay gives the self-view
+          // pipeline a moment to actually exist before compositing on top of it.
+          setTimeout(() => {
+            if (!cancelled) {
+              api?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
+            }
+          }, 1200);
         } else {
           // Not just "skip setting one" — Jitsi remembers the last-picked virtual
           // background per browser (jitsi-meet.localStorage), so a child's device that
@@ -669,30 +729,8 @@ export default function JitsiLive({
           // turn this off in Settings → Integrations → Jitsi Meet ("autoRecord"),
           // which leaves recording to the manual fallback on teacher My Classes.
           recordingErrorReasonRef.current = null;
-          api?.executeCommand("startRecording", { mode: "file" });
-          // startRecording has no success callback of its own — a deployment with no
-          // Jibri pool (or one that's exhausted) either fires recordingStatusChanged
-          // with on:false + a reason, or in some configurations fires nothing back at
-          // all (Jicofo simply can't dispatch the request). Either way, if the "on"
-          // confirmation hasn't arrived within a generous window, treat it as failed
-          // rather than leaving the teacher to guess why no REC badge ever appeared —
-          // generous because Jibri legitimately takes a while to spin up under load,
-          // and firing this too eagerly is worse than firing it a few seconds late.
-          if (recordingWatchdogRef.current) clearTimeout(recordingWatchdogRef.current);
-          recordingWatchdogRef.current = setTimeout(() => {
-            setRecording((current) => {
-              if (!current) {
-                setRecordingIssue(
-                  recordingErrorReasonRef.current
-                    ? `Auto-recording failed to start (${recordingErrorReasonRef.current}). This class is not being recorded automatically — ` +
-                        'use the manual "Recording" button on My Classes if you need one.'
-                    : "Auto-recording didn't start (likely no recording capacity on the video server). " +
-                        "This class is not being recorded automatically — use the manual \"Recording\" button on My Classes if you need one."
-                );
-              }
-              return current;
-            });
-          }, 25000);
+          recordingRetryCountRef.current = 0;
+          attemptStartRecording();
         }
       });
       // Auto recording registration: when the deployment publishes the recording
