@@ -1019,7 +1019,28 @@ export default function JitsiLive({
                 className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal rounded-xl px-3.5 py-3 text-left"
                 onClick={() => {
                   setLeaveConfirmOpen(false);
-                  navigate(-1);
+                  // This is a pause, not the terminal End Class path — the room is about
+                  // to have no moderator in it at all. Leaving the lobby switched on in
+                  // that state deadlocks it: nobody left inside can admit a knock, and
+                  // this deployment doesn't yet have secure-domain JWT room auth wired up
+                  // server-side (see the long comment on videoConferenceJoined above), so
+                  // even the teacher's own reconnect isn't guaranteed to be recognized as
+                  // moderator and let straight in — confirmed live, the returning teacher
+                  // landed on their own room's "ask to join" screen. Switching the lobby
+                  // off here, while still connected and still actually holding the
+                  // moderator role, means whoever comes back gets straight in instead of
+                  // stuck outside a lobby nobody can open; participantRoleChanged (above)
+                  // switches it back on once a moderator is confirmed present again.
+                  // The brief delay gives the command a moment to actually reach the
+                  // video server before dispose() tears the connection down on unmount —
+                  // executeCommand only posts the request; it doesn't wait for Jitsi to
+                  // act on it.
+                  if (jitsiApiRef.current && lobbyEnabled) {
+                    jitsiApiRef.current.executeCommand("toggleLobby", false);
+                    setTimeout(() => navigate(-1), 400);
+                  } else {
+                    navigate(-1);
+                  }
                 }}
               >
                 <PhoneOff className="mt-0.5 h-4 w-4 shrink-0" />
