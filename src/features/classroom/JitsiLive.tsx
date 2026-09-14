@@ -741,6 +741,16 @@ export default function JitsiLive({
       });
       api.addListener("participantLeft", (payload) => {
         setParticipants((prev) => prev.filter((p) => p.id !== payload?.id));
+        // Same fix as screenSharingStatusChanged below, same root cause: Jitsi's own default
+        // is to drop out of tile view into a spotlighted "stage" layout around whoever's
+        // screen-sharing (or otherwise made prominent) — reported live as a departed
+        // participant's video tile staying frozen on everyone else's screen, full-size, after
+        // they'd already left (confirmed via the People list correctly showing them gone).
+        // Nothing re-asserted tile view when the *spotlighted* participant left, so Jitsi kept
+        // trying to render a stage around a track that no longer existed. Re-forcing tile view
+        // on every departure — not just on screen-share start/stop — makes Jitsi recompute its
+        // layout from the participants actually still in the room.
+        jitsiApiRef.current?.executeCommand("setTileView", true);
       });
       // Jitsi's native pin is purely local to whichever browser clicked it — a teacher
       // pinning herself while screen-sharing used to show "Pinned" on her own screen only,
