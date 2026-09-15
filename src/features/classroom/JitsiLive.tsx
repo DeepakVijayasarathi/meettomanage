@@ -404,13 +404,18 @@ export default function JitsiLive({
     let authRetryCount = 0;
     const MAX_AUTH_RETRIES = 4;
 
-    // Auto-record retry budget: 3 retries at 12s apart (~48s total) before giving up and
-    // telling the teacher. Long enough to ride out a brief capacity blip (another class's
-    // recording finishing a few seconds later frees up exactly the Jibri this one needed),
-    // short enough that a teacher who does need the manual fallback isn't left guessing for
-    // a full minute-plus first.
-    const RECORDING_RETRY_INTERVAL_MS = 12000;
-    const MAX_RECORDING_RETRIES = 3;
+    // Auto-record retry budget: 36 retries at 20s apart (~12 minutes total) before giving
+    // up and telling the teacher. Widened from an earlier 48s budget after checking real
+    // production data on 2026-09-15: of 24 classes that hit a capacity rejection that day,
+    // 11 recovered on the *old* 48s retry alone -- proof the shared recorder pool keeps
+    // freeing up throughout a busy period, not that it stays empty. The other 13 never
+    // recovered and lost their recording outright, because 48s wasn't long enough to catch
+    // the next opening. 12 minutes covers the two real 15-25 minute capacity-crunch windows
+    // seen that day without retrying for a class's entire length -- a teacher who genuinely
+    // has no capacity for that long still has the manual "Recording" button as a fallback,
+    // just later than before.
+    const RECORDING_RETRY_INTERVAL_MS = 20000;
+    const MAX_RECORDING_RETRIES = 36;
 
     function attemptStartRecording() {
       // jitsiApiRef.current, not the closed-over `api` -- the first call (from
