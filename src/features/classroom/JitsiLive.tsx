@@ -251,6 +251,15 @@ export default function JitsiLive({
   // safe thing to ship here: it can't fix a real device/OS block, but it can stop it from
   // reading as a silent, unexplained "stuck" button.
   const [deviceHintDismissed, setDeviceHintDismissed] = useState(false);
+  // Real upgrade on the hint above, added after the same "90% stuck camera/mic" feedback
+  // recurred a second time: instead of *always* showing every teacher a generic guess,
+  // actually test getUserMedia() from this page's own origin (not Jitsi's cross-origin
+  // iframe) right before joining. This app can't see a click inside that iframe, but a
+  // getUserMedia call made directly from here is fully visible to us -- its rejection
+  // reason (NotAllowedError vs NotFoundError vs NotReadableError) is real, specific
+  // evidence, not a guess, and this only appears at all for a teacher who actually has a
+  // problem, not every teacher on every join. Null = not checked yet, or checked clean.
+  const [preflightMediaIssue, setPreflightMediaIssue] = useState<string | null>(null);
   // Popup asking the teacher to share their screen right when the class starts — a click is
   // unavoidable (getDisplayMedia requires a real user gesture, a browser rule no app can
   // bypass), but a modal right at join is a clearer, earlier ask than waiting for the
@@ -585,6 +594,37 @@ export default function JitsiLive({
           if (err instanceof ApiError) {
             toast({ variant: "error", title: "Couldn't join the class", description: err.message });
             return;
+          }
+        }
+      }
+
+      // Teacher-only, best-effort: run before Jitsi's own iframe ever loads, so a real
+      // camera/mic problem surfaces with a specific, actionable reason before the teacher
+      // is stuck guessing at an unresponsive toggle mid-class. Never blocks the join --
+      // even a hard failure here just informs, since Jitsi may still partially work (e.g.
+      // audio-only) or the teacher may fix it and the *real* device grab inside the
+      // iframe succeeds anyway.
+      if (mode === "teacher" && !isRecordingObserver) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          stream.getTracks().forEach((t) => t.stop());
+        } catch (err) {
+          const name = err instanceof DOMException ? err.name : "";
+          if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+            setPreflightMediaIssue(
+              "Camera/mic access is blocked for this browser. Click the camera icon in your address bar, or check your OS's " +
+                "privacy settings (Windows Settings → Privacy → Camera/Microphone, or Mac System Settings → Privacy & Security)."
+            );
+          } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+            setPreflightMediaIssue("No camera or microphone was detected on this device — check it's connected and try again.");
+          } else if (name === "NotReadableError" || name === "TrackStartError") {
+            setPreflightMediaIssue(
+              "Your camera or mic seems to be in use by another app (Zoom, another browser tab, ...) — close it and rejoin."
+            );
+          } else {
+            setPreflightMediaIssue(
+              "Couldn't access your camera/mic before joining — if the toggle in class doesn't respond, check your browser and OS camera/mic permissions."
+            );
           }
         }
       }
@@ -1369,12 +1409,10 @@ export default function JitsiLive({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {mode === "teacher" && !isRecordingObserver && jitsiReady && !deviceHintDismissed && (
+      {mode === "teacher" && !isRecordingObserver && jitsiReady && preflightMediaIssue && !deviceHintDismissed && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
           <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
-          <p className="flex-1">
-            If your camera or mic button doesn't respond when clicked, it's usually your operating system blocking this browser's camera/mic access, separate from anything in the browser itself — check Windows Settings → Privacy → Camera/Microphone, or on Mac, System Settings → Privacy &amp; Security → Camera/Microphone.
-          </p>
+          <p className="flex-1">{preflightMediaIssue}</p>
           <button
             type="button"
             onClick={() => setDeviceHintDismissed(true)}
