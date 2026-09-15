@@ -605,11 +605,33 @@ export default function JitsiLive({
       // audio-only) or the teacher may fix it and the *real* device grab inside the
       // iframe succeeds anyway.
       if (mode === "teacher" && !isRecordingObserver) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        // Teacher-reported live: "voice/camera didn't work — told them to log out and
+        // join again, and it worked the second time." That pattern is the classic
+        // symptom of the first join racing ahead of the browser's own permission
+        // decision (the OS dialog shown but not yet answered, or answered just after
+        // this check already read the old "not decided yet" state) -- by the second
+        // join, the browser already has the answer cached from the first attempt, so
+        // it succeeds cleanly. One retry after a short pause turns that into something
+        // the app recovers from on its own, instead of a parent having to notice and
+        // manually reload. Only the FIRST attempt's NotAllowedError is worth retrying
+        // this way -- a real block, missing device, or in-use device won't resolve
+        // itself in 1.5s, so those still fail fast to the specific message below.
+        let stream: MediaStream | null = null;
+        let lastErrorName = "";
+        for (let attempt = 0; attempt < 2 && !stream; attempt++) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          } catch (err) {
+            lastErrorName = err instanceof DOMException ? err.name : "";
+            if (attempt === 0 && lastErrorName === "NotAllowedError" && !cancelled) {
+              await new Promise((resolve) => setTimeout(resolve, 1500));
+            }
+          }
+        }
+        if (stream) {
           stream.getTracks().forEach((t) => t.stop());
-        } catch (err) {
-          const name = err instanceof DOMException ? err.name : "";
+        } else {
+          const name = lastErrorName;
           if (name === "NotAllowedError" || name === "PermissionDeniedError") {
             setPreflightMediaIssue(
               "Camera/mic access is blocked for this browser. Click the camera icon in your address bar, or check your OS's " +
