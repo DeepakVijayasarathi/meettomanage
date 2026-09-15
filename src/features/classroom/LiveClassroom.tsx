@@ -18,6 +18,8 @@ import QuizOverlay from "./QuizOverlay";
 import GamificationOverlay from "./GamificationOverlay";
 import { postEngagement } from "@/api/engagement";
 import { primeAudioUnlock } from "@/lib/sounds";
+import { isLikelyInAppBrowser } from "@/lib/jitsi";
+import { useToast } from "@/hooks/use-toast";
 
 type StageView = "video" | "whiteboard";
 type RightTab = "participants" | "chat" | "quiz";
@@ -40,12 +42,47 @@ export default function LiveClassroom({ mode }: { mode: "teacher" | "student" })
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const { activeChildId, children } = useSession();
+  const { toast } = useToast();
 
   // A parent joins the classroom on their child's behalf — the Jitsi participant
   // name (and engagement attribution) should read as the student, not the parent
   // account. Teachers keep their own account name.
   const studentDisplayName =
     mode === "student" ? children.find((c) => c.id === activeChildId)?.name : undefined;
+
+  // Repeated live report: a parent granted the browser's own camera/mic permission and it
+  // still didn't work, unlike Zoom/Meet. See isLikelyInAppBrowser's own doc comment — an
+  // in-app "mini browser" (WhatsApp, Instagram, ...) is a well-known, undetectable-any-
+  // other-way dead end for getUserMedia that no code here can fix, only warn about.
+  // Dismissible, not a hard block: the heuristic can false-positive, and forcing someone
+  // out of a class they can actually join fine would be worse than the warning itself.
+  const [inAppWarningDismissed, setInAppWarningDismissed] = useState(false);
+  if (isLikelyInAppBrowser() && !inAppWarningDismissed) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+        <h1 className="text-xl font-semibold text-foreground">Open this link in your browser</h1>
+        <p className="max-w-md text-sm text-muted-foreground">
+          This looks like it opened inside an app's built-in browser (WhatsApp, Instagram, or similar) — those commonly block camera and microphone access for video calls, even when permission looks granted. For a reliable class, tap the menu in the corner of this screen and choose "Open in Browser" (or copy this link and paste it into Safari/Chrome directly).
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(window.location.href);
+                toast({ variant: "success", title: "Link copied", description: "Paste it into your browser's address bar." });
+              } catch {
+                toast({ variant: "error", title: "Couldn't copy", description: "Long-press the address bar above to copy this link manually." });
+              }
+            }}
+          >
+            Copy this link
+          </Button>
+          <Button onClick={() => setInAppWarningDismissed(true)}>Continue anyway</Button>
+        </div>
+      </div>
+    );
+  }
 
   // Real sessions launched from an API-backed dashboard carry their Jitsi room
   // via route state; the interactive mock stays for demo mode and design work.
