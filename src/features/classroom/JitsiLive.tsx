@@ -1360,31 +1360,24 @@ export default function JitsiLive({
           boundary no server-side fix can cross. Screen-sharing this same tab is the one
           reliable way to get it into the recording: Jitsi already treats a screen-share as
           normal recordable stage content, the same as it does for anyone else's shared screen.
-          Shown only to the real teacher (never the recording observer, which has no one to
-          click it) and only once a recording is actually running -- no point nagging before
-          there's anything to include the whiteboard in. Deliberately non-dismissible: a real
-          zero-click auto-share is impossible (getDisplayMedia requires a genuine user gesture,
-          a browser security rule no app can bypass), so this is the closest thing to mandatory
-          within what's actually allowed -- it stays up until the teacher clicks through the
-          browser's own picker, not until they click ours away. */}
-      {/* Mandatory, not optional (teacher feedback): no "Skip", no Escape key, no clicking
-          outside — the only way out is actually clicking Share, same principle as the banner
-          below. This still isn't a true zero-click auto-share (see the remarks above the banner
-          below on why no browser allows that), but it's now genuinely mandatory within what a
-          click-through modal actually can enforce. Closes itself once screenSharingStatusChanged
-          fires — that's the *browser's* confirmation sharing actually started, not just that the
-          button was clicked (declining the picker, or a getDisplayMedia error, leaves this open). */}
-      <Dialog open={shareScreenPromptOpen} onOpenChange={() => {}}>
-        <DialogContent
-          className="max-w-sm"
-          showCloseButton={false}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
+          Shown once, right at join, to the real teacher only (never the recording observer,
+          which has no one to click it, and never a student/parent). A real zero-click
+          auto-share is impossible either way (getDisplayMedia requires a genuine user
+          gesture, a browser security rule no app can bypass) -- see the dialog's own comment
+          just below for why it's a skippable nudge rather than a blocking requirement. */}
+      {/* Was deliberately mandatory (earlier teacher feedback) -- reversed on later feedback:
+          "repeatedly prompts for screen-share permission before the class will start, as if it
+          were mandatory" was reported as a bug against joining at all, not just the personal
+          link. Now skippable -- Escape, clicking outside, or the explicit Skip button all close
+          it without sharing, and the class proceeds without recording the whiteboard/quiz. The
+          softer, non-blocking nudge banner below (shown once actually recording) still reminds
+          a teacher who skipped, rather than this dialog reappearing or blocking anything. */}
+      <Dialog open={shareScreenPromptOpen} onOpenChange={(open) => !open && setShareScreenPromptOpen(false)}>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Share your screen to start</DialogTitle>
+            <DialogTitle>Share your screen?</DialogTitle>
             <DialogDescription>
-              Required before the class can proceed. Sharing this tab (choose <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives students a clearer view.
+              Sharing this tab (choose <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives students a clearer view. Not required — you can start the class without it.
             </DialogDescription>
           </DialogHeader>
           {showShareOsHint && (
@@ -1393,6 +1386,9 @@ export default function JitsiLive({
             </p>
           )}
           <DialogFooter>
+            <Button variant="outline" onClick={() => setShareScreenPromptOpen(false)}>
+              Skip for now
+            </Button>
             <Button
               onClick={() => {
                 setShareAttempted(true);
