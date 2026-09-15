@@ -171,6 +171,8 @@ export interface ApiJitsiJoin {
    *  the self-hosted Jitsi deployment, see Docs/LONG_DURATION_SESSIONS.md). Used to warn
    *  the teacher when the scheduled time is up. */
   scheduledEndAtUtc: string;
+  /** True for a Demo-type session — auto-recording is scoped to real, Regular classes only. */
+  isDemo: boolean;
 }
 
 /**
