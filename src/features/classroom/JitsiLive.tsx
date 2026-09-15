@@ -430,18 +430,30 @@ export default function JitsiLive({
     let authRetryCount = 0;
     const MAX_AUTH_RETRIES = 4;
 
-    // Auto-record retry budget: 36 retries at 20s apart (~12 minutes total) before giving
-    // up and telling the teacher. Widened from an earlier 48s budget after checking real
-    // production data on 2026-09-15: of 24 classes that hit a capacity rejection that day,
-    // 11 recovered on the *old* 48s retry alone -- proof the shared recorder pool keeps
-    // freeing up throughout a busy period, not that it stays empty. The other 13 never
-    // recovered and lost their recording outright, because 48s wasn't long enough to catch
-    // the next opening. 12 minutes covers the two real 15-25 minute capacity-crunch windows
-    // seen that day without retrying for a class's entire length -- a teacher who genuinely
-    // has no capacity for that long still has the manual "Recording" button as a fallback,
+    // Auto-record retry budget: ~12 minutes total before giving up and telling the
+    // teacher. Widened from an earlier 48s budget after checking real production data on
+    // 2026-09-15: of 24 classes that hit a capacity rejection that day, 11 recovered on
+    // the *old* 48s retry alone -- proof the shared recorder pool keeps freeing up
+    // throughout a busy period, not that it stays empty. The other 13 never recovered and
+    // lost their recording outright, because 48s wasn't long enough to catch the next
+    // opening. 12 minutes covers the two real 15-25 minute capacity-crunch windows seen
+    // that day without retrying for a class's entire length -- a teacher who genuinely has
+    // no capacity for that long still has the manual "Recording" button as a fallback,
     // just later than before.
-    const RECORDING_RETRY_INTERVAL_MS = 20000;
-    const MAX_RECORDING_RETRIES = 36;
+    //
+    // Two-phase backoff, not a flat interval: the first 6 retries are 10s apart (catches
+    // a brief blip within the first minute, as fast as the old budget used to give up
+    // entirely), then the remaining 22 widen to 30s apart -- still covers the full ~12
+    // minutes, but doesn't hammer Jicofo with a request every 20s for the whole duration
+    // of a prolonged crunch when the first minute's worth of quick tries didn't land.
+    const RECORDING_FAST_RETRIES = 6;
+    const RECORDING_FAST_INTERVAL_MS = 10000;
+    const RECORDING_SLOW_INTERVAL_MS = 30000;
+    const MAX_RECORDING_RETRIES = 28;
+
+    function nextRecordingRetryDelayMs(retryCount: number) {
+      return retryCount < RECORDING_FAST_RETRIES ? RECORDING_FAST_INTERVAL_MS : RECORDING_SLOW_INTERVAL_MS;
+    }
 
     function attemptStartRecording() {
       // jitsiApiRef.current, not the closed-over `api` -- the first call (from
@@ -478,7 +490,7 @@ export default function JitsiLive({
           }
           return current;
         });
-      }, RECORDING_RETRY_INTERVAL_MS);
+      }, nextRecordingRetryDelayMs(recordingRetryCountRef.current));
     }
 
     // Talk-time & camera attentiveness: accumulated from Jitsi media signals,
@@ -534,6 +546,12 @@ export default function JitsiLive({
       let joinRoom = room;
       let joinDomain = JITSI_DOMAIN_FALLBACK;
       let joinToken: string | undefined;
+      // "Don't record demo and personal link, only record session and class" -- the
+      // Personal Meeting Room never reaches the interactive branch below at all (it always
+      // has joinOverride, never a real sessionId), so it's excluded from auto-recording by
+      // construction. A Demo *does* have a real session/sessionId, so it needs its own
+      // explicit check against the type the join response reports.
+      let sessionIsDemo = false;
       if (joinOverride) {
         joinDomain = joinOverride.domain;
         joinToken = joinOverride.token ?? undefined;
@@ -544,6 +562,7 @@ export default function JitsiLive({
           joinDomain = join.domain;
           joinToken = join.token ?? undefined;
           scheduledEndRef.current = join.scheduledEndAtUtc;
+          sessionIsDemo = join.isDemo;
           // See effectiveSessionIdRef's own doc comment: this class may have been edited
           // since whatever gave this component its `sessionId` prop was fetched — join.sessionId
           // is whatever it's actually become, and everything session-scoped from here on
@@ -789,7 +808,7 @@ export default function JitsiLive({
         // already in progress) — and with the retry loop below, that turned one harmless
         // reconnect into three doomed retries and a scary "recording failed" banner for a
         // class that was, the whole time, being recorded just fine.
-        if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver) {
+        if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver && interactive && !sessionIsDemo) {
           setRecording((alreadyRecording) => {
             if (!alreadyRecording) {
               recordingErrorReasonRef.current = null;
