@@ -34,6 +34,11 @@ export interface ClassroomHubEvents {
   /** Whichever participant the teacher has pinned/spotlighted in her own view (Jitsi endpoint
    *  id), or null when she unpins — see ClassroomHub.SetPinned's own doc comment. */
   pinned: (participantId: string | null) => void;
+  /** Admin-triggered, app-wide (not scoped to this session) — see MonitoringController's
+   *  BroadcastReload. Deliberately just a signal to show a dismissible prompt, not an
+   *  automatic reload — see that endpoint's own comment on why an unannounced refresh
+   *  mid-class would be worse than the deploy it's trying to deliver. */
+  reloadRequested: (message: string) => void;
 }
 
 /**
@@ -113,6 +118,7 @@ export class ClassroomHubClient {
     if (handlers.celebrate) connection.on("Celebrate", handlers.celebrate);
     if (handlers.boardAccess) connection.on("BoardAccess", handlers.boardAccess);
     if (handlers.pinned) connection.on("Pinned", handlers.pinned);
+    if (handlers.reloadRequested) connection.on("ReloadRequested", handlers.reloadRequested);
 
     // SignalR's own retry loop — surface it so the UI can stop pretending sync
     // is healthy the instant it isn't, instead of only knowing "connected" once

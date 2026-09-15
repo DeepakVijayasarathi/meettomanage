@@ -1,11 +1,11 @@
 /** Shared display helpers/components between the Server Monitoring list (Monitoring.tsx) and its per-server drill-down (ServerDetail.tsx). */
 import { useState } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
-import { Loader2, Minus, Plus, RotateCcw, TrendingDown, TrendingUp, type Cpu } from "lucide-react";
+import { Loader2, Megaphone, Minus, Plus, RotateCcw, TrendingDown, TrendingUp, type Cpu } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { rescaleJibriNow, setJibriMinReplicas } from "@/api/monitoring";
+import { broadcastReload, rescaleJibriNow, setJibriMinReplicas } from "@/api/monitoring";
 import type { CapacityForecast, RecorderStatus, TimeSeriesPoint } from "@/types";
 
 /** Guards every numeric field the API might not send yet on a backend that's a step behind this frontend's deploy. */
@@ -162,6 +162,37 @@ export function RecorderControls({ serverName, recorderStatus }: { serverName: s
         </Button>
         <span>/ {recorderStatus.maxInstances} max</span>
       </div>
+      {feedback && <span className="text-muted-foreground">{feedback}</span>}
+    </div>
+  );
+}
+
+/** Tells every browser currently in a live class to show a dismissible "update available"
+ *  prompt — see MonitoringController.BroadcastReload. App-wide, not per-server, so this
+ *  renders once at the top of the monitoring page rather than inside a server card. */
+export function BroadcastReloadButton() {
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  async function handleBroadcast() {
+    setBusy(true);
+    setFeedback(null);
+    try {
+      await broadcastReload();
+      setFeedback("Sent — anyone in a live class will see a refresh prompt.");
+    } catch (err) {
+      setFeedback(err instanceof Error ? err.message : "Broadcast failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-xs">
+      <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={handleBroadcast} disabled={busy}>
+        {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Megaphone className="h-3 w-3" />}
+        Notify live classes of update
+      </Button>
       {feedback && <span className="text-muted-foreground">{feedback}</span>}
     </div>
   );

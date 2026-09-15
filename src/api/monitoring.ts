@@ -249,6 +249,13 @@ export async function rescaleJibriNow(serverName: string): Promise<ApiJibriContr
   return apiFetch<ApiJibriControlResult>(`/api/monitoring/servers/jibri/rescale?serverName=${encodeURIComponent(serverName)}`, { method: "POST" });
 }
 
+/** Tells every browser currently in a live class to show a dismissible "update available"
+ *  prompt — see MonitoringController.BroadcastReload for why this is a gentle notice, not
+ *  a forced reload. */
+export async function broadcastReload(message?: string): Promise<void> {
+  await apiFetch<void>(`/api/monitoring/broadcast-reload${message ? `?message=${encodeURIComponent(message)}` : ""}`, { method: "POST" });
+}
+
 /** Sets how many Jibri instances stay warm even while idle (clamped server-side to 1-10, and further to the CPU/RAM-derived ceiling). */
 export async function setJibriMinReplicas(serverName: string, minReplicas: number): Promise<ApiJibriControlResult> {
   return apiFetch<ApiJibriControlResult>(`/api/monitoring/servers/jibri/min-replicas?serverName=${encodeURIComponent(serverName)}`, {

@@ -260,6 +260,14 @@ export default function JitsiLive({
   // evidence, not a guess, and this only appears at all for a teacher who actually has a
   // problem, not every teacher on every join. Null = not checked yet, or checked clean.
   const [preflightMediaIssue, setPreflightMediaIssue] = useState<string | null>(null);
+  // Admin-triggered app update notice (see MonitoringController.BroadcastReload) — shown
+  // to everyone in the class (teacher and students alike, unlike the teacher-only banners
+  // above), since anyone's browser could be the one running stale code. Deliberately a
+  // dismissible prompt with a manual "Refresh now" action, not an automatic reload — see
+  // that endpoint's own comment on why an unannounced refresh mid-class (dropping camera,
+  // mic, and recording continuity with no warning) would be worse than the deploy it's
+  // trying to deliver.
+  const [reloadNotice, setReloadNotice] = useState<string | null>(null);
   // Popup asking the teacher to share their screen right when the class starts — a click is
   // unavoidable (getDisplayMedia requires a real user gesture, a browser rule no app can
   // bypass), but a modal right at join is a clearer, earlier ask than waiting for the
@@ -1444,6 +1452,26 @@ export default function JitsiLive({
           </button>
         </div>
       )}
+      {reloadNotice && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
+          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+          <p className="flex-1">{reloadNotice} Refresh when convenient to pick up the latest fixes — this won't interrupt your class until you do.</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+          >
+            Refresh now
+          </button>
+          <button
+            type="button"
+            onClick={() => setReloadNotice(null)}
+            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {mode === "teacher" && recordingIssue && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
           <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5" />
@@ -1756,6 +1784,7 @@ export default function JitsiLive({
                 // executeCommand("pinParticipant", null) is Jitsi's own documented way to
                 // clear a pin, so the teacher unpinning correctly un-spotlights here too.
                 onPinChanged={(participantId) => jitsiApiRef.current?.executeCommand("pinParticipant", participantId)}
+                onReloadRequested={(message) => setReloadNotice(message)}
               />
             </aside>
           )}
