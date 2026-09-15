@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { CalendarClock, Loader2, Plus, Users2, Video } from "lucide-react";
+import { CalendarClock, Link2, Loader2, Plus, Users2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -8,6 +8,7 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { RecordingsDialog } from "@/components/RecordingsDialog";
+import { GuestLinkDialog } from "@/components/GuestLinkDialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -72,6 +73,7 @@ export default function AdminSessions() {
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [guestLinkSession, setGuestLinkSession] = useState<ClassSession | null>(null);
 
   // Mark no-show dialog
   const [noShowTarget, setNoShowTarget] = useState<ClassSession | null>(null);
@@ -342,17 +344,31 @@ export default function AdminSessions() {
           ) : (
             <div className="flex items-center justify-end gap-1.5">
               {JOINABLE_STATUSES.includes(row.status) && row.meetingRoomId && (
-                <Button
-                  size="sm"
-                  disabled={joiningId === row.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    joinSession(row);
-                  }}
-                >
-                  <Video className="h-3.5 w-3.5" />
-                  {joiningId === row.id ? "Joining…" : "Join"}
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    title="Copy a shareable guest link for a parent, grandparent or caretaker"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setGuestLinkSession(row);
+                    }}
+                  >
+                    <Link2 className="h-3.5 w-3.5" />
+                    Copy Guest Link
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={joiningId === row.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      joinSession(row);
+                    }}
+                  >
+                    <Video className="h-3.5 w-3.5" />
+                    {joiningId === row.id ? "Joining…" : "Join"}
+                  </Button>
+                </>
               )}
               <Button
                 variant="outline"
@@ -697,6 +713,7 @@ export default function AdminSessions() {
       />
 
       {recordingsFor && <RecordingsDialog session={recordingsFor} onClose={() => setRecordingsFor(null)} />}
+      {guestLinkSession && <GuestLinkDialog session={guestLinkSession} onClose={() => setGuestLinkSession(null)} />}
     </div>
   );
 }

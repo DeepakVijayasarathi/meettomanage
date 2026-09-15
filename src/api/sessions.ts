@@ -186,6 +186,66 @@ export async function getJitsiJoin(sessionId: string): Promise<ApiJitsiJoin> {
   return apiFetch<ApiJitsiJoin>(`/api/sessions/${sessionId}/jitsi-join`);
 }
 
+export interface ApiGuestLinkStudent {
+  childId: string;
+  childName: string;
+  parentName: string;
+  parentPhone: string | null;
+}
+
+/**
+ * The session's batch roster for the "Copy Guest Link" student picker (GuestLinkDialog) — same
+ * SessionCalendarManagement:View permission as everything else on this screen, deliberately not
+ * CourseBatchManagement:View too, so an account with only session access isn't 403'd just for
+ * this popup.
+ */
+export async function listGuestLinkStudents(sessionId: string): Promise<ApiGuestLinkStudent[]> {
+  return apiFetch<ApiGuestLinkStudent[]>(`/api/sessions/${sessionId}/guest-link/students`);
+}
+
+/**
+ * Mints a shareable Guest Link token for this session. Pass `childId` to bind it to one
+ * specific, currently-active enrollment (the /guest-join bridge page auto-fills their name,
+ * skips prejoin, and marks their attendance on open); omit it for a generic guest link (the
+ * opener types their own name, attendance isn't marked automatically). Returns just the opaque
+ * token — build the shareable URL as `${origin}/guest-join?token=...`.
+ */
+export async function createGuestLink(sessionId: string, childId?: string): Promise<string> {
+  const { token } = await apiFetch<{ token: string }>(`/api/sessions/${sessionId}/guest-link`, {
+    method: "POST",
+    body: JSON.stringify({ childId }),
+  });
+  return token;
+}
+
+export interface ApiGuestJoin {
+  sessionId: string;
+  /** Set only when the link was bound to a student whose enrollment was still active at open time. */
+  childId: string | null;
+  room: string;
+  domain: string;
+  token: string | null;
+  /** Pre-filled with the enrolled child's name for a student-bound link; "Guest" for a generic one. */
+  displayName: string;
+  /** True for a student-bound link — the bridge page should skip Jitsi's prejoin screen
+   *  entirely and join straight in with `displayName` already set. */
+  skipPrejoin: boolean;
+}
+
+/**
+ * Anonymous: resolves a Guest Link token into a live Jitsi join. Called only from the public
+ * /guest-join bridge page (GuestJoin.tsx) — never by a logged-in user, and never carries an
+ * auth token even if one happens to be present in this browser. Re-checked against the
+ * session's LIVE status on the backend every time, so the same link can 401/400 once the class
+ * ends or is marked Completed, even well before whatever the token's own expiry is.
+ */
+export async function guestJoin(token: string): Promise<ApiGuestJoin> {
+  return apiFetch<ApiGuestJoin>("/api/sessions/guest-join", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+}
+
 export interface ApiRecordingObserverJoin {
   sessionId: string;
   room: string;

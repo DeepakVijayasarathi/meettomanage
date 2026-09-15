@@ -72,6 +72,7 @@ const ParentAddChild = lazy(() => import("@/features/parent/AddChild"));
 const LiveClassroom = lazy(() => import("@/features/classroom/LiveClassroom"));
 const PersonalMeetingRoom = lazy(() => import("@/features/classroom/PersonalMeetingRoom"));
 const RecordingObserver = lazy(() => import("@/features/classroom/RecordingObserver"));
+const GuestJoin = lazy(() => import("@/features/public/GuestJoin"));
 
 const SubAdminDashboard = lazy(() => import("@/features/subadmin/Dashboard"));
 const SubAdminPermissions = lazy(() => import("@/features/subadmin/Permissions"));
@@ -174,6 +175,11 @@ export default function App() {
                 a real signed-in user — deliberately outside RequireAuth, which would otherwise
                 bounce Jibri's anonymous session to /login. */}
             <Route path="/recording/observer/:roomName" element={<RecordingObserver />} />
+            {/* "Copy Guest Link" bridge page (RM/Admin/Coordinator Sessions and Calendar
+                screens) — a caretaker opening a copied link never logs in, so this has to sit
+                outside RequireAuth the same way the Jibri route above does; see GuestJoin.tsx's
+                own doc comment for why it hands off to raw Jitsi rather than the in-app classroom. */}
+            <Route path="/guest-join" element={<GuestJoin />} />
             <Route
               path="/meet/personal"
               element={

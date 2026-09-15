@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { Loader2, PartyPopper, Plus, RefreshCcw, Trash2, Video } from "lucide-react";
+import { Link2, Loader2, PartyPopper, Plus, RefreshCcw, Trash2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { RecordingsDialog } from "@/components/RecordingsDialog";
+import { GuestLinkDialog } from "@/components/GuestLinkDialog";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,6 +61,10 @@ export default function CoordinatorCalendar() {
   const canScheduleSession = !usingApi || hasPermission("SessionCalendarManagement", "Create");
   const canAddHoliday = !usingApi || hasPermission("SessionCalendarManagement", "Create");
   const canDeleteHoliday = !usingApi || hasPermission("SessionCalendarManagement", "Delete");
+  // Client requirement (2026-09-15): "Copy Guest Link" gated by the session module's own View
+  // right, same permission this whole page already requires to load a calendar at all — not a
+  // separate/stricter grant. See Documentation/Client_Feedback_2026-09-15_RM-Emergency-Class-Link.md §10.
+  const canGuestLink = !usingApi || hasPermission("SessionCalendarManagement", "View");
   const { data: apiSessions, reload } = useApiData<ClassSession[]>(
     () => listSessions().then((s) => s.map(toFrontendSession)),
     SESSIONS
@@ -86,6 +91,7 @@ export default function CoordinatorCalendar() {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
+  const [guestLinkOpen, setGuestLinkOpen] = useState(false);
 
   // Holiday calendar management (ported from admin/AcademicCalendar.tsx)
   const [holidayDate, setHolidayDate] = useState("");
@@ -416,6 +422,15 @@ export default function CoordinatorCalendar() {
                   </Button>
                 )}
                 {/* Monitor-only: the coordinator can drop into any ongoing/upcoming class or demo. */}
+                {JOINABLE_STATUSES.includes(selected.status) && selected.meetingRoomId && canGuestLink && (
+                  <Button
+                    variant="outline"
+                    title="Copy a shareable guest link for a parent, grandparent or caretaker"
+                    onClick={() => setGuestLinkOpen(true)}
+                  >
+                    <Link2 className="h-4 w-4" /> Copy Guest Link
+                  </Button>
+                )}
                 {JOINABLE_STATUSES.includes(selected.status) && selected.meetingRoomId && (
                   <Button disabled={joining} onClick={() => joinSession(selected)}>
                     <Video className="h-4 w-4" /> Join Class
@@ -461,6 +476,7 @@ export default function CoordinatorCalendar() {
       />
 
       {recordingsFor && <RecordingsDialog session={recordingsFor} onClose={() => setRecordingsFor(null)} />}
+      {guestLinkOpen && selected && <GuestLinkDialog session={selected} onClose={() => setGuestLinkOpen(false)} />}
 
       <ConfirmDialog
         open={!!holidayDeleteTarget}
