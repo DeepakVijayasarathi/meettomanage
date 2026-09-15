@@ -1417,7 +1417,17 @@ export default function JitsiLive({
         // window edge, instead of both stretching edge-to-edge with a flat divider —
         // reads as a deliberately designed workspace rather than a raw video embed.
         <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 md:flex-row">
-          <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5">
+          {/* min-h-[220px]: a real floating desktop PiP was ruled out (the call runs in a
+              cross-origin iframe with no way to read out individual participant video and
+              float it above other windows — no safe workaround exists). This is the
+              in-app fallback instead: on narrow/stacked layouts (below md), this card sits
+              above the Interactive panel in document order and would otherwise get
+              squeezed toward zero height by the panel's own content below it, exactly the
+              "have to leave the sharing mode to see them" complaint. A guaranteed minimum
+              keeps Jitsi's own tile view (already forced on during a share — see
+              screenSharingStatusChanged) visibly showing student tiles no matter how much
+              room the whiteboard/slides panel claims underneath it. */}
+          <div className="relative min-h-[220px] min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5">
             <div ref={containerRef} className="h-full w-full" />
             {/* Sits above the Jitsi iframe (which owns nothing above z-20 of its own) so a
                 mark drawn here shows on top of whatever's currently on screen — camera or a
