@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, DoorOpen, Loader2, Pencil, PartyPopper, PhoneOff, Sparkles, UserPlus, Users, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, Loader2, Pencil, PartyPopper, PhoneOff, Pin, PinOff, Sparkles, UserPlus, Users, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -164,6 +164,18 @@ export default function JitsiLive({
   // pinnedEndpointChanged listener below) — set once InteractivePanel's hub connection
   // is ready, same pattern as the other senders it hands back via onReady.
   const setPinnedRef = useRef<((participantId: string | null) => void) | null>(null);
+  // Teacher-reported live: "only works if a parent manually pins the teacher from their
+  // end" -- Jitsi's native pin UI has no "pin yourself" affordance on your own tile, only
+  // on everyone else's, so becoming the spotlighted main view had no self-service path at
+  // all; a student/parent pinning the teacher locally only ever changed that one viewer's
+  // own screen, never broadcast to the rest of the class. selfParticipantId (this client's
+  // own Jitsi endpoint id, captured on join) and pinnedParticipantId (whoever is currently
+  // pinned, from the same pinnedEndpointChanged listener that already forwards a teacher's
+  // pin choice to the hub) are what let a header button drive the exact same
+  // executeCommand("pinParticipant", ...) path on herself instead of needing anyone else's
+  // click.
+  const [selfParticipantId, setSelfParticipantId] = useState<string | null>(null);
+  const [pinnedParticipantId, setPinnedParticipantId] = useState<string | null>(null);
   const annotationOverlayRef = useRef<AnnotationOverlayHandle>(null);
   // Teacher-only "mark on top of what's on screen" tool — off by default so it never
   // steals pointer events from Jitsi's own controls (screen-share picker, mute, etc.)
@@ -672,6 +684,7 @@ export default function JitsiLive({
       api.addListener("videoConferenceJoined", (payload) => {
         setReconnecting(null);
         media.selfId = payload?.id ?? "";
+        if (mode === "teacher") setSelfParticipantId(payload?.id ?? null);
         media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
         // A small class reads better as a grid of faces than one spotlighted speaker.
         api?.executeCommand("setTileView", true);
@@ -855,6 +868,7 @@ export default function JitsiLive({
       // A student pinning someone locally for their own view is deliberately left alone.
       api.addListener("pinnedEndpointChanged", (payload) => {
         if (mode !== "teacher") return;
+        setPinnedParticipantId(payload?.id ?? null);
         setPinnedRef.current?.(payload?.id ?? null);
       });
       // Jitsi's own signal for a dropped media/XMPP connection mid-call — the video
@@ -1073,6 +1087,29 @@ export default function JitsiLive({
                 >
                   <DoorOpen className="h-3.5 w-3.5" />
                   {lobbyEnabled ? "Waiting Room: On" : "Waiting Room"}
+                </Button>
+              )}
+              {mode === "teacher" && (
+                <Button
+                  size="pill"
+                  variant="secondary"
+                  aria-pressed={pinnedParticipantId !== null && pinnedParticipantId === selfParticipantId}
+                  disabled={!jitsiReady || !selfParticipantId}
+                  className={headerToggleClass}
+                  onClick={() =>
+                    jitsiApiRef.current?.executeCommand(
+                      "pinParticipant",
+                      pinnedParticipantId === selfParticipantId ? null : selfParticipantId
+                    )
+                  }
+                  title={
+                    pinnedParticipantId === selfParticipantId
+                      ? "Stop spotlighting yourself as the main view"
+                      : "Spotlight yourself as the main view for the whole class, not just whoever happens to pin you locally"
+                  }
+                >
+                  {pinnedParticipantId === selfParticipantId ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                  {pinnedParticipantId === selfParticipantId ? "Spotlighted" : "Spotlight me"}
                 </Button>
               )}
               {interactive && (
