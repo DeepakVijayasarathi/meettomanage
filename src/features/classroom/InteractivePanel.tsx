@@ -52,6 +52,11 @@ interface InteractivePanelProps {
    *  owns the hub connection, so it's the only place that can actually receive "Pinned"
    *  broadcasts. */
   onPinChanged?: (participantId: string | null) => void;
+  /** Fires when an admin broadcasts a deploy notice over the hub (see
+   *  MonitoringController.BroadcastReload) — the host (JitsiLive) owns the banner UI
+   *  this panel has no space for. This panel owns the hub connection, so it's the only
+   *  place that can actually receive "ReloadRequested" broadcasts. */
+  onReloadRequested?: (message: string) => void;
 }
 
 /**
@@ -60,7 +65,7 @@ interface InteractivePanelProps {
  * board access — all synced through the classroom SignalR hub. If the hub is
  * unreachable everything still renders locally (the call itself is unaffected).
  */
-export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onPinChanged }: InteractivePanelProps) {
+export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onPinChanged, onReloadRequested }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [hubDetail, setHubDetail] = useState<string | null>(null);
@@ -142,6 +147,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
         annotation: (opJson) => onAnnotation?.(opJson),
         slide: (pageIndex) => presentationRef.current?.applyRemoteSlide(pageIndex),
         pinned: (participantId) => onPinChanged?.(participantId),
+        reloadRequested: (message) => onReloadRequested?.(message),
       }, (state, detail) => {
         if (!disposed) {
           setHubState(state);

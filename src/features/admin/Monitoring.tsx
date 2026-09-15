@@ -54,6 +54,7 @@ import { MonitoringHubClient } from "@/lib/monitoringHub";
 import { useSession } from "@/state/session";
 import type { CallQuality, DatabaseInsights, LiveClassSession, MonitoringAlert, MonitoringSummary, ServerStatus, SessionHistoryEntry } from "@/types";
 import {
+  BroadcastReloadButton,
   CapacityForecastLine,
   num,
   RecorderControls,
@@ -716,6 +717,7 @@ export default function AdminMonitoring() {
   const usingApi = apiEnabled();
   const { hasPermission } = useSession();
   const canViewLiveUsers = hasPermission("SystemMonitoring", "View");
+  const canManage = hasPermission("SystemMonitoring", "Edit");
   const { data: restSummary, loading, error, reload } = useApiData(
     () => getMonitoringSummary().then(toFrontendMonitoringSummary),
     MONITORING_SUMMARY,
@@ -789,6 +791,7 @@ export default function AdminMonitoring() {
                 Live
               </Badge>
             )}
+            {canManage && <BroadcastReloadButton />}
             <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
               <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
               Refresh
