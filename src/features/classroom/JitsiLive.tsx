@@ -237,6 +237,20 @@ export default function JitsiLive({
   // anything.
   const [shareAttempted, setShareAttempted] = useState(false);
   const [showShareOsHint, setShowShareOsHint] = useState(false);
+  // Go-live day 1 feedback: "90% of complaints were about teachers being unable to switch
+  // on their cameras or mics. Even after clicking, the options seem to get stuck." Those
+  // toggle buttons are Jitsi's own, rendered inside its cross-origin iframe -- this app has
+  // no way to see a click on them, let alone detect why one didn't take effect, so there's
+  // no reliable, evidence-based way to build a targeted fix the way the mic-not-transmitting
+  // report got one (that one had a concrete, verifiable cause: Safari's Permissions-Policy
+  // enforcement on a cross-origin iframe, confirmed and fixed separately). What a "click does
+  // nothing" symptom most commonly means in practice is the OS's own camera/mic privacy
+  // setting for the browser being off entirely -- a layer *above* both the site's permission
+  // prompt and the Permissions-Policy fix, on Windows as well as Mac, and one this app
+  // genuinely cannot detect or bypass. A one-time, dismissible hint on join is the honest,
+  // safe thing to ship here: it can't fix a real device/OS block, but it can stop it from
+  // reading as a silent, unexplained "stuck" button.
+  const [deviceHintDismissed, setDeviceHintDismissed] = useState(false);
   // Popup asking the teacher to share their screen right when the class starts — a click is
   // unavoidable (getDisplayMedia requires a real user gesture, a browser rule no app can
   // bypass), but a modal right at join is a clearer, earlier ask than waiting for the
@@ -1336,6 +1350,21 @@ export default function JitsiLive({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {mode === "teacher" && !isRecordingObserver && jitsiReady && !deviceHintDismissed && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
+          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+          <p className="flex-1">
+            If your camera or mic button doesn't respond when clicked, it's usually your operating system blocking this browser's camera/mic access, separate from anything in the browser itself — check Windows Settings → Privacy → Camera/Microphone, or on Mac, System Settings → Privacy &amp; Security → Camera/Microphone.
+          </p>
+          <button
+            type="button"
+            onClick={() => setDeviceHintDismissed(true)}
+            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {mode === "teacher" && recordingIssue && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
           <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5" />
