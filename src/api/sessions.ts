@@ -227,9 +227,13 @@ export interface ApiGuestJoin {
   token: string | null;
   /** Pre-filled with the enrolled child's name for a student-bound link; "Guest" for a generic one. */
   displayName: string;
-  /** True for a student-bound link — the bridge page should skip Jitsi's prejoin screen
+  /** True for a student-bound link — the bridge page should skip its own name-entry step
    *  entirely and join straight in with `displayName` already set. */
   skipPrejoin: boolean;
+  /** ClassroomHub-only token (passed to JitsiLive's `hubToken` prop, same mechanism the Jibri
+   *  recording-observer page already uses) — lets the guest join the real interactive
+   *  classroom (whiteboard, quiz, roster, gamification), not a bare Jitsi call. */
+  hubToken: string;
 }
 
 /**
