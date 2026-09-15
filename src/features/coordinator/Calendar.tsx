@@ -252,7 +252,12 @@ export default function CoordinatorCalendar() {
   // building the link from just the room id carried in this row's own data.
   async function joinSession(session: ClassSession) {
     if (!usingApi) {
-      window.open(`https://meet.techmisai.com/${session.meetingRoomId}`, "_blank", "noopener");
+      // Demo mode only (no real backend/session behind it) -- but still worth pointing at
+      // the actual configured deployment rather than a hardcoded dev domain that's already
+      // drifted from production once (VITE_JITSI_DOMAIN is thereadernest.co.in in prod, not
+      // this). Same fallback JitsiLive.tsx uses when the env var isn't set.
+      const domain = import.meta.env.VITE_JITSI_DOMAIN || "meet.jit.si";
+      window.open(`https://${domain}/${session.meetingRoomId}`, "_blank", "noopener");
       return;
     }
     setJoining(true);
