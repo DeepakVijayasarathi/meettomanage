@@ -1503,17 +1503,20 @@ export default function JitsiLive({
         // window edge, instead of both stretching edge-to-edge with a flat divider —
         // reads as a deliberately designed workspace rather than a raw video embed.
         <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 md:flex-row">
-          {/* min-h-[220px]: a real floating desktop PiP was ruled out (the call runs in a
+          {/* min-h-[300px]: a real floating desktop PiP was ruled out (the call runs in a
               cross-origin iframe with no way to read out individual participant video and
               float it above other windows — no safe workaround exists). This is the
               in-app fallback instead: on narrow/stacked layouts (below md), this card sits
               above the Interactive panel in document order and would otherwise get
-              squeezed toward zero height by the panel's own content below it, exactly the
-              "have to leave the sharing mode to see them" complaint. A guaranteed minimum
-              keeps Jitsi's own tile view (already forced on during a share — see
-              screenSharingStatusChanged) visibly showing student tiles no matter how much
-              room the whiteboard/slides panel claims underneath it. */}
-          <div className="relative min-h-[220px] min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5">
+              squeezed toward zero height by the panel's own content below it. Started at
+              220px for the "can't see students while sharing" complaint; raised to 300px
+              after a more severe one — "if we open whiteboard, we are unable to access the
+              mute button" — since Jitsi's own toolbar (mic/camera mute, the actual controls,
+              not just visibility) lives at the bottom of this same squeezed area and needs
+              real room to render, not just enough to show a tile. Paired with the panel's
+              own max-h shrinking from 45vh to 38vh below, so both sides actually fit
+              together on a real phone screen instead of just shifting which one starves. */}
+          <div className="relative min-h-[300px] min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5">
             <div ref={containerRef} className="h-full w-full" />
             {/* Sits above the Jitsi iframe (which owns nothing above z-20 of its own) so a
                 mark drawn here shows on top of whatever's currently on screen — camera or a
@@ -1653,16 +1656,19 @@ export default function JitsiLive({
             </div>
           </div>
           {interactive && (
-            // max-h-[45vh] (md:max-h-none): below md the body stacks video above this
+            // max-h-[38vh] (md:max-h-none): below md the body stacks video above this
             // panel instead of sitting side-by-side (flex-col → md:flex-row above), so
             // without its own height cap the panel's content (Board tab's toolbar +
             // canvas, quiz, roster) claims however much height it wants and pushes the
             // video stage off-screen — reported as "can't see the video while changing
-            // slides." Same fix already applied to the mock classroom's aside
-            // (LiveClassroom.tsx) for the identical layout failure.
+            // slides," and more severely, "if we open whiteboard, we are unable to access
+            // the mute button" (Jitsi's own toolbar lives in that same squeezed video
+            // area). Narrowed from an earlier 45vh, paired with the video card's own
+            // min-h growing from 220px to 300px above, so a real phone screen actually
+            // fits both instead of one starving the other.
             <aside
               className={cn(
-                "flex max-h-[45vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 md:max-h-none md:w-[380px]",
+                "flex max-h-[38vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 md:max-h-none md:w-[380px]",
                 !panelOpen && "hidden"
               )}
             >
