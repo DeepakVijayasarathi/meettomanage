@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { CalendarClock, Loader2, Plus, Users2, Video } from "lucide-react";
+import { CalendarClock, Link2, Loader2, Plus, Users2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -88,6 +88,7 @@ export default function SubAdminSessions() {
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
 
   // Schedule-session dialog
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -234,6 +235,36 @@ export default function SubAdminSessions() {
     }
   }, [usingApi, notify, userName]);
 
+  // Team feedback after go-live day 1: some students in a group batch couldn't join
+  // through the normal in-app flow, and RMs had no fallback of their own — no way to see
+  // or hand out a link for that one session so it could be shared straight into the
+  // batch's WhatsApp group as an immediate workaround. This reuses the exact same
+  // getJitsiJoin the RM's own "Join" button already calls (SubAdmin already has access
+  // to it server-side via SessionCalendarManagement:Edit), just copying the URL instead
+  // of opening it in a new tab. No display name baked in (unlike the RM's own join
+  // link) -- this one is meant to be forwarded to whichever parent/student actually
+  // needs it, not opened by the RM themselves.
+  const copySessionLink = useCallback(async (session: ClassSession) => {
+    if (!usingApi) {
+      notify(true, "Demo mode — no live class link to copy.");
+      return;
+    }
+    setCopyingId(session.id);
+    try {
+      const join = await getJitsiJoin(session.id);
+      const url = buildJitsiJoinUrl(join.domain, join.room, join.token);
+      if (!navigator.clipboard) {
+        throw new Error("Clipboard unavailable in this browser");
+      }
+      await navigator.clipboard.writeText(url);
+      notify(true, "Join link copied — ready to share in WhatsApp.");
+    } catch (err) {
+      notify(false, err instanceof Error ? err.message : "Couldn't get this class's join link.");
+    } finally {
+      setCopyingId(null);
+    }
+  }, [usingApi, notify]);
+
   const columns: DataTableColumn<ClassSession>[] = useMemo(
     () => [
       {
@@ -317,17 +348,32 @@ export default function SubAdminSessions() {
           ) : (
             <div className="flex items-center justify-end gap-1.5">
               {JOINABLE_STATUSES.includes(row.status) && row.meetingRoomId && (
-                <Button
-                  size="sm"
-                  disabled={joiningId === row.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    joinSession(row);
-                  }}
-                >
-                  <Video className="h-3.5 w-3.5" />
-                  {joiningId === row.id ? "Joining…" : "Join"}
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={copyingId === row.id}
+                    title="Copy this class's join link to share in WhatsApp"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      copySessionLink(row);
+                    }}
+                  >
+                    <Link2 className="h-3.5 w-3.5" />
+                    {copyingId === row.id ? "Copying…" : "Copy link"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={joiningId === row.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      joinSession(row);
+                    }}
+                  >
+                    <Video className="h-3.5 w-3.5" />
+                    {joiningId === row.id ? "Joining…" : "Join"}
+                  </Button>
+                </>
               )}
               {canManage && (
                 <>
@@ -365,7 +411,7 @@ export default function SubAdminSessions() {
           ),
       },
     ],
-    [enrolledByBatchId, joiningId, canManage, joinSession]
+    [enrolledByBatchId, joiningId, copyingId, canManage, joinSession, copySessionLink]
   );
 
   return (
