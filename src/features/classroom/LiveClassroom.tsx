@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
-import JitsiLive from "./JitsiLive";
+import JitsiLive, { GUID_RE } from "./JitsiLive";
 import { HelpCircle, LogOut, MessageSquare, PanelRightClose, PanelRightOpen, Sparkles, Users } from "lucide-react";
 import { SESSIONS } from "@/data/sessions";
 import type { ChatMessage, Participant } from "@/types";
@@ -84,23 +84,33 @@ export default function LiveClassroom({ mode }: { mode: "teacher" | "student" })
     );
   }
 
-  // Real sessions launched from an API-backed dashboard carry their Jitsi room
-  // via route state; the interactive mock stays for demo mode and design work.
+  // Real sessions launched from an API-backed dashboard carry their Jitsi room via route
+  // state; the interactive mock stays for demo mode and design work.
   const launch = location.state as { room?: string; title?: string } | null;
   if (apiEnabled()) {
-    if (launch?.room) {
+    // A teacher opening their emailed Demo join link (or any other deep link straight to
+    // this URL — bookmarked, forwarded, reopened in a fresh tab) never carries this route
+    // state; it only exists when navigation happened via startClass's own in-app
+    // navigate(..., { state }) call. That used to hard-block here even though nothing else
+    // is actually missing: JitsiLive re-resolves the real room/domain/token itself, fresh,
+    // from `sessionId` alone (see its own getJitsiJoin call) — `room` is only ever a
+    // same-tick fallback for while that lookup is in flight. So a valid session id is
+    // enough on its own; `room` can start blank and gets overwritten the instant the
+    // lookup resolves.
+    if (launch?.room || (sessionId && GUID_RE.test(sessionId))) {
       return (
         <JitsiLive
-          room={launch.room}
-          title={launch.title}
+          room={launch?.room ?? ""}
+          title={launch?.title}
           mode={mode}
           sessionId={sessionId}
           displayName={studentDisplayName}
         />
       );
     }
-    // No launch context (e.g. a pasted URL): never fall back to the mock classroom
-    // with fabricated participants — send the user back to start the class properly.
+    // No launch context and no usable session id (e.g. a pasted URL with nothing real
+    // behind it): never fall back to the mock classroom with fabricated participants —
+    // send the user back to start the class properly.
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
         <h1 className="text-xl font-semibold text-foreground">This class link can't be opened directly</h1>

@@ -24,7 +24,7 @@ import type { LeaderboardEntry } from "./classroomData";
 // instead, since it must match whatever's configured on the "jitsi" integration.
 const JITSI_DOMAIN_FALLBACK = (import.meta.env.VITE_JITSI_DOMAIN as string | undefined) ?? "meet.jit.si";
 
-const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Shared by the Window global below and the local `api` variable in the effect further
  *  down — kept as one named type so the two can never drift apart again (they used to be

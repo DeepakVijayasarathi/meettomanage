@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Archive, CalendarDays, CalendarPlus, Layers, Loader2, Moon, Plus, Rocket, Search, Trash2, Wrench, X } from "lucide-react";
+import { Archive, CalendarDays, CalendarPlus, Clock, Layers, Loader2, Moon, Plus, Rocket, Search, Trash2, Wrench, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -41,6 +41,7 @@ import {
   listBatches,
   listTeacherOptions,
   listUnassignedStudents,
+  reconcileStaleSessionDurations,
   reconcileStaleSessionTeachers,
   removeStudentFromBatch,
   setBatchStatus,
@@ -225,6 +226,37 @@ export default function SubAdminBatches() {
       toast({ variant: "error", title: "Repair failed", description: message });
     } finally {
       setReconciling(false);
+    }
+  }
+
+  // Same class of bug, for duration: a batch edited to a shorter/longer class length after its
+  // schedule was already generated kept every already-scheduled session at its old length (see
+  // BatchService's ReconcileStaleSessionDurationsAsync). Gated behind canEdit, same as above.
+  const [reconcilingDurations, setReconcilingDurations] = useState(false);
+
+  async function handleReconcileDurations() {
+    setReconcilingDurations(true);
+    try {
+      const result = await reconcileStaleSessionDurations();
+      if (result.sessionsFixed === 0 && result.conflicts.length === 0) {
+        toast({ variant: "success", title: "Nothing to repair", description: "Every batch's sessions already match their current duration." });
+      } else {
+        const parts = [
+          result.sessionsFixed > 0
+            ? `Corrected ${result.sessionsFixed} session(s) across ${result.batchesFixed} batch(es) to their current duration.`
+            : undefined,
+          result.conflicts.length > 0
+            ? `${result.conflicts.length} batch(es) skipped — would double-book the teacher: ${result.conflicts.map((c) => c.batchName).join(", ")}.`
+            : undefined,
+        ].filter(Boolean);
+        toast({ variant: result.conflicts.length > 0 ? "default" : "success", title: "Repair complete", description: parts.join(" ") });
+      }
+      reload();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not run the repair.";
+      toast({ variant: "error", title: "Repair failed", description: message });
+    } finally {
+      setReconcilingDurations(false);
     }
   }
 
@@ -535,6 +567,17 @@ export default function SubAdminBatches() {
               >
                 {reconciling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
                 Repair stale teacher assignments
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                variant="outline"
+                onClick={handleReconcileDurations}
+                disabled={reconcilingDurations}
+                title="Fix any batch whose already-scheduled sessions still show a previous class duration after it was changed"
+              >
+                {reconcilingDurations ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
+                Repair stale session durations
               </Button>
             )}
             {canCreate && (

@@ -205,3 +205,28 @@ export async function reconcileStaleSessionTeachers(): Promise<ReconcileStaleSes
     method: "POST",
   });
 }
+
+export interface ReconcileStaleSessionDurationConflict {
+  batchId: string;
+  batchName: string;
+  effectiveDurationMinutes: number;
+  reason: string;
+}
+
+export interface ReconcileStaleSessionDurationsResult {
+  batchesFixed: number;
+  sessionsFixed: number;
+  conflicts: ReconcileStaleSessionDurationConflict[];
+}
+
+/**
+ * One-time data repair for batches whose duration was edited before UpdateAsync's duration
+ * cascade existed: corrects any still-undelivered session whose real length is out of sync with
+ * its own batch's current effective duration. Safe to call more than once — nothing left to fix
+ * is a no-op.
+ */
+export async function reconcileStaleSessionDurations(): Promise<ReconcileStaleSessionDurationsResult> {
+  return apiFetch<ReconcileStaleSessionDurationsResult>("/api/batches/reconcile-stale-durations", {
+    method: "POST",
+  });
+}
