@@ -1,6 +1,7 @@
 import { apiEnabled, apiFetch, getAccessToken, ApiError } from "@/lib/api";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import type { ClassSession, SessionStatus } from "@/types";
+import type { PagedResult } from "@/api/types";
 
 export interface ApiClassSession {
   id: string;
@@ -126,6 +127,33 @@ export async function registerRecording(sessionId: string, storageUrl: string, d
 /** Recordings already registered against a session (Admin/Teacher only). */
 export async function listRecordings(sessionId: string): Promise<ApiSessionRecording[]> {
   return apiFetch<ApiSessionRecording[]>(`/api/sessions/${sessionId}/recordings`);
+}
+
+/** One page of the admin-wide Recordings list -- session title/teacher/when already joined
+ *  in, no per-session follow-up call needed (see AdminRecordings.tsx for why that mattered). */
+export interface ApiRecordingListItem {
+  id: string;
+  classSessionId: string;
+  storageUrl: string;
+  durationSeconds: number | null;
+  expiresAtUtc: string | null;
+  createdAtUtc: string;
+  batchName: string | null;
+  sessionType: "Regular" | "Demo";
+  teacherName: string;
+  scheduledStartAtUtc: string;
+}
+
+/**
+ * Admin-only, paged, every registered recording across every class -- replaces fetching every
+ * completed session then calling listRecordings once per session (the "Loading recordings..."
+ * page that never seemed to finish once there were enough completed classes). `date` (a plain
+ * "YYYY-MM-DD") filters to that one calendar day server-side.
+ */
+export async function listAllRecordings(page: number, pageSize: number, date?: string): Promise<PagedResult<ApiRecordingListItem>> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (date) params.set("date", date);
+  return apiFetch<PagedResult<ApiRecordingListItem>>(`/api/sessions/recordings?${params.toString()}`);
 }
 
 /**
