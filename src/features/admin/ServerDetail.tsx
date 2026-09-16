@@ -593,18 +593,34 @@ export default function AdminServerDetail() {
           )}
 
           {server.recorderStatus && (
-            <div
-              className={cn(
-                "mt-5 flex items-center justify-between gap-3 rounded-lg px-4 py-3",
-                server.recorderStatus.idleInstances === 0 ? "bg-warning/10" : "bg-muted/40"
-              )}
-            >
-              <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                <Disc className="h-4 w-4" /> Recorder — {num(server.recorderStatus.totalInstances)} online · {num(server.recorderStatus.busyInstances)} recording
-              </span>
-              <Badge variant={server.recorderStatus.idleInstances === 0 ? "warning" : "success"}>
-                {server.recorderStatus.idleInstances === 0 ? "At capacity" : `${server.recorderStatus.idleInstances} free`}
-              </Badge>
+            <div className="mt-5">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <Disc className="h-4 w-4" /> Recorder capacity
+                </span>
+                <Badge variant={server.recorderStatus.idleInstances === 0 ? "warning" : "success"}>
+                  {server.recorderStatus.idleInstances === 0 ? "At capacity" : `${server.recorderStatus.idleInstances} free`}
+                </Badge>
+              </div>
+              {/* One-line "X online · Y recording" answered "is it working," not "how much
+                  headroom is left" -- an admin asked for the actual total/occupied/free
+                  breakdown a recording-capacity incident needs at a glance, same StatTile
+                  pattern already used for CPU/memory/bridge stats on this page. */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <StatTile icon={Disc} label="Total recorders" value={`${num(server.recorderStatus.totalInstances)}`} />
+                <StatTile
+                  icon={Video}
+                  label="Currently recording"
+                  value={`${num(server.recorderStatus.busyInstances)}`}
+                  tone={server.recorderStatus.idleInstances === 0 ? "warning" : "neutral"}
+                />
+                <StatTile
+                  icon={Gauge}
+                  label="Free / idle"
+                  value={`${num(server.recorderStatus.idleInstances)}`}
+                  tone={server.recorderStatus.idleInstances === 0 ? "warning" : "success"}
+                />
+              </div>
             </div>
           )}
           {server.recorderStatus && canManage && <RecorderControls serverName={server.name} recorderStatus={server.recorderStatus} />}
