@@ -66,7 +66,15 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
       // box and the dedicated Recording Worker below (gated on having a Jibri autoscaler
       // script configured, not on TracksLiveCalls) -- demo mode fakes it like every other
       // metric here so this feature is actually visible without a live backend.
-      recorderStatus: { totalInstances: 2, busyInstances: 1, idleInstances: 1, minInstances: 1, maxInstances: 3 },
+      recorderStatus: {
+        totalInstances: 2,
+        busyInstances: 1,
+        idleInstances: 1,
+        minInstances: 1,
+        maxInstances: 3,
+        busyHistory: mockHistory(1.5, 1),
+        totalHistory: mockHistory(2, 0.5),
+      },
       cpuHistory: mockHistory(18, 6),
       memoryHistory: mockHistory(46, 4),
       callQuality: {
@@ -163,7 +171,15 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
         { name: "jibri-worker-jibri-4", active: false },
       ],
       liveCalls: null,
-      recorderStatus: { totalInstances: 4, busyInstances: 3, idleInstances: 1, minInstances: 2, maxInstances: 4 },
+      recorderStatus: {
+        totalInstances: 4,
+        busyInstances: 3,
+        idleInstances: 1,
+        minInstances: 2,
+        maxInstances: 4,
+        busyHistory: mockHistory(3, 1.2),
+        totalHistory: mockHistory(4, 0.3),
+      },
       cpuHistory: mockHistory(22, 10),
       memoryHistory: mockHistory(39, 5),
       callQuality: null,

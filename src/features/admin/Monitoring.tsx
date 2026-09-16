@@ -309,7 +309,7 @@ function ServerCard({ server }: { server: ServerStatus }) {
           </span>
           <span className="flex items-center gap-3 text-xs text-muted-foreground">
             <span>
-              {num(server.recorderStatus.totalInstances)} online · {num(server.recorderStatus.busyInstances)} recording
+              {num(server.recorderStatus.totalInstances)} total · {num(server.recorderStatus.busyInstances)} recording · {num(server.recorderStatus.idleInstances)} free
             </span>
             <Badge variant={server.recorderStatus.idleInstances === 0 ? "warning" : "success"} className="text-[10px]">
               {server.recorderStatus.idleInstances === 0 ? "At capacity" : `${server.recorderStatus.idleInstances} free`}

@@ -293,6 +293,12 @@ export interface RecorderStatus {
   minInstances: number;
   /** Ceiling derived from the box's actual CPU/RAM — grows on its own if the box is resized. */
   maxInstances: number;
+  /** Last ~1h, ~2-minute steps — same window as ServerStatus.cpuHistory/memoryHistory.
+   *  Pair with totalHistory (not the single current totalInstances) since the fleet
+   *  autoscales — "3 busy" only reads as "at capacity" against however many were
+   *  actually online at that same moment. */
+  busyHistory: TimeSeriesPoint[];
+  totalHistory: TimeSeriesPoint[];
 }
 
 export interface TimeSeriesPoint {
