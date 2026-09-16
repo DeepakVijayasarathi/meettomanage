@@ -62,9 +62,11 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
         { name: "jibri", active: true },
       ],
       liveCalls: { activeConferences: 2, totalParticipants: 5 },
-      // Recorder status is real-only (no fabricated demo numbers) -- comes from the live
-      // Jibri autoscaler metrics via Prometheus, so demo mode shows it as absent, not fake.
-      recorderStatus: null,
+      // As of the Sep 2026 backend fix, recorderStatus is real, populated data for both this
+      // box and the dedicated Recording Worker below (gated on having a Jibri autoscaler
+      // script configured, not on TracksLiveCalls) -- demo mode fakes it like every other
+      // metric here so this feature is actually visible without a live backend.
+      recorderStatus: { totalInstances: 2, busyInstances: 1, idleInstances: 1, minInstances: 1, maxInstances: 3 },
       cpuHistory: mockHistory(18, 6),
       memoryHistory: mockHistory(46, 4),
       callQuality: {
@@ -129,6 +131,51 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
         { name: "nginx-proxy-manager", cpuPercent: 0.1, memoryMb: 42 },
       ],
       capacityTrend: { cpuAvg7dPercent: 22.8, cpuPeak7dPercent: 51, cpuWeekOverWeekChangePercent: -3.1, recordingAtCapacityPercent7d: null },
+    },
+    {
+      // The third real production box -- a dedicated Jibri fleet with no JVB of its own, so it
+      // never tracks live-call/call-quality/TURN metrics (those stay null, same as App / API),
+      // but it does run its own autoscaler and so has real recorder + recording-capacity data,
+      // same as Jitsi / Video above.
+      name: "Recording Worker",
+      hostname: "5.223.63.76",
+      reachable: true,
+      error: null,
+      uptimeSeconds: 9 * 24 * 3600,
+      loadAverage1m: 0.52,
+      cpuCores: 4,
+      cpuUsagePercent: 22,
+      memoryUsedPercent: 39,
+      memoryTotalMb: 8192,
+      swapUsedPercent: 0,
+      swapTotalMb: 0,
+      diskUsedPercent: 27,
+      diskTotalGb: 80,
+      networkRxMbps: 1.2,
+      networkTxMbps: 6.8,
+      diskReadMbps: 0.2,
+      diskWriteMbps: 3.4,
+      agentDataAgeSeconds: 26,
+      services: [
+        { name: "jibri-worker-jibri-1", active: true },
+        { name: "jibri-worker-jibri-2", active: true },
+        { name: "jibri-worker-jibri-3", active: true },
+        { name: "jibri-worker-jibri-4", active: false },
+      ],
+      liveCalls: null,
+      recorderStatus: { totalInstances: 4, busyInstances: 3, idleInstances: 1, minInstances: 2, maxInstances: 4 },
+      cpuHistory: mockHistory(22, 10),
+      memoryHistory: mockHistory(39, 5),
+      callQuality: null,
+      turnStatus: null,
+      diskForecast: { isFilling: false, daysUntilFull: null, trendGbPerDay: 0.1 },
+      containerMetrics: [
+        { name: "jibri-worker-jibri-1", cpuPercent: 34.2, memoryMb: 612 },
+        { name: "jibri-worker-jibri-2", cpuPercent: 29.8, memoryMb: 598 },
+        { name: "jibri-worker-jibri-3", cpuPercent: 18.1, memoryMb: 540 },
+        { name: "jibri-worker-jibri-4", cpuPercent: 0, memoryMb: 0 },
+      ],
+      capacityTrend: { cpuAvg7dPercent: 26.4, cpuPeak7dPercent: 88, cpuWeekOverWeekChangePercent: 11.2, recordingAtCapacityPercent7d: 6.8 },
     },
   ],
 };

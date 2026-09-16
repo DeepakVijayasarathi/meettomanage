@@ -103,7 +103,14 @@ export function ResourceGauge({ icon: Icon, label, percent, detail }: { icon: ty
   );
 }
 
-/** Rescale-now + min-warm-instances controls for the Jibri fleet — only render this when the caller can manage monitoring and real recorder data exists (never in demo mode, where recorderStatus is deliberately null). */
+/**
+ * Rescale-now + min-warm-instances controls for the Jibri fleet — only render this when the
+ * caller can manage monitoring and real recorder data exists. Demo mode fakes recorderStatus
+ * (see src/data/monitoring.ts) so this renders there too; clicking through still issues a real
+ * apiFetch call and surfaces its failure as inline feedback text, same as every other write
+ * action on this page (BroadcastReloadButton, service restart) — none of them special-case
+ * demo mode, they just fail visibly and harmlessly with no backend to reach.
+ */
 export function RecorderControls({ serverName, recorderStatus }: { serverName: string; recorderStatus: RecorderStatus }) {
   const [busy, setBusy] = useState<"rescale" | "min" | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
