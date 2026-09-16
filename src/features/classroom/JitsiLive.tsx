@@ -1551,18 +1551,27 @@ export default function JitsiLive({
       {mode === "teacher" && !isRecordingObserver && screenShareActive && shareMayHaveDroppedSince && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
           <WifiOff className="h-4 w-4 shrink-0 translate-y-0.5" />
+          {/* Teacher-reported live, with a screenshot: the browser's own "Choose what to
+              share" picker was stuck open, blocking the class. Root cause was this banner's
+              own button -- its whole premise is "screenShareActive may say true when Jitsi's
+              real state has already silently gone back to false," which makes
+              toggleShareScreen a coin flip: if the real state actually was still "sharing,"
+              it correctly stops it, but if the real state was already "not sharing" (the
+              exact case this banner exists to warn about), toggling it *starts a brand-new
+              share instead* -- reopening exactly that picker, on top of a call the teacher
+              was trying to get out of. There's no reliable way from here to know which case
+              it is, so the fix is to stop guessing: use Jitsi's own screen-share button in
+              the call toolbar below instead, which reflects its actual internal state, not
+              this possibly-stale one. */}
           <p className="flex-1">
-            Your connection dropped briefly while you were sharing your screen — students may no longer be seeing it, even though it still shows as shared here. Stop sharing, then share again to be sure.
+            Your connection dropped briefly while you were sharing your screen — students may no longer be seeing it, even though it still shows as shared here. Use the screen-share button in your call controls below to stop and restart it, rather than this banner.
           </p>
           <button
             type="button"
-            onClick={() => {
-              jitsiApiRef.current?.executeCommand("toggleShareScreen");
-              setShareMayHaveDroppedSince(false);
-            }}
+            onClick={() => setShareMayHaveDroppedSince(false)}
             className="shrink-0 font-semibold underline decoration-brand-amber/50 underline-offset-2 hover:decoration-brand-amber"
           >
-            Stop sharing
+            Dismiss
           </button>
         </div>
       )}
