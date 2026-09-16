@@ -156,7 +156,10 @@ export interface ApiUnassignedChild {
   childId: string;
   childName: string;
   parentName: string;
+  parentEmail: string | null;
   academicLevel: string | null;
+  /** Course(s) this child is already actively enrolled in elsewhere, comma-joined; null if none yet. */
+  currentCourses: string | null;
 }
 
 /** The batch's current student roster (WBS "Assign Students"). */

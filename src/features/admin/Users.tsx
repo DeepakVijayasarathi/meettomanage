@@ -183,7 +183,7 @@ export default function AdminUsers() {
   }, [detailChild]);
   // Edit-profile dialog (name + phone + role) for any user account.
   const [editUser, setEditUser] = useState<AppUser | null>(null);
-  const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "" });
+  const [editForm, setEditForm] = useState({ firstName: "", lastName: "", email: "", phone: "" });
   const [editRole, setEditRole] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
   const [editSaving, setEditSaving] = useState(false);
@@ -203,7 +203,12 @@ export default function AdminUsers() {
 
   function openEdit(u: AppUser) {
     const [firstName, ...rest] = u.name.trim().split(/\s+/);
-    setEditForm({ firstName: firstName ?? "", lastName: rest.join(" "), phone: u.phone === "—" ? "" : u.phone });
+    setEditForm({
+      firstName: firstName ?? "",
+      lastName: rest.join(" "),
+      email: u.email,
+      phone: u.phone === "—" ? "" : u.phone,
+    });
     setEditError(null);
     const currentOption = u.roleDefinitionId
       ? addUserRoleOptions.find((o) => o.roleDefinitionId === u.roleDefinitionId)
@@ -220,6 +225,10 @@ export default function AdminUsers() {
       setEditError("First name is required.");
       return;
     }
+    if (!isValidEmail(editForm.email)) {
+      setEditError("Enter a valid email address.");
+      return;
+    }
     if (!apiEnabled()) {
       setBanner({ ok: true, text: "Demo mode — no account actually updated." });
       setEditUser(null);
@@ -234,6 +243,7 @@ export default function AdminUsers() {
       await updateUser(editUser.id, {
         firstName: editForm.firstName.trim(),
         lastName: editForm.lastName.trim(),
+        email: editForm.email.trim(),
         phone: editForm.phone.trim() || undefined,
         departmentId: editingTeacherInPlace ? editDepartment : undefined,
       });
@@ -250,6 +260,7 @@ export default function AdminUsers() {
             await updateUser(editUser.id, {
               firstName: editForm.firstName.trim(),
               lastName: editForm.lastName.trim(),
+              email: editForm.email.trim(),
               phone: editForm.phone.trim() || undefined,
               departmentId: editDepartment,
             });
@@ -1077,7 +1088,6 @@ export default function AdminUsers() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit profile</DialogTitle>
-            <DialogDescription>{editUser?.email}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1099,6 +1109,16 @@ export default function AdminUsers() {
                   placeholder="e.g. Kaur"
                 />
               </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="edit-email">Email <span className="text-destructive">*</span></Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="name@example.com"
+              />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="edit-phone">Phone</Label>

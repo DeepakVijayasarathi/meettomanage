@@ -59,17 +59,39 @@ declare global {
 
 const scriptPromises = new Map<string, Promise<void>>();
 
+// Bug fixed 2026-09-16: this cache is module-level, so it outlives every unmount/remount of
+// JitsiLive across the whole SPA session. A stale entry here reproduced exactly as "host
+// clicks Start Class repeatedly, same stuck screen every time" -- one transient script-load
+// failure (or a request that never fires onload/onerror at all, e.g. a flaky network hiccup)
+// used to leave a dead/never-settling promise permanently cached for that domain, so every
+// later click just re-awaited the same broken promise forever instead of retrying the actual
+// <script> load. Now a failed or timed-out attempt removes its own cache entry so the next
+// click gets a fresh load.
 function loadJitsiScript(domain: string): Promise<void> {
   if (window.JitsiMeetExternalAPI) return Promise.resolve();
   let promise = scriptPromises.get(domain);
   if (!promise) {
-    promise = new Promise((resolve, reject) => {
+    promise = new Promise<void>((resolve, reject) => {
       const script = document.createElement("script");
       script.src = `https://${domain}/external_api.js`;
       script.async = true;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Could not load the Jitsi Meet API."));
+      const timeout = setTimeout(() => {
+        script.remove();
+        reject(new Error("Timed out loading the Jitsi Meet API."));
+      }, 15_000);
+      script.onload = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
+      script.onerror = () => {
+        clearTimeout(timeout);
+        script.remove();
+        reject(new Error("Could not load the Jitsi Meet API."));
+      };
       document.head.appendChild(script);
+    }).catch((err) => {
+      scriptPromises.delete(domain);
+      throw err;
     });
     scriptPromises.set(domain, promise);
   }
@@ -283,15 +305,6 @@ export default function JitsiLive({
   // has succeeded by the time it fires — the "off+error" event just supplies a real reason
   // for that eventual message instead of a generic guess.
   const recordingErrorReasonRef = useRef<string | null>(null);
-  // Teacher-only, advisory: nothing on this self-hosted Jitsi deployment actually cuts a
-  // call off at its scheduled end (no duration cap — see Docs/LONG_DURATION_SESSIONS.md),
-  // so a class quietly running long has no signal at all today. Polls rather than a single
-  // setTimeout because scheduledEndAtUtc isn't known until the async jitsi-join lookup in
-  // init() below resolves, and this effect can't depend on that without re-running the
-  // whole Jitsi connection setup.
-  const [timeUpAlerted, setTimeUpAlerted] = useState(false);
-  const timeUpFiredRef = useRef(false);
-  const scheduledEndRef = useRef<string | null>(null);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   // Sourced from Jitsi's own participantJoined/Left events rather than the SignalR
   // interactive-layer roster: a demo lead has no account and joins straight from the
@@ -407,7 +420,6 @@ export default function JitsiLive({
 
   function openFeedbackForm() {
     setLeaveConfirmOpen(false);
-    setTimeUpAlerted(false);
     setFeedbackOpen(true);
   }
 
@@ -578,7 +590,6 @@ export default function JitsiLive({
           joinRoom = join.room;
           joinDomain = join.domain;
           joinToken = join.token ?? undefined;
-          scheduledEndRef.current = join.scheduledEndAtUtc;
           sessionIsDemo = join.isDemo;
           // See effectiveSessionIdRef's own doc comment: this class may have been edited
           // since whatever gave this component its `sessionId` prop was fetched — join.sessionId
@@ -606,24 +617,27 @@ export default function JitsiLive({
         }
       }
 
-      // Teacher-only, best-effort: run before Jitsi's own iframe ever loads, so a real
-      // camera/mic problem surfaces with a specific, actionable reason before the teacher
-      // is stuck guessing at an unresponsive toggle mid-class. Never blocks the join --
-      // even a hard failure here just informs, since Jitsi may still partially work (e.g.
-      // audio-only) or the teacher may fix it and the *real* device grab inside the
-      // iframe succeeds anyway.
-      if (mode === "teacher" && !isRecordingObserver) {
-        // Teacher-reported live: "voice/camera didn't work — told them to log out and
-        // join again, and it worked the second time." That pattern is the classic
-        // symptom of the first join racing ahead of the browser's own permission
-        // decision (the OS dialog shown but not yet answered, or answered just after
-        // this check already read the old "not decided yet" state) -- by the second
-        // join, the browser already has the answer cached from the first attempt, so
-        // it succeeds cleanly. One retry after a short pause turns that into something
-        // the app recovers from on its own, instead of a parent having to notice and
-        // manually reload. Only the FIRST attempt's NotAllowedError is worth retrying
-        // this way -- a real block, missing device, or in-use device won't resolve
-        // itself in 1.5s, so those still fail fast to the specific message below.
+      // Best-effort, everyone except a recording observer (which has no camera/mic UI at
+      // all): run before Jitsi's own iframe ever loads, so a real camera/mic problem
+      // surfaces with a specific, actionable reason before the participant is stuck
+      // guessing at an unresponsive toggle mid-class. Never blocks the join -- even a hard
+      // failure here just informs, since Jitsi may still partially work (e.g. audio-only)
+      // or the device grab inside the iframe succeeds anyway.
+      if (!isRecordingObserver) {
+        // Reported live for teachers, students AND parents alike: "voice/camera didn't
+        // work — told them to log out and join again, and it worked the second (or
+        // third) time." That pattern is the classic symptom of the first join racing
+        // ahead of the browser's own permission decision (the OS dialog shown but not yet
+        // answered, or answered just after this check already read the old "not decided
+        // yet" state) -- by a later join, the browser already has the answer cached from
+        // the first attempt, so it succeeds cleanly. This preflight+retry used to run for
+        // the teacher only; widened to every real joiner (2026-09-16) since students and
+        // parents hit the exact same race, just with no warm-up backing their side of the
+        // join at all before this. One retry after a short pause turns that into
+        // something the app recovers from on its own, instead of someone having to notice
+        // and manually rejoin repeatedly. Only the FIRST attempt's NotAllowedError is
+        // worth retrying this way -- a real block, missing device, or in-use device won't
+        // resolve itself in 1.5s, so those still fail fast to the specific message below.
         let stream: MediaStream | null = null;
         let lastErrorName = "";
         for (let attempt = 0; attempt < 2 && !stream; attempt++) {
@@ -1022,6 +1036,15 @@ export default function JitsiLive({
         // more tile in the same grid (up to the 9 TILE_VIEW_MAX_COLUMNS=3 allows) instead of
         // letting Jitsi silently switch layouts underneath the teacher.
         jitsiApiRef.current?.executeCommand("setTileView", true);
+        // Reported live (2026-09-16): after the teacher stopped sharing, the shared screen
+        // "wouldn't go away" — this single setTileView call can land before Jitsi's own
+        // internal layout/track-teardown for the stopped share has actually settled, so the
+        // command has nothing to act on yet. A second, delayed re-assert costs nothing when
+        // the first one already worked (setTileView(true) is idempotent) and gives Jitsi a
+        // moment to finish tearing down the stopped share's track before this reissues it.
+        if (!on) {
+          setTimeout(() => jitsiApiRef.current?.executeCommand("setTileView", true), 800);
+        }
       });
       // Without these, a video server/room misconfiguration (e.g. the Jitsi deployment's
       // focus component rejecting the room outright) left the whole screen looking
@@ -1124,25 +1147,6 @@ export default function JitsiLive({
     const timer = setTimeout(() => setShowShareOsHint(true), 6000);
     return () => clearTimeout(timer);
   }, [shareAttempted, shareScreenPromptOpen]);
-
-  // Fires once, the first time a check lands at/after the scheduled end — not on every
-  // poll — so it's one modal prompt, not a repeat every 30 seconds. Deliberately a choice
-  // (Continue Class / Close Class), not just an advisory toast: the call was never actually
-  // going to be cut off (see the timeUpFiredRef/scheduledEndRef setup above), but a passive
-  // dismiss-only banner left the teacher to figure out on their own that continuing needed
-  // no action at all — this makes "keep teaching" as explicit and intentional a choice as
-  // ending the class.
-  useEffect(() => {
-    if (mode !== "teacher" || !interactive) return;
-    const check = setInterval(() => {
-      if (!scheduledEndRef.current || timeUpFiredRef.current) return;
-      if (Date.now() >= new Date(scheduledEndRef.current).getTime()) {
-        timeUpFiredRef.current = true;
-        setTimeUpAlerted(true);
-      }
-    }, 30_000);
-    return () => clearInterval(check);
-  }, [mode, interactive]);
 
   return (
     <div className="flex h-screen flex-col bg-brand-navyDark bg-[radial-gradient(circle_at_50%_0%,rgba(124,92,252,0.10),transparent_60%)]">
@@ -1346,49 +1350,6 @@ export default function JitsiLive({
           onConfirm={() => navigate(-1)}
         />
       )}
-      {/* Teacher-only, fires once at the scheduled end (see the effect above): the call was
-          never actually going to be cut off (no duration cap on this self-hosted Jitsi
-          deployment — see docs/LONG_DURATION_SESSIONS.md), so this is a deliberate choice
-          rather than a passive "time's up" notice. "Close Class" reuses completeAndLeave —
-          the exact same payout/summary-email/navigate-away logic the header's own "End the
-          class" button already runs. "Continue Class" just dismisses; nothing about the
-          call changes either way. */}
-      <Dialog open={mode === "teacher" && timeUpAlerted} onOpenChange={setTimeUpAlerted}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <span className="mb-1 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-amber/15 text-brand-amber">
-              <AlertTriangle className="h-5 w-5" />
-            </span>
-            <DialogTitle>Scheduled class time is up</DialogTitle>
-            <DialogDescription>
-              Keep teaching for as long as you need, or close the class now if you're done.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="secondary"
-              className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal rounded-xl px-3.5 py-3 text-left"
-              onClick={() => setTimeUpAlerted(false)}
-            >
-              <span className="flex flex-col gap-0.5">
-                <span className="font-semibold">Continue Class</span>
-                <span className="text-xs font-normal leading-snug opacity-80">The call stays open exactly as it is — nothing is restricted.</span>
-              </span>
-            </Button>
-            <Button
-              variant="secondary"
-              className="h-auto w-full items-start justify-start gap-2.5 whitespace-normal rounded-xl border border-success/30 bg-success/15 px-3.5 py-3 text-left text-success hover:bg-success/25"
-              onClick={openFeedbackForm}
-            >
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-              <span className="flex flex-col gap-0.5">
-                <span className="font-semibold">Close Class</span>
-                <span className="text-xs font-normal leading-snug opacity-80">Marks it delivered, calculates your payout, emails today's summary to parents. Can't be undone.</span>
-              </span>
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
       {/* Teacher feedback (WBS Round 2 #2): parents only ever saw an engagement-stats
           auto-summary unless a teacher happened to type free-text into completeSession's
           optional `summary` param — nothing ever prompted for it. This is the prompt. */}
@@ -1451,7 +1412,7 @@ export default function JitsiLive({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {mode === "teacher" && !isRecordingObserver && jitsiReady && preflightMediaIssue && !deviceHintDismissed && (
+      {!isRecordingObserver && jitsiReady && preflightMediaIssue && !deviceHintDismissed && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
           <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
           <p className="flex-1">{preflightMediaIssue}</p>
