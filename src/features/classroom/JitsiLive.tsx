@@ -760,7 +760,19 @@ export default function JitsiLive({
             "raisehand",
             "tileview",
             "videobackgroundblur",
-            ...(mode === "teacher" && !isRecordingObserver ? (["recording", "mute-everyone"] as const) : []),
+            ...(mode === "teacher" && !isRecordingObserver ? (["mute-everyone"] as const) : []),
+            // "recording" specifically also needs `interactive` -- reported live: a Personal
+            // Meeting Room recording (manually started with this button, since auto-record is
+            // already scoped off it) "disappeared from the portal... couldn't find it anywhere."
+            // Not a display bug -- it was never findable in the first place. registerRecording
+            // (the only thing that ever creates a SessionRecording row) requires a real
+            // sessionId to attach to, and the Personal Meeting Room never has one (see
+            // recordingLinkAvailable's own `interactive` check below) -- so a recording made
+            // there is a real file on the video server with no database row and no UI anywhere
+            // that could ever surface it. Removing the button here is what "don't record demo
+            // and personal link" already asked for; this closes the one remaining way to start
+            // one manually.
+            ...(mode === "teacher" && !isRecordingObserver && interactive ? (["recording"] as const) : []),
             "fullscreen",
             "settings",
             // Deliberately no "hangup" here — our own Leave button (header, top-right)
