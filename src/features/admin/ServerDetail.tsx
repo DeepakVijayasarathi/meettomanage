@@ -80,6 +80,23 @@ function mergeHistories(cpu: TimeSeriesPoint[], memory: TimeSeriesPoint[]): Merg
   return Array.from(byTimestamp.values()).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
+interface MergedRecorderPoint {
+  timestamp: string;
+  busy?: number;
+  total?: number;
+}
+
+/** Same zip-by-timestamp idea as mergeHistories, for the recorder busy/total pair instead of cpu/memory. */
+function mergeRecorderHistory(busy: TimeSeriesPoint[], total: TimeSeriesPoint[]): MergedRecorderPoint[] {
+  const byTimestamp = new Map<string, MergedRecorderPoint>();
+  for (const p of busy) byTimestamp.set(p.timestamp, { timestamp: p.timestamp, busy: p.value });
+  for (const p of total) {
+    const existing = byTimestamp.get(p.timestamp);
+    byTimestamp.set(p.timestamp, { timestamp: p.timestamp, busy: existing?.busy, total: p.value });
+  }
+  return Array.from(byTimestamp.values()).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+}
+
 /** Min/avg/max over a trend series — the same legend a Zabbix graph shows beneath its plot, computed client-side from the hour of history the API already sends. */
 function summarize(data: TimeSeriesPoint[]): { min: number; avg: number; max: number } | null {
   if (data.length === 0) return null;
@@ -328,6 +345,13 @@ export default function AdminServerDetail() {
     [historyRange, server, rangeHistory]
   );
   const historyData = useMemo(() => mergeHistories(activeCpuHistory, activeMemoryHistory), [activeCpuHistory, activeMemoryHistory]);
+  // Always the ~1h snapshot the main status payload already carries -- unlike CPU/memory
+  // above, recorder occupancy has no 24h/7d range picker yet (recordingAtCapacityPercent7d
+  // in the Capacity Trend section below covers the 7-day view instead).
+  const recorderHistoryData = useMemo(
+    () => mergeRecorderHistory(server?.recorderStatus?.busyHistory ?? [], server?.recorderStatus?.totalHistory ?? []),
+    [server?.recorderStatus?.busyHistory, server?.recorderStatus?.totalHistory]
+  );
   const cpuSummary = useMemo(() => summarize(activeCpuHistory), [activeCpuHistory]);
   const memorySummary = useMemo(() => summarize(activeMemoryHistory), [activeMemoryHistory]);
   const RANGE_LABEL: Record<HistoryRange, string> = { "1h": "last hour", "24h": "last 24 hours", "7d": "last 7 days" };
@@ -624,6 +648,40 @@ export default function AdminServerDetail() {
             </div>
           )}
           {server.recorderStatus && canManage && <RecorderControls serverName={server.name} recorderStatus={server.recorderStatus} />}
+
+          {server.recorderStatus && recorderHistoryData.length >= 2 && (
+            // Requested: "more advance and detail" beyond a single occupancy snapshot and
+            // the 7d-average % stat below -- this is the one view that actually shows *when*
+            // a capacity crunch happened (recording stopped midway, glitching, etc.), not
+            // just that it happens sometimes. Total is plotted too, not just busy, since the
+            // fleet autoscales -- 3 busy only means "full" against however many were online
+            // at that same moment, not a fixed ceiling.
+            <div className="mt-5">
+              <ChartCard title="Recorder Occupancy" description="Busy vs. total recorder instances, last hour" height={260}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={recorderHistoryData} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="detail-recorder-busy" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={CHART_PALETTE[2]} stopOpacity={0.35} />
+                        <stop offset="100%" stopColor={CHART_PALETTE[2]} stopOpacity={0.03} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="timestamp" tickFormatter={formatSparklineTime} tickLine={false} axisLine={false} fontSize={12} minTickGap={40} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} fontSize={12} width={32} />
+                    <RTooltip
+                      labelFormatter={(value: string) => formatSparklineTime(value)}
+                      formatter={(value: number, name: string) => [value, name === "busy" ? "Recording" : "Total online"]}
+                      contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }}
+                    />
+                    <Legend formatter={(value: string) => <span className="text-xs font-medium text-foreground">{value === "busy" ? "Recording" : "Total online"}</span>} />
+                    <Area type="stepAfter" dataKey="busy" name="busy" stroke={CHART_PALETTE[2]} strokeWidth={2} fill="url(#detail-recorder-busy)" connectNulls isAnimationActive={false} />
+                    <Area type="stepAfter" dataKey="total" name="total" stroke={CHART_PALETTE[3]} strokeWidth={2} fill="none" strokeDasharray="4 4" connectNulls isAnimationActive={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </div>
+          )}
 
           {server.callQuality && (
             <div className="mt-5">

@@ -22,6 +22,8 @@ export interface ApiRecorderStatus {
   idleInstances: number;
   minInstances: number;
   maxInstances: number;
+  busyHistory: ApiTimeSeriesPoint[];
+  totalHistory: ApiTimeSeriesPoint[];
 }
 
 export interface ApiCapacityForecast {
