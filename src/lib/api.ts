@@ -71,8 +71,12 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw new ApiError(response.status, detail);
   }
 
+  // Some endpoints return 200 with no body (e.g. MonitoringController.BroadcastReload's
+  // bare `Ok()`), not just 204 -- .json() on an empty body throws "Unexpected end of JSON
+  // input" rather than resolving to anything useful, so check the actual text first.
   if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 /** Downloads a file response (a bulk-export CSV) with the auth token and saves it as `filename`. */
