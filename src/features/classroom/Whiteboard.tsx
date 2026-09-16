@@ -271,9 +271,29 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
   }, [viewOffset]);
 
   // Re-render whenever this page's committed strokes change (page switch, new stroke, pan).
+  // Reported live as "the eraser is slow": redrawBackground() is O(total strokes on the
+  // page) -- fine for the one time it fires per LOCAL stroke (commitDraft, below, only
+  // touches `pages` on pointer-up), but a *remote* viewer's `pages` changes once per
+  // "stroke"/"strokeAppend" op received from whoever's actually drawing -- i.e. once per
+  // throttled network message while their stroke is still in progress (see onBoardOp's own
+  // ~50ms throttle below), each one re-replaying every already-committed stroke on the page
+  // from scratch. A broad eraser sweep generates far more of those append messages over a
+  // given stretch of canvas than a precise pen stroke covering the same distance, which is
+  // why this reads specifically as "the eraser" rather than drawing in general. Coalescing
+  // to one redraw per animation frame -- not one per `pages` change -- caps the real cost at
+  // 60/sec regardless of how many network messages land in between, the same throttling
+  // principle the sender already applies, just on the receiving side instead.
+  const redrawRafRef = useRef<number | null>(null);
   useEffect(() => {
-    redrawBackground();
-    redraw();
+    if (redrawRafRef.current !== null) cancelAnimationFrame(redrawRafRef.current);
+    redrawRafRef.current = requestAnimationFrame(() => {
+      redrawRafRef.current = null;
+      redrawBackground();
+      redraw();
+    });
+    return () => {
+      if (redrawRafRef.current !== null) cancelAnimationFrame(redrawRafRef.current);
+    };
   }, [redrawBackground, redraw]);
 
   // Size the canvas to its container and redraw on resize.
