@@ -322,6 +322,16 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
     canvasRef.current?.setPointerCapture(e.pointerId);
   }
 
+  // Bug fixed 2026-09-16 ("eraser works very slowly"): this used to push the new point and
+  // then call redraw(), which replayed drawStroke() over draft.points FROM SCRATCH on every
+  // single pointermove -- O(current-stroke-length) canvas work per move, i.e. O(n^2) over
+  // the life of one long stroke. Pen marks are usually short so this rarely showed, but
+  // erasing is exactly the case where it does: a real erase is a long, continuous
+  // back-and-forth drag, so the per-move cost kept growing the whole time the user was
+  // erasing. For pen/eraser, only the newest segment (last point -> new point) is now
+  // stroked directly onto the already-correct canvas each move -- O(1) per move regardless
+  // of how long the stroke has been going. Non-pen/eraser tools (rectangle/circle/line) only
+  // ever hold 1-2 points, so their existing full-redraw() path was never the bottleneck.
   function handlePointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
     if (panRef.current) {
       const { startX, startY, origin } = panRef.current;
@@ -331,11 +341,30 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
     if (!drawingRef.current || !draftRef.current) return;
     const pt = getPoint(e);
     if (tool === "pen" || tool === "eraser") {
-      draftRef.current.points.push(pt);
+      const points = draftRef.current.points;
+      const prev = points[points.length - 1];
+      points.push(pt);
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (canvas && ctx && prev) {
+        ctx.save();
+        ctx.translate(-viewOffset.x, -viewOffset.y);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.lineWidth = draftRef.current.width;
+        ctx.strokeStyle = draftRef.current.color;
+        ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
+        ctx.beginPath();
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(pt.x, pt.y);
+        ctx.stroke();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.restore();
+      }
     } else {
       draftRef.current.points = [draftRef.current.points[0], pt];
+      redraw();
     }
-    redraw();
 
     // Broadcast the in-progress stroke so remote viewers see it grow live instead of
     // only appearing once complete. The first send establishes the stroke (id, tool,

@@ -356,7 +356,8 @@ export default function SubAdminSessions() {
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={row.status === "cancelled"}
+                    disabled={row.status === "cancelled" || row.status === "rescheduled"}
+                    title={row.status === "rescheduled" ? "This session was already moved — reschedule the new session it moved to instead." : undefined}
                     onClick={(e) => {
                       e.stopPropagation();
                       setRescheduleTarget(row);

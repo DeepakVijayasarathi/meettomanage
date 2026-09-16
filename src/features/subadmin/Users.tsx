@@ -287,13 +287,18 @@ export default function SubAdminUsers() {
   // porting it partially risks leaving an account in a half-migrated state). Name and phone
   // cover the common "fix a typo" / "update contact number" request this page needs to serve.
   const [editUser, setEditUser] = useState<AppUser | null>(null);
-  const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "" });
+  const [editForm, setEditForm] = useState({ firstName: "", lastName: "", email: "", phone: "" });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
   function openEdit(u: AppUser) {
     const [firstName, ...rest] = u.name.trim().split(/\s+/);
-    setEditForm({ firstName: firstName ?? "", lastName: rest.join(" "), phone: u.phone === "—" ? "" : u.phone });
+    setEditForm({
+      firstName: firstName ?? "",
+      lastName: rest.join(" "),
+      email: u.email,
+      phone: u.phone === "—" ? "" : u.phone,
+    });
     setEditError(null);
     setEditUser(u);
     setDetailUser(null);
@@ -303,6 +308,10 @@ export default function SubAdminUsers() {
     if (!editUser) return;
     if (!editForm.firstName.trim()) {
       setEditError("First name is required.");
+      return;
+    }
+    if (!isValidEmail(editForm.email)) {
+      setEditError("Enter a valid email address.");
       return;
     }
     if (!apiEnabled()) {
@@ -316,6 +325,7 @@ export default function SubAdminUsers() {
       await updateUser(editUser.id, {
         firstName: editForm.firstName.trim(),
         lastName: editForm.lastName.trim(),
+        email: editForm.email.trim(),
         phone: editForm.phone.trim() || undefined,
       });
       setEditUser(null);
@@ -799,7 +809,6 @@ export default function SubAdminUsers() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit profile</DialogTitle>
-            <DialogDescription>{editUser?.email}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -821,6 +830,16 @@ export default function SubAdminUsers() {
                   placeholder="e.g. Kaur"
                 />
               </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="edit-email">Email <span className="text-destructive">*</span></Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="name@example.com"
+              />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="edit-phone">Phone</Label>
