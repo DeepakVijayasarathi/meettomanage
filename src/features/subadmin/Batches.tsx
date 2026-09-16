@@ -796,6 +796,7 @@ export default function SubAdminBatches() {
                             unassigned.map((c) => (
                               <SelectItem key={c.childId} value={c.childId}>
                                 {c.childName} — {c.parentName}
+                                {c.academicLevel ? ` · ${c.academicLevel}` : ""}
                               </SelectItem>
                             ))
                           )}
