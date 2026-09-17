@@ -594,7 +594,12 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
   );
 
   return (
-    <div className={cn("flex h-full flex-col gap-2 p-3", maximized && "fixed inset-0 z-40 h-screen bg-brand-navy p-4")}>
+    // h-dvh, not h-screen -- same fix, same reasoning as JitsiLive's own root wrapper
+    // (teacher-reported live: "screen size overall very small and when we zoom it, it
+    // automatically vanishes and minimizes on its own"). This maximize overlay is exactly
+    // the escape hatch a teacher would reach for to fight a too-small board, so it landing
+    // on the same viewport bug undermined the one workaround that should have fixed it.
+    <div className={cn("flex h-full flex-col gap-2 p-3", maximized && "fixed inset-0 z-40 h-dvh bg-brand-navy p-4")}>
       {canDraw ? (
         // Dark toolbar chrome matches the rest of the interactive panel (tabs, roster,
         // quiz) — only the canvas below stays a light "paper" surface, so this reads

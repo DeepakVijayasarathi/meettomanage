@@ -40,7 +40,7 @@ export default function PersonalMeetingRoom() {
 
   if (error) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-brand-navyDark px-6 text-center">
+      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-brand-navyDark px-6 text-center">
         <AlertTriangle className="h-6 w-6 text-destructive" />
         <p className="max-w-sm text-sm font-medium text-white/80">{error}</p>
       </div>
@@ -49,7 +49,7 @@ export default function PersonalMeetingRoom() {
 
   if (!room) {
     return (
-      <div className="flex h-screen items-center justify-center bg-brand-navyDark">
+      <div className="flex h-dvh items-center justify-center bg-brand-navyDark">
         <p className="text-sm text-white/60">Opening your meeting room…</p>
       </div>
     );

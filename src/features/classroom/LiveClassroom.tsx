@@ -59,7 +59,7 @@ export default function LiveClassroom({ mode }: { mode: "teacher" | "student" })
   const [inAppWarningDismissed, setInAppWarningDismissed] = useState(false);
   if (isLikelyInAppBrowser() && !inAppWarningDismissed) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
         <h1 className="text-xl font-semibold text-foreground">Open this link in your browser</h1>
         <p className="max-w-md text-sm text-muted-foreground">
           This looks like it opened inside an app's built-in browser (WhatsApp, Instagram, or similar) — those commonly block camera and microphone access for video calls, even when permission looks granted. For a reliable class, tap the menu in the corner of this screen and choose "Open in Browser" (or copy this link and paste it into Safari/Chrome directly).
@@ -112,7 +112,7 @@ export default function LiveClassroom({ mode }: { mode: "teacher" | "student" })
     // behind it): never fall back to the mock classroom with fabricated participants —
     // send the user back to start the class properly.
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
         <h1 className="text-xl font-semibold text-foreground">This class link can't be opened directly</h1>
         <p className="max-w-md text-sm text-muted-foreground">
           Join your live class from the schedule so we can connect you to the right room.
@@ -236,7 +236,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
 
   if (!session) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-slate-950 text-white">
+      <div className="flex h-dvh w-screen flex-col items-center justify-center gap-4 bg-slate-950 text-white">
         <p className="text-lg font-semibold">Session not found</p>
         <Button onClick={() => navigate(mode === "teacher" ? "/teacher" : "/parent")}>Go back</Button>
       </div>
@@ -244,7 +244,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-950 text-foreground">
+    <div className="flex h-dvh w-screen flex-col overflow-hidden bg-slate-950 text-foreground">
       {/* Minimal header — this screen renders outside the portal AppShell */}
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-gradient-to-r from-brand-navyDark via-brand-navy to-brand-navyDark px-3 py-2.5 text-white sm:gap-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">

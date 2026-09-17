@@ -202,6 +202,22 @@ export default function JitsiLive({
   // click.
   const [selfParticipantId, setSelfParticipantId] = useState<string | null>(null);
   const [pinnedParticipantId, setPinnedParticipantId] = useState<string | null>(null);
+  // Teacher-reported live (2026-09-17): "screen continuously disturbed when someone joined
+  // or left," "teacher's screen couldn't be spotlighted neither by us nor by teacher," "the
+  // screen I share is too small, I can't pin it for everyone." Root cause: the
+  // participantLeft and screenSharingStatusChanged listeners below unconditionally force
+  // setTileView(true) back on every single time -- including right after a deliberate pin
+  // (this same "Spotlight me" feature, or the teacher spotlighting her own shared screen),
+  // silently undoing it the moment the next student joins/leaves or a share toggles, which
+  // in a class of 15-20 kids trickling in happens constantly. Mirrors the LOCAL client's own
+  // current pin state -- mode-independent (unlike pinnedParticipantId's state, which the
+  // pinnedEndpointChanged listener only updates for mode==="teacher") because a student/
+  // parent's own Jitsi instance fires this same event too, whether from the teacher's
+  // broadcast pin (InteractivePanel's onPinChanged calling executeCommand("pinParticipant"))
+  // or a local click, and their own join/leave/share events must respect it just as much.
+  // A ref, not state, since the init effect below only depends on [room, mode] and would
+  // otherwise close over whatever this was at mount (same reason userNameRef exists).
+  const locallyPinnedIdRef = useRef<string | null>(null);
   const annotationOverlayRef = useRef<AnnotationOverlayHandle>(null);
   // Teacher-only "mark on top of what's on screen" tool — off by default so it never
   // steals pointer events from Jitsi's own controls (screen-share picker, mute, etc.)
@@ -1060,7 +1076,14 @@ export default function JitsiLive({
         // trying to render a stage around a track that no longer existed. Re-forcing tile view
         // on every departure — not just on screen-share start/stop — makes Jitsi recompute its
         // layout from the participants actually still in the room.
-        jitsiApiRef.current?.executeCommand("setTileView", true);
+        //
+        // Skipped entirely while something is deliberately pinned (locallyPinnedIdRef) --
+        // see that ref's own doc comment. The departed participant no longer having a track
+        // to spotlight around is Jitsi's problem to resolve on its own pinned tile, not a
+        // reason to blow away someone else's still-valid pin.
+        if (!locallyPinnedIdRef.current) {
+          jitsiApiRef.current?.executeCommand("setTileView", true);
+        }
       });
       // Jitsi's native pin is purely local to whichever browser clicked it — a teacher
       // pinning herself while screen-sharing used to show "Pinned" on her own screen only,
@@ -1070,6 +1093,7 @@ export default function JitsiLive({
       // a student's own view actually follow along — see InteractivePanel's onPinChanged.
       // A student pinning someone locally for their own view is deliberately left alone.
       api.addListener("pinnedEndpointChanged", (payload) => {
+        locallyPinnedIdRef.current = payload?.id ?? null;
         if (mode !== "teacher") return;
         setPinnedParticipantId(payload?.id ?? null);
         setPinnedRef.current?.(payload?.id ?? null);
@@ -1109,15 +1133,26 @@ export default function JitsiLive({
         // Re-asserting tile view on every share start/stop keeps the shared screen as just one
         // more tile in the same grid (up to the 9 TILE_VIEW_MAX_COLUMNS=3 allows) instead of
         // letting Jitsi silently switch layouts underneath the teacher.
-        jitsiApiRef.current?.executeCommand("setTileView", true);
+        //
+        // Skipped while something is deliberately pinned (locallyPinnedIdRef — see its own
+        // doc comment): teacher-reported live, this unconditional re-assert was exactly what
+        // made "spotlight the shared screen for everyone" impossible — the moment sharing
+        // started, this immediately shrank it back into the grid, undoing a pin in the same
+        // breath it was set (or broadcast). A deliberate pin already means someone chose a
+        // specific main view; screen-share starting isn't a reason to override that choice.
+        if (!locallyPinnedIdRef.current) {
+          jitsiApiRef.current?.executeCommand("setTileView", true);
+        }
         // Reported live (2026-09-16): after the teacher stopped sharing, the shared screen
         // "wouldn't go away" — this single setTileView call can land before Jitsi's own
         // internal layout/track-teardown for the stopped share has actually settled, so the
         // command has nothing to act on yet. A second, delayed re-assert costs nothing when
         // the first one already worked (setTileView(true) is idempotent) and gives Jitsi a
         // moment to finish tearing down the stopped share's track before this reissues it.
-        if (!on) {
-          setTimeout(() => jitsiApiRef.current?.executeCommand("setTileView", true), 800);
+        if (!on && !locallyPinnedIdRef.current) {
+          setTimeout(() => {
+            if (!locallyPinnedIdRef.current) jitsiApiRef.current?.executeCommand("setTileView", true);
+          }, 800);
         }
       });
       // Without these, a video server/room misconfiguration (e.g. the Jitsi deployment's
@@ -1223,7 +1258,14 @@ export default function JitsiLive({
   }, [shareAttempted, shareScreenPromptOpen]);
 
   return (
-    <div className="flex h-screen flex-col bg-brand-navyDark bg-[radial-gradient(circle_at_50%_0%,rgba(124,92,252,0.10),transparent_60%)]">
+    // h-dvh, not h-screen/100vh -- teacher-reported live (2026-09-17): "screen size overall
+    // very small and when we zoom it, it automatically vanishes and minimizes on its own."
+    // 100vh is the LAYOUT viewport, which mobile browsers don't shrink on pinch-zoom or
+    // address-bar show/hide -- so a fixed-height h-screen flex column doesn't reflow with
+    // the actual visible (visual) viewport, reading as the page randomly shrinking/jumping.
+    // Same fix, same reasoning, already established elsewhere in this app (see AppShell's
+    // own min-h-dvh comment) -- this screen had simply never been updated to match.
+    <div className="flex h-dvh flex-col bg-brand-navyDark bg-[radial-gradient(circle_at_50%_0%,rgba(124,92,252,0.10),transparent_60%)]">
       <header className="relative flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-b from-brand-navyDark/95 to-brand-navyDark/75 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-md sm:px-5">
         {/* Thin brand-gradient hairline instead of a flat border — ties the header to the
             same violet/amber accent used by the celebrate button and active toggles below,
@@ -1815,7 +1857,15 @@ export default function JitsiLive({
                 message={celebrationMessage}
                 // Once the Interactive panel is open, its own Stars tab already shows this
                 // leaderboard, so the floating card would be a redundant duplicate.
-                showLeaderboardCard={!interactive || !panelOpen}
+                //
+                // Teacher-reported live (2026-09-17): "the leaderboard again unnecessary on
+                // right side hiding students name+faces" -- this condition was missing the
+                // mode==="teacher" check its own neighboring comment (a few lines below, on
+                // the paired Joined-roster card) already documents as the intent ("Both are
+                // teacher-only"). Without it, any student/parent who closed their own panel
+                // got the same floating card over their video grid, covering exactly the
+                // faces/names a student view has no reason to hide.
+                showLeaderboardCard={mode === "teacher" && (!interactive || !panelOpen)}
                 stacked
               />
               {mode === "teacher" && (!interactive || !panelOpen) && (
