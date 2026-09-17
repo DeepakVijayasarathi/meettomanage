@@ -83,6 +83,27 @@ export async function getSessionRecordings(sessionId: string): Promise<ApiSessio
   return apiFetch<ApiSessionRecording[]>(`/api/parent-portal/sessions/${sessionId}/recordings`);
 }
 
+export interface ApiParentRecording {
+  id: string;
+  classSessionId: string;
+  storageUrl: string;
+  durationSeconds: number | null;
+  expiresAtUtc: string | null;
+  createdAtUtc: string;
+  batchName: string | null;
+  scheduledStartAtUtc: string;
+  /** This parent's own children placed in the recording's batch — lets the page filter to
+   *  whichever child is currently selected without a per-session lookup. */
+  childIds: string[];
+}
+
+/** Every non-expired recording across every one of the caller's children's batches, in one
+ *  call — replaces fetching the schedule then calling getSessionRecordings once per completed
+ *  session (the N+1 pattern already fixed on the admin and teacher Recordings pages). */
+export async function listMyRecordings(): Promise<ApiParentRecording[]> {
+  return apiFetch<ApiParentRecording[]>("/api/parent-portal/recordings");
+}
+
 /**
  * Grant-checked download for the signed-in parent. Not the admin-only
  * `/api/resources/{id}/download` (that route 403s for any non-Admin/SubAdmin role) —

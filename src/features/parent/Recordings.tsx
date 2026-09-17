@@ -15,16 +15,18 @@ import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { SESSIONS } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
-import { getParentSchedule, getSessionRecordings } from "@/api/parentPortal";
-import { toFrontendSession, type ApiSessionRecording } from "@/api/sessions";
+import { listMyRecordings, type ApiParentRecording } from "@/api/parentPortal";
+import type { ApiSessionRecording } from "@/api/sessions";
 import { formatDate } from "@/lib/utils";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { expiryLabelFor } from "./utils";
-import type { ClassSession } from "@/types";
 
-/** One recording paired with the session it belongs to — the unit this page renders as a card. */
+/** One recording paired with the (title, date) of the session it belongs to — the unit this
+ *  page renders as a card. Deliberately not a full ClassSession: listMyRecordings' bulk
+ *  endpoint doesn't carry (and this page doesn't need) anything beyond these two fields. */
 interface RecordingEntry {
   recording: ApiSessionRecording;
-  session: ClassSession;
+  session: { title: string; date: string };
 }
 
 export default function ParentRecordings() {
@@ -63,37 +65,29 @@ export default function ParentRecordings() {
     setLoading(true);
     setError(null);
 
-    // Recordings expire 15 days after class — a 45-day lookback comfortably covers every
-    // session that could still have a live (non-expired) recording, with slack for delayed
-    // Jibri uploads, without pulling in months of already-expired history.
-    const fromUtc = new Date(Date.now() - 45 * 86400_000).toISOString();
-    const toUtc = new Date().toISOString();
-
-    getParentSchedule(fromUtc, toUtc)
-      .then(async (apiSessions) => {
-        const completed = apiSessions
-          .map(toFrontendSession)
-          .filter((s) => s.status === "completed" && s.childIds.includes(child.id));
-
-        // One recordings lookup per completed session — the backend already scopes each
-        // call to this parent's own child and filters out expired rows, so whatever comes
-        // back here is exactly what's watchable right now.
-        const results = await Promise.all(
-          completed.map(async (session) => {
-            try {
-              const recs = await getSessionRecordings(session.id);
-              return recs.map((recording) => ({ recording, session }));
-            } catch {
-              // No recordings shared for this session (or it 404s the enrollment check) —
-              // not an error worth surfacing per-session, just contributes nothing.
-              return [];
-            }
-          })
-        );
-
+    // One paged, server-filtered call for every recording across every batch this parent's
+    // children are in — replaces fetching the schedule then calling getSessionRecordings once
+    // per completed session (each doing its own enrollment + suspension check), the same N+1
+    // shape already found and fixed on the admin and teacher Recordings pages.
+    listMyRecordings()
+      .then((recs: ApiParentRecording[]) => {
         if (cancelled) return;
-        const flat = results
-          .flat()
+        const flat = recs
+          .filter((r) => r.childIds.includes(child.id))
+          .map((r) => ({
+            recording: {
+              id: r.id,
+              classSessionId: r.classSessionId,
+              storageUrl: r.storageUrl,
+              durationSeconds: r.durationSeconds,
+              expiresAtUtc: r.expiresAtUtc,
+              createdAtUtc: r.createdAtUtc,
+            },
+            session: {
+              title: r.batchName ?? "Class session",
+              date: utcIsoToLocalDateTime(r.scheduledStartAtUtc).date,
+            },
+          }))
           .sort((a, b) => new Date(b.recording.createdAtUtc).getTime() - new Date(a.recording.createdAtUtc).getTime());
         setEntries(flat);
       })
