@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, DoorOpen, Loader2, Pencil, PartyPopper, PhoneOff, Pin, PinOff, Sparkles, UserPlus, Users, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, Loader2, Pencil, PartyPopper, PhoneOff, Pin, PinOff, Sparkles, UserPlus, Users, Volume2, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -290,6 +290,14 @@ export default function JitsiLive({
   // mic, and recording continuity with no warning) would be worse than the deploy it's
   // trying to deliver.
   const [reloadNotice, setReloadNotice] = useState<string | null>(null);
+  // Real parent complaint: a child joined via a demo link and couldn't hear the teacher at
+  // all -- video played, audio didn't. Browser autoplay policy (strictest on iPad/iPhone
+  // Safari) blocks incoming audio until the viewer makes some gesture on the page; Jitsi's
+  // iframe already requests the "autoplay" permission (confirmed in the deployed
+  // external_api.js), so this isn't a missing-permission bug, it's the browser waiting for
+  // a first tap it never got. Shown once to students/parents only -- a teacher's own audio
+  // isn't "incoming," so this never applies to them.
+  const [soundHintDismissed, setSoundHintDismissed] = useState(false);
   // Popup asking the teacher to share their screen right when the class starts — a click is
   // unavoidable (getDisplayMedia requires a real user gesture, a browser rule no app can
   // bypass), but a modal right at join is a clearer, earlier ask than waiting for the
@@ -1557,6 +1565,19 @@ export default function JitsiLive({
             className="shrink-0 font-semibold underline decoration-brand-violet/50 underline-offset-2 hover:decoration-brand-violet"
           >
             Share screen
+          </button>
+        </div>
+      )}
+      {mode === "student" && !isRecordingObserver && jitsiReady && !soundHintDismissed && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
+          <Volume2 className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+          <p className="flex-1">Can't hear the teacher? Tap anywhere on the video once — some phones and tablets block sound until you do.</p>
+          <button
+            type="button"
+            onClick={() => setSoundHintDismissed(true)}
+            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+          >
+            Dismiss
           </button>
         </div>
       )}
