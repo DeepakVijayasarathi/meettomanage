@@ -132,6 +132,7 @@ export const TEACHER_NAV: NavSection[] = [
       // produced a duplicate-key warning and a confusing "two links, one destination" UI),
       // My Classes is the only entry point now.
       { label: "My Classes", to: "/teacher/classes", icon: CalendarClock },
+      { label: "My Students", to: "/teacher/students", icon: Users },
       { label: "Attendance & Records", to: "/teacher/attendance", icon: ClipboardList },
       { label: "Recordings", to: "/teacher/recordings", icon: Video },
       { label: "Demo Feedback", to: "/teacher/demo-feedback", icon: ClipboardCheck, badge: "1" },
