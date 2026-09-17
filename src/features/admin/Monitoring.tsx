@@ -78,6 +78,7 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   concurrentClassroomUsers: 0,
   activeClassCount: 0,
   activeAlerts: [],
+  todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
   generatedAtUtc: "",
 };
 
@@ -802,7 +803,7 @@ export default function AdminMonitoring() {
 
       <AlertsBanner alerts={summary.activeAlerts ?? []} loading={loading && summary.servers.length === 0} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCard
           label="Concurrent Users"
           value={`${num(summary.concurrentClassroomUsers)}`}
@@ -843,6 +844,24 @@ export default function AdminMonitoring() {
           detail={`${totalParticipants} participant${totalParticipants === 1 ? "" : "s"}`}
           icon={Video}
           tone="primary"
+          loading={loading}
+          error={error}
+        />
+        {/* "Started, not still live, no session_recordings row" -- same definition used all
+            night to trace individual sync failures by hand, now on the dashboard instead of a
+            one-off SQL query. stillProcessing (an in-progress class, recording not synced yet)
+            is deliberately excluded from both the headline and the failed count -- it hasn't
+            failed, it just isn't done. */}
+        <KpiCard
+          label="Today's Recordings"
+          value={`${num(summary.todayRecordings?.succeeded)} / ${num(summary.todayRecordings?.started)}`}
+          detail={
+            num(summary.todayRecordings?.failed) > 0
+              ? `${num(summary.todayRecordings?.failed)} not synced yet`
+              : "All synced"
+          }
+          icon={Disc}
+          tone={num(summary.todayRecordings?.failed) > 0 ? "destructive" : "success"}
           loading={loading}
           error={error}
         />

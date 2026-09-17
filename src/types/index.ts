@@ -454,6 +454,14 @@ export interface MonitoringAlert {
   instance: string | null;
 }
 
+/** Today's (IST) real batch classes vs. how many actually have a registered recording. stillProcessing is a class still in progress with no recording yet — not a failure, just not done. */
+export interface RecordingSummary {
+  started: number;
+  succeeded: number;
+  failed: number;
+  stillProcessing: number;
+}
+
 export interface MonitoringSummary {
   servers: ServerStatus[];
   apiHealthy: boolean;
@@ -464,5 +472,6 @@ export interface MonitoringSummary {
   concurrentClassroomUsers: number;
   activeClassCount: number;
   activeAlerts: MonitoringAlert[];
+  todayRecordings: RecordingSummary;
   generatedAtUtc: string;
 }

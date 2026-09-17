@@ -46,6 +46,7 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   concurrentClassroomUsers: 0,
   activeClassCount: 0,
   activeAlerts: [],
+  todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
   generatedAtUtc: "",
 };
 

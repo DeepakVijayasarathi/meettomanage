@@ -32,6 +32,7 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
   concurrentClassroomUsers: 5,
   activeClassCount: 2,
   activeAlerts: [],
+  todayRecordings: { started: 42, succeeded: 40, failed: 1, stillProcessing: 1 },
   generatedAtUtc: "2026-08-23T05:00:00Z",
   servers: [
     {
