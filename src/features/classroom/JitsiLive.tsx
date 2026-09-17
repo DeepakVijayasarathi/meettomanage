@@ -205,6 +205,16 @@ export default function JitsiLive({
   // deliberately ephemeral (no history the way the whiteboard has).
   const [annotateOn, setAnnotateOn] = useState(false);
   const [annotateColor] = useState("#EF4444");
+  // Real teacher complaint, reported as "words disappearing": the annotate tool is
+  // deliberately ephemeral (see the comment above), but nothing told the teacher that before
+  // they used it -- turning on a tool and watching your own writing vanish reads as a bug,
+  // not a laser-pointer feature, if you were never told to expect it. Shown once per session
+  // the first time annotate is turned on, not a permanent fixture -- see the effect below.
+  const [annotateFadeHintDismissed, setAnnotateFadeHintDismissed] = useState(false);
+  const [annotateFadeHintShown, setAnnotateFadeHintShown] = useState(false);
+  useEffect(() => {
+    if (annotateOn) setAnnotateFadeHintShown(true);
+  }, [annotateOn]);
   const jitsiApiRef = useRef<{ executeCommand: (command: string, ...args: unknown[]) => void } | null>(null);
   const [lobbyEnabled, setLobbyEnabled] = useState(false);
   // jitsiApiRef being populated doesn't itself trigger a re-render (it's a ref) — this
@@ -619,7 +629,16 @@ export default function JitsiLive({
           // (no ApiError, the request never got a response) still falls back to a
           // best-effort room-only join, matching demo-mode/offline behavior.
           if (err instanceof ApiError) {
+            // Real teacher report: clicking Start Class repeatedly showed "the same screen"
+            // every time with no explanation. Root cause was here -- the toast alone
+            // auto-dismisses in a few seconds, and returning without setError() left the
+            // Jitsi iframe never created, so the call area just stayed a blank, empty box
+            // with no visible reason and no way to tell "broken" from "still loading." The
+            // toast stays for the fleeting notification; setError puts the actual reason on
+            // screen persistently, using the same error card every other init() failure
+            // already falls back to.
             toast({ variant: "error", title: "Couldn't join the class", description: err.message });
+            setError(err.message);
             return;
           }
         }
@@ -1568,6 +1587,19 @@ export default function JitsiLive({
           </button>
         </div>
       )}
+      {mode === "teacher" && !isRecordingObserver && annotateFadeHintShown && !annotateFadeHintDismissed && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
+          <Pencil className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+          <p className="flex-1">Marks you draw here fade after a couple seconds, like a laser pointer — they're for pointing things out live, not notes. For anything that should stay on screen, use the Board tab instead.</p>
+          <button
+            type="button"
+            onClick={() => setAnnotateFadeHintDismissed(true)}
+            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {mode === "student" && !isRecordingObserver && jitsiReady && !soundHintDismissed && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
           <Volume2 className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
@@ -1642,7 +1674,7 @@ export default function JitsiLive({
               // control of the two.
               <button
                 type="button"
-                title={annotateOn ? "Stop marking on screen" : "Mark on screen — draw over the video or a shared screen"}
+                title={annotateOn ? "Stop marking on screen" : "Mark on screen — draw over the video or a shared screen. Marks fade after a couple seconds, like a laser pointer; for notes that should stay, use the Board tab instead."}
                 aria-label={annotateOn ? "Stop marking on screen" : "Mark on screen"}
                 aria-pressed={annotateOn}
                 onClick={() => setAnnotateOn((o) => !o)}
