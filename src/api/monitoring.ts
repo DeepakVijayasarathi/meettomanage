@@ -180,6 +180,7 @@ export interface ApiSessionHistoryEntry {
   status: string;
   attendedCount: number;
   expectedCount: number;
+  hasRecording: boolean;
 }
 
 /** Every session scheduled today (IST), live or not, with attendance counts. */
@@ -219,6 +220,7 @@ export function toFrontendSessionHistory(api: ApiSessionHistoryEntry[]): Session
     status: s.status,
     attendedCount: s.attendedCount,
     expectedCount: s.expectedCount,
+    hasRecording: s.hasRecording,
   }));
 }
 

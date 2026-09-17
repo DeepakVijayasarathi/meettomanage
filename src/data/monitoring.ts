@@ -252,6 +252,7 @@ export const SESSION_HISTORY: SessionHistoryEntry[] = [
     status: "Completed",
     attendedCount: 5,
     expectedCount: 5,
+    hasRecording: true,
   },
   {
     sessionId: "demo-session-1",
@@ -265,6 +266,7 @@ export const SESSION_HISTORY: SessionHistoryEntry[] = [
     status: "InProgress",
     attendedCount: 2,
     expectedCount: 4,
+    hasRecording: false,
   },
   {
     sessionId: "demo-session-2",
@@ -278,6 +280,7 @@ export const SESSION_HISTORY: SessionHistoryEntry[] = [
     status: "InProgress",
     attendedCount: 2,
     expectedCount: 2,
+    hasRecording: false,
   },
   {
     sessionId: "demo-history-2",
@@ -291,5 +294,6 @@ export const SESSION_HISTORY: SessionHistoryEntry[] = [
     status: "Scheduled",
     attendedCount: 0,
     expectedCount: 6,
+    hasRecording: false,
   },
 ];

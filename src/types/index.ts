@@ -377,6 +377,8 @@ export interface SessionHistoryEntry {
   status: string;
   attendedCount: number;
   expectedCount: number;
+  /** True once a recording is registered for this session — only meaningful for a real batch class that has actually started; always false for demo/personal-link sessions. */
+  hasRecording: boolean;
 }
 
 /** A point-in-time `docker stats` sample for one container — not a counter, so it's "what is this using right now," refreshed every minute. */
