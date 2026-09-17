@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, DoorOpen, Loader2, Pencil, PartyPopper, PhoneOff, Pin, PinOff, Sparkles, UserPlus, Users, Volume2, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, GripVertical, Loader2, Pencil, PartyPopper, PhoneOff, Pin, PinOff, Sparkles, UserPlus, Users, Volume2, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -180,6 +180,62 @@ export default function JitsiLive({
   // with nothing on our side changing in between).
   const [reconnecting, setReconnecting] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
+  // Teacher-reported live (2026-09-17): "whiteboard itself is too small to be able to
+  // annotate or write the whole thing" -- the docked Interactive panel had one fixed
+  // width (380px) baked into the layout, with no way to make it bigger short of the
+  // whiteboard's own separate full-screen "maximize" overlay (a different, more drastic
+  // escape hatch -- see Whiteboard.tsx). A resizable panel gives a middle ground: keep
+  // the call and the panel both on screen side by side, just less cramped, for a teacher
+  // who wants more drawing/reading room without leaving the call view entirely. Widened
+  // default (was 380) plus a user-draggable handle (below); persisted per-browser so the
+  // choice sticks across classes instead of resetting every join.
+  const PANEL_WIDTH_STORAGE_KEY = "trn.classroomPanelWidth";
+  const DEFAULT_PANEL_WIDTH = 420;
+  const MIN_PANEL_WIDTH = 320;
+  const MAX_PANEL_WIDTH = 680;
+  const [panelWidth, setPanelWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return DEFAULT_PANEL_WIDTH;
+    const stored = Number(window.localStorage.getItem(PANEL_WIDTH_STORAGE_KEY));
+    return Number.isFinite(stored) && stored >= MIN_PANEL_WIDTH && stored <= MAX_PANEL_WIDTH ? stored : DEFAULT_PANEL_WIDTH;
+  });
+  const panelResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const [resizingPanel, setResizingPanel] = useState(false);
+  function resetPanelWidth() {
+    setPanelWidth(DEFAULT_PANEL_WIDTH);
+    if (typeof window !== "undefined") window.localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(DEFAULT_PANEL_WIDTH));
+  }
+  function handlePanelResizeStart(e: React.PointerEvent<HTMLDivElement>) {
+    panelResizeRef.current = { startX: e.clientX, startWidth: panelWidth };
+    setResizingPanel(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function handlePanelResizeMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!panelResizeRef.current) return;
+    // The panel sits on the right of the video card -- dragging the handle LEFT (toward
+    // the video) should grow the panel, so the delta is startX-minus-current, not the
+    // other way round.
+    const delta = panelResizeRef.current.startX - e.clientX;
+    setPanelWidth(Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, panelResizeRef.current.startWidth + delta)));
+  }
+  function handlePanelResizeEnd() {
+    panelResizeRef.current = null;
+    setResizingPanel(false);
+    if (typeof window !== "undefined") window.localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(panelWidth));
+  }
+  // Only cosmetic while actively dragging (matches the col-resize cursor everywhere, not
+  // just over the thin handle) and stops the drag from also selecting page text as the
+  // pointer sweeps across the video/panel on either side of it.
+  useEffect(() => {
+    if (!resizingPanel) return;
+    const prevCursor = document.body.style.cursor;
+    const prevUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.body.style.cursor = prevCursor;
+      document.body.style.userSelect = prevUserSelect;
+    };
+  }, [resizingPanel]);
   const [celebrating, setCelebrating] = useState(false);
   const [celebrationMessage, setCelebrationMessage] = useState<string | undefined>(undefined);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -202,6 +258,23 @@ export default function JitsiLive({
   // click.
   const [selfParticipantId, setSelfParticipantId] = useState<string | null>(null);
   const [pinnedParticipantId, setPinnedParticipantId] = useState<string | null>(null);
+  // Explicit "declutter" flag for Focus Mode — deliberately its own state, not derived
+  // from (pinnedParticipantId === selfParticipantId && !panelOpen) the way the button's
+  // pressed-state used to be computed. That derived condition was ALSO exactly the
+  // condition that made the floating leaderboard/roster cards below reappear (their own
+  // guard is "panel is closed"), so turning on Focus Mode — a teacher explicitly asking
+  // for maximum, decluttered video space — silently re-added two chrome cards over the
+  // exact corner of the video it was supposed to be clearing. Teacher-reported live:
+  // "no way to quickly reduce clutter" and "leaderboard hiding students' names+faces" —
+  // this closes the gap between the two: Focus Mode now actually suppresses them, and
+  // closing the panel any OTHER way (the plain Interactive toggle, not Focus Mode) still
+  // shows them same as before, since that's a real intentional summary view, not a
+  // declutter request. Cleared automatically if the pin changes to anything else (see the
+  // effect below), so the button never lies about what's actually pinned.
+  const [focusMode, setFocusMode] = useState(false);
+  useEffect(() => {
+    if (focusMode && pinnedParticipantId !== selfParticipantId) setFocusMode(false);
+  }, [focusMode, pinnedParticipantId, selfParticipantId]);
   // Teacher-reported live (2026-09-17): "screen continuously disturbed when someone joined
   // or left," "teacher's screen couldn't be spotlighted neither by us nor by teacher," "the
   // screen I share is too small, I can't pin it for everyone." Root cause: the
@@ -1371,30 +1444,27 @@ export default function JitsiLive({
                 <Button
                   size="pill"
                   variant="secondary"
-                  aria-pressed={pinnedParticipantId === selfParticipantId && !panelOpen}
+                  aria-pressed={focusMode}
                   disabled={!jitsiReady || !selfParticipantId}
                   className={headerToggleClass}
                   onClick={() => {
-                    const focusModeOn = pinnedParticipantId === selfParticipantId && !panelOpen;
-                    if (focusModeOn) {
+                    if (focusMode) {
                       jitsiApiRef.current?.executeCommand("pinParticipant", null);
+                      setFocusMode(false);
                     } else {
                       jitsiApiRef.current?.executeCommand("pinParticipant", selfParticipantId);
                       setPanelOpen(false);
+                      setFocusMode(true);
                     }
                   }}
                   title={
-                    pinnedParticipantId === selfParticipantId && !panelOpen
+                    focusMode
                       ? "Exit focus mode"
-                      : "Spotlight yourself (or whatever you're sharing) as the main view for the whole class, and clear the panel for maximum video space"
+                      : "Spotlight yourself (or whatever you're sharing) as the main view for the whole class, clear the panel and hide the floating leaderboard/roster cards for maximum, decluttered video space"
                   }
                 >
-                  {pinnedParticipantId === selfParticipantId && !panelOpen ? (
-                    <PinOff className="h-3.5 w-3.5" />
-                  ) : (
-                    <Pin className="h-3.5 w-3.5" />
-                  )}
-                  {pinnedParticipantId === selfParticipantId && !panelOpen ? "Exit Focus" : "Focus Mode"}
+                  {focusMode ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                  {focusMode ? "Exit Focus" : "Focus Mode"}
                 </Button>
               )}
               {interactive && (
@@ -1638,52 +1708,65 @@ export default function JitsiLive({
           Shown once, right at join, to the real teacher only (never the recording observer,
           which has no one to click it, and never a student/parent). A real zero-click
           auto-share is impossible either way (getDisplayMedia requires a genuine user
-          gesture, a browser security rule no app can bypass) -- see the dialog's own comment
-          just below for why it's a skippable nudge rather than a blocking requirement. */}
-      {/* Was deliberately mandatory (earlier teacher feedback) -- reversed on later feedback:
-          "repeatedly prompts for screen-share permission before the class will start, as if it
-          were mandatory" was reported as a bug against joining at all, not just the personal
-          link. Now skippable -- Escape, clicking outside, or the explicit Skip button all close
-          it without sharing, and the class proceeds without recording the whiteboard/quiz. The
-          softer, non-blocking nudge banner below (shown once actually recording) still reminds
-          a teacher who skipped, rather than this dialog reappearing or blocking anything. */}
-      <Dialog open={shareScreenPromptOpen} onOpenChange={(open) => !open && setShareScreenPromptOpen(false)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Share your screen?</DialogTitle>
-            <DialogDescription>
-              Sharing this tab (choose <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives students a clearer view. Not required — you can start the class without it.
-            </DialogDescription>
-          </DialogHeader>
-          {/* Real parent complaint: a video played inside a shared PowerPoint/tab had no sound
-              for students. Root cause is a hard browser rule, not anything fixable here --
-              Chrome only offers a "Share tab audio" checkbox for This Tab (and "Share system
-              audio" for Entire Screen on Windows only); a shared Window never carries audio on
-              any OS. The one checkbox most teachers miss, since it's easy to click straight
-              past in the picker -- called out explicitly rather than assumed. */}
-          <p className="rounded-lg bg-brand-violet/10 px-3 py-2 text-xs text-brand-violet">
-            Playing a video with sound? Tick <span className="font-semibold">Share tab audio</span> in the picker that opens next, or students won't hear it.
-          </p>
-          {showShareOsHint && (
-            <p className="rounded-lg bg-brand-amber/10 px-3 py-2 text-xs text-brand-amber">
-              Nothing happening after you click Share? On a Mac, check System Settings → Privacy &amp; Security → Screen Recording and make sure your browser is allowed — that's a separate permission from camera/microphone and browsers often fail silently when it's off.
+          gesture, a browser security rule no app can bypass) -- see below for why it's a
+          skippable nudge rather than a blocking requirement.
+          Was deliberately a blocking modal (earlier teacher feedback), then a skippable one
+          (later feedback: "repeatedly prompts... as if it were mandatory" read as a bug
+          against joining at all). Reworked again 2026-09-17 into a dismissible BANNER, not a
+          dialog, in direct response to that same teacher's live complaint about this exact
+          class: "there were popups happening in between the class on screen... very
+          distracting." A modal — even a skippable one, even shown only once — still steals
+          focus and blocks the rest of the call UI the instant it appears; this now sits
+          alongside the other inline nudge banners in this same list (recording-timing,
+          annotate-fade, sound hint, ...), all one consistent "notice, not interruption"
+          pattern, dismissed with a click instead of an OK-to-continue gate. */}
+      {mode === "teacher" && !isRecordingObserver && interactive && shareScreenPromptOpen && (
+        <div className="mx-3 mt-3 flex shrink-0 flex-col gap-2 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md sm:flex-row sm:items-start">
+          <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
+          <div className="flex-1 space-y-1.5">
+            <p>
+              <span className="font-semibold">Share your screen?</span> Sharing this tab (choose{" "}
+              <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives
+              students a clearer view. Not required — the class can carry on without it.
             </p>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShareScreenPromptOpen(false)}>
-              Skip for now
-            </Button>
-            <Button
-              onClick={() => {
-                setShareAttempted(true);
-                jitsiApiRef.current?.executeCommand("toggleShareScreen");
-              }}
-            >
-              Share screen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            {/* Real parent complaint: a video played inside a shared PowerPoint/tab had no
+                sound for students. Root cause is a hard browser rule, not anything fixable
+                here -- Chrome only offers a "Share tab audio" checkbox for This Tab (and
+                "Share system audio" for Entire Screen on Windows only); a shared Window never
+                carries audio on any OS. Called out explicitly rather than assumed. */}
+            <p className="rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px]">
+              Playing a video with sound? Tick <span className="font-semibold">Share tab audio</span> in the picker that opens
+              next, or students won't hear it.
+            </p>
+            {showShareOsHint && (
+              <p className="rounded-lg bg-brand-amber/10 px-2.5 py-1.5 text-[11px] text-brand-amber">
+                Nothing happening after you click Share? On a Mac, check System Settings → Privacy &amp; Security → Screen
+                Recording and make sure your browser is allowed — that's a separate permission from camera/microphone and
+                browsers often fail silently when it's off.
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-3 pt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShareAttempted(true);
+                  jitsiApiRef.current?.executeCommand("toggleShareScreen");
+                }}
+                className="rounded-full bg-brand-violet px-3 py-1 text-[11px] font-semibold text-white hover:bg-[#6a4de0]"
+              >
+                Share screen
+              </button>
+              <button
+                type="button"
+                onClick={() => setShareScreenPromptOpen(false)}
+                className="font-semibold underline decoration-brand-violet/40 underline-offset-2 hover:decoration-brand-violet"
+              >
+                Skip for now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {mode === "teacher" && !isRecordingObserver && screenShareActive && shareMayHaveDroppedSince && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
           <WifiOff className="h-4 w-4 shrink-0 translate-y-0.5" />
@@ -1915,10 +1998,14 @@ export default function JitsiLive({
                 // teacher-only"). Without it, any student/parent who closed their own panel
                 // got the same floating card over their video grid, covering exactly the
                 // faces/names a student view has no reason to hide.
-                showLeaderboardCard={mode === "teacher" && (!interactive || !panelOpen)}
+                //
+                // `&& !focusMode` -- see focusMode's own doc comment: Focus Mode closing the
+                // panel is a deliberate "give me maximum, decluttered video space" request,
+                // not a reason to pop these two cards up over that same corner.
+                showLeaderboardCard={mode === "teacher" && (!interactive || !panelOpen) && !focusMode}
                 stacked
               />
-              {mode === "teacher" && (!interactive || !panelOpen) && (
+              {mode === "teacher" && (!interactive || !panelOpen) && !focusMode && (
                 <div className="w-64 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy/90 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-xl">
                   <div className="flex items-center justify-between px-3 py-2.5">
                     <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
@@ -1947,6 +2034,33 @@ export default function JitsiLive({
               )}
             </div>
           </div>
+          {interactive && panelOpen && (
+            // Desktop-only (md:flex, hidden below it) -- below md the video and panel
+            // stack vertically instead of sitting side by side, where a horizontal
+            // resize handle has nothing meaningful to do. Drag to resize the panel;
+            // double-click to reset to the default width -- same discoverable pattern
+            // as a spreadsheet column border, not a hidden gesture. See panelWidth's own
+            // doc comment above for why this exists (the old panel had one fixed 380px
+            // width with no give at all).
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize the interactive panel"
+              title="Drag to resize the panel — double-click to reset"
+              className={cn(
+                "hidden shrink-0 cursor-col-resize items-center justify-center self-stretch rounded-full transition-colors md:flex",
+                resizingPanel ? "bg-brand-violet/50" : "bg-white/5 hover:bg-white/15"
+              )}
+              style={{ width: 10 }}
+              onPointerDown={handlePanelResizeStart}
+              onPointerMove={handlePanelResizeMove}
+              onPointerUp={handlePanelResizeEnd}
+              onPointerCancel={handlePanelResizeEnd}
+              onDoubleClick={resetPanelWidth}
+            >
+              <GripVertical className="h-3.5 w-3.5 text-white/40" aria-hidden="true" />
+            </div>
+          )}
           {interactive && (
             // max-h-[38vh] (md:max-h-none): below md the body stacks video above this
             // panel instead of sitting side-by-side (flex-col → md:flex-row above), so
@@ -1958,9 +2072,14 @@ export default function JitsiLive({
             // area). Narrowed from an earlier 45vh, paired with the video card's own
             // min-h growing from 220px to 300px above, so a real phone screen actually
             // fits both instead of one starving the other.
+            //
+            // md:w-[var(--panel-w)]: the fixed 380px width is now user-resizable (see
+            // panelWidth's own doc comment) -- below md, "w-full" (no md: prefix) still
+            // wins since the CSS var is only referenced inside the md: variant.
             <aside
+              style={{ ["--panel-w" as string]: `${panelWidth}px` }}
               className={cn(
-                "flex max-h-[38vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 md:max-h-none md:w-[380px]",
+                "flex max-h-[38vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 md:max-h-none md:w-[var(--panel-w)]",
                 !panelOpen && "hidden"
               )}
             >
