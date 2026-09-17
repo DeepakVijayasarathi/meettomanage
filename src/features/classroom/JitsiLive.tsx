@@ -1360,26 +1360,41 @@ export default function JitsiLive({
                 </Button>
               )}
               {mode === "teacher" && (
+                // "Focus Mode" -- upgraded from the old standalone "Spotlight me" button.
+                // Teacher-reported live (2026-09-17) needed three separate things to make a
+                // shared screen actually usable for a class -- spotlight it, clear the
+                // Interactive panel for real screen space, and have the spotlight *stay* put
+                // (the participantLeft/screenSharingStatusChanged fix above) -- with no single
+                // affordance for "just make this the thing everyone sees right now." One
+                // button now does the first two together (the third was a bug, now fixed at
+                // the source, not something this button needs to work around).
                 <Button
                   size="pill"
                   variant="secondary"
-                  aria-pressed={pinnedParticipantId !== null && pinnedParticipantId === selfParticipantId}
+                  aria-pressed={pinnedParticipantId === selfParticipantId && !panelOpen}
                   disabled={!jitsiReady || !selfParticipantId}
                   className={headerToggleClass}
-                  onClick={() =>
-                    jitsiApiRef.current?.executeCommand(
-                      "pinParticipant",
-                      pinnedParticipantId === selfParticipantId ? null : selfParticipantId
-                    )
-                  }
+                  onClick={() => {
+                    const focusModeOn = pinnedParticipantId === selfParticipantId && !panelOpen;
+                    if (focusModeOn) {
+                      jitsiApiRef.current?.executeCommand("pinParticipant", null);
+                    } else {
+                      jitsiApiRef.current?.executeCommand("pinParticipant", selfParticipantId);
+                      setPanelOpen(false);
+                    }
+                  }}
                   title={
-                    pinnedParticipantId === selfParticipantId
-                      ? "Stop spotlighting yourself as the main view"
-                      : "Spotlight yourself as the main view for the whole class, not just whoever happens to pin you locally"
+                    pinnedParticipantId === selfParticipantId && !panelOpen
+                      ? "Exit focus mode"
+                      : "Spotlight yourself (or whatever you're sharing) as the main view for the whole class, and clear the panel for maximum video space"
                   }
                 >
-                  {pinnedParticipantId === selfParticipantId ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                  {pinnedParticipantId === selfParticipantId ? "Spotlighted" : "Spotlight me"}
+                  {pinnedParticipantId === selfParticipantId && !panelOpen ? (
+                    <PinOff className="h-3.5 w-3.5" />
+                  ) : (
+                    <Pin className="h-3.5 w-3.5" />
+                  )}
+                  {pinnedParticipantId === selfParticipantId && !panelOpen ? "Exit Focus" : "Focus Mode"}
                 </Button>
               )}
               {interactive && (
