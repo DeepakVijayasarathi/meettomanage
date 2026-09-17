@@ -40,6 +40,7 @@ import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
 import { listMyDemoBookings, toAwaitingFeedback } from "@/api/demoBookings";
 import { getMyMeetingRoomShortLink } from "@/api/account";
 import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatDate, formatTimeLabel } from "@/lib/utils";
 import { isJoinable, joinHint } from "@/features/parent/utils";
@@ -135,7 +136,15 @@ export default function TeacherDashboard() {
 
   // Real "now" in API mode; the mock universe is pinned to a fixed date.
   const now = usingApi ? new Date() : NOW;
-  const today = usingApi ? now.toISOString().slice(0, 10) : TODAY;
+  // Teacher-reported: "sometimes the session for the current day does not appear
+  // immediately." toISOString() is always UTC, but session.date (below, via
+  // toFrontendSession -> utcIsoToLocalDateTime) is the *local* calendar date. For anyone
+  // in a timezone ahead of UTC -- IST included -- there's a real daily window (roughly
+  // midnight to sunrise local time) where the UTC date hasn't rolled over yet but the
+  // local one already has: a class genuinely scheduled for "today" locally compared
+  // against yesterday's UTC date, silently missing from Today's Classes until the UTC
+  // day catches up. Comparing like with like -- both local -- removes that window.
+  const today = usingApi ? utcIsoToLocalDateTime(now.toISOString()).date : TODAY;
 
   const teacherSessions = usingApi ? apiSessions : getSessionsForTeacher(TEACHER_ID);
 

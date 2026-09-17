@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CalendarClock, List, Users, Video } from "lucide-react";
+import { CalendarClock, FileText, List, Users, Video } from "lucide-react";
 import { useApiData } from "@/api/hooks";
-import { listMySessions, toFrontendSession } from "@/api/sessions";
+import { listMySessions, toFrontendSession, updateSessionSummary } from "@/api/sessions";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { FilterBar } from "@/components/FilterBar";
@@ -15,6 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getCourseById } from "@/data/courses";
@@ -54,6 +56,7 @@ function sessionSubtitle(session: ClassSession) {
 
 export default function TeacherMyClasses() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { data: mySessions, error: sessionsError, reload } = useApiData(
     () => listMySessions().then((sessions) => sessions.map(toFrontendSession)),
     getSessionsForTeacher(TEACHER_ID)
@@ -68,6 +71,15 @@ export default function TeacherMyClasses() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<ClassSession | null>(null);
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
+  // Teacher feedback: "the report-writing option is also not visible after the session if
+  // we do not complete the report immediately." completeSession refuses to run twice, so
+  // editing a completed session's notes needs its own separate path back in — see
+  // updateSessionSummary. notesDraft is seeded from the session's own current summary
+  // (including the auto-generated engagement-stats fallback, if that's all there ever was)
+  // so editing starts from what's already there, not a blank box.
+  const [notesFor, setNotesFor] = useState<ClassSession | null>(null);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
   // "Start Class"/"Start Demo" navigates straight into JitsiLive, whose own init (external
   // script load, join-token fetch, iframe init) takes a few real seconds with nothing on this
   // page changing in the meantime — a click that visibly did nothing invites a second, third
@@ -104,6 +116,26 @@ export default function TeacherMyClasses() {
     },
     [navigate, startingId]
   );
+
+  function openNotes(session: ClassSession) {
+    setNotesFor(session);
+    setNotesDraft(session.summary ?? "");
+  }
+
+  async function saveNotes() {
+    if (!notesFor) return;
+    setSavingNotes(true);
+    try {
+      await updateSessionSummary(notesFor.id, notesDraft.trim());
+      toast({ variant: "success", title: "Notes saved", description: "The updated notes were also emailed to the class's parents." });
+      setNotesFor(null);
+      reload();
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't save notes", description: err instanceof Error ? err.message : "Please try again." });
+    } finally {
+      setSavingNotes(false);
+    }
+  }
 
   const filtered = statusFilter === "all" ? allSessions : allSessions.filter((s) => s.status === statusFilter);
 
@@ -168,6 +200,10 @@ export default function TeacherMyClasses() {
           <div className="flex items-center gap-2">
             <Button asChild size="sm" variant="outline">
               <Link to="/teacher/attendance">View record</Link>
+            </Button>
+            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openNotes(row); }}>
+              <FileText className="h-3.5 w-3.5" />
+              Notes
             </Button>
             <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setRecordingsFor(row); }}>
               <Video className="h-3.5 w-3.5" />
@@ -316,6 +352,35 @@ export default function TeacherMyClasses() {
       </Dialog>
 
       {recordingsFor && <RecordingsDialog session={recordingsFor} onClose={() => setRecordingsFor(null)} />}
+
+      <Dialog open={!!notesFor} onOpenChange={(open) => !open && setNotesFor(null)}>
+        <DialogContent>
+          {notesFor && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Class notes</DialogTitle>
+                <DialogDescription>
+                  {notesFor.title} · {formatDate(notesFor.date, "long")}. Saving emails the updated notes to the class's parents, same as when you first completed it.
+                </DialogDescription>
+              </DialogHeader>
+              <Textarea
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value)}
+                rows={6}
+                placeholder="What did the class cover? Any follow-up for parents to know about?"
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setNotesFor(null)}>
+                  Cancel
+                </Button>
+                <Button disabled={savingNotes || !notesDraft.trim()} onClick={saveNotes}>
+                  {savingNotes ? "Saving…" : "Save notes"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
