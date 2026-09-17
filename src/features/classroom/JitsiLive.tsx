@@ -49,6 +49,10 @@ type JitsiExternalApi = {
     }) => void
   ) => void;
   executeCommand: (command: string, ...args: unknown[]) => void;
+  /** Synchronous snapshot of who's in the room right now -- unlike participantJoined/Left,
+   *  covers participants who joined before this listener was attached (e.g. before a
+   *  reconnect). Excludes the local participant, same as participantJoined/Left. */
+  getParticipantsInfo?: () => { participantId: string; displayName?: string }[];
 };
 
 declare global {
@@ -865,7 +869,25 @@ export default function JitsiLive({
       api.addListener("videoConferenceJoined", (payload) => {
         setReconnecting(null);
         media.selfId = payload?.id ?? "";
-        if (mode === "teacher") setSelfParticipantId(payload?.id ?? null);
+        if (mode === "teacher") {
+          setSelfParticipantId(payload?.id ?? null);
+          // Seeds the roster this fix's "kick everyone on End Class" loop (see
+          // completeAndLeave) reads from. participantJoined only fires for someone who joins
+          // AFTER this listener is attached — if the teacher's own connection drops and
+          // rejoins mid-class (this whole feedback thread is about exactly that kind of
+          // flaky-connection resilience), everyone already in the room at that point would
+          // otherwise never re-announce themselves, so a stale/reset participants list would
+          // silently under-kick and leave them stuck exactly like the original bug.
+          // getParticipantsInfo() is synchronous, not an event -- it returns whoever's in the
+          // room right now, including anyone who joined before this reconnect.
+          const existing = api?.getParticipantsInfo?.() ?? [];
+          setParticipants(
+            existing.map((p) => ({
+              id: p.participantId,
+              displayName: p.displayName?.trim() || "Student",
+            }))
+          );
+        }
         media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
         // A small class reads better as a grid of faces than one spotlighted speaker.
         api?.executeCommand("setTileView", true);
