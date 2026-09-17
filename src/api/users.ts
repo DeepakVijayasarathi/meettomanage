@@ -188,6 +188,45 @@ export async function deleteUser(id: string): Promise<void> {
   await apiFetch<void>(`/api/users/${id}`, { method: "DELETE" });
 }
 
+/** One table's worth of what a hard delete would remove — see DataDeletionPreviewDto. */
+export interface ApiDataDeletionPreviewItem {
+  table: string;
+  label: string;
+  count: number;
+}
+
+export interface ApiDataDeletionPreview {
+  targetName: string;
+  items: ApiDataDeletionPreviewItem[];
+  totalRecords: number;
+}
+
+/** Everything a hard delete of this Parent (and every one of their children) would permanently
+ *  remove — read-only, for the confirmation popup before {@link hardDeleteParent}. */
+export async function getParentHardDeletePreview(id: string): Promise<ApiDataDeletionPreview> {
+  return apiFetch<ApiDataDeletionPreview>(`/api/users/${id}/hard-delete-preview`);
+}
+
+/** Permanently deletes this Parent account, every one of their children, and every row that's
+ *  actually theirs (financial records included) — logged first for future reference, but there
+ *  is no undo once this resolves. Call {@link getParentHardDeletePreview} first. */
+export async function hardDeleteParent(id: string): Promise<void> {
+  await apiFetch<void>(`/api/users/${id}/hard-delete`, { method: "DELETE" });
+}
+
+/** Everything a hard delete of this Student would permanently remove — read-only, for the
+ *  confirmation popup before {@link hardDeleteStudent}. */
+export async function getStudentHardDeletePreview(childId: string): Promise<ApiDataDeletionPreview> {
+  return apiFetch<ApiDataDeletionPreview>(`/api/users/students/${childId}/hard-delete-preview`);
+}
+
+/** Permanently deletes this Student and every row that's actually theirs — never the parent
+ *  account, siblings, batches or class sessions. Logged first for future reference, but there is
+ *  no undo once this resolves. Call {@link getStudentHardDeletePreview} first. */
+export async function hardDeleteStudent(childId: string): Promise<void> {
+  await apiFetch<void>(`/api/users/students/${childId}/hard-delete`, { method: "DELETE" });
+}
+
 /** Converts the account to a different base type (swaps Parent/Teacher profile as needed). */
 export async function changeUserRole(id: string, role: ApiRole): Promise<ApiUser> {
   return apiFetch<ApiUser>(`/api/users/${id}/role`, {

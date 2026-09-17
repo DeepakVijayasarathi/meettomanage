@@ -118,6 +118,7 @@ export default function JitsiLive({
   inviteUrl,
   isRecordingObserver,
   hubToken,
+  isPersonalRoom,
 }: {
   room: string;
   title?: string;
@@ -144,8 +145,17 @@ export default function JitsiLive({
    *  click, a "back" navigation with no history to go back to. */
   isRecordingObserver?: boolean;
   /** Passed through to InteractivePanel's ClassroomHubClient in place of getAccessToken() —
-   *  see ClassroomHubClient's own doc comment. Only meaningful alongside isRecordingObserver. */
+   *  see ClassroomHubClient's own doc comment. Only meaningful alongside isRecordingObserver,
+   *  or alongside isPersonalRoom for a guest joining someone else's personal room. */
   hubToken?: string;
+  /** Set by PersonalMeetingRoom.tsx and PersonalRoomGuestJoin.tsx: this room's `sessionId` is
+   *  the owner's own account id (ClassroomHub.JoinSession's isPersonalRoomOwner check), not a
+   *  real ClassSession -- there's nothing for "End the class" to complete, no attendance/
+   *  recording to register, and no Jibri-recording screen-share nudge worth showing (nothing
+   *  here is ever recorded). Only gates that session-completion/recording machinery; the
+   *  Interactive panel itself (whiteboard/quiz/roster/chat) still mounts normally off `sessionId`
+   *  alone, same as a real class. */
+  isPersonalRoom?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -513,6 +523,11 @@ export default function JitsiLive({
 
   // The interactive layer needs a real session id for the hub group + engagement.
   const interactive = !!sessionId && GUID_RE.test(sessionId);
+  // Same panel, but a Personal Meeting Room's `sessionId` is the owner's own account id, not a
+  // ClassSession -- session-completion, attendance and recording all need a REAL backing
+  // session to act on, unlike the panel itself (see isPersonalRoom's own doc comment on the
+  // props type above).
+  const hasClassSession = interactive && !isPersonalRoom;
 
   // "End Class" handler — the only place in the whole app that ever calls the complete-
   // session endpoint (nothing runs this on a timer or on plain Leave, which stays a
@@ -528,13 +543,14 @@ export default function JitsiLive({
     // class was actually over. kickParticipant is the same moderator action already
     // exposed in Jitsi's own per-participant menu (see remoteVideoMenu's disableKick
     // above) -- applying it to everyone still in the room here is "End the class" actually
-    // ending it for the class, not just for the teacher.
+    // ending it for the class, not just for the teacher. Unconditional on hasClassSession —
+    // a personal room's teacher ending the call should clear it out too, not just a real class.
     if (mode === "teacher") {
       for (const p of participants) {
         jitsiApiRef.current?.executeCommand("kickParticipant", p.id);
       }
     }
-    if (mode === "teacher" && interactive && !completedRef.current) {
+    if (mode === "teacher" && hasClassSession && !completedRef.current) {
       completedRef.current = true;
       completeSession(effectiveSessionId!, summary)
         .then(() => toast({ variant: "success", title: "Class ended", description: "Marked delivered — your payout for it will reflect shortly." }))
@@ -938,18 +954,19 @@ export default function JitsiLive({
             "tileview",
             "videobackgroundblur",
             ...(mode === "teacher" && !isRecordingObserver ? (["mute-everyone"] as const) : []),
-            // "recording" specifically also needs `interactive` -- reported live: a Personal
-            // Meeting Room recording (manually started with this button, since auto-record is
-            // already scoped off it) "disappeared from the portal... couldn't find it anywhere."
-            // Not a display bug -- it was never findable in the first place. registerRecording
-            // (the only thing that ever creates a SessionRecording row) requires a real
-            // sessionId to attach to, and the Personal Meeting Room never has one (see
-            // recordingLinkAvailable's own `interactive` check below) -- so a recording made
-            // there is a real file on the video server with no database row and no UI anywhere
-            // that could ever surface it. Removing the button here is what "don't record demo
-            // and personal link" already asked for; this closes the one remaining way to start
-            // one manually.
-            ...(mode === "teacher" && !isRecordingObserver && interactive ? (["recording"] as const) : []),
+            // "recording" specifically also needs `hasClassSession` (not just `interactive` --
+            // a Personal Meeting Room now has the Interactive panel too, see isPersonalRoom's own
+            // doc comment) -- reported live: a Personal Meeting Room recording (manually started
+            // with this button, since auto-record is already scoped off it) "disappeared from the
+            // portal... couldn't find it anywhere." Not a display bug -- it was never findable in
+            // the first place. registerRecording (the only thing that ever creates a
+            // SessionRecording row) requires a real sessionId to attach to, and the Personal
+            // Meeting Room never has one (see recordingLinkAvailable's own `hasClassSession` check
+            // below) -- so a recording made there is a real file on the video server with no
+            // database row and no UI anywhere that could ever surface it. Removing the button
+            // here is what "don't record demo and personal link" already asked for; this closes
+            // the one remaining way to start one manually.
+            ...(mode === "teacher" && !isRecordingObserver && hasClassSession ? (["recording"] as const) : []),
             "fullscreen",
             "settings",
             // Deliberately no "hangup" here — our own Leave button (header, top-right)
@@ -1065,13 +1082,15 @@ export default function JitsiLive({
           api?.executeCommand("setVirtualBackground", false);
         }
         // Prompt to share the screen right at join — skipped for the recording observer (it's
-        // Jibri's own silent capture bot, nobody there to click anything) and for a call with
-        // no Interactive panel at all (the Personal Meeting Room -- no sessionId, so `interactive`
-        // is false). Teacher-reported live: this fired every time on the personal link too,
+        // Jibri's own silent capture bot, nobody there to click anything) and for a call with no
+        // backing ClassSession to ever record against (the Personal Meeting Room -- it now has
+        // the Interactive panel too, see isPersonalRoom's own doc comment, but still nothing
+        // recorded). Teacher-reported live: this fired every time on the personal link too,
         // demanding a screen share "to continue" with no way to skip it, even though the entire
-        // reason it exists is to get the whiteboard/quiz overlay into the recording -- neither of
-        // which the Personal Meeting Room has, so there was never anything worth sharing for.
-        if (mode === "teacher" && !isRecordingObserver && interactive && !shareScreenPromptShownRef.current) {
+        // reason it exists is to get the whiteboard/quiz overlay into the recording -- and the
+        // Personal Meeting Room is never recorded at all, so there was never anything worth
+        // sharing for.
+        if (mode === "teacher" && !isRecordingObserver && hasClassSession && !shareScreenPromptShownRef.current) {
           shareScreenPromptShownRef.current = true;
           setShareScreenPromptOpen(true);
         }
@@ -1086,7 +1105,7 @@ export default function JitsiLive({
         // already in progress) — and with the retry loop below, that turned one harmless
         // reconnect into three doomed retries and a scary "recording failed" banner for a
         // class that was, the whole time, being recorded just fine.
-        if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver && interactive && !sessionIsDemo) {
+        if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver && hasClassSession && !sessionIsDemo) {
           setRecording((alreadyRecording) => {
             if (!alreadyRecording) {
               recordingErrorReasonRef.current = null;
@@ -1104,7 +1123,7 @@ export default function JitsiLive({
         // (FinalizeJibriRecordingAsync) is the single source of truth for registering this
         // recording; registering it again here too would create a duplicate SessionRecording
         // row for the same file.
-        if (mode === "teacher" && interactive && !isRecordingObserver && payload?.link) {
+        if (mode === "teacher" && hasClassSession && !isRecordingObserver && payload?.link) {
           // effectiveSessionIdRef, not the sessionId prop this closure was created with —
           // see its own doc comment.
           registerRecording(effectiveSessionIdRef.current!, payload.link).catch(() => undefined);
@@ -1507,9 +1526,10 @@ export default function JitsiLive({
           teacher could just click the familiar red Leave button out of habit and skip
           completion entirely — silently reproducing the exact "class never marked
           delivered" bug this whole flow exists to fix. Asking every single time removes
-          that escape hatch. Non-teachers (and non-interactive rooms, e.g. a personal
-          meeting) have nothing to complete, so they get the plain single-action dialog. */}
-      {mode === "teacher" && interactive ? (
+          that escape hatch. Non-teachers (and rooms with no backing ClassSession, e.g. a
+          personal meeting) have nothing to complete, so they get the plain single-action
+          dialog. */}
+      {mode === "teacher" && hasClassSession ? (
         <Dialog open={leaveConfirmOpen} onOpenChange={setLeaveConfirmOpen}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
@@ -1794,7 +1814,7 @@ export default function JitsiLive({
           </button>
         </div>
       )}
-      {mode === "teacher" && !isRecordingObserver && interactive && recording && !screenShareActive && (
+      {mode === "teacher" && !isRecordingObserver && hasClassSession && recording && !screenShareActive && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md">
           <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
           <p className="flex-1">

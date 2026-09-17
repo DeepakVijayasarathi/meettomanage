@@ -74,6 +74,7 @@ const LiveClassroom = lazy(() => import("@/features/classroom/LiveClassroom"));
 const PersonalMeetingRoom = lazy(() => import("@/features/classroom/PersonalMeetingRoom"));
 const RecordingObserver = lazy(() => import("@/features/classroom/RecordingObserver"));
 const GuestJoin = lazy(() => import("@/features/public/GuestJoin"));
+const PersonalRoomGuestJoin = lazy(() => import("@/features/public/PersonalRoomGuestJoin"));
 
 const SubAdminDashboard = lazy(() => import("@/features/subadmin/Dashboard"));
 const SubAdminPermissions = lazy(() => import("@/features/subadmin/Permissions"));
@@ -181,6 +182,10 @@ export default function App() {
                 outside RequireAuth the same way the Jibri route above does; see GuestJoin.tsx's
                 own doc comment for why it hands off to raw Jitsi rather than the in-app classroom. */}
             <Route path="/guest-join" element={<GuestJoin />} />
+            {/* A Personal Meeting Room's invite link (UsersController.MyMeetingRoomShortLink) --
+                same reasoning as /guest-join just above: a caretaker/guest opening a shared link
+                never logs in, so this sits outside RequireAuth too. */}
+            <Route path="/join/personal/:ownerId" element={<PersonalRoomGuestJoin />} />
             <Route
               path="/meet/personal"
               element={

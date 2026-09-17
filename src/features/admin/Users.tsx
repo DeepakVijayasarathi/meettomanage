@@ -33,7 +33,30 @@ import { cn, formatCurrency, formatDate, getInitials, isValidEmail } from "@/lib
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { bulkImportStudents, bulkImportUsers, changeUserRole, createUser, deleteStudent, deleteUser, exportStudents, exportUsers, getCredentialChannels, listAllUsers, listStudents, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import {
+  bulkImportStudents,
+  bulkImportUsers,
+  changeUserRole,
+  createUser,
+  deleteStudent,
+  deleteUser,
+  exportStudents,
+  exportUsers,
+  getCredentialChannels,
+  getParentHardDeletePreview,
+  getStudentHardDeletePreview,
+  hardDeleteParent,
+  hardDeleteStudent,
+  listAllUsers,
+  listStudents,
+  resendCredentials,
+  resetPin,
+  toAppUser,
+  updateStudentNotes,
+  updateUser,
+  type ApiDataDeletionPreview,
+  type StudentRow,
+} from "@/api/users";
 import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
 import type { ApiRole } from "@/api/types";
@@ -357,6 +380,114 @@ export default function AdminUsers() {
     } finally {
       setDeletingChild(false);
     }
+  }
+
+  // Hard-delete (Parent) — a separate, stricter action from deleteTarget's soft delete above:
+  // permanently removes the account and every mapped row across every other table (invoices,
+  // payments, refunds, enrollments, engagement, ...), logged first for future reference. Fetches
+  // the preview BEFORE opening the confirm dialog so the popup opens already showing exactly
+  // what will be removed, rather than a spinner inside the dialog itself.
+  const [hardDeleteUserTarget, setHardDeleteUserTarget] = useState<AppUser | null>(null);
+  const [hardDeleteUserPreview, setHardDeleteUserPreview] = useState<ApiDataDeletionPreview | null>(null);
+  const [loadingHardDeleteUserPreview, setLoadingHardDeleteUserPreview] = useState(false);
+
+  async function openHardDeleteUser(user: AppUser) {
+    if (!apiEnabled()) {
+      toast({ variant: "error", title: "Not available in demo mode", description: "Hard delete needs a live backend to compute what it would remove." });
+      return;
+    }
+    setLoadingHardDeleteUserPreview(true);
+    try {
+      const preview = await getParentHardDeletePreview(user.id);
+      setHardDeleteUserTarget(user);
+      setHardDeleteUserPreview(preview);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not check what this would delete.";
+      toast({ variant: "error", title: "Couldn't open delete preview", description: message });
+    } finally {
+      setLoadingHardDeleteUserPreview(false);
+    }
+  }
+
+  async function handleHardDeleteUser() {
+    if (!hardDeleteUserTarget) return;
+    await hardDeleteParent(hardDeleteUserTarget.id);
+    setBanner({ ok: true, text: `${hardDeleteUserTarget.name}'s account and all mapped data were permanently deleted.` });
+    setDetailUser(null);
+    setHardDeleteUserTarget(null);
+    setHardDeleteUserPreview(null);
+    reloadParents();
+    reloadStudents();
+    toast({
+      variant: "success",
+      title: "Account permanently deleted",
+      description: `${hardDeleteUserTarget.name}'s account and all mapped data were removed. A copy of everything deleted is kept in the deletion log.`,
+    });
+  }
+
+  // Hard-delete (Student) — same idea as the Parent flow above, scoped to just this child: never
+  // touches the parent account, siblings, batches or class sessions themselves.
+  const [hardDeleteChildTarget, setHardDeleteChildTarget] = useState<Child | null>(null);
+  const [hardDeleteChildPreview, setHardDeleteChildPreview] = useState<ApiDataDeletionPreview | null>(null);
+  const [loadingHardDeleteChildPreview, setLoadingHardDeleteChildPreview] = useState(false);
+
+  async function openHardDeleteChild(child: Child) {
+    if (!apiEnabled()) {
+      toast({ variant: "error", title: "Not available in demo mode", description: "Hard delete needs a live backend to compute what it would remove." });
+      return;
+    }
+    setLoadingHardDeleteChildPreview(true);
+    try {
+      const preview = await getStudentHardDeletePreview(child.id);
+      setHardDeleteChildTarget(child);
+      setHardDeleteChildPreview(preview);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not check what this would delete.";
+      toast({ variant: "error", title: "Couldn't open delete preview", description: message });
+    } finally {
+      setLoadingHardDeleteChildPreview(false);
+    }
+  }
+
+  async function handleHardDeleteChild() {
+    if (!hardDeleteChildTarget) return;
+    await hardDeleteStudent(hardDeleteChildTarget.id);
+    setBanner({ ok: true, text: `${hardDeleteChildTarget.name}'s record and all mapped data were permanently deleted.` });
+    setDetailChild(null);
+    setHardDeleteChildTarget(null);
+    setHardDeleteChildPreview(null);
+    reloadStudents();
+    toast({
+      variant: "success",
+      title: "Student permanently deleted",
+      description: `${hardDeleteChildTarget.name}'s record and all mapped data were removed. A copy of everything deleted is kept in the deletion log.`,
+    });
+  }
+
+  /** Shared confirm-dialog body for both hard-delete flows above — a plain count-per-table list
+   *  plus a headline total, so the popup shows exactly what "all mapped data" means before the
+   *  admin commits to an action with no undo. */
+  function renderHardDeletePreview(preview: ApiDataDeletionPreview | null, targetLabel: string) {
+    if (!preview) return null;
+    return (
+      <div className="space-y-2 text-left">
+        <p>
+          Permanently deletes {targetLabel} and <strong>{preview.totalRecords}</strong> related record
+          {preview.totalRecords === 1 ? "" : "s"} across {preview.items.length} table{preview.items.length === 1 ? "" : "s"}. This
+          cannot be undone from the UI — a full copy of every deleted row is kept in the deletion log for future reference.
+        </p>
+        {preview.items.length > 0 && (
+          <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border bg-muted/40 p-2.5 text-xs">
+            {preview.items.map((item) => (
+              <li key={item.table} className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">{item.label}</span>
+                <span className="font-semibold text-foreground">{item.count}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
   }
 
   // Onboarding credential (re)send from the user detail dialog.
@@ -1005,14 +1136,32 @@ export default function AdminUsers() {
               </div>
 
               <DialogFooter className="sm:justify-between">
-                <Button
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => setDeleteTarget(detailUser)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete Account
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeleteTarget(detailUser)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete Account
+                  </Button>
+                  {/* Hard delete is scoped to Parent accounts only — a Teacher/Admin/Sub Admin's
+                      own data (batches, class sessions, payouts) is shared with other families'
+                      records in a way a Parent's own data never is; see UserDeletionService's
+                      own doc comment for the full reasoning. */}
+                  {detailUser.role === "parent" && (
+                    <Button
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      disabled={loadingHardDeleteUserPreview}
+                      onClick={() => openHardDeleteUser(detailUser)}
+                      title="Permanently deletes this account and every mapped record — invoices, payments, enrollments, engagement, everything. Logged first, but not recoverable from the UI."
+                    >
+                      {loadingHardDeleteUserPreview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                      Delete All Data
+                    </Button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setDetailUser(null)}>
                     Close
@@ -1069,6 +1218,36 @@ export default function AdminUsers() {
         confirmLabel={deletingChild ? "Deleting…" : childDeleteNeedsWithdraw ? "Withdraw & Delete" : "Delete Student"}
         destructive
         onConfirm={handleDeleteChild}
+      />
+
+      <ConfirmDialog
+        open={!!hardDeleteUserTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setHardDeleteUserTarget(null);
+            setHardDeleteUserPreview(null);
+          }
+        }}
+        title="Permanently delete all of this account's data?"
+        description={hardDeleteUserTarget ? renderHardDeletePreview(hardDeleteUserPreview, `${hardDeleteUserTarget.name}'s account`) : undefined}
+        confirmLabel="Delete All Data"
+        destructive
+        onConfirm={handleHardDeleteUser}
+      />
+
+      <ConfirmDialog
+        open={!!hardDeleteChildTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setHardDeleteChildTarget(null);
+            setHardDeleteChildPreview(null);
+          }
+        }}
+        title="Permanently delete all of this student's data?"
+        description={hardDeleteChildTarget ? renderHardDeletePreview(hardDeleteChildPreview, `${hardDeleteChildTarget.name}'s record`) : undefined}
+        confirmLabel="Delete All Data"
+        destructive
+        onConfirm={handleHardDeleteChild}
       />
 
       <ConfirmDialog
@@ -1299,15 +1478,27 @@ export default function AdminUsers() {
                 <p className="text-xs text-muted-foreground">Shown on this child's profile to the current RM and admins.</p>
               </div>
 
-              <DialogFooter>
-                <Button
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => setDeleteChildTarget(detailChild)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete Student
-                </Button>
+              <DialogFooter className="sm:justify-between">
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeleteChildTarget(detailChild)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete Student
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    disabled={loadingHardDeleteChildPreview}
+                    onClick={() => openHardDeleteChild(detailChild)}
+                    title="Permanently deletes this student and every mapped record — enrollments, invoices, payments, attendance, engagement, everything. Logged first, but not recoverable from the UI. Never affects the parent account."
+                  >
+                    {loadingHardDeleteChildPreview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    Delete All Data
+                  </Button>
+                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setDetailChild(null)}>
                     Close
