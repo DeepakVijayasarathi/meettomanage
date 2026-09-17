@@ -22,6 +22,7 @@ import { useSession } from "@/state/session";
 import { usePortalBase } from "@/lib/portalBase";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listSessions, toFrontendSession } from "@/api/sessions";
@@ -55,7 +56,11 @@ export default function CoordinatorDashboard() {
 
   const sessions = usingApi ? apiSessions : SESSIONS;
   const leaves = usingApi ? apiLeaves : LEAVE_REQUESTS;
-  const TODAY = usingApi ? new Date().toISOString().slice(0, 10) : MOCK_TODAY;
+  // session.date (from toFrontendSession) is already the account's local calendar date, not
+  // UTC -- comparing it against a UTC "today" mismatches for hours near local midnight
+  // (e.g. IST is UTC+5:30, so 10pm-3am local already reads as tomorrow's UTC date). Same bug
+  // and same fix as teacher/Dashboard.tsx's "today's classes" list.
+  const TODAY = usingApi ? utcIsoToLocalDateTime(new Date().toISOString()).date : MOCK_TODAY;
   const NOW = usingApi ? new Date() : MOCK_NOW;
 
   const todaySessions = useMemo(

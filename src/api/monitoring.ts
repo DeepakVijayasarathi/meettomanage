@@ -120,6 +120,13 @@ export interface ApiMonitoringAlert {
   instance: string | null;
 }
 
+export interface ApiRecordingSummary {
+  started: number;
+  succeeded: number;
+  failed: number;
+  stillProcessing: number;
+}
+
 export interface ApiMonitoringSummary {
   servers: ApiServerStatus[];
   apiHealthy: boolean;
@@ -129,6 +136,7 @@ export interface ApiMonitoringSummary {
   concurrentClassroomUsers: number;
   activeClassCount: number;
   activeAlerts: ApiMonitoringAlert[];
+  todayRecordings: ApiRecordingSummary;
   generatedAtUtc: string;
 }
 
@@ -172,6 +180,7 @@ export interface ApiSessionHistoryEntry {
   status: string;
   attendedCount: number;
   expectedCount: number;
+  hasRecording: boolean;
 }
 
 /** Every session scheduled today (IST), live or not, with attendance counts. */
@@ -211,6 +220,7 @@ export function toFrontendSessionHistory(api: ApiSessionHistoryEntry[]): Session
     status: s.status,
     attendedCount: s.attendedCount,
     expectedCount: s.expectedCount,
+    hasRecording: s.hasRecording,
   }));
 }
 
@@ -296,6 +306,7 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
     concurrentClassroomUsers: api.concurrentClassroomUsers,
     activeClassCount: api.activeClassCount,
     activeAlerts: api.activeAlerts,
+    todayRecordings: api.todayRecordings,
     generatedAtUtc: api.generatedAtUtc,
     servers: api.servers.map((s) => ({
       name: s.name,

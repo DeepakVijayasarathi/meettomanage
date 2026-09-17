@@ -377,6 +377,8 @@ export interface SessionHistoryEntry {
   status: string;
   attendedCount: number;
   expectedCount: number;
+  /** True once a recording is registered for this session — only meaningful for a real batch class that has actually started; always false for demo/personal-link sessions. */
+  hasRecording: boolean;
 }
 
 /** A point-in-time `docker stats` sample for one container — not a counter, so it's "what is this using right now," refreshed every minute. */
@@ -454,6 +456,14 @@ export interface MonitoringAlert {
   instance: string | null;
 }
 
+/** Today's (IST) real batch classes vs. how many actually have a registered recording. stillProcessing is a class still in progress with no recording yet — not a failure, just not done. */
+export interface RecordingSummary {
+  started: number;
+  succeeded: number;
+  failed: number;
+  stillProcessing: number;
+}
+
 export interface MonitoringSummary {
   servers: ServerStatus[];
   apiHealthy: boolean;
@@ -464,5 +474,6 @@ export interface MonitoringSummary {
   concurrentClassroomUsers: number;
   activeClassCount: number;
   activeAlerts: MonitoringAlert[];
+  todayRecordings: RecordingSummary;
   generatedAtUtc: string;
 }

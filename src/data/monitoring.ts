@@ -32,6 +32,7 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
   concurrentClassroomUsers: 5,
   activeClassCount: 2,
   activeAlerts: [],
+  todayRecordings: { started: 42, succeeded: 40, failed: 1, stillProcessing: 1 },
   generatedAtUtc: "2026-08-23T05:00:00Z",
   servers: [
     {
@@ -251,6 +252,7 @@ export const SESSION_HISTORY: SessionHistoryEntry[] = [
     status: "Completed",
     attendedCount: 5,
     expectedCount: 5,
+    hasRecording: true,
   },
   {
     sessionId: "demo-session-1",
@@ -264,6 +266,7 @@ export const SESSION_HISTORY: SessionHistoryEntry[] = [
     status: "InProgress",
     attendedCount: 2,
     expectedCount: 4,
+    hasRecording: false,
   },
   {
     sessionId: "demo-session-2",
@@ -277,6 +280,7 @@ export const SESSION_HISTORY: SessionHistoryEntry[] = [
     status: "InProgress",
     attendedCount: 2,
     expectedCount: 2,
+    hasRecording: false,
   },
   {
     sessionId: "demo-history-2",
@@ -290,5 +294,6 @@ export const SESSION_HISTORY: SessionHistoryEntry[] = [
     status: "Scheduled",
     attendedCount: 0,
     expectedCount: 6,
+    hasRecording: false,
   },
 ];

@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
@@ -78,6 +79,7 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   concurrentClassroomUsers: 0,
   activeClassCount: 0,
   activeAlerts: [],
+  todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
   generatedAtUtc: "",
 };
 
@@ -777,6 +779,17 @@ export default function AdminMonitoring() {
   const totalParticipants = summary.servers.reduce((sum, s) => sum + (s.liveCalls?.totalParticipants ?? 0), 0);
   const unreachableCount = summary.servers.filter((s) => !s.reachable).length;
 
+  // Same "started, not still live, no recording, real batch class" definition the backend's
+  // TodayRecordings.Failed count uses (batchName is only ever set for a real batch class --
+  // demo/personal-link sessions always come back null here, same as the backend's own
+  // BatchId IS NOT NULL filter) -- lets the KPI card's failed count actually be clicked
+  // through to which session(s), instead of an admin having to ask for a one-off query
+  // every time (as happened twice tonight).
+  const [failedRecordingsOpen, setFailedRecordingsOpen] = useState(false);
+  const failedRecordingSessions = todaySessions.filter(
+    (s) => s.batchName !== null && s.actualStartAtUtc !== null && s.status !== "InProgress" && !s.hasRecording
+  );
+
   return (
     <div>
       <PageHeader
@@ -802,7 +815,7 @@ export default function AdminMonitoring() {
 
       <AlertsBanner alerts={summary.activeAlerts ?? []} loading={loading && summary.servers.length === 0} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCard
           label="Concurrent Users"
           value={`${num(summary.concurrentClassroomUsers)}`}
@@ -846,7 +859,56 @@ export default function AdminMonitoring() {
           loading={loading}
           error={error}
         />
+        {/* "Started, not still live, no session_recordings row" -- same definition used all
+            night to trace individual sync failures by hand, now on the dashboard instead of a
+            one-off SQL query. stillProcessing (an in-progress class, recording not synced yet)
+            is deliberately excluded from both the headline and the failed count -- it hasn't
+            failed, it just isn't done. */}
+        <KpiCard
+          label="Today's Recordings"
+          value={`${num(summary.todayRecordings?.succeeded)} / ${num(summary.todayRecordings?.started)}`}
+          detail={
+            num(summary.todayRecordings?.failed) > 0
+              ? `${num(summary.todayRecordings?.failed)} not synced yet`
+              : "All synced"
+          }
+          icon={Disc}
+          tone={num(summary.todayRecordings?.failed) > 0 ? "destructive" : "success"}
+          loading={loading}
+          error={error}
+          onClick={num(summary.todayRecordings?.failed) > 0 ? () => setFailedRecordingsOpen(true) : undefined}
+        />
       </div>
+
+      <Dialog open={failedRecordingsOpen} onOpenChange={setFailedRecordingsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Recordings not synced yet</DialogTitle>
+            <DialogDescription>
+              These classes ended but have no registered recording. Most catch up on their own within the hour — check back before assuming one is truly lost.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            {failedRecordingSessions.length === 0 ? (
+              <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                These just caught up — nothing unsynced right now. Refresh the page to update the count above.
+              </p>
+            ) : (
+              failedRecordingSessions.map((s) => (
+                <div key={s.sessionId} className="rounded-lg border border-border p-3 text-sm">
+                  <p className="font-medium text-foreground">
+                    {s.courseName}
+                    {s.batchName ? ` · ${s.batchName}` : ""}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {s.teacherName} · {formatClockTime(s.scheduledStartAtUtc)}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {canViewLiveUsers && (
         <div className="mt-6 space-y-5">

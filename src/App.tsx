@@ -52,6 +52,7 @@ const ItAdminDashboard = lazy(() => import("@/features/itadmin/Dashboard"));
 
 const TeacherDashboard = lazy(() => import("@/features/teacher/Dashboard"));
 const TeacherMyClasses = lazy(() => import("@/features/teacher/MyClasses"));
+const TeacherStudents = lazy(() => import("@/features/teacher/Students"));
 const TeacherAttendance = lazy(() => import("@/features/teacher/Attendance"));
 const TeacherDemoFeedback = lazy(() => import("@/features/teacher/DemoFeedback"));
 const TeacherLeave = lazy(() => import("@/features/teacher/Leave"));
@@ -277,6 +278,7 @@ export default function App() {
             <Route path="/teacher" element={<RequireAuth role="teacher"><AppShell role="teacher"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<TeacherDashboard />} />
               <Route path="classes" element={<TeacherMyClasses />} />
+              <Route path="students" element={<TeacherStudents />} />
               <Route path="attendance" element={<TeacherAttendance />} />
               <Route path="recordings" element={<TeacherRecordings />} />
               <Route path="demo-feedback" element={<TeacherDemoFeedback />} />

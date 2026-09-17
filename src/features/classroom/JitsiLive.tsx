@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, DoorOpen, Loader2, Pencil, PartyPopper, PhoneOff, Pin, PinOff, Sparkles, UserPlus, Users, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, GripVertical, Loader2, Pencil, PartyPopper, PhoneOff, Pin, PinOff, Sparkles, UserPlus, Users, Volume2, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -49,6 +49,10 @@ type JitsiExternalApi = {
     }) => void
   ) => void;
   executeCommand: (command: string, ...args: unknown[]) => void;
+  /** Synchronous snapshot of who's in the room right now -- unlike participantJoined/Left,
+   *  covers participants who joined before this listener was attached (e.g. before a
+   *  reconnect). Excludes the local participant, same as participantJoined/Left. */
+  getParticipantsInfo?: () => { participantId: string; displayName?: string }[];
 };
 
 declare global {
@@ -186,6 +190,62 @@ export default function JitsiLive({
   // with nothing on our side changing in between).
   const [reconnecting, setReconnecting] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
+  // Teacher-reported live (2026-09-17): "whiteboard itself is too small to be able to
+  // annotate or write the whole thing" -- the docked Interactive panel had one fixed
+  // width (380px) baked into the layout, with no way to make it bigger short of the
+  // whiteboard's own separate full-screen "maximize" overlay (a different, more drastic
+  // escape hatch -- see Whiteboard.tsx). A resizable panel gives a middle ground: keep
+  // the call and the panel both on screen side by side, just less cramped, for a teacher
+  // who wants more drawing/reading room without leaving the call view entirely. Widened
+  // default (was 380) plus a user-draggable handle (below); persisted per-browser so the
+  // choice sticks across classes instead of resetting every join.
+  const PANEL_WIDTH_STORAGE_KEY = "trn.classroomPanelWidth";
+  const DEFAULT_PANEL_WIDTH = 420;
+  const MIN_PANEL_WIDTH = 320;
+  const MAX_PANEL_WIDTH = 680;
+  const [panelWidth, setPanelWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return DEFAULT_PANEL_WIDTH;
+    const stored = Number(window.localStorage.getItem(PANEL_WIDTH_STORAGE_KEY));
+    return Number.isFinite(stored) && stored >= MIN_PANEL_WIDTH && stored <= MAX_PANEL_WIDTH ? stored : DEFAULT_PANEL_WIDTH;
+  });
+  const panelResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const [resizingPanel, setResizingPanel] = useState(false);
+  function resetPanelWidth() {
+    setPanelWidth(DEFAULT_PANEL_WIDTH);
+    if (typeof window !== "undefined") window.localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(DEFAULT_PANEL_WIDTH));
+  }
+  function handlePanelResizeStart(e: React.PointerEvent<HTMLDivElement>) {
+    panelResizeRef.current = { startX: e.clientX, startWidth: panelWidth };
+    setResizingPanel(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function handlePanelResizeMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!panelResizeRef.current) return;
+    // The panel sits on the right of the video card -- dragging the handle LEFT (toward
+    // the video) should grow the panel, so the delta is startX-minus-current, not the
+    // other way round.
+    const delta = panelResizeRef.current.startX - e.clientX;
+    setPanelWidth(Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, panelResizeRef.current.startWidth + delta)));
+  }
+  function handlePanelResizeEnd() {
+    panelResizeRef.current = null;
+    setResizingPanel(false);
+    if (typeof window !== "undefined") window.localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(panelWidth));
+  }
+  // Only cosmetic while actively dragging (matches the col-resize cursor everywhere, not
+  // just over the thin handle) and stops the drag from also selecting page text as the
+  // pointer sweeps across the video/panel on either side of it.
+  useEffect(() => {
+    if (!resizingPanel) return;
+    const prevCursor = document.body.style.cursor;
+    const prevUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.body.style.cursor = prevCursor;
+      document.body.style.userSelect = prevUserSelect;
+    };
+  }, [resizingPanel]);
   const [celebrating, setCelebrating] = useState(false);
   const [celebrationMessage, setCelebrationMessage] = useState<string | undefined>(undefined);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -208,6 +268,39 @@ export default function JitsiLive({
   // click.
   const [selfParticipantId, setSelfParticipantId] = useState<string | null>(null);
   const [pinnedParticipantId, setPinnedParticipantId] = useState<string | null>(null);
+  // Explicit "declutter" flag for Focus Mode — deliberately its own state, not derived
+  // from (pinnedParticipantId === selfParticipantId && !panelOpen) the way the button's
+  // pressed-state used to be computed. That derived condition was ALSO exactly the
+  // condition that made the floating leaderboard/roster cards below reappear (their own
+  // guard is "panel is closed"), so turning on Focus Mode — a teacher explicitly asking
+  // for maximum, decluttered video space — silently re-added two chrome cards over the
+  // exact corner of the video it was supposed to be clearing. Teacher-reported live:
+  // "no way to quickly reduce clutter" and "leaderboard hiding students' names+faces" —
+  // this closes the gap between the two: Focus Mode now actually suppresses them, and
+  // closing the panel any OTHER way (the plain Interactive toggle, not Focus Mode) still
+  // shows them same as before, since that's a real intentional summary view, not a
+  // declutter request. Cleared automatically if the pin changes to anything else (see the
+  // effect below), so the button never lies about what's actually pinned.
+  const [focusMode, setFocusMode] = useState(false);
+  useEffect(() => {
+    if (focusMode && pinnedParticipantId !== selfParticipantId) setFocusMode(false);
+  }, [focusMode, pinnedParticipantId, selfParticipantId]);
+  // Teacher-reported live (2026-09-17): "screen continuously disturbed when someone joined
+  // or left," "teacher's screen couldn't be spotlighted neither by us nor by teacher," "the
+  // screen I share is too small, I can't pin it for everyone." Root cause: the
+  // participantLeft and screenSharingStatusChanged listeners below unconditionally force
+  // setTileView(true) back on every single time -- including right after a deliberate pin
+  // (this same "Spotlight me" feature, or the teacher spotlighting her own shared screen),
+  // silently undoing it the moment the next student joins/leaves or a share toggles, which
+  // in a class of 15-20 kids trickling in happens constantly. Mirrors the LOCAL client's own
+  // current pin state -- mode-independent (unlike pinnedParticipantId's state, which the
+  // pinnedEndpointChanged listener only updates for mode==="teacher") because a student/
+  // parent's own Jitsi instance fires this same event too, whether from the teacher's
+  // broadcast pin (InteractivePanel's onPinChanged calling executeCommand("pinParticipant"))
+  // or a local click, and their own join/leave/share events must respect it just as much.
+  // A ref, not state, since the init effect below only depends on [room, mode] and would
+  // otherwise close over whatever this was at mount (same reason userNameRef exists).
+  const locallyPinnedIdRef = useRef<string | null>(null);
   const annotationOverlayRef = useRef<AnnotationOverlayHandle>(null);
   // Teacher-only "mark on top of what's on screen" tool — off by default so it never
   // steals pointer events from Jitsi's own controls (screen-share picker, mute, etc.)
@@ -215,6 +308,16 @@ export default function JitsiLive({
   // deliberately ephemeral (no history the way the whiteboard has).
   const [annotateOn, setAnnotateOn] = useState(false);
   const [annotateColor] = useState("#EF4444");
+  // Real teacher complaint, reported as "words disappearing": the annotate tool is
+  // deliberately ephemeral (see the comment above), but nothing told the teacher that before
+  // they used it -- turning on a tool and watching your own writing vanish reads as a bug,
+  // not a laser-pointer feature, if you were never told to expect it. Shown once per session
+  // the first time annotate is turned on, not a permanent fixture -- see the effect below.
+  const [annotateFadeHintDismissed, setAnnotateFadeHintDismissed] = useState(false);
+  const [annotateFadeHintShown, setAnnotateFadeHintShown] = useState(false);
+  useEffect(() => {
+    if (annotateOn) setAnnotateFadeHintShown(true);
+  }, [annotateOn]);
   const jitsiApiRef = useRef<{ executeCommand: (command: string, ...args: unknown[]) => void } | null>(null);
   const [lobbyEnabled, setLobbyEnabled] = useState(false);
   // jitsiApiRef being populated doesn't itself trigger a re-render (it's a ref) — this
@@ -300,11 +403,39 @@ export default function JitsiLive({
   // mic, and recording continuity with no warning) would be worse than the deploy it's
   // trying to deliver.
   const [reloadNotice, setReloadNotice] = useState<string | null>(null);
+  // Real report: "recordings not showing on the portal even though the session says
+  // recording started." Expected, not a bug -- the file doesn't exist until the class ends
+  // and Jibri finishes syncing it (normally seconds now, up to ~1hr worst case via the
+  // hourly backup sync job) -- but nobody told the teacher to expect that gap, so an
+  // admin/parent checking mid-class or right after reads it as broken. Shown once to the
+  // teacher the first time the Rec badge turns on, setting the expectation up front rather
+  // than after someone's already worried by an empty recordings list.
+  const [recordingTimingHintDismissed, setRecordingTimingHintDismissed] = useState(false);
+  const [recordingTimingHintShown, setRecordingTimingHintShown] = useState(false);
+  useEffect(() => {
+    if (recording) setRecordingTimingHintShown(true);
+  }, [recording]);
+  // Real parent complaint: a child joined via a demo link and couldn't hear the teacher at
+  // all -- video played, audio didn't. Browser autoplay policy (strictest on iPad/iPhone
+  // Safari) blocks incoming audio until the viewer makes some gesture on the page; Jitsi's
+  // iframe already requests the "autoplay" permission (confirmed in the deployed
+  // external_api.js), so this isn't a missing-permission bug, it's the browser waiting for
+  // a first tap it never got. Shown once to students/parents only -- a teacher's own audio
+  // isn't "incoming," so this never applies to them.
+  const [soundHintDismissed, setSoundHintDismissed] = useState(false);
   // Popup asking the teacher to share their screen right when the class starts — a click is
   // unavoidable (getDisplayMedia requires a real user gesture, a browser rule no app can
   // bypass), but a modal right at join is a clearer, earlier ask than waiting for the
   // post-recording banner further down to be the first nudge.
   const [shareScreenPromptOpen, setShareScreenPromptOpen] = useState(false);
+  // Guards the "Share your screen?" prompt below to actually match its own documented intent
+  // ("rather than this dialog reappearing or blocking anything") -- videoConferenceJoined,
+  // which triggers it, fires again on every RECONNECT (see the comment right after
+  // setShareScreenPromptOpen(true) below), not just the real first join. Teacher-reported
+  // live (2026-09-17): "pop ups happening in between the class on screen" and "we got
+  // disconnected automatically" -- with no guard, every one of those reconnects re-showed
+  // this modal mid-class, unrelated to anything the teacher was doing at that moment.
+  const shareScreenPromptShownRef = useRef(false);
   const recordingWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // An "off" recordingStatusChanged with an error used to declare auto-recording failed the
   // instant it arrived — but Jibri can report a transient failure (e.g. its first-picked
@@ -405,6 +536,20 @@ export default function JitsiLive({
   // — fire-and-forget, with a toast only on a real failure so a stuck-Scheduled session
   // doesn't silently stay invisible on Attendance/Payout with no indication anything went wrong.
   function completeAndLeave(summary?: string) {
+    // Teacher feedback: "the session only ends once I end it from my side... children
+    // sometimes remain in the session while we are completing the class notes." Ending
+    // class only ever completed the session record and navigated the teacher away --
+    // Jitsi's own room kept running for anyone still connected, since nothing told it the
+    // class was actually over. kickParticipant is the same moderator action already
+    // exposed in Jitsi's own per-participant menu (see remoteVideoMenu's disableKick
+    // above) -- applying it to everyone still in the room here is "End the class" actually
+    // ending it for the class, not just for the teacher. Unconditional on hasClassSession —
+    // a personal room's teacher ending the call should clear it out too, not just a real class.
+    if (mode === "teacher") {
+      for (const p of participants) {
+        jitsiApiRef.current?.executeCommand("kickParticipant", p.id);
+      }
+    }
     if (mode === "teacher" && hasClassSession && !completedRef.current) {
       completedRef.current = true;
       completeSession(effectiveSessionId!, summary)
@@ -473,6 +618,16 @@ export default function JitsiLive({
     // change), same lifetime as `api`/`cancelled` above.
     let authRetryCount = 0;
     const MAX_AUTH_RETRIES = 4;
+    // Same idea, same budget, for connectionFailed -- see that listener below. Teacher-
+    // reported live (2026-09-17): "we got disconnected automatically and then joining back
+    // was tough." connectionFailed used to go straight to a hard error with zero retry, the
+    // one listener in this whole file that didn't get the "a momentary server-side hiccup
+    // shouldn't strand someone on a dead screen" treatment conferenceFailed already has --
+    // on this same self-hosted deployment, a dropped XMPP/BOSH connection is exactly as
+    // plausibly transient as a rejected token, so leaving the person to manually notice,
+    // navigate away and rejoin was an inconsistency, not a deliberate distinction.
+    let connectionRetryCount = 0;
+    const MAX_CONNECTION_RETRIES = 4;
 
     // Auto-record retry budget: ~12 minutes total before giving up and telling the
     // teacher. Widened from an earlier 48s budget after checking real production data on
@@ -626,7 +781,16 @@ export default function JitsiLive({
           // (no ApiError, the request never got a response) still falls back to a
           // best-effort room-only join, matching demo-mode/offline behavior.
           if (err instanceof ApiError) {
+            // Real teacher report: clicking Start Class repeatedly showed "the same screen"
+            // every time with no explanation. Root cause was here -- the toast alone
+            // auto-dismisses in a few seconds, and returning without setError() left the
+            // Jitsi iframe never created, so the call area just stayed a blank, empty box
+            // with no visible reason and no way to tell "broken" from "still loading." The
+            // toast stays for the fleeting notification; setError puts the actual reason on
+            // screen persistently, using the same error card every other init() failure
+            // already falls back to.
             toast({ variant: "error", title: "Couldn't join the class", description: err.message });
+            setError(err.message);
             return;
           }
         }
@@ -829,7 +993,25 @@ export default function JitsiLive({
       api.addListener("videoConferenceJoined", (payload) => {
         setReconnecting(null);
         media.selfId = payload?.id ?? "";
-        if (mode === "teacher") setSelfParticipantId(payload?.id ?? null);
+        if (mode === "teacher") {
+          setSelfParticipantId(payload?.id ?? null);
+          // Seeds the roster this fix's "kick everyone on End Class" loop (see
+          // completeAndLeave) reads from. participantJoined only fires for someone who joins
+          // AFTER this listener is attached — if the teacher's own connection drops and
+          // rejoins mid-class (this whole feedback thread is about exactly that kind of
+          // flaky-connection resilience), everyone already in the room at that point would
+          // otherwise never re-announce themselves, so a stale/reset participants list would
+          // silently under-kick and leave them stuck exactly like the original bug.
+          // getParticipantsInfo() is synchronous, not an event -- it returns whoever's in the
+          // room right now, including anyone who joined before this reconnect.
+          const existing = api?.getParticipantsInfo?.() ?? [];
+          setParticipants(
+            existing.map((p) => ({
+              id: p.participantId,
+              displayName: p.displayName?.trim() || "Student",
+            }))
+          );
+        }
         media.camSince = Date.now(); // camera starts unmuted unless Jitsi says otherwise
         // A small class reads better as a grid of faces than one spotlighted speaker.
         api?.executeCommand("setTileView", true);
@@ -908,7 +1090,8 @@ export default function JitsiLive({
         // reason it exists is to get the whiteboard/quiz overlay into the recording -- and the
         // Personal Meeting Room is never recorded at all, so there was never anything worth
         // sharing for.
-        if (mode === "teacher" && !isRecordingObserver && hasClassSession) {
+        if (mode === "teacher" && !isRecordingObserver && hasClassSession && !shareScreenPromptShownRef.current) {
+          shareScreenPromptShownRef.current = true;
           setShareScreenPromptOpen(true);
         }
         // Skipped for the recording observer -- it only ever renders because a recording is
@@ -1004,7 +1187,14 @@ export default function JitsiLive({
         // trying to render a stage around a track that no longer existed. Re-forcing tile view
         // on every departure — not just on screen-share start/stop — makes Jitsi recompute its
         // layout from the participants actually still in the room.
-        jitsiApiRef.current?.executeCommand("setTileView", true);
+        //
+        // Skipped entirely while something is deliberately pinned (locallyPinnedIdRef) --
+        // see that ref's own doc comment. The departed participant no longer having a track
+        // to spotlight around is Jitsi's problem to resolve on its own pinned tile, not a
+        // reason to blow away someone else's still-valid pin.
+        if (!locallyPinnedIdRef.current) {
+          jitsiApiRef.current?.executeCommand("setTileView", true);
+        }
       });
       // Jitsi's native pin is purely local to whichever browser clicked it — a teacher
       // pinning herself while screen-sharing used to show "Pinned" on her own screen only,
@@ -1014,6 +1204,7 @@ export default function JitsiLive({
       // a student's own view actually follow along — see InteractivePanel's onPinChanged.
       // A student pinning someone locally for their own view is deliberately left alone.
       api.addListener("pinnedEndpointChanged", (payload) => {
+        locallyPinnedIdRef.current = payload?.id ?? null;
         if (mode !== "teacher") return;
         setPinnedParticipantId(payload?.id ?? null);
         setPinnedRef.current?.(payload?.id ?? null);
@@ -1053,15 +1244,26 @@ export default function JitsiLive({
         // Re-asserting tile view on every share start/stop keeps the shared screen as just one
         // more tile in the same grid (up to the 9 TILE_VIEW_MAX_COLUMNS=3 allows) instead of
         // letting Jitsi silently switch layouts underneath the teacher.
-        jitsiApiRef.current?.executeCommand("setTileView", true);
+        //
+        // Skipped while something is deliberately pinned (locallyPinnedIdRef — see its own
+        // doc comment): teacher-reported live, this unconditional re-assert was exactly what
+        // made "spotlight the shared screen for everyone" impossible — the moment sharing
+        // started, this immediately shrank it back into the grid, undoing a pin in the same
+        // breath it was set (or broadcast). A deliberate pin already means someone chose a
+        // specific main view; screen-share starting isn't a reason to override that choice.
+        if (!locallyPinnedIdRef.current) {
+          jitsiApiRef.current?.executeCommand("setTileView", true);
+        }
         // Reported live (2026-09-16): after the teacher stopped sharing, the shared screen
         // "wouldn't go away" — this single setTileView call can land before Jitsi's own
         // internal layout/track-teardown for the stopped share has actually settled, so the
         // command has nothing to act on yet. A second, delayed re-assert costs nothing when
         // the first one already worked (setTileView(true) is idempotent) and gives Jitsi a
         // moment to finish tearing down the stopped share's track before this reissues it.
-        if (!on) {
-          setTimeout(() => jitsiApiRef.current?.executeCommand("setTileView", true), 800);
+        if (!on && !locallyPinnedIdRef.current) {
+          setTimeout(() => {
+            if (!locallyPinnedIdRef.current) jitsiApiRef.current?.executeCommand("setTileView", true);
+          }, 800);
         }
       });
       // Without these, a video server/room misconfiguration (e.g. the Jitsi deployment's
@@ -1101,6 +1303,22 @@ export default function JitsiLive({
         );
       });
       api.addListener("connectionFailed", () => {
+        if (!cancelled && connectionRetryCount < MAX_CONNECTION_RETRIES) {
+          connectionRetryCount++;
+          setReconnecting(
+            connectionRetryCount === 1
+              ? "Reconnecting to the video server…"
+              : `Reconnecting to the video server… (attempt ${connectionRetryCount} of ${MAX_CONNECTION_RETRIES})`
+          );
+          api?.dispose();
+          jitsiApiRef.current = null;
+          setJitsiReady(false);
+          setTimeout(() => {
+            if (!cancelled) init().catch((err: Error) => setError(err.message));
+          }, 2000 * connectionRetryCount);
+          return;
+        }
+        setReconnecting(null);
         setError("Couldn't reach the video server. Check your connection and try rejoining.");
       });
       api.addListener("recordingStatusChanged", (payload) => {
@@ -1167,7 +1385,14 @@ export default function JitsiLive({
   }, [shareAttempted, shareScreenPromptOpen]);
 
   return (
-    <div className="flex h-screen flex-col bg-brand-navyDark bg-[radial-gradient(circle_at_50%_0%,rgba(124,92,252,0.10),transparent_60%)]">
+    // h-dvh, not h-screen/100vh -- teacher-reported live (2026-09-17): "screen size overall
+    // very small and when we zoom it, it automatically vanishes and minimizes on its own."
+    // 100vh is the LAYOUT viewport, which mobile browsers don't shrink on pinch-zoom or
+    // address-bar show/hide -- so a fixed-height h-screen flex column doesn't reflow with
+    // the actual visible (visual) viewport, reading as the page randomly shrinking/jumping.
+    // Same fix, same reasoning, already established elsewhere in this app (see AppShell's
+    // own min-h-dvh comment) -- this screen had simply never been updated to match.
+    <div className="flex h-dvh flex-col bg-brand-navyDark bg-[radial-gradient(circle_at_50%_0%,rgba(124,92,252,0.10),transparent_60%)]">
       <header className="relative flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-b from-brand-navyDark/95 to-brand-navyDark/75 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-md sm:px-5">
         {/* Thin brand-gradient hairline instead of a flat border — ties the header to the
             same violet/amber accent used by the celebrate button and active toggles below,
@@ -1227,26 +1452,38 @@ export default function JitsiLive({
                 </Button>
               )}
               {mode === "teacher" && (
+                // "Focus Mode" -- upgraded from the old standalone "Spotlight me" button.
+                // Teacher-reported live (2026-09-17) needed three separate things to make a
+                // shared screen actually usable for a class -- spotlight it, clear the
+                // Interactive panel for real screen space, and have the spotlight *stay* put
+                // (the participantLeft/screenSharingStatusChanged fix above) -- with no single
+                // affordance for "just make this the thing everyone sees right now." One
+                // button now does the first two together (the third was a bug, now fixed at
+                // the source, not something this button needs to work around).
                 <Button
                   size="pill"
                   variant="secondary"
-                  aria-pressed={pinnedParticipantId !== null && pinnedParticipantId === selfParticipantId}
+                  aria-pressed={focusMode}
                   disabled={!jitsiReady || !selfParticipantId}
                   className={headerToggleClass}
-                  onClick={() =>
-                    jitsiApiRef.current?.executeCommand(
-                      "pinParticipant",
-                      pinnedParticipantId === selfParticipantId ? null : selfParticipantId
-                    )
-                  }
+                  onClick={() => {
+                    if (focusMode) {
+                      jitsiApiRef.current?.executeCommand("pinParticipant", null);
+                      setFocusMode(false);
+                    } else {
+                      jitsiApiRef.current?.executeCommand("pinParticipant", selfParticipantId);
+                      setPanelOpen(false);
+                      setFocusMode(true);
+                    }
+                  }}
                   title={
-                    pinnedParticipantId === selfParticipantId
-                      ? "Stop spotlighting yourself as the main view"
-                      : "Spotlight yourself as the main view for the whole class, not just whoever happens to pin you locally"
+                    focusMode
+                      ? "Exit focus mode"
+                      : "Spotlight yourself (or whatever you're sharing) as the main view for the whole class, clear the panel and hide the floating leaderboard/roster cards for maximum, decluttered video space"
                   }
                 >
-                  {pinnedParticipantId === selfParticipantId ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                  {pinnedParticipantId === selfParticipantId ? "Spotlighted" : "Spotlight me"}
+                  {focusMode ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                  {focusMode ? "Exit Focus" : "Focus Mode"}
                 </Button>
               )}
               {interactive && (
@@ -1491,58 +1728,89 @@ export default function JitsiLive({
           Shown once, right at join, to the real teacher only (never the recording observer,
           which has no one to click it, and never a student/parent). A real zero-click
           auto-share is impossible either way (getDisplayMedia requires a genuine user
-          gesture, a browser security rule no app can bypass) -- see the dialog's own comment
-          just below for why it's a skippable nudge rather than a blocking requirement. */}
-      {/* Was deliberately mandatory (earlier teacher feedback) -- reversed on later feedback:
-          "repeatedly prompts for screen-share permission before the class will start, as if it
-          were mandatory" was reported as a bug against joining at all, not just the personal
-          link. Now skippable -- Escape, clicking outside, or the explicit Skip button all close
-          it without sharing, and the class proceeds without recording the whiteboard/quiz. The
-          softer, non-blocking nudge banner below (shown once actually recording) still reminds
-          a teacher who skipped, rather than this dialog reappearing or blocking anything. */}
-      <Dialog open={shareScreenPromptOpen} onOpenChange={(open) => !open && setShareScreenPromptOpen(false)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Share your screen?</DialogTitle>
-            <DialogDescription>
-              Sharing this tab (choose <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives students a clearer view. Not required — you can start the class without it.
-            </DialogDescription>
-          </DialogHeader>
-          {showShareOsHint && (
-            <p className="rounded-lg bg-brand-amber/10 px-3 py-2 text-xs text-brand-amber">
-              Nothing happening after you click Share? On a Mac, check System Settings → Privacy &amp; Security → Screen Recording and make sure your browser is allowed — that's a separate permission from camera/microphone and browsers often fail silently when it's off.
+          gesture, a browser security rule no app can bypass) -- see below for why it's a
+          skippable nudge rather than a blocking requirement.
+          Was deliberately a blocking modal (earlier teacher feedback), then a skippable one
+          (later feedback: "repeatedly prompts... as if it were mandatory" read as a bug
+          against joining at all). Reworked again 2026-09-17 into a dismissible BANNER, not a
+          dialog, in direct response to that same teacher's live complaint about this exact
+          class: "there were popups happening in between the class on screen... very
+          distracting." A modal — even a skippable one, even shown only once — still steals
+          focus and blocks the rest of the call UI the instant it appears; this now sits
+          alongside the other inline nudge banners in this same list (recording-timing,
+          annotate-fade, sound hint, ...), all one consistent "notice, not interruption"
+          pattern, dismissed with a click instead of an OK-to-continue gate. */}
+      {mode === "teacher" && !isRecordingObserver && interactive && shareScreenPromptOpen && (
+        <div className="mx-3 mt-3 flex shrink-0 flex-col gap-2 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md sm:flex-row sm:items-start">
+          <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
+          <div className="flex-1 space-y-1.5">
+            <p>
+              <span className="font-semibold">Share your screen?</span> Sharing this tab (choose{" "}
+              <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives
+              students a clearer view. Not required — the class can carry on without it.
             </p>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShareScreenPromptOpen(false)}>
-              Skip for now
-            </Button>
-            <Button
-              onClick={() => {
-                setShareAttempted(true);
-                jitsiApiRef.current?.executeCommand("toggleShareScreen");
-              }}
-            >
-              Share screen
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            {/* Real parent complaint: a video played inside a shared PowerPoint/tab had no
+                sound for students. Root cause is a hard browser rule, not anything fixable
+                here -- Chrome only offers a "Share tab audio" checkbox for This Tab (and
+                "Share system audio" for Entire Screen on Windows only); a shared Window never
+                carries audio on any OS. Called out explicitly rather than assumed. */}
+            <p className="rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px]">
+              Playing a video with sound? Tick <span className="font-semibold">Share tab audio</span> in the picker that opens
+              next, or students won't hear it.
+            </p>
+            {showShareOsHint && (
+              <p className="rounded-lg bg-brand-amber/10 px-2.5 py-1.5 text-[11px] text-brand-amber">
+                Nothing happening after you click Share? On a Mac, check System Settings → Privacy &amp; Security → Screen
+                Recording and make sure your browser is allowed — that's a separate permission from camera/microphone and
+                browsers often fail silently when it's off.
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-3 pt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShareAttempted(true);
+                  jitsiApiRef.current?.executeCommand("toggleShareScreen");
+                }}
+                className="rounded-full bg-brand-violet px-3 py-1 text-[11px] font-semibold text-white hover:bg-[#6a4de0]"
+              >
+                Share screen
+              </button>
+              <button
+                type="button"
+                onClick={() => setShareScreenPromptOpen(false)}
+                className="font-semibold underline decoration-brand-violet/40 underline-offset-2 hover:decoration-brand-violet"
+              >
+                Skip for now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {mode === "teacher" && !isRecordingObserver && screenShareActive && shareMayHaveDroppedSince && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
           <WifiOff className="h-4 w-4 shrink-0 translate-y-0.5" />
+          {/* Teacher-reported live, with a screenshot: the browser's own "Choose what to
+              share" picker was stuck open, blocking the class. Root cause was this banner's
+              own button -- its whole premise is "screenShareActive may say true when Jitsi's
+              real state has already silently gone back to false," which makes
+              toggleShareScreen a coin flip: if the real state actually was still "sharing,"
+              it correctly stops it, but if the real state was already "not sharing" (the
+              exact case this banner exists to warn about), toggling it *starts a brand-new
+              share instead* -- reopening exactly that picker, on top of a call the teacher
+              was trying to get out of. There's no reliable way from here to know which case
+              it is, so the fix is to stop guessing: use Jitsi's own screen-share button in
+              the call toolbar below instead, which reflects its actual internal state, not
+              this possibly-stale one. */}
           <p className="flex-1">
-            Your connection dropped briefly while you were sharing your screen — students may no longer be seeing it, even though it still shows as shared here. Stop sharing, then share again to be sure.
+            Your connection dropped briefly while you were sharing your screen — students may no longer be seeing it, even though it still shows as shared here. Use the screen-share button in your call controls below to stop and restart it, rather than this banner.
           </p>
           <button
             type="button"
-            onClick={() => {
-              jitsiApiRef.current?.executeCommand("toggleShareScreen");
-              setShareMayHaveDroppedSince(false);
-            }}
+            onClick={() => setShareMayHaveDroppedSince(false)}
             className="shrink-0 font-semibold underline decoration-brand-amber/50 underline-offset-2 hover:decoration-brand-amber"
           >
-            Stop sharing
+            Dismiss
           </button>
         </div>
       )}
@@ -1550,7 +1818,7 @@ export default function JitsiLive({
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md">
           <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
           <p className="flex-1">
-            Share your screen (choose <span className="font-semibold">This Tab</span>) so the recording includes your whiteboard and quiz.
+            Share your screen (choose <span className="font-semibold">This Tab</span>) so the recording includes your whiteboard and quiz. Playing a video? Tick <span className="font-semibold">Share tab audio</span> in the picker or students won't hear it.
           </p>
           <button
             type="button"
@@ -1558,6 +1826,45 @@ export default function JitsiLive({
             className="shrink-0 font-semibold underline decoration-brand-violet/50 underline-offset-2 hover:decoration-brand-violet"
           >
             Share screen
+          </button>
+        </div>
+      )}
+      {mode === "teacher" && !isRecordingObserver && recordingTimingHintShown && !recordingTimingHintDismissed && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
+          <CheckCircle2 className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+          <p className="flex-1">Recording is on. It'll show up on the portal a few minutes after the class ends — not during the class itself.</p>
+          <button
+            type="button"
+            onClick={() => setRecordingTimingHintDismissed(true)}
+            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      {mode === "teacher" && !isRecordingObserver && annotateFadeHintShown && !annotateFadeHintDismissed && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
+          <Pencil className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+          <p className="flex-1">Marks you draw here fade after a couple seconds, like a laser pointer — they're for pointing things out live, not notes. For anything that should stay on screen, use the Board tab instead.</p>
+          <button
+            type="button"
+            onClick={() => setAnnotateFadeHintDismissed(true)}
+            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      {mode === "student" && !isRecordingObserver && jitsiReady && !soundHintDismissed && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
+          <Volume2 className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+          <p className="flex-1">Can't hear the teacher? Tap anywhere on the video once — some phones and tablets block sound until you do.</p>
+          <button
+            type="button"
+            onClick={() => setSoundHintDismissed(true)}
+            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+          >
+            Dismiss
           </button>
         </div>
       )}
@@ -1622,7 +1929,7 @@ export default function JitsiLive({
               // control of the two.
               <button
                 type="button"
-                title={annotateOn ? "Stop marking on screen" : "Mark on screen — draw over the video or a shared screen"}
+                title={annotateOn ? "Stop marking on screen" : "Mark on screen — draw over the video or a shared screen. Marks fade after a couple seconds, like a laser pointer; for notes that should stay, use the Board tab instead."}
                 aria-label={annotateOn ? "Stop marking on screen" : "Mark on screen"}
                 aria-pressed={annotateOn}
                 onClick={() => setAnnotateOn((o) => !o)}
@@ -1703,10 +2010,22 @@ export default function JitsiLive({
                 message={celebrationMessage}
                 // Once the Interactive panel is open, its own Stars tab already shows this
                 // leaderboard, so the floating card would be a redundant duplicate.
-                showLeaderboardCard={!interactive || !panelOpen}
+                //
+                // Teacher-reported live (2026-09-17): "the leaderboard again unnecessary on
+                // right side hiding students name+faces" -- this condition was missing the
+                // mode==="teacher" check its own neighboring comment (a few lines below, on
+                // the paired Joined-roster card) already documents as the intent ("Both are
+                // teacher-only"). Without it, any student/parent who closed their own panel
+                // got the same floating card over their video grid, covering exactly the
+                // faces/names a student view has no reason to hide.
+                //
+                // `&& !focusMode` -- see focusMode's own doc comment: Focus Mode closing the
+                // panel is a deliberate "give me maximum, decluttered video space" request,
+                // not a reason to pop these two cards up over that same corner.
+                showLeaderboardCard={mode === "teacher" && (!interactive || !panelOpen) && !focusMode}
                 stacked
               />
-              {mode === "teacher" && (!interactive || !panelOpen) && (
+              {mode === "teacher" && (!interactive || !panelOpen) && !focusMode && (
                 <div className="w-64 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy/90 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-xl">
                   <div className="flex items-center justify-between px-3 py-2.5">
                     <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
@@ -1735,6 +2054,33 @@ export default function JitsiLive({
               )}
             </div>
           </div>
+          {interactive && panelOpen && (
+            // Desktop-only (md:flex, hidden below it) -- below md the video and panel
+            // stack vertically instead of sitting side by side, where a horizontal
+            // resize handle has nothing meaningful to do. Drag to resize the panel;
+            // double-click to reset to the default width -- same discoverable pattern
+            // as a spreadsheet column border, not a hidden gesture. See panelWidth's own
+            // doc comment above for why this exists (the old panel had one fixed 380px
+            // width with no give at all).
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize the interactive panel"
+              title="Drag to resize the panel — double-click to reset"
+              className={cn(
+                "hidden shrink-0 cursor-col-resize items-center justify-center self-stretch rounded-full transition-colors md:flex",
+                resizingPanel ? "bg-brand-violet/50" : "bg-white/5 hover:bg-white/15"
+              )}
+              style={{ width: 10 }}
+              onPointerDown={handlePanelResizeStart}
+              onPointerMove={handlePanelResizeMove}
+              onPointerUp={handlePanelResizeEnd}
+              onPointerCancel={handlePanelResizeEnd}
+              onDoubleClick={resetPanelWidth}
+            >
+              <GripVertical className="h-3.5 w-3.5 text-white/40" aria-hidden="true" />
+            </div>
+          )}
           {interactive && (
             // max-h-[38vh] (md:max-h-none): below md the body stacks video above this
             // panel instead of sitting side-by-side (flex-col → md:flex-row above), so
@@ -1746,9 +2092,14 @@ export default function JitsiLive({
             // area). Narrowed from an earlier 45vh, paired with the video card's own
             // min-h growing from 220px to 300px above, so a real phone screen actually
             // fits both instead of one starving the other.
+            //
+            // md:w-[var(--panel-w)]: the fixed 380px width is now user-resizable (see
+            // panelWidth's own doc comment) -- below md, "w-full" (no md: prefix) still
+            // wins since the CSS var is only referenced inside the md: variant.
             <aside
+              style={{ ["--panel-w" as string]: `${panelWidth}px` }}
               className={cn(
-                "flex max-h-[38vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 md:max-h-none md:w-[380px]",
+                "flex max-h-[38vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 md:max-h-none md:w-[var(--panel-w)]",
                 !panelOpen && "hidden"
               )}
             >

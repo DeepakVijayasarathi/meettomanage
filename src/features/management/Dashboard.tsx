@@ -26,6 +26,7 @@ import { ChartCard } from "@/components/ChartCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent } from "@/lib/utils";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { ADMIN_KPIS, DEPARTMENT_REVENUE, ENROLLMENT_FUNNEL, REVENUE_TREND } from "@/data/kpis";
 import { BATCHES } from "@/data/batches";
 import { useApiData } from "@/api/hooks";
@@ -33,7 +34,9 @@ import { useSession } from "@/state/session";
 import { useBrand } from "@/lib/branding";
 import { getDashboardSummary, type ApiDashboardSummary } from "@/api/reports";
 
-const TODAY = new Date().toISOString().slice(0, 10);
+// Cosmetic ("as of <date>") but still wrong near local midnight if computed in UTC — same
+// bug and fix as teacher/Dashboard.tsx's "today's classes" list.
+const TODAY = utcIsoToLocalDateTime(new Date().toISOString()).date;
 
 // API mode must never render the demo numbers: this zeroed summary is the seed
 // (and the resting state if the request fails).

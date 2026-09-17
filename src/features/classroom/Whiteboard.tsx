@@ -69,7 +69,17 @@ export type BoardOp =
   // showActivity was pure local component state, so a teacher launching the activity
   // (and the emoji sound/visual its completion triggers) only ever saw it on their own
   // screen; students never saw the activity appear at all.
-  | { kind: "activity"; open: boolean };
+  | { kind: "activity"; open: boolean }
+  // Teacher-reported live (2026-09-17): "students also complain they can't see what I am
+  // writing on whiteboard and whiteboard itself is too small." Before this, `maximized`
+  // was pure local UI state — a teacher expanding the board to full-screen on her own
+  // device changed nothing about what students saw, since each participant's Whiteboard
+  // instance is independent. Broadcasting the TEACHER's own maximize toggle (only hers —
+  // see the mode==="teacher" guard where this is sent) makes "make the board bigger" an
+  // action that actually reaches the class, not just a personal drawing-comfort setting.
+  // Students can still shrink their own view back down afterward if it doesn't suit them;
+  // this only sets where they land when the teacher changes it.
+  | { kind: "maximize"; value: boolean };
 
 interface Page {
   id: string;
@@ -200,13 +210,44 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
   // (below) picks up the new, much larger container size automatically; nothing here touches
   // canvas pixels directly.
   const [maximized, setMaximized] = useState(false);
+  // The one button that actually changes what the WHOLE CLASS sees, not just the local
+  // drawer's own view — see the BoardOp "maximize" case's own doc comment above. Only the
+  // teacher's toggle broadcasts; a student expanding their own cramped view (e.g. on a
+  // phone) shouldn't force everyone else's layout to follow along.
+  function toggleMaximized() {
+    setMaximized((m) => {
+      const next = !m;
+      if (mode === "teacher") onBoardOp?.({ kind: "maximize", value: next });
+      return next;
+    });
+  }
   useEffect(() => {
     if (!maximized) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMaximized(false);
+      if (e.key === "Escape") {
+        setMaximized(false);
+        if (mode === "teacher") onBoardOp?.({ kind: "maximize", value: false });
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, [maximized, mode, onBoardOp]);
+  // Real teacher report: the maximize button existed but "kept happening" that nobody
+  // used it — undiscoverable in a corner of an already-busy toolbar. Shown once ever
+  // (localStorage, not component state — TabsContent unmounts the Board tab when you
+  // switch away, so component state alone would just re-show this every time the tab
+  // is revisited) to whoever can draw, until they either use the button or dismiss it.
+  const BOARD_EXPAND_HINT_KEY = "trn.classroomBoardExpandHintSeen";
+  const [expandHintDismissed, setExpandHintDismissed] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem(BOARD_EXPAND_HINT_KEY) === "1";
+  });
+  function dismissExpandHint() {
+    setExpandHintDismissed(true);
+    if (typeof window !== "undefined") window.localStorage.setItem(BOARD_EXPAND_HINT_KEY, "1");
+  }
+  useEffect(() => {
+    if (maximized) dismissExpandHint();
   }, [maximized]);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [lastCleared, setLastCleared] = useState<{ pageIndex: number; strokes: Stroke[] } | null>(null);
@@ -568,6 +609,9 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
         case "activity":
           setShowActivity(op.open);
           break;
+        case "maximize":
+          setMaximized(op.value);
+          break;
       }
     });
   }, [subscribeBoardOps]);
@@ -580,10 +624,16 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
       size="icon"
       variant="ghost"
       className={cn("text-white/70 hover:bg-white/10 hover:text-white", compact ? "h-7 w-7" : "h-8 w-8")}
-      title={maximized ? "Shrink the board back down" : "Make the board bigger"}
+      title={
+        maximized
+          ? "Shrink the board back down"
+          : mode === "teacher"
+            ? "Make the board bigger for the whole class"
+            : "Make the board bigger (just for you)"
+      }
       aria-label={maximized ? "Shrink the board back down" : "Make the board bigger"}
       aria-pressed={maximized}
-      onClick={() => setMaximized((m) => !m)}
+      onClick={toggleMaximized}
     >
       {maximized ? (
         <Minimize2 className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
@@ -594,7 +644,12 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
   );
 
   return (
-    <div className={cn("flex h-full flex-col gap-2 p-3", maximized && "fixed inset-0 z-40 h-screen bg-brand-navy p-4")}>
+    // h-dvh, not h-screen -- same fix, same reasoning as JitsiLive's own root wrapper
+    // (teacher-reported live: "screen size overall very small and when we zoom it, it
+    // automatically vanishes and minimizes on its own"). This maximize overlay is exactly
+    // the escape hatch a teacher would reach for to fight a too-small board, so it landing
+    // on the same viewport bug undermined the one workaround that should have fixed it.
+    <div className={cn("flex h-full flex-col gap-2 p-3", maximized && "fixed inset-0 z-40 h-dvh bg-brand-navy p-4")}>
       {canDraw ? (
         // Dark toolbar chrome matches the rest of the interactive panel (tabs, roster,
         // quiz) — only the canvas below stays a light "paper" surface, so this reads
@@ -754,6 +809,30 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
             <div className="mx-1 h-5 w-px bg-white/10" aria-hidden="true" />
             {renderMaximizeButton(true)}
           </div>
+        </div>
+      )}
+
+      {/* Real teacher report: the board reads as "too small to annotate or write the
+          whole thing" and the maximize button existed the whole time but nobody found
+          it. One-time, dismissible — not a permanent fixture once someone's used it or
+          waved it off (see expandHintDismissed above). Teacher-only: for the teacher this
+          is a genuine class-wide fix now (see the BoardOp "maximize" broadcast above); a
+          student's own maximize only resizes their own view, a smaller win not worth
+          nagging every viewer about. */}
+      {canDraw && mode === "teacher" && !maximized && !expandHintDismissed && (
+        <div className="flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-3 py-2 text-xs text-brand-violet">
+          <Maximize2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <p className="flex-1">
+            Writing something the whole class needs to read clearly? Tap <span className="font-semibold">Expand</span>{" "}
+            (top-right of the board toolbar) to fill the screen — it makes the board bigger for everyone, not just you.
+          </p>
+          <button
+            type="button"
+            onClick={dismissExpandHint}
+            className="shrink-0 font-semibold underline decoration-brand-violet/40 underline-offset-2 hover:decoration-brand-violet"
+          >
+            Got it
+          </button>
         </div>
       )}
 

@@ -96,6 +96,20 @@ export async function completeSession(sessionId: string, summary?: string): Prom
   });
 }
 
+/**
+ * Teacher feedback: "the report-writing option is also not visible after the session if we
+ * do not complete the report immediately." Edits an already-completed session's notes --
+ * completeSession itself refuses to run twice, so this is the only way back in once class
+ * has ended. Re-emails the updated notes to the batch's parents, same as completing with
+ * notes already does.
+ */
+export async function updateSessionSummary(sessionId: string, summary: string): Promise<ApiClassSession> {
+  return apiFetch<ApiClassSession>(`/api/sessions/${sessionId}/summary`, {
+    method: "PUT",
+    body: JSON.stringify({ summary }),
+  });
+}
+
 /** Personal iCalendar feed URL (absolute) for external calendar apps — created server-side on first request. */
 export async function getCalendarFeedUrl(): Promise<string> {
   const { url } = await apiFetch<{ url: string }>("/api/sessions/calendar/feed-url");
@@ -154,6 +168,19 @@ export async function listAllRecordings(page: number, pageSize: number, date?: s
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
   if (date) params.set("date", date);
   return apiFetch<PagedResult<ApiRecordingListItem>>(`/api/sessions/recordings?${params.toString()}`);
+}
+
+/**
+ * Teacher-only, paged, every registered recording across this teacher's own classes -- same
+ * shape and reasoning as listAllRecordings above, scoped instead of institution-wide. Replaces
+ * fetching every one of the teacher's completed sessions then calling listRecordings once per
+ * session (the identical N+1 pattern the admin page had, just scoped to "my classes" -- only
+ * ever a matter of time before it showed the same slowdown as any one teacher's own history grew).
+ */
+export async function listMyRecordings(page: number, pageSize: number, date?: string): Promise<PagedResult<ApiRecordingListItem>> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (date) params.set("date", date);
+  return apiFetch<PagedResult<ApiRecordingListItem>>(`/api/sessions/mine/recordings?${params.toString()}`);
 }
 
 /**

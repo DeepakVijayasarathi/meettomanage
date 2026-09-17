@@ -185,6 +185,29 @@ export async function removeStudentFromBatch(batchId: string, childId: string): 
   await apiFetch<void>(`/api/batches/${batchId}/enrollments/${childId}`, { method: "DELETE" });
 }
 
+export interface ApiTeacherStudent {
+  childId: string;
+  childName: string;
+  parentName: string;
+  academicLevel: string | null;
+  batchId: string;
+  batchName: string;
+  courseName: string;
+  enrolledAtUtc: string;
+  totalSessions: number;
+  completedSessions: number;
+  remainingSessions: number;
+  sessionsSinceEnrollment: number;
+  attendedCount: number;
+  lastAttendedAtUtc: string | null;
+}
+
+/** The signed-in teacher's own "My Students" roster — one row per active enrollment across
+ *  every batch they teach, with per-batch progress and per-child attendance. */
+export async function listMyStudents(): Promise<ApiTeacherStudent[]> {
+  return apiFetch<ApiTeacherStudent[]>("/api/batches/mine/students");
+}
+
 export interface ReconcileStaleSessionTeacherConflict {
   batchId: string;
   batchName: string;
