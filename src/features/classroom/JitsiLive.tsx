@@ -345,6 +345,14 @@ export default function JitsiLive({
   // bypass), but a modal right at join is a clearer, earlier ask than waiting for the
   // post-recording banner further down to be the first nudge.
   const [shareScreenPromptOpen, setShareScreenPromptOpen] = useState(false);
+  // Guards the "Share your screen?" prompt below to actually match its own documented intent
+  // ("rather than this dialog reappearing or blocking anything") -- videoConferenceJoined,
+  // which triggers it, fires again on every RECONNECT (see the comment right after
+  // setShareScreenPromptOpen(true) below), not just the real first join. Teacher-reported
+  // live (2026-09-17): "pop ups happening in between the class on screen" and "we got
+  // disconnected automatically" -- with no guard, every one of those reconnects re-showed
+  // this modal mid-class, unrelated to anything the teacher was doing at that moment.
+  const shareScreenPromptShownRef = useRef(false);
   const recordingWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // An "off" recordingStatusChanged with an error used to declare auto-recording failed the
   // instant it arrived — but Jibri can report a transient failure (e.g. its first-picked
@@ -521,6 +529,16 @@ export default function JitsiLive({
     // change), same lifetime as `api`/`cancelled` above.
     let authRetryCount = 0;
     const MAX_AUTH_RETRIES = 4;
+    // Same idea, same budget, for connectionFailed -- see that listener below. Teacher-
+    // reported live (2026-09-17): "we got disconnected automatically and then joining back
+    // was tough." connectionFailed used to go straight to a hard error with zero retry, the
+    // one listener in this whole file that didn't get the "a momentary server-side hiccup
+    // shouldn't strand someone on a dead screen" treatment conferenceFailed already has --
+    // on this same self-hosted deployment, a dropped XMPP/BOSH connection is exactly as
+    // plausibly transient as a rejected token, so leaving the person to manually notice,
+    // navigate away and rejoin was an inconsistency, not a deliberate distinction.
+    let connectionRetryCount = 0;
+    const MAX_CONNECTION_RETRIES = 4;
 
     // Auto-record retry budget: ~12 minutes total before giving up and telling the
     // teacher. Widened from an earlier 48s budget after checking real production data on
@@ -980,7 +998,8 @@ export default function JitsiLive({
         // demanding a screen share "to continue" with no way to skip it, even though the entire
         // reason it exists is to get the whiteboard/quiz overlay into the recording -- neither of
         // which the Personal Meeting Room has, so there was never anything worth sharing for.
-        if (mode === "teacher" && !isRecordingObserver && interactive) {
+        if (mode === "teacher" && !isRecordingObserver && interactive && !shareScreenPromptShownRef.current) {
+          shareScreenPromptShownRef.current = true;
           setShareScreenPromptOpen(true);
         }
         // Skipped for the recording observer -- it only ever renders because a recording is
@@ -1192,6 +1211,22 @@ export default function JitsiLive({
         );
       });
       api.addListener("connectionFailed", () => {
+        if (!cancelled && connectionRetryCount < MAX_CONNECTION_RETRIES) {
+          connectionRetryCount++;
+          setReconnecting(
+            connectionRetryCount === 1
+              ? "Reconnecting to the video server…"
+              : `Reconnecting to the video server… (attempt ${connectionRetryCount} of ${MAX_CONNECTION_RETRIES})`
+          );
+          api?.dispose();
+          jitsiApiRef.current = null;
+          setJitsiReady(false);
+          setTimeout(() => {
+            if (!cancelled) init().catch((err: Error) => setError(err.message));
+          }, 2000 * connectionRetryCount);
+          return;
+        }
+        setReconnecting(null);
         setError("Couldn't reach the video server. Check your connection and try rejoining.");
       });
       api.addListener("recordingStatusChanged", (payload) => {
