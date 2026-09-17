@@ -157,6 +157,19 @@ export async function listAllRecordings(page: number, pageSize: number, date?: s
 }
 
 /**
+ * Teacher-only, paged, every registered recording across this teacher's own classes -- same
+ * shape and reasoning as listAllRecordings above, scoped instead of institution-wide. Replaces
+ * fetching every one of the teacher's completed sessions then calling listRecordings once per
+ * session (the identical N+1 pattern the admin page had, just scoped to "my classes" -- only
+ * ever a matter of time before it showed the same slowdown as any one teacher's own history grew).
+ */
+export async function listMyRecordings(page: number, pageSize: number, date?: string): Promise<PagedResult<ApiRecordingListItem>> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (date) params.set("date", date);
+  return apiFetch<PagedResult<ApiRecordingListItem>>(`/api/sessions/mine/recordings?${params.toString()}`);
+}
+
+/**
  * Unregisters a recording (Admin only). Only removes the database row — the underlying
  * file in storage isn't touched, so this stops the recording from showing up anywhere in
  * the app rather than reclaiming storage space.
