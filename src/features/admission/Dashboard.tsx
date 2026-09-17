@@ -21,6 +21,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatDate, formatNumber, formatPercent, formatTimeLabel } from "@/lib/utils";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { SESSIONS } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -37,12 +38,15 @@ import type { ClassSession } from "@/types";
 // beside a visibly non-empty pipeline snapshot below, once the real calendar has moved past
 // that week. Same fixed-"today" pattern as coordinator/Dashboard.tsx's MOCK_TODAY.
 const MOCK_TODAY = "2026-07-09";
-const TODAY = apiEnabled() ? new Date().toISOString().slice(0, 10) : MOCK_TODAY;
+// demoSessions' own .date (from toFrontendSession) is already the account's local calendar
+// date, not UTC -- comparing it against a UTC "today"/week-range mismatches for hours near
+// local midnight. Same bug and fix as teacher/Dashboard.tsx's "today's classes" list.
+const TODAY = apiEnabled() ? utcIsoToLocalDateTime(new Date().toISOString()).date : MOCK_TODAY;
 const WEEK_START = apiEnabled()
-  ? new Date(Date.now() - 3 * 86400_000).toISOString().slice(0, 10)
+  ? utcIsoToLocalDateTime(new Date(Date.now() - 3 * 86400_000).toISOString()).date
   : "2026-07-06";
 const WEEK_END = apiEnabled()
-  ? new Date(Date.now() + 4 * 86400_000).toISOString().slice(0, 10)
+  ? utcIsoToLocalDateTime(new Date(Date.now() + 4 * 86400_000).toISOString()).date
   : "2026-07-13";
 const FUNNEL_STAGES: ConversionStage[] = ["Demo Scheduled", "Demo Completed", "Follow-up", "Enrolled", "Not Interested"];
 

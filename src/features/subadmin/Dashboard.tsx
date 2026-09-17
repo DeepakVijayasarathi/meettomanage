@@ -24,6 +24,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/state/session";
 import { formatDate, formatPercent } from "@/lib/utils";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { usePortalBase } from "@/lib/portalBase";
@@ -151,7 +152,10 @@ export default function SubAdminDashboard() {
   const activeBatches = usingApi
     ? apiBatches.filter((b) => b.status === "active").length
     : BATCHES.filter((b) => b.status === "active").length;
-  const todayIso = new Date(nowMs).toISOString().slice(0, 10);
+  // apiSessions' own .date (from toFrontendSession) is already the account's local calendar
+  // date, not UTC -- comparing it against a UTC "today" mismatches for hours near local
+  // midnight. Same bug and fix as teacher/Dashboard.tsx's "today's classes" list.
+  const todayIso = utcIsoToLocalDateTime(new Date(nowMs).toISOString()).date;
   const sessionsToday = usingApi
     ? apiSessions.filter((s) => s.date === todayIso).length
     : SESSIONS.filter((s) => s.date === TODAY).length;
