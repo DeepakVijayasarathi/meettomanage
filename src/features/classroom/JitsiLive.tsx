@@ -408,6 +408,19 @@ export default function JitsiLive({
   // — fire-and-forget, with a toast only on a real failure so a stuck-Scheduled session
   // doesn't silently stay invisible on Attendance/Payout with no indication anything went wrong.
   function completeAndLeave(summary?: string) {
+    // Teacher feedback: "the session only ends once I end it from my side... children
+    // sometimes remain in the session while we are completing the class notes." Ending
+    // class only ever completed the session record and navigated the teacher away --
+    // Jitsi's own room kept running for anyone still connected, since nothing told it the
+    // class was actually over. kickParticipant is the same moderator action already
+    // exposed in Jitsi's own per-participant menu (see remoteVideoMenu's disableKick
+    // above) -- applying it to everyone still in the room here is "End the class" actually
+    // ending it for the class, not just for the teacher.
+    if (mode === "teacher") {
+      for (const p of participants) {
+        jitsiApiRef.current?.executeCommand("kickParticipant", p.id);
+      }
+    }
     if (mode === "teacher" && interactive && !completedRef.current) {
       completedRef.current = true;
       completeSession(effectiveSessionId!, summary)
