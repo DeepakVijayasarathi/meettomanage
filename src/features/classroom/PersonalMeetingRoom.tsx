@@ -60,6 +60,13 @@ export default function PersonalMeetingRoom() {
       room={room.roomId}
       title={`${userName}'s Personal Meeting Room`}
       mode="teacher"
+      // The owner's own account id doubles as this room's ClassroomHub sessionId (see
+      // ClassroomHub.JoinSession's isPersonalRoomOwner check) -- this is what turns on the
+      // Interactive panel (whiteboard/quiz/roster/chat) for the room, the same way a real
+      // sessionId does for a class. No hubToken needed: the owner is a real logged-in user,
+      // so InteractivePanel's hub connection authenticates with their normal access token.
+      sessionId={room.ownerId}
+      isPersonalRoom
       displayName={userName}
       joinOverride={{ domain: room.domain, token: room.token }}
       // No displayName baked into this one -- this link is meant to be shared, so whoever
