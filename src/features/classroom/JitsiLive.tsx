@@ -300,6 +300,18 @@ export default function JitsiLive({
   // mic, and recording continuity with no warning) would be worse than the deploy it's
   // trying to deliver.
   const [reloadNotice, setReloadNotice] = useState<string | null>(null);
+  // Real report: "recordings not showing on the portal even though the session says
+  // recording started." Expected, not a bug -- the file doesn't exist until the class ends
+  // and Jibri finishes syncing it (normally seconds now, up to ~1hr worst case via the
+  // hourly backup sync job) -- but nobody told the teacher to expect that gap, so an
+  // admin/parent checking mid-class or right after reads it as broken. Shown once to the
+  // teacher the first time the Rec badge turns on, setting the expectation up front rather
+  // than after someone's already worried by an empty recordings list.
+  const [recordingTimingHintDismissed, setRecordingTimingHintDismissed] = useState(false);
+  const [recordingTimingHintShown, setRecordingTimingHintShown] = useState(false);
+  useEffect(() => {
+    if (recording) setRecordingTimingHintShown(true);
+  }, [recording]);
   // Real parent complaint: a child joined via a demo link and couldn't hear the teacher at
   // all -- video played, audio didn't. Browser autoplay policy (strictest on iPad/iPhone
   // Safari) blocks incoming audio until the viewer makes some gesture on the page; Jitsi's
@@ -1597,6 +1609,19 @@ export default function JitsiLive({
             className="shrink-0 font-semibold underline decoration-brand-violet/50 underline-offset-2 hover:decoration-brand-violet"
           >
             Share screen
+          </button>
+        </div>
+      )}
+      {mode === "teacher" && !isRecordingObserver && recordingTimingHintShown && !recordingTimingHintDismissed && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
+          <CheckCircle2 className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+          <p className="flex-1">Recording is on. It'll show up on the portal a few minutes after the class ends — not during the class itself.</p>
+          <button
+            type="button"
+            onClick={() => setRecordingTimingHintDismissed(true)}
+            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+          >
+            Dismiss
           </button>
         </div>
       )}

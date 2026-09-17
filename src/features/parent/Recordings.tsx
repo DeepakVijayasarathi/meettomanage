@@ -168,7 +168,7 @@ export default function ParentRecordings() {
         <EmptyState
           icon={Video}
           title="No recordings yet"
-          description="Recordings appear here once a class finishes and stay available for 15 days."
+          description="Recordings appear here a few minutes after a class finishes, not during it, and stay available for 15 days."
           className="mt-6"
         />
       ) : (
