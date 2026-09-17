@@ -1489,6 +1489,15 @@ export default function JitsiLive({
               Sharing this tab (choose <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives students a clearer view. Not required — you can start the class without it.
             </DialogDescription>
           </DialogHeader>
+          {/* Real parent complaint: a video played inside a shared PowerPoint/tab had no sound
+              for students. Root cause is a hard browser rule, not anything fixable here --
+              Chrome only offers a "Share tab audio" checkbox for This Tab (and "Share system
+              audio" for Entire Screen on Windows only); a shared Window never carries audio on
+              any OS. The one checkbox most teachers miss, since it's easy to click straight
+              past in the picker -- called out explicitly rather than assumed. */}
+          <p className="rounded-lg bg-brand-violet/10 px-3 py-2 text-xs text-brand-violet">
+            Playing a video with sound? Tick <span className="font-semibold">Share tab audio</span> in the picker that opens next, or students won't hear it.
+          </p>
           {showShareOsHint && (
             <p className="rounded-lg bg-brand-amber/10 px-3 py-2 text-xs text-brand-amber">
               Nothing happening after you click Share? On a Mac, check System Settings → Privacy &amp; Security → Screen Recording and make sure your browser is allowed — that's a separate permission from camera/microphone and browsers often fail silently when it's off.
@@ -1540,7 +1549,7 @@ export default function JitsiLive({
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md">
           <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
           <p className="flex-1">
-            Share your screen (choose <span className="font-semibold">This Tab</span>) so the recording includes your whiteboard and quiz.
+            Share your screen (choose <span className="font-semibold">This Tab</span>) so the recording includes your whiteboard and quiz. Playing a video? Tick <span className="font-semibold">Share tab audio</span> in the picker or students won't hear it.
           </p>
           <button
             type="button"
