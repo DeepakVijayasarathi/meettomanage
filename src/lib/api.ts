@@ -40,14 +40,22 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   let response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
 
-  // A GET that 401s on the very first request of a freshly-loaded page (deep link or
-  // refresh) is retried once before treating it as a real logout — this is exactly the
-  // shape of a transient hiccup (e.g. the server's own token/claims check racing a page
-  // that fires its first request before anything has settled), and a spurious bounce to
-  // /login on an otherwise-valid session is worse than one extra round trip. A 401 on a
-  // mutating request, or a repeat 401 after the retry, is trusted as a real expired/revoked
-  // session.
-  if (response.status === 401 && token && !path.startsWith("/api/auth/") && (init?.method ?? "GET") === "GET") {
+  // Any request that 401s is retried once before treating it as a real logout — this is
+  // exactly the shape of a transient hiccup (the backend re-verifies the account's live
+  // status and permission claims on every single authenticated request, not just once at
+  // login — see OnTokenValidated in the API's Program.cs — so a brief DB hiccup or a race
+  // during that recheck can 401 a genuinely valid, unexpired token), and a spurious bounce
+  // to /login on an otherwise-valid session is worse than one extra round trip.
+  //
+  // Previously GET-only, on the theory that retrying a mutating request risked double-
+  // firing it if the first attempt had actually gone through server-side. That's not the
+  // failure mode here: [Authorize] rejects a 401 *before* the controller action ever runs,
+  // so a 401'd POST/PUT/DELETE never executed any business logic the first time either —
+  // retrying it is exactly as safe as retrying a 401'd GET. Confirmed live as a real
+  // teacher complaint ("frequently asked to log in again") that hit hardest during an
+  // active class, which is precisely when a teacher's own calls skew mutating (complete
+  // session, register a recording, post engagement) rather than GET.
+  if (response.status === 401 && token && !path.startsWith("/api/auth/")) {
     await new Promise((resolve) => setTimeout(resolve, 400));
     response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
   }
