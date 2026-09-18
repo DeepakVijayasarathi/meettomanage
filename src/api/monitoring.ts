@@ -129,6 +129,25 @@ export interface ApiRecordingSummary {
   stillProcessing: number;
 }
 
+export interface ApiBurstWorkerEpisode {
+  serverId: number;
+  createdAtUtc: string;
+  deletedAtUtc: string | null;
+  durationHours: number;
+  estimatedCostUsd: number;
+}
+
+export interface ApiBurstWorkerUsage {
+  episodesToday: number;
+  hoursToday: number;
+  estimatedCostTodayUsd: number;
+  episodesAllTime: number;
+  hoursAllTime: number;
+  estimatedCostAllTimeUsd: number;
+  currentlyActive: boolean;
+  recentEpisodes: ApiBurstWorkerEpisode[];
+}
+
 export interface ApiMonitoringSummary {
   servers: ApiServerStatus[];
   apiHealthy: boolean;
@@ -139,6 +158,7 @@ export interface ApiMonitoringSummary {
   activeClassCount: number;
   activeAlerts: ApiMonitoringAlert[];
   todayRecordings: ApiRecordingSummary;
+  burstWorkerUsage: ApiBurstWorkerUsage | null;
   generatedAtUtc: string;
 }
 
@@ -309,6 +329,7 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
     activeClassCount: api.activeClassCount,
     activeAlerts: api.activeAlerts,
     todayRecordings: api.todayRecordings,
+    burstWorkerUsage: api.burstWorkerUsage,
     generatedAtUtc: api.generatedAtUtc,
     servers: api.servers.map((s) => ({
       name: s.name,

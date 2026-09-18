@@ -468,6 +468,30 @@ export interface RecordingSummary {
   stillProcessing: number;
 }
 
+/** One create-to-delete (or still-running) lifecycle of the Hetzner burst worker. */
+export interface BurstWorkerEpisode {
+  serverId: number;
+  createdAtUtc: string;
+  /** Null means still running right now. */
+  deletedAtUtc: string | null;
+  durationHours: number;
+  /** Estimate from our own tracked timestamps at a fixed hourly rate — not a real Hetzner invoice line. */
+  estimatedCostUsd: number;
+}
+
+/** How often and for how long the on-demand Hetzner burst worker has actually been used. */
+export interface BurstWorkerUsage {
+  episodesToday: number;
+  hoursToday: number;
+  estimatedCostTodayUsd: number;
+  episodesAllTime: number;
+  hoursAllTime: number;
+  estimatedCostAllTimeUsd: number;
+  currentlyActive: boolean;
+  /** Most recent first. */
+  recentEpisodes: BurstWorkerEpisode[];
+}
+
 export interface MonitoringSummary {
   servers: ServerStatus[];
   apiHealthy: boolean;
@@ -479,5 +503,7 @@ export interface MonitoringSummary {
   activeClassCount: number;
   activeAlerts: MonitoringAlert[];
   todayRecordings: RecordingSummary;
+  /** Null if the usage log couldn't be fetched (e.g. main unreachable) — treat as unknown, not "never used." */
+  burstWorkerUsage: BurstWorkerUsage | null;
   generatedAtUtc: string;
 }

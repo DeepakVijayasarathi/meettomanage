@@ -33,6 +33,19 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
   activeClassCount: 2,
   activeAlerts: [],
   todayRecordings: { started: 42, succeeded: 40, failed: 1, stillProcessing: 1 },
+  burstWorkerUsage: {
+    episodesToday: 1,
+    hoursToday: 0.28,
+    estimatedCostTodayUsd: 0.05,
+    episodesAllTime: 2,
+    hoursAllTime: 0.28,
+    estimatedCostAllTimeUsd: 0.05,
+    currentlyActive: false,
+    recentEpisodes: [
+      { serverId: 166402283, createdAtUtc: "2026-08-23T01:07:14Z", deletedAtUtc: "2026-08-23T01:14:06Z", durationHours: 0.11, estimatedCostUsd: 0.02 },
+      { serverId: 166401610, createdAtUtc: "2026-08-23T00:56:59Z", deletedAtUtc: "2026-08-23T01:06:38Z", durationHours: 0.16, estimatedCostUsd: 0.03 },
+    ],
+  },
   generatedAtUtc: "2026-08-23T05:00:00Z",
   servers: [
     {

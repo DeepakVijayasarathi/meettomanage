@@ -81,6 +81,7 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   activeClassCount: 0,
   activeAlerts: [],
   todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
+  burstWorkerUsage: null,
   generatedAtUtc: "",
 };
 
@@ -915,7 +916,67 @@ export default function AdminMonitoring() {
           error={error}
           onClick={num(summary.todayRecordings?.failed) > 0 ? () => setFailedRecordingsOpen(true) : undefined}
         />
+        {/* Null (not zeroed) means the usage log couldn't be fetched (e.g. main unreachable) --
+            shown as "—", not a false "never used." */}
+        <KpiCard
+          label="Burst Capacity Cost"
+          value={summary.burstWorkerUsage ? `$${summary.burstWorkerUsage.estimatedCostTodayUsd.toFixed(2)}` : "—"}
+          detail={
+            summary.burstWorkerUsage
+              ? summary.burstWorkerUsage.currentlyActive
+                ? `${summary.burstWorkerUsage.episodesToday} time${summary.burstWorkerUsage.episodesToday === 1 ? "" : "s"} today · running now`
+                : `${summary.burstWorkerUsage.episodesToday} time${summary.burstWorkerUsage.episodesToday === 1 ? "" : "s"} today`
+              : "Usage data unavailable"
+          }
+          icon={Zap}
+          tone={summary.burstWorkerUsage?.currentlyActive ? "primary" : "neutral"}
+          loading={loading}
+          error={error}
+        />
       </div>
+
+      {summary.burstWorkerUsage && summary.burstWorkerUsage.recentEpisodes.length > 0 && (
+        <Card className="mt-4 p-5">
+          <CardHeader className="p-0 pb-4">
+            <CardTitle className="text-base">Burst Capacity Usage</CardTitle>
+            <CardDescription>
+              Every time the on-demand Hetzner burst worker has been created, for how long, and an estimated cost from our own tracked timestamps — not a real Hetzner invoice line.
+            </CardDescription>
+          </CardHeader>
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatTile icon={Zap} label="Today" value={`${summary.burstWorkerUsage.episodesToday}×`} detail={`${summary.burstWorkerUsage.hoursToday.toFixed(2)} hrs · $${summary.burstWorkerUsage.estimatedCostTodayUsd.toFixed(2)}`} />
+            <StatTile icon={Clock} label="All time" value={`${summary.burstWorkerUsage.episodesAllTime}×`} detail={`${summary.burstWorkerUsage.hoursAllTime.toFixed(2)} hrs · $${summary.burstWorkerUsage.estimatedCostAllTimeUsd.toFixed(2)}`} />
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Created</TableHead>
+                <TableHead>Deleted</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead className="text-right">Est. cost</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {summary.burstWorkerUsage.recentEpisodes.map((ep) => (
+                <TableRow key={ep.serverId}>
+                  <TableCell className="text-sm">{new Date(ep.createdAtUtc).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</TableCell>
+                  <TableCell className="text-sm">
+                    {ep.deletedAtUtc ? (
+                      new Date(ep.deletedAtUtc).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+                    ) : (
+                      <Badge variant="success" className="gap-1">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" /> Running
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm">{(ep.durationHours * 60).toFixed(0)} min</TableCell>
+                  <TableCell className="text-right text-sm">${ep.estimatedCostUsd.toFixed(3)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
 
       <Dialog open={failedRecordingsOpen} onOpenChange={setFailedRecordingsOpen}>
         <DialogContent>
