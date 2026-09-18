@@ -1075,48 +1075,20 @@ export default function JitsiLive({
         // Prosody hands the role to whoever's connection actually lands first on a fresh empty
         // room regardless of app role — that needs the server-side JWT room auth this was
         // always meant to get eventually.
-        // Auto-apply our own on-brand background as the teacher's starting camera
-        // background — dynamicBrandingUrl (above) only adds it to the picker as an
-        // available *choice*; this is what actually makes it the default someone sees
-        // without picking anything, same as branding.json's src. Still just a starting
-        // point: the toolbar's own background button lets the teacher turn it off or
-        // pick something else afterward.
-        // Students/children stay on "none" (their own real camera) instead of having
-        // this forced on them — a parent joining on a child's behalf doesn't expect the
-        // app to silently change what the child's camera shows.
-        if (mode === "teacher") {
-          // Teacher-reported live: "I can't see myself while teaching, only the students" --
-          // students and their own self-view were unaffected, pointing at this specific call,
-          // not the underlying camera/track. videoConferenceJoined fires the instant Jitsi
-          // believes the room is joined, which can be before the local video track's own
-          // self-view render pipeline has actually spun up; applying a virtual background
-          // (a canvas compositing over that self-view, not a swap of the outgoing track
-          // itself) right at that instant is a known way to leave just the local self-view
-          // stuck blank while the real, unprocessed camera keeps transmitting fine to
-          // everyone else -- exactly this symptom. A short delay gives the self-view
-          // pipeline a moment to actually exist before compositing on top of it.
-          setTimeout(() => {
-            // jitsiApiRef.current, not the closed-over `api` -- both get reassigned to the
-            // same new instance on an auth retry (conferenceFailed, below), so that alone
-            // wouldn't matter, but there's a narrow window between api?.dispose() and that
-            // reassignment where the closed-over `api` still points at the now-disposed
-            // instance (calling into it is a real risk, not just theoretical), while
-            // jitsiApiRef.current is explicitly nulled out for that exact same window and
-            // simply no-ops here instead.
-            if (!cancelled) {
-              jitsiApiRef.current?.executeCommand("setVirtualBackground", true, "https://thereadernest.co.in/images/meeting-bg-default.jpg");
-            }
-          }, 1200);
-        } else {
-          // Not just "skip setting one" — Jitsi remembers the last-picked virtual
-          // background per browser (jitsi-meet.localStorage), so a child's device that
-          // got the branded background force-applied before this fix still has it saved
-          // as their "last choice" and would silently keep reapplying it on every future
-          // join even though nothing here sets it anymore. Explicitly turning it off
-          // clears that remembered choice too, actually landing on "none" rather than
-          // just not making it worse going forward.
-          api?.executeCommand("setVirtualBackground", false);
-        }
+        // Removed 2026-09-18: teachers used to get our own on-brand background force-
+        // applied as their starting camera background on every join (dynamicBrandingUrl,
+        // just above, still lists it as an optional *choice* in Jitsi's own background
+        // picker -- only the auto-apply-on-join default is gone). Everyone now starts on
+        // "none" (their own real camera), same as students/children already did.
+        //
+        // Not just "skip setting one" — Jitsi remembers the last-picked virtual background
+        // per browser (jitsi-meet.localStorage), so a teacher's device that got the branded
+        // background force-applied before this removal still has it saved as their "last
+        // choice" and would silently keep reapplying it on every future join even though
+        // nothing here sets it anymore. Explicitly turning it off clears that remembered
+        // choice too, actually landing on "none" rather than just not making it worse going
+        // forward — same fix already applied to students/children below, now for everyone.
+        api?.executeCommand("setVirtualBackground", false);
         // Prompt to share the screen right at join — skipped for the recording observer (it's
         // Jibri's own silent capture bot, nobody there to click anything) and for a call with no
         // backing ClassSession to ever record against (the Personal Meeting Room -- it now has
