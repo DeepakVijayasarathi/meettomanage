@@ -163,6 +163,28 @@ export default function JitsiLive({
   const userName = displayName || accountName;
   const { toast } = useToast();
 
+  // Whiteboard.tsx's "maximize" (fills the viewport, broadcasts to the whole class — see
+  // its own doc comment) used to cover this header entirely, including Leave, Focus Mode
+  // and Waiting Room. Fine for a normal "keep drawing" session (Escape or the board's own
+  // Shrink button gets you back), but it meant a teacher who needed to leave — or who'd
+  // want to notice a connection problem via the reconnecting/error banners below — had no
+  // way to do either without first un-maximizing the board. Measuring the real header
+  // height (not a guessed pixel constant — the header's own content, e.g. the role badge/
+  // subtitle, hides below `sm`, so its height genuinely differs by breakpoint) and exposing
+  // it as a CSS var lets the maximized board offset itself below the header instead of
+  // covering it, so Leave stays reachable no matter what the board is doing.
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(64);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setHeaderHeight(Math.ceil(entry.contentRect.height));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   async function copyInviteLink() {
     if (!inviteUrl) return;
     try {
@@ -1406,8 +1428,14 @@ export default function JitsiLive({
     // the actual visible (visual) viewport, reading as the page randomly shrinking/jumping.
     // Same fix, same reasoning, already established elsewhere in this app (see AppShell's
     // own min-h-dvh comment) -- this screen had simply never been updated to match.
-    <div className="flex h-dvh flex-col bg-brand-navyDark bg-[radial-gradient(circle_at_50%_0%,rgba(124,92,252,0.10),transparent_60%)]">
-      <header className="relative flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-b from-brand-navyDark/95 to-brand-navyDark/75 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-md sm:px-5">
+    <div
+      className="flex h-dvh flex-col bg-brand-navyDark bg-[radial-gradient(circle_at_50%_0%,rgba(124,92,252,0.10),transparent_60%)]"
+      style={{ ["--classroom-header-h" as string]: `${headerHeight}px` }}
+    >
+      <header
+        ref={headerRef}
+        className="relative z-50 flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-b from-brand-navyDark/95 to-brand-navyDark/75 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-md sm:px-5"
+      >
         {/* Thin brand-gradient hairline instead of a flat border — ties the header to the
             same violet/amber accent used by the celebrate button and active toggles below,
             so the chrome reads as one designed system rather than a plain dark bar. */}

@@ -649,7 +649,17 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
     // automatically vanishes and minimizes on its own"). This maximize overlay is exactly
     // the escape hatch a teacher would reach for to fight a too-small board, so it landing
     // on the same viewport bug undermined the one workaround that should have fixed it.
-    <div className={cn("flex h-full flex-col gap-2 p-3", maximized && "fixed inset-0 z-40 h-dvh bg-brand-navy p-4")}>
+    <div
+      className={cn("flex h-full flex-col gap-2 p-3", maximized && "fixed inset-x-0 bottom-0 z-40 bg-brand-navy p-4")}
+      // Offset below the classroom header (a CSS var JitsiLive measures and exposes —
+      // falls back to a close-enough constant for the demo-mode classroom, which doesn't
+      // set it) instead of `inset-0`/`h-dvh` covering the whole viewport. The header holds
+      // Leave, Focus Mode and Waiting Room, plus the reconnecting/error banners render
+      // just below it — all of that used to be completely hidden behind the maximized
+      // board with no way back except Escape or hunting for the Shrink button, on a
+      // currently-live classroom where "get out of this view" should never be a puzzle.
+      style={maximized ? { top: "var(--classroom-header-h, 64px)" } : undefined}
+    >
       {canDraw ? (
         // Dark toolbar chrome matches the rest of the interactive panel (tabs, roster,
         // quiz) — only the canvas below stays a light "paper" surface, so this reads
