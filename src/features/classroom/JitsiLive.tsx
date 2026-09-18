@@ -279,11 +279,25 @@ export default function JitsiLive({
   // this closes the gap between the two: Focus Mode now actually suppresses them, and
   // closing the panel any OTHER way (the plain Interactive toggle, not Focus Mode) still
   // shows them same as before, since that's a real intentional summary view, not a
-  // declutter request. Cleared automatically if the pin changes to anything else (see the
+  // declutter request. Cleared automatically if the pin changes to someone ELSE (see the
   // effect below), so the button never lies about what's actually pinned.
+  //
+  // Verified live (2026-09-18): confirmed via an actual Focus Mode click in a real call
+  // that this self-clearing check was too eager. executeCommand("pinParticipant", ...) is
+  // fire-and-forget -- pinnedParticipantId only updates once Jitsi's own pinnedEndpointChanged
+  // event echoes back, which isn't guaranteed to fire at all when there's no one else in
+  // the room yet to spotlight around (e.g. a teacher turning on Focus Mode before any
+  // student has joined). The original check (`!== selfParticipantId`) treated "hasn't
+  // caught up yet" the same as "pin genuinely changed to someone else," so it cleared
+  // focusMode back off within the same tick it was set -- the panel stayed correctly
+  // closed (that part's synchronous, no Jitsi event needed), but the leaderboard/roster
+  // cards popped right back, exactly the bug this button exists to prevent. Now only
+  // clears on a confirmed, *different*, non-null pin -- still equally honest, since
+  // pinnedParticipantId starting at null (or staying null) is never itself evidence the
+  // pin changed to something else.
   const [focusMode, setFocusMode] = useState(false);
   useEffect(() => {
-    if (focusMode && pinnedParticipantId !== selfParticipantId) setFocusMode(false);
+    if (focusMode && pinnedParticipantId !== null && pinnedParticipantId !== selfParticipantId) setFocusMode(false);
   }, [focusMode, pinnedParticipantId, selfParticipantId]);
   // Teacher-reported live (2026-09-17): "screen continuously disturbed when someone joined
   // or left," "teacher's screen couldn't be spotlighted neither by us nor by teacher," "the
