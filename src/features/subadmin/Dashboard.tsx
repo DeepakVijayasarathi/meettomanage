@@ -24,14 +24,17 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/state/session";
 import { formatDate, formatPercent } from "@/lib/utils";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
+import { usePortalBase } from "@/lib/portalBase";
 import { useApiData } from "@/api/hooks";
 import { listBatches, toFrontendBatch } from "@/api/batches";
 import { listSessions, toFrontendSession } from "@/api/sessions";
 import { getDashboardSummary } from "@/api/reports";
 import { listAuditLogs } from "@/api/audit";
-import { PERMISSION_MODULES, type PermissionModuleName } from "@/api/permissions";
+import { DEMO_PERMISSION_MODULES, type PermissionModuleName, type PermissionModuleOption } from "@/api/permissions";
+import { listPermissionModules } from "@/api/permissionModules";
 import { listMyAccessRequests, submitAccessRequest } from "@/api/accessRequests";
 import { BATCHES } from "@/data/batches";
 import { SESSIONS } from "@/data/sessions";
@@ -49,15 +52,12 @@ import {
 const TODAY = "2026-07-09";
 const ADMIN_CONTACT = "Ananya Rao";
 
-const MODULE_LABEL_BY_VALUE: Partial<Record<PermissionModuleName, string>> = Object.fromEntries(
-  PERMISSION_MODULES.map((m) => [m.value, m.label])
-);
-
-// requestedModules comes back as raw backend enum names ("BillingFinance"), not the display
-// labels ("Billing & Finance") shown everywhere else on this card — same mapping the Admin's
-// Access Requests panel already applies to the same field.
-function moduleLabels(modules: PermissionModuleName[]): string {
-  return modules.map((m) => MODULE_LABEL_BY_VALUE[m] ?? m).join(", ");
+// requestedModules comes back as raw module keys ("BillingFinance"), not the display labels
+// ("Billing & Finance") shown everywhere else on this card — same mapping the Admin's Access
+// Requests panel already applies to the same field.
+function moduleLabels(moduleKeys: PermissionModuleName[], catalog: readonly PermissionModuleOption[]): string {
+  const labelByValue = Object.fromEntries(catalog.map((m) => [m.value, m.label]));
+  return moduleKeys.map((m) => labelByValue[m] ?? m).join(", ");
 }
 
 function timeAgo(iso: string, nowMs: number) {
@@ -79,9 +79,25 @@ interface ActivityRow {
 
 export default function SubAdminDashboard() {
   const { toast } = useToast();
-  const { userName, permissions } = useSession();
+  const { userName, permissions, hasPermission } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
+  const base = usePortalBase();
   const usingApi = apiEnabled();
+  // Every one of these endpoints is permission-gated server-side — fetching them for a Sub
+  // Admin who was never granted the matching module just produced a noisy 403 and a
+  // misleading "0" stat that looked like a real zero instead of "blocked." Found by logging
+  // in as a QA test account assigned a role with only Billing & Finance granted: it still hit
+  // /api/batches, /api/sessions, /api/leave-requests and /api/reports/dashboard-summary.
+  const canSeeBatches = !usingApi || hasPermission("CourseBatchManagement", "View");
+  const canSeeSessions = !usingApi || hasPermission("SessionCalendarManagement", "View");
+  const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
+  const canSeeReports = !usingApi || hasPermission("ReportsAnalytics", "View");
+  // The real, current module catalog (built-in + any Admin-defined custom ones) — the
+  // "locked modules" / "request access" section below isn't limited to the 12 built-ins.
+  const { data: modules } = useApiData(
+    () => listPermissionModules().then((list) => list.map((m) => ({ value: m.key, label: m.label }))),
+    [...DEMO_PERMISSION_MODULES]
+  );
   // The mock universe's clock is pinned; a real login measures against the real one.
   const nowMs = usingApi ? Date.now() : new Date(`${TODAY}T23:59:59`).getTime();
   const adminContact = usingApi ? "your Admin" : `${ADMIN_CONTACT} (Admin)`;
@@ -96,15 +112,23 @@ export default function SubAdminDashboard() {
   const lastReviewedRequest = myRequests.find((r) => r.status !== "Pending");
   const requestSent = usingApi ? Boolean(pendingRequest) : requestedDemo;
 
-  const { data: apiBatches, loading: batchesLoading, error: batchesError } = useApiData(() => listBatches().then((items) => items.map(toFrontendBatch)), []);
-  const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData(() => listSessions().then((items) => items.map(toFrontendSession)), []);
+  const { data: apiBatches, loading: batchesLoading, error: batchesError } = useApiData(
+    () => (canSeeBatches ? listBatches().then((items) => items.map(toFrontendBatch)) : Promise.resolve([])),
+    []
+  );
+  const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData(
+    () => (canSeeSessions ? listSessions().then((items) => items.map(toFrontendSession)) : Promise.resolve([])),
+    []
+  );
   const { data: liveSummary, loading: summaryLoading, error: summaryError } = useApiData(
     () =>
-      getDashboardSummary().then((s) => ({
-        occupancy: s.batchOccupancyPercent,
-        // Latest week with recorded attendance drives the KPI.
-        attendance: [...(s.weeklyAttendanceTrend ?? [])].reverse().find((w) => w.attendance > 0)?.attendance ?? 0,
-      })),
+      canSeeReports
+        ? getDashboardSummary().then((s) => ({
+            occupancy: s.batchOccupancyPercent,
+            // Latest week with recorded attendance drives the KPI.
+            attendance: [...(s.weeklyAttendanceTrend ?? [])].reverse().find((w) => w.attendance > 0)?.attendance ?? 0,
+          }))
+        : Promise.resolve({ occupancy: 0, attendance: 0 }),
     { occupancy: ADMIN_KPIS.batchOccupancy, attendance: ADMIN_KPIS.attendanceRate },
     { occupancy: 0, attendance: 0 }
   );
@@ -128,7 +152,10 @@ export default function SubAdminDashboard() {
   const activeBatches = usingApi
     ? apiBatches.filter((b) => b.status === "active").length
     : BATCHES.filter((b) => b.status === "active").length;
-  const todayIso = new Date(nowMs).toISOString().slice(0, 10);
+  // apiSessions' own .date (from toFrontendSession) is already the account's local calendar
+  // date, not UTC -- comparing it against a UTC "today" mismatches for hours near local
+  // midnight. Same bug and fix as teacher/Dashboard.tsx's "today's classes" list.
+  const todayIso = utcIsoToLocalDateTime(new Date(nowMs).toISOString()).date;
   const sessionsToday = usingApi
     ? apiSessions.filter((s) => s.date === todayIso).length
     : SESSIONS.filter((s) => s.date === TODAY).length;
@@ -138,7 +165,7 @@ export default function SubAdminDashboard() {
   // Real logins derive their module scope from the session's permission claims;
   // demo mode keeps the Neha persona's scripted grants.
   const scope = usingApi
-    ? PERMISSION_MODULES.reduce(
+    ? modules.reduce(
         (acc, module) => {
           const has = (action: string) => permissions.includes(`${module.value}:${action}`);
           if (has("Create") || has("Edit") || has("Delete") || has("Approve")) acc.full.push(module.label);
@@ -154,34 +181,49 @@ export default function SubAdminDashboard() {
     : { full: [...FULL_ACCESS_MODULES], view: [...VIEW_ONLY_MODULES], none: [...NO_ACCESS_MODULES], noneValues: [] as PermissionModuleName[] };
   const totalModules = scope.full.length + scope.view.length + scope.none.length;
 
+  // Each card only appears when the account actually holds View on its module — otherwise its
+  // data fetch above never runs, and the quick-link would misleadingly claim e.g. "0 active
+  // batches" for a module this account was never granted, not a real zero.
   const moduleCards: AssignedModuleCard[] = [
-    {
-      id: "batches",
-      title: "Batches",
-      icon: Layers,
-      color: CHART_PALETTE[2],
-      stat: `${activeBatches} active batches · ${formatPercent(liveOccupancy)} avg occupancy`,
-      ctaLabel: "View batch report",
-      to: "/subadmin/reports",
-    },
-    {
-      id: "sessions",
-      title: "Sessions & Attendance",
-      icon: CalendarClock,
-      color: CHART_PALETTE[3],
-      stat: `${sessionsToday} sessions today · ${formatPercent(attendanceRate)} attendance this month`,
-      ctaLabel: "View attendance report",
-      to: "/subadmin/reports",
-    },
-    {
-      id: "reports",
-      title: "Assigned Reports",
-      icon: BarChart3,
-      color: CHART_PALETTE[5],
-      stat: "2 report types available in your scope",
-      ctaLabel: "Open reports",
-      to: "/subadmin/reports",
-    },
+    ...(canSeeBatches
+      ? [
+          {
+            id: "batches",
+            title: "Batches",
+            icon: Layers,
+            color: CHART_PALETTE[2],
+            stat: `${activeBatches} active batches · ${formatPercent(liveOccupancy)} avg occupancy`,
+            ctaLabel: "View batch report",
+            to: `${base}/reports`,
+          },
+        ]
+      : []),
+    ...(canSeeSessions
+      ? [
+          {
+            id: "sessions",
+            title: "Sessions & Attendance",
+            icon: CalendarClock,
+            color: CHART_PALETTE[3],
+            stat: `${sessionsToday} sessions today · ${formatPercent(attendanceRate)} attendance this month`,
+            ctaLabel: "View attendance report",
+            to: `${base}/reports`,
+          },
+        ]
+      : []),
+    ...(canSeeReports
+      ? [
+          {
+            id: "reports",
+            title: "Assigned Reports",
+            icon: BarChart3,
+            color: CHART_PALETTE[5],
+            stat: "Reports available in your scope",
+            ctaLabel: "Open reports",
+            to: `${base}/reports`,
+          },
+        ]
+      : []),
     {
       id: "audit",
       title: "Audit Log",
@@ -192,7 +234,7 @@ export default function SubAdminDashboard() {
           ? `Last action ${timeAgo(recentActivity[0].timestamp, nowMs)}`
           : "No actions logged yet",
       ctaLabel: "View my activity",
-      to: "/subadmin/audit-log",
+      to: `${base}/audit-log`,
     },
   ];
 
@@ -206,7 +248,7 @@ export default function SubAdminDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <PersonalMeetingButton />
             <Button asChild variant="outline">
-              <Link to="/subadmin/permissions">
+              <Link to={`${base}/permissions`}>
                 <ShieldCheck className="h-4 w-4" />
                 View my permissions
               </Link>
@@ -237,44 +279,57 @@ export default function SubAdminDashboard() {
             </div>
           </div>
           <Button asChild size="sm" variant="soft" className="shrink-0">
-            <Link to="/subadmin/permissions">
+            <Link to={`${base}/permissions`}>
               View full permission matrix <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
         </CardContent>
       </Card>
 
-      {/* KPI row — only modules Neha plausibly has access to. No billing/payout metrics. */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="Active Batches"
-          value={String(activeBatches)}
-          icon={Layers}
-          tone="primary"
-          trend={usingApi ? undefined : { value: 2.1, label: "vs last month" }}
-          loading={kpiLoading}
-          error={kpiError}
-        />
-        <KpiCard label="Sessions Today" value={String(sessionsToday)} icon={Clock} tone="primary" loading={kpiLoading} error={kpiError} />
-        <KpiCard
-          label="Attendance Rate"
-          value={formatPercent(attendanceRate)}
-          icon={CheckCircle2}
-          tone="success"
-          trend={usingApi ? undefined : { value: 1.5, label: "vs last month" }}
-          loading={kpiLoading}
-          error={kpiError}
-        />
-        <KpiCard
-          label="Batch Occupancy"
-          value={formatPercent(liveOccupancy)}
-          icon={LayoutGrid}
-          tone="neutral"
-          trend={usingApi ? undefined : { value: 2.9, label: "vs last month" }}
-          loading={kpiLoading}
-          error={kpiError}
-        />
-      </div>
+      {/* KPI row — only modules this account can actually view. Each tile is independently
+          gated (not just the row as a whole) since a role can hold e.g. Batches but not
+          Reports, and a tile for a module with no grant would otherwise show a bare "0"
+          indistinguishable from a genuine zero. */}
+      {(canSeeBatches || canSeeSessions || canSeeReports) && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {canSeeBatches && (
+            <KpiCard
+              label="Active Batches"
+              value={String(activeBatches)}
+              icon={Layers}
+              tone="primary"
+              trend={usingApi ? undefined : { value: 2.1, label: "vs last month" }}
+              loading={kpiLoading}
+              error={kpiError}
+            />
+          )}
+          {canSeeSessions && (
+            <KpiCard label="Sessions Today" value={String(sessionsToday)} icon={Clock} tone="primary" loading={kpiLoading} error={kpiError} />
+          )}
+          {canSeeReports && (
+            <KpiCard
+              label="Attendance Rate"
+              value={formatPercent(attendanceRate)}
+              icon={CheckCircle2}
+              tone="success"
+              trend={usingApi ? undefined : { value: 1.5, label: "vs last month" }}
+              loading={kpiLoading}
+              error={kpiError}
+            />
+          )}
+          {canSeeReports && (
+            <KpiCard
+              label="Batch Occupancy"
+              value={formatPercent(liveOccupancy)}
+              icon={LayoutGrid}
+              tone="neutral"
+              trend={usingApi ? undefined : { value: 2.9, label: "vs last month" }}
+              loading={kpiLoading}
+              error={kpiError}
+            />
+          )}
+        </div>
+      )}
 
       {/* My assigned modules */}
       <div className="mt-8">
@@ -320,7 +375,7 @@ export default function SubAdminDashboard() {
                 </div>
               </div>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/subadmin/audit-log">
+                <Link to={`${base}/audit-log`}>
                   View full log <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </Button>
@@ -398,7 +453,7 @@ export default function SubAdminDashboard() {
             )}
             {usingApi && !pendingRequest && lastReviewedRequest && (
               <p className="text-[11px] text-muted-foreground">
-                Last request ({moduleLabels(lastReviewedRequest.requestedModules)}) was{" "}
+                Last request ({moduleLabels(lastReviewedRequest.requestedModules, modules)}) was{" "}
                 <strong>{lastReviewedRequest.status.toLowerCase()}</strong> on{" "}
                 {formatDate((lastReviewedRequest.reviewedAtUtc ?? lastReviewedRequest.createdAtUtc).slice(0, 10), "long")}
                 {lastReviewedRequest.reviewNote ? ` — "${lastReviewedRequest.reviewNote}"` : ""}
@@ -413,10 +468,15 @@ export default function SubAdminDashboard() {
         </Card>
       </div>
 
-      {/* Conflicts & attention — relocated here from the coordinator per client feedback. */}
-      <div className="mt-6">
-        <ScheduleConflictsPanel />
-      </div>
+      {/* Conflicts & attention — relocated here from the coordinator per client feedback.
+          Needs both Sessions & Calendar and Leave Management view rights (it cross-references
+          both) — without this guard an account granted only one, or neither, still fetched
+          both endpoints and got a 403 from whichever it lacked. */}
+      {canSeeSessions && canSeeLeave && (
+        <div className="mt-6">
+          <ScheduleConflictsPanel />
+        </div>
+      )}
 
       <ConfirmDialog
         open={requestOpen}

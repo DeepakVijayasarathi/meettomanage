@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PAYOUTS } from "@/data/payouts";
 import { getTeacherById } from "@/data/users";
 import { apiEnabled } from "@/lib/api";
@@ -198,7 +199,19 @@ export default function AdminPayouts() {
     );
   }
 
-  const currentMonthLabel = format(new Date(), "MMMM yyyy");
+  // Demo mock data is authored around a fixed set of months (e.g. June/July 2026) that fall
+  // further into the past every day relative to the real calendar -- comparing it against
+  // `new Date()` made the headline "Total Payout" KPI read as ₹0/0/0 forever once today rolled
+  // past the mock data's last month, right next to teacher cards showing real paid amounts for
+  // those "past" months. In demo mode, treat the most recent month actually present in the
+  // mock data as "this month" so the KPI always reflects the data visible below it; API mode
+  // keeps using the real current month since live data is genuinely dated to it.
+  const currentMonthLabel = apiEnabled()
+    ? format(new Date(), "MMMM yyyy")
+    : payouts.reduce<string | null>((latest, p) => {
+        if (!latest) return p.month;
+        return parse(p.month, "MMMM yyyy", new Date()) > parse(latest, "MMMM yyyy", new Date()) ? p.month : latest;
+      }, null) ?? format(new Date(), "MMMM yyyy");
 
   const totals = useMemo(() => {
     // Both counts below used to run over ALL of `payouts` regardless of month -- while
@@ -388,10 +401,10 @@ export default function AdminPayouts() {
                 <button
                   type="button"
                   onClick={() => toggleTeacherGroup(group.teacherId)}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40"
+                  className="flex w-full flex-col items-start gap-3 px-4 py-3 text-left hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
                   aria-expanded={expanded}
                 >
-                  <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex min-w-0 w-full items-center gap-3 sm:w-auto">
                     {expanded ? (
                       <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                     ) : (
@@ -409,7 +422,7 @@ export default function AdminPayouts() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex w-full shrink-0 flex-wrap items-center gap-2 pl-7 sm:w-auto sm:pl-0">
                     {group.needsReviewCount > 0 && (
                       <Badge variant="warning" className="gap-1">
                         <AlertTriangle className="h-3 w-3" /> {group.needsReviewCount} needs review
@@ -424,43 +437,50 @@ export default function AdminPayouts() {
                 </button>
 
                 {expanded && (
-                  <div className="overflow-x-auto border-t border-border">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/30 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          <th className="px-4 py-2 font-semibold">Month</th>
-                          <th className="px-4 py-2 font-semibold">Sessions</th>
-                          <th className="px-4 py-2 font-semibold">Base Amount</th>
-                          <th className="px-4 py-2 font-semibold">Deductions</th>
-                          <th className="px-4 py-2 font-semibold">Waiting Added</th>
-                          <th className="px-4 py-2 font-semibold">Final Amount</th>
-                          <th className="px-4 py-2 font-semibold">Status</th>
-                          <th className="px-4 py-2 font-semibold" />
-                        </tr>
-                      </thead>
-                      <tbody>
+                  <div className="relative border-t border-border">
+                    {/* This breakdown table has 8 columns and is genuinely wider than a phone
+                        screen — Table already makes it horizontally scrollable, but with no
+                        visible cue a user has no reason to think there's more to the right.
+                        A static edge fade (unlike DataTable's scroll-position-aware version)
+                        is enough here since this is a small, per-row nested table rather than
+                        a primary page table. */}
+                    <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-card to-transparent sm:hidden" />
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                          <TableHead>Month</TableHead>
+                          <TableHead>Sessions</TableHead>
+                          <TableHead>Base Amount</TableHead>
+                          <TableHead>Deductions</TableHead>
+                          <TableHead>Waiting Added</TableHead>
+                          <TableHead>Final Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {group.rows.map((row) => (
-                          <tr key={row.id} className="border-b border-border last:border-0">
-                            <td className="px-4 py-2.5">{row.month}</td>
-                            <td className="px-4 py-2.5">{row.sessionsCompleted}</td>
-                            <td className="px-4 py-2.5 text-muted-foreground">{formatCurrency(row.baseAmount)}</td>
-                            <td className="px-4 py-2.5">
+                          <TableRow key={row.id}>
+                            <TableCell>{row.month}</TableCell>
+                            <TableCell>{row.sessionsCompleted}</TableCell>
+                            <TableCell className="text-muted-foreground">{formatCurrency(row.baseAmount)}</TableCell>
+                            <TableCell>
                               <span className={row.deductions > 0 ? "font-medium text-destructive" : "text-muted-foreground"}>
                                 {row.deductions > 0 ? `-${formatCurrency(row.deductions)}` : "—"}
                               </span>
-                            </td>
-                            <td className="px-4 py-2.5">
+                            </TableCell>
+                            <TableCell>
                               <span className={row.waitingAmountAdded > 0 ? "font-medium text-success" : "text-muted-foreground"}>
                                 {row.waitingAmountAdded > 0 ? `+${formatCurrency(row.waitingAmountAdded)}` : "—"}
                               </span>
-                            </td>
-                            <td className="px-4 py-2.5 font-bold text-foreground">{formatCurrency(row.finalAmount)}</td>
-                            <td className="px-4 py-2.5">{renderStatus(row)}</td>
-                            <td className="px-4 py-2.5">{renderActions(row)}</td>
-                          </tr>
+                            </TableCell>
+                            <TableCell className="font-bold text-foreground">{formatCurrency(row.finalAmount)}</TableCell>
+                            <TableCell>{renderStatus(row)}</TableCell>
+                            <TableCell>{renderActions(row)}</TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </div>

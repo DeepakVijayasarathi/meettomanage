@@ -41,6 +41,7 @@ import {
   Building2,
   Activity,
   MessageCircleQuestion,
+  Radar,
   type LucideIcon,
 } from "lucide-react";
 
@@ -67,6 +68,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Batches", to: "/admin/batches", icon: Layers },
       { label: "Academic Calendar", to: "/admin/calendar", icon: CalendarDays },
       { label: "Sessions", to: "/admin/sessions", icon: CalendarClock },
+      { label: "Recordings", to: "/admin/recordings", icon: Video },
       { label: "Quiz Bank", to: "/admin/quiz-bank", icon: Sparkles },
       { label: "Activity Bank", to: "/admin/activity-bank", icon: PencilRuler },
     ],
@@ -75,6 +77,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "People",
     items: [
       { label: "Users", to: "/admin/users", icon: Users },
+      { label: "Search Users", to: "/admin/search-users", icon: UserSearch },
       { label: "Roles & Permissions", to: "/admin/permissions", icon: ShieldCheck },
       { label: "Enrollment Review", to: "/admin/enrollments", icon: ClipboardCheck },
       { label: "Store Inquiries", to: "/admin/store-inquiries", icon: ShoppingBag },
@@ -101,6 +104,7 @@ export const ADMIN_NAV: NavSection[] = [
     items: [
       { label: "Reports & Analytics", to: "/admin/reports", icon: BarChart3 },
       { label: "Bulk Email", to: "/admin/bulk-email", icon: Mail },
+      { label: "Bulk Email History", to: "/admin/bulk-email/history", icon: History },
       { label: "Email Templates", to: "/admin/email-templates", icon: FileText },
       { label: "Progress Reports", to: "/admin/progress-reports", icon: ScrollText },
       { label: "Doubt Chatbot", to: "/admin/chatbot", icon: MessageCircleQuestion },
@@ -128,6 +132,7 @@ export const TEACHER_NAV: NavSection[] = [
       // produced a duplicate-key warning and a confusing "two links, one destination" UI),
       // My Classes is the only entry point now.
       { label: "My Classes", to: "/teacher/classes", icon: CalendarClock },
+      { label: "My Students", to: "/teacher/students", icon: Users },
       { label: "Attendance & Records", to: "/teacher/attendance", icon: ClipboardList },
       { label: "Recordings", to: "/teacher/recordings", icon: Video },
       { label: "Demo Feedback", to: "/teacher/demo-feedback", icon: ClipboardCheck, badge: "1" },
@@ -177,6 +182,8 @@ export const SUBADMIN_NAV: NavSection[] = [
   {
     title: "Delegated Work",
     items: [
+      { label: "Sessions", to: "/subadmin/sessions", icon: CalendarClock },
+      { label: "Search Users", to: "/subadmin/search-users", icon: UserSearch },
       { label: "Assigned Reports", to: "/subadmin/reports", icon: BarChart3 },
       { label: "Audit Log", to: "/subadmin/audit-log", icon: History },
     ],
@@ -192,12 +199,14 @@ export const ADMISSION_NAV: NavSection[] = [
       { label: "Teacher Assignment", to: "/admission/demo-teacher-assignment", icon: UserCog },
       { label: "Demo Feedback", to: "/admission/demo-feedback", icon: ClipboardCheck },
       { label: "Conversion Board", to: "/admission/conversion", icon: KanbanSquare },
+      { label: "Sessions", to: "/admission/sessions", icon: CalendarClock },
     ],
   },
   {
     title: "CRM",
     items: [
       { label: "Leads & Parents", to: "/admission/leads", icon: UserSearch },
+      { label: "Search Users", to: "/admission/search-users", icon: UserSearch },
       { label: "Payment Tracking", to: "/admission/payments", icon: Link2 },
     ],
   },
@@ -214,6 +223,7 @@ export const COORDINATOR_NAV: NavSection[] = [
     items: [
       { label: "Academic Calendar", to: "/coordinator/calendar", icon: CalendarDays },
       { label: "Teacher Availability", to: "/coordinator/availability", icon: CalendarRange },
+      { label: "Sessions", to: "/coordinator/sessions", icon: CalendarClock },
     ],
   },
 ];
@@ -225,6 +235,7 @@ export const MANAGEMENT_NAV: NavSection[] = [
     items: [
       { label: "Revenue & Courses", to: "/management/revenue", icon: TrendingUp },
       { label: "Teacher & Batch Performance", to: "/management/performance", icon: Gauge },
+      { label: "Sessions", to: "/management/sessions", icon: CalendarClock },
     ],
   },
   {
@@ -237,6 +248,70 @@ export const STUDENT_NAV: NavSection[] = [
   { items: [{ label: "My Learning", to: "/student", icon: Sparkles, end: true }] },
 ];
 
+// Demo-mode / loading fallback for the "itadmin" portal — mirrors the *real*, DB-seeded
+// itadmin menu (DatabaseInitializer.EnsureItAdminMenuAsync), not ADMIN_NAV verbatim (that
+// static array predates a couple of backend-only additions and carries one admin-only
+// extra — "Search Users" — this list intentionally matches what IT Admin actually gets).
+export const ITADMIN_NAV: NavSection[] = [
+  { items: [{ label: "Overall Dashboard", to: "/itadmin", icon: LayoutDashboard, end: true }] },
+  {
+    title: "Academics",
+    items: [
+      { label: "Courses", to: "/itadmin/courses", icon: BookOpen },
+      { label: "Departments", to: "/itadmin/departments", icon: Building2 },
+      { label: "Batches", to: "/itadmin/batches", icon: Layers },
+      { label: "Academic Calendar", to: "/itadmin/calendar", icon: CalendarDays },
+      { label: "Sessions", to: "/itadmin/sessions", icon: CalendarClock },
+      { label: "Quiz Bank", to: "/itadmin/quiz-bank", icon: Sparkles },
+      { label: "Activity Bank", to: "/itadmin/activity-bank", icon: PencilRuler },
+    ],
+  },
+  {
+    title: "People",
+    items: [
+      { label: "Users", to: "/itadmin/users", icon: Users },
+      { label: "Roles & Permissions", to: "/itadmin/permissions", icon: ShieldCheck },
+      { label: "Enrollment Review", to: "/itadmin/enrollments", icon: ClipboardCheck },
+      { label: "Store Inquiries", to: "/itadmin/store-inquiries", icon: ShoppingBag },
+      { label: "Leave Management", to: "/itadmin/leave", icon: CalendarOff },
+      { label: "Teacher Availability", to: "/itadmin/availability", icon: CalendarRange },
+    ],
+  },
+  {
+    title: "Content",
+    items: [{ label: "Content & Resources", to: "/itadmin/resources", icon: FolderOpen }],
+  },
+  {
+    title: "Finance",
+    items: [
+      { label: "Billing & Finance", to: "/itadmin/billing", icon: Receipt },
+      { label: "Packages & Subscriptions", to: "/itadmin/packages", icon: CreditCard },
+      { label: "Payment Gateway Mapping", to: "/itadmin/payment-mapping", icon: Landmark },
+      { label: "Teacher Payouts", to: "/itadmin/payouts", icon: Wallet },
+      { label: "Fee Suspension", to: "/itadmin/fee-suspension", icon: Ban },
+    ],
+  },
+  {
+    title: "Insights",
+    items: [
+      { label: "Reports & Analytics", to: "/itadmin/reports", icon: BarChart3 },
+      { label: "Bulk Email", to: "/itadmin/bulk-email", icon: Mail },
+      { label: "Bulk Email History", to: "/itadmin/bulk-email/history", icon: History },
+      { label: "Email Templates", to: "/itadmin/email-templates", icon: FileText },
+      { label: "Progress Reports", to: "/itadmin/progress-reports", icon: ScrollText },
+      { label: "Doubt Chatbot", to: "/itadmin/chatbot", icon: MessageCircleQuestion },
+    ],
+  },
+  {
+    title: "System",
+    items: [
+      { label: "Settings & Branding", to: "/itadmin/settings", icon: Settings },
+      { label: "Server Monitoring", to: "/itadmin/monitoring", icon: Activity },
+      { label: "Class Session Logs", to: "/itadmin/class-logs", icon: Radar },
+    ],
+  },
+];
+
 export const NAV_BY_ROLE: Record<Role, NavSection[]> = {
   admin: ADMIN_NAV,
   teacher: TEACHER_NAV,
@@ -246,4 +321,5 @@ export const NAV_BY_ROLE: Record<Role, NavSection[]> = {
   coordinator: COORDINATOR_NAV,
   management: MANAGEMENT_NAV,
   student: STUDENT_NAV,
+  itadmin: ITADMIN_NAV,
 };

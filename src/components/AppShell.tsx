@@ -11,6 +11,9 @@ import { hexToHslTriple } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { getMyMenu, toNavSections } from "@/api/menus";
 import { listSuspensions } from "@/api/billing";
+import { getParentDashboard, type ApiParentDashboard } from "@/api/parentPortal";
+import { useApiData } from "@/api/hooks";
+import { AccountSuspendedScreen } from "@/components/AccountSuspendedScreen";
 import type { Role } from "@/types";
 
 interface AppShellProps {
@@ -20,13 +23,13 @@ interface AppShellProps {
 
 const COLLAPSE_KEY = "trn.sidebarCollapsed";
 
-// Coordinator/Admission/Management aren't separate backend roles — they're display
-// portals a Sub Admin's assigned preset (RoleDefinition.DefaultRoute) routes to. The
-// account's real, login-issued role is always "subadmin". See the role-sync effect below.
-const SUBADMIN_PRESET_PORTALS: Role[] = ["coordinator", "admission", "management"];
+// Coordinator/Admission/Management/IT Admin aren't separate backend roles — they're
+// display portals a Sub Admin's assigned preset (RoleDefinition.DefaultRoute) routes to.
+// The account's real, login-issued role is always "subadmin". See the role-sync effect below.
+const SUBADMIN_PRESET_PORTALS: Role[] = ["coordinator", "admission", "management", "itadmin"];
 
 export function AppShell({ role, children }: AppShellProps) {
-  const { setRole } = useSession();
+  const { setRole, permissions, activeChildId } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -44,13 +47,11 @@ export function AppShell({ role, children }: AppShellProps) {
   // (not a separate effect keyed off apiSections) so patching it can never retrigger
   // its own effect and loop.
   const [apiSections, setApiSections] = useState<NavSection[] | null>(null);
-  useEffect(() => {
-    setApiSections(null);
-    if (!apiEnabled()) return;
-    let cancelled = false;
-    Promise.all([getMyMenu(), role === "admin" ? listSuspensions("Active") : Promise.resolve(null)])
+
+  function fetchMenu(onCancelled: () => boolean) {
+    return Promise.all([getMyMenu(), role === "admin" ? listSuspensions("Active") : Promise.resolve(null)])
       .then(([items, activeSuspensions]) => {
-        if (cancelled || items.length === 0) return;
+        if (onCancelled() || items.length === 0) return;
         const sections = toNavSections(items);
         if (activeSuspensions && activeSuspensions.length > 0) {
           for (const section of sections) {
@@ -62,12 +63,36 @@ export function AppShell({ role, children }: AppShellProps) {
         setApiSections(sections);
       })
       .catch(() => {
-        /* keep static nav */
+        /* keep static nav (or, on a later re-fetch, whatever loaded last) */
       });
+  }
+
+  useEffect(() => {
+    setApiSections(null);
+    if (!apiEnabled()) return;
+    let cancelled = false;
+    void fetchMenu(() => cancelled);
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
+
+  // Re-fetches whenever the session's permission claims change (SessionProvider refreshes
+  // these — and the token they're read from server-side — every few minutes and right after
+  // login/reload) so a just-approved access request's new menu items show up without the
+  // user having to log out and back in. Deliberately doesn't reset apiSections to null first
+  // like the role-keyed effect above — this fires often on an unchanged grant, and resetting
+  // would flash the static fallback nav on every poll instead of only actually-changed ones.
+  useEffect(() => {
+    if (!apiEnabled()) return;
+    let cancelled = false;
+    void fetchMenu(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissions]);
 
   useEffect(() => {
     // The Student View reuses AppShell purely for its themed "preview" shell —
@@ -90,6 +115,24 @@ export function AppShell({ role, children }: AppShellProps) {
     localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
   }, [collapsed]);
 
+  // Fee suspension is scoped per child (FeeSuspension.ChildId), not the whole account — a
+  // sibling with fees current keeps full access even while another child on the same account
+  // is suspended. Blocks the ENTIRE shell only in the two cases where nothing on it would be
+  // reachable anyway: role="student" (the "preview my child's view" reuse of this shell,
+  // always scoped to exactly one child — activeChildId) when THAT child specifically is
+  // suspended, or role="parent" when EVERY child on the account is suspended
+  // (allChildrenSuspended) — a parent with even one unaffected child instead sees the normal
+  // dashboard with that child's restriction shown per-card (ParentDashboard.tsx), not a
+  // blanket lockout of siblings who have nothing to do with the unpaid invoice. Skipped for
+  // every other role — the flags would just be meaningless for a non-Parent account.
+  const isParentAccount = role === "parent" || role === "student";
+  const { data: dashboard, reload: recheckSuspension } = useApiData<ApiParentDashboard | null>(
+    () => (isParentAccount ? getParentDashboard() : Promise.resolve(null)),
+    null
+  );
+  const blockedChild = role === "student" ? dashboard?.children.find((c) => c.childId === activeChildId) : undefined;
+  const shellBlocked = role === "student" ? !!blockedChild?.isSuspended : role === "parent" ? !!dashboard?.allChildrenSuspended : false;
+
   const accentStyle: CSSProperties = {
     "--primary": hexToHslTriple(meta.hex),
     "--ring": hexToHslTriple(meta.hex),
@@ -101,6 +144,10 @@ export function AppShell({ role, children }: AppShellProps) {
     // deliberately doesn't use here.
     "--primary-foreground": "0 0% 100%",
   } as CSSProperties;
+
+  if (apiEnabled() && isParentAccount && shellBlocked) {
+    return <AccountSuspendedScreen childId={blockedChild?.childId} onRecheck={recheckSuspension} />;
+  }
 
   return (
     <div className="flex min-h-dvh bg-background" style={accentStyle}>

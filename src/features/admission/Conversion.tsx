@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CHART_PALETTE } from "@/lib/roles";
 import { cn, formatDate, getInitials } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listDemoBookings, toApiConversionStatus, toFrontendLead, updateConversionStatus } from "@/api/demoBookings";
 import { LEADS as INITIAL_LEADS, type ConversionStage, type Lead } from "./data";
@@ -57,6 +58,9 @@ function isBoardStage(stage: ConversionStage): stage is BoardStage {
 
 export default function AdmissionConversion() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // PUT /{id}/conversion-status (UpdateConversionStatus) requires Admission:Edit server-side.
+  const canMove = !apiEnabled() || hasPermission("Admission", "Edit");
   const usingApi = apiEnabled();
   const { data: apiLeads, reload } = useApiData<Lead[]>(
     () => listDemoBookings().then((b) => b.map(toFrontendLead)),
@@ -114,13 +118,20 @@ export default function AdmissionConversion() {
       {leads.length === 0 ? (
         <EmptyState icon={Sparkles} title="No leads on the board yet" description="Leads appear here once their demo is completed." />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-          {BOARD_STAGES.map((stage) => {
+        <div className="relative">
+          {/* Static edge fade so the board (4 fixed stages at min-w-[280px] each, which still
+              exceeds the content width on a typical 1440px desktop once the sidebar and page
+              padding are subtracted, not just on phone) hints there's more to scroll to, instead
+              of just clipping the next column's card mid-word with no visible cue it's
+              scrollable — same pattern as management/Reports.tsx's table. */}
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent" />
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {BOARD_STAGES.map((stage) => {
             const meta = STAGE_META[stage];
             const Icon = meta.icon;
             const stageLeads = columns[stage];
             return (
-              <div key={stage} className="flex flex-col rounded-xl border border-border bg-muted/20">
+              <div key={stage} className="flex min-w-[280px] flex-1 flex-col rounded-xl border border-border bg-muted/20">
                 <div className="flex items-center gap-2.5 border-b border-border p-4">
                   <span
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
@@ -144,7 +155,7 @@ export default function AdmissionConversion() {
                     </p>
                   ) : (
                     stageLeads.map((lead) => (
-                      <Card key={lead.id} className={cn("border-l-[3px]", "shadow-none")} style={{ borderLeftColor: meta.color }}>
+                      <Card key={lead.id} className={cn("border-l-4", "shadow-none")} style={{ borderLeftColor: meta.color }}>
                         <CardContent className="flex flex-col gap-2.5 p-3.5">
                           <div className="flex items-start gap-2.5">
                             <Avatar className="h-8 w-8">
@@ -169,7 +180,11 @@ export default function AdmissionConversion() {
 
                           <p className="text-xs text-muted-foreground">Last contacted {formatDate(lead.lastContactedOn)}</p>
 
-                          <Select value={lead.conversionStage} onValueChange={(v) => moveLead(lead.id, v as BoardStage)}>
+                          <Select
+                            value={lead.conversionStage}
+                            onValueChange={(v) => moveLead(lead.id, v as BoardStage)}
+                            disabled={!canMove}
+                          >
                             <SelectTrigger className="h-8 text-xs">
                               <SelectValue />
                             </SelectTrigger>
@@ -188,7 +203,8 @@ export default function AdmissionConversion() {
                 </div>
               </div>
             );
-          })}
+            })}
+          </div>
         </div>
       )}
     </div>

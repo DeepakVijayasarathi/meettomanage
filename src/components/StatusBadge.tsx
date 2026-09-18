@@ -1,5 +1,13 @@
-import type { SessionStatus, UserStatus } from "@/types";
+import type { ClassSession, SessionStatus, UserStatus } from "@/types";
 import { cn } from "@/lib/utils";
+
+/** "Teacher No-Show" / "Student No-Show" for a noshow session, else undefined (falls back to
+ *  the generic per-status label) — pass straight into SessionStatusBadge's `label` prop. */
+export function noShowLabel(session: Pick<ClassSession, "noShowParty">): string | undefined {
+  if (session.noShowParty === "teacher") return "Teacher No-Show";
+  if (session.noShowParty === "student") return "Student No-Show";
+  return undefined;
+}
 
 const SESSION_STATUS_LABEL: Record<SessionStatus, string> = {
   scheduled: "Scheduled",
@@ -23,11 +31,21 @@ const SESSION_STATUS_COLOR: Record<SessionStatus, string> = {
   leave: "bg-status-leave",
 };
 
-export function SessionStatusBadge({ status, className }: { status: SessionStatus; className?: string }) {
+export function SessionStatusBadge({
+  status,
+  className,
+  label,
+}: {
+  status: SessionStatus;
+  className?: string;
+  /** Overrides the generic per-status label (e.g. "Student No-Show" instead of "No-Show") — the
+   *  dot color still comes from `status` as normal, only the text changes. */
+  label?: string;
+}) {
   return (
     <span className={cn("inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground/80", className)}>
       <span className={cn("h-1.5 w-1.5 rounded-full", SESSION_STATUS_COLOR[status])} />
-      {SESSION_STATUS_LABEL[status]}
+      {label ?? SESSION_STATUS_LABEL[status]}
     </span>
   );
 }

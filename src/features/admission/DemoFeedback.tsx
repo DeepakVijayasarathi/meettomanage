@@ -12,8 +12,10 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listDemoBookings, listDemoFeedback, toAwaitingFeedback, toFrontendFeedback } from "@/api/demoBookings";
 import { formatDate, formatNumber } from "@/lib/utils";
+import { usePortalBase } from "@/lib/portalBase";
 
 export default function AdmissionDemoFeedback() {
+  const base = usePortalBase();
   const { data: feedbacks, loading, error, reload } = useApiData(
     () =>
       Promise.all([listDemoFeedback(), listDemoBookings("DemoScheduled")]).then(
@@ -50,7 +52,7 @@ export default function AdmissionDemoFeedback() {
         <KpiCard label="Awaiting Teacher" value={formatNumber(pending.length)} icon={Hourglass} tone="warning" loading={loading} />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/15 text-success">
             <ClipboardCheck className="h-4 w-4" />
@@ -97,7 +99,7 @@ export default function AdmissionDemoFeedback() {
                   {f.remarks && <p className="text-muted-foreground">{f.remarks}</p>}
 
                   <Button variant="soft" size="sm" className="mt-2 self-start" asChild>
-                    <Link to="/admission/leads">
+                    <Link to={`${base}/leads`}>
                       Start follow-up <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </Button>
@@ -108,7 +110,7 @@ export default function AdmissionDemoFeedback() {
         )}
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         <div className="mb-3 flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/20 text-warning-foreground">
             <Clock className="h-4 w-4" />

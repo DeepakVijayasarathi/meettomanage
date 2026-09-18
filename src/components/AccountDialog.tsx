@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
-import { buildPersonalMeetingUrl, getMyAccount, getMyMeetingRoom, updateMyAccount } from "@/api/account";
+import { getMyAccount, getMyMeetingRoomShortLink, updateMyAccount } from "@/api/account";
 import { getCalendarFeedUrl } from "@/api/sessions";
 
 const TIMEZONES = ["Asia/Kolkata", "Asia/Dubai", "Europe/London", "America/New_York", "America/Los_Angeles", "Australia/Sydney"];
@@ -107,7 +107,9 @@ export function AccountDialog({
 
   async function copy(kind: "meeting" | "calendar") {
     try {
-      const url = kind === "meeting" ? buildPersonalMeetingUrl(await getMyMeetingRoom()) : await getCalendarFeedUrl();
+      // The short /m/<slug> redirect, not the raw long Jitsi URL (a full signed JWT in its
+      // fragment) -- that reads as broken/suspicious pasted into WhatsApp or email.
+      const url = kind === "meeting" ? (await getMyMeetingRoomShortLink()).url : await getCalendarFeedUrl();
       await navigator.clipboard.writeText(url);
       setCopied(kind);
       setTimeout(() => setCopied(null), 2500);

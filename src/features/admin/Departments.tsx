@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, Plus } from "lucide-react";
+import { Building2, Loader2, Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -110,9 +110,11 @@ export default function AdminDepartments() {
       key: "actions",
       header: "",
       render: (d) => (
-        <Button size="sm" variant="ghost" onClick={() => openEdit(d)}>
-          Edit
-        </Button>
+        <div className="flex items-center justify-end gap-1">
+          <Button size="sm" variant="ghost" onClick={() => openEdit(d)}>
+            Edit
+          </Button>
+        </div>
       ),
     },
   ];
@@ -178,7 +180,7 @@ export default function AdminDepartments() {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="dept-name">Name</Label>
+              <Label htmlFor="dept-name">Name <span className="text-destructive">*</span></Label>
               <Input id="dept-name" placeholder="e.g. Hindi, Abacus, Spoken English" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
@@ -204,7 +206,7 @@ export default function AdminDepartments() {
               Cancel
             </Button>
             <Button onClick={save} disabled={saving || !name.trim()}>
-              {saving ? "Saving…" : editing ? "Save changes" : "Add department"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : editing ? "Save changes" : "Add department"}
             </Button>
           </DialogFooter>
         </DialogContent>

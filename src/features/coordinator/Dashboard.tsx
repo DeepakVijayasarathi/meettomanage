@@ -19,8 +19,10 @@ import { Button } from "@/components/ui/button";
 import { SESSIONS } from "@/data/sessions";
 import { LEAVE_REQUESTS } from "@/data/leaves";
 import { useSession } from "@/state/session";
+import { usePortalBase } from "@/lib/portalBase";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listSessions, toFrontendSession } from "@/api/sessions";
@@ -33,26 +35,32 @@ const MOCK_NOW = new Date("2026-07-09T12:00:00");
 
 const PLACEHOLDER_STATUSES: SessionStatus[] = ["holiday", "leave"];
 
-function formatTimeLabel(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 export default function CoordinatorDashboard() {
-  const { userName } = useSession();
+  const { userName, hasPermission } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
+  const base = usePortalBase();
 
   const usingApi = apiEnabled();
+  // GET /api/leave-requests requires LeaveManagement:View server-side. Same gate as
+  // coordinator/Availability.tsx and Calendar.tsx for the identical call — this dashboard
+  // widget was the one place still calling it unconditionally.
+  const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(() => listSessions().then((s) => s.map(toFrontendSession)), SESSIONS);
-  const { data: apiLeaves, loading: leavesLoading, error: leavesError } = useApiData<LeaveRequest[]>(() => listLeave().then((l) => l.map(toFrontendLeave)), LEAVE_REQUESTS);
+  const { data: apiLeaves, loading: leavesLoading, error: leavesError } = useApiData<LeaveRequest[]>(
+    () => (canSeeLeave ? listLeave().then((l) => l.map(toFrontendLeave)) : Promise.resolve([])),
+    LEAVE_REQUESTS
+  );
   const kpiLoading = usingApi && (sessionsLoading || leavesLoading);
   const kpiError = sessionsError || leavesError;
 
   const sessions = usingApi ? apiSessions : SESSIONS;
   const leaves = usingApi ? apiLeaves : LEAVE_REQUESTS;
-  const TODAY = usingApi ? new Date().toISOString().slice(0, 10) : MOCK_TODAY;
+  // session.date (from toFrontendSession) is already the account's local calendar date, not
+  // UTC -- comparing it against a UTC "today" mismatches for hours near local midnight
+  // (e.g. IST is UTC+5:30, so 10pm-3am local already reads as tomorrow's UTC date). Same bug
+  // and same fix as teacher/Dashboard.tsx's "today's classes" list.
+  const TODAY = usingApi ? utcIsoToLocalDateTime(new Date().toISOString()).date : MOCK_TODAY;
   const NOW = usingApi ? new Date() : MOCK_NOW;
 
   const todaySessions = useMemo(
@@ -105,7 +113,7 @@ export default function CoordinatorDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <PersonalMeetingButton />
             <Button asChild>
-              <Link to="/coordinator/calendar">
+              <Link to={`${base}/calendar`}>
                 Open Academic Calendar <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -153,10 +161,10 @@ export default function CoordinatorDashboard() {
           <CardContent className="flex flex-col gap-3 pt-0">
             <LeaveStatRow label="Pending" value={leaveByStatus.pending} tone="warning" />
             <LeaveStatRow label="Approved" value={leaveByStatus.approved} tone="success" />
-            <LeaveStatRow label="Rejected" value={leaveByStatus.rejected} tone="neutral" />
+            <LeaveStatRow label="Rejected" value={leaveByStatus.rejected} tone="destructive" />
             <LeaveStatRow label="Blocked (late notice)" value={leaveByStatus.blocked} tone="destructive" />
             <Button asChild variant="outline" className="mt-1 w-full">
-              <Link to="/coordinator/availability">
+              <Link to={`${base}/availability`}>
                 Review leave queue <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

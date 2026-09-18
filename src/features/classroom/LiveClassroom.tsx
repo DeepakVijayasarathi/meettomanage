@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
-import JitsiLive from "./JitsiLive";
+import JitsiLive, { GUID_RE } from "./JitsiLive";
 import { HelpCircle, LogOut, MessageSquare, PanelRightClose, PanelRightOpen, Sparkles, Users } from "lucide-react";
 import { SESSIONS } from "@/data/sessions";
 import type { ChatMessage, Participant } from "@/types";
@@ -18,6 +18,8 @@ import QuizOverlay from "./QuizOverlay";
 import GamificationOverlay from "./GamificationOverlay";
 import { postEngagement } from "@/api/engagement";
 import { primeAudioUnlock } from "@/lib/sounds";
+import { isLikelyInAppBrowser } from "@/lib/jitsi";
+import { useToast } from "@/hooks/use-toast";
 
 type StageView = "video" | "whiteboard";
 type RightTab = "participants" | "chat" | "quiz";
@@ -40,6 +42,7 @@ export default function LiveClassroom({ mode }: { mode: "teacher" | "student" })
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const { activeChildId, children } = useSession();
+  const { toast } = useToast();
 
   // A parent joins the classroom on their child's behalf — the Jitsi participant
   // name (and engagement attribution) should read as the student, not the parent
@@ -47,25 +50,69 @@ export default function LiveClassroom({ mode }: { mode: "teacher" | "student" })
   const studentDisplayName =
     mode === "student" ? children.find((c) => c.id === activeChildId)?.name : undefined;
 
-  // Real sessions launched from an API-backed dashboard carry their Jitsi room
-  // via route state; the interactive mock stays for demo mode and design work.
+  // Repeated live report: a parent granted the browser's own camera/mic permission and it
+  // still didn't work, unlike Zoom/Meet. See isLikelyInAppBrowser's own doc comment — an
+  // in-app "mini browser" (WhatsApp, Instagram, ...) is a well-known, undetectable-any-
+  // other-way dead end for getUserMedia that no code here can fix, only warn about.
+  // Dismissible, not a hard block: the heuristic can false-positive, and forcing someone
+  // out of a class they can actually join fine would be worse than the warning itself.
+  const [inAppWarningDismissed, setInAppWarningDismissed] = useState(false);
+  if (isLikelyInAppBrowser() && !inAppWarningDismissed) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+        <h1 className="text-xl font-semibold text-foreground">Open this link in your browser</h1>
+        <p className="max-w-md text-sm text-muted-foreground">
+          This looks like it opened inside an app's built-in browser (WhatsApp, Instagram, or similar) — those commonly block camera and microphone access for video calls, even when permission looks granted. For a reliable class, tap the menu in the corner of this screen and choose "Open in Browser" (or copy this link and paste it into Safari/Chrome directly).
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(window.location.href);
+                toast({ variant: "success", title: "Link copied", description: "Paste it into your browser's address bar." });
+              } catch {
+                toast({ variant: "error", title: "Couldn't copy", description: "Long-press the address bar above to copy this link manually." });
+              }
+            }}
+          >
+            Copy this link
+          </Button>
+          <Button onClick={() => setInAppWarningDismissed(true)}>Continue anyway</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Real sessions launched from an API-backed dashboard carry their Jitsi room via route
+  // state; the interactive mock stays for demo mode and design work.
   const launch = location.state as { room?: string; title?: string } | null;
   if (apiEnabled()) {
-    if (launch?.room) {
+    // A teacher opening their emailed Demo join link (or any other deep link straight to
+    // this URL — bookmarked, forwarded, reopened in a fresh tab) never carries this route
+    // state; it only exists when navigation happened via startClass's own in-app
+    // navigate(..., { state }) call. That used to hard-block here even though nothing else
+    // is actually missing: JitsiLive re-resolves the real room/domain/token itself, fresh,
+    // from `sessionId` alone (see its own getJitsiJoin call) — `room` is only ever a
+    // same-tick fallback for while that lookup is in flight. So a valid session id is
+    // enough on its own; `room` can start blank and gets overwritten the instant the
+    // lookup resolves.
+    if (launch?.room || (sessionId && GUID_RE.test(sessionId))) {
       return (
         <JitsiLive
-          room={launch.room}
-          title={launch.title}
+          room={launch?.room ?? ""}
+          title={launch?.title}
           mode={mode}
           sessionId={sessionId}
           displayName={studentDisplayName}
         />
       );
     }
-    // No launch context (e.g. a pasted URL): never fall back to the mock classroom
-    // with fabricated participants — send the user back to start the class properly.
+    // No launch context and no usable session id (e.g. a pasted URL with nothing real
+    // behind it): never fall back to the mock classroom with fabricated participants —
+    // send the user back to start the class properly.
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
         <h1 className="text-xl font-semibold text-foreground">This class link can't be opened directly</h1>
         <p className="max-w-md text-sm text-muted-foreground">
           Join your live class from the schedule so we can connect you to the right room.
@@ -146,7 +193,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
   function handleSendMessage(text: string) {
     setMessages((prev) => [
       ...prev,
-      { id: `m-${Date.now()}`, author: "You", text, time: new Date().toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }), isSelf: true },
+      { id: `m-${Date.now()}`, author: "You", text, time: new Date().toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true }), isSelf: true },
     ]);
   }
 
@@ -189,7 +236,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
 
   if (!session) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-slate-950 text-white">
+      <div className="flex h-dvh w-screen flex-col items-center justify-center gap-4 bg-slate-950 text-white">
         <p className="text-lg font-semibold">Session not found</p>
         <Button onClick={() => navigate(mode === "teacher" ? "/teacher" : "/parent")}>Go back</Button>
       </div>
@@ -197,7 +244,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-950 text-foreground">
+    <div className="flex h-dvh w-screen flex-col overflow-hidden bg-slate-950 text-foreground">
       {/* Minimal header — this screen renders outside the portal AppShell */}
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-gradient-to-r from-brand-navyDark via-brand-navy to-brand-navyDark px-3 py-2.5 text-white sm:gap-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">

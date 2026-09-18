@@ -47,6 +47,12 @@ export async function listCourses(): Promise<ApiCourse[]> {
   return apiFetch<ApiCourse[]>("/api/courses?includeInactive=true");
 }
 
+/** Full record for one course — used to populate the Edit dialog with the fields
+ *  toFrontendCourse() intentionally drops (categoryId, departmentId, totalSessions). */
+export async function getCourse(id: string): Promise<ApiCourse> {
+  return apiFetch<ApiCourse>(`/api/courses/${id}`);
+}
+
 export interface ApiCourseOption {
   id: string;
   name: string;
@@ -103,6 +109,38 @@ export async function createCourse(input: {
       totalSessions: input.totalSessions ?? 12,
       departmentId: input.departmentId,
       isActive: true,
+    }),
+  });
+}
+
+/** Edits an existing course. `totalSessions` should normally be the course's current value
+ *  unchanged — CourseService.UpdateAsync rejects changing it (or durationMinutes) once a
+ *  batch on this course already has a generated schedule. */
+export async function updateCourse(
+  id: string,
+  input: {
+    name: string;
+    categoryName: string;
+    departmentId: string;
+    type: "1:1" | "group" | "demo";
+    durationMinutes: number;
+    price: number;
+    totalSessions: number;
+    isActive: boolean;
+  }
+): Promise<ApiCourse> {
+  const category = await ensureCategory(input.categoryName, input.departmentId);
+  return apiFetch<ApiCourse>(`/api/courses/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      courseCategoryId: category.id,
+      name: input.name,
+      type: input.type === "group" ? "Group" : "Individual",
+      durationMinutes: input.durationMinutes,
+      price: input.price,
+      totalSessions: input.totalSessions,
+      departmentId: input.departmentId,
+      isActive: input.isActive,
     }),
   });
 }

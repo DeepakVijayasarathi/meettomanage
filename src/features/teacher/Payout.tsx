@@ -8,7 +8,8 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { getPayoutsForTeacher } from "@/data/payouts";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -109,7 +110,7 @@ export default function TeacherPayout() {
       />
 
       {apiEnabled() && payoutsError && (
-        <InlineAlert variant="warning" className="mb-4 text-xs">
+        <InlineAlert variant="warning" className="mb-4">
           Could not load your payout history ({payoutsError}).{" "}
           <button type="button" className="underline" onClick={() => reloadPayouts()}>
             Retry
@@ -212,6 +213,11 @@ export default function TeacherPayout() {
                   );
                 })}
               </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSelectedPayout(null)}>
+                  Close
+                </Button>
+              </DialogFooter>
             </>
           )}
         </DialogContent>

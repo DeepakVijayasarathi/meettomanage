@@ -97,7 +97,7 @@
     --ring: 191 85% 55%;
   }
 
-  /* Login/ForgotPassword/ResetPin and the public marketing pages (Home, Store) render a
+  /* Login/ForgotPin/ResetPin and the public marketing pages (Home, Store) render a
      fixed light cream/white brand identity, independent of the app's dark-mode toggle —
      that control lives inside the authenticated AppShell and these pages keep their own
      brand-*-token look regardless of it. They still embed shared shadcn primitives

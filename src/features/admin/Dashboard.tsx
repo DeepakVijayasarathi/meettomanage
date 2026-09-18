@@ -37,7 +37,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent, formatTimeLabel } from "@/lib/utils";
 import {
   ADMIN_KPIS,
   ATTENDANCE_TREND,
@@ -51,6 +51,7 @@ import {
 import { SESSIONS } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
+import { useMemo } from "react";
 import { useApiData } from "@/api/hooks";
 import { getDashboardSummary } from "@/api/reports";
 import { listSessions, toFrontendSession } from "@/api/sessions";
@@ -86,9 +87,13 @@ export default function AdminDashboard() {
     () => listSessions().then((items) => items.map(toFrontendSession)),
     []
   );
-  const todaySessions = (usingApi ? apiSessions : SESSIONS)
-    .filter((s) => s.date === todayKey)
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const todaySessions = useMemo(
+    () =>
+      (usingApi ? apiSessions : SESSIONS)
+        .filter((s) => s.date === todayKey)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    [usingApi, apiSessions, todayKey]
+  );
   // Live aggregates replace the mock KPI block and charts when the API is configured
   const { data: dashboard, loading: dashboardLoading, error: dashboardError } = useApiData(
     () =>
@@ -144,7 +149,7 @@ export default function AdminDashboard() {
       />
 
       {/* KPI row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard
           label="Total Students"
           value={formatNumber(kpis.totalStudents)}
@@ -325,9 +330,18 @@ export default function AdminDashboard() {
           emptyMessage={usingApi ? "Per-teacher utilization isn't available yet." : "No data yet."}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={teacherUtilization} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+            <BarChart data={teacherUtilization} margin={{ left: -12, right: 12, top: 8, bottom: 24 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-              <XAxis dataKey="teacher" tickLine={false} axisLine={false} fontSize={11} interval={0} angle={-12} textAnchor="end" height={44} />
+              <XAxis
+                dataKey="teacher"
+                tickLine={false}
+                axisLine={false}
+                fontSize={10}
+                interval={teacherUtilization.length > 12 ? Math.ceil(teacherUtilization.length / 12) - 1 : 0}
+                angle={-90}
+                textAnchor="end"
+                height={70}
+              />
               {/* width bumped 40->48: at 40 the chart's -12 left margin pushed "100%"/"75%" tick
                   labels partly past x=0, clipping their leading digit (e.g. "100%" rendered as "0%"). */}
               <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={54} />
@@ -386,8 +400,8 @@ export default function AdminDashboard() {
               <Clock className="h-[18px] w-[18px]" />
             </span>
             <div>
-              <h3 className="text-base font-semibold text-foreground">Today&apos;s Sessions</h3>
-              <p className="text-sm text-muted-foreground">{formatDate(todayKey, "long")}</p>
+              <p className="text-sm font-semibold text-foreground">Today&apos;s Sessions</p>
+              <p className="text-xs text-muted-foreground">{formatDate(todayKey, "long")}</p>
             </div>
           </div>
           <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
@@ -418,12 +432,12 @@ export default function AdminDashboard() {
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
                     style={{ backgroundColor: `${CHART_PALETTE[i % CHART_PALETTE.length]}1A`, color: CHART_PALETTE[i % CHART_PALETTE.length] }}
                   >
-                    {s.startTime.slice(0, 2)}
+                    {formatTimeLabel(s.startTime).split(":")[0]}
                   </span>
                   <div>
                     <p className="text-sm font-semibold text-foreground">{s.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {s.startTime} · {s.duration} min · {s.teacherName} · {s.childIds.length} student{s.childIds.length === 1 ? "" : "s"}
+                      {formatTimeLabel(s.startTime)} · {s.duration} min · {s.teacherName} · {s.childIds.length} student{s.childIds.length === 1 ? "" : "s"}
                     </p>
                   </div>
                 </div>

@@ -1,12 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import {
-  ArrowLeft,
-  CalendarClock,
-  History,
-  Search,
-  UserCog,
-} from "lucide-react";
+import { ArrowLeft, CalendarClock, History, Loader2, Search, UserCog } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -19,7 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import {
   getDemoBooking,
@@ -36,6 +32,7 @@ import { TEACHERS } from "@/data/users";
 import { LEADS } from "./data";
 import { formatDate, getInitials } from "@/lib/utils";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
+import { usePortalBase } from "@/lib/portalBase";
 
 interface PickerRow {
   id: string;
@@ -91,8 +88,12 @@ function mockWorkload(currentTeacherId: string): ApiTeacherWorkload[] {
 
 export default function DemoTeacherAssignment() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // POST /{id}/teacher (ReassignTeacher) requires Admission:Edit server-side.
+  const canReassign = !apiEnabled() || hasPermission("Admission", "Edit");
   const { bookingId } = useParams<{ bookingId?: string }>();
   const navigate = useNavigate();
+  const base = usePortalBase();
   const [search, setSearch] = useState("");
   const [reasonInput, setReasonInput] = useState("");
   const [candidateId, setCandidateId] = useState<string | null>(null);
@@ -161,7 +162,7 @@ export default function DemoTeacherAssignment() {
   }, [pickerRows, search]);
 
   const selectedCandidate = workload.find((w) => w.teacherProfileId === candidateId) ?? null;
-  const canSubmit = !!candidateId && candidateId !== detail?.teacherId && !selectedCandidate?.isBusyAtSlot;
+  const canSubmit = canReassign && !!candidateId && candidateId !== detail?.teacherId && !selectedCandidate?.isBusyAtSlot;
 
   function handleReassign() {
     if (!detail || !candidateId || !canSubmit || submitting) return;
@@ -208,7 +209,7 @@ export default function DemoTeacherAssignment() {
       {bookingId && (
         <Breadcrumb
           items={[
-            { label: "Demo Scheduling", to: "/admission/demo-scheduling" },
+            { label: "Demo Scheduling", to: `${base}/demo-scheduling` },
             { label: detail?.childName ?? "Teacher Assignment" },
           ]}
         />
@@ -219,7 +220,7 @@ export default function DemoTeacherAssignment() {
         description="Override the teacher assigned to a demo — see who's free before you move it, and keep a record of why."
         actions={
           <Button asChild variant="outline" size="sm">
-            <Link to="/admission/demo-scheduling">
+            <Link to={`${base}/demo-scheduling`}>
               <ArrowLeft className="h-3.5 w-3.5" /> Back to Demo Scheduling
             </Link>
           </Button>
@@ -246,7 +247,17 @@ export default function DemoTeacherAssignment() {
             </div>
 
             {pickerLoading ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">Loading upcoming demos…</p>
+              <div className="flex flex-col gap-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                    <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Skeleton className="h-3.5 w-40" />
+                      <Skeleton className="h-3 w-56" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : filteredPicker.length === 0 ? (
               <EmptyState icon={CalendarClock} title="No upcoming demos found" description="Schedule a demo first, or adjust your search." />
             ) : (
@@ -255,8 +266,8 @@ export default function DemoTeacherAssignment() {
                   <button
                     key={row.id}
                     type="button"
-                    onClick={() => navigate(`/admission/demo-teacher-assignment/${row.id}`)}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    onClick={() => navigate(`${base}/demo-teacher-assignment/${row.id}`)}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
@@ -281,7 +292,18 @@ export default function DemoTeacherAssignment() {
       {/* Gated on !detail, not !detailLoading -- a background refresh after a successful
           reassignment (loadDetail again) must not unmount this whole panel and flash the
           success banner away while it's still meant to be showing. */}
-      {bookingId && detailLoading && !detail && <p className="py-10 text-center text-sm text-muted-foreground">Loading booking…</p>}
+      {bookingId && detailLoading && !detail && (
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="mt-2 h-3.5 w-64" />
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2.5">
+            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-16 w-full rounded-xl" />
+          </CardContent>
+        </Card>
+      )}
 
       {bookingId && !detailLoading && detailError && (
         <InlineAlert variant="error" bordered>{detailError}</InlineAlert>
@@ -315,7 +337,7 @@ export default function DemoTeacherAssignment() {
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {workload.map((t) => {
                   const isCurrent = t.teacherProfileId === detail.teacherId;
-                  const disabled = isCurrent || t.isBusyAtSlot;
+                  const disabled = isCurrent || t.isBusyAtSlot || !canReassign;
                   const selected = candidateId === t.teacherProfileId;
                   return (
                     <button
@@ -323,7 +345,7 @@ export default function DemoTeacherAssignment() {
                       type="button"
                       disabled={disabled}
                       onClick={() => setCandidateId(t.teacherProfileId)}
-                      className={`flex flex-col gap-2 rounded-xl border p-3.5 text-left transition-colors ${
+                      className={`flex flex-col gap-2 rounded-xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                         selected
                           ? "border-primary bg-primary/5 ring-1 ring-primary"
                           : disabled
@@ -349,21 +371,25 @@ export default function DemoTeacherAssignment() {
                 })}
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="reassignReason">Reason (optional, kept in the audit trail)</Label>
-                <Textarea
-                  id="reassignReason"
-                  placeholder="e.g. Original teacher called in sick"
-                  value={reasonInput}
-                  onChange={(e) => setReasonInput(e.target.value)}
-                />
-              </div>
+              {canReassign && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="reassignReason">Reason (optional, kept in the audit trail)</Label>
+                  <Textarea
+                    id="reassignReason"
+                    placeholder="e.g. Original teacher called in sick"
+                    value={reasonInput}
+                    onChange={(e) => setReasonInput(e.target.value)}
+                  />
+                </div>
+              )}
 
-              <div className="flex justify-end">
-                <Button disabled={!canSubmit || submitting} onClick={handleReassign}>
-                  <UserCog className="h-4 w-4" /> {submitting ? "Reassigning…" : "Reassign Teacher"}
-                </Button>
-              </div>
+              {canReassign && (
+                <div className="flex justify-end">
+                  <Button disabled={!canSubmit || submitting} onClick={handleReassign}>
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCog className="h-4 w-4" />}{submitting ? "Reassigning…" : "Reassign Teacher"}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

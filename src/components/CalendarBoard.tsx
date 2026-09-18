@@ -14,8 +14,9 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ClassSession, SessionStatus } from "@/types";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SESSION_STATUS_COLOR, SESSION_STATUS_LABEL } from "@/components/StatusBadge";
-import { cn } from "@/lib/utils";
+import { cn, formatTimeLabel } from "@/lib/utils";
 
 interface CalendarBoardProps {
   sessions: ClassSession[];
@@ -129,12 +130,38 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
                       )}
                     >
                       <span className="min-w-0 flex-1 truncate">
-                        {s.startTime} {s.title}
+                        {formatTimeLabel(s.startTime)} {s.title}
                       </span>
                     </button>
                   ))}
                   {daySessions.length > 3 && (
-                    <span className="px-1.5 text-[10px] font-semibold text-muted-foreground">+{daySessions.length - 3} more</span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="px-1.5 text-left text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:underline">
+                          +{daySessions.length - 3} more
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-64 p-2">
+                        <p className="px-1 pb-1.5 text-xs font-bold text-foreground">{format(day, "EEEE, MMM d")}</p>
+                        <div className="flex max-h-64 flex-col gap-1 overflow-y-auto">
+                          {daySessions.map((s) => (
+                            <button
+                              key={s.id}
+                              onClick={() => onSessionClick?.(s)}
+                              title={s.title}
+                              className={cn(
+                                "flex items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs font-medium text-white transition-transform hover:scale-[1.02]",
+                                SESSION_STATUS_COLOR[s.status]
+                              )}
+                            >
+                              <span className="min-w-0 flex-1 truncate">
+                                {formatTimeLabel(s.startTime)} {s.title}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
               </div>

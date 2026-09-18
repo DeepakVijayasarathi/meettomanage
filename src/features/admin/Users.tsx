@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
 import { useBrand } from "@/lib/branding";
 import { PageHeader } from "@/components/PageHeader";
@@ -28,11 +29,34 @@ import { CHILDREN } from "@/data/children";
 import { getCourseById } from "@/data/courses";
 import { DEMO_DEPARTMENTS } from "@/data/departments";
 import type { AppUser, Child } from "@/types";
-import { cn, formatDate, getInitials } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, getInitials, isValidEmail } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { bulkImportStudents, bulkImportUsers, changeUserRole, createUser, deleteUser, exportStudents, exportUsers, getCredentialChannels, listStudents, listUsers, resendCredentials, resetPin, toAppUser, updateStudentNotes, updateUser, type StudentRow } from "@/api/users";
+import {
+  bulkImportStudents,
+  bulkImportUsers,
+  changeUserRole,
+  createUser,
+  deleteStudent,
+  deleteUser,
+  exportStudents,
+  exportUsers,
+  getCredentialChannels,
+  getParentHardDeletePreview,
+  getStudentHardDeletePreview,
+  hardDeleteParent,
+  hardDeleteStudent,
+  listAllUsers,
+  listStudents,
+  resendCredentials,
+  resetPin,
+  toAppUser,
+  updateStudentNotes,
+  updateUser,
+  type ApiDataDeletionPreview,
+  type StudentRow,
+} from "@/api/users";
 import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
 import type { ApiRole } from "@/api/types";
@@ -86,26 +110,69 @@ export default function AdminUsers() {
     data: parents,
     error: parentsError,
     reload: reloadParents,
-  } = useApiData(() => listUsers({ role: "Parent" }).then((r) => r.items.map(toAppUser)), PARENTS);
+  } = useApiData(() => listAllUsers("Parent").then((items) => items.map(toAppUser)), PARENTS);
   const { data: teachers, error: teachersError, reload: reloadTeachers } = useApiData(
-    () => listUsers({ role: "Teacher" }).then((r) => r.items.map(toAppUser)),
+    () => listAllUsers("Teacher").then((items) => items.map(toAppUser)),
     TEACHERS
   );
   const { data: staff, error: staffError, reload: reloadStaff } = useApiData(
     async () => {
-      const [admission, subAdmins] = await Promise.all([
-        listUsers({ role: "AdmissionTeam" }),
-        listUsers({ role: "SubAdmin" }),
-      ]);
-      return [...admission.items, ...subAdmins.items].map(toAppUser);
+      const [admission, subAdmins] = await Promise.all([listAllUsers("AdmissionTeam"), listAllUsers("SubAdmin")]);
+      return [...admission, ...subAdmins].map(toAppUser);
     },
     [...ADMISSION_TEAM, ...SUB_ADMINS]
   );
   const { data: students, error: studentsError, reload: reloadStudents } = useApiData<StudentRow[]>(listStudents, CHILDREN);
   const { data: departments } = useApiData<ApiDepartment[]>(() => listDepartments(false), DEMO_DEPARTMENTS);
 
+  // Batches are organized by child, not by parent, so staff look a child up far more often
+  // than they look up a parent by name — but the Parents tab could only ever be searched by
+  // the parent's own name/email. Each parent row now also carries its children's names (shown
+  // in their own column, and picked up for free by DataTable's default search, which matches
+  // against every field on the row) so a child's name finds their parent's account directly.
+  const parentsWithChildren = useMemo(() => {
+    const childrenByParentId = new Map<string, string[]>();
+    for (const s of students) {
+      // In demo mode there's only one id space, so parentUserId is unset and parentId (the
+      // mock ParentProfileId, e.g. "p-1") already matches a parent row's own id directly. In
+      // API mode the parents list here is keyed by the parent's account id (User.Id, from the
+      // Users API) which is a DIFFERENT id than the child's ParentProfileId — parentUserId is
+      // the field that actually matches those rows; keying off parentId there left every real
+      // parent's childrenNames empty, so neither the "Children" column nor searching a parent
+      // by their child's name ever worked outside demo mode.
+      const key = s.parentUserId || s.parentId;
+      if (!key) continue;
+      const list = childrenByParentId.get(key) ?? [];
+      list.push(s.name);
+      childrenByParentId.set(key, list);
+    }
+    return parents.map((p) => ({ ...p, childrenNames: (childrenByParentId.get(p.id) ?? []).join(", ") }));
+  }, [parents, students]);
+
+  // Deep link from elsewhere in the app (e.g. a batch's roster, which has no student-detail
+  // view of its own — this same dialog is the one place email/parent/login info actually
+  // lives) straight to one student's own detail dialog, on the right tab.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepLinkStudentId = searchParams.get("studentId");
+  const [activeTab, setActiveTab] = useState(deepLinkStudentId ? "students" : "parents");
+
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
   const [detailChild, setDetailChild] = useState<Child | null>(null);
+  useEffect(() => {
+    if (!deepLinkStudentId || students.length === 0) return;
+    const match = students.find((s) => s.id === deepLinkStudentId);
+    if (match) {
+      setDetailChild(match);
+      // Consumed — closing the dialog shouldn't reopen it on the next render, and the URL
+      // shouldn't keep pointing at a specific student once it's just "the Users page" again.
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("studentId");
+        return next;
+      }, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkStudentId, students]);
   // RM special enrolment notes for the open child profile.
   const [childNotes, setChildNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
@@ -139,7 +206,7 @@ export default function AdminUsers() {
   }, [detailChild]);
   // Edit-profile dialog (name + phone + role) for any user account.
   const [editUser, setEditUser] = useState<AppUser | null>(null);
-  const [editForm, setEditForm] = useState({ firstName: "", lastName: "", phone: "" });
+  const [editForm, setEditForm] = useState({ firstName: "", lastName: "", email: "", phone: "" });
   const [editRole, setEditRole] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
   const [editSaving, setEditSaving] = useState(false);
@@ -159,7 +226,12 @@ export default function AdminUsers() {
 
   function openEdit(u: AppUser) {
     const [firstName, ...rest] = u.name.trim().split(/\s+/);
-    setEditForm({ firstName: firstName ?? "", lastName: rest.join(" "), phone: u.phone === "—" ? "" : u.phone });
+    setEditForm({
+      firstName: firstName ?? "",
+      lastName: rest.join(" "),
+      email: u.email,
+      phone: u.phone === "—" ? "" : u.phone,
+    });
     setEditError(null);
     const currentOption = u.roleDefinitionId
       ? addUserRoleOptions.find((o) => o.roleDefinitionId === u.roleDefinitionId)
@@ -176,6 +248,10 @@ export default function AdminUsers() {
       setEditError("First name is required.");
       return;
     }
+    if (!isValidEmail(editForm.email)) {
+      setEditError("Enter a valid email address.");
+      return;
+    }
     if (!apiEnabled()) {
       setBanner({ ok: true, text: "Demo mode — no account actually updated." });
       setEditUser(null);
@@ -190,6 +266,7 @@ export default function AdminUsers() {
       await updateUser(editUser.id, {
         firstName: editForm.firstName.trim(),
         lastName: editForm.lastName.trim(),
+        email: editForm.email.trim(),
         phone: editForm.phone.trim() || undefined,
         departmentId: editingTeacherInPlace ? editDepartment : undefined,
       });
@@ -206,6 +283,7 @@ export default function AdminUsers() {
             await updateUser(editUser.id, {
               firstName: editForm.firstName.trim(),
               lastName: editForm.lastName.trim(),
+              email: editForm.email.trim(),
               phone: editForm.phone.trim() || undefined,
               departmentId: editDepartment,
             });
@@ -232,6 +310,14 @@ export default function AdminUsers() {
   // Delete-account confirmation from the user detail dialog.
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
+  // Delete-child confirmation from the child detail dialog — separate from deleteTarget
+  // since a child isn't an AppUser (it has no login of its own).
+  const [deleteChildTarget, setDeleteChildTarget] = useState<Child | null>(null);
+  const [deletingChild, setDeletingChild] = useState(false);
+  // Set once the plain delete is refused for an active batch enrolment — previously that was a
+  // dead end (the error named the fix but nothing in this dialog could do it); confirming again
+  // from this state withdraws every active enrolment and deletes in the same call.
+  const [childDeleteNeedsWithdraw, setChildDeleteNeedsWithdraw] = useState(false);
 
   async function handleDeleteUser() {
     if (!deleteTarget) return;
@@ -253,6 +339,155 @@ export default function AdminUsers() {
       setBanner({ ok: false, text: message });
       toast({ variant: "error", title: "Couldn't delete account", description: message });
     }
+  }
+
+  async function handleDeleteChild() {
+    if (!deleteChildTarget) return;
+    if (!apiEnabled()) {
+      setBanner({ ok: true, text: "Demo mode — no student actually removed." });
+      setDetailChild(null);
+      setDeleteChildTarget(null);
+      return;
+    }
+    setDeletingChild(true);
+    try {
+      await deleteStudent(deleteChildTarget.id, childDeleteNeedsWithdraw);
+      setBanner({ ok: true, text: `${deleteChildTarget.name}'s record was removed.` });
+      setDetailChild(null);
+      setDeleteChildTarget(null);
+      setChildDeleteNeedsWithdraw(false);
+      reloadStudents();
+      toast({ variant: "success", title: "Student removed", description: `${deleteChildTarget.name}'s record was removed.` });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not remove this student.";
+      // The first refusal for this specific reason offers a one-click fix instead of leaving
+      // the admin to separately go find and withdraw the batch enrolment themselves — hitting
+      // it a second time (still refused after withdrawing) is a real, different problem, so
+      // only flip into "withdraw & retry" mode the first time.
+      if (!childDeleteNeedsWithdraw && message.includes("active batch enrolment")) {
+        setChildDeleteNeedsWithdraw(true);
+      } else {
+        setBanner({ ok: false, text: message });
+        toast({ variant: "error", title: "Couldn't remove student", description: message });
+      }
+      // Re-thrown so ConfirmDialog's own promise-rejection handling keeps the dialog open
+      // (busy state clears, dialog stays up) instead of treating this catch block's silent
+      // return as success and auto-closing it — which previously made the very first, blocked
+      // delete attempt look like nothing happened at all, with the "Withdraw & Delete" retry
+      // only appearing if the admin happened to reopen the dialog and notice the record was
+      // still there.
+      throw err;
+    } finally {
+      setDeletingChild(false);
+    }
+  }
+
+  // Hard-delete (Parent) — a separate, stricter action from deleteTarget's soft delete above:
+  // permanently removes the account and every mapped row across every other table (invoices,
+  // payments, refunds, enrollments, engagement, ...), logged first for future reference. Fetches
+  // the preview BEFORE opening the confirm dialog so the popup opens already showing exactly
+  // what will be removed, rather than a spinner inside the dialog itself.
+  const [hardDeleteUserTarget, setHardDeleteUserTarget] = useState<AppUser | null>(null);
+  const [hardDeleteUserPreview, setHardDeleteUserPreview] = useState<ApiDataDeletionPreview | null>(null);
+  const [loadingHardDeleteUserPreview, setLoadingHardDeleteUserPreview] = useState(false);
+
+  async function openHardDeleteUser(user: AppUser) {
+    if (!apiEnabled()) {
+      toast({ variant: "error", title: "Not available in demo mode", description: "Hard delete needs a live backend to compute what it would remove." });
+      return;
+    }
+    setLoadingHardDeleteUserPreview(true);
+    try {
+      const preview = await getParentHardDeletePreview(user.id);
+      setHardDeleteUserTarget(user);
+      setHardDeleteUserPreview(preview);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not check what this would delete.";
+      toast({ variant: "error", title: "Couldn't open delete preview", description: message });
+    } finally {
+      setLoadingHardDeleteUserPreview(false);
+    }
+  }
+
+  async function handleHardDeleteUser() {
+    if (!hardDeleteUserTarget) return;
+    await hardDeleteParent(hardDeleteUserTarget.id);
+    setBanner({ ok: true, text: `${hardDeleteUserTarget.name}'s account and all mapped data were permanently deleted.` });
+    setDetailUser(null);
+    setHardDeleteUserTarget(null);
+    setHardDeleteUserPreview(null);
+    reloadParents();
+    reloadStudents();
+    toast({
+      variant: "success",
+      title: "Account permanently deleted",
+      description: `${hardDeleteUserTarget.name}'s account and all mapped data were removed. A copy of everything deleted is kept in the deletion log.`,
+    });
+  }
+
+  // Hard-delete (Student) — same idea as the Parent flow above, scoped to just this child: never
+  // touches the parent account, siblings, batches or class sessions themselves.
+  const [hardDeleteChildTarget, setHardDeleteChildTarget] = useState<Child | null>(null);
+  const [hardDeleteChildPreview, setHardDeleteChildPreview] = useState<ApiDataDeletionPreview | null>(null);
+  const [loadingHardDeleteChildPreview, setLoadingHardDeleteChildPreview] = useState(false);
+
+  async function openHardDeleteChild(child: Child) {
+    if (!apiEnabled()) {
+      toast({ variant: "error", title: "Not available in demo mode", description: "Hard delete needs a live backend to compute what it would remove." });
+      return;
+    }
+    setLoadingHardDeleteChildPreview(true);
+    try {
+      const preview = await getStudentHardDeletePreview(child.id);
+      setHardDeleteChildTarget(child);
+      setHardDeleteChildPreview(preview);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not check what this would delete.";
+      toast({ variant: "error", title: "Couldn't open delete preview", description: message });
+    } finally {
+      setLoadingHardDeleteChildPreview(false);
+    }
+  }
+
+  async function handleHardDeleteChild() {
+    if (!hardDeleteChildTarget) return;
+    await hardDeleteStudent(hardDeleteChildTarget.id);
+    setBanner({ ok: true, text: `${hardDeleteChildTarget.name}'s record and all mapped data were permanently deleted.` });
+    setDetailChild(null);
+    setHardDeleteChildTarget(null);
+    setHardDeleteChildPreview(null);
+    reloadStudents();
+    toast({
+      variant: "success",
+      title: "Student permanently deleted",
+      description: `${hardDeleteChildTarget.name}'s record and all mapped data were removed. A copy of everything deleted is kept in the deletion log.`,
+    });
+  }
+
+  /** Shared confirm-dialog body for both hard-delete flows above — a plain count-per-table list
+   *  plus a headline total, so the popup shows exactly what "all mapped data" means before the
+   *  admin commits to an action with no undo. */
+  function renderHardDeletePreview(preview: ApiDataDeletionPreview | null, targetLabel: string) {
+    if (!preview) return null;
+    return (
+      <div className="space-y-2 text-left">
+        <p>
+          Permanently deletes {targetLabel} and <strong>{preview.totalRecords}</strong> related record
+          {preview.totalRecords === 1 ? "" : "s"} across {preview.items.length} table{preview.items.length === 1 ? "" : "s"}. This
+          cannot be undone from the UI — a full copy of every deleted row is kept in the deletion log for future reference.
+        </p>
+        {preview.items.length > 0 && (
+          <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border bg-muted/40 p-2.5 text-xs">
+            {preview.items.map((item) => (
+              <li key={item.table} className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">{item.label}</span>
+                <span className="font-semibold text-foreground">{item.count}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
   }
 
   // Onboarding credential (re)send from the user detail dialog.
@@ -423,10 +658,14 @@ export default function AdminUsers() {
       setAddError("Name and email are required.");
       return;
     }
+    if (!isValidEmail(addEmail)) {
+      setAddError("Enter a valid email address.");
+      return;
+    }
 
     const roleOption = addUserRoleOptions.find((o) => o.key === addRole);
     if (!roleOption) {
-      setAddError("Pick a role.");
+      setAddError("Role is required.");
       return;
     }
 
@@ -506,6 +745,26 @@ export default function AdminUsers() {
     []
   );
 
+  // Same as userColumns but with "Department" (always blank for a parent) swapped for
+  // "Children" — both a useful column on its own (batches are organized by child) and, since
+  // it's part of the row DataTable searches against, what makes searching by a child's name find
+  // their parent's account.
+  const parentColumns = useMemo<DataTableColumn<AppUser & { childrenNames: string }>[]>(
+    () => [
+      userColumns[0],
+      userColumns[1],
+      {
+        key: "childrenNames",
+        header: "Children",
+        accessor: (row) => row.childrenNames,
+        render: (row) => (row.childrenNames ? <span className="text-sm">{row.childrenNames}</span> : <span className="text-muted-foreground">—</span>),
+      },
+      userColumns[3],
+      userColumns[4],
+    ],
+    [userColumns]
+  );
+
   const studentColumns: DataTableColumn<StudentRow>[] = useMemo(
     () => [
       {
@@ -540,13 +799,16 @@ export default function AdminUsers() {
         key: "attendance",
         header: "Attendance",
         sortable: true,
-        accessor: (row) => row.attendancePercent,
-        render: (row) => (
-          <div className="flex items-center gap-2">
-            <Progress value={row.attendancePercent} className="h-1.5 w-16" />
-            <span className="text-xs font-semibold text-muted-foreground">{row.attendancePercent}%</span>
-          </div>
-        ),
+        accessor: (row) => row.attendancePercent ?? -1,
+        render: (row) =>
+          row.attendancePercent === undefined ? (
+            <span className="text-xs text-muted-foreground">—</span>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Progress value={row.attendancePercent} className="h-1.5 w-16" />
+              <span className="text-xs font-semibold text-muted-foreground">{row.attendancePercent}%</span>
+            </div>
+          ),
       },
       {
         key: "feeStatus",
@@ -626,7 +888,7 @@ export default function AdminUsers() {
         </InlineAlert>
       )}
 
-      <Tabs defaultValue="parents">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="parents" className="gap-1.5">
             <UsersIcon className="h-4 w-4" /> Parents
@@ -644,10 +906,10 @@ export default function AdminUsers() {
 
         <TabsContent value="parents">
           <DataTable
-            data={parents}
-            columns={userColumns}
+            data={parentsWithChildren}
+            columns={parentColumns}
             rowKey={(row) => row.id}
-            searchPlaceholder="Search parents by name or email…"
+            searchPlaceholder="Search parents by name, email or their child's name…"
             onRowClick={(row) => setDetailUser(row)}
             emptyTitle="No parent accounts yet"
             emptyDescription="Parent accounts are created when a student enrolls, or you can add one directly with Add User above."
@@ -874,14 +1136,32 @@ export default function AdminUsers() {
               </div>
 
               <DialogFooter className="sm:justify-between">
-                <Button
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => setDeleteTarget(detailUser)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete Account
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeleteTarget(detailUser)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete Account
+                  </Button>
+                  {/* Hard delete is scoped to Parent accounts only — a Teacher/Admin/Sub Admin's
+                      own data (batches, class sessions, payouts) is shared with other families'
+                      records in a way a Parent's own data never is; see UserDeletionService's
+                      own doc comment for the full reasoning. */}
+                  {detailUser.role === "parent" && (
+                    <Button
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      disabled={loadingHardDeleteUserPreview}
+                      onClick={() => openHardDeleteUser(detailUser)}
+                      title="Permanently deletes this account and every mapped record — invoices, payments, enrollments, engagement, everything. Logged first, but not recoverable from the UI."
+                    >
+                      {loadingHardDeleteUserPreview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                      Delete All Data
+                    </Button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setDetailUser(null)}>
                     Close
@@ -909,6 +1189,68 @@ export default function AdminUsers() {
       />
 
       <ConfirmDialog
+        open={!!deleteChildTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteChildTarget(null);
+            setChildDeleteNeedsWithdraw(false);
+          }
+        }}
+        title={childDeleteNeedsWithdraw ? "Withdraw and delete this student record?" : "Delete this student record?"}
+        description={
+          deleteChildTarget
+            ? [
+                childDeleteNeedsWithdraw
+                  ? `${deleteChildTarget.name} still has an active batch enrolment. Confirming will withdraw them from every batch (freeing their seat) and then remove the record.`
+                  : `${deleteChildTarget.name}'s record will be removed. This is blocked if they still have an active batch enrolment or an unpaid invoice — withdraw/settle those first.`,
+                // Paid invoices don't block deletion (only Pending/PartiallyPaid/Overdue do), so
+                // this is the only place staff would otherwise learn that money was collected —
+                // deleting the record does NOT refund it; that stays a manual step in Billing &
+                // Finance. Shown only when there's actually something paid to call out.
+                (deleteChildTarget as StudentRow).paidInvoiceTotal
+                  ? `This student has ${formatCurrency((deleteChildTarget as StudentRow).paidInvoiceTotal!)} in paid invoices. Deleting the record will NOT refund this automatically — process a refund from Billing & Finance → Refunds if one is owed.`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" ")
+            : undefined
+        }
+        confirmLabel={deletingChild ? "Deleting…" : childDeleteNeedsWithdraw ? "Withdraw & Delete" : "Delete Student"}
+        destructive
+        onConfirm={handleDeleteChild}
+      />
+
+      <ConfirmDialog
+        open={!!hardDeleteUserTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setHardDeleteUserTarget(null);
+            setHardDeleteUserPreview(null);
+          }
+        }}
+        title="Permanently delete all of this account's data?"
+        description={hardDeleteUserTarget ? renderHardDeletePreview(hardDeleteUserPreview, `${hardDeleteUserTarget.name}'s account`) : undefined}
+        confirmLabel="Delete All Data"
+        destructive
+        onConfirm={handleHardDeleteUser}
+      />
+
+      <ConfirmDialog
+        open={!!hardDeleteChildTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setHardDeleteChildTarget(null);
+            setHardDeleteChildPreview(null);
+          }
+        }}
+        title="Permanently delete all of this student's data?"
+        description={hardDeleteChildTarget ? renderHardDeletePreview(hardDeleteChildPreview, `${hardDeleteChildTarget.name}'s record`) : undefined}
+        confirmLabel="Delete All Data"
+        destructive
+        onConfirm={handleHardDeleteChild}
+      />
+
+      <ConfirmDialog
         open={!!bulkConfirmIds}
         onOpenChange={(open) => !open && setBulkConfirmIds(null)}
         title={`Resend credentials to ${bulkConfirmIds?.length ?? 0} user(s)?`}
@@ -925,12 +1267,11 @@ export default function AdminUsers() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit profile</DialogTitle>
-            <DialogDescription>{editUser?.email}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
-                <Label htmlFor="edit-first">First name</Label>
+                <Label htmlFor="edit-first">First name <span className="text-destructive">*</span></Label>
                 <Input
                   id="edit-first"
                   value={editForm.firstName}
@@ -947,6 +1288,16 @@ export default function AdminUsers() {
                   placeholder="e.g. Kaur"
                 />
               </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="edit-email">Email <span className="text-destructive">*</span></Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="name@example.com"
+              />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="edit-phone">Phone</Label>
@@ -972,10 +1323,12 @@ export default function AdminUsers() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  Changing the account type only works while there&rsquo;s no history behind it yet (e.g. a parent with no
-                  children, a teacher with no classes).
-                </p>
+                {editRole !== editUser?.role && (
+                  <p className="text-xs text-muted-foreground">
+                    Changing the account type only works while there&rsquo;s no history behind it yet (e.g. a parent with no
+                    children, a teacher with no classes).
+                  </p>
+                )}
               </div>
             )}
             {editRole === "teacher" && (
@@ -1002,7 +1355,7 @@ export default function AdminUsers() {
               Cancel
             </Button>
             <Button onClick={handleUpdateUser} disabled={editSaving}>
-              {editSaving ? "Saving…" : "Save Changes"}
+              {editSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {editSaving ? "Saving…" : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1027,11 +1380,15 @@ export default function AdminUsers() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
-                  <p className="mt-1 font-medium text-foreground">{getParentById(detailChild.parentId)?.name ?? "—"}</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {(detailChild as StudentRow).parentName ?? getParentById(detailChild.parentId)?.name ?? "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Course</p>
-                  <p className="mt-1 font-medium text-foreground">{getCourseById(detailChild.courseId)?.name ?? "—"}</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {(detailChild as StudentRow).courseName ?? getCourseById(detailChild.courseId)?.name ?? "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Classes Completed</p>
@@ -1043,7 +1400,9 @@ export default function AdminUsers() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attendance</p>
-                  <p className="mt-1 font-medium text-foreground">{detailChild.attendancePercent}%</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {detailChild.attendancePercent === undefined ? "—" : `${detailChild.attendancePercent}%`}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee Status</p>
@@ -1119,35 +1478,57 @@ export default function AdminUsers() {
                 <p className="text-xs text-muted-foreground">Shown on this child's profile to the current RM and admins.</p>
               </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDetailChild(null)}>
-                  Close
-                </Button>
-                <Button
-                  disabled={savingNotes}
-                  onClick={async () => {
-                    if (!detailChild) return;
-                    // Matches handleUpdateUser/handleCreateUser's pattern elsewhere on this
-                    // page: stay clickable in demo mode and say so via the shared banner,
-                    // rather than silently greying out with no explanation.
-                    if (!apiEnabled()) {
-                      setBanner({ ok: true, text: "Demo mode — no notes actually saved." });
-                      setDetailChild(null);
-                      return;
-                    }
-                    setSavingNotes(true);
-                    try {
-                      await updateStudentNotes(detailChild.id, childNotes.trim());
-                      setDetailChild(null);
-                    } catch {
-                      /* keep dialog open on failure */
-                    } finally {
-                      setSavingNotes(false);
-                    }
-                  }}
-                >
-                  {savingNotes ? "Saving…" : "Save notes"}
-                </Button>
+              <DialogFooter className="sm:justify-between">
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeleteChildTarget(detailChild)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete Student
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    disabled={loadingHardDeleteChildPreview}
+                    onClick={() => openHardDeleteChild(detailChild)}
+                    title="Permanently deletes this student and every mapped record — enrollments, invoices, payments, attendance, engagement, everything. Logged first, but not recoverable from the UI. Never affects the parent account."
+                  >
+                    {loadingHardDeleteChildPreview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    Delete All Data
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setDetailChild(null)}>
+                    Close
+                  </Button>
+                  <Button
+                    disabled={savingNotes}
+                    onClick={async () => {
+                      if (!detailChild) return;
+                      // Matches handleUpdateUser/handleCreateUser's pattern elsewhere on this
+                      // page: stay clickable in demo mode and say so via the shared banner,
+                      // rather than silently greying out with no explanation.
+                      if (!apiEnabled()) {
+                        setBanner({ ok: true, text: "Demo mode — no notes actually saved." });
+                        setDetailChild(null);
+                        return;
+                      }
+                      setSavingNotes(true);
+                      try {
+                        await updateStudentNotes(detailChild.id, childNotes.trim());
+                        setDetailChild(null);
+                      } catch {
+                        /* keep dialog open on failure */
+                      } finally {
+                        setSavingNotes(false);
+                      }
+                    }}
+                  >
+                    {savingNotes && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {savingNotes ? "Saving…" : "Save notes"}
+                  </Button>
+                </div>
               </DialogFooter>
             </>
           )}
@@ -1173,11 +1554,11 @@ export default function AdminUsers() {
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="add-name">Full name</Label>
+              <Label htmlFor="add-name">Full name <span className="text-destructive">*</span></Label>
               <Input id="add-name" placeholder="e.g. Simran Kaur" value={addName} onChange={(e) => setAddName(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="add-email">Email</Label>
+              <Label htmlFor="add-email">Email <span className="text-destructive">*</span></Label>
               <Input id="add-email" type="email" placeholder="name@example.com" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
@@ -1223,7 +1604,7 @@ export default function AdminUsers() {
               Cancel
             </Button>
             <Button onClick={handleCreateUser} disabled={addSubmitting}>
-              {addSubmitting ? "Creating…" : "Create User"}
+              {addSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {addSubmitting ? "Creating…" : "Create User"}
             </Button>
           </DialogFooter>
         </DialogContent>

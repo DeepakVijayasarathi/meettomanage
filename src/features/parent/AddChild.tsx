@@ -31,14 +31,23 @@ export default function ParentAddChild() {
   const [error, setError] = useState<string | null>(null);
 
   // API mode: the real family roster + any enrollments still under review.
-  const { data: dash } = useApiData<ApiParentDashboard | null>(() => getParentDashboard(), null, null);
-  const { data: myForms } = useApiData<ApiEnrollmentForm[]>(() => listMyEnrollmentForms(), []);
+  const { data: dash, loading: dashLoading, error: dashError, reload: reloadDash } = useApiData<ApiParentDashboard | null>(
+    () => getParentDashboard(),
+    null,
+    null
+  );
+  const { data: myForms, loading: formsLoading, error: formsError, reload: reloadForms } = useApiData<ApiEnrollmentForm[]>(
+    () => listMyEnrollmentForms(),
+    []
+  );
 
   // In API mode a child is added through the real enrollment form (reviewed and approved
   // by the team) — never through this demo-only quick-add with its sample data.
   if (apiEnabled()) {
     const children = dash?.children ?? [];
     const awaiting = myForms.filter((f) => f.status === "Submitted" || f.status === "Rejected");
+    const loading = dashLoading || formsLoading;
+    const loadError = dashError || formsError;
 
     return (
       <div>
@@ -55,7 +64,23 @@ export default function ParentAddChild() {
           }
         />
 
-        {children.length === 0 && awaiting.length === 0 ? (
+        {loadError && (
+          <InlineAlert variant="warning" className="mt-4">
+            Could not load your children ({loadError}).{" "}
+            <button
+              type="button"
+              className="underline"
+              onClick={() => {
+                reloadDash();
+                reloadForms();
+              }}
+            >
+              Retry
+            </button>
+          </InlineAlert>
+        )}
+
+        {loading && !loadError ? null : children.length === 0 && awaiting.length === 0 && !loadError ? (
           <EmptyState
             icon={UserRound}
             title="No children yet"
@@ -112,7 +137,9 @@ export default function ParentAddChild() {
                             <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
                               <TrendingUp className="h-3 w-3" /> Attendance
                             </p>
-                            <p className="mt-0.5 font-semibold text-foreground">{child.attendancePercent}%</p>
+                            <p className="mt-0.5 font-semibold text-foreground">
+                              {child.attendancePercent === null ? "—" : `${child.attendancePercent}%`}
+                            </p>
                           </div>
                         </div>
                       </Card>
@@ -243,11 +270,15 @@ export default function ParentAddChild() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="name">Child's full name</Label>
+                <Label htmlFor="name">
+                  Child's full name <span className="text-destructive">*</span>
+                </Label>
                 <Input id="name" required value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="e.g. Anaya Kapoor" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="age">Age</Label>
+                <Label htmlFor="age">
+                  Age <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="age"
                   type="number"
@@ -262,7 +293,9 @@ export default function ParentAddChild() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="grade">Grade</Label>
+                <Label htmlFor="grade">
+                  Grade <span className="text-destructive">*</span>
+                </Label>
                 <Input id="grade" required value={form.grade} onChange={(e) => update("grade", e.target.value)} placeholder="e.g. Grade 1" />
               </div>
               <div className="flex flex-col gap-1.5">

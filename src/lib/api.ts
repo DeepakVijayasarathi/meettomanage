@@ -38,7 +38,27 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+  let response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+
+  // Any request that 401s is retried once before treating it as a real logout — this is
+  // exactly the shape of a transient hiccup (the backend re-verifies the account's live
+  // status and permission claims on every single authenticated request, not just once at
+  // login — see OnTokenValidated in the API's Program.cs — so a brief DB hiccup or a race
+  // during that recheck can 401 a genuinely valid, unexpired token), and a spurious bounce
+  // to /login on an otherwise-valid session is worse than one extra round trip.
+  //
+  // Previously GET-only, on the theory that retrying a mutating request risked double-
+  // firing it if the first attempt had actually gone through server-side. That's not the
+  // failure mode here: [Authorize] rejects a 401 *before* the controller action ever runs,
+  // so a 401'd POST/PUT/DELETE never executed any business logic the first time either —
+  // retrying it is exactly as safe as retrying a 401'd GET. Confirmed live as a real
+  // teacher complaint ("frequently asked to log in again") that hit hardest during an
+  // active class, which is precisely when a teacher's own calls skew mutating (complete
+  // session, register a recording, post engagement) rather than GET.
+  if (response.status === 401 && token && !path.startsWith("/api/auth/")) {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+  }
 
   // An expired/revoked token means the session is no longer authenticated: clear it
   // and land on login. Auth endpoints are exempt (a wrong PIN is also a 401).
@@ -59,8 +79,12 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw new ApiError(response.status, detail);
   }
 
+  // Some endpoints return 200 with no body (e.g. MonitoringController.BroadcastReload's
+  // bare `Ok()`), not just 204 -- .json() on an empty body throws "Unexpected end of JSON
+  // input" rather than resolving to anything useful, so check the actual text first.
   if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 /** Downloads a file response (a bulk-export CSV) with the auth token and saves it as `filename`. */

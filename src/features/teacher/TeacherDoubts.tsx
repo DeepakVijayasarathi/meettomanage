@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MessageCircleQuestion } from "lucide-react";
+import { Loader2, MessageCircleQuestion } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
@@ -23,10 +23,12 @@ import { MOCK_CHAT_ESCALATIONS } from "@/data/chatbot";
  */
 export default function TeacherDoubts() {
   const { toast } = useToast();
-  const { data: escalations, error: loadError, reload } = useApiData<ApiChatEscalation[]>(
+  const { data: fetchedEscalations, error: loadError, reload } = useApiData<ApiChatEscalation[]>(
     () => listChatEscalations(),
     MOCK_CHAT_ESCALATIONS
   );
+  const [escalations, setEscalations] = useState<ApiChatEscalation[]>(() => (apiEnabled() ? [] : MOCK_CHAT_ESCALATIONS));
+  useEffect(() => setEscalations(fetchedEscalations), [fetchedEscalations]);
   const [resolveTarget, setResolveTarget] = useState<ApiChatEscalation | null>(null);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -50,8 +52,16 @@ export default function TeacherDoubts() {
   async function confirmResolve() {
     if (!resolveTarget) return;
     if (!apiEnabled()) {
+      const targetId = resolveTarget.id;
+      setEscalations((prev) =>
+        prev.map((e) =>
+          e.id === targetId
+            ? { ...e, status: "Resolved", resolutionNote: note.trim() || null, resolvedByName: "You" }
+            : e
+        )
+      );
       setNoticeVariant("success");
-      setNotice("Demo mode — nothing was actually resolved.");
+      setNotice("Demo mode — doubt marked resolved locally (not persisted).");
       setResolveTarget(null);
       return;
     }
@@ -140,7 +150,7 @@ export default function TeacherDoubts() {
       )}
 
       <div className="mb-6">
-        <h2 className="mb-2 text-sm font-semibold text-foreground">Pending ({pending.length})</h2>
+        <h2 className="mb-2 text-base font-semibold text-foreground">Pending ({pending.length})</h2>
         {pending.length === 0 && !loadError ? (
           <EmptyState icon={MessageCircleQuestion} title="Nothing pending" description="Every escalated doubt has been resolved." />
         ) : (
@@ -156,7 +166,7 @@ export default function TeacherDoubts() {
 
       {resolved.length > 0 && (
         <div>
-          <h2 className="mb-2 text-sm font-semibold text-foreground">Resolved ({resolved.length})</h2>
+          <h2 className="mb-2 text-base font-semibold text-foreground">Resolved ({resolved.length})</h2>
           <DataTable data={resolved} columns={resolvedColumns} rowKey={(e) => e.id} />
         </div>
       )}
@@ -176,7 +186,7 @@ export default function TeacherDoubts() {
               Cancel
             </Button>
             <Button onClick={confirmResolve} disabled={saving}>
-              {saving ? "Saving…" : "Mark resolved"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : "Mark resolved"}
             </Button>
           </DialogFooter>
         </DialogContent>

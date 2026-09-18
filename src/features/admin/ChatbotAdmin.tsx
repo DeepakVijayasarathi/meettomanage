@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageCircleQuestion, Plus, Trash2, Users } from "lucide-react";
+import { Loader2, MessageCircleQuestion, Plus, Trash2, Users } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -173,7 +173,13 @@ function FaqManager() {
           <Button size="sm" variant="ghost" onClick={() => openEdit(faq)}>
             Edit
           </Button>
-          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(faq)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setDeleteTarget(faq)}
+            aria-label={`Delete "${faq.question}"`}
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -235,11 +241,11 @@ function FaqManager() {
           </DialogHeader>
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">
             <div className="grid gap-1.5">
-              <Label htmlFor="faq-question">Question</Label>
+              <Label htmlFor="faq-question">Question <span className="text-destructive">*</span></Label>
               <Input id="faq-question" value={form.question} onChange={(e) => setForm((f) => ({ ...f, question: e.target.value }))} />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="faq-answer">Answer</Label>
+              <Label htmlFor="faq-answer">Answer <span className="text-destructive">*</span></Label>
               <Textarea
                 id="faq-answer"
                 className="min-h-[100px]"
@@ -268,7 +274,7 @@ function FaqManager() {
               Cancel
             </Button>
             <Button onClick={save} disabled={saving}>
-              {saving ? "Saving…" : editing ? "Save changes" : "Add FAQ"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : editing ? "Save changes" : "Add FAQ"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -407,7 +413,7 @@ function EscalationsPanel() {
               Cancel
             </Button>
             <Button onClick={confirmResolve} disabled={saving}>
-              {saving ? "Saving…" : "Mark resolved"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : "Mark resolved"}
             </Button>
           </DialogFooter>
         </DialogContent>

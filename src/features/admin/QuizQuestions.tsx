@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Sparkles, Trash2 } from "lucide-react";
+import { Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -211,7 +211,13 @@ export default function AdminQuizQuestions() {
           <Button size="sm" variant="ghost" onClick={() => openEdit(q)}>
             Edit
           </Button>
-          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(q)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setDeleteTarget(q)}
+            aria-label={`Delete "${q.prompt}"`}
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -286,12 +292,12 @@ export default function AdminQuizQuestions() {
           </DialogHeader>
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">
             <div className="grid gap-1.5">
-              <Label htmlFor="qq-prompt">Question</Label>
+              <Label htmlFor="qq-prompt">Question <span className="text-destructive">*</span></Label>
               <Input id="qq-prompt" placeholder="e.g. Which letter makes the /f/ sound in 'phone'?" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="qq-department">Department</Label>
+                <Label htmlFor="qq-department">Department <span className="text-destructive">*</span></Label>
                 <Select value={departmentId} onValueChange={(v) => { setDepartmentId(v); setCourseId("__none__"); }}>
                   <SelectTrigger id="qq-department">
                     <SelectValue placeholder="Choose a department" />
@@ -362,7 +368,7 @@ export default function AdminQuizQuestions() {
               Cancel
             </Button>
             <Button onClick={save} disabled={saving}>
-              {saving ? "Saving…" : editing ? "Save changes" : "Add question"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : editing ? "Save changes" : "Add question"}
             </Button>
           </DialogFooter>
         </DialogContent>

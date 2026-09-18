@@ -6,6 +6,7 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,7 +51,7 @@ export default function ParentResources() {
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Admin-granted resources; the endpoint itself blocks access while fee-suspended
-  const { data: apiResources, error: resourcesError, reload: reloadResources } = useApiData<Resource[]>(
+  const { data: apiResources, loading: resourcesLoading, error: resourcesError, reload: reloadResources } = useApiData<Resource[]>(
     () => getParentResources().then((items) => items.map(toFrontendResource)),
     []
   );
@@ -136,7 +137,9 @@ export default function ParentResources() {
           </TabsList>
 
           <TabsContent value="books">
-            {books.length === 0 ? (
+            {usingApi && resourcesLoading ? (
+              <ResourceSkeletonGrid />
+            ) : books.length === 0 ? (
               <EmptyState icon={BookOpen} title="No reading books yet" description="Your teacher hasn't shared any books for this batch." />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -158,7 +161,9 @@ export default function ParentResources() {
           </TabsContent>
 
           <TabsContent value="worksheets">
-            {worksheets.length === 0 ? (
+            {usingApi && resourcesLoading ? (
+              <ResourceSkeletonGrid />
+            ) : worksheets.length === 0 ? (
               <EmptyState icon={FileText} title="No worksheets yet" description="Worksheets shared by your teacher will appear here." />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -180,7 +185,9 @@ export default function ParentResources() {
           </TabsContent>
 
           <TabsContent value="recordings">
-            {recordings.length === 0 ? (
+            {usingApi && resourcesLoading ? (
+              <ResourceSkeletonGrid />
+            ) : recordings.length === 0 ? (
               <EmptyState icon={Video} title="No shared videos yet" description="Videos your teacher shares directly (not your regular class recordings — see Recordings in the sidebar for those) appear here." />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -240,6 +247,22 @@ export default function ParentResources() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** Sized like the eventual ResourceCard grid, shown while the real list is still loading. */
+function ResourceSkeletonGrid() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {[0, 1, 2].map((i) => (
+        <Card key={i} className="flex flex-col p-4">
+          <Skeleton className="h-10 w-10 rounded-xl" />
+          <Skeleton className="mt-3 h-4 w-3/4" />
+          <Skeleton className="mt-2 h-3 w-1/2" />
+          <Skeleton className="mt-4 h-8 w-full rounded-md" />
+        </Card>
+      ))}
     </div>
   );
 }

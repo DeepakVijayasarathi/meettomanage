@@ -6,9 +6,10 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { CalendarBoard } from "@/components/CalendarBoard";
-import { SessionStatusBadge } from "@/components/StatusBadge";
+import { SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -20,19 +21,12 @@ import { getBatchById } from "@/data/batches";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { toFrontendSession } from "@/api/sessions";
-import { getParentSchedule } from "@/api/parentPortal";
-import { cn, formatDate } from "@/lib/utils";
+import { defaultParentScheduleWindow, getParentSchedule } from "@/api/parentPortal";
+import { cn, formatDate, formatTimeLabel } from "@/lib/utils";
 import type { ClassSession } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart, recordingExpiryLabel } from "./utils";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function formatTimeLabel(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 /**
  * API mode has no separate "batch" entity on the client — but the recurring pattern
@@ -61,20 +55,25 @@ export default function ParentSchedule() {
   const usingApi = apiEnabled();
   const mockChild = getChildById(activeChildId);
   const sessionChild = sessionChildren.find((c) => c.id === activeChildId) ?? sessionChildren[0];
-  // Normalized active child (real in API mode, mock otherwise) — just id + name.
-  const child = usingApi
-    ? sessionChild
-      ? { id: sessionChild.id, name: sessionChild.name }
-      : undefined
-    : mockChild
-      ? { id: mockChild.id, name: mockChild.name }
-      : undefined;
+  // Normalized active child (real in API mode, mock otherwise) — just id + name. Memoized
+  // so its identity stays stable across renders when the underlying id/name haven't
+  // changed, since it's used as a dependency of the `sessions` useMemo below.
+  const child = useMemo(
+    () =>
+      usingApi
+        ? sessionChild
+          ? { id: sessionChild.id, name: sessionChild.name }
+          : undefined
+        : mockChild
+          ? { id: mockChild.id, name: mockChild.name }
+          : undefined,
+    [usingApi, sessionChild, mockChild]
+  );
   const [selected, setSelected] = useState<ClassSession | null>(null);
 
-  const { data: apiSessions, error: sessionsError, reload: reloadSessions } = useApiData<ClassSession[]>(
+  const { data: apiSessions, loading: sessionsLoading, error: sessionsError, reload: reloadSessions } = useApiData<ClassSession[]>(
     () => {
-      const from = new Date(Date.now() - 60 * 86400_000).toISOString();
-      const to = new Date(Date.now() + 60 * 86400_000).toISOString();
+      const [from, to] = defaultParentScheduleWindow();
       return getParentSchedule(from, to).then((items) => items.map(toFrontendSession));
     },
     []
@@ -167,7 +166,13 @@ export default function ParentSchedule() {
               <TabsTrigger value="calendar">Calendar</TabsTrigger>
             </TabsList>
             <TabsContent value="upcoming">
-              {upcoming.length === 0 ? (
+              {usingApi && sessionsLoading ? (
+                <div className="flex flex-col gap-3">
+                  {[0, 1, 2].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : upcoming.length === 0 ? (
                 <EmptyState icon={ListChecks} title="No upcoming sessions" description="New classes will appear here once scheduled." />
               ) : (
                 <div className="flex flex-col gap-3">
@@ -192,7 +197,9 @@ export default function ParentSchedule() {
               <CardDescription>Attendance history and recording availability</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              {past.length === 0 ? (
+              {usingApi && sessionsLoading ? (
+                [0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
+              ) : past.length === 0 ? (
                 <EmptyState icon={CalendarDays} title="No past sessions yet" />
               ) : (
                 past.map((s) => <PastRow key={s.id} session={s} />)
@@ -209,11 +216,11 @@ export default function ParentSchedule() {
               <DialogHeader>
                 <DialogTitle>{selected.title}</DialogTitle>
                 <DialogDescription>
-                  {formatDate(selected.date, "long")} · {selected.startTime} · {selected.teacherName}
+                  {formatDate(selected.date, "long")} · {formatTimeLabel(selected.startTime)} · {selected.teacherName}
                 </DialogDescription>
               </DialogHeader>
               <div className="flex items-center justify-between">
-                <SessionStatusBadge status={selected.status} />
+                <SessionStatusBadge status={selected.status} label={noShowLabel(selected)} />
                 {isJoinable(selected) ? (
                   <Button asChild size="sm">
                     <Link
@@ -242,11 +249,11 @@ function ScheduleRow({ session }: { session: ClassSession }) {
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-foreground">{session.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatDate(session.date, "long")} · {session.startTime} · {session.teacherName}
+          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} · {session.teacherName}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <SessionStatusBadge status={session.status} />
+        <SessionStatusBadge status={session.status} label={noShowLabel(session)} />
         {joinable ? (
           <Button size="sm" asChild>
             <Link
@@ -283,14 +290,16 @@ function PastRow({ session }: { session: ClassSession }) {
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-foreground">{session.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatDate(session.date, "long")} · {session.startTime} · {session.teacherName}
+          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} · {session.teacherName}
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <SessionStatusBadge status={session.status} />
+        <SessionStatusBadge status={session.status} label={noShowLabel(session)} />
         {recInfo ? (
+          // Same fix as parent/Dashboard.tsx's RecentRow: recordings live on their own
+          // dedicated page, not Resources (teacher-uploaded worksheets/books/videos).
           <Link
-            to="/parent/resources"
+            to="/parent/recordings"
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors",
               recInfo.expired ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary hover:bg-primary/15"

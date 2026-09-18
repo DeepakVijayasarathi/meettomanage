@@ -69,7 +69,7 @@ export default function AdminAvailability() {
     () => listLeave().then((items) => items.map(toFrontendLeave)),
     LEAVE_REQUESTS
   );
-  const { data: apiTeachers, loading: teachersLoading, error: teachersError } = useApiData(() => listTeacherOptions(), []);
+  const { data: apiTeachers, loading: teachersLoading, error: teachersError } = useApiData(() => listTeacherOptions(), [], undefined, { cacheKey: "teacherOptions" });
   const { data: apiHolidays, loading: holidaysLoading, error: holidaysError } = useApiData(() => listHolidays(), []);
   const kpiLoading = leavesLoading || teachersLoading || holidaysLoading;
   const loadError = leavesError || teachersError || holidaysError;
@@ -175,9 +175,11 @@ export default function AdminAvailability() {
           </div>
 
           {/* Desktop: the full week-by-teacher grid. A 7-day-wide table has no honest
-              mobile form, so narrow viewports get a genuinely different layout below
-              rather than the same table squeezed into a horizontal-scroll strip. */}
-          <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
+              mobile/tablet form, so narrower viewports get a genuinely different layout
+              below rather than the same table squeezed into a horizontal-scroll strip.
+              Needs lg: (1024px) — at tablet width (~820px) the sticky name column plus
+              7 day columns don't fit and the table clips instead of just scrolling. */}
+          <div className="hidden overflow-x-auto rounded-xl border border-border lg:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -223,8 +225,8 @@ export default function AdminAvailability() {
             </Table>
           </div>
 
-          {/* Mobile: one card per teacher, day tiles wrap instead of scrolling sideways. */}
-          <div className="flex flex-col gap-3 md:hidden">
+          {/* Mobile/tablet: one card per teacher, day tiles wrap instead of scrolling sideways. */}
+          <div className="flex flex-col gap-3 lg:hidden">
             {activeTeachers.map((teacher) => (
               <div key={teacher.id} className="rounded-xl border border-border p-3">
                 <div className="mb-2.5 flex min-w-0 items-center gap-2.5">

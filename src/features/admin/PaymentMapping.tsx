@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpenText, Building2, Calculator, ChevronDown, Landmark, Link2, Pencil, ShieldCheck, Sparkles } from "lucide-react";
+import { BookOpenText, Building2, Calculator, ChevronDown, Landmark, Link2, Loader2, Pencil, ShieldCheck, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -114,14 +114,23 @@ function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount
             <TableBody>
               {account.recentTransactions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-6 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={4} className="whitespace-normal py-6 text-center text-sm text-muted-foreground">
                     No transactions yet — payments collected into this account will appear here.
                   </TableCell>
                 </TableRow>
               ) : (
                 account.recentTransactions.map((t) => (
                   <TableRow key={t.id}>
-                    <TableCell className="font-medium">{t.invoiceNumber}</TableCell>
+                    {/* Full invoice numbers ("INV-20260903-8027F3CD") are long enough on their
+                        own to push this 4-column preview wider than its card, silently
+                        scrolling the Date column off screen with no scrollbar visible —
+                        confirmed live, "3 Sept 2026" rendered as "3 Sept 2". Truncating here
+                        (full value still available via title/hover) keeps every column,
+                        especially Date, on screen without needing to discover horizontal
+                        scroll inside a small card. */}
+                    <TableCell className="max-w-[120px] truncate font-medium" title={t.invoiceNumber}>
+                      {t.invoiceNumber}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{t.studentName ?? "—"}</TableCell>
                     <TableCell className="font-semibold">{formatCurrency(t.amount)}</TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(t.dateUtc)}</TableCell>
@@ -311,7 +320,7 @@ export default function AdminPaymentMapping() {
               </DialogHeader>
               <div className="flex flex-col gap-4">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="acct-name">Account name</Label>
+                  <Label htmlFor="acct-name">Account name <span className="text-destructive">*</span></Label>
                   <Input id="acct-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -341,7 +350,7 @@ export default function AdminPaymentMapping() {
                   </div>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="acct-ref">Merchant / account reference</Label>
+                  <Label htmlFor="acct-ref">Merchant / account reference <span className="text-destructive">*</span></Label>
                   <Input
                     id="acct-ref"
                     placeholder="e.g. acc_LkzT9v2Abc123 (from the gateway dashboard)"
@@ -369,7 +378,7 @@ export default function AdminPaymentMapping() {
                   onClick={() => (apiEnabled() ? setEditConfirmOpen(true) : saveAccountEdit())}
                   disabled={editSaving || !editName.trim() || !editRef.trim()}
                 >
-                  {editSaving ? "Saving…" : "Save account"}
+                  {editSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {editSaving ? "Saving…" : "Save account"}
                 </Button>
               </DialogFooter>
             </>
@@ -448,7 +457,7 @@ export default function AdminPaymentMapping() {
                 onClick={() => (apiEnabled() ? setMappingConfirmOpen(true) : saveMapping())}
                 disabled={saving || !effectiveParent || !effectiveAccount}
               >
-                <Landmark className="h-4 w-4" />
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Landmark className="h-4 w-4" />}
                 {saving ? "Saving…" : "Save Mapping"}
               </Button>
             </div>

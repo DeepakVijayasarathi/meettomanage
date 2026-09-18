@@ -29,10 +29,9 @@ export default function ParentBilling() {
     () => getParentInvoices().then((items) => items.map(toFrontendInvoice)),
     getInvoicesForParent(PARENT_ID)
   );
-  const { data: isSuspended } = useApiData(
-    () => getParentDashboard().then((d) => d.isSuspended),
-    mockChildren.some((c) => c.feeStatus === "suspended"),
-    false
+  const { data: suspendedChildIds } = useApiData(
+    () => getParentDashboard().then((d) => d.children.filter((c) => c.isSuspended).map((c) => c.childId)),
+    [] as string[]
   );
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null);
   const [payOpen, setPayOpen] = useState(false);
@@ -58,14 +57,10 @@ export default function ParentBilling() {
     }
   }, []);
 
-  // Suspension is computed once for the whole parent account (ParentPortalService) and
-  // applies identically to every child — never assume it's about just one of them.
-  // API mode: list every child on the account. Demo mode's mock family is single-child,
-  // so filtering by feeStatus stays accurate without needing the account-wide flag.
+  // Suspension is scoped per child (FeeSuspension.ChildId) — a sibling with fees current is
+  // never listed here just because another child on the account is suspended.
   const suspendedChildNames = apiEnabled()
-    ? isSuspended
-      ? children.map((c) => c.name)
-      : []
+    ? children.filter((c) => suspendedChildIds.includes(c.id)).map((c) => c.name)
     : mockChildren.filter((c) => c.feeStatus === "suspended").map((c) => c.name);
   const isAccountSuspended = suspendedChildNames.length > 0;
 

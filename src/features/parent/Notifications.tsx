@@ -1,12 +1,28 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, AlertTriangle, BellOff, CheckCheck, CheckCircle2, Info, type LucideIcon } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  BellOff,
+  CheckCheck,
+  CheckCircle2,
+  FileText,
+  Info,
+  Loader2,
+  MessageSquare,
+  ScrollText,
+  Send,
+  type LucideIcon,
+} from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import {
   getMyNotifications,
@@ -15,12 +31,20 @@ import {
   toNotificationItem,
   type ApiNotification,
 } from "@/api/notifications";
+import { replyToBulkEmail } from "@/api/reports";
+import { listMyProgressReports, progressReportPeriodLabel, type ApiProgressReport } from "@/api/progressReports";
 import type { NotificationItem } from "@/types";
 import { TODAY_ISO, YESTERDAY_ISO } from "./utils";
 
 interface ParentNotification extends NotificationItem {
   /** ISO date used only for day-grouping — independent of the human-readable `time` string. */
   date: string;
+  /** Set when this is one recipient's copy of a Bulk Email — offers a reply box. Absent in demo mode. */
+  bulkEmailRecipientId?: string | null;
+  /** True once the parent has already replied to this Bulk Email. */
+  hasReplied?: boolean;
+  /** The parent's own reply text, once sent this session (server doesn't echo it back on the feed). */
+  ownReply?: string;
 }
 
 const PARENT_NOTIFICATIONS: ParentNotification[] = [
@@ -157,7 +181,12 @@ function groupByDay(list: ParentNotification[], todayIso: string, yesterdayIso: 
 }
 
 function apiToParentNotification(n: ApiNotification): ParentNotification {
-  return { ...toNotificationItem(n, "parent"), date: localIsoDate(new Date(n.createdAtUtc)) };
+  return {
+    ...toNotificationItem(n, "parent"),
+    date: localIsoDate(new Date(n.createdAtUtc)),
+    bulkEmailRecipientId: n.bulkEmailRecipientId,
+    hasReplied: n.hasReplied,
+  };
 }
 
 export default function ParentNotifications() {
@@ -168,6 +197,35 @@ export default function ParentNotifications() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   const unreadCount = items.filter((n) => !n.read).length;
+
+  // The page has always been titled "Notifications & Reports," but nothing ever actually
+  // fetched/rendered a report here — a sent progress report only ever reached a parent as a
+  // one-time email (ProgressReportService.SendAsync), with no way to look at it again in the
+  // app afterward even though the backend's own GET /api/progress-reports/mine (parent-scoped,
+  // Sent-only) has existed the whole time with no caller anywhere in the frontend.
+  const [reports, setReports] = useState<ApiProgressReport[]>([]);
+  const [reportsLoaded, setReportsLoaded] = useState(!usingApi);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  const [openReportId, setOpenReportId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!usingApi) return;
+    let cancelled = false;
+    listMyProgressReports()
+      .then((list) => {
+        if (cancelled) return;
+        setReports(list);
+        setReportsLoaded(true);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setReportsError(err instanceof Error ? err.message : "Request failed");
+        setReportsLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [usingApi]);
 
   // API mode: the parent's real feed (attendance, payments, reminders, reports),
   // shared with the topbar bell. The mock list is demo-only.
@@ -230,6 +288,10 @@ export default function ParentNotifications() {
     if (item.route) navigate(item.route);
   }
 
+  function handleReplied(id: string, message: string) {
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, hasReplied: true, ownReply: message } : n)));
+  }
+
   return (
     <div>
       <PageHeader
@@ -254,19 +316,109 @@ export default function ParentNotifications() {
 
       <Tabs defaultValue="all" className={usingApi && loadError ? "mt-4" : undefined}>
         <TabsList>
-          <TabsTrigger value="all">All ({items.length})</TabsTrigger>
-          <TabsTrigger value="unread">Unread ({unreadCount})</TabsTrigger>
+          <TabsTrigger value="all">{loaded ? `All (${items.length})` : <Skeleton className="h-4 w-14" />}</TabsTrigger>
+          <TabsTrigger value="unread">{loaded ? `Unread (${unreadCount})` : <Skeleton className="h-4 w-16" />}</TabsTrigger>
+          {usingApi && (
+            <TabsTrigger value="reports">{reportsLoaded ? `Reports (${reports.length})` : <Skeleton className="h-4 w-20" />}</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="all">
-          {loaded && <NotificationGroups groups={groupByDay(items, todayIso, yesterdayIso)} onOpen={openItem} />}
-        </TabsContent>
-        <TabsContent value="unread">
-          {loaded && (
-            <NotificationGroups groups={groupByDay(items.filter((n) => !n.read), todayIso, yesterdayIso)} onOpen={openItem} />
+          {loaded ? (
+            <NotificationGroups groups={groupByDay(items, todayIso, yesterdayIso)} onOpen={openItem} onReplied={handleReplied} />
+          ) : (
+            <NotificationSkeletonList />
           )}
         </TabsContent>
+        <TabsContent value="unread">
+          {loaded ? (
+            <NotificationGroups
+              groups={groupByDay(items.filter((n) => !n.read), todayIso, yesterdayIso)}
+              onOpen={openItem}
+              onReplied={handleReplied}
+            />
+          ) : (
+            <NotificationSkeletonList />
+          )}
+        </TabsContent>
+        {usingApi && (
+          <TabsContent value="reports">
+            {reportsError && (
+              <InlineAlert variant="warning" className="mb-4">
+                Could not load reports ({reportsError}).
+              </InlineAlert>
+            )}
+            {!reportsLoaded ? (
+              <div className="flex flex-col gap-2">
+                {[0, 1].map((i) => (
+                  <div key={i} className="rounded-xl border border-border bg-card px-4 py-3">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="mt-2 h-3 w-1/4" />
+                  </div>
+                ))}
+              </div>
+            ) : reports.length === 0 ? (
+              <EmptyState
+                icon={ScrollText}
+                title="No reports yet"
+                description="A written progress report appears here once your child's teacher sends one."
+              />
+            ) : (
+              <div className="flex flex-col gap-2">
+                {reports.map((report) => {
+                  const isOpen = openReportId === report.id;
+                  return (
+                    <Card key={report.id}>
+                      <button
+                        type="button"
+                        className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() => setOpenReportId(isOpen ? null : report.id)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <FileText className="h-[18px] w-[18px]" />
+                          </span>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {report.childName} — {progressReportPeriodLabel(report)}
+                            </p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {report.sentAtUtc ? `Sent ${formatDate(report.sentAtUtc, "long")}` : "Sent"}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                      {isOpen && (
+                        <CardContent className="border-t border-border/60 pt-3">
+                          <p className="whitespace-pre-wrap text-sm text-foreground">{report.content}</p>
+                        </CardContent>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
+    </div>
+  );
+}
+
+/** Shown in place of NotificationGroups while the real feed is still loading (`!loaded`). */
+function NotificationSkeletonList() {
+  return (
+    <div className="flex flex-col gap-2">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3">
+          <Skeleton className="h-9 w-9 shrink-0 rounded-xl" />
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="mt-2 h-3 w-full" />
+            <Skeleton className="mt-1 h-3 w-1/4" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -274,9 +426,11 @@ export default function ParentNotifications() {
 function NotificationGroups({
   groups,
   onOpen,
+  onReplied,
 }: {
   groups: ReadonlyArray<readonly [string, ParentNotification[]]>;
   onOpen: (item: ParentNotification) => void;
+  onReplied: (id: string, message: string) => void;
 }) {
   if (groups.length === 0) {
     return <EmptyState icon={BellOff} title="You're all caught up" description="No notifications to show here." />;
@@ -288,7 +442,7 @@ function NotificationGroups({
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
           <div className="flex flex-col gap-2">
             {list.map((n) => (
-              <NotificationRow key={n.id} item={n} onOpen={() => onOpen(n)} />
+              <NotificationRow key={n.id} item={n} onOpen={() => onOpen(n)} onReplied={(message) => onReplied(n.id, message)} />
             ))}
           </div>
         </div>
@@ -297,31 +451,105 @@ function NotificationGroups({
   );
 }
 
-function NotificationRow({ item, onOpen }: { item: ParentNotification; onOpen: () => void }) {
+function NotificationRow({
+  item,
+  onOpen,
+  onReplied,
+}: {
+  item: ParentNotification;
+  onOpen: () => void;
+  onReplied: (message: string) => void;
+}) {
   const Icon = TYPE_ICON[item.type];
   return (
-    <button
-      onClick={onOpen}
-      // Unread status is otherwise conveyed only by bold text + a color dot + a tinted
-      // background — none of which reaches a screen reader on their own.
-      aria-label={`${item.read ? "Read" : "Unread"}: ${item.title}. ${item.description}`}
+    <div
       className={cn(
-        "flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors hover:bg-muted/40",
-        item.read ? "border-border bg-card" : "border-primary/30 bg-primary/[0.04]",
-        item.route && "cursor-pointer"
+        "rounded-xl border px-4 py-3 transition-colors",
+        item.read ? "border-border bg-card" : "border-primary/30 bg-primary/[0.04]"
       )}
     >
-      <span className={cn("mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", TYPE_TONE[item.type])}>
-        <Icon className="h-[18px] w-[18px]" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className={cn("text-sm text-foreground", !item.read && "font-bold")}>{item.title}</p>
-          {!item.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
+      <div
+        onClick={onOpen}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
+        // Unread status is otherwise conveyed only by bold text + a color dot + a tinted
+        // background — none of which reaches a screen reader on their own.
+        aria-label={`${item.read ? "Read" : "Unread"}: ${item.title}. ${item.description}`}
+        className={cn(
+          "flex w-full items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          item.route && "cursor-pointer"
+        )}
+      >
+        <span className={cn("mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", TYPE_TONE[item.type])}>
+          <Icon className="h-[18px] w-[18px]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className={cn("text-sm text-foreground", !item.read && "font-bold")}>{item.title}</p>
+            {!item.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
+          </div>
+          <p className="mt-0.5 text-sm text-muted-foreground">{item.description}</p>
+          <p className="mt-1 text-xs text-muted-foreground/70">{item.time}</p>
         </div>
-        <p className="mt-0.5 text-sm text-muted-foreground">{item.description}</p>
-        <p className="mt-1 text-xs text-muted-foreground/70">{item.time}</p>
       </div>
-    </button>
+
+      {item.bulkEmailRecipientId && (
+        <div className="ml-12 mt-2.5 border-t border-border/60 pt-2.5" onClick={(e) => e.stopPropagation()}>
+          {item.hasReplied ? (
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <p>{item.ownReply ? <>Your reply: &quot;{item.ownReply}&quot;</> : "You've replied to this email."}</p>
+            </div>
+          ) : (
+            <BulkEmailReplyBox recipientId={item.bulkEmailRecipientId} onReplied={onReplied} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BulkEmailReplyBox({ recipientId, onReplied }: { recipientId: string; onReplied: (message: string) => void }) {
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSend() {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+    setSending(true);
+    setError(null);
+    try {
+      await replyToBulkEmail(recipientId, trimmed);
+      onReplied(trimmed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't send your reply. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Textarea
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Reply to this email…"
+        className="min-h-[70px] text-sm"
+      />
+      <div className="flex items-center justify-between gap-2">
+        {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+        <Button size="sm" className="ml-auto" disabled={!message.trim() || sending} onClick={handleSend}>
+          {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+          Reply
+        </Button>
+      </div>
+    </div>
   );
 }

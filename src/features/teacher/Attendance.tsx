@@ -318,14 +318,16 @@ export default function TeacherAttendance() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Sessions Delivered" value={String(completed.length)} icon={ClipboardList} tone="primary" loading={apiLoading} />
-        <KpiCard label="Average Attendance" value={avgAttendance ? `${avgAttendance}%` : "—"} icon={CheckCircle2} tone="success" loading={apiLoading} />
-        <KpiCard label="Students Taught" value={String(uniqueStudents)} icon={Users} tone="primary" loading={apiLoading} />
-        <KpiCard label="Recordings Available" value={`${recordingsAvailable}/${completed.length}`} icon={Video} tone="neutral" loading={apiLoading} />
+        <KpiCard label="Sessions Delivered" value={String(completed.length)} icon={ClipboardList} tone="primary" loading={apiLoading} error={apiError} />
+        <KpiCard label="Average Attendance" value={avgAttendance ? `${avgAttendance}%` : "—"} icon={CheckCircle2} tone="success" loading={apiLoading} error={apiError} />
+        <KpiCard label="Students Taught" value={String(uniqueStudents)} icon={Users} tone="primary" loading={apiLoading} error={apiError} />
+        <KpiCard label="Recordings Available" value={`${recordingsAvailable}/${completed.length}`} icon={Video} tone="neutral" loading={apiLoading} error={apiError} />
       </div>
 
       <div className="mt-6">
-        {completed.length === 0 && !apiError ? (
+        {apiLoading ? (
+          <p className="text-sm text-muted-foreground">Loading your attendance records…</p>
+        ) : completed.length === 0 && !apiError ? (
           <EmptyState icon={ClipboardList} title="No completed sessions yet" description="Once you deliver a class, its attendance record will show up here." />
         ) : (
           <DataTable

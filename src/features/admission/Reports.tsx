@@ -222,9 +222,18 @@ export default function AdmissionReports() {
 
         <ChartCard title="Demos Per Teacher" description="Demo classes conducted, all-time">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={demosPerTeacher} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+            <BarChart data={demosPerTeacher} margin={{ left: -12, right: 12, top: 8, bottom: 24 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-              <XAxis dataKey="teacher" tickLine={false} axisLine={false} fontSize={11} interval={0} angle={-12} textAnchor="end" height={44} />
+              <XAxis
+                dataKey="teacher"
+                tickLine={false}
+                axisLine={false}
+                fontSize={10}
+                interval={demosPerTeacher.length > 12 ? Math.ceil(demosPerTeacher.length / 12) - 1 : 0}
+                angle={-90}
+                textAnchor="end"
+                height={70}
+              />
               <YAxis tickLine={false} axisLine={false} fontSize={12} width={32} allowDecimals={false} />
               <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="demos" radius={[6, 6, 0, 0]} maxBarSize={40}>
@@ -260,7 +269,7 @@ export default function AdmissionReports() {
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="to-date">To</Label>
-            <Input id="to-date" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-40" />
+            <Input id="to-date" type="date" value={toDate} min={fromDate || undefined} onChange={(e) => setToDate(e.target.value)} className="w-40" />
           </div>
           <Button variant="outline" onClick={handleExport} disabled={rows.length === 0}>
             <Download className="h-4 w-4" />
@@ -269,7 +278,7 @@ export default function AdmissionReports() {
         </CardContent>
       </Card>
 
-      <div className="mt-5">
+      <div className="mt-6">
         <div className="mb-3 flex items-center gap-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <FileBarChart2 className="h-4 w-4" />
@@ -277,6 +286,12 @@ export default function AdmissionReports() {
           <p className="text-sm font-semibold text-foreground">{REPORT_OPTIONS.find((o) => o.value === reportType)?.label}</p>
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">{rows.length} rows</span>
         </div>
+
+        {fromDate > toDate && (
+          <InlineAlert variant="warning" className="mb-3">
+            The "From" date is after the "To" date, so this range can't match any records — adjust the dates above.
+          </InlineAlert>
+        )}
 
         {reportError && (
           <InlineAlert variant="warning" className="mb-3">

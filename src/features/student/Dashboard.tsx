@@ -33,7 +33,7 @@ import { getSessionsForChild } from "@/data/sessions";
 import { getResourcesForBatch } from "@/data/resources";
 import { LEADERBOARD_SEED } from "@/features/classroom/classroomData";
 import { isJoinable, joinHint } from "@/features/parent/utils";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
 
 const CHILD_ID = "c-1";
 const TODAY = "2026-07-09";
@@ -84,7 +84,7 @@ export default function StudentDashboard() {
     <div className="font-display">
       <PageHeader
         eyebrow="Preview — what your child sees"
-        title={`Hey ${firstName}! 👋`}
+        title={`Hey ${firstName}!`}
         description={`This is a live look at the experience ${firstName} gets when he joins a class through your parent account — no separate student login needed.`}
       />
 
@@ -110,7 +110,7 @@ export default function StudentDashboard() {
                 </span>
                 <h2 className="mt-2 text-xl font-bold text-foreground sm:text-2xl">{todaySession.title}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  With {todaySession.teacherName} · {todaySession.startTime} · {todaySession.duration} minutes
+                  With {todaySession.teacherName} · {formatTimeLabel(todaySession.startTime)} · {todaySession.duration} minutes
                   {todaySession.childIds.length > 1 && " · with a friend from your batch"}
                 </p>
               </div>
@@ -194,12 +194,18 @@ export default function StudentDashboard() {
               <Flame className="h-5 w-5" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">{child.attendancePercent}%</p>
+          <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">
+            {child.attendancePercent === undefined ? "—" : `${child.attendancePercent}%`}
+          </p>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-warning" style={{ width: `${child.attendancePercent}%` }} />
+            <div className="h-full rounded-full bg-warning" style={{ width: `${child.attendancePercent ?? 0}%` }} />
           </div>
           <p className="mt-2 text-xs font-medium text-muted-foreground">
-            {child.attendancePercent >= 90 ? "You're on fire — keep it up! 🔥" : "Nice work — every class counts!"}
+            {child.attendancePercent === undefined
+              ? "No classes completed yet"
+              : child.attendancePercent >= 90
+                ? "You're on fire — keep it up! 🔥"
+                : "Nice work — every class counts!"}
           </p>
         </Card>
 
@@ -387,7 +393,9 @@ function ApiStudentDashboard() {
   const summary = dashboard?.children.find((c) => c.childId === activeChild.id);
   const classesCompleted = summary?.classesCompleted ?? 0;
   const classesRemaining = summary?.classesRemaining ?? 0;
-  const attendancePercent = Math.round(summary?.attendancePercent ?? 0);
+  // Undefined (not 0) when this child has no attendance-marked sessions yet -- distinct
+  // from a real 0%, and from the vacuous 100% this used to default to server-side.
+  const attendancePercent = summary?.attendancePercent == null ? undefined : Math.round(summary.attendancePercent);
   const totalClasses = classesCompleted + classesRemaining;
   const progressPercent = totalClasses > 0 ? Math.round((classesCompleted / totalClasses) * 100) : 0;
 
@@ -417,8 +425,8 @@ function ApiStudentDashboard() {
     { label: "First Class", icon: Sparkles, earned: classesCompleted >= 1, color: CHART_PALETTE[4] },
     { label: "Reading Rocket", icon: BookOpen, earned: classesCompleted >= 10, color: CHART_PALETTE[3] },
     { label: "Star Collector", icon: Star, earned: myStars >= 10, color: CHART_PALETTE[6] },
-    { label: "Super Streak", icon: Flame, earned: attendancePercent >= 90 && classesCompleted >= 5, color: STREAK_FLAME_RED },
-    { label: "Perfect Attendance", icon: CalendarCheck2, earned: attendancePercent >= 95 && classesCompleted >= 1, color: CHART_PALETTE[2] },
+    { label: "Super Streak", icon: Flame, earned: (attendancePercent ?? 0) >= 90 && classesCompleted >= 5, color: STREAK_FLAME_RED },
+    { label: "Perfect Attendance", icon: CalendarCheck2, earned: (attendancePercent ?? 0) >= 95 && classesCompleted >= 1, color: CHART_PALETTE[2] },
   ];
 
   const ringColor = CHART_PALETTE[0];
@@ -453,16 +461,22 @@ function ApiStudentDashboard() {
                 </span>
                 <h2 className="mt-2 text-xl font-bold text-foreground sm:text-2xl">{todaySession.title}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  With {todaySession.teacherName} · {todaySession.startTime} · {todaySession.duration} minutes
+                  With {todaySession.teacherName} · {formatTimeLabel(todaySession.startTime)} · {todaySession.duration} minutes
                 </p>
               </div>
             </div>
             <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
               {isJoinable(todaySession) ? (
                 <Button size="lg" asChild className="w-full sm:w-auto">
-                  <Link to="/parent/schedule">
+                  {/* Same /parent/live route + route-state shape the demo dashboard and
+                      parent/Schedule.tsx use — LiveClassroom reads state.room to join
+                      directly, so this no longer forces an extra trip through Schedule. */}
+                  <Link
+                    to={`/parent/live/${todaySession.id}`}
+                    state={todaySession.meetingRoomId ? { room: todaySession.meetingRoomId, title: todaySession.title } : undefined}
+                  >
                     <Video className="h-4 w-4" />
-                    Join from Schedule
+                    Join Class
                   </Link>
                 </Button>
               ) : (
@@ -474,7 +488,7 @@ function ApiStudentDashboard() {
                     <span tabIndex={0} className="w-full sm:w-auto">
                       <Button size="lg" variant="outline" disabled className="w-full sm:w-auto">
                         <Video className="h-4 w-4" />
-                        Join from Schedule
+                        Join Class
                       </Button>
                     </span>
                   </TooltipTrigger>
@@ -533,12 +547,18 @@ function ApiStudentDashboard() {
               <Flame className="h-5 w-5" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">{attendancePercent}%</p>
+          <p className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">
+            {attendancePercent === undefined ? "—" : `${attendancePercent}%`}
+          </p>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-warning" style={{ width: `${attendancePercent}%` }} />
+            <div className="h-full rounded-full bg-warning" style={{ width: `${attendancePercent ?? 0}%` }} />
           </div>
           <p className="mt-2 text-xs font-medium text-muted-foreground">
-            {attendancePercent >= 90 ? "You're on fire — keep it up! 🔥" : "Nice work — every class counts!"}
+            {attendancePercent === undefined
+              ? "No classes completed yet"
+              : attendancePercent >= 90
+                ? "You're on fire — keep it up! 🔥"
+                : "Nice work — every class counts!"}
           </p>
         </Card>
 

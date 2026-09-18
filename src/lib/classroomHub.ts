@@ -22,6 +22,8 @@ export interface HubLeaderboardEntry {
 export interface ClassroomHubEvents {
   roster: (participants: HubParticipant[]) => void;
   board: (opJson: string) => void;
+  annotation: (opJson: string) => void;
+  slide: (pageIndex: number) => void;
   chat: (author: string, text: string) => void;
   quizStarted: (questionIndex: number) => void;
   quizEnded: () => void;
@@ -29,6 +31,14 @@ export interface ClassroomHubEvents {
   leaderboard: (entries: HubLeaderboardEntry[]) => void;
   celebrate: (message: string | null) => void;
   boardAccess: (allowed: boolean) => void;
+  /** Whichever participant the teacher has pinned/spotlighted in her own view (Jitsi endpoint
+   *  id), or null when she unpins — see ClassroomHub.SetPinned's own doc comment. */
+  pinned: (participantId: string | null) => void;
+  /** Admin-triggered, app-wide (not scoped to this session) — see MonitoringController's
+   *  BroadcastReload. Deliberately just a signal to show a dismissible prompt, not an
+   *  automatic reload — see that endpoint's own comment on why an unannounced refresh
+   *  mid-class would be worse than the deploy it's trying to deliver. */
+  reloadRequested: (message: string) => void;
 }
 
 /**
@@ -70,9 +80,14 @@ export class ClassroomHubClient {
   private connection: HubConnection | null = null;
   private disposed = false;
   private readonly sessionId: string;
+  private readonly hubTokenOverride?: string;
 
-  constructor(sessionId: string) {
+  /** hubTokenOverride is set only by the Jibri recording-observer page (RecordingObserver.tsx),
+   *  whose anonymous session has no real access token in localStorage — it authenticates with
+   *  its own short-lived CreateRecordingObserverHubToken instead of getAccessToken(). */
+  constructor(sessionId: string, hubTokenOverride?: string) {
     this.sessionId = sessionId;
+    this.hubTokenOverride = hubTokenOverride;
   }
 
   async connect(
@@ -85,7 +100,7 @@ export class ClassroomHubClient {
 
     const connection = new HubConnectionBuilder()
       .withUrl(`${baseUrl}/hubs/classroom`, {
-        accessTokenFactory: () => getAccessToken() ?? "",
+        accessTokenFactory: () => this.hubTokenOverride ?? getAccessToken() ?? "",
       })
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Warning)
@@ -93,6 +108,8 @@ export class ClassroomHubClient {
 
     if (handlers.roster) connection.on("Roster", handlers.roster);
     if (handlers.board) connection.on("Board", handlers.board);
+    if (handlers.annotation) connection.on("Annotation", handlers.annotation);
+    if (handlers.slide) connection.on("Slide", handlers.slide);
     if (handlers.chat) connection.on("Chat", handlers.chat);
     if (handlers.quizStarted) connection.on("QuizStarted", handlers.quizStarted);
     if (handlers.quizEnded) connection.on("QuizEnded", handlers.quizEnded);
@@ -100,6 +117,8 @@ export class ClassroomHubClient {
     if (handlers.leaderboard) connection.on("Leaderboard", handlers.leaderboard);
     if (handlers.celebrate) connection.on("Celebrate", handlers.celebrate);
     if (handlers.boardAccess) connection.on("BoardAccess", handlers.boardAccess);
+    if (handlers.pinned) connection.on("Pinned", handlers.pinned);
+    if (handlers.reloadRequested) connection.on("ReloadRequested", handlers.reloadRequested);
 
     // SignalR's own retry loop — surface it so the UI can stop pretending sync
     // is healthy the instant it isn't, instead of only knowing "connected" once
@@ -169,6 +188,18 @@ export class ClassroomHubClient {
     this.send("SendBoard", opJson);
   }
 
+  /** Teacher-only live mark drawn over the video stage (e.g. pointing something out on a
+   *  shared screen) — the server enforces the teacher-only rule and never keeps history for it. */
+  sendAnnotation(opJson: string): void {
+    this.send("SendAnnotation", opJson);
+  }
+
+  /** Teacher-only: broadcasts the current slide of a presented deck (Next/Previous) — the
+   *  server remembers it so a student who joins mid-class lands on the right page. */
+  sendSlide(pageIndex: number): void {
+    this.send("SendSlide", pageIndex);
+  }
+
   sendChat(text: string): void {
     this.send("SendChat", text);
   }
@@ -206,6 +237,12 @@ export class ClassroomHubClient {
 
   setBoardAccess(connectionId: string, allowed: boolean): void {
     this.send("SetBoardAccess", connectionId, allowed);
+  }
+
+  /** Teacher-only: broadcasts which participant she just pinned/spotlighted (or null on
+   *  unpin) so every student's own Jitsi view follows along — see ClassroomHub.SetPinned. */
+  setPinned(participantId: string | null): void {
+    this.send("SetPinned", participantId);
   }
 
   async disconnect(): Promise<void> {

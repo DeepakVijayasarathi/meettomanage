@@ -322,7 +322,7 @@ export default function Login() {
                 <Checkbox checked={rememberMe} onCheckedChange={(v) => setRememberMe(v === true)} />
                 Remember me
               </label>
-              <Link to="/forgot-password" className="text-sm font-semibold text-brand-greenDark hover:underline">
+              <Link to="/forgot-pin" className="text-sm font-semibold text-brand-greenDark hover:underline">
                 Forgot your PIN?
               </Link>
             </div>
@@ -335,7 +335,7 @@ export default function Login() {
             >
               {submitting ? (
                 <>
-                  Signing in… <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" /> Signing in…
                 </>
               ) : apiEnabled() ? (
                 <>

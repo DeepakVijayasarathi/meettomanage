@@ -6,7 +6,8 @@ export type Role =
   | "parent"
   | "student"
   | "coordinator"
-  | "management";
+  | "management"
+  | "itadmin";
 
 export type UserStatus = "active" | "inactive" | "suspended";
 
@@ -36,7 +37,8 @@ export interface Child {
   batchId: string;
   classesCompleted: number;
   classesRemaining: number;
-  attendancePercent: number;
+  /** Undefined when this child has no attendance-marked sessions yet — distinct from a real 0%. */
+  attendancePercent?: number;
   feeStatus: "paid" | "due" | "overdue" | "suspended";
   enrollmentComplete: boolean;
 }
@@ -61,6 +63,8 @@ export interface Course {
 
 export type BatchStatus = "active" | "dormant" | "upcoming";
 
+export type BatchPaymentPlanType = "FullPaymentDone" | "AfterSessions" | "DueOnDate";
+
 export interface Batch {
   id: string;
   name: string;
@@ -73,6 +77,9 @@ export interface Batch {
   status: BatchStatus;
   schedule: string;
   startDate: string;
+  paymentPlanType?: BatchPaymentPlanType;
+  paymentAfterSessionsCount?: number | null;
+  paymentDueDate?: string | null;
 }
 
 export type SessionStatus =
@@ -104,6 +111,10 @@ export interface ClassSession {
   meetingRoomId?: string;
   /** Teacher's class notes, or an auto-generated one from engagement data if they left it blank — set on completion. */
   summary?: string;
+  /** Set only when status is "noshow" — which side the system found missing, so a teacher
+   *  can tell at a glance whether it was them (docks pay) or the student (doesn't) instead
+   *  of a single generic "No-Show" badge reading as if it's always blaming them. */
+  noShowParty?: "teacher" | "student";
 }
 
 export interface Invoice {
@@ -184,6 +195,19 @@ export interface LeaveRequest {
   /** Full UTC window this leave covers — present in API mode only (see toFrontendLeave). Used to warn before submitting a new request that overlaps an existing one, the same way the backend itself blocks it. */
   startAtUtc?: string;
   endAtUtc?: string;
+  /** True for a class-wise leave (specific classes picked, see `sessions`) rather than a
+   *  whole day/date-range one. */
+  isClassWise?: boolean;
+  /** Only populated when isClassWise — the exact classes this leave covers. */
+  sessions?: LeaveSessionSummary[];
+}
+
+/** One class covered by a class-wise leave request. */
+export interface LeaveSessionSummary {
+  sessionId: string;
+  scheduledStartAtUtc: string;
+  scheduledEndAtUtc: string;
+  batchName: string | null;
 }
 
 export interface DemoFeedback {
@@ -265,6 +289,23 @@ export interface LiveCallSummary {
   totalParticipants: number;
 }
 
+/** Jibri (recording) fleet status — one recording per instance, so busy === total means the next concurrent recording request will fail until the autoscaler adds capacity. */
+export interface RecorderStatus {
+  totalInstances: number;
+  busyInstances: number;
+  idleInstances: number;
+  /** Admin-adjustable floor of always-warm instances. */
+  minInstances: number;
+  /** Ceiling derived from the box's actual CPU/RAM — grows on its own if the box is resized. */
+  maxInstances: number;
+  /** Last ~1h, ~2-minute steps — same window as ServerStatus.cpuHistory/memoryHistory.
+   *  Pair with totalHistory (not the single current totalInstances) since the fleet
+   *  autoscales — "3 busy" only reads as "at capacity" against however many were
+   *  actually online at that same moment. */
+  busyHistory: TimeSeriesPoint[];
+  totalHistory: TimeSeriesPoint[];
+}
+
 export interface TimeSeriesPoint {
   timestamp: string;
   value: number;
@@ -288,6 +329,79 @@ export interface CapacityForecast {
   trendGbPerDay: number;
 }
 
+/** Health of the Cloudflare Calls TURN fallback for participants whose network blocks direct UDP to the JVB. */
+export interface TurnStatus {
+  /** False means the last refresh is older than its own TTL — Prosody may be advertising expired credentials, most likely because the refresh cron stopped running. */
+  credentialsHealthy: boolean;
+  lastRefreshedAtUtc: string | null;
+  secondsSinceRefresh: number;
+  credentialsTtlSeconds: number;
+  /** Total ICE negotiations JVB has completed successfully since it last started. */
+  iceSucceededTotal: number;
+  /** Of those, how many selected a relayed (TURN) candidate pair — i.e. actually needed the fallback. */
+  iceSucceededRelayedTotal: number;
+  /** 0 when iceSucceededTotal is 0 (no data yet), not a divide-by-zero NaN. */
+  relayedUsagePercent: number;
+}
+
+/** One connected user in a live class, for the admin "who's live right now" view. */
+export interface LiveParticipant {
+  userId: string;
+  name: string;
+  role: string;
+  joinedAtUtc: string;
+  /** 2+ means this person holds multiple simultaneous connections (tabs/devices). */
+  connectionCount: number;
+  /** Whether attendance capture has already recorded this person's presence — false can mean it's still catching up, or that it failed. */
+  attendanceRecorded: boolean;
+}
+
+/** One live class session with everyone currently connected to it. */
+export interface LiveClassSession {
+  sessionId: string;
+  courseName: string;
+  /** Null for a demo session, which has no batch. */
+  batchName: string | null;
+  teacherName: string;
+  startedAtUtc: string | null;
+  /** Null for a demo session. Running past this is worth flagging. */
+  scheduledEndAtUtc: string | null;
+  participants: LiveParticipant[];
+}
+
+/** One of today's class sessions, live or not — for the "today's sessions" timeline. */
+export interface SessionHistoryEntry {
+  sessionId: string;
+  courseName: string;
+  batchName: string | null;
+  teacherName: string;
+  scheduledStartAtUtc: string;
+  scheduledEndAtUtc: string;
+  actualStartAtUtc: string | null;
+  actualEndAtUtc: string | null;
+  status: string;
+  attendedCount: number;
+  expectedCount: number;
+  /** True once a recording is registered for this session — only meaningful for a real batch class that has actually started; always false for demo/personal-link sessions. */
+  hasRecording: boolean;
+}
+
+/** A point-in-time `docker stats` sample for one container — not a counter, so it's "what is this using right now," refreshed every minute. */
+export interface ContainerMetric {
+  name: string;
+  cpuPercent: number;
+  memoryMb: number;
+}
+
+/** Week-over-week load trend — honest direction/peak reporting for bursty signals (CPU, recording load) instead of a fake day-countdown like CapacityForecast. */
+export interface CapacityTrend {
+  cpuAvg7dPercent: number;
+  cpuPeak7dPercent: number;
+  cpuWeekOverWeekChangePercent: number;
+  /** Percent of the last 7 days spent with every Jibri instance busy — null for a server with no Jibri fleet. */
+  recordingAtCapacityPercent7d: number | null;
+}
+
 export interface ServerStatus {
   name: string;
   hostname: string;
@@ -300,6 +414,9 @@ export interface ServerStatus {
   cpuUsagePercent: number;
   memoryUsedPercent: number;
   memoryTotalMb: number;
+  /** 0 when the server has no swap configured — show the gauge only when swapTotalMb > 0. */
+  swapUsedPercent: number;
+  swapTotalMb: number;
   diskUsedPercent: number;
   diskTotalGb: number;
   networkRxMbps: number;
@@ -310,11 +427,17 @@ export interface ServerStatus {
   /** How long ago the agent last wrote its status file — large even while reachable means the agent/cron is stuck. */
   agentDataAgeSeconds: number;
   liveCalls: LiveCallSummary | null;
+  recorderStatus: RecorderStatus | null;
   /** Last hour, ~2-minute steps. Empty when unreachable. */
   cpuHistory: TimeSeriesPoint[];
   memoryHistory: TimeSeriesPoint[];
   callQuality: CallQuality | null;
+  turnStatus: TurnStatus | null;
   diskForecast: CapacityForecast | null;
+  /** Sorted by CPU descending — empty if the container-stats collector hasn't published on this box yet. */
+  containerMetrics: ContainerMetric[];
+  /** Null until there's 14 days of Prometheus history to compare against. */
+  capacityTrend: CapacityTrend | null;
 }
 
 export interface DatabaseInsights {
@@ -338,6 +461,14 @@ export interface MonitoringAlert {
   instance: string | null;
 }
 
+/** Today's (IST) real batch classes vs. how many actually have a registered recording. stillProcessing is a class still in progress with no recording yet — not a failure, just not done. */
+export interface RecordingSummary {
+  started: number;
+  succeeded: number;
+  failed: number;
+  stillProcessing: number;
+}
+
 export interface MonitoringSummary {
   servers: ServerStatus[];
   apiHealthy: boolean;
@@ -348,5 +479,6 @@ export interface MonitoringSummary {
   concurrentClassroomUsers: number;
   activeClassCount: number;
   activeAlerts: MonitoringAlert[];
+  todayRecordings: RecordingSummary;
   generatedAtUtc: string;
 }

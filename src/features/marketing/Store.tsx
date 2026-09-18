@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/EmptyState";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/lib/branding";
@@ -34,7 +34,7 @@ import {
   type ApiPublicDepartment,
   type ApiStorePlan,
 } from "@/api/store";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { DEMO_DEPARTMENTS } from "@/data/departments";
 
 const DEMO_PLANS: ApiStorePlan[] = [
@@ -101,6 +101,25 @@ export default function Store() {
 
   const demoDepartment = demoForm.department === "none" ? undefined : demoForm.department;
 
+  // Same feedback pattern as the demo form below, matched to the backend's own
+  // [Range(1, 25)] on CreateStoreInquiryRequest.ChildAge (wider than the demo booking's
+  // 1-18, since an enrollment enquiry isn't limited to the same age band as a free demo).
+  const childAgeError =
+    form.childAge.trim().length > 0 &&
+    (!Number.isInteger(Number(form.childAge)) || Number(form.childAge) < 1 || Number(form.childAge) > 25)
+      ? "Age must be a whole number between 1 and 25."
+      : null;
+
+  // Optional, but if given must match the backend's own [Range(1, 18)] on DemoBookingDtos —
+  // the input's min/max attributes are cosmetic (they don't stop someone typing or pasting
+  // "60"), so without this the only feedback was a raw "One or more validation errors
+  // occurred" 400 from the server after submitting. Same fix as admission/DemoScheduling.tsx.
+  const demoChildAgeError =
+    demoForm.childAge.trim().length > 0 &&
+    (!Number.isInteger(Number(demoForm.childAge)) || Number(demoForm.childAge) < 1 || Number(demoForm.childAge) > 18)
+      ? "Age must be a whole number between 1 and 18."
+      : null;
+
   const loadAvailableSlots = useCallback(
     (date: string) => {
       if (!date) {
@@ -149,13 +168,17 @@ export default function Store() {
       setDemoError("Enter a parent name and child name.");
       return;
     }
+    if (demoChildAgeError) {
+      setDemoError(demoChildAgeError);
+      return;
+    }
     if (!demoForm.preferredStart) {
       setDemoError(live ? "Pick one of the available times below." : "Pick a date and time for the demo.");
       return;
     }
 
     if (!live) {
-      setDemoConfirmed(new Date(demoForm.preferredStart).toLocaleString());
+      setDemoConfirmed(formatDate(new Date(demoForm.preferredStart), "datetime"));
       return;
     }
 
@@ -171,7 +194,7 @@ export default function Store() {
         departmentId: demoForm.department === "none" ? undefined : demoForm.department,
         preferredStartAtUtc: new Date(demoForm.preferredStart).toISOString(),
       });
-      setDemoConfirmed(new Date(confirmation.scheduledStartAtUtc).toLocaleString());
+      setDemoConfirmed(formatDate(confirmation.scheduledStartAtUtc, "datetime"));
     } catch (err) {
       setDemoError(err instanceof Error ? err.message : "Couldn't book that slot. Please try again.");
       // Someone else likely just took it — clear the stale pick and refresh what's actually
@@ -189,6 +212,10 @@ export default function Store() {
     // Same whitespace-only gap as the demo form above.
     if (!form.parentName.trim() || !form.childName.trim()) {
       setError("Enter a parent name and child name.");
+      return;
+    }
+    if (childAgeError) {
+      setError(childAgeError);
       return;
     }
 
@@ -277,7 +304,7 @@ export default function Store() {
         ) : plans.length === 0 ? (
           <EmptyState icon={BookOpen} title="No courses open for enrollment right now" description="Check back soon, or sign in if you already have an account." />
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
             {plans.map((plan) => (
               <div key={plan.id} className="flex flex-col rounded-2xl border border-brand-ink/10 bg-white p-6 shadow-[0_16px_40px_-24px_rgba(43,32,20,0.18)]">
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-green/10 text-brand-green">
@@ -372,7 +399,16 @@ export default function Store() {
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="childAge">Child's age</Label>
-                    <Input id="childAge" type="number" min={1} max={25} value={form.childAge} onChange={(e) => setForm((f) => ({ ...f, childAge: e.target.value }))} />
+                    <Input
+                      id="childAge"
+                      type="number"
+                      min={1}
+                      max={25}
+                      value={form.childAge}
+                      onChange={(e) => setForm((f) => ({ ...f, childAge: e.target.value }))}
+                      aria-invalid={!!childAgeError}
+                    />
+                    {childAgeError && <p className="text-xs font-medium text-destructive">{childAgeError}</p>}
                   </div>
                 </div>
                 <div className="grid gap-1.5">
@@ -380,9 +416,20 @@ export default function Store() {
                   <Textarea id="notes" rows={2} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
                 </div>
                 {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
-                <Button type="submit" disabled={submitting} className="mt-1 w-full !bg-brand-green !text-white hover:!bg-brand-greenDark">
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Enquiry"}
-                </Button>
+                <DialogFooter className="mt-1">
+                  <Button type="button" variant="outline" onClick={() => setSelectedPlan(null)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={submitting || !!childAgeError} className="!bg-brand-green !text-white hover:!bg-brand-greenDark">
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Submitting…
+                      </>
+                    ) : (
+                      "Submit Enquiry"
+                    )}
+                  </Button>
+                </DialogFooter>
               </form>
             </>
           )}
@@ -466,10 +513,12 @@ export default function Store() {
                       id="demoChildAge"
                       type="number"
                       min={1}
-                      max={25}
+                      max={18}
                       value={demoForm.childAge}
                       onChange={(e) => setDemoForm((f) => ({ ...f, childAge: e.target.value }))}
+                      aria-invalid={!!demoChildAgeError}
                     />
+                    {demoChildAgeError && <p className="text-xs font-medium text-destructive">{demoChildAgeError}</p>}
                   </div>
                 </div>
                 <div className="grid gap-1.5">
@@ -535,7 +584,7 @@ export default function Store() {
                                       : "border-brand-ink/15 text-brand-ink hover:border-brand-green"
                                   )}
                                 >
-                                  {new Date(slot.startAtUtc).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                                  {new Date(slot.startAtUtc).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
                                 </button>
                               );
                             })}
@@ -564,13 +613,24 @@ export default function Store() {
                     {demoError}
                   </p>
                 )}
-                <Button
-                  type="submit"
-                  disabled={demoSubmitting}
-                  className="mt-1 w-full !bg-brand-navy !text-white hover:!bg-brand-navyDark"
-                >
-                  {demoSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Book Demo"}
-                </Button>
+                <DialogFooter className="mt-1">
+                  <Button type="button" variant="outline" onClick={() => setDemoOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={demoSubmitting || !!demoChildAgeError}
+                    className="!bg-brand-navy !text-white hover:!bg-brand-navyDark"
+                  >
+                    {demoSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Booking…
+                      </>
+                    ) : (
+                      "Book Demo"
+                    )}
+                  </Button>
+                </DialogFooter>
               </form>
             </>
           )}

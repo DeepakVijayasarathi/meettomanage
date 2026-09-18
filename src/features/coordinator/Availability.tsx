@@ -14,6 +14,7 @@ import { TEACHERS } from "@/data/users";
 import { SESSIONS } from "@/data/sessions";
 import { LEAVE_REQUESTS } from "@/data/leaves";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listHolidays, listLeave, reviewLeave, type ApiLeaveRequest } from "@/api/academicOps";
 import { listTeacherOptions } from "@/api/batches";
@@ -104,15 +105,22 @@ const DAY_STATE_LABEL: Record<DayState, string> = {
 
 export default function CoordinatorAvailability() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
   const usingApi = apiEnabled();
+  // Reachable from any Sub Admin-type portal now (see App.tsx's shared page pool) --
+  // SessionCalendarManagement is guaranteed by the menu gate that got someone here, but
+  // LeaveManagement isn't, and GET /api/leave-requests requires it server-side.
+  const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
+  // PUT /api/leave-requests/{id}/review (Review) requires LeaveManagement:Approve server-side.
+  const canApproveLeave = !usingApi || hasPermission("LeaveManagement", "Approve");
   // Real clock in API mode; the mock universe stays pinned for reproducible demos.
   const [now] = useState(() => (usingApi ? new Date() : NOW));
   const today = format(now, "yyyy-MM-dd");
   const { data: apiLeaves, loading: leavesLoading, error: leavesError, reload } = useApiData<LeaveRequest[]>(
-    () => listLeave().then((items) => items.map(toFrontendLeave)),
+    () => (canSeeLeave ? listLeave().then((items) => items.map(toFrontendLeave)) : Promise.resolve([])),
     LEAVE_REQUESTS
   );
-  const { data: apiTeachers, loading: teachersLoading, error: teachersError } = useApiData(() => listTeacherOptions(), []);
+  const { data: apiTeachers, loading: teachersLoading, error: teachersError } = useApiData(() => listTeacherOptions(), [], undefined, { cacheKey: "teacherOptions" });
   const { data: apiHolidays, loading: holidaysLoading, error: holidaysError } = useApiData(() => listHolidays(), []);
   const kpiLoading = leavesLoading || teachersLoading || holidaysLoading;
   const loadError = leavesError || teachersError || holidaysError;
@@ -177,7 +185,7 @@ export default function CoordinatorAvailability() {
     if (!usingApi) SESSIONS.filter((s) => s.date === today && s.status === "leave").forEach((s) => ids.add(s.teacherId));
     return ids.size;
   }, [leaves, usingApi, today]);
-  const activeTeachersToday = activeTeachers.length - teachersOnLeaveToday;
+  const activeTeachersToday = Math.max(0, activeTeachers.length - teachersOnLeaveToday);
 
   const weekDays = useMemo(() => Array.from({ length: WEEK_LENGTH }, (_, i) => addDays(now, i)), [now]);
 
@@ -212,6 +220,13 @@ export default function CoordinatorAvailability() {
         </InlineAlert>
       )}
 
+      {!canSeeLeave && (
+        <InlineAlert variant="info" className="mb-4">
+          Leave data isn&apos;t visible with this account&apos;s current permissions — the leave-related figures, approval
+          queue and leave overview below appear empty rather than reflecting real leave records.
+        </InlineAlert>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Active Teachers Today" value={String(activeTeachersToday)} icon={UserCheck} tone="primary" loading={kpiLoading} />
         <KpiCard label="Pending Leave Requests" value={String(pendingCount)} icon={Clock} tone="warning" loading={kpiLoading} />
@@ -239,7 +254,7 @@ export default function CoordinatorAvailability() {
           {/* Desktop: the full week-by-teacher grid. A 7-day-wide table has no honest
               mobile form, so narrow viewports get a genuinely different layout below
               rather than the same table squeezed into a horizontal-scroll strip. */}
-          <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
+          <div className="hidden overflow-x-auto rounded-xl border border-border lg:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -286,7 +301,7 @@ export default function CoordinatorAvailability() {
           </div>
 
           {/* Mobile: one card per teacher, day tiles wrap instead of scrolling sideways. */}
-          <div className="flex flex-col gap-3 md:hidden">
+          <div className="flex flex-col gap-3 lg:hidden">
             {activeTeachers.map((teacher) => (
               <div key={teacher.id} className="rounded-xl border border-border p-3">
                 <div className="mb-2.5 flex min-w-0 items-center gap-2.5">
@@ -358,12 +373,18 @@ export default function CoordinatorAvailability() {
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <LeaveStatusPill status={leave.status} />
-                    <Button variant="outline" size="sm" onClick={() => setApproveTarget(leave)}>
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Approve
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setRejectTarget(leave)}>
-                      <XCircle className="h-3.5 w-3.5" /> Reject
-                    </Button>
+                    {canApproveLeave ? (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => setApproveTarget(leave)}>
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setRejectTarget(leave)}>
+                          <XCircle className="h-3.5 w-3.5" /> Reject
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">You don&apos;t have permission to approve leave requests.</span>
+                    )}
                   </div>
                 </div>
               ))}

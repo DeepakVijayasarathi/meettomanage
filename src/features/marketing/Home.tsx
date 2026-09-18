@@ -187,7 +187,9 @@ export default function MarketingHome() {
           </div>
           <div className="overflow-hidden rounded-[28px] shadow-pop ring-4 ring-white">
             <img
-              src="/login.png"
+              src="/login.webp"
+              width={1536}
+              height={1024}
               alt={`Two children reading together at ${brand.name}`}
               className="aspect-[4/3] w-full object-cover"
             />

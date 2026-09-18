@@ -1,6 +1,6 @@
 import { cloneElement, isValidElement, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Loader2, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +59,7 @@ interface EnrollmentForm {
   address: string;
   // Course & consent
   courseInterest: string;
+  batchType: "group" | "individual" | "";
   preferredDays: string[];
   preferredTime: string;
   allergies: string;
@@ -112,6 +113,7 @@ export default function ParentEnrollment() {
       emergencyContactPhone: prev?.emergencyContactPhone ?? "",
       address: prev?.address ?? "",
       courseInterest: child?.courseId ?? "",
+      batchType: "",
       preferredDays: [],
       preferredTime: "",
       allergies: "",
@@ -168,13 +170,19 @@ export default function ParentEnrollment() {
     };
   }, [usingApi]);
 
-  // Real course catalogue in API mode; the mock list is demo-only.
+  // Real course catalogue in API mode; the mock list is demo-only. Each option also carries
+  // its own group/individual type (when known) so picking a course can default the new
+  // "Batch type" field below instead of leaving it for the parent to guess blind.
   const { data: apiCourseOptions } = useApiData(() => listCourseOptions(), []);
   const courseOptions = useMemo(
     () =>
       usingApi
-        ? apiCourseOptions.map((c) => ({ id: c.id, label: c.name }))
-        : COURSES.filter((c) => c.type !== "demo" && c.status === "active").map((c) => ({ id: c.id, label: `${c.name} · ${c.category}` })),
+        ? apiCourseOptions.map((c) => ({ id: c.id, label: c.name, type: c.type === "Individual" ? ("individual" as const) : ("group" as const) }))
+        : COURSES.filter((c) => c.type !== "demo" && c.status === "active").map((c) => ({
+            id: c.id,
+            label: `${c.name} · ${c.category}`,
+            type: c.type === "1:1" ? ("individual" as const) : ("group" as const),
+          })),
     [usingApi, apiCourseOptions]
   );
 
@@ -217,9 +225,23 @@ export default function ParentEnrollment() {
         next.address = "Enter the full home address (street, city, PIN), or leave it blank.";
     } else {
       if (!form.courseInterest) next.courseInterest = "Select a course to continue.";
+      if (!form.batchType) next.batchType = "Select group or individual batch.";
       if (!form.consent) next.consent = "Please confirm the details and give consent to submit.";
     }
     return next;
+  }
+
+  // Defaults "Batch type" from the chosen course's own format the first time a course is
+  // picked, but never overwrites a choice the parent already made explicitly (e.g. going
+  // back and picking a different course after already answering this).
+  function pickCourse(courseId: string) {
+    const matched = courseOptions.find((c) => c.id === courseId);
+    setForm((f) => ({
+      ...f,
+      courseInterest: courseId,
+      batchType: f.batchType || matched?.type || f.batchType,
+    }));
+    setErrors((e) => (e.courseInterest ? { ...e, courseInterest: undefined } : e));
   }
 
   function handleNext() {
@@ -517,7 +539,7 @@ export default function ParentEnrollment() {
             {step === 2 && (
               <div className="flex flex-col gap-4">
                 <Field label="Course of interest" htmlFor="courseInterest" required error={errors.courseInterest}>
-                  <Select required value={form.courseInterest} onValueChange={(v) => update("courseInterest", v)}>
+                  <Select required value={form.courseInterest} onValueChange={pickCourse}>
                     <SelectTrigger id="courseInterest">
                       <SelectValue placeholder="Select a course" />
                     </SelectTrigger>
@@ -530,6 +552,40 @@ export default function ParentEnrollment() {
                     </SelectContent>
                   </Select>
                 </Field>
+
+                <fieldset className="flex flex-col gap-1.5">
+                  <legend className="text-sm font-medium leading-none text-foreground/90">
+                    Batch type<span className="ml-0.5 text-destructive">*</span>
+                  </legend>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button
+                      type="button"
+                      variant="pill"
+                      size="pill"
+                      aria-pressed={form.batchType === "group"}
+                      onClick={() => update("batchType", "group")}
+                    >
+                      Group Batch
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="pill"
+                      size="pill"
+                      aria-pressed={form.batchType === "individual"}
+                      onClick={() => update("batchType", "individual")}
+                    >
+                      Individual Batch
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Group Batch learns alongside other students; Individual Batch is one-on-one with the teacher.
+                  </p>
+                  {errors.batchType && (
+                    <p role="alert" className="text-xs font-medium text-destructive">
+                      {errors.batchType}
+                    </p>
+                  )}
+                </fieldset>
 
                 <fieldset className="flex flex-col gap-1.5">
                   <legend className="text-sm font-medium leading-none text-foreground/90">Preferred class days</legend>
@@ -616,7 +672,7 @@ export default function ParentEnrollment() {
                   disabled={submitting}
                   className="!bg-brand-green !text-white hover:!bg-brand-greenDark"
                 >
-                  <CheckCircle2 className="h-4 w-4" /> {submitting ? "Submitting…" : "Submit & Unlock Dashboard"}
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{submitting ? "Submitting…" : "Submit & Unlock Dashboard"}
                 </Button>
               )}
             </div>

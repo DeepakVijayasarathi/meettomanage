@@ -10,9 +10,13 @@ export async function login(email: string, pin: string): Promise<LoginResponse> 
   return response;
 }
 
-/** Refreshes the signed-in user's permissions/route from the current token — no new token issued. */
+/** Refreshes the signed-in user's permissions/route, and swaps in a freshly-minted token that
+ *  carries those same up-to-date claims — so an access grant made mid-session (e.g. an Admin
+ *  approving a Relationship Manager's request) takes effect without a full logout/login. */
 export async function getCurrentUser(): Promise<LoginResponse> {
-  return apiFetch<LoginResponse>("/api/auth/me");
+  const response = await apiFetch<LoginResponse>("/api/auth/me");
+  if (response.accessToken) setAccessToken(response.accessToken);
+  return response;
 }
 
 export function logout() {

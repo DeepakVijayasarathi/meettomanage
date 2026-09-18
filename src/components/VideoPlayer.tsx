@@ -1,0 +1,185 @@
+import { useEffect, useRef, useState } from "react";
+import { Maximize, Minimize, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const total = Math.floor(seconds);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+export interface VideoPlayerProps {
+  src: string;
+  className?: string;
+  /** RecordingsDialog's "Play" toggle mounts this already-expecting-to-play, matching the
+   *  native-`<video autoPlay>` behavior it's replacing there. */
+  autoPlay?: boolean;
+}
+
+/**
+ * Custom-styled replacement for a bare `<video controls>` — the recording preview across
+ * Admin/Teacher/Parent Recordings and RecordingsDialog was the one place in the app still
+ * falling back to the browser's own OS-themed play/seek/volume/fullscreen chrome, visibly
+ * inconsistent with everything else here being custom-built to this app's design tokens.
+ * `controls={false}` on the underlying element; every control below is our own.
+ */
+export function VideoPlayer({ src, className, autoPlay }: VideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    function onFullscreenChange() {
+      setFullscreen(document.fullscreenElement === containerRef.current);
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  function togglePlay() {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) void video.play();
+    else video.pause();
+  }
+
+  function seek(next: number) {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = next;
+    setCurrentTime(next);
+  }
+
+  function toggleMute() {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    setMuted(video.muted);
+  }
+
+  function changeVolume(next: number) {
+    const video = videoRef.current;
+    if (!video) return;
+    video.volume = next;
+    video.muted = next === 0;
+    setVolume(next);
+    setMuted(next === 0);
+  }
+
+  async function toggleFullscreen() {
+    if (!containerRef.current) return;
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await containerRef.current.requestFullscreen();
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn("group relative aspect-video w-full overflow-hidden rounded-xl bg-black", fullscreen && "aspect-auto", className)}
+    >
+      <video
+        ref={videoRef}
+        src={src}
+        autoPlay={autoPlay}
+        className="h-full w-full cursor-pointer"
+        onClick={togglePlay}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+      />
+
+      {/* Center play button — shown at rest and while paused, mirrors the paused state of
+          most video players so it's obvious the frame is clickable, not a static thumbnail. */}
+      {!playing && (
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label="Play"
+          className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors hover:bg-black/30"
+        >
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-black shadow-lg transition-transform hover:scale-105">
+            <Play className="ml-1 h-7 w-7 fill-current" />
+          </span>
+        </button>
+      )}
+
+      {/* Always visible rather than hover-to-reveal-then-fade — a timed auto-hide needs an
+          idle timer and reliably fails on touch devices (no hover state to reveal it again
+          without a second tap landing on the video itself, toggling play unintentionally). */}
+      <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-black/85 via-black/60 to-transparent px-3 pb-2 pt-6 sm:gap-3 sm:px-4">
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label={playing ? "Pause" : "Play"}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+        >
+          {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="ml-0.5 h-4 w-4 fill-current" />}
+        </button>
+
+        <span className="shrink-0 font-mono text-xs tabular-nums text-white/90">
+          {formatDuration(currentTime)} / {formatDuration(duration)}
+        </span>
+
+        <input
+          type="range"
+          min={0}
+          max={duration || 0}
+          step={0.1}
+          value={currentTime}
+          onChange={(e) => seek(Number(e.target.value))}
+          aria-label="Seek"
+          className="h-1.5 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-white/25 accent-primary"
+        />
+
+        <button
+          type="button"
+          onClick={toggleMute}
+          aria-label={muted ? "Unmute" : "Mute"}
+          className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:flex"
+        >
+          {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={muted ? 0 : volume}
+          onChange={(e) => changeVolume(Number(e.target.value))}
+          aria-label="Volume"
+          className="hidden h-1.5 w-16 shrink-0 cursor-pointer appearance-none rounded-full bg-white/25 accent-primary sm:block"
+        />
+
+        {/* Mobile keeps a bare mute toggle in place of the volume slider — matches how
+            Resources.tsx-style compact controls already collapse on narrow viewports
+            elsewhere in the app, not a one-off pattern. */}
+        <button
+          type="button"
+          onClick={toggleMute}
+          aria-label={muted ? "Unmute" : "Mute"}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:hidden"
+        >
+          {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => void toggleFullscreen()}
+          aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+        >
+          {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+        </button>
+      </div>
+    </div>
+  );
+}

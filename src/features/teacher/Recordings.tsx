@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlayCircle, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -7,16 +7,20 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { apiEnabled } from "@/lib/api";
-import { listMySessions, listRecordings, toFrontendSession, type ApiSessionRecording } from "@/api/sessions";
+import { listMyRecordings, type ApiRecordingListItem } from "@/api/sessions";
 import { getSessionsForTeacher } from "@/data/sessions";
-import { formatDate } from "@/lib/utils";
-import type { ClassSession } from "@/types";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 
-/** One recording paired with the class it belongs to — the unit this page renders as a card. */
-interface RecordingEntry {
-  recording: ApiSessionRecording;
-  session: ClassSession;
+const PAGE_SIZE = 24;
+
+/** Same title fallback toFrontendSession (api/sessions.ts) already applies for a session
+ *  without a batch — this page doesn't carry a demo child's name, so a nameless Demo just
+ *  reads as "Demo class" rather than a blank title. */
+function recordingTitle(item: ApiRecordingListItem): string {
+  return item.batchName ?? (item.sessionType === "Demo" ? "Demo class" : "Class session");
 }
 
 /**
@@ -24,57 +28,49 @@ interface RecordingEntry {
  * completed session's Recordings dialog on My Classes one at a time just to check whether
  * (or watch what) got recorded. Manual "paste a link" registration still lives on that
  * per-session dialog (RecordingsDialog); this page is read-only browsing.
+ *
+ * Paged, server-driven load (listMyRecordings) — this used to fetch every one of the
+ * teacher's completed sessions then call listRecordings once per session, the identical N+1
+ * pattern confirmed live as the actual cause of the admin-wide Recordings page's "Loading
+ * recordings..." never finishing (AdminRecordings.tsx). Only a matter of time before the
+ * same slowdown showed up here too as any one teacher's own history grew.
  */
 export default function TeacherRecordings() {
   const usingApi = apiEnabled();
 
-  const [entries, setEntries] = useState<RecordingEntry[]>([]);
+  const [items, setItems] = useState<ApiRecordingListItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(usingApi);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Count of completed classes whose recordings lookup actually failed (network/permission/
-  // server error) — distinct from a class that legitimately has none registered. The list
-  // endpoint returns 200 + [] for "none registered", so anything landing in the catch below
-  // is a real failure and shouldn't be silently indistinguishable from an empty result.
-  const [partialErrorCount, setPartialErrorCount] = useState(0);
-  const [preview, setPreview] = useState<RecordingEntry | null>(null);
+  const [preview, setPreview] = useState<ApiRecordingListItem | null>(null);
 
-  useEffect(() => {
+  const load = useCallback((targetPage: number, replace: boolean) => {
     if (!usingApi) {
       setLoading(false);
       return;
     }
     let cancelled = false;
-    setLoading(true);
+    if (replace) setLoading(true);
+    else setLoadingMore(true);
     setError(null);
-    setPartialErrorCount(0);
 
-    listMySessions()
-      .then(async (apiSessions) => {
-        const completed = apiSessions.map(toFrontendSession).filter((s) => s.status === "completed");
-
-        const results = await Promise.all(
-          completed.map(async (session) => {
-            try {
-              const recs = await listRecordings(session.id);
-              return { recs: recs.map((recording) => ({ recording, session })), failed: false };
-            } catch {
-              return { recs: [] as RecordingEntry[], failed: true };
-            }
-          })
-        );
-
+    listMyRecordings(targetPage, PAGE_SIZE)
+      .then((result) => {
         if (cancelled) return;
-        const flat = results
-          .flatMap((r) => r.recs)
-          .sort((a, b) => new Date(b.recording.createdAtUtc).getTime() - new Date(a.recording.createdAtUtc).getTime());
-        setEntries(flat);
-        setPartialErrorCount(results.filter((r) => r.failed).length);
+        setItems((prev) => (replace ? result.items : [...prev, ...result.items]));
+        setTotalCount(result.totalCount);
+        setPage(result.page);
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "Could not load recordings.");
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       });
 
     return () => {
@@ -82,24 +78,28 @@ export default function TeacherRecordings() {
     };
   }, [usingApi]);
 
-  const demoEntries = useMemo<RecordingEntry[]>(() => {
+  useEffect(() => load(1, true), [load]);
+
+  const demoItems = useMemo<ApiRecordingListItem[]>(() => {
     if (usingApi) return [];
     return getSessionsForTeacher("t-1")
       .filter((s) => s.recordingAvailable)
       .map((session) => ({
-        session,
-        recording: {
-          id: session.id,
-          classSessionId: session.id,
-          storageUrl: "",
-          durationSeconds: session.duration * 60,
-          expiresAtUtc: session.recordingExpiresOn ?? null,
-          createdAtUtc: session.date,
-        },
+        id: session.id,
+        classSessionId: session.id,
+        storageUrl: "",
+        durationSeconds: session.duration * 60,
+        expiresAtUtc: session.recordingExpiresOn ?? null,
+        createdAtUtc: session.date,
+        batchName: session.title,
+        sessionType: session.type === "demo" ? ("Demo" as const) : ("Regular" as const),
+        teacherName: session.teacherName,
+        scheduledStartAtUtc: session.date,
       }));
   }, [usingApi]);
 
-  const rows = usingApi ? entries : demoEntries;
+  const rows = usingApi ? items : demoItems;
+  const hasMore = usingApi && items.length < totalCount;
 
   return (
     <div>
@@ -108,12 +108,6 @@ export default function TeacherRecordings() {
       {usingApi && error && (
         <InlineAlert variant="warning" className="mt-4">
           Could not load recordings ({error}).
-        </InlineAlert>
-      )}
-
-      {usingApi && !error && partialErrorCount > 0 && (
-        <InlineAlert variant="warning" className="mt-4">
-          Couldn't load recordings for {partialErrorCount} of your classes — they may be missing from the list below.
         </InlineAlert>
       )}
 
@@ -127,30 +121,42 @@ export default function TeacherRecordings() {
           className="mt-6"
         />
       ) : (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((entry) => (
-            <Card key={entry.recording.id} className="flex flex-col p-4">
-              <div className="flex items-start justify-between gap-2">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Video className="h-5 w-5" />
-                </span>
-                {entry.recording.expiresAtUtc && (
-                  <Badge variant="muted">Visible to parents until {formatDate(entry.recording.expiresAtUtc.slice(0, 10), "short")}</Badge>
-                )}
-              </div>
-              <p className="mt-3 line-clamp-2 text-sm font-semibold text-foreground">{entry.session.title}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {formatDate(entry.session.date, "short")}
-                {entry.recording.durationSeconds ? ` · ${Math.round(entry.recording.durationSeconds / 60)} min` : ""}
-              </p>
-              <div className="mt-4">
-                <Button size="sm" className="w-full" onClick={() => setPreview(entry)}>
-                  <PlayCircle className="h-3.5 w-3.5" /> Watch
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {rows.map((item) => {
+              const local = utcIsoToLocalDateTime(item.scheduledStartAtUtc);
+              return (
+                <Card key={item.id} className="flex flex-col p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Video className="h-5 w-5" />
+                    </span>
+                    {item.expiresAtUtc && (
+                      <Badge variant="muted">Visible to parents until {formatDate(item.expiresAtUtc.slice(0, 10), "short")}</Badge>
+                    )}
+                  </div>
+                  <p className="mt-3 line-clamp-2 text-sm font-semibold text-foreground">{recordingTitle(item)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formatDate(local.date, "short")} · {formatTimeLabel(local.time)}
+                    {item.durationSeconds ? ` · ${Math.round(item.durationSeconds / 60)} min` : ""}
+                  </p>
+                  <div className="mt-4">
+                    <Button size="sm" className="w-full" onClick={() => setPreview(item)}>
+                      <PlayCircle className="h-3.5 w-3.5" /> Watch
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+          {hasMore && (
+            <div className="mt-6 flex justify-center">
+              <Button variant="outline" disabled={loadingMore} onClick={() => load(page + 1, false)}>
+                {loadingMore ? "Loading…" : `Load more (${totalCount - items.length} left)`}
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
@@ -158,11 +164,11 @@ export default function TeacherRecordings() {
           {preview && (
             <>
               <DialogHeader>
-                <DialogTitle>{preview.session.title}</DialogTitle>
-                <DialogDescription>Recorded {formatDate(preview.session.date, "long")}</DialogDescription>
+                <DialogTitle>{recordingTitle(preview)}</DialogTitle>
+                <DialogDescription>Recorded {formatDate(utcIsoToLocalDateTime(preview.scheduledStartAtUtc).date, "long")}</DialogDescription>
               </DialogHeader>
-              {preview.recording.storageUrl ? (
-                <video controls className="aspect-video w-full rounded-xl bg-black" src={preview.recording.storageUrl} />
+              {preview.storageUrl ? (
+                <VideoPlayer src={preview.storageUrl} />
               ) : (
                 <div className="flex aspect-video items-center justify-center rounded-xl bg-muted/60">
                   <PlayCircle className="h-12 w-12 text-muted-foreground/60" />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Mail, MessageSquarePlus, Phone, Sparkles } from "lucide-react";
+import { Loader2, Mail, MessageSquarePlus, Phone, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -25,6 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate, getInitials } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import {
   listDemoBookings,
@@ -62,6 +63,9 @@ const STAGE_BADGE: Record<ConversionStage, BadgeProps["variant"]> = {
 
 export default function AdmissionLeads() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // PUT /{id}/conversion-status (UpdateConversionStatus) requires Admission:Edit server-side.
+  const canLogFollowUp = !apiEnabled() || hasPermission("Admission", "Edit");
   const { data: apiLeads, error: leadsError, reload } = useApiData(
     () => listDemoBookings().then((bookings) => bookings.map(toFrontendLead)),
     INITIAL_LEADS
@@ -380,47 +384,59 @@ export default function AdmissionLeads() {
 
               <Separator />
 
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="followUpNote">Log a new follow-up note</Label>
-                <Textarea
-                  id="followUpNote"
-                  placeholder="What did you discuss with the parent?"
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                />
-              </div>
+              {canLogFollowUp ? (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="followUpNote">
+                      Log a new follow-up note <span className="text-destructive">*</span>
+                    </Label>
+                    <Textarea
+                      id="followUpNote"
+                      placeholder="What did you discuss with the parent?"
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                    />
+                  </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="nextFollowUp">Next follow-up date</Label>
-                  <Input id="nextFollowUp" type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="lead-move-stage-select">Move to stage</Label>
-                  <Select value={newStage} onValueChange={(v) => setNewStage(v as ConversionStage)}>
-                    <SelectTrigger id="lead-move-stage-select">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STAGE_OPTIONS.filter((o) => o.value !== "all").map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="nextFollowUp">Next follow-up date</Label>
+                      <Input id="nextFollowUp" type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="lead-move-stage-select">Move to stage</Label>
+                      <Select value={newStage} onValueChange={(v) => setNewStage(v as ConversionStage)}>
+                        <SelectTrigger id="lead-move-stage-select">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STAGE_OPTIONS.filter((o) => o.value !== "all").map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-              {followUpError && <p className="text-sm font-medium text-destructive">{followUpError}</p>}
+                  {followUpError && <p className="text-sm font-medium text-destructive">{followUpError}</p>}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  You don't have permission to log follow-ups or move this lead's stage. Ask your Admin for Edit access on Admission.
+                </p>
+              )}
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setActiveLead(null)} disabled={loggingFollowUp}>
                   Close
                 </Button>
-                <Button disabled={!noteText.trim() || loggingFollowUp} onClick={handleLogFollowUp}>
-                  <MessageSquarePlus className="h-4 w-4" /> {loggingFollowUp ? "Saving…" : "Save follow-up"}
-                </Button>
+                {canLogFollowUp && (
+                  <Button disabled={!noteText.trim() || loggingFollowUp} onClick={handleLogFollowUp}>
+                    {loggingFollowUp ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquarePlus className="h-4 w-4" />}{loggingFollowUp ? "Saving…" : "Save follow-up"}
+                  </Button>
+                )}
               </DialogFooter>
             </>
           )}

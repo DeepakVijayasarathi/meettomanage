@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CloudOff, Hand, Loader2, PencilRuler, Sparkles, Star, Trophy, Users } from "lucide-react";
+import { CloudOff, Hand, Loader2, PencilRuler, Presentation, Sparkles, Star, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -10,15 +10,20 @@ import { getLeaderboard, postAward } from "@/api/gamification";
 import { getQuizQuestionsForSession } from "@/api/quizQuestions";
 import { getWhiteboardActivitiesForSession, type ApiWhiteboardActivity } from "@/api/whiteboardActivities";
 import Whiteboard, { type BoardOp } from "./Whiteboard";
+import PresentationViewer, { type PresentationViewerHandle } from "./PresentationViewer";
 import QuizOverlay from "./QuizOverlay";
 import type { LeaderboardEntry, QuizQuestion } from "./classroomData";
 
-type PanelTab = "board" | "quiz" | "stars" | "people";
+type PanelTab = "board" | "slides" | "quiz" | "stars" | "people";
 
 interface InteractivePanelProps {
   sessionId: string;
   mode: "teacher" | "student";
   displayName: string;
+  /** Set only by the Jibri recording-observer page (RecordingObserver.tsx via JitsiLive.tsx),
+   *  whose anonymous session has no real access token — authenticates the hub connection with
+   *  this short-lived CreateRecordingObserverHubToken instead. */
+  hubToken?: string;
   /** Bubble a celebration up so it overlays the video, not just the panel. */
   onCelebrate: (message?: string) => void;
   /** Live leaderboard for the celebration overlay. */
@@ -27,7 +32,31 @@ interface InteractivePanelProps {
    *  raise-hand sender the host can forward its own hand-raise UI (e.g. Jitsi's native
    *  toolbar button) into — this panel owns the hub connection, so it's the only place
    *  that can actually send "RaiseHand" and reach the rest of the class. */
-  onReady?: (senders: { celebrateAll: (message?: string) => void; raiseHand: (raised: boolean) => void }) => void;
+  onReady?: (senders: {
+    celebrateAll: (message?: string) => void;
+    raiseHand: (raised: boolean) => void;
+    /** Teacher-only: broadcasts one annotation op drawn over the video stage. */
+    sendAnnotation: (opJson: string) => void;
+    /** Teacher-only: broadcasts the participant she just pinned/spotlighted in her own
+     *  Jitsi view (or null on unpin) so every student's view follows along. */
+    setPinned: (participantId: string | null) => void;
+  }) => void;
+  /** Fires for every annotation op relayed from the teacher over the hub, so the host
+   *  (JitsiLive, which owns the video-stage overlay this panel has no access to) can
+   *  paint it. This panel owns the hub connection, so it's the only place that can
+   *  actually receive "Annotation" broadcasts. */
+  onAnnotation?: (opJson: string) => void;
+  /** Fires whenever the teacher's pinned/spotlighted participant changes (or clears), so
+   *  the host (JitsiLive, which owns the actual Jitsi iframe API this panel has no access
+   *  to) can call `pinParticipant` on this viewer's own connection to match. This panel
+   *  owns the hub connection, so it's the only place that can actually receive "Pinned"
+   *  broadcasts. */
+  onPinChanged?: (participantId: string | null) => void;
+  /** Fires when an admin broadcasts a deploy notice over the hub (see
+   *  MonitoringController.BroadcastReload) — the host (JitsiLive) owns the banner UI
+   *  this panel has no space for. This panel owns the hub connection, so it's the only
+   *  place that can actually receive "ReloadRequested" broadcasts. */
+  onReloadRequested?: (message: string) => void;
 }
 
 /**
@@ -36,10 +65,16 @@ interface InteractivePanelProps {
  * board access — all synced through the classroom SignalR hub. If the hub is
  * unreachable everything still renders locally (the call itself is unaffected).
  */
-export default function InteractivePanel({ sessionId, mode, displayName, onCelebrate, onLeaderboard, onReady }: InteractivePanelProps) {
+export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onPinChanged, onReloadRequested }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [hubDetail, setHubDetail] = useState<string | null>(null);
+  // Bumping this re-runs the connect effect below, standing up a brand new hub connection.
+  // Needed because SignalR's own withAutomaticReconnect gives up after its own backoff window
+  // and lands on "disconnected" for good — reported live (a prolonged app-server hiccup) with
+  // no way back into live sync for the rest of the class short of reloading the whole page and
+  // losing local whiteboard state. See the Retry button in the disconnected banner below.
+  const [retryToken, setRetryToken] = useState(0);
   const [roster, setRoster] = useState<HubParticipant[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [quizActive, setQuizActive] = useState(false);
@@ -65,9 +100,10 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
 
   const hubRef = useRef<ClassroomHubClient | null>(null);
   const boardHandlers = useRef(new Set<(op: BoardOp) => void>());
+  const presentationRef = useRef<PresentationViewerHandle>(null);
 
   useEffect(() => {
-    const client = new ClassroomHubClient(sessionId);
+    const client = new ClassroomHubClient(sessionId, hubToken);
     hubRef.current = client;
     let disposed = false;
 
@@ -108,6 +144,10 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         },
         celebrate: (message) => onCelebrate(message ?? undefined),
         boardAccess: (allowed) => setBoardAllowed(allowed),
+        annotation: (opJson) => onAnnotation?.(opJson),
+        slide: (pageIndex) => presentationRef.current?.applyRemoteSlide(pageIndex),
+        pinned: (participantId) => onPinChanged?.(participantId),
+        reloadRequested: (message) => onReloadRequested?.(message),
       }, (state, detail) => {
         if (!disposed) {
           setHubState(state);
@@ -128,6 +168,12 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
           raiseHand: (raised) => {
             if (client.connected) client.raiseHand(raised);
           },
+          sendAnnotation: (opJson) => {
+            if (client.connected) client.sendAnnotation(opJson);
+          },
+          setPinned: (participantId) => {
+            if (client.connected) client.setPinned(participantId);
+          },
         });
       });
 
@@ -137,7 +183,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
       client.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
+  }, [sessionId, retryToken]);
 
   // Seed the leaderboard from persisted awards (covers rejoin/reconnect); the hub
   // stream overwrites it as new answers come in.
@@ -305,6 +351,12 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
               <PencilRuler className="h-3.5 w-3.5" /> Board
             </TabsTrigger>
             <TabsTrigger
+              value="slides"
+              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+            >
+              <Presentation className="h-3.5 w-3.5" /> Slides
+            </TabsTrigger>
+            <TabsTrigger
               value="quiz"
               className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
             >
@@ -335,9 +387,22 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
             </p>
           )}
           {hubState === "disconnected" && (
-            <p role="status" className="mt-1.5 px-1 text-[10px] text-white/40">
-              {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
-            </p>
+            <div className="mt-1.5 flex items-center justify-between gap-2 px-1">
+              <p role="status" className="text-[10px] text-white/40">
+                {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setHubState("reconnecting");
+                  setHubDetail(null);
+                  setRetryToken((t) => t + 1);
+                }}
+                className="shrink-0 text-[10px] font-semibold text-brand-violet underline decoration-brand-violet/50 underline-offset-2 hover:decoration-brand-violet"
+              >
+                Retry
+              </button>
+            </div>
           )}
         </div>
 
@@ -362,6 +427,15 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
               postAward(sessionId, displayName, "Star");
               hubRef.current?.awardStar();
             }}
+          />
+        </TabsContent>
+
+        <TabsContent value="slides" className="mt-0 min-h-0 flex-1 overflow-hidden bg-brand-navy">
+          <PresentationViewer
+            ref={presentationRef}
+            sessionId={sessionId}
+            canPresent={mode === "teacher"}
+            onSlideChange={(pageIndex) => hubRef.current?.sendSlide(pageIndex)}
           />
         </TabsContent>
 
@@ -484,7 +558,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                       onClick={() => giveStar(participant)}
                       title={`Give ${participant.name} a star`}
                     >
-                      <Star className={cn("mr-1 h-3 w-3", justAwardedId === participant.connectionId && "fill-brand-amber")} />
+                      <Star className={cn("h-3 w-3", justAwardedId === participant.connectionId && "fill-brand-amber")} />
                       {justAwardedId === participant.connectionId ? "Given!" : "Give star"}
                     </Button>
                   )}
@@ -500,7 +574,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                       )}
                       onClick={() => toggleBoardAccess(participant)}
                     >
-                      <PencilRuler className="mr-1 h-3 w-3" />
+                      <PencilRuler className="h-3 w-3" />
                       {grantedIds.has(participant.connectionId) ? "Board on" : "Allow board"}
                     </Button>
                   )}

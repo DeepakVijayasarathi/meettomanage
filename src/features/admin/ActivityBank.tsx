@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, PencilRuler, Trash2 } from "lucide-react";
+import { Loader2, PencilRuler, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -228,7 +228,13 @@ export default function AdminActivityBank() {
           <Button size="sm" variant="ghost" onClick={() => openEdit(a)}>
             Edit
           </Button>
-          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(a)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setDeleteTarget(a)}
+            aria-label={`Delete "${a.prompt}"`}
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -309,7 +315,7 @@ export default function AdminActivityBank() {
             </div>
 
             <div className="grid gap-1.5">
-              <Label htmlFor="wa-prompt">{isHotspot ? "What should students click?" : "Instruction"}</Label>
+              <Label htmlFor="wa-prompt">{isHotspot ? "What should students click?" : "Instruction"} <span className="text-destructive">*</span></Label>
               <Input
                 id="wa-prompt"
                 placeholder={isHotspot ? "e.g. Click everything that starts with the “sh” sound" : "e.g. Drag the fruit to its matching first letter"}
@@ -320,7 +326,7 @@ export default function AdminActivityBank() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="wa-department">Department</Label>
+                <Label htmlFor="wa-department">Department <span className="text-destructive">*</span></Label>
                 <Select value={departmentId} onValueChange={(v) => { setDepartmentId(v); setCourseId("__none__"); }}>
                   <SelectTrigger id="wa-department">
                     <SelectValue placeholder="Choose a department" />
@@ -405,7 +411,7 @@ export default function AdminActivityBank() {
               Cancel
             </Button>
             <Button onClick={save} disabled={saving}>
-              {saving ? "Saving…" : editing ? "Save changes" : "Add activity"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : editing ? "Save changes" : "Add activity"}
             </Button>
           </DialogFooter>
         </DialogContent>

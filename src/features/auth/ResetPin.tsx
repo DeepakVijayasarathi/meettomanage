@@ -132,7 +132,7 @@ export default function ResetPin() {
               Open the reset link exactly as it arrived in your email, or request a new one.
             </p>
             <Button asChild size="lg" className="mt-6 !bg-brand-green !text-white hover:!bg-brand-greenDark">
-              <Link to="/forgot-password">Request a new link</Link>
+              <Link to="/forgot-pin">Request a new link</Link>
             </Button>
           </>
         ) : done ? (
@@ -179,8 +179,13 @@ export default function ResetPin() {
                 disabled={submitting || !canSubmit}
                 className="mt-1 !bg-brand-green !text-white hover:!bg-brand-greenDark"
               >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {submitting ? "Saving…" : "Save new PIN"}
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  "Save new PIN"
+                )}
               </Button>
             </form>
           </>

@@ -10,6 +10,7 @@ import {
   CalendarClock,
   CalendarDays,
   CalendarOff,
+  CalendarPlus,
   CalendarRange,
   Circle,
   ClipboardCheck,
@@ -28,6 +29,7 @@ import {
   Mail,
   PencilRuler,
   Plug,
+  Radar,
   Receipt,
   ScrollText,
   Settings,
@@ -37,6 +39,7 @@ import {
   Building2,
   MessageCircleQuestion,
   TrendingUp,
+  UserCog,
   UserPlus,
   UserSearch,
   Users,
@@ -100,9 +103,11 @@ export const MENU_ICONS: Record<string, LucideIcon> = {
   Banknote,
   Bell,
   UserPlus,
+  UserCog,
   CreditCard,
   History,
   CalendarRange,
+  CalendarPlus,
   UserSearch,
   Link2,
   KanbanSquare,
@@ -115,6 +120,7 @@ export const MENU_ICONS: Record<string, LucideIcon> = {
   Sparkles,
   Building2,
   MessageCircleQuestion,
+  Radar,
 };
 
 export function resolveMenuIcon(name: string): LucideIcon {

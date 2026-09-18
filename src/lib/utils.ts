@@ -40,12 +40,32 @@ export function formatDate(value: string | Date, pattern: "short" | "long" | "ti
     case "long":
       return date.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
     case "time":
-      return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+      // hour12 explicit, not left to en-IN's default -- Intl's locale defaults are an
+      // implementation detail, not a guarantee; this is a platform-wide 12-hour convention.
+      return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
     case "datetime":
-      return `${date.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}, ${date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}`;
+      return `${date.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}, ${date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })}`;
     default:
       return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   }
+}
+
+/**
+ * "HH:mm" (24-hour, e.g. ClassSession.startTime, or any other raw time-of-day string coming
+ * straight off the API) -> 12-hour display, e.g. "14:05" -> "2:05 PM". Session/leave/holiday
+ * times are stored and round-tripped through native <input type="time"> as 24-hour "HH:mm" —
+ * that representation must stay as-is for those inputs and for API payloads — but everywhere
+ * a time is only ever *read*, this is what renders it. Previously duplicated verbatim across
+ * six different feature files (formatDate's own "time"/"datetime" patterns were already
+ * 12-hour via en-IN's locale default, but raw `session.startTime` text skipped that path
+ * entirely) — this is the one copy every call site should import instead.
+ */
+export function formatTimeLabel(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return time;
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
 /**
@@ -53,10 +73,17 @@ export function formatDate(value: string | Date, pattern: "short" | "long" | "ti
  * calendar-day comparison is on each date's own local rendering (`formatDate`'s "short"),
  * not a raw millisecond diff, so a same-day leave that merely spans midnight in UTC still
  * reads as one date rather than a misleading "day 1 – day 2" range.
+ *
+ * `endIso` is every caller's leave-request `endAtUtc`, which is stored as an *exclusive*
+ * boundary — midnight of the day AFTER the last day of leave (see Leave.tsx's own
+ * `addDays(toDate, 1)` on submit), so the overlap check against a session's start time
+ * works correctly right up through the last day. Displaying that raw timestamp showed every
+ * leave as ending one day later than the teacher actually requested; subtracting a day back
+ * off here converts it to the inclusive last day for display, matching what was submitted.
  */
 export function formatDateRange(startIso: string, endIso: string): string {
   const start = formatDate(startIso, "short");
-  const end = formatDate(endIso, "short");
+  const end = formatDate(new Date(new Date(endIso).getTime() - 86_400_000), "short");
   return start === end ? start : `${start} – ${end}`;
 }
 
@@ -105,6 +132,14 @@ export function initials(name: string) {
 
 export function getInitials(name: string) {
   return initials(name);
+}
+
+// Same shape already used in parent/Enrollment.tsx's own local copy — shared here so every
+// email field validates consistently instead of each form re-deciding what "valid" means.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+export function isValidEmail(value: string): boolean {
+  return EMAIL_RE.test(value.trim());
 }
 
 /** Converts a #rrggbb hex color into an "H S% L%" triple for CSS var use. */

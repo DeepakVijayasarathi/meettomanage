@@ -1,13 +1,14 @@
-import { useMemo, useState } from "react";
-import { CalendarClock, Plus, Users2, Video } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { CalendarClock, Link2, Loader2, Plus, Users2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
-import { SessionStatusBadge } from "@/components/StatusBadge";
+import { SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { RecordingsDialog } from "@/components/RecordingsDialog";
+import { GuestLinkDialog } from "@/components/GuestLinkDialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { SESSIONS } from "@/data/sessions";
 import type { ClassSession, SessionStatus } from "@/types";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
@@ -58,19 +59,21 @@ export default function AdminSessions() {
     () => listSessions().then((items) => items.map(toFrontendSession)),
     []
   );
-  const { data: batches } = useApiData(() => listBatches(), []);
-  const { data: teachers } = useApiData(() => listTeacherOptions(), []);
+  const { data: batches } = useApiData(() => listBatches(), [], undefined, { cacheKey: "batches" });
+  const { data: teachers } = useApiData(() => listTeacherOptions(), [], undefined, { cacheKey: "teacherOptions" });
 
   // Demo fallback keeps the old local mock behaviour.
   const [mockSessions, setMockSessions] = useState<ClassSession[]>(SESSIONS);
   const sessions = usingApi ? apiSessions : mockSessions;
 
   const [statusFilter, setStatusFilter] = useState<SessionStatus | "all">("all");
+  const [dateFilter, setDateFilter] = useState("");
   const [rescheduleTarget, setRescheduleTarget] = useState<ClassSession | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ClassSession | null>(null);
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [guestLinkSession, setGuestLinkSession] = useState<ClassSession | null>(null);
 
   // Mark no-show dialog
   const [noShowTarget, setNoShowTarget] = useState<ClassSession | null>(null);
@@ -89,14 +92,29 @@ export default function AdminSessions() {
   const [saving, setSaving] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
-  // Reschedule dialog (real date/time picker, not just a status flip)
+  // Edit session dialog (date/time picker plus, now, teacher/batch overrides — was
+  // "Reschedule", time-only; teachers had asked for a real Edit that could also move a
+  // session to a different teacher or batch without cancelling and rebooking from scratch)
   const [reschedDate, setReschedDate] = useState("");
   const [reschedTime, setReschedTime] = useState("10:00");
+  // Editable duration — was previously locked to the original session's length, so shortening
+  // or lengthening a class (e.g. 30 -> 45 min) had no way to reach the API at all. The backend
+  // prices payout off ScheduledEndAtUtc - ScheduledStartAtUtc at completion time, so changing
+  // this here is what actually makes the new duration what the teacher gets paid for.
+  const [reschedDuration, setReschedDuration] = useState("45");
+  const [reschedTeacher, setReschedTeacher] = useState("");
+  const [reschedBatch, setReschedBatch] = useState("");
   const [reschedBusy, setReschedBusy] = useState(false);
 
+  const reschedDurationMinutes = Number(reschedDuration);
+  const reschedDurationValid = Number.isFinite(reschedDurationMinutes) && reschedDurationMinutes > 0;
+
   const filtered = useMemo(
-    () => (statusFilter === "all" ? sessions : sessions.filter((s) => s.status === statusFilter)),
-    [sessions, statusFilter]
+    () =>
+      sessions
+        .filter((s) => statusFilter === "all" || s.status === statusFilter)
+        .filter((s) => !dateFilter || s.date === dateFilter),
+    [sessions, statusFilter, dateFilter]
   );
 
   // Admin/teacher session lists never carry childIds (that's parent-portal only — see
@@ -108,14 +126,17 @@ export default function AdminSessions() {
     return map;
   }, [batches]);
 
-  function notify(ok: boolean, text: string) {
+  // useCallback (deps: just the stable `toast`) so joinSession below — which needs to be
+  // stable itself to sit in the columns useMemo's deps — can depend on it without
+  // recomputing every render.
+  const notify = useCallback((ok: boolean, text: string) => {
     setBanner({ ok, text });
     // Demo-mode notices ("Demo mode — session not persisted.") also route through here —
     // still worth a toast, matching how every other demo-mode confirmation in the app
     // gives some feedback rather than silently closing the dialog.
     toast({ variant: ok ? "success" : "error", title: ok ? "Done" : "Something went wrong", description: text });
     setTimeout(() => setBanner(null), 5000);
-  }
+  }, [toast]);
 
   // When a batch is picked, default the teacher to the batch's teacher.
   function pickBatch(batchId: string) {
@@ -159,7 +180,7 @@ export default function AdminSessions() {
   }
 
   async function handleReschedule() {
-    if (!rescheduleTarget || !reschedDate) return;
+    if (!rescheduleTarget || !reschedDate || !reschedDurationValid) return;
     if (!usingApi) {
       setMockSessions((prev) => prev.map((s) => (s.id === rescheduleTarget.id ? { ...s, status: "rescheduled" } : s)));
       setRescheduleTarget(null);
@@ -168,13 +189,16 @@ export default function AdminSessions() {
     setReschedBusy(true);
     try {
       const start = localToUtcIso(reschedDate, reschedTime);
-      const end = new Date(new Date(start).getTime() + rescheduleTarget.duration * 60000).toISOString();
-      await rescheduleSession(rescheduleTarget.id, start, end);
-      notify(true, `"${rescheduleTarget.title}" rescheduled to ${formatDate(reschedDate)} ${reschedTime}.`);
+      const end = new Date(new Date(start).getTime() + reschedDurationMinutes * 60000).toISOString();
+      await rescheduleSession(rescheduleTarget.id, start, end, {
+        teacherProfileId: reschedTeacher && reschedTeacher !== rescheduleTarget.teacherId ? reschedTeacher : undefined,
+        batchId: reschedBatch && reschedBatch !== (rescheduleTarget.batchId ?? "") ? reschedBatch : undefined,
+      });
+      notify(true, `"${rescheduleTarget.title}" updated to ${formatDate(reschedDate)} ${formatTimeLabel(reschedTime)} (${reschedDurationMinutes} min).`);
       setRescheduleTarget(null);
       reload();
     } catch (err) {
-      notify(false, err instanceof Error ? err.message : "Could not reschedule the session.");
+      notify(false, err instanceof Error ? err.message : "Could not save these changes.");
     } finally {
       setReschedBusy(false);
     }
@@ -221,7 +245,7 @@ export default function AdminSessions() {
     }
   }
 
-  async function joinSession(session: ClassSession) {
+  const joinSession = useCallback(async (session: ClassSession) => {
     if (!usingApi) {
       notify(true, "Demo mode — no live class to actually join.");
       return;
@@ -235,7 +259,7 @@ export default function AdminSessions() {
     } finally {
       setJoiningId(null);
     }
-  }
+  }, [usingApi, notify, userName]);
 
   const columns: DataTableColumn<ClassSession>[] = useMemo(
     () => [
@@ -266,7 +290,7 @@ export default function AdminSessions() {
         accessor: (row) => `${row.date} ${row.startTime}`,
         render: (row) => (
           <span className="text-sm text-muted-foreground">
-            {formatDate(row.date)} · {row.startTime}
+            {formatDate(row.date)} · {formatTimeLabel(row.startTime)}
           </span>
         ),
       },
@@ -297,51 +321,71 @@ export default function AdminSessions() {
         header: "Status",
         sortable: true,
         accessor: (row) => row.status,
-        render: (row) => <SessionStatusBadge status={row.status} />,
+        render: (row) => <SessionStatusBadge status={row.status} label={noShowLabel(row)} />,
       },
       {
         key: "actions",
         header: "",
         render: (row) =>
           row.status === "completed" ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setRecordingsFor(row);
-              }}
-            >
-              <Video className="h-3.5 w-3.5" />
-              Recording
-            </Button>
+            <div className="flex items-center justify-end gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRecordingsFor(row);
+                }}
+              >
+                <Video className="h-3.5 w-3.5" />
+                Recording
+              </Button>
+            </div>
           ) : (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-end gap-1.5">
               {JOINABLE_STATUSES.includes(row.status) && row.meetingRoomId && (
-                <Button
-                  size="sm"
-                  disabled={joiningId === row.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    joinSession(row);
-                  }}
-                >
-                  <Video className="h-3.5 w-3.5" />
-                  {joiningId === row.id ? "Joining…" : "Join"}
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    title="Copy a shareable guest link for a parent, grandparent or caretaker"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setGuestLinkSession(row);
+                    }}
+                  >
+                    <Link2 className="h-3.5 w-3.5" />
+                    Copy Guest Link
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={joiningId === row.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      joinSession(row);
+                    }}
+                  >
+                    <Video className="h-3.5 w-3.5" />
+                    {joiningId === row.id ? "Joining…" : "Join"}
+                  </Button>
+                </>
               )}
               <Button
                 variant="outline"
                 size="sm"
-                disabled={row.status === "cancelled"}
+                disabled={row.status === "cancelled" || row.status === "rescheduled"}
+                title={row.status === "rescheduled" ? "This session was already moved — reschedule the new session it moved to instead." : undefined}
                 onClick={(e) => {
                   e.stopPropagation();
                   setRescheduleTarget(row);
                   setReschedDate(row.date);
                   setReschedTime(row.startTime);
+                  setReschedDuration(String(row.duration));
+                  setReschedTeacher(row.teacherId);
+                  setReschedBatch(row.batchId ?? "");
                 }}
               >
-                Reschedule
+                Edit
               </Button>
               <Button
                 variant="outline"
@@ -372,7 +416,7 @@ export default function AdminSessions() {
           ),
       },
     ],
-    [enrolledByBatchId]
+    [enrolledByBatchId, joiningId, joinSession]
   );
 
   return (
@@ -424,7 +468,20 @@ export default function AdminSessions() {
                 options: STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label })),
               },
             ]}
-          />
+          >
+            <Input
+              type="date"
+              aria-label="Filter by date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="w-44"
+            />
+            {dateFilter && (
+              <Button variant="ghost" size="sm" className="h-9 px-2 text-xs text-muted-foreground" onClick={() => setDateFilter("")}>
+                Clear date
+              </Button>
+            )}
+          </FilterBar>
         }
       />
 
@@ -513,21 +570,21 @@ export default function AdminSessions() {
               disabled={saving || !newTeacher || !newDate || !durationValid || (newType === "Regular" && !newBatch)}
               onClick={handleSchedule}
             >
-              {saving ? "Scheduling…" : "Schedule"}
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Scheduling…" : "Schedule"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Reschedule with a real new slot */}
+      {/* Edit session: date/time/duration plus, now, teacher/batch — was time-only "Reschedule" */}
       <Dialog open={!!rescheduleTarget} onOpenChange={(open) => !open && setRescheduleTarget(null)}>
         <DialogContent className="max-w-sm">
           {rescheduleTarget && (
             <>
               <DialogHeader>
-                <DialogTitle>Reschedule session</DialogTitle>
+                <DialogTitle>Edit session</DialogTitle>
                 <DialogDescription>
-                  "{rescheduleTarget.title}" — pick the new slot. Parents and the teacher see the change immediately.
+                  "{rescheduleTarget.title}" — parents and the teacher see the change immediately.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -539,13 +596,58 @@ export default function AdminSessions() {
                   <Label htmlFor="rs-time">New time ({getUserTimeZoneAbbreviation()})</Label>
                   <Input id="rs-time" type="time" value={reschedTime} onChange={(e) => setReschedTime(e.target.value)} />
                 </div>
+                <div className="grid gap-1.5 sm:col-span-2">
+                  <Label htmlFor="rs-duration">Duration (min)</Label>
+                  <Input
+                    id="rs-duration"
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={reschedDuration}
+                    onChange={(e) => setReschedDuration(e.target.value)}
+                    aria-invalid={!reschedDurationValid}
+                  />
+                  {!reschedDurationValid && <p className="text-xs font-medium text-destructive">Enter a duration greater than 0.</p>}
+                </div>
+                {rescheduleTarget.type !== "demo" && (
+                  <div className="grid gap-1.5 sm:col-span-2">
+                    <Label htmlFor="rs-batch">Batch</Label>
+                    <Select value={reschedBatch} onValueChange={setReschedBatch}>
+                      <SelectTrigger id="rs-batch">
+                        <SelectValue placeholder="Select batch" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {batches.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name} · {b.courseName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="grid gap-1.5 sm:col-span-2">
+                  <Label htmlFor="rs-teacher">Teacher</Label>
+                  <Select value={reschedTeacher} onValueChange={setReschedTeacher}>
+                    <SelectTrigger id="rs-teacher">
+                      <SelectValue placeholder="Select teacher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers.map((t) => (
+                        <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
+                          {t.fullName} {t.departmentName ? `· ${t.departmentName}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setRescheduleTarget(null)}>
                   Close
                 </Button>
-                <Button disabled={reschedBusy || !reschedDate} onClick={handleReschedule}>
-                  {reschedBusy ? "Rescheduling…" : "Reschedule"}
+                <Button disabled={reschedBusy || !reschedDate || !reschedDurationValid} onClick={handleReschedule}>
+                  {reschedBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {reschedBusy ? "Saving…" : "Save"}
                 </Button>
               </DialogFooter>
             </>
@@ -593,7 +695,7 @@ export default function AdminSessions() {
                   Close
                 </Button>
                 <Button variant="destructive" disabled={noShowBusy} onClick={handleMarkNoShow}>
-                  {noShowBusy ? "Recording…" : "Mark No-Show"}
+                  {noShowBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {noShowBusy ? "Recording…" : "Mark No-Show"}
                 </Button>
               </DialogFooter>
             </>
@@ -612,6 +714,7 @@ export default function AdminSessions() {
       />
 
       {recordingsFor && <RecordingsDialog session={recordingsFor} onClose={() => setRecordingsFor(null)} />}
+      {guestLinkSession && <GuestLinkDialog session={guestLinkSession} onClose={() => setGuestLinkSession(null)} />}
     </div>
   );
 }

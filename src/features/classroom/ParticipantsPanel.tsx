@@ -152,8 +152,8 @@ export default function ParticipantsPanel({
                   </>
                 ) : (
                   <>
-                    {p.micOn ? <Mic className="h-3.5 w-3.5 text-white/40" /> : <MicOff className="h-3.5 w-3.5 text-white/25" />}
-                    {p.camOn ? <Video className="h-3.5 w-3.5 text-white/40" /> : <VideoOff className="h-3.5 w-3.5 text-white/25" />}
+                    {p.micOn ? <Mic className="h-3.5 w-3.5 text-white/40" /> : <MicOff className="h-3.5 w-3.5 text-destructive" />}
+                    {p.camOn ? <Video className="h-3.5 w-3.5 text-white/40" /> : <VideoOff className="h-3.5 w-3.5 text-destructive" />}
                   </>
                 )}
               </div>

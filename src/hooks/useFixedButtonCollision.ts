@@ -53,6 +53,14 @@ export function useFixedButtonCollision(buttonRef: RefObject<HTMLElement | null>
       // node, never the inner <tspan>. Confirmed live: a dashboard's revenue chart sat
       // under this button at full opacity because of exactly this gap.
       if ((el.tagName === "text" || el.tagName === "tspan") && el.textContent?.trim()) return true;
+      // An icon badge (a KpiCard/StatCard's colored circular icon chip, a list row's leading
+      // icon) carries no text at all, so the checks above never flag it — confirmed live: the
+      // "Payout This Month" KPI card's wallet icon sat completely eclipsed behind this button
+      // at full opacity, because elementsFromPoint only ever saw the icon's own <svg>/<path>,
+      // none of which have text content. Visually it's still a designed, meaningful piece of
+      // the UI (not inert page background) — a second icon rendered directly on top of it
+      // reads as broken, not just "content-free padding underneath."
+      if (el.tagName.toLowerCase() === "svg" || el.closest("svg")) return true;
       return false;
     }
 

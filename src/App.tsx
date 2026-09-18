@@ -1,16 +1,17 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { AppShell } from "@/components/AppShell";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Logo } from "@/components/Logo";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 
 const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Store = lazy(() => import("@/features/marketing/Store"));
 const Login = lazy(() => import("@/features/auth/Login"));
 const PortalSelect = lazy(() => import("@/features/auth/PortalSelect"));
-const ForgotPassword = lazy(() => import("@/features/auth/ForgotPassword"));
+const ForgotPin = lazy(() => import("@/features/auth/ForgotPin"));
 const ResetPin = lazy(() => import("@/features/auth/ResetPin"));
 const NotFound = lazy(() => import("@/features/auth/NotFound"));
 
@@ -24,6 +25,7 @@ const AdminActivityBank = lazy(() => import("@/features/admin/ActivityBank"));
 const AdminBatches = lazy(() => import("@/features/admin/Batches"));
 const AdminAcademicCalendar = lazy(() => import("@/features/admin/AcademicCalendar"));
 const AdminSessions = lazy(() => import("@/features/admin/Sessions"));
+const AdminRecordings = lazy(() => import("@/features/admin/Recordings"));
 const AdminResources = lazy(() => import("@/features/admin/Resources"));
 const AdminBilling = lazy(() => import("@/features/admin/Billing"));
 const AdminPackages = lazy(() => import("@/features/admin/Packages"));
@@ -32,19 +34,25 @@ const AdminPayouts = lazy(() => import("@/features/admin/Payouts"));
 const AdminFeeSuspension = lazy(() => import("@/features/admin/FeeSuspension"));
 const AdminReports = lazy(() => import("@/features/admin/Reports"));
 const AdminBulkEmail = lazy(() => import("@/features/admin/BulkEmail"));
+const AdminBulkEmailHistory = lazy(() => import("@/features/admin/BulkEmailHistory"));
 const AdminEmailTemplates = lazy(() => import("@/features/admin/EmailTemplates"));
 const AdminProgressReports = lazy(() => import("@/features/admin/ProgressReports"));
 const AdminChatbot = lazy(() => import("@/features/admin/ChatbotAdmin"));
 const AdminEnrollments = lazy(() => import("@/features/admin/Enrollments"));
+const AdminSearchUsers = lazy(() => import("@/features/admin/SearchUsers"));
 const AdminStoreInquiries = lazy(() => import("@/features/admin/StoreInquiries"));
 const AdminLeave = lazy(() => import("@/features/admin/Leave"));
 const AdminAvailability = lazy(() => import("@/features/admin/Availability"));
 const AdminSettings = lazy(() => import("@/features/admin/Settings"));
 const AdminMonitoring = lazy(() => import("@/features/admin/Monitoring"));
 const AdminServerDetail = lazy(() => import("@/features/admin/ServerDetail"));
+const AdminClassSessionLogs = lazy(() => import("@/features/admin/ClassSessionLogs"));
+
+const ItAdminDashboard = lazy(() => import("@/features/itadmin/Dashboard"));
 
 const TeacherDashboard = lazy(() => import("@/features/teacher/Dashboard"));
 const TeacherMyClasses = lazy(() => import("@/features/teacher/MyClasses"));
+const TeacherStudents = lazy(() => import("@/features/teacher/Students"));
 const TeacherAttendance = lazy(() => import("@/features/teacher/Attendance"));
 const TeacherDemoFeedback = lazy(() => import("@/features/teacher/DemoFeedback"));
 const TeacherLeave = lazy(() => import("@/features/teacher/Leave"));
@@ -64,12 +72,35 @@ const ParentAddChild = lazy(() => import("@/features/parent/AddChild"));
 
 const LiveClassroom = lazy(() => import("@/features/classroom/LiveClassroom"));
 const PersonalMeetingRoom = lazy(() => import("@/features/classroom/PersonalMeetingRoom"));
+const RecordingObserver = lazy(() => import("@/features/classroom/RecordingObserver"));
+const GuestJoin = lazy(() => import("@/features/public/GuestJoin"));
+const PersonalRoomGuestJoin = lazy(() => import("@/features/public/PersonalRoomGuestJoin"));
 
 const SubAdminDashboard = lazy(() => import("@/features/subadmin/Dashboard"));
 const SubAdminPermissions = lazy(() => import("@/features/subadmin/Permissions"));
 const SubAdminIntegrations = lazy(() => import("@/features/subadmin/Integrations"));
+const SubAdminClassSessionLogs = lazy(() => import("@/features/subadmin/ClassSessionLogs"));
+const SubAdminBatches = lazy(() => import("@/features/subadmin/Batches"));
+const SubAdminSessions = lazy(() => import("@/features/subadmin/Sessions"));
+const SubAdminPayouts = lazy(() => import("@/features/subadmin/Payouts"));
+const SubAdminCourses = lazy(() => import("@/features/subadmin/Courses"));
+const SubAdminDepartments = lazy(() => import("@/features/subadmin/Departments"));
+const SubAdminQuizQuestions = lazy(() => import("@/features/subadmin/QuizQuestions"));
+const SubAdminActivityBank = lazy(() => import("@/features/subadmin/ActivityBank"));
+const SubAdminResources = lazy(() => import("@/features/subadmin/Resources"));
+const SubAdminPackages = lazy(() => import("@/features/subadmin/Packages"));
+const SubAdminBilling = lazy(() => import("@/features/subadmin/Billing"));
+const SubAdminEnrollments = lazy(() => import("@/features/subadmin/Enrollments"));
+const SubAdminFeeSuspension = lazy(() => import("@/features/subadmin/FeeSuspension"));
+const SubAdminPaymentMapping = lazy(() => import("@/features/subadmin/PaymentMapping"));
+const SubAdminUsers = lazy(() => import("@/features/subadmin/Users"));
 const SubAdminReports = lazy(() => import("@/features/subadmin/Reports"));
 const SubAdminAuditLog = lazy(() => import("@/features/subadmin/AuditLog"));
+const SubAdminBulkEmail = lazy(() => import("@/features/subadmin/BulkEmail"));
+const SubAdminEmailTemplates = lazy(() => import("@/features/subadmin/EmailTemplates"));
+const SubAdminChatbot = lazy(() => import("@/features/subadmin/ChatbotAdmin"));
+const SubAdminProgressReports = lazy(() => import("@/features/subadmin/ProgressReports"));
+const SubAdminStoreInquiries = lazy(() => import("@/features/subadmin/StoreInquiries"));
 
 const AdmissionDashboard = lazy(() => import("@/features/admission/Dashboard"));
 const AdmissionDemoScheduling = lazy(() => import("@/features/admission/DemoScheduling"));
@@ -108,13 +139,16 @@ export default function App() {
   return (
     <TooltipProvider delayDuration={200}>
       <BrowserRouter>
+        <AppErrorBoundary>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<MarketingHome />} />
             <Route path="/store" element={<Store />} />
             <Route path="/login" element={<Login />} />
             <Route path="/portal-select" element={<PortalSelect />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/forgot-pin" element={<ForgotPin />} />
+            {/* Legacy path, kept as a redirect for old bookmarks/links. */}
+            <Route path="/forgot-password" element={<Navigate to="/forgot-pin" replace />} />
             <Route path="/reset-pin" element={<ResetPin />} />
 
             {/* Immersive, full-screen classroom — rendered outside the portal shell */}
@@ -138,13 +172,28 @@ export default function App() {
                 </RequireAuth>
               }
             />
+            {/* Loaded only by Jibri's own headless Chrome (proxied here by nginx on the Jitsi
+                server — see docs/JITSI_ARCHITECTURE.md's recording-observer section), never by
+                a real signed-in user — deliberately outside RequireAuth, which would otherwise
+                bounce Jibri's anonymous session to /login. */}
+            <Route path="/recording/observer/:roomName" element={<RecordingObserver />} />
+            {/* "Copy Guest Link" bridge page (RM/Admin/Coordinator Sessions and Calendar
+                screens) — a caretaker opening a copied link never logs in, so this has to sit
+                outside RequireAuth the same way the Jibri route above does; see GuestJoin.tsx's
+                own doc comment for why it hands off to raw Jitsi rather than the in-app classroom. */}
+            <Route path="/guest-join" element={<GuestJoin />} />
+            {/* A Personal Meeting Room's invite link (UsersController.MyMeetingRoomShortLink) --
+                same reasoning as /guest-join just above: a caretaker/guest opening a shared link
+                never logs in, so this sits outside RequireAuth too. */}
+            <Route path="/join/personal/:ownerId" element={<PersonalRoomGuestJoin />} />
             <Route
               path="/meet/personal"
               element={
                 // Every role the "My meeting link" / Start button (PersonalMeetingButton)
-                // actually appears on — staff who need an ad-hoc video room, not the
-                // teacher/parent/student roles, which use a real scheduled class instead.
-                <RequireAuth role="admin" also={["subadmin", "management", "coordinator", "admission"]}>
+                // actually appears on — staff (and teachers, for an ad-hoc parent chat
+                // outside a scheduled class) who need an on-demand video room. Parent/
+                // Student stay off this list — they only ever join a real scheduled class.
+                <RequireAuth role="admin" also={["subadmin", "management", "coordinator", "admission", "teacher"]}>
                   <PersonalMeetingRoom />
                 </RequireAuth>
               }
@@ -161,6 +210,7 @@ export default function App() {
               <Route path="batches" element={<AdminBatches />} />
               <Route path="calendar" element={<AdminAcademicCalendar />} />
               <Route path="sessions" element={<AdminSessions />} />
+              <Route path="recordings" element={<AdminRecordings />} />
               <Route path="resources" element={<AdminResources />} />
               <Route path="billing" element={<AdminBilling />} />
               <Route path="packages" element={<AdminPackages />} />
@@ -169,21 +219,66 @@ export default function App() {
               <Route path="fee-suspension" element={<AdminFeeSuspension />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="bulk-email" element={<AdminBulkEmail />} />
+              <Route path="bulk-email/history" element={<AdminBulkEmailHistory />} />
               <Route path="email-templates" element={<AdminEmailTemplates />} />
               <Route path="progress-reports" element={<AdminProgressReports />} />
               <Route path="chatbot" element={<AdminChatbot />} />
               <Route path="enrollments" element={<AdminEnrollments />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="leave" element={<AdminLeave />} />
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="monitoring" element={<AdminMonitoring />} />
               <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
+              <Route path="class-logs" element={<AdminClassSessionLogs />} />
+            </Route>
+
+            {/* IT Admin: a Sub Admin persona (RoleDefinition.DefaultRoute = "/itadmin"), not a
+                separate backend role — reuses every one of the Admin portal's own page
+                components (same idiom as /coordinator, /admission, /management below), so
+                whatever modules the role is granted determines what actually shows, same as
+                any other delegated portal. Only the index route differs — a distinct "Overall
+                Dashboard" instead of AdminDashboard. */}
+            <Route path="/itadmin" element={<RequireAuth role="itadmin"><AppShell role="itadmin"><Outlet /></AppShell></RequireAuth>}>
+              <Route index element={<ItAdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="permissions" element={<AdminPermissions />} />
+              <Route path="courses" element={<AdminCourses />} />
+              <Route path="departments" element={<AdminDepartments />} />
+              <Route path="quiz-bank" element={<AdminQuizQuestions />} />
+              <Route path="activity-bank" element={<AdminActivityBank />} />
+              <Route path="batches" element={<AdminBatches />} />
+              <Route path="calendar" element={<AdminAcademicCalendar />} />
+              <Route path="sessions" element={<AdminSessions />} />
+              <Route path="recordings" element={<AdminRecordings />} />
+              <Route path="resources" element={<AdminResources />} />
+              <Route path="billing" element={<AdminBilling />} />
+              <Route path="packages" element={<AdminPackages />} />
+              <Route path="payment-mapping" element={<AdminPaymentMapping />} />
+              <Route path="payouts" element={<AdminPayouts />} />
+              <Route path="fee-suspension" element={<AdminFeeSuspension />} />
+              <Route path="reports" element={<AdminReports />} />
+              <Route path="bulk-email" element={<AdminBulkEmail />} />
+              <Route path="bulk-email/history" element={<AdminBulkEmailHistory />} />
+              <Route path="email-templates" element={<AdminEmailTemplates />} />
+              <Route path="progress-reports" element={<AdminProgressReports />} />
+              <Route path="chatbot" element={<AdminChatbot />} />
+              <Route path="enrollments" element={<AdminEnrollments />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
+              <Route path="store-inquiries" element={<AdminStoreInquiries />} />
+              <Route path="leave" element={<AdminLeave />} />
+              <Route path="availability" element={<AdminAvailability />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="monitoring" element={<AdminMonitoring />} />
+              <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
+              <Route path="class-logs" element={<AdminClassSessionLogs />} />
             </Route>
 
             <Route path="/teacher" element={<RequireAuth role="teacher"><AppShell role="teacher"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<TeacherDashboard />} />
               <Route path="classes" element={<TeacherMyClasses />} />
+              <Route path="students" element={<TeacherStudents />} />
               <Route path="attendance" element={<TeacherAttendance />} />
               <Route path="recordings" element={<TeacherRecordings />} />
               <Route path="demo-feedback" element={<TeacherDemoFeedback />} />
@@ -204,12 +299,55 @@ export default function App() {
               <Route path="add-child" element={<ParentAddChild />} />
             </Route>
 
+            {/* Subadmin/Admission/Coordinator/Management are one shared pool of pages, not 4
+                separate apps — every one of these accounts is UserRole.SubAdmin on the
+                backend; which RoleDefinition it's assigned only decides which of these 4 URL
+                prefixes it lands on and which modules it's granted. Every non-dashboard page
+                below is mounted under all 4 portals (reusing the exact same component, not a
+                duplicate) so any Sub Admin-type role can reach any of them; whether one
+                actually shows in a given account's sidebar is entirely a Menu Manager +
+                module-grant decision (already fully dynamic), not a routing one. Each portal
+                keeps its own bespoke index Dashboard and its own bespoke "reports" page
+                (distinct content per persona, not interchangeable) — see App.tsx's own
+                Dashboard/Reports imports above for why those aren't cross-mounted too. */}
             <Route path="/subadmin" element={<RequireAuth role="subadmin"><AppShell role="subadmin"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<SubAdminDashboard />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
+              <Route path="class-logs" element={<SubAdminClassSessionLogs />} />
+              <Route path="batches" element={<SubAdminBatches />} />
+              <Route path="sessions" element={<SubAdminSessions />} />
+              <Route path="payouts" element={<SubAdminPayouts />} />
+              <Route path="billing" element={<SubAdminBilling />} />
+              <Route path="enrollments" element={<SubAdminEnrollments />} />
+              <Route path="fee-suspension" element={<SubAdminFeeSuspension />} />
+              <Route path="payment-mapping" element={<SubAdminPaymentMapping />} />
+              <Route path="courses" element={<SubAdminCourses />} />
+              <Route path="departments" element={<SubAdminDepartments />} />
+              <Route path="quiz-bank" element={<SubAdminQuizQuestions />} />
+              <Route path="activity-bank" element={<SubAdminActivityBank />} />
+              <Route path="resources" element={<SubAdminResources />} />
+              <Route path="packages" element={<SubAdminPackages />} />
+              <Route path="users" element={<SubAdminUsers />} />
               <Route path="reports" element={<SubAdminReports />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="bulk-email" element={<SubAdminBulkEmail />} />
+              <Route path="email-templates" element={<SubAdminEmailTemplates />} />
+              <Route path="chatbot" element={<SubAdminChatbot />} />
+              <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
+              <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
+              <Route path="calendar" element={<CoordinatorCalendar />} />
+              <Route path="availability" element={<CoordinatorAvailability />} />
+              <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
+              <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-teacher-assignment/:bookingId" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-feedback" element={<AdmissionDemoFeedback />} />
+              <Route path="leads" element={<AdmissionLeads />} />
+              <Route path="payments" element={<AdmissionPayments />} />
+              <Route path="conversion" element={<AdmissionConversion />} />
+              <Route path="revenue" element={<ManagementRevenue />} />
+              <Route path="performance" element={<ManagementPerformance />} />
             </Route>
 
             <Route path="/admission" element={<RequireAuth role="admission"><AppShell role="admission"><Outlet /></AppShell></RequireAuth>}>
@@ -222,12 +360,73 @@ export default function App() {
               <Route path="payments" element={<AdmissionPayments />} />
               <Route path="conversion" element={<AdmissionConversion />} />
               <Route path="reports" element={<AdmissionReports />} />
+              <Route path="calendar" element={<CoordinatorCalendar />} />
+              <Route path="availability" element={<CoordinatorAvailability />} />
+              <Route path="permissions" element={<SubAdminPermissions />} />
+              <Route path="integrations" element={<SubAdminIntegrations />} />
+              <Route path="class-logs" element={<SubAdminClassSessionLogs />} />
+              <Route path="batches" element={<SubAdminBatches />} />
+              <Route path="sessions" element={<SubAdminSessions />} />
+              <Route path="payouts" element={<SubAdminPayouts />} />
+              <Route path="billing" element={<SubAdminBilling />} />
+              <Route path="enrollments" element={<SubAdminEnrollments />} />
+              <Route path="fee-suspension" element={<SubAdminFeeSuspension />} />
+              <Route path="payment-mapping" element={<SubAdminPaymentMapping />} />
+              <Route path="courses" element={<SubAdminCourses />} />
+              <Route path="departments" element={<SubAdminDepartments />} />
+              <Route path="quiz-bank" element={<SubAdminQuizQuestions />} />
+              <Route path="activity-bank" element={<SubAdminActivityBank />} />
+              <Route path="resources" element={<SubAdminResources />} />
+              <Route path="packages" element={<SubAdminPackages />} />
+              <Route path="users" element={<SubAdminUsers />} />
+              <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="bulk-email" element={<SubAdminBulkEmail />} />
+              <Route path="email-templates" element={<SubAdminEmailTemplates />} />
+              <Route path="chatbot" element={<SubAdminChatbot />} />
+              <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
+              <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
+              <Route path="revenue" element={<ManagementRevenue />} />
+              <Route path="performance" element={<ManagementPerformance />} />
             </Route>
 
             <Route path="/coordinator" element={<RequireAuth role="coordinator"><AppShell role="coordinator"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<CoordinatorDashboard />} />
               <Route path="calendar" element={<CoordinatorCalendar />} />
               <Route path="availability" element={<CoordinatorAvailability />} />
+              <Route path="permissions" element={<SubAdminPermissions />} />
+              <Route path="integrations" element={<SubAdminIntegrations />} />
+              <Route path="class-logs" element={<SubAdminClassSessionLogs />} />
+              <Route path="batches" element={<SubAdminBatches />} />
+              <Route path="sessions" element={<SubAdminSessions />} />
+              <Route path="payouts" element={<SubAdminPayouts />} />
+              <Route path="billing" element={<SubAdminBilling />} />
+              <Route path="enrollments" element={<SubAdminEnrollments />} />
+              <Route path="fee-suspension" element={<SubAdminFeeSuspension />} />
+              <Route path="payment-mapping" element={<SubAdminPaymentMapping />} />
+              <Route path="courses" element={<SubAdminCourses />} />
+              <Route path="departments" element={<SubAdminDepartments />} />
+              <Route path="quiz-bank" element={<SubAdminQuizQuestions />} />
+              <Route path="activity-bank" element={<SubAdminActivityBank />} />
+              <Route path="resources" element={<SubAdminResources />} />
+              <Route path="packages" element={<SubAdminPackages />} />
+              <Route path="users" element={<SubAdminUsers />} />
+              <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="bulk-email" element={<SubAdminBulkEmail />} />
+              <Route path="email-templates" element={<SubAdminEmailTemplates />} />
+              <Route path="chatbot" element={<SubAdminChatbot />} />
+              <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
+              <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
+              <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
+              <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-teacher-assignment/:bookingId" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-feedback" element={<AdmissionDemoFeedback />} />
+              <Route path="leads" element={<AdmissionLeads />} />
+              <Route path="payments" element={<AdmissionPayments />} />
+              <Route path="conversion" element={<AdmissionConversion />} />
+              <Route path="revenue" element={<ManagementRevenue />} />
+              <Route path="performance" element={<ManagementPerformance />} />
             </Route>
 
             <Route path="/management" element={<RequireAuth role="management"><AppShell role="management"><Outlet /></AppShell></RequireAuth>}>
@@ -235,6 +434,39 @@ export default function App() {
               <Route path="revenue" element={<ManagementRevenue />} />
               <Route path="performance" element={<ManagementPerformance />} />
               <Route path="reports" element={<ManagementReports />} />
+              <Route path="batches" element={<SubAdminBatches />} />
+              <Route path="sessions" element={<SubAdminSessions />} />
+              <Route path="payouts" element={<SubAdminPayouts />} />
+              <Route path="billing" element={<SubAdminBilling />} />
+              <Route path="enrollments" element={<SubAdminEnrollments />} />
+              <Route path="fee-suspension" element={<SubAdminFeeSuspension />} />
+              <Route path="payment-mapping" element={<SubAdminPaymentMapping />} />
+              <Route path="courses" element={<SubAdminCourses />} />
+              <Route path="departments" element={<SubAdminDepartments />} />
+              <Route path="quiz-bank" element={<SubAdminQuizQuestions />} />
+              <Route path="activity-bank" element={<SubAdminActivityBank />} />
+              <Route path="resources" element={<SubAdminResources />} />
+              <Route path="packages" element={<SubAdminPackages />} />
+              <Route path="users" element={<SubAdminUsers />} />
+              <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="bulk-email" element={<SubAdminBulkEmail />} />
+              <Route path="email-templates" element={<SubAdminEmailTemplates />} />
+              <Route path="chatbot" element={<SubAdminChatbot />} />
+              <Route path="progress-reports" element={<SubAdminProgressReports />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
+              <Route path="store-inquiries" element={<SubAdminStoreInquiries />} />
+              <Route path="permissions" element={<SubAdminPermissions />} />
+              <Route path="integrations" element={<SubAdminIntegrations />} />
+              <Route path="class-logs" element={<SubAdminClassSessionLogs />} />
+              <Route path="calendar" element={<CoordinatorCalendar />} />
+              <Route path="availability" element={<CoordinatorAvailability />} />
+              <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
+              <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-teacher-assignment/:bookingId" element={<AdmissionDemoTeacherAssignment />} />
+              <Route path="demo-feedback" element={<AdmissionDemoFeedback />} />
+              <Route path="leads" element={<AdmissionLeads />} />
+              <Route path="payments" element={<AdmissionPayments />} />
+              <Route path="conversion" element={<AdmissionConversion />} />
             </Route>
 
             {/* The student view doubles as the parent's "what my child sees" preview. */}
@@ -245,6 +477,7 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </AppErrorBoundary>
       </BrowserRouter>
       <Toaster />
     </TooltipProvider>

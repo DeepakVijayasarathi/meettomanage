@@ -165,6 +165,39 @@ export async function reassignDemoTeacher(bookingId: string, teacherProfileId: s
   });
 }
 
+/** Moves a still-scheduled demo to a new date/time — re-checks the teacher's availability and
+ *  the holiday calendar server-side, then re-sends the confirmation emails with the new time. */
+export async function rescheduleDemoBooking(
+  bookingId: string,
+  scheduledStartAtUtc: string,
+  scheduledEndAtUtc: string
+): Promise<ApiDemoBooking> {
+  return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${bookingId}/reschedule`, {
+    method: "PUT",
+    body: JSON.stringify({ scheduledStartAtUtc, scheduledEndAtUtc }),
+  });
+}
+
+/** Re-sends the demo's join link to the parent, every extra invitee, and the assigned teacher. */
+export async function resendDemoLink(bookingId: string): Promise<ApiDemoBooking> {
+  return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${bookingId}/resend-link`, {
+    method: "POST",
+  });
+}
+
+/** The parent's join link for this demo, to copy and share manually (e.g. WhatsApp). Never expires. */
+/** The full stable join URL and a genuinely short /m/{slug} form of the same link (for
+ *  WhatsApp/SMS where every character counts) — both never expire on their own. */
+export async function getDemoJoinLink(bookingId: string): Promise<{ joinUrl: string; shortUrl: string }> {
+  return apiFetch<{ joinUrl: string; shortUrl: string }>(`/api/demo-bookings/${bookingId}/join-link`);
+}
+
+/** Permanently removes a demo booking (a test entry, a mistaken double-booking) and frees the
+ *  teacher's slot. The API refuses this once the lead is already invoiced or Enrolled. */
+export async function deleteDemoBooking(bookingId: string): Promise<void> {
+  await apiFetch<void>(`/api/demo-bookings/${bookingId}`, { method: "DELETE" });
+}
+
 export async function createDemoBooking(input: {
   parentName: string;
   parentEmail: string;

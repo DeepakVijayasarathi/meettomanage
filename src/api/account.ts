@@ -1,5 +1,4 @@
 import { apiFetch } from "@/lib/api";
-import { buildJitsiJoinUrl } from "@/lib/jitsi";
 
 export interface MyAccount {
   id: string;
@@ -30,6 +29,10 @@ export interface MyMeetingRoom {
   domain: string;
   /** Null when Jitsi token verification isn't configured on this deployment yet. */
   token: string | null;
+  /** The signed-in member's own account id — doubles as this room's ClassroomHub
+   *  `sessionId` (see ClassroomHub.JoinSession's isPersonalRoomOwner check), so
+   *  PersonalMeetingRoom.tsx can hand it to JitsiLive to get the Interactive panel. */
+  ownerId: string;
 }
 
 /**
@@ -43,10 +46,33 @@ export async function getMyMeetingRoom(): Promise<MyMeetingRoom> {
   return apiFetch<MyMeetingRoom>("/api/users/me/meeting-room");
 }
 
-/** `displayName` is only passed (and prejoin only skipped, see buildJitsiJoinUrl) when the
- *  caller is the room owner starting their own room right now — not on the "copy link to
- *  share" path, where the eventual opener's name isn't known and baking the owner's name
- *  into a shared link would misattribute whoever actually clicks it. */
-export function buildPersonalMeetingUrl(room: MyMeetingRoom, displayName?: string): string {
-  return buildJitsiJoinUrl(room.domain, room.roomId, room.token, displayName);
+/**
+ * A short, shareable redirect to the same room getMyMeetingRoom builds — the long form
+ * (domain/room#jwt=<huge signed token>) reads as broken/suspicious pasted into WhatsApp or
+ * email. Mints a fresh one per call (backend: 6h expiry, matching the token it wraps).
+ */
+export async function getMyMeetingRoomShortLink(): Promise<{ url: string; expiresAtUtc: string }> {
+  return apiFetch<{ url: string; expiresAtUtc: string }>("/api/users/me/meeting-room/short-link");
 }
+
+export interface PersonalRoomGuestJoin {
+  room: string;
+  domain: string;
+  /** Null when Jitsi token verification isn't configured on this deployment yet. */
+  token: string | null;
+  /** Authenticates this guest's own ClassroomHub connection (see CreateGuestClassroomHubToken)
+   *  — passed to JitsiLive as `hubToken`, same as a class Guest Link's own hubToken. */
+  hubToken: string;
+  ownerId: string;
+  ownerName: string;
+}
+
+/**
+ * Backs the public /join/personal/:ownerId page (PersonalRoomGuestJoin.tsx) that a fresh
+ * Personal Meeting Room invite link now opens — no login, the owner's account id in the URL is
+ * the only credential, same trust model the old direct-to-Jitsi redirect already used.
+ */
+export async function getPersonalRoomGuestJoin(ownerId: string): Promise<PersonalRoomGuestJoin> {
+  return apiFetch<PersonalRoomGuestJoin>(`/api/users/${ownerId}/meeting-room/guest-join`);
+}
+
