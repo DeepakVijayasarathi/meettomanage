@@ -72,6 +72,8 @@ export interface ApiServerStatus {
   hostname: string;
   reachable: boolean;
   error: string | null;
+  isOnDemand: boolean;
+  configuredServices: string[];
   uptimeSeconds: number;
   loadAverage1m: number;
   cpuCores: number;
@@ -313,6 +315,8 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
       hostname: s.hostname,
       reachable: s.reachable,
       error: s.error,
+      isOnDemand: s.isOnDemand,
+      configuredServices: s.configuredServices,
       uptimeSeconds: s.uptimeSeconds,
       loadAverage1m: s.loadAverage1m,
       cpuCores: s.cpuCores,

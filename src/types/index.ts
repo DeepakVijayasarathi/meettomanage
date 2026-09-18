@@ -403,6 +403,10 @@ export interface ServerStatus {
   /** false means the agent itself couldn't be reached — every other field is meaningless then, not zero. */
   reachable: boolean;
   error?: string | null;
+  /** True for a server expected to not exist most of the time (e.g. an on-demand burst worker) — pair with reachable:false to show a calm "Standby" state instead of an alarming "unreachable" one. */
+  isOnDemand: boolean;
+  /** This server's configured container whitelist, always populated regardless of reachable — unlike `services` (live facts, empty when unreachable), the log viewer only needs valid container names, so it stays usable while an on-demand server is in standby. */
+  configuredServices: string[];
   uptimeSeconds: number;
   loadAverage1m: number;
   cpuCores: number;

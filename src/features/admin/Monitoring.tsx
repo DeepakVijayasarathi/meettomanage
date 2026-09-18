@@ -16,6 +16,7 @@ import {
   Lock,
   LogIn,
   MemoryStick,
+  Moon,
   PowerOff,
   RefreshCw,
   RotateCcw,
@@ -157,6 +158,42 @@ function ServerCard({ server }: { server: ServerStatus }) {
   const [restartTarget, setRestartTarget] = useState<string | null>(null);
 
   if (!server.reachable) {
+    // On-demand servers (e.g. a Hetzner burst worker) are torn down between peaks by design --
+    // that's the normal, healthy state for this card most of the time, so it gets a neutral
+    // "Standby" treatment instead of the red "Unreachable" alarm used for an always-on server
+    // that's actually down.
+    if (server.isOnDemand) {
+      return (
+        <Card className="p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <Moon className="h-[18px] w-[18px]" />
+              </span>
+              <div>
+                <h3 className="text-base font-semibold text-foreground">{server.name}</h3>
+                <p className="text-xs text-muted-foreground">{server.hostname || "Unknown host"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">Standby</Badge>
+              <Link
+                to={`/admin/monitoring/${encodeURIComponent(server.name)}`}
+                className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                Details <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+          <EmptyState
+            icon={Moon}
+            title="Not currently running"
+            description={server.error ?? "This is on-demand burst capacity, created automatically only during a scheduled peak."}
+          />
+        </Card>
+      );
+    }
+
     return (
       <Card className="p-5">
         <div className="mb-4 flex items-center justify-between">
