@@ -38,6 +38,7 @@ import {
   generateSchedule,
   listBatchEnrollments,
   listBatches,
+  listBatchSessions,
   listTeacherOptions,
   listUnassignedStudents,
   reconcileStaleSessionDurations,
@@ -45,11 +46,13 @@ import {
   removeStudentFromBatch,
   toFrontendBatch,
   updateBatchFields,
+  updateFutureSchedule,
   type ApiBatch,
   type ApiBatchStudent,
   type ApiUnassignedChild,
   type DisplayBatch,
 } from "@/api/batches";
+import type { ApiClassSession } from "@/api/sessions";
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
 
 const IST_OFFSET_MINUTES = 5 * 60 + 30; // India Standard Time is UTC+5:30, no DST
@@ -68,6 +71,23 @@ function istTimeToUtc(hhmm: string): { time: string; dayShift: -1 | 0 } {
   const uh = String(Math.floor(totalMin / 60)).padStart(2, "0");
   const um = String(totalMin % 60).padStart(2, "0");
   return { time: `${uh}:${um}`, dayShift };
+}
+
+/** Inverse of istTimeToUtc — a UTC "HH:mm" back into the IST wall-clock time an admin would
+ * recognize, plus whether that pushed the calendar date forward a day (a class between
+ * 18:30–23:59 UTC lands after midnight the next day in IST). Used to pre-fill the "Adjust
+ * remaining schedule" panel from a batch's real, already-generated sessions. */
+function utcTimeToIst(hhmm: string): { time: string; dayShift: 0 | 1 } {
+  const [h, m] = hhmm.split(":").map(Number);
+  let totalMin = h * 60 + m + IST_OFFSET_MINUTES;
+  let dayShift: 0 | 1 = 0;
+  if (totalMin >= 24 * 60) {
+    totalMin -= 24 * 60;
+    dayShift = 1;
+  }
+  const ih = String(Math.floor(totalMin / 60)).padStart(2, "0");
+  const im = String(totalMin % 60).padStart(2, "0");
+  return { time: `${ih}:${im}`, dayShift };
 }
 
 const WEEKDAYS = [
@@ -303,6 +323,90 @@ export default function AdminBatches() {
     });
   }
 
+  // Adjust remaining schedule (inside Manage dialog) — once a batch already has sessions,
+  // "Generate class schedule" above refuses to run at all; this edits only what's still
+  // upcoming (e.g. just the time) instead of re-entering the whole plan or cancelling and
+  // re-booking every remaining session one at a time. Pre-filled from the batch's own real
+  // sessions by reloadBatchSessions, same IST keying convention as genTimeByDay.
+  const [batchSessions, setBatchSessions] = useState<ApiClassSession[]>([]);
+  const [adjTimeByDay, setAdjTimeByDay] = useState<Record<number, string>>({});
+  const [adjRemainingCount, setAdjRemainingCount] = useState("");
+  const [adjBusy, setAdjBusy] = useState(false);
+  const [adjResult, setAdjResult] = useState<string | null>(null);
+
+  function toggleAdjDay(day: number) {
+    setAdjTimeByDay((prev) => {
+      if (day in prev) {
+        const next = { ...prev };
+        delete next[day];
+        return next;
+      }
+      const times = Object.values(prev);
+      return { ...prev, [day]: times[times.length - 1] ?? "10:00" };
+    });
+  }
+
+  const futureBatchSessions = useMemo(
+    () =>
+      batchSessions
+        .filter((s) => (s.status === "Scheduled" || s.status === "CarriedForward") && new Date(s.scheduledStartAtUtc).getTime() > Date.now())
+        .sort((a, b) => a.scheduledStartAtUtc.localeCompare(b.scheduledStartAtUtc)),
+    [batchSessions]
+  );
+
+  async function reloadBatchSessions(batchId: string) {
+    if (!apiEnabled()) return;
+    try {
+      const sessions = await listBatchSessions(batchId);
+      setBatchSessions(sessions);
+      const future = sessions
+        .filter((s) => (s.status === "Scheduled" || s.status === "CarriedForward") && new Date(s.scheduledStartAtUtc).getTime() > Date.now())
+        .sort((a, b) => a.scheduledStartAtUtc.localeCompare(b.scheduledStartAtUtc));
+      const pattern: Record<number, string> = {};
+      for (const s of future) {
+        const d = new Date(s.scheduledStartAtUtc);
+        const utcHH = String(d.getUTCHours()).padStart(2, "0");
+        const utcMM = String(d.getUTCMinutes()).padStart(2, "0");
+        const { time: istTime, dayShift } = utcTimeToIst(`${utcHH}:${utcMM}`);
+        pattern[(d.getUTCDay() + dayShift) % 7] = istTime;
+      }
+      setAdjTimeByDay(pattern);
+      setAdjRemainingCount(future.length ? String(future.length) : "");
+    } catch {
+      setBatchSessions([]);
+      setAdjTimeByDay({});
+      setAdjRemainingCount("");
+    }
+  }
+
+  async function handleUpdateFutureSchedule() {
+    const adjDays = Object.keys(adjTimeByDay).map(Number);
+    if (!detail || adjDays.length === 0) return;
+    if (!apiEnabled()) {
+      setAdjResult("Demo mode — schedule not persisted.");
+      return;
+    }
+    setAdjBusy(true);
+    setAdjResult(null);
+    try {
+      const slots = adjDays.map((day) => {
+        const { time: utcTime, dayShift } = istTimeToUtc(adjTimeByDay[day]);
+        return { dayOfWeek: (day + dayShift + 7) % 7, startTimeUtc: `${utcTime}:00` };
+      });
+      await updateFutureSchedule(detail.id, {
+        slots,
+        remainingSessionCount: adjRemainingCount.trim() ? Number(adjRemainingCount) : undefined,
+      });
+      await reloadBatchSessions(detail.id);
+      setAdjResult("Schedule updated — every upcoming session now reflects the new plan; completed sessions were left untouched.");
+      reload();
+    } catch (err) {
+      setAdjResult(err instanceof Error ? err.message : "Could not update the schedule.");
+    } finally {
+      setAdjBusy(false);
+    }
+  }
+
   // Assign students (inside Manage dialog) — WBS "Course & Batch Management Flow" step 6.
   const [roster, setRoster] = useState<ApiBatchStudent[]>([]);
   const [unassigned, setUnassigned] = useState<ApiUnassignedChild[]>([]);
@@ -477,7 +581,12 @@ export default function AdminBatches() {
     setRoster([]);
     setUnassigned([]);
     setRosterError(null);
+    setBatchSessions([]);
+    setAdjTimeByDay({});
+    setAdjRemainingCount("");
+    setAdjResult(null);
     void reloadRoster(b.id);
+    void reloadBatchSessions(b.id);
   }
 
   async function saveDetail() {
@@ -832,85 +941,167 @@ export default function AdminBatches() {
                 )}
               </div>
 
-              {/* Session plan: bulk-creates every course session on the chosen weekdays (skips holidays) */}
-              <div className="rounded-xl border border-border bg-muted/30 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+              {/* Session plan: bulk-creates every course session on the chosen weekdays (skips
+                  holidays) for a batch with no sessions yet; once sessions exist, edits only
+                  what's still upcoming instead (Generate class schedule refuses to run then). */}
+              {batchSessions.length > 0 && futureBatchSessions.length === 0 ? (
+                <div className="rounded-xl border border-border bg-muted/30 p-4">
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                    <CalendarPlus className="h-4 w-4" /> Generate class schedule
+                    <CalendarPlus className="h-4 w-4" /> Class schedule
                   </p>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Every session for this batch has already been completed or cancelled — nothing left to adjust.
+                  </p>
                 </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Creates sessions from a start date on the selected weekdays (holidays skipped), each at its own
-                  time — e.g. Monday/Wednesday at 5 PM but Friday at noon. By default, every session of the course;
-                  set a number below for a batch continuing mid-course elsewhere.
-                </p>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="gen-start">Start date <span className="text-destructive">*</span></Label>
-                    <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} />
+              ) : batchSessions.length > 0 ? (
+                <div className="rounded-xl border border-border bg-muted/30 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                      <CalendarPlus className="h-4 w-4" /> Adjust remaining schedule
+                    </p>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
                   </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="gen-session-count">Number of sessions</Label>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Edits only the {futureBatchSessions.length} session{futureBatchSessions.length === 1 ? "" : "s"} still
+                    upcoming (next on {formatDate(futureBatchSessions[0].scheduledStartAtUtc, "long")}) — completed
+                    sessions are never touched. Change just the field(s) you need; leave the rest as pre-filled.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {WEEKDAYS.map((d) => (
+                      <Button
+                        key={d.value}
+                        type="button"
+                        variant="pill"
+                        size="pill"
+                        aria-pressed={d.value in adjTimeByDay}
+                        onClick={() => toggleAdjDay(d.value)}
+                      >
+                        {d.label}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {Object.keys(adjTimeByDay).length > 0 && (
+                    <div className="mt-3 flex flex-col gap-1.5">
+                      {WEEKDAYS.filter((d) => d.value in adjTimeByDay).map((d) => (
+                        <div key={d.value} className="flex items-center gap-2">
+                          <span className="w-9 shrink-0 text-xs font-semibold text-muted-foreground">{d.label}</span>
+                          <Input
+                            type="time"
+                            aria-label={`${d.label} class time (IST)`}
+                            value={adjTimeByDay[d.value]}
+                            onChange={(e) => setAdjTimeByDay((prev) => ({ ...prev, [d.value]: e.target.value }))}
+                            className="h-8 max-w-[140px] text-sm"
+                          />
+                          <span className="text-xs text-muted-foreground">IST</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-3 grid max-w-[220px] gap-1.5">
+                    <Label htmlFor="adj-remaining">Remaining sessions</Label>
                     <Input
-                      id="gen-session-count"
+                      id="adj-remaining"
                       type="number"
                       min={1}
                       max={500}
-                      placeholder="Default: the course's full session count"
-                      value={genSessionCount}
-                      onChange={(e) => setGenSessionCount(e.target.value)}
+                      value={adjRemainingCount}
+                      onChange={(e) => setAdjRemainingCount(e.target.value)}
                     />
                   </div>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Session count: only what's actually still owed — e.g. 14, for a batch with 14 left of a 48-session course.
-                </p>
 
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {WEEKDAYS.map((d) => (
-                    <Button
-                      key={d.value}
-                      type="button"
-                      variant="pill"
-                      size="pill"
-                      aria-pressed={d.value in genTimeByDay}
-                      onClick={() => toggleGenDay(d.value)}
-                    >
-                      {d.label}
-                    </Button>
-                  ))}
+                  <Button
+                    size="sm"
+                    className="mt-3"
+                    disabled={adjBusy || Object.keys(adjTimeByDay).length === 0}
+                    onClick={handleUpdateFutureSchedule}
+                  >
+                    {adjBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {adjBusy ? "Updating…" : "Update remaining sessions"}
+                  </Button>
+                  {adjResult && <p className="mt-2 text-xs font-medium text-foreground">{adjResult}</p>}
                 </div>
+              ) : (
+                <div className="rounded-xl border border-border bg-muted/30 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                      <CalendarPlus className="h-4 w-4" /> Generate class schedule
+                    </p>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Creates sessions from a start date on the selected weekdays (holidays skipped), each at its own
+                    time — e.g. Monday/Wednesday at 5 PM but Friday at noon. By default, every session of the course;
+                    set a number below for a batch continuing mid-course elsewhere.
+                  </p>
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gen-start">Start date <span className="text-destructive">*</span></Label>
+                      <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gen-session-count">Number of sessions</Label>
+                      <Input
+                        id="gen-session-count"
+                        type="number"
+                        min={1}
+                        max={500}
+                        placeholder="Default: the course's full session count"
+                        value={genSessionCount}
+                        onChange={(e) => setGenSessionCount(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Session count: only what's actually still owed — e.g. 14, for a batch with 14 left of a 48-session course.
+                  </p>
 
-                {Object.keys(genTimeByDay).length > 0 && (
-                  <div className="mt-3 flex flex-col gap-1.5">
-                    {WEEKDAYS.filter((d) => d.value in genTimeByDay).map((d) => (
-                      <div key={d.value} className="flex items-center gap-2">
-                        <span className="w-9 shrink-0 text-xs font-semibold text-muted-foreground">{d.label}</span>
-                        <Input
-                          type="time"
-                          aria-label={`${d.label} class time (IST)`}
-                          value={genTimeByDay[d.value]}
-                          onChange={(e) => setGenTimeByDay((prev) => ({ ...prev, [d.value]: e.target.value }))}
-                          className="h-8 max-w-[140px] text-sm"
-                        />
-                        <span className="text-xs text-muted-foreground">IST</span>
-                      </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {WEEKDAYS.map((d) => (
+                      <Button
+                        key={d.value}
+                        type="button"
+                        variant="pill"
+                        size="pill"
+                        aria-pressed={d.value in genTimeByDay}
+                        onClick={() => toggleGenDay(d.value)}
+                      >
+                        {d.label}
+                      </Button>
                     ))}
                   </div>
-                )}
 
-                <Button
-                  size="sm"
-                  className="mt-3"
-                  disabled={genBusy || !genStart || Object.keys(genTimeByDay).length === 0}
-                  onClick={handleGenerateSchedule}
-                >
-                  {genBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  {genBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {genBusy ? "Generating…" : "Generate sessions"}
-                </Button>
-                {genResult && <p className="mt-2 text-xs font-medium text-foreground">{genResult}</p>}
-              </div>
+                  {Object.keys(genTimeByDay).length > 0 && (
+                    <div className="mt-3 flex flex-col gap-1.5">
+                      {WEEKDAYS.filter((d) => d.value in genTimeByDay).map((d) => (
+                        <div key={d.value} className="flex items-center gap-2">
+                          <span className="w-9 shrink-0 text-xs font-semibold text-muted-foreground">{d.label}</span>
+                          <Input
+                            type="time"
+                            aria-label={`${d.label} class time (IST)`}
+                            value={genTimeByDay[d.value]}
+                            onChange={(e) => setGenTimeByDay((prev) => ({ ...prev, [d.value]: e.target.value }))}
+                            className="h-8 max-w-[140px] text-sm"
+                          />
+                          <span className="text-xs text-muted-foreground">IST</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <Button
+                    size="sm"
+                    className="mt-3"
+                    disabled={genBusy || !genStart || Object.keys(genTimeByDay).length === 0}
+                    onClick={handleGenerateSchedule}
+                  >
+                    {genBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {genBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {genBusy ? "Generating…" : "Generate sessions"}
+                  </Button>
+                  {genResult && <p className="mt-2 text-xs font-medium text-foreground">{genResult}</p>}
+                </div>
+              )}
 
               {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
               <DialogFooter className="items-center gap-3 sm:justify-between">

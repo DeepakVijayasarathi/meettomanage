@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import type { ApiClassSession } from "@/api/sessions";
 import type { Batch, BatchPaymentPlanType } from "@/types";
 
 export interface ApiBatch {
@@ -156,6 +157,35 @@ export async function generateSchedule(
 ): Promise<unknown[]> {
   return apiFetch<unknown[]>(`/api/batches/${batchId}/generate-schedule`, {
     method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+/** Every session ever generated for this batch, unbounded by the ±60/400-day window
+ *  `listSessions`/`listMySessions` use for the calendar screens — a batch's own remaining
+ *  schedule can run further out than that window covers. Used by the "Manage" dialog to work
+ *  out the batch's current weekly pattern and how many sessions are actually still upcoming. */
+export async function listBatchSessions(batchId: string): Promise<ApiClassSession[]> {
+  const from = new Date(0).toISOString();
+  const to = new Date(Date.UTC(9999, 0, 1)).toISOString();
+  return apiFetch<ApiClassSession[]>(
+    `/api/sessions?batchId=${batchId}&fromUtc=${encodeURIComponent(from)}&toUtc=${encodeURIComponent(to)}`
+  );
+}
+
+/**
+ * Edits the batch's schedule from now on — new weekday/time pattern and/or remaining session
+ * count — without re-entering the whole plan or touching sessions already completed/in
+ * progress. `slots` is the full intended weekly pattern going forward, not a diff (same shape
+ * `generateSchedule` takes). Omit `remainingSessionCount` to keep however many sessions are
+ * currently still upcoming.
+ */
+export async function updateFutureSchedule(
+  batchId: string,
+  input: { slots: GenerateScheduleSlot[]; remainingSessionCount?: number }
+): Promise<ApiClassSession[]> {
+  return apiFetch<ApiClassSession[]>(`/api/batches/${batchId}/schedule`, {
+    method: "PUT",
     body: JSON.stringify(input),
   });
 }
