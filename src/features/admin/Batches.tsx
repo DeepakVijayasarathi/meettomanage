@@ -4,6 +4,7 @@ import { CalendarDays, CalendarPlus, Clock, Layers, Loader2, Moon, Plus, Rocket,
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { BatchPaymentPlanFields, DEFAULT_PAYMENT_PLAN, isPaymentPlanValid, type BatchPaymentPlanState } from "@/components/BatchPaymentPlanFields";
 import { useToast } from "@/hooks/use-toast";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
@@ -182,6 +183,7 @@ export default function AdminBatches() {
   // Renaming a batch — the API already supported it (updateBatchFields' name field), the
   // detail dialog just never exposed an input for it.
   const [editName, setEditName] = useState("");
+  const [editPaymentPlan, setEditPaymentPlan] = useState<BatchPaymentPlanState>(DEFAULT_PAYMENT_PLAN);
 
   // One-time repair for batches reassigned before the teacher-reassignment cascade fix existed —
   // their already-generated sessions were left pointing at the old teacher (see BatchService's
@@ -252,6 +254,7 @@ export default function AdminBatches() {
   const [newTeacher, setNewTeacher] = useState("");
   const [newCapacity, setNewCapacity] = useState("8");
   const [newStart, setNewStart] = useState("");
+  const [newPaymentPlan, setNewPaymentPlan] = useState<BatchPaymentPlanState>(DEFAULT_PAYMENT_PLAN);
   const [creating, setCreating] = useState(false);
   // Individual (1:1) courses always run a single-seat batch — BatchService.CreateAsync
   // forces Capacity to 1 for them server-side no matter what's submitted. Tracking the
@@ -369,6 +372,12 @@ export default function AdminBatches() {
         name: newName.trim(),
         capacity: Math.max(1, Number(newCapacity) || 1),
         startDate: newStart || undefined,
+        paymentPlanType: newPaymentPlan.paymentPlanType,
+        paymentAfterSessionsCount:
+          newPaymentPlan.paymentPlanType === "AfterSessions" && newPaymentPlan.paymentAfterSessionsCount.trim()
+            ? Number(newPaymentPlan.paymentAfterSessionsCount)
+            : null,
+        paymentDueDate: newPaymentPlan.paymentPlanType === "DueOnDate" && newPaymentPlan.paymentDueDate.trim() ? newPaymentPlan.paymentDueDate : null,
       });
       setBanner(`Batch "${newName.trim()}" created. Open Manage → Generate schedule to create its sessions.`);
       setCreateOpen(false);
@@ -381,6 +390,7 @@ export default function AdminBatches() {
       setNewTeacher("");
       setNewCapacity("8");
       setNewStart("");
+      setNewPaymentPlan(DEFAULT_PAYMENT_PLAN);
       reload();
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Could not create the batch.");
@@ -453,6 +463,11 @@ export default function AdminBatches() {
     setEditName(b.name);
     setEditStartDate(b.startDate || "");
     setEditDuration(b.durationOverride != null ? String(b.durationOverride) : "");
+    setEditPaymentPlan({
+      paymentPlanType: b.paymentPlanType ?? "FullPaymentDone",
+      paymentAfterSessionsCount: b.paymentAfterSessionsCount != null ? String(b.paymentAfterSessionsCount) : "",
+      paymentDueDate: b.paymentDueDate ?? "",
+    });
     setSaved(false);
     setSavingDetail(false);
     setSaveError(null);
@@ -484,6 +499,12 @@ export default function AdminBatches() {
         teacherProfileId: teacherAssignment,
         startDate: editStartDate.trim() || null,
         durationMinutesOverride: editDuration.trim() ? Number(editDuration) : null,
+        paymentPlanType: editPaymentPlan.paymentPlanType,
+        paymentAfterSessionsCount:
+          editPaymentPlan.paymentPlanType === "AfterSessions" && editPaymentPlan.paymentAfterSessionsCount.trim()
+            ? Number(editPaymentPlan.paymentAfterSessionsCount)
+            : null,
+        paymentDueDate: editPaymentPlan.paymentPlanType === "DueOnDate" && editPaymentPlan.paymentDueDate.trim() ? editPaymentPlan.paymentDueDate : null,
       });
       setSaved(true);
       reload();
@@ -697,6 +718,10 @@ export default function AdminBatches() {
                 </div>
               )}
 
+              {apiEnabled() && (
+                <BatchPaymentPlanFields idPrefix="edit-batch" value={editPaymentPlan} onChange={setEditPaymentPlan} />
+              )}
+
               <div className="grid min-w-0 gap-4">
                 <div className="grid gap-1.5">
                   <Label htmlFor="batch-assign-teacher-select">Assign teacher</Label>
@@ -906,7 +931,7 @@ export default function AdminBatches() {
                   <Button variant="outline" onClick={() => setDetail(null)}>
                     Close
                   </Button>
-                  <Button onClick={saveDetail} disabled={savingDetail}>
+                  <Button onClick={saveDetail} disabled={savingDetail || !isPaymentPlanValid(editPaymentPlan)}>
                     {savingDetail && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     {saved ? "Saved!" : savingDetail ? "Saving…" : "Save Changes"}
                   </Button>
@@ -1021,13 +1046,14 @@ export default function AdminBatches() {
                 <Input id="nb-start" type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
               </div>
             </div>
+            <BatchPaymentPlanFields idPrefix="new-batch" value={newPaymentPlan} onChange={setNewPaymentPlan} />
             {createError && <p className="text-sm font-medium text-destructive">{createError}</p>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button disabled={creating || !newName.trim() || !newCourse || !newTeacher} onClick={handleCreate}>
+            <Button disabled={creating || !newName.trim() || !newCourse || !newTeacher || !isPaymentPlanValid(newPaymentPlan)} onClick={handleCreate}>
               {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {creating ? "Creating…" : "Create Batch"}
             </Button>

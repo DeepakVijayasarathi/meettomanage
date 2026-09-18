@@ -63,6 +63,8 @@ export interface Course {
 
 export type BatchStatus = "active" | "dormant" | "upcoming";
 
+export type BatchPaymentPlanType = "FullPaymentDone" | "AfterSessions" | "DueOnDate";
+
 export interface Batch {
   id: string;
   name: string;
@@ -75,6 +77,9 @@ export interface Batch {
   status: BatchStatus;
   schedule: string;
   startDate: string;
+  paymentPlanType?: BatchPaymentPlanType;
+  paymentAfterSessionsCount?: number | null;
+  paymentDueDate?: string | null;
 }
 
 export type SessionStatus =

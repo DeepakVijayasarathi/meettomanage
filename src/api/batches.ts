@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import type { Batch } from "@/types";
+import type { Batch, BatchPaymentPlanType } from "@/types";
 
 export interface ApiBatch {
   id: string;
@@ -19,6 +19,9 @@ export interface ApiBatch {
   status: "Active" | "Dormant" | "Archived";
   startDate: string | null;
   endDate: string | null;
+  paymentPlanType: BatchPaymentPlanType;
+  paymentAfterSessionsCount: number | null;
+  paymentDueDate: string | null;
 }
 
 export interface TeacherOption {
@@ -57,6 +60,9 @@ export function toFrontendBatch(batch: ApiBatch): DisplayBatch {
     status: batch.status === "Dormant" || batch.status === "Archived" ? "dormant" : upcoming ? "upcoming" : "active",
     schedule: batch.startDate ? `From ${batch.startDate}` : "Schedule pending",
     startDate: batch.startDate ?? "",
+    paymentPlanType: batch.paymentPlanType,
+    paymentAfterSessionsCount: batch.paymentAfterSessionsCount,
+    paymentDueDate: batch.paymentDueDate,
   };
 }
 
@@ -92,6 +98,11 @@ export async function updateBatchFields(
     endDate?: string | null;
     /** Pass null explicitly to clear the override back to the course's own default. */
     durationMinutesOverride?: number | null;
+    paymentPlanType?: BatchPaymentPlanType;
+    /** Pass null explicitly to clear it (e.g. switching away from the AfterSessions plan). */
+    paymentAfterSessionsCount?: number | null;
+    /** Pass null explicitly to clear it (e.g. switching away from the DueOnDate plan). */
+    paymentDueDate?: string | null;
   }
 ): Promise<ApiBatch> {
   return apiFetch<ApiBatch>(`/api/batches/${batch.id}`, {
@@ -104,6 +115,9 @@ export async function updateBatchFields(
       startDate: fields.startDate !== undefined ? fields.startDate : batch.startDate,
       endDate: fields.endDate !== undefined ? fields.endDate : batch.endDate,
       durationMinutesOverride: fields.durationMinutesOverride !== undefined ? fields.durationMinutesOverride : batch.durationMinutesOverride,
+      paymentPlanType: fields.paymentPlanType ?? batch.paymentPlanType,
+      paymentAfterSessionsCount: fields.paymentAfterSessionsCount !== undefined ? fields.paymentAfterSessionsCount : batch.paymentAfterSessionsCount,
+      paymentDueDate: fields.paymentDueDate !== undefined ? fields.paymentDueDate : batch.paymentDueDate,
     }),
   });
 }
@@ -115,6 +129,9 @@ export async function createBatch(input: {
   capacity: number;
   startDate?: string;
   endDate?: string;
+  paymentPlanType?: BatchPaymentPlanType;
+  paymentAfterSessionsCount?: number | null;
+  paymentDueDate?: string | null;
 }): Promise<ApiBatch> {
   return apiFetch<ApiBatch>("/api/batches", { method: "POST", body: JSON.stringify(input) });
 }

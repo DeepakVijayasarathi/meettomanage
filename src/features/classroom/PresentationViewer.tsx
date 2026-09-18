@@ -243,10 +243,15 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
 
   return (
     // Same full-viewport overlay pattern as Whiteboard.tsx's own `maximized` — fills the whole
-    // screen on demand instead of the ~380px side panel this otherwise lives in. h-dvh, not
-    // h-screen -- same viewport-zoom fix as Whiteboard.tsx's maximize overlay and JitsiLive's
-    // own root wrapper (teacher-reported live: page shrinking/vanishing when zoomed).
-    <div className={cn("flex h-full flex-col", maximized && "fixed inset-0 z-40 h-dvh bg-brand-navy p-4")}>
+    // screen on demand instead of the ~380px side panel this otherwise lives in. Offset below
+    // the classroom header via the same --classroom-header-h var Whiteboard.tsx's maximize
+    // now uses, for the same reason: `inset-0` used to bury Leave/Focus Mode/Waiting Room (and
+    // the reconnecting/error banners) under this overlay with no way back except Escape or
+    // hunting for the Shrink button below — not acceptable on a currently-live classroom.
+    <div
+      className={cn("flex h-full flex-col", maximized && "fixed inset-x-0 bottom-0 z-40 bg-brand-navy p-4")}
+      style={maximized ? { top: "var(--classroom-header-h, 64px)" } : undefined}
+    >
       {fileInput}
       <div className="relative flex-1 overflow-hidden bg-white/[0.02] p-3">
         <div className="flex h-full w-full items-center justify-center">
