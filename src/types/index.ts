@@ -408,6 +408,10 @@ export interface ServerStatus {
   /** false means the agent itself couldn't be reached â€” every other field is meaningless then, not zero. */
   reachable: boolean;
   error?: string | null;
+  /** True for a server expected to not exist most of the time (e.g. an on-demand burst worker) â€” pair with reachable:false to show a calm "Standby" state instead of an alarming "unreachable" one. */
+  isOnDemand: boolean;
+  /** This server's configured container whitelist, always populated regardless of reachable â€” unlike `services` (live facts, empty when unreachable), the log viewer only needs valid container names, so it stays usable while an on-demand server is in standby. */
+  configuredServices: string[];
   uptimeSeconds: number;
   loadAverage1m: number;
   cpuCores: number;
@@ -469,6 +473,68 @@ export interface RecordingSummary {
   stillProcessing: number;
 }
 
+/** One create-to-delete (or still-running) lifecycle of the Hetzner burst worker. */
+export interface BurstWorkerEpisode {
+  serverId: number;
+  createdAtUtc: string;
+  /** Null means still running right now. */
+  deletedAtUtc: string | null;
+  durationHours: number;
+  /** Per minute actually run, at the configured hourly rate — an estimate from our own timestamps, not a real Hetzner invoice line. */
+  estimatedCostUsd: number;
+  /** Whole started hours (min 1) — what this would cost if Hetzner bills every started hour in full (unverified, so an upper bound). */
+  billedHours: number;
+  maxBilledCostUsd: number;
+  /** "auto" = created by the capacity check; "manual" = someone pressed Start now. */
+  trigger: string;
+  requestedBy: string | null;
+  /** Recordings copied off this server to main while it ran — what the spend actually bought. */
+  recordingsHandled: number;
+}
+
+/** The burst worker's state right now, read live from the cloud API. */
+export interface BurstWorkerStatus {
+  /** False = the cloud API couldn't be read; show "unknown", never assume standby. */
+  known: boolean;
+  exists: boolean;
+  serverId: number | null;
+  createdAtUtc: string | null;
+  /** While set, the automatic teardown will not delete the server before this time even if it is idle. */
+  holdUntilUtc: string | null;
+}
+
+/** How often and for how long the on-demand Hetzner burst worker has actually been used. */
+export interface BurstWorkerUsage {
+  episodesToday: number;
+  hoursToday: number;
+  estimatedCostTodayUsd: number;
+  maxBilledCostTodayUsd: number;
+  recordingsHandledToday: number;
+  episodesThisMonth: number;
+  hoursThisMonth: number;
+  estimatedCostThisMonthUsd: number;
+  maxBilledCostThisMonthUsd: number;
+  recordingsHandledThisMonth: number;
+  episodesAllTime: number;
+  hoursAllTime: number;
+  estimatedCostAllTimeUsd: number;
+  maxBilledCostAllTimeUsd: number;
+  hourlyRateUsd: number;
+  currentlyActive: boolean;
+  status: BurstWorkerStatus;
+  /** Recent scale-up / scale-down / copy / registration log lines, oldest first. */
+  recentActivity: string[];
+  /** Most recent first. */
+  recentEpisodes: BurstWorkerEpisode[];
+}
+
+/** Result of pressing Start now / Stop — the last lines of the scale log, so the admin sees what really happened. */
+export interface BurstWorkerControlResult {
+  action: string;
+  logTail: string[];
+  performedAtUtc: string;
+}
+
 export interface MonitoringSummary {
   servers: ServerStatus[];
   apiHealthy: boolean;
@@ -480,5 +546,7 @@ export interface MonitoringSummary {
   activeClassCount: number;
   activeAlerts: MonitoringAlert[];
   todayRecordings: RecordingSummary;
+  /** Null if the usage log couldn't be fetched (e.g. main unreachable) â€” treat as unknown, not "never used." */
+  burstWorkerUsage: BurstWorkerUsage | null;
   generatedAtUtc: string;
 }

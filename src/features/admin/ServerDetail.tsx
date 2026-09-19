@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Activity, AlertTriangle, Clock, Cpu, Disc, FileText, Gauge, HardDrive, Loader2, MemoryStick, PowerOff, RefreshCw, Router, Server, TrendingDown, TrendingUp, Users, Video, Wifi, WifiOff, Zap } from "lucide-react";
+import { Activity, AlertTriangle, Clock, Cpu, Disc, FileText, Gauge, HardDrive, Loader2, MemoryStick, Moon, PowerOff, RefreshCw, Router, Server, TrendingDown, TrendingUp, Users, Video, Wifi, WifiOff, Zap } from "lucide-react";
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Legend, ReferenceLine, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
@@ -47,6 +47,7 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   activeClassCount: 0,
   activeAlerts: [],
   todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
+  burstWorkerUsage: null,
   generatedAtUtc: "",
 };
 
@@ -417,6 +418,10 @@ export default function AdminServerDetail() {
                   <Wifi className="h-3 w-3" /> Online
                 </Badge>
               </>
+            ) : server.isOnDemand ? (
+              <Badge variant="secondary" className="gap-1">
+                <Moon className="h-3 w-3" /> Standby
+              </Badge>
             ) : (
               <Badge variant="destructive" className="gap-1">
                 <WifiOff className="h-3 w-3" /> Unreachable
@@ -437,11 +442,26 @@ export default function AdminServerDetail() {
       />
 
       {!server.reachable ? (
-        <EmptyState
-          icon={AlertTriangle}
-          title="Agent unreachable"
-          description={server.error ?? "Couldn't reach this server's status agent. It may be down or the network path is blocked."}
-        />
+        server.isOnDemand ? (
+          <>
+            <EmptyState
+              icon={Moon}
+              title="Not currently running"
+              description={server.error ?? "This is on-demand burst capacity, created automatically only during a scheduled peak."}
+            />
+            {usingApi && (
+              <div className="mt-5">
+                <ContainerLogsPanel serverName={server.name} services={server.configuredServices} />
+              </div>
+            )}
+          </>
+        ) : (
+          <EmptyState
+            icon={AlertTriangle}
+            title="Agent unreachable"
+            description={server.error ?? "Couldn't reach this server's status agent. It may be down or the network path is blocked."}
+          />
+        )
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -897,7 +917,7 @@ export default function AdminServerDetail() {
 
           {usingApi && (
             <div className="mt-5">
-              <ContainerLogsPanel serverName={server.name} services={server.services.map((s) => s.name)} />
+              <ContainerLogsPanel serverName={server.name} services={server.configuredServices} />
             </div>
           )}
 

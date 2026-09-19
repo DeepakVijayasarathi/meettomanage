@@ -72,6 +72,8 @@ export interface ApiServerStatus {
   hostname: string;
   reachable: boolean;
   error: string | null;
+  isOnDemand: boolean;
+  configuredServices: string[];
   uptimeSeconds: number;
   loadAverage1m: number;
   cpuCores: number;
@@ -127,6 +129,55 @@ export interface ApiRecordingSummary {
   stillProcessing: number;
 }
 
+export interface ApiBurstWorkerEpisode {
+  serverId: number;
+  createdAtUtc: string;
+  deletedAtUtc: string | null;
+  durationHours: number;
+  estimatedCostUsd: number;
+  billedHours: number;
+  maxBilledCostUsd: number;
+  trigger: string;
+  requestedBy: string | null;
+  recordingsHandled: number;
+}
+
+export interface ApiBurstWorkerStatus {
+  known: boolean;
+  exists: boolean;
+  serverId: number | null;
+  createdAtUtc: string | null;
+  holdUntilUtc: string | null;
+}
+
+export interface ApiBurstWorkerUsage {
+  episodesToday: number;
+  hoursToday: number;
+  estimatedCostTodayUsd: number;
+  maxBilledCostTodayUsd: number;
+  recordingsHandledToday: number;
+  episodesThisMonth: number;
+  hoursThisMonth: number;
+  estimatedCostThisMonthUsd: number;
+  maxBilledCostThisMonthUsd: number;
+  recordingsHandledThisMonth: number;
+  episodesAllTime: number;
+  hoursAllTime: number;
+  estimatedCostAllTimeUsd: number;
+  maxBilledCostAllTimeUsd: number;
+  hourlyRateUsd: number;
+  currentlyActive: boolean;
+  status: ApiBurstWorkerStatus;
+  recentActivity: string[];
+  recentEpisodes: ApiBurstWorkerEpisode[];
+}
+
+export interface ApiBurstWorkerControlResult {
+  action: string;
+  logTail: string[];
+  performedAtUtc: string;
+}
+
 export interface ApiMonitoringSummary {
   servers: ApiServerStatus[];
   apiHealthy: boolean;
@@ -137,6 +188,7 @@ export interface ApiMonitoringSummary {
   activeClassCount: number;
   activeAlerts: ApiMonitoringAlert[];
   todayRecordings: ApiRecordingSummary;
+  burstWorkerUsage: ApiBurstWorkerUsage | null;
   generatedAtUtc: string;
 }
 
@@ -261,6 +313,16 @@ export async function rescaleJibriNow(serverName: string): Promise<ApiJibriContr
   return apiFetch<ApiJibriControlResult>(`/api/monitoring/servers/jibri/rescale?serverName=${encodeURIComponent(serverName)}`, { method: "POST" });
 }
 
+/** Emergency manual start of the on-demand burst recording worker (billed hourly while it exists). holdMinutes keeps it up even if idle — see BurstWorkerControlService. */
+export async function startBurstWorker(holdMinutes: number): Promise<ApiBurstWorkerControlResult> {
+  return apiFetch<ApiBurstWorkerControlResult>(`/api/monitoring/burst-worker/start?holdMinutes=${holdMinutes}`, { method: "POST" });
+}
+
+/** Stops the burst worker as soon as it is safe (every recorder idle, every recording on main). Never force-deletes. */
+export async function stopBurstWorker(): Promise<ApiBurstWorkerControlResult> {
+  return apiFetch<ApiBurstWorkerControlResult>("/api/monitoring/burst-worker/stop", { method: "POST" });
+}
+
 /** Tells every browser currently in a live class to show a dismissible "update available"
  *  prompt â€” see MonitoringController.BroadcastReload for why this is a gentle notice, not
  *  a forced reload. */
@@ -307,12 +369,15 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
     activeClassCount: api.activeClassCount,
     activeAlerts: api.activeAlerts,
     todayRecordings: api.todayRecordings,
+    burstWorkerUsage: api.burstWorkerUsage,
     generatedAtUtc: api.generatedAtUtc,
     servers: api.servers.map((s) => ({
       name: s.name,
       hostname: s.hostname,
       reachable: s.reachable,
       error: s.error,
+      isOnDemand: s.isOnDemand,
+      configuredServices: s.configuredServices,
       uptimeSeconds: s.uptimeSeconds,
       loadAverage1m: s.loadAverage1m,
       cpuCores: s.cpuCores,
