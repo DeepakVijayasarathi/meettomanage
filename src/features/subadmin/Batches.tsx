@@ -40,6 +40,7 @@ import {
   generateSchedule,
   listBatchEnrollments,
   listBatches,
+  listBatchSessions,
   listTeacherOptions,
   listUnassignedStudents,
   reconcileStaleSessionDurations,
@@ -48,11 +49,13 @@ import {
   setBatchStatus,
   toFrontendBatch,
   updateBatchFields,
+  updateFutureSchedule,
   type ApiBatch,
   type ApiBatchStudent,
   type ApiUnassignedChild,
   type DisplayBatch,
 } from "@/api/batches";
+import type { ApiClassSession } from "@/api/sessions";
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
 
 const IST_OFFSET_MINUTES = 5 * 60 + 30; // India Standard Time is UTC+5:30, no DST
@@ -71,6 +74,23 @@ function istTimeToUtc(hhmm: string): { time: string; dayShift: -1 | 0 } {
   const uh = String(Math.floor(totalMin / 60)).padStart(2, "0");
   const um = String(totalMin % 60).padStart(2, "0");
   return { time: `${uh}:${um}`, dayShift };
+}
+
+/** Inverse of istTimeToUtc — a UTC "HH:mm" back into the IST wall-clock time an RM would
+ * recognize, plus whether that pushed the calendar date forward a day (a class between
+ * 18:30–23:59 UTC lands after midnight the next day in IST). Used to pre-fill the "Adjust
+ * remaining schedule" panel from a batch's real, already-generated sessions. */
+function utcTimeToIst(hhmm: string): { time: string; dayShift: 0 | 1 } {
+  const [h, m] = hhmm.split(":").map(Number);
+  let totalMin = h * 60 + m + IST_OFFSET_MINUTES;
+  let dayShift: 0 | 1 = 0;
+  if (totalMin >= 24 * 60) {
+    totalMin -= 24 * 60;
+    dayShift = 1;
+  }
+  const ih = String(Math.floor(totalMin / 60)).padStart(2, "0");
+  const im = String(totalMin % 60).padStart(2, "0");
+  return { time: `${ih}:${im}`, dayShift };
 }
 
 const WEEKDAYS = [
@@ -162,6 +182,10 @@ export default function SubAdminBatches() {
   // backend gates on SessionCalendarManagement:Create (not CourseBatchManagement) — a role can
   // hold one without the other, so this needs its own check.
   const canScheduleClasses = !apiEnabled() || hasPermission("SessionCalendarManagement", "Create");
+  // Adjusting a batch's already-generated schedule calls PUT /batches/{id}/schedule, gated on
+  // SessionCalendarManagement:Edit (not :Create like generating one from scratch above) — a
+  // role can hold one without the other.
+  const canAdjustSchedule = !apiEnabled() || hasPermission("SessionCalendarManagement", "Edit");
   // Moving students between batches calls POST/DELETE /batches/{id}/enrollments, which the
   // backend gates on CourseBatchManagement:Edit — same module as the batch's own fields, so
   // it rides on canEdit rather than needing a separate flag.
@@ -286,6 +310,89 @@ export default function SubAdminBatches() {
       const times = Object.values(prev);
       return { ...prev, [day]: times[times.length - 1] ?? "10:00" };
     });
+  }
+
+  // Adjust remaining schedule (inside Manage dialog) — once a batch already has sessions,
+  // "Generate class schedule" above refuses to run at all; this edits only what's still
+  // upcoming (e.g. just the time) instead of re-entering the whole plan or cancelling and
+  // re-booking every remaining session one at a time. Mirrors features/admin/Batches.tsx.
+  const [batchSessions, setBatchSessions] = useState<ApiClassSession[]>([]);
+  const [adjTimeByDay, setAdjTimeByDay] = useState<Record<number, string>>({});
+  const [adjRemainingCount, setAdjRemainingCount] = useState("");
+  const [adjBusy, setAdjBusy] = useState(false);
+  const [adjResult, setAdjResult] = useState<string | null>(null);
+
+  function toggleAdjDay(day: number) {
+    setAdjTimeByDay((prev) => {
+      if (day in prev) {
+        const next = { ...prev };
+        delete next[day];
+        return next;
+      }
+      const times = Object.values(prev);
+      return { ...prev, [day]: times[times.length - 1] ?? "10:00" };
+    });
+  }
+
+  const futureBatchSessions = useMemo(
+    () =>
+      batchSessions
+        .filter((s) => (s.status === "Scheduled" || s.status === "CarriedForward") && new Date(s.scheduledStartAtUtc).getTime() > Date.now())
+        .sort((a, b) => a.scheduledStartAtUtc.localeCompare(b.scheduledStartAtUtc)),
+    [batchSessions]
+  );
+
+  async function reloadBatchSessions(batchId: string) {
+    if (!apiEnabled()) return;
+    try {
+      const sessions = await listBatchSessions(batchId);
+      setBatchSessions(sessions);
+      const future = sessions
+        .filter((s) => (s.status === "Scheduled" || s.status === "CarriedForward") && new Date(s.scheduledStartAtUtc).getTime() > Date.now())
+        .sort((a, b) => a.scheduledStartAtUtc.localeCompare(b.scheduledStartAtUtc));
+      const pattern: Record<number, string> = {};
+      for (const s of future) {
+        const d = new Date(s.scheduledStartAtUtc);
+        const utcHH = String(d.getUTCHours()).padStart(2, "0");
+        const utcMM = String(d.getUTCMinutes()).padStart(2, "0");
+        const { time: istTime, dayShift } = utcTimeToIst(`${utcHH}:${utcMM}`);
+        pattern[(d.getUTCDay() + dayShift) % 7] = istTime;
+      }
+      setAdjTimeByDay(pattern);
+      setAdjRemainingCount(future.length ? String(future.length) : "");
+    } catch {
+      setBatchSessions([]);
+      setAdjTimeByDay({});
+      setAdjRemainingCount("");
+    }
+  }
+
+  async function handleUpdateFutureSchedule() {
+    const adjDays = Object.keys(adjTimeByDay).map(Number);
+    if (!detail || adjDays.length === 0) return;
+    if (!apiEnabled()) {
+      setAdjResult("Demo mode — schedule not persisted.");
+      return;
+    }
+    setAdjBusy(true);
+    setAdjResult(null);
+    try {
+      const slots = adjDays.map((day) => {
+        const { time: utcTime, dayShift } = istTimeToUtc(adjTimeByDay[day]);
+        return { dayOfWeek: (day + dayShift + 7) % 7, startTimeUtc: `${utcTime}:00` };
+      });
+      await updateFutureSchedule(detail.id, {
+        slots,
+        remainingSessionCount: adjRemainingCount.trim() ? Number(adjRemainingCount) : undefined,
+      });
+      await reloadBatchSessions(detail.id);
+      setAdjResult("Schedule updated — every upcoming session now reflects the new plan; completed sessions were left untouched.");
+      reload();
+    } catch (err) {
+      setAdjResult(err instanceof Error ? err.message : "Could not update the schedule.");
+    } finally {
+      setAdjBusy(false);
+    }
   }
 
   // Assign students (inside Manage dialog) — ported from admin/Batches.tsx, WBS "Course &
@@ -452,7 +559,12 @@ export default function SubAdminBatches() {
     setRoster([]);
     setUnassigned([]);
     setRosterError(null);
+    setBatchSessions([]);
+    setAdjTimeByDay({});
+    setAdjRemainingCount("");
+    setAdjResult(null);
     void reloadRoster(b.id);
+    void reloadBatchSessions(b.id);
   }
 
   async function saveDetail() {
@@ -879,7 +991,85 @@ export default function SubAdminBatches() {
                 )}
               </div>
 
-              {canScheduleClasses && (
+              {batchSessions.length > 0 && futureBatchSessions.length === 0 ? (
+                <div className="rounded-xl border border-border bg-muted/30 p-4">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <CalendarPlus className="h-4 w-4" /> Class schedule
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Every session for this batch has already been completed or cancelled — nothing left to adjust.
+                  </p>
+                </div>
+              ) : batchSessions.length > 0 && canAdjustSchedule ? (
+                <div className="rounded-xl border border-border bg-muted/30 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                      <CalendarPlus className="h-4 w-4" /> Adjust remaining schedule
+                    </p>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Edits only the {futureBatchSessions.length} session{futureBatchSessions.length === 1 ? "" : "s"} still
+                    upcoming (next on {formatDate(futureBatchSessions[0].scheduledStartAtUtc, "long")}) — completed
+                    sessions are never touched. Change just the field(s) you need; leave the rest as pre-filled.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {WEEKDAYS.map((d) => (
+                      <Button
+                        key={d.value}
+                        type="button"
+                        variant="pill"
+                        size="pill"
+                        aria-pressed={d.value in adjTimeByDay}
+                        onClick={() => toggleAdjDay(d.value)}
+                      >
+                        {d.label}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {Object.keys(adjTimeByDay).length > 0 && (
+                    <div className="mt-3 flex flex-col gap-1.5">
+                      {WEEKDAYS.filter((d) => d.value in adjTimeByDay).map((d) => (
+                        <div key={d.value} className="flex items-center gap-2">
+                          <span className="w-9 shrink-0 text-xs font-semibold text-muted-foreground">{d.label}</span>
+                          <Input
+                            type="time"
+                            aria-label={`${d.label} class time (IST)`}
+                            value={adjTimeByDay[d.value]}
+                            onChange={(e) => setAdjTimeByDay((prev) => ({ ...prev, [d.value]: e.target.value }))}
+                            className="h-8 max-w-[140px] text-sm"
+                          />
+                          <span className="text-xs text-muted-foreground">IST</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-3 grid max-w-[220px] gap-1.5">
+                    <Label htmlFor="adj-remaining">Remaining sessions</Label>
+                    <Input
+                      id="adj-remaining"
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={adjRemainingCount}
+                      onChange={(e) => setAdjRemainingCount(e.target.value)}
+                    />
+                  </div>
+
+                  <Button
+                    size="sm"
+                    className="mt-3"
+                    disabled={adjBusy || Object.keys(adjTimeByDay).length === 0}
+                    onClick={handleUpdateFutureSchedule}
+                  >
+                    {adjBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {adjBusy ? "Updating…" : "Update remaining sessions"}
+                  </Button>
+                  {adjResult && <p className="mt-2 text-xs font-medium text-foreground">{adjResult}</p>}
+                </div>
+              ) : batchSessions.length === 0 && canScheduleClasses ? (
                 <div className="rounded-xl border border-border bg-muted/30 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                     <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -955,7 +1145,7 @@ export default function SubAdminBatches() {
                   </Button>
                   {genResult && <p className="mt-2 text-xs font-medium text-foreground">{genResult}</p>}
                 </div>
-              )}
+              ) : null}
 
               {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
               <DialogFooter className="items-center gap-3 sm:justify-between">
