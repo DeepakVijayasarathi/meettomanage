@@ -135,17 +135,47 @@ export interface ApiBurstWorkerEpisode {
   deletedAtUtc: string | null;
   durationHours: number;
   estimatedCostUsd: number;
+  billedHours: number;
+  maxBilledCostUsd: number;
+  trigger: string;
+  requestedBy: string | null;
+  recordingsHandled: number;
+}
+
+export interface ApiBurstWorkerStatus {
+  known: boolean;
+  exists: boolean;
+  serverId: number | null;
+  createdAtUtc: string | null;
+  holdUntilUtc: string | null;
 }
 
 export interface ApiBurstWorkerUsage {
   episodesToday: number;
   hoursToday: number;
   estimatedCostTodayUsd: number;
+  maxBilledCostTodayUsd: number;
+  recordingsHandledToday: number;
+  episodesThisMonth: number;
+  hoursThisMonth: number;
+  estimatedCostThisMonthUsd: number;
+  maxBilledCostThisMonthUsd: number;
+  recordingsHandledThisMonth: number;
   episodesAllTime: number;
   hoursAllTime: number;
   estimatedCostAllTimeUsd: number;
+  maxBilledCostAllTimeUsd: number;
+  hourlyRateUsd: number;
   currentlyActive: boolean;
+  status: ApiBurstWorkerStatus;
+  recentActivity: string[];
   recentEpisodes: ApiBurstWorkerEpisode[];
+}
+
+export interface ApiBurstWorkerControlResult {
+  action: string;
+  logTail: string[];
+  performedAtUtc: string;
 }
 
 export interface ApiMonitoringSummary {
@@ -281,6 +311,16 @@ export interface ApiServiceRestartResult {
 /** Runs the Jibri autoscaler immediately instead of waiting out its next cron minute â€” see IServerControlService. serverName is a query param; see getServerLogs for why. */
 export async function rescaleJibriNow(serverName: string): Promise<ApiJibriControlResult> {
   return apiFetch<ApiJibriControlResult>(`/api/monitoring/servers/jibri/rescale?serverName=${encodeURIComponent(serverName)}`, { method: "POST" });
+}
+
+/** Emergency manual start of the on-demand burst recording worker (billed hourly while it exists). holdMinutes keeps it up even if idle — see BurstWorkerControlService. */
+export async function startBurstWorker(holdMinutes: number): Promise<ApiBurstWorkerControlResult> {
+  return apiFetch<ApiBurstWorkerControlResult>(`/api/monitoring/burst-worker/start?holdMinutes=${holdMinutes}`, { method: "POST" });
+}
+
+/** Stops the burst worker as soon as it is safe (every recorder idle, every recording on main). Never force-deletes. */
+export async function stopBurstWorker(): Promise<ApiBurstWorkerControlResult> {
+  return apiFetch<ApiBurstWorkerControlResult>("/api/monitoring/burst-worker/stop", { method: "POST" });
 }
 
 /** Tells every browser currently in a live class to show a dismissible "update available"

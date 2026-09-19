@@ -68,6 +68,7 @@ import {
   formatAgeShort,
   formatUptime,
 } from "./monitoringShared";
+import { BurstWorkerPanel } from "./BurstWorkerPanel";
 
 const REFRESH_INTERVAL_MS = 20_000;
 
@@ -935,48 +936,9 @@ export default function AdminMonitoring() {
         />
       </div>
 
-      {summary.burstWorkerUsage && summary.burstWorkerUsage.recentEpisodes.length > 0 && (
-        <Card className="mt-4 p-5">
-          <CardHeader className="p-0 pb-4">
-            <CardTitle className="text-base">Burst Capacity Usage</CardTitle>
-            <CardDescription>
-              Every time the on-demand Hetzner burst worker has been created, for how long, and an estimated cost from our own tracked timestamps — not a real Hetzner invoice line.
-            </CardDescription>
-          </CardHeader>
-          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatTile icon={Zap} label="Today" value={`${summary.burstWorkerUsage.episodesToday}×`} detail={`${summary.burstWorkerUsage.hoursToday.toFixed(2)} hrs · $${summary.burstWorkerUsage.estimatedCostTodayUsd.toFixed(2)}`} />
-            <StatTile icon={Clock} label="All time" value={`${summary.burstWorkerUsage.episodesAllTime}×`} detail={`${summary.burstWorkerUsage.hoursAllTime.toFixed(2)} hrs · $${summary.burstWorkerUsage.estimatedCostAllTimeUsd.toFixed(2)}`} />
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Created</TableHead>
-                <TableHead>Deleted</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead className="text-right">Est. cost</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {summary.burstWorkerUsage.recentEpisodes.map((ep) => (
-                <TableRow key={ep.serverId}>
-                  <TableCell className="text-sm">{new Date(ep.createdAtUtc).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</TableCell>
-                  <TableCell className="text-sm">
-                    {ep.deletedAtUtc ? (
-                      new Date(ep.deletedAtUtc).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
-                    ) : (
-                      <Badge variant="success" className="gap-1">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" /> Running
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm">{(ep.durationHours * 60).toFixed(0)} min</TableCell>
-                  <TableCell className="text-right text-sm">${ep.estimatedCostUsd.toFixed(3)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
+      {/* Always rendered (even with no history yet, or if the usage lookup failed) so the emergency
+          Start now button is there when it is actually needed. */}
+      <BurstWorkerPanel usage={summary.burstWorkerUsage} canManage={canManage} onChanged={reload} />
 
       <Dialog open={failedRecordingsOpen} onOpenChange={setFailedRecordingsOpen}>
         <DialogContent>
