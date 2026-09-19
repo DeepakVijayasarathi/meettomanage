@@ -18,6 +18,35 @@ const LEGACY_CITY_NAMES: Record<string, string> = {
   Madras: "Chennai",
 };
 
+/** Every zone's own UTC offset at a given instant, e.g. "GMT+5:30" -- used to compare two
+ *  zone ids by what they actually mean rather than by name. */
+function offsetAt(zone: string, at: Date): string | undefined {
+  return new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName: "shortOffset" })
+    .formatToParts(at)
+    .find((p) => p.type === "timeZoneName")?.value;
+}
+
+/** Two IANA zone ids can be functionally the same timezone under different names -- tzdata
+ *  never renames a zone, only links an old id to the new one ("Asia/Calcutta" -> "Asia/Kolkata"),
+ *  so a stale account (an old id) and a freshly-detected browser zone (the current id) can
+ *  describe the exact same real-world time while failing a plain string equality check. Checked
+ *  live: comparing raw strings showed "Kolkata" vs "Kolkata" as a mismatch and asked the teacher
+ *  to "switch" to the timezone they were already effectively in. Compares the UTC offset at two
+ *  points roughly six months apart (mid-January and mid-July of the current year) rather than
+ *  just "now" -- two zones can share today's offset by coincidence but diverge across DST, so a
+ *  single-instant check isn't enough to call them the same zone. */
+function zonesAreEquivalent(a: string, b: string): boolean {
+  if (a === b) return true;
+  try {
+    const year = new Date().getFullYear();
+    const jan = new Date(Date.UTC(year, 0, 15));
+    const jul = new Date(Date.UTC(year, 6, 15));
+    return offsetAt(a, jan) === offsetAt(b, jan) && offsetAt(a, jul) === offsetAt(b, jul);
+  } catch {
+    return false;
+  }
+}
+
 /** Friendly label for an IANA zone, e.g. "America/New_York" -> "New York (GMT-4)" --
  *  falls back to the raw zone id if Intl can't resolve an offset for it. */
 function labelForZone(zone: string): string {
@@ -43,7 +72,10 @@ function labelForZone(zone: string): string {
  *
  * Dismissible per detected (stored, browser) pair, not permanently -- if the account's stored
  * zone or the browser's own zone later change, it's worth asking again rather than staying
- * silent forever because of one old dismissal.
+ * silent forever because of one old dismissal. Only shows for a REAL mismatch (see
+ * zonesAreEquivalent below) -- an account on a renamed-but-identical zone (e.g. the legacy
+ * "Asia/Calcutta" alias for "Asia/Kolkata") never triggers this at all, so there's nothing to
+ * keep re-dismissing for an account like that in the first place.
  *
  * Styled as its own elevated notification card (icon badge, clear headline/body split, a
  * corner close button) rather than a flat colored strip -- the first version crammed an icon,
@@ -65,7 +97,7 @@ export function TimezoneMismatchBanner() {
     } catch {
       return;
     }
-    if (!zone || zone === timeZoneId) {
+    if (!zone || zonesAreEquivalent(zone, timeZoneId)) {
       setDetectedZone(null);
       return;
     }
