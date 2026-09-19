@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
-import { Clock } from "lucide-react";
-import { InlineAlert } from "@/components/InlineAlert";
+import { Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/state/session";
 import { getMyAccount, updateMyAccount } from "@/api/account";
 import { apiEnabled } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const DISMISS_KEY_PREFIX = "trn.tzMismatchDismissed:";
+
+// A handful of IANA zone ids are old colonial-era names still kept as backward-compatible
+// aliases (tzdata never renames a zone, only adds a link to it) -- "Asia/Kolkata" is the
+// modern id, but some older seed data / integrations still store "Asia/Calcutta". Shown to
+// families, not developers, so the modern city name is what belongs on screen here.
+const LEGACY_CITY_NAMES: Record<string, string> = {
+  Calcutta: "Kolkata",
+  Bombay: "Mumbai",
+  Madras: "Chennai",
+};
 
 /** Friendly label for an IANA zone, e.g. "America/New_York" -> "New York (GMT-4)" --
  *  falls back to the raw zone id if Intl can't resolve an offset for it. */
@@ -15,7 +25,8 @@ function labelForZone(zone: string): string {
     const offset = new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName: "shortOffset" })
       .formatToParts(new Date())
       .find((p) => p.type === "timeZoneName")?.value;
-    const city = zone.split("/").pop()?.replace(/_/g, " ");
+    const rawCity = zone.split("/").pop()?.replace(/_/g, " ");
+    const city = rawCity ? (LEGACY_CITY_NAMES[rawCity] ?? rawCity) : undefined;
     return city && offset ? `${city} (${offset})` : zone;
   } catch {
     return zone;
@@ -33,6 +44,11 @@ function labelForZone(zone: string): string {
  * Dismissible per detected (stored, browser) pair, not permanently -- if the account's stored
  * zone or the browser's own zone later change, it's worth asking again rather than staying
  * silent forever because of one old dismissal.
+ *
+ * Styled as its own elevated notification card (icon badge, clear headline/body split, a
+ * corner close button) rather than a flat colored strip -- the first version crammed an icon,
+ * two sentences and two buttons onto one cramped line with no visual hierarchy, which read as
+ * a raw form-validation error rather than a friendly one-off nudge.
  */
 export function TimezoneMismatchBanner() {
   const { timeZoneId, setTimeZoneId } = useSession();
@@ -88,21 +104,48 @@ export function TimezoneMismatchBanner() {
   }
 
   return (
-    <InlineAlert variant="info" bordered className="mb-4 flex-wrap items-center gap-3 sm:flex-nowrap">
-      <Clock className="h-4 w-4 shrink-0" />
-      <span className="flex-1">
-        Class times here are shown in <strong>{labelForZone(timeZoneId)}</strong>, but your device looks like it's in{" "}
-        <strong>{labelForZone(detectedZone)}</strong>. Switch so times match where you actually are?
-        {error && <span className="mt-1 block text-xs font-normal text-destructive">{error}</span>}
+    <div
+      role="status"
+      className="relative mb-5 flex flex-col gap-3 rounded-2xl border border-primary/15 bg-primary/[0.04] p-4 pr-10 shadow-sm sm:flex-row sm:items-start sm:gap-4"
+    >
+      <button
+        type="button"
+        onClick={dismiss}
+        disabled={applying}
+        aria-label="Dismiss"
+        title="Dismiss"
+        className="absolute right-3 top-3 rounded-full p-1 text-muted-foreground/70 transition-colors hover:bg-black/5 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+      >
+        <X className="h-4 w-4" />
+      </button>
+
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-4 ring-primary/5">
+        <Clock className="h-5 w-5" />
       </span>
-      <div className="flex shrink-0 gap-2">
-        <Button size="sm" variant="outline" onClick={dismiss} disabled={applying}>
-          Not now
-        </Button>
-        <Button size="sm" onClick={applyDetected} disabled={applying}>
-          {applying ? "Switching…" : "Switch"}
-        </Button>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-foreground">Class times may be showing in the wrong timezone</p>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          You're currently set to <span className="font-medium text-foreground">{labelForZone(timeZoneId)}</span>, but your
+          device looks like it's in <span className="font-medium text-foreground">{labelForZone(detectedZone)}</span>.
+        </p>
+        {error && <p className="mt-1.5 text-xs font-medium text-destructive">{error}</p>}
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button size="sm" onClick={applyDetected} disabled={applying} className="gap-1.5">
+            {applying ? "Switching…" : `Switch to ${labelForZone(detectedZone).split(" (")[0]}`}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={dismiss}
+            disabled={applying}
+            className={cn("text-muted-foreground hover:text-foreground")}
+          >
+            Not now
+          </Button>
+        </div>
       </div>
-    </InlineAlert>
+    </div>
   );
 }
