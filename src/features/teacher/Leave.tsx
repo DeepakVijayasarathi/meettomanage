@@ -446,8 +446,10 @@ export default function TeacherLeave() {
                   id="reason"
                   placeholder="Briefly describe your reason for leave"
                   value={reason}
+                  maxLength={1000}
                   onChange={(e) => setReason(e.target.value)}
                 />
+                <p className="text-right text-xs text-muted-foreground">{reason.length}/1000</p>
               </div>
 
               {rangeValid && overlappingLeave && (
@@ -558,8 +560,10 @@ export default function TeacherLeave() {
                   id="classWiseReason"
                   placeholder="Briefly describe your reason for cancelling these classes"
                   value={classWiseReason}
+                  maxLength={1000}
                   onChange={(e) => setClassWiseReason(e.target.value)}
                 />
+                <p className="text-right text-xs text-muted-foreground">{classWiseReason.length}/1000</p>
               </div>
 
               {selectedCount > 0 && (

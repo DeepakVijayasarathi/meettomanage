@@ -30,6 +30,24 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Message from an RFC 7807 error body. ASP.NET's automatic model validation (e.g. a field
+ * over its [MaxLength]) answers with the generic title "One or more validation errors
+ * occurred." and puts the real reason in an `errors` map -- surface that instead of the
+ * useless generic title.
+ */
+async function readProblemMessage(response: Response): Promise<string> {
+  let message = response.statusText;
+  try {
+    const problem = (await response.json()) as { detail?: string; title?: string; errors?: Record<string, string[]> };
+    const fieldErrors = problem.errors ? Object.values(problem.errors).flat().filter(Boolean) : [];
+    message = problem.detail ?? (fieldErrors.length > 0 ? fieldErrors.join(" ") : (problem.title ?? message));
+  } catch {
+    /* non-JSON error body */
+  }
+  return message;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set("Accept", "application/json");
@@ -69,14 +87,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (!response.ok) {
     // Backend errors arrive as RFC 7807 ProblemDetails
-    let detail = response.statusText;
-    try {
-      const problem = (await response.json()) as { detail?: string; title?: string };
-      detail = problem.detail ?? problem.title ?? detail;
-    } catch {
-      /* non-JSON error body */
-    }
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, await readProblemMessage(response));
   }
 
   // Some endpoints return 200 with no body (e.g. MonitoringController.BroadcastReload's
@@ -95,14 +106,7 @@ export async function downloadFile(path: string, filename: string): Promise<void
   });
 
   if (!response.ok) {
-    let detail = response.statusText;
-    try {
-      const problem = (await response.json()) as { detail?: string; title?: string };
-      detail = problem.detail ?? problem.title ?? detail;
-    } catch {
-      /* non-JSON error body */
-    }
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, await readProblemMessage(response));
   }
 
   const blob = await response.blob();
