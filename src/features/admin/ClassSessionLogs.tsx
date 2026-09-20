@@ -463,7 +463,7 @@ export default function AdminClassSessionLogs() {
                   label: "Status",
                   value: statusFilter,
                   onChange: (v) => applyFilter(setStatusFilter, v),
-                  className: "w-40",
+                  className: "w-56",
                   options: [
                     { value: "all", label: "Expected & unexpected" },
                     { value: "expected", label: "Expected only" },

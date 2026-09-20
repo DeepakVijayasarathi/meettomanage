@@ -92,7 +92,9 @@ function TruncatedCategoryTick({
   maxChars?: number;
 }) {
   const full = String(payload?.value ?? "");
-  const text = full.length > maxChars ? `${full.slice(0, maxChars - 1).trimEnd()}…` : full;
+  // "(Individual)" -> "(1:1)" buys ~8 characters, so the level/number that tells two courses apart survives
+  const short = full.replace(/\(Individual\)/i, "(1:1)");
+  const text = short.length > maxChars ? `${short.slice(0, maxChars - 1).trimEnd()}…` : short;
   return (
     <text x={x} y={y} dy={4} textAnchor="end" fontSize={11} fill="hsl(var(--muted-foreground))">
       <title>{full}</title>
@@ -157,6 +159,8 @@ export default function AdminDashboard() {
     { kpis: ZERO_KPIS, revenueTrend: [], departmentRevenue: [], courseRevenue: [], enrollmentFunnel: [], attendanceTrend: [], batchOccupancyByCourse: [] }
   );
   const { kpis, revenueTrend, departmentRevenue, courseRevenue, enrollmentFunnel, attendanceTrend, batchOccupancyByCourse } = dashboard;
+  // Course names are long; on phones the label column has to stay narrow so the bars keep some room.
+  const narrow = typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
   // No per-teacher breakdown endpoint yet (only the aggregate sessions-per-teacher
   // KPI above) — empty chart in API mode.
   const teacherUtilization = usingApi ? [] : TEACHER_UTILIZATION;
@@ -326,7 +330,7 @@ export default function AdminDashboard() {
             <BarChart data={courseRevenue} layout="vertical" margin={{ left: 0, right: 24, top: 8, bottom: 0 }} barCategoryGap={6}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
               <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={formatCurrencyAxisTick} />
-              <YAxis type="category" dataKey="course" tickLine={false} axisLine={false} width={172} interval={0} tick={<TruncatedCategoryTick maxChars={22} />} />
+              <YAxis type="category" dataKey="course" tickLine={false} axisLine={false} width={narrow ? 150 : 224} interval={0} tick={<TruncatedCategoryTick maxChars={narrow ? 21 : 33} />} />
               <RTooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="revenue" radius={[0, 6, 6, 0]} maxBarSize={22}>
                 {courseRevenue.map((_, i) => (
