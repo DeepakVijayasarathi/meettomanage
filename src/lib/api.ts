@@ -30,22 +30,87 @@ export class ApiError extends Error {
   }
 }
 
+const GENERIC_BY_STATUS: Record<number, string> = {
+  400: "Some of the information isn't right. Please check it and try again.",
+  401: "Your session has expired. Please sign in again.",
+  403: "You don't have permission to do this.",
+  404: "We couldn't find what you were looking for.",
+  405: "That action isn't available right now.",
+  408: "The request took too long. Please try again.",
+  409: "This conflicts with something that already exists. Please refresh and try again.",
+  413: "That file is too large to upload.",
+  415: "That type of file isn't supported.",
+  429: "Too many attempts. Please wait a moment and try again.",
+};
+const SERVER_TROUBLE = "Something went wrong on our side. Please try again in a moment.";
+const NETWORK_TROUBLE = "Can't reach the server. Please check your internet connection and try again.";
+const BAD_FORMAT = "Some of the information entered isn't in the right format. Please check it and try again.";
+
+function genericForStatus(status: number): string {
+  return GENERIC_BY_STATUS[status] ?? (status >= 500 ? SERVER_TROUBLE : "Something went wrong. Please try again.");
+}
+
+/** "startAtUtc" / "$.request.reasonText" -> "Start at utc" / "Reason text" (last path segment). */
+function humanizeField(raw: string): string {
+  const last = raw.split(/[.[\]]/).filter(Boolean).pop() ?? raw;
+  const words = last.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim().toLowerCase();
+  return words ? words[0].toUpperCase() + words.slice(1) : "This field";
+}
+
+/** True for text meant for developers (framework/JSON/stack-trace wording), not people. */
+function looksTechnical(text: string): boolean {
+  return /exception|\bSystem\.|\$\.|json|LineNumber|BytePositionInLine|could not be converted|stack ?trace|\bat [\w.]+\(|nullref|sqlstate|object reference|is not valid for|unexpected token/i.test(text);
+}
+
+/** Rewrites one ASP.NET model-validation sentence into plain language. */
+function friendlyValidationText(text: string, field?: string): string {
+  let m = /^The (?:field )?(.+?) field is required\.?$/i.exec(text);
+  if (m) return `${humanizeField(m[1])} is required.`;
+  m = /^The field (.+?) must be a string (?:or array type )?with a maximum length of '?(\d+)'?\.?$/i.exec(text);
+  if (m) return `${humanizeField(m[1])} is too long (maximum ${m[2]} characters).`;
+  m = /^The field (.+?) must be a string (?:or array type )?with a minimum length of '?(\d+)'?\.?$/i.exec(text);
+  if (m) return `${humanizeField(m[1])} is too short (minimum ${m[2]} characters).`;
+  m = /^The field (.+?) must be between (.+?) and (.+?)\.?$/i.exec(text);
+  if (m) return `${humanizeField(m[1])} must be between ${m[2]} and ${m[3]}.`;
+  if (/not a valid e-?mail address/i.test(text)) return "Please enter a valid email address.";
+  if (/not a valid phone number/i.test(text)) return "Please enter a valid phone number.";
+  if (/non-empty request body is required/i.test(text)) return "Please fill in the form and try again.";
+  if (looksTechnical(text)) return field && field !== "$" && field !== "request" ? `${humanizeField(field)} isn't in the right format.` : BAD_FORMAT;
+  return text;
+}
+
 /**
- * Message from an RFC 7807 error body. ASP.NET's automatic model validation (e.g. a field
- * over its [MaxLength]) answers with the generic title "One or more validation errors
- * occurred." and puts the real reason in an `errors` map -- surface that instead of the
- * useless generic title.
+ * A message a person can act on for a failed response -- never framework wording or a bare
+ * status code. Business rules the backend deliberately words for users (ProblemDetails
+ * `detail`) pass through untouched; ASP.NET's automatic model validation (generic title
+ * "One or more validation errors occurred." plus a per-field `errors` map) is rewritten
+ * field by field; anything technical or empty falls back to a plain sentence for the status.
  */
-async function readProblemMessage(response: Response): Promise<string> {
-  let message = response.statusText;
+export async function readProblemMessage(response: Response): Promise<string> {
+  let problem: { detail?: string; title?: string; errors?: Record<string, string[]> } | null = null;
   try {
-    const problem = (await response.json()) as { detail?: string; title?: string; errors?: Record<string, string[]> };
-    const fieldErrors = problem.errors ? Object.values(problem.errors).flat().filter(Boolean) : [];
-    message = problem.detail ?? (fieldErrors.length > 0 ? fieldErrors.join(" ") : (problem.title ?? message));
+    problem = await response.json();
   } catch {
-    /* non-JSON error body */
+    /* non-JSON or empty error body */
   }
-  return message;
+
+  const fieldMessages = problem?.errors
+    ? Object.entries(problem.errors).flatMap(([field, msgs]) => (Array.isArray(msgs) ? msgs : [String(msgs)]).map((t) => friendlyValidationText(t, field)))
+    : [];
+  if (fieldMessages.length > 0) return [...new Set(fieldMessages)].join(" ");
+
+  const detail = problem?.detail?.trim();
+  if (detail && response.status < 500 && !looksTechnical(detail)) return detail;
+  return genericForStatus(response.status);
+}
+
+/** fetch() that turns a dropped connection ("Failed to fetch") into a readable ApiError. */
+async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new ApiError(0, NETWORK_TROUBLE);
+  }
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -56,7 +121,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  let response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+  let response = await safeFetch(`${BASE_URL}${path}`, { ...init, headers });
 
   // Any request that 401s is retried once before treating it as a real logout — this is
   // exactly the shape of a transient hiccup (the backend re-verifies the account's live
@@ -75,7 +140,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   // session, register a recording, post engagement) rather than GET.
   if (response.status === 401 && token && !path.startsWith("/api/auth/")) {
     await new Promise((resolve) => setTimeout(resolve, 400));
-    response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+    response = await safeFetch(`${BASE_URL}${path}`, { ...init, headers });
   }
 
   // An expired/revoked token means the session is no longer authenticated: clear it
@@ -101,7 +166,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 /** Downloads a file response (a bulk-export CSV) with the auth token and saves it as `filename`. */
 export async function downloadFile(path: string, filename: string): Promise<void> {
   const token = getAccessToken();
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await safeFetch(`${BASE_URL}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 

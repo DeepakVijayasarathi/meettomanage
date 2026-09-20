@@ -1,4 +1,4 @@
-import { apiFetch, getAccessToken } from "@/lib/api";
+import { ApiError, apiFetch, getAccessToken, readProblemMessage } from "@/lib/api";
 import type { Resource } from "@/types";
 
 export type ApiResourceType = "ReadingBook" | "Worksheet" | "Other";
@@ -83,7 +83,7 @@ export async function downloadMyResource(id: string, fallbackName: string): Prom
   const response = await fetch(`${baseUrl}/api/resources/${id}/mine/download`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
-  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+  if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
 
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
@@ -123,7 +123,7 @@ export async function downloadResource(id: string, fallbackName: string): Promis
   const response = await fetch(`${baseUrl}/api/resources/${id}/download`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
-  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+  if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
 
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);

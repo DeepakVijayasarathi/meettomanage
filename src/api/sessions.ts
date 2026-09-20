@@ -1,4 +1,4 @@
-import { apiEnabled, apiFetch, getAccessToken, ApiError } from "@/lib/api";
+import { apiFetch, getAccessToken, ApiError, readProblemMessage } from "@/lib/api";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import type { ClassSession, SessionStatus } from "@/types";
 import type { PagedResult } from "@/api/types";
@@ -435,7 +435,7 @@ export async function fetchPresentationFile(sessionId: string): Promise<ArrayBuf
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
   if (!response.ok) {
-    throw new ApiError(response.status, response.statusText);
+    throw new ApiError(response.status, await readProblemMessage(response));
   }
   return response.arrayBuffer();
 }

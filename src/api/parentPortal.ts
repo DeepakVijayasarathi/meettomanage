@@ -1,4 +1,4 @@
-import { apiFetch, getAccessToken } from "@/lib/api";
+import { ApiError, apiFetch, getAccessToken, readProblemMessage } from "@/lib/api";
 import type { ApiInvoice } from "@/api/billing";
 import type { ApiClassSession, ApiSessionRecording } from "@/api/sessions";
 import type { ApiResource } from "@/api/resources";
@@ -116,7 +116,7 @@ export async function downloadParentResource(id: string, fallbackName: string): 
   const response = await fetch(`${baseUrl}/api/parent-portal/resources/${id}/download`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
-  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+  if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
 
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
@@ -182,7 +182,7 @@ export async function downloadParentInvoice(invoiceId: string, invoiceNumber: st
   const response = await fetch(`${baseUrl}/api/parent-portal/invoices/${invoiceId}/download`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
-  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+  if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
