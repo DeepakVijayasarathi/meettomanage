@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Check, Copy, Eye, KeyRound, Loader2, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AlertTriangle, Check, Copy, Eye, KeyRound, Loader2, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { resetPin, revealPin } from "@/api/users";
@@ -60,54 +60,75 @@ export function UserPinCell({ userId, userName, viewable }: { userId: string; us
     setTimeout(() => setPhase((p) => (p.kind === "shown" ? { ...p, copied: false } : p)), 2000);
   }
 
+  // One fixed-height (h-8) box for every state, so the row never jumps when a cell changes phase.
+  const box = "inline-flex h-8 items-center overflow-hidden rounded-lg border text-xs font-semibold";
+  const seg =
+    "inline-flex h-full items-center gap-1.5 px-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45";
+
   return (
-    <div className="flex min-w-[9.5rem] flex-wrap items-center gap-1.5" onClick={stop} onKeyDown={stop}>
-      {phase.kind === "idle" && stored && (
-        <>
-          <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={show} aria-label={`Show PIN for ${userName}`}>
+    <div className="min-w-[13.5rem]" onClick={stop} onKeyDown={stop}>
+      {phase.kind === "idle" && (
+        // Show PIN is only usable once the server holds a PIN it issued (chosen or older PINs are
+        // hashed and can't be read back) -- until then it's disabled with the reason, and Reset PIN
+        // is how one gets generated.
+        <div className={cn(box, "divide-x divide-border border-border bg-card shadow-sm")}>
+          <button
+            type="button"
+            onClick={show}
+            disabled={!stored}
+            aria-label={`Show PIN for ${userName}`}
+            title={stored ? "Show the PIN issued to this user" : "No PIN on file to show — use Reset PIN to generate one"}
+            className={cn(seg, "text-foreground enabled:hover:bg-primary/10 enabled:hover:text-primary")}
+          >
             <Eye className="h-3.5 w-3.5" /> Show PIN
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7"
+          </button>
+          <button
+            type="button"
             onClick={() => setPhase({ kind: "confirm" })}
             aria-label={`Reset PIN for ${userName}`}
             title="Reset PIN (issue a new one)"
+            className={cn(seg, "text-muted-foreground hover:bg-warning/15 hover:text-foreground")}
           >
-            <KeyRound className="h-3.5 w-3.5" />
-          </Button>
-        </>
+            <KeyRound className="h-3.5 w-3.5" /> Reset
+          </button>
+        </div>
       )}
-      {phase.kind === "idle" && !stored && (
-        <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setPhase({ kind: "confirm" })} aria-label={`Reset and show PIN for ${userName}`}>
-          <KeyRound className="h-3.5 w-3.5" /> Reset &amp; show PIN
-        </Button>
-      )}
+
       {phase.kind === "confirm" && (
-        <>
-          <span className="text-xs text-muted-foreground">Old PIN stops working.</span>
-          <Button size="sm" className="h-7 px-2 text-xs" onClick={reset}>
+        <div className={cn(box, "gap-1 border-warning/40 bg-warning/10 pl-2.5")}>
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning-foreground" />
+          <span className="whitespace-nowrap pr-1 font-medium text-foreground">Old PIN stops working</span>
+          <button type="button" onClick={reset} className={cn(seg, "h-full bg-primary text-primary-foreground hover:bg-primary/90")}>
             Reset
-          </Button>
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setPhase({ kind: "idle" })}>
+          </button>
+          <button type="button" onClick={() => setPhase({ kind: "idle" })} className={cn(seg, "text-muted-foreground hover:bg-muted")}>
             Cancel
-          </Button>
-        </>
+          </button>
+        </div>
       )}
-      {phase.kind === "busy" && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label="Working" />}
+
+      {phase.kind === "busy" && (
+        <div className={cn(box, "gap-2 border-border bg-muted/50 px-3 text-muted-foreground")}>
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-label="Working" /> Working…
+        </div>
+      )}
+
       {phase.kind === "shown" && (
-        <>
-          <code className="rounded-md bg-muted px-2 py-0.5 text-sm font-bold tracking-[0.3em] text-foreground" aria-label={`PIN ${phase.pin.split("").join(" ")}`}>
-            {phase.pin}
-          </code>
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copy(phase.pin)} aria-label="Copy PIN">
-            {phase.copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-          </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPhase({ kind: "idle" })} aria-label="Hide PIN">
+        <div className={cn(box, "gap-0.5 border-success/40 bg-success/10 pl-1.5")}>
+          <span className="flex items-center gap-1" aria-label={`PIN ${phase.pin.split("").join(" ")}`}>
+            {phase.pin.split("").map((digit, idx) => (
+              <span key={idx} className="flex h-5 w-4 items-center justify-center rounded bg-background font-mono text-sm font-bold text-foreground shadow-sm">
+                {digit}
+              </span>
+            ))}
+          </span>
+          <button type="button" onClick={() => copy(phase.pin)} aria-label="Copy PIN" title="Copy PIN" className={cn(seg, "px-2 text-success hover:bg-success/15")}>
+            {phase.copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+          <button type="button" onClick={() => setPhase({ kind: "idle" })} aria-label="Hide PIN" title="Hide PIN" className={cn(seg, "px-2 text-muted-foreground hover:bg-muted")}>
             <X className="h-3.5 w-3.5" />
-          </Button>
-        </>
+          </button>
+        </div>
       )}
     </div>
   );
