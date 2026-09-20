@@ -1483,7 +1483,8 @@ export default function JitsiLive({
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
               </span>
-              <p className="truncate text-sm font-semibold tracking-tight text-white">{title ?? "Live class"}</p>
+              <p className={cn("truncate text-sm font-semibold tracking-tight text-white", mode === "teacher" && "hidden sm:block")}>{title ?? "Live class"}</p>
+              {mode === "teacher" && <span className="text-xs font-semibold text-white/80 sm:hidden">Live</span>}
             </div>
             <p className="hidden text-[10px] font-medium uppercase tracking-wide text-white/40 sm:block">Live classroom</p>
           </div>
@@ -1524,8 +1525,8 @@ export default function JitsiLive({
                   title={jitsiReady ? "New joiners wait for you to admit them" : "Loading the call…"}
                 >
                   <DoorOpen className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">{lobbyEnabled ? "Waiting Room: On" : "Waiting Room"}</span>
-                  <span className="sr-only md:hidden">{lobbyEnabled ? "Waiting room is on" : "Waiting room"}</span>
+                  <span className="hidden lg:inline">{lobbyEnabled ? "Waiting Room: On" : "Waiting Room"}</span>
+                  <span className="sr-only lg:hidden">{lobbyEnabled ? "Waiting room is on" : "Waiting room"}</span>
                 </Button>
               )}
               {mode === "teacher" && (
@@ -1560,15 +1561,15 @@ export default function JitsiLive({
                   }
                 >
                   {focusMode ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                  <span className="hidden md:inline">{focusMode ? "Exit Focus" : "Focus Mode"}</span>
-                  <span className="sr-only md:hidden">{focusMode ? "Exit focus mode" : "Focus mode"}</span>
+                  <span className="hidden lg:inline">{focusMode ? "Exit Focus" : "Focus Mode"}</span>
+                  <span className="sr-only lg:hidden">{focusMode ? "Exit focus mode" : "Focus mode"}</span>
                 </Button>
               )}
               {interactive && (
                 <Button size="pill" variant="secondary" aria-pressed={panelOpen} className={headerToggleClass} onClick={() => setPanelOpen((o) => !o)}>
                   <Sparkles className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">Interactive</span>
-                  <span className="sr-only md:hidden">Interactive panel</span>
+                  <span className="hidden lg:inline">Interactive</span>
+                  <span className="sr-only lg:hidden">Interactive panel</span>
                 </Button>
               )}
             </div>
@@ -2008,7 +2009,7 @@ export default function JitsiLive({
         // separate inset, rounded cards with real breathing room between them and the
         // window edge, instead of both stretching edge-to-edge with a flat divider —
         // reads as a deliberately designed workspace rather than a raw video embed.
-        <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 md:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 lg:flex-row">
           {/* min-h-[300px]: a real floating desktop PiP was ruled out (the call runs in a
               cross-origin iframe with no way to read out individual participant video and
               float it above other windows — no safe workaround exists). This is the
@@ -2149,10 +2150,10 @@ export default function JitsiLive({
                 aria-label="Send a celebration to the class"
                 onClick={() => (celebrateAllRef.current ?? celebrate)("Great job, everyone! 🎉")}
                 data-float-hide
-                className="group absolute bottom-20 right-3 z-20 flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-amber to-brand-violet px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-violet/40 ring-1 ring-white/20 transition-all hover:shadow-xl hover:shadow-brand-violet/50 hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="group absolute bottom-20 right-3 z-20 flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-amber to-brand-violet p-3 text-sm font-bold sm:px-4 sm:py-2.5 text-white shadow-lg shadow-brand-violet/40 ring-1 ring-white/20 transition-all hover:shadow-xl hover:shadow-brand-violet/50 hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <PartyPopper className="h-4 w-4 transition-transform group-hover:rotate-12" />
-                Celebrate
+                <span className="hidden sm:inline">Celebrate</span>
               </button>
             )}
             {/* Wraps the (now non-self-positioning) leaderboard card above it — via
@@ -2237,7 +2238,7 @@ export default function JitsiLive({
               aria-label="Resize the interactive panel"
               title="Drag to resize the panel — double-click to reset"
               className={cn(
-                "hidden shrink-0 cursor-col-resize items-center justify-center self-stretch rounded-full transition-colors md:flex",
+                "hidden shrink-0 cursor-col-resize items-center justify-center self-stretch rounded-full transition-colors lg:flex",
                 resizingPanel ? "bg-brand-violet/50" : "bg-white/5 hover:bg-white/15"
               )}
               style={{ width: 10 }}
@@ -2268,7 +2269,7 @@ export default function JitsiLive({
             <aside
               style={{ ["--panel-w" as string]: `${panelWidth}px` }}
               className={cn(
-                "flex max-h-[38vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 md:max-h-none md:w-[var(--panel-w)]",
+                "flex max-h-[38vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 lg:max-h-none lg:w-[var(--panel-w)]",
                 !panelOpen && "hidden"
               )}
             >
