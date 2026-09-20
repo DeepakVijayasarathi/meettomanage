@@ -211,6 +211,8 @@ export default function ManagementDashboard() {
           height={260}
           loading={loading}
           error={error}
+          empty={summary.enrollmentFunnel.every((stage) => !stage.value)}
+          emptyMessage="No demos booked this quarter yet."
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={summary.enrollmentFunnel} layout="vertical" margin={{ left: 8, right: 32, top: 8, bottom: 0 }}>

@@ -79,6 +79,28 @@ function localDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** Category-axis tick that stays on one line: long names are cut with an ellipsis (full name on hover). */
+function TruncatedCategoryTick({
+  x,
+  y,
+  payload,
+  maxChars = 24,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+  maxChars?: number;
+}) {
+  const full = String(payload?.value ?? "");
+  const text = full.length > maxChars ? `${full.slice(0, maxChars - 1).trimEnd()}…` : full;
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" fontSize={11} fill="hsl(var(--muted-foreground))">
+      <title>{full}</title>
+      {text}
+    </text>
+  );
+}
+
 export default function AdminDashboard() {
   const brand = useBrand();
   const usingApi = apiEnabled();
@@ -291,12 +313,20 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Course Revenue" description="Collected revenue by course, all time" loading={dashboardLoading} error={dashboardError}>
+        <ChartCard
+          title="Course Revenue"
+          description="Collected revenue by course, all time"
+          loading={dashboardLoading}
+          error={dashboardError}
+          empty={courseRevenue.length === 0}
+          emptyMessage="No revenue collected yet."
+          height={Math.max(280, courseRevenue.length * 30 + 40)}
+        >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={courseRevenue} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
+            <BarChart data={courseRevenue} layout="vertical" margin={{ left: 0, right: 24, top: 8, bottom: 0 }} barCategoryGap={6}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
               <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={formatCurrencyAxisTick} />
-              <YAxis type="category" dataKey="course" tickLine={false} axisLine={false} fontSize={11} width={120} />
+              <YAxis type="category" dataKey="course" tickLine={false} axisLine={false} width={150} interval={0} tick={<TruncatedCategoryTick maxChars={24} />} />
               <RTooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="revenue" radius={[0, 6, 6, 0]} maxBarSize={22}>
                 {courseRevenue.map((_, i) => (
@@ -307,7 +337,14 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Enrollment Funnel" description="Demo to enrollment conversion, this quarter" loading={dashboardLoading} error={dashboardError}>
+        <ChartCard
+          title="Enrollment Funnel"
+          description="Demo to enrollment conversion, this quarter"
+          loading={dashboardLoading}
+          error={dashboardError}
+          empty={enrollmentFunnel.every((stage) => !stage.value)}
+          emptyMessage="No demos booked this quarter yet."
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={enrollmentFunnel} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
