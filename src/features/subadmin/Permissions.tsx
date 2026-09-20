@@ -24,6 +24,7 @@ import {
   VIEW_ONLY_MODULES,
   NO_ACCESS_MODULES,
 } from "./data";
+import { summarizeMenus } from "@/lib/permissionMenus";
 
 const ADMIN_CONTACT = "Ananya Rao";
 
@@ -117,8 +118,8 @@ export default function SubAdminPermissions() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className={cn("font-semibold", locked ? "text-muted-foreground" : "text-foreground")}>{mod.label}</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {menus.length > 0 ? `Menus: ${menus.join(", ")}` : "No menu currently depends on this module"}
+                        <p className="text-[11px] text-muted-foreground" title={menus.length > 0 ? summarizeMenus(menus).full : undefined}>
+                          {menus.length > 0 ? summarizeMenus(menus).text : "No menu currently depends on this module"}
                         </p>
                       </div>
                     </div>
@@ -181,7 +182,7 @@ export default function SubAdminPermissions() {
                             <div>
                               <p className={cn("font-semibold", locked ? "text-muted-foreground" : "text-foreground")}>{mod.label}</p>
                               <p className="text-[11px] text-muted-foreground">
-                                {menus.length > 0 ? `Menus: ${menus.join(", ")}` : "No menu currently depends on this module"}
+                                {menus.length > 0 ? summarizeMenus(menus).text : "No menu currently depends on this module"}
                               </p>
                             </div>
                           </div>
