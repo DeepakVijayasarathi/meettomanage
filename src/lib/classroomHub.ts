@@ -5,6 +5,7 @@ import {
   LogLevel,
 } from "@microsoft/signalr";
 import { apiEnabled, getAccessToken } from "@/lib/api";
+import { hubTransportOptions } from "@/lib/hubTransport";
 
 /** One roster row as broadcast by the hub. */
 export interface HubParticipant {
@@ -101,6 +102,7 @@ export class ClassroomHubClient {
     const connection = new HubConnectionBuilder()
       .withUrl(`${baseUrl}/hubs/classroom`, {
         accessTokenFactory: () => this.hubTokenOverride ?? getAccessToken() ?? "",
+        ...hubTransportOptions(),
       })
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Warning)
