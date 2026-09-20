@@ -838,7 +838,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
           student's own maximize only resizes their own view, a smaller win not worth
           nagging every viewer about. */}
       {canDraw && mode === "teacher" && !maximized && !expandHintDismissed && (
-        <div className="flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-3 py-2 text-xs text-brand-violet">
+        <div className="flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-3 py-2 text-xs text-brand-violet [@media(max-height:820px)]:hidden">
           <Maximize2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <p className="flex-1">
             Writing something the whole class needs to read clearly? Tap <span className="font-semibold">Expand</span>{" "}

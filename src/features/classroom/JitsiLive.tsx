@@ -2111,6 +2111,7 @@ export default function JitsiLive({
                 onClick={() => setAnnotateOn((o) => !o)}
                 className={cn(
                   "absolute bottom-32 right-3 z-30 flex h-10 items-center justify-center gap-1.5 rounded-full px-3 shadow-lg ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  focusMode && "right-28",
                   annotateOn ? "bg-red-500 text-white shadow-red-500/40" : "bg-brand-navy/90 text-white/80 shadow-black/30 backdrop-blur-xl"
                 )}
               >
@@ -2157,7 +2158,7 @@ export default function JitsiLive({
                 aria-label="Send a celebration to the class"
                 onClick={() => (celebrateAllRef.current ?? celebrate)("Great job, everyone! 🎉")}
                 data-float-hide
-                className="group absolute bottom-20 right-3 z-20 flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-amber to-brand-violet p-3 text-sm font-bold sm:px-4 sm:py-2.5 text-white shadow-lg shadow-brand-violet/40 ring-1 ring-white/20 transition-all hover:shadow-xl hover:shadow-brand-violet/50 hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn("group absolute bottom-20 right-3 z-20 flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-amber to-brand-violet p-3 text-sm font-bold sm:px-4 sm:py-2.5 text-white shadow-lg shadow-brand-violet/40 ring-1 ring-white/20 transition-all hover:shadow-xl hover:shadow-brand-violet/50 hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", focusMode && "right-28")}
               >
                 <PartyPopper className="h-4 w-4 transition-transform group-hover:rotate-12" />
                 <span className="hidden sm:inline">Celebrate</span>
