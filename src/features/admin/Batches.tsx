@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, CalendarPlus, Clock, Layers, Loader2, Moon, Plus, Rocket, Search, Trash2, Wrench, X } from "lucide-react";
+import { CalendarDays, CalendarPlus, ChevronDown, Clock, Layers, Loader2, Moon, Plus, Rocket, Search, Trash2, Wrench, X } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -121,7 +122,7 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
             <Layers className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <p className="truncate font-semibold text-foreground">{batch.name}</p>
+            <p className="truncate font-semibold text-foreground" title={batch.name}>{batch.name}</p>
             <p className="text-xs text-muted-foreground">{courseName ?? "—"}</p>
           </div>
         </div>
@@ -658,14 +659,33 @@ export default function AdminBatches() {
         description="View and manage active, dormant and upcoming batches — capacity, schedule and teacher assignment."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={handleReconcile} disabled={reconciling} title="Fix any batch whose already-scheduled sessions still show a previous teacher after a reassignment">
-              {reconciling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
-              Repair stale teacher assignments
-            </Button>
-            <Button variant="outline" onClick={handleReconcileDurations} disabled={reconcilingDurations} title="Fix any batch whose already-scheduled sessions still show a previous class duration after it was changed">
-              {reconcilingDurations ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
-              Repair stale session durations
-            </Button>
+            {/* Rarely-used repair tools live in one compact menu, so the header shows a single
+                primary action instead of three wide buttons that wrap into an uneven cluster. */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={reconciling || reconcilingDurations}>
+                  {reconciling || reconcilingDurations ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+                  Maintenance
+                  <ChevronDown className="h-4 w-4 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuItem onClick={handleReconcile} className="items-start gap-2.5 py-2">
+                  <Wrench className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    <span className="block font-medium">Repair stale teacher assignments</span>
+                    <span className="block text-xs text-muted-foreground">Fix scheduled sessions that still show a previous teacher after a reassignment.</span>
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleReconcileDurations} className="items-start gap-2.5 py-2">
+                  <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    <span className="block font-medium">Repair stale session durations</span>
+                    <span className="block text-xs text-muted-foreground">Fix scheduled sessions that still show a previous class length after it was changed.</span>
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={() => { setCreateOpen(true); setCreateError(null); }}>
               <Plus className="h-4 w-4" /> New Batch
             </Button>
