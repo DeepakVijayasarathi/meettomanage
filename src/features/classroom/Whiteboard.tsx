@@ -188,9 +188,11 @@ interface WhiteboardProps {
   onBoardOp?: (op: BoardOp) => void;
   /** Real-time sync: subscribe to remote board ops; returns an unsubscribe. */
   subscribeBoardOps?: (handler: (op: BoardOp) => void) => () => void;
+  /** Lets the host (JitsiLive) float the video above the full-screen board instead of leaving it hidden behind. */
+  onMaximizedChange?: (maximized: boolean) => void;
 }
 
-export default function Whiteboard({ canDraw, mode, activities, onActivityComplete, onInteraction, onBoardOp, subscribeBoardOps }: WhiteboardProps) {
+export default function Whiteboard({ canDraw, mode, activities, onActivityComplete, onInteraction, onBoardOp, subscribeBoardOps, onMaximizedChange }: WhiteboardProps) {
   const [pages, setPages] = useState<Page[]>([{ id: nextId(), strokes: [] }]);
   // Mirrors `pages` for the remote-ops subscription below, which deliberately only
   // subscribes once ([subscribeBoardOps], not [pages]) — its closure over `pages` would
@@ -249,6 +251,12 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
   useEffect(() => {
     if (maximized) dismissExpandHint();
   }, [maximized]);
+  // Reports on every change, and resets on unmount (the tab unmounting while maximized
+  // would otherwise leave the video stuck floating).
+  useEffect(() => {
+    onMaximizedChange?.(maximized);
+    return () => onMaximizedChange?.(false);
+  }, [maximized, onMaximizedChange]);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [lastCleared, setLastCleared] = useState<{ pageIndex: number; strokes: Stroke[] } | null>(null);
   const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string; sticky?: boolean } | null>(null);

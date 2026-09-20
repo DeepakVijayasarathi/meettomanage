@@ -46,6 +46,8 @@ interface InteractivePanelProps {
    *  paint it. This panel owns the hub connection, so it's the only place that can
    *  actually receive "Annotation" broadcasts. */
   onAnnotation?: (opJson: string) => void;
+  /** Whiteboard full-screen state, so the host can float the video above the board. */
+  onBoardMaximizedChange?: (maximized: boolean) => void;
   /** Fires whenever the teacher's pinned/spotlighted participant changes (or clears), so
    *  the host (JitsiLive, which owns the actual Jitsi iframe API this panel has no access
    *  to) can call `pinParticipant` on this viewer's own connection to match. This panel
@@ -65,7 +67,7 @@ interface InteractivePanelProps {
  * board access — all synced through the classroom SignalR hub. If the hub is
  * unreachable everything still renders locally (the call itself is unaffected).
  */
-export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onPinChanged, onReloadRequested }: InteractivePanelProps) {
+export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onBoardMaximizedChange, onPinChanged, onReloadRequested }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [hubDetail, setHubDetail] = useState<string | null>(null);
@@ -416,6 +418,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
             activities={activityBank}
             onBoardOp={broadcastBoardOp}
             subscribeBoardOps={subscribeBoardOps}
+            onMaximizedChange={onBoardMaximizedChange}
             onInteraction={() => postEngagement(sessionId, displayName, "WhiteboardInteraction")}
             onActivityComplete={() => {
               onCelebrate();

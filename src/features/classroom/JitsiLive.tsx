@@ -158,6 +158,7 @@ export default function JitsiLive({
   isPersonalRoom?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [boardMaximized, setBoardMaximized] = useState(false);
   const navigate = useNavigate();
   const { userName: accountName } = useSession();
   const userName = displayName || accountName;
@@ -431,6 +432,23 @@ export default function JitsiLive({
   // evidence, not a guess, and this only appears at all for a teacher who actually has a
   // problem, not every teacher on every join. Null = not checked yet, or checked clean.
   const [preflightMediaIssue, setPreflightMediaIssue] = useState<string | null>(null);
+  // Meet/Zoom-style permission popup: "asking" while the browser's own Allow/Block prompt is
+  // up (points the person at it), "blocked" once denied — browsers never re-prompt after a
+  // Block, so the only way back is the address-bar site settings, which this walks through.
+  const [mediaDialog, setMediaDialog] = useState<null | "asking" | "blocked">(null);
+  const [mediaRetryFailed, setMediaRetryFailed] = useState(false);
+
+  async function retryMediaAccess() {
+    setMediaRetryFailed(false);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      // The call iframe already loaded without devices; a reload is the reliable way for it to pick them up.
+      window.location.reload();
+    } catch {
+      setMediaRetryFailed(true);
+    }
+  }
   // Admin-triggered app update notice (see MonitoringController.BroadcastReload) — shown
   // to everyone in the class (teacher and students alike, unlike the teacher-only banners
   // above), since anyone's browser could be the one running stale code. Deliberately a
@@ -855,6 +873,14 @@ export default function JitsiLive({
         // resolve itself in 1.5s, so those still fail fast to the specific message below.
         let stream: MediaStream | null = null;
         let lastErrorName = "";
+        // Only when the browser is genuinely about to ask (state "prompt"); Safari/Firefox
+        // may not support querying "camera", in which case we just skip the pre-explanation.
+        try {
+          const perm = await navigator.permissions.query({ name: "camera" as PermissionName });
+          if (perm.state === "prompt" && !cancelled) setMediaDialog("asking");
+        } catch {
+          /* permissions API unsupported for camera — fine */
+        }
         for (let attempt = 0; attempt < 2 && !stream; attempt++) {
           try {
             stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -867,13 +893,14 @@ export default function JitsiLive({
         }
         if (stream) {
           stream.getTracks().forEach((t) => t.stop());
+          setMediaDialog(null);
         } else {
           const name = lastErrorName;
-          if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-            setPreflightMediaIssue(
-              "Camera/mic access is blocked for this browser. Click the camera icon in your address bar, or check your OS's " +
-                "privacy settings (Windows Settings → Privacy → Camera/Microphone, or Mac System Settings → Privacy & Security)."
-            );
+          const denied = name === "NotAllowedError" || name === "PermissionDeniedError";
+          // Anything but a denial (no device, device busy) is the banner's job, not the popup's
+          setMediaDialog(denied ? "blocked" : null);
+          if (denied) {
+            /* handled by the popup */
           } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
             setPreflightMediaIssue("No camera or microphone was detected on this device — check it's connected and try again.");
           } else if (name === "NotReadableError" || name === "TrackStartError") {
@@ -1682,6 +1709,43 @@ export default function JitsiLive({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Non-permission failures (no device / device busy) close the popup above and keep the banner below. */}
+      <Dialog
+        open={!isRecordingObserver && mediaDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) setMediaDialog(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {mediaDialog === "asking" ? "Allow camera and microphone" : "Camera and microphone are blocked"}
+            </DialogTitle>
+            <DialogDescription>
+              {mediaDialog === "asking"
+                ? "Your browser is asking for permission — click Allow so the class can see and hear you."
+                : "The class can't see or hear you until you allow access for this site."}
+            </DialogDescription>
+          </DialogHeader>
+          {mediaDialog === "blocked" && (
+            <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
+              <li>Click the camera / lock icon at the left of the address bar.</li>
+              <li>Set Camera and Microphone to <span className="font-semibold text-foreground">Allow</span>.</li>
+              <li>Come back and press <span className="font-semibold text-foreground">Try again</span>.</li>
+              <li className="text-xs">Still stuck? Check Windows Settings → Privacy → Camera / Microphone (or Mac System Settings → Privacy &amp; Security).</li>
+            </ol>
+          )}
+          {mediaRetryFailed && (
+            <p className="text-sm font-medium text-destructive">Still blocked — please allow access in the address bar first.</p>
+          )}
+          <DialogFooter className="flex-wrap">
+            <Button variant="outline" onClick={() => setMediaDialog(null)}>
+              Continue without
+            </Button>
+            {mediaDialog === "blocked" && <Button onClick={retryMediaAccess}>Try again</Button>}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {!isRecordingObserver && jitsiReady && preflightMediaIssue && !deviceHintDismissed && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
           <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
@@ -1917,7 +1981,15 @@ export default function JitsiLive({
               real room to render, not just enough to show a tile. Paired with the panel's
               own max-h shrinking from 45vh to 38vh below, so both sides actually fit
               together on a real phone screen instead of just shifting which one starves. */}
-          <div className="relative min-h-[300px] min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5">
+          <div
+            className={cn(
+              "relative min-h-[300px] min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5",
+              // Board full-screen covers the whole stage (fixed, z-40), hiding the call. Same
+              // element, restyled to a floating tile above it (z-50) — the iframe is never
+              // re-parented, so the call doesn't reconnect.
+              boardMaximized && "fixed bottom-4 right-4 z-50 h-[210px] min-h-0 w-[300px] flex-none ring-2 ring-primary/60 sm:h-[240px] sm:w-[360px]"
+            )}
+          >
             <div ref={containerRef} className="h-full w-full" />
             {/* Sits above the Jitsi iframe (which owns nothing above z-20 of its own) so a
                 mark drawn here shows on top of whatever's currently on screen — camera or a
@@ -1931,7 +2003,7 @@ export default function JitsiLive({
               color={annotateColor}
               onLocalOp={(op) => sendAnnotationRef.current?.(JSON.stringify(op))}
             />
-            {mode === "teacher" && (
+            {mode === "teacher" && !boardMaximized && (
               // bottom-32, not bottom-20 — the Celebrate button below sits at bottom-20
               // right-3 too (same corner, same reasoning: clear of Jitsi's own toolbar and
               // its bottom-left lobby-knock notification). Both being teacher-only and both
@@ -2140,6 +2212,7 @@ export default function JitsiLive({
                 // Applies the teacher's pin choice to this viewer's own Jitsi connection —
                 // executeCommand("pinParticipant", null) is Jitsi's own documented way to
                 // clear a pin, so the teacher unpinning correctly un-spotlights here too.
+                onBoardMaximizedChange={setBoardMaximized}
                 onPinChanged={(participantId) => jitsiApiRef.current?.executeCommand("pinParticipant", participantId)}
                 onReloadRequested={(message) => setReloadNotice(message)}
               />
