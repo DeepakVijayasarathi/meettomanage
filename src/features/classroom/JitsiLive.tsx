@@ -985,6 +985,33 @@ export default function JitsiLive({
           // per this embed's own `mode` means a parent/student session never renders the
           // controls at all, regardless of which side of that fallback it lands on.
           disableRemoteMute: mode !== "teacher",
+          // Meet/Zoom-style entry: a joiner who lands on a waiting room is placed in the queue
+          // straight away ("waiting for the host to let you in") instead of first having to find
+          // and press Jitsi's own "Ask to Join" button, and the lobby's "Enter meeting password"
+          // option (nothing here uses room passwords) is removed so a child or parent isn't
+          // offered a step that can only fail.
+          lobby: { autoKnock: true },
+          // Meet/Zoom behaviour for the control bar: on a touch screen there is no hover to bring
+          // it back, so Jitsi's default auto-hide leaves a child hunting for the mic/camera
+          // buttons -- keep it pinned there; on desktop it still tucks away after a few idle seconds.
+          toolbarConfig: {
+            alwaysVisible: typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches,
+            initialTimeout: 8000,
+            timeout: 5000,
+          },
+          securityUi: { disableLobbyPassword: true },
+          // Jitsi's own toasts are stacked white boxes in a dark UI, and several duplicate
+          // something this app already does better: the camera/microphone permission errors
+          // (the in-app "Allow camera and microphone" dialog and device banner above already
+          // walk through the fix) and "You're now a moderator" (noise for whoever sees it).
+          // Suppressing just these keeps join/lobby/raise-hand notifications intact.
+          disabledNotifications: [
+            "notify.moderator",
+            "dialog.cameraPermissionDeniedError",
+            "dialog.micPermissionDeniedError",
+            "dialog.cameraNotFoundError",
+            "dialog.micNotFoundError",
+          ],
           remoteVideoMenu: {
             disableKick: mode !== "teacher",
             disableGrantModerator: mode !== "teacher",
@@ -1473,7 +1500,7 @@ export default function JitsiLive({
             </span>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {/* Grouped as one segmented control (shared pill housing) instead of two
               independently-bordered chips — reads as one family of view toggles. */}
           {(mode === "teacher" || interactive) && (
@@ -1489,7 +1516,8 @@ export default function JitsiLive({
                   title={jitsiReady ? "New joiners wait for you to admit them" : "Loading the call…"}
                 >
                   <DoorOpen className="h-3.5 w-3.5" />
-                  {lobbyEnabled ? "Waiting Room: On" : "Waiting Room"}
+                  <span className="hidden md:inline">{lobbyEnabled ? "Waiting Room: On" : "Waiting Room"}</span>
+                  <span className="sr-only md:hidden">{lobbyEnabled ? "Waiting room is on" : "Waiting room"}</span>
                 </Button>
               )}
               {mode === "teacher" && (
@@ -1524,12 +1552,15 @@ export default function JitsiLive({
                   }
                 >
                   {focusMode ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                  {focusMode ? "Exit Focus" : "Focus Mode"}
+                  <span className="hidden md:inline">{focusMode ? "Exit Focus" : "Focus Mode"}</span>
+                  <span className="sr-only md:hidden">{focusMode ? "Exit focus mode" : "Focus mode"}</span>
                 </Button>
               )}
               {interactive && (
                 <Button size="pill" variant="secondary" aria-pressed={panelOpen} className={headerToggleClass} onClick={() => setPanelOpen((o) => !o)}>
-                  <Sparkles className="h-3.5 w-3.5" /> Interactive
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span className="hidden md:inline">Interactive</span>
+                  <span className="sr-only md:hidden">Interactive panel</span>
                 </Button>
               )}
             </div>
@@ -1542,7 +1573,9 @@ export default function JitsiLive({
               onClick={copyInviteLink}
               title="Copy a shareable link to this meeting"
             >
-              <UserPlus className="h-3.5 w-3.5" /> Invite
+              <UserPlus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Invite</span>
+              <span className="sr-only sm:hidden">Invite</span>
             </Button>
           )}
           {/* No Leave button for the recording observer -- there's no human to click it, and
