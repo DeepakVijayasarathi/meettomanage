@@ -1006,7 +1006,7 @@ export default function AdminUsers() {
 
       {/* User detail dialog */}
       <Dialog open={!!detailUser} onOpenChange={(open) => !open && setDetailUser(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl grid-cols-[minmax(0,1fr)]">
           {detailUser && (
             <>
               <DialogHeader>
@@ -1135,8 +1135,8 @@ export default function AdminUsers() {
                 )}
               </div>
 
-              <DialogFooter className="sm:justify-between">
-                <div className="flex gap-2">
+              <DialogFooter className="border-t border-border pt-4 sm:flex-wrap sm:items-center sm:justify-between">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="ghost"
                     className="text-destructive hover:text-destructive"
@@ -1162,7 +1162,7 @@ export default function AdminUsers() {
                     </Button>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 sm:justify-end">
                   <Button variant="outline" onClick={() => setDetailUser(null)}>
                     Close
                   </Button>
@@ -1363,7 +1363,7 @@ export default function AdminUsers() {
 
       {/* Student detail dialog */}
       <Dialog open={!!detailChild} onOpenChange={(open) => !open && setDetailChild(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl grid-cols-[minmax(0,1fr)]">
           {detailChild && (
             <>
               <DialogHeader>
@@ -1478,8 +1478,8 @@ export default function AdminUsers() {
                 <p className="text-xs text-muted-foreground">Shown on this child's profile to the current RM and admins.</p>
               </div>
 
-              <DialogFooter className="sm:justify-between">
-                <div className="flex gap-2">
+              <DialogFooter className="border-t border-border pt-4 sm:flex-wrap sm:items-center sm:justify-between">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="ghost"
                     className="text-destructive hover:text-destructive"
@@ -1499,7 +1499,7 @@ export default function AdminUsers() {
                     Delete All Data
                   </Button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 sm:justify-end">
                   <Button variant="outline" onClick={() => setDetailChild(null)}>
                     Close
                   </Button>
