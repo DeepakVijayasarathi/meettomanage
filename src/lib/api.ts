@@ -104,6 +104,23 @@ export async function readProblemMessage(response: Response): Promise<string> {
   return genericForStatus(response.status);
 }
 
+/**
+ * The text to show a person for any caught error. API failures already carry a readable
+ * message (see readProblemMessage); anything else -- a JS runtime error, a Jitsi/SignalR
+ * failure, a dropped connection -- is checked so raw wording like "Cannot read properties of
+ * undefined" or "Failed to fetch" never reaches the screen. `fallback` is used when there's
+ * nothing readable to show.
+ */
+export function userMessage(err: unknown, fallback = "Something went wrong. Please try again."): string {
+  if (err instanceof ApiError) return err.message || fallback;
+  const raw = err instanceof Error ? err.message : typeof err === "string" ? err : "";
+  if (!raw.trim()) return fallback;
+  if (/failed to fetch|networkerror|load failed|network request failed|err_internet|err_network/i.test(raw)) return NETWORK_TROUBLE;
+  if (/not ?allowed ?error|permission ?denied|notallowederror/i.test(raw)) return "Permission was denied. Please allow access in your browser and try again.";
+  if (looksTechnical(raw) || /cannot read propert|is not a function|is not defined|undefined|null|typeerror|referenceerror|syntaxerror|rangeerror/i.test(raw)) return fallback;
+  return raw;
+}
+
 /** fetch() that turns a dropped connection ("Failed to fetch") into a readable ApiError. */
 async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
   try {

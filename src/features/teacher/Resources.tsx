@@ -17,7 +17,7 @@ import { RESOURCES } from "@/data/resources";
 import { BATCHES, getBatchById } from "@/data/batches";
 import { CHART_PALETTE } from "@/lib/roles";
 import { cn, formatDate } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
   downloadMyResource,
@@ -202,7 +202,7 @@ export default function TeacherResources() {
         reload();
         toast({ variant: "success", title: "Resource uploaded", description: `Visible to ${batchLabel}.` });
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Upload failed. Please try again.";
+        const message = userMessage(e, "Upload failed. Please try again.");
         setUploadError(message);
         toast({ variant: "error", title: "Upload failed", description: message });
       } finally {
@@ -241,7 +241,7 @@ export default function TeacherResources() {
       // The upload dialog is very likely closed at this point (downloads are triggered
       // from the resource grid, not the dialog) — uploadError's paragraph only renders
       // inside that dialog, so a failure here needs its own visible feedback: a toast.
-      const message = e instanceof Error ? e.message : "Download failed. Please try again.";
+      const message = userMessage(e, "Download failed. Please try again.");
       toast({ variant: "error", title: "Download failed", description: message });
     } finally {
       setDownloadingId(null);

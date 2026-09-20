@@ -9,7 +9,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { FeeStatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { CashConfirmationsPanel } from "@/components/CashConfirmationsPanel";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listInvoiceRows, toFrontendInvoice, createPaymentLink } from "@/api/billing";
@@ -134,7 +134,7 @@ export default function AdmissionPayments() {
       setTimeout(() => setCopiedId((id) => (id === row.id ? null : id)), 2500);
       toast({ variant: "success", title: "Payment link copied", description: "The link is on your clipboard." });
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Could not generate a payment link for this invoice.";
+      const message = userMessage(e, "Could not generate a payment link for this invoice.");
       setError(message);
       toast({ variant: "error", title: "Couldn't generate link", description: message });
     } finally {

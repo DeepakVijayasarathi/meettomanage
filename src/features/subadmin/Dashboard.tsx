@@ -26,7 +26,7 @@ import { useSession } from "@/state/session";
 import { formatDate, formatPercent } from "@/lib/utils";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { usePortalBase } from "@/lib/portalBase";
 import { useApiData } from "@/api/hooks";
 import { listBatches, toFrontendBatch } from "@/api/batches";
@@ -500,7 +500,7 @@ export default function SubAdminDashboard() {
               toast({ variant: "success", title: "Access request sent", description: `Sent to ${adminContact} for review.` });
             })
             .catch((err: unknown) => {
-              const message = err instanceof Error ? err.message : "Could not send the request. Please try again.";
+              const message = userMessage(err, "Could not send the request. Please try again.");
               toast({ variant: "error", title: "Couldn't send request", description: message });
               throw err;
             });

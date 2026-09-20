@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 
 interface CacheEntry {
   data: unknown;
@@ -114,7 +114,7 @@ export function useApiData<T>(
         }
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Request failed");
+        if (!cancelled) setError(userMessage(err, "Request failed"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

@@ -24,7 +24,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate, getInitials } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import {
@@ -153,7 +153,7 @@ export default function AdmissionLeads() {
         setActiveLead(null);
         toast({ variant: "success", title: "Follow-up logged" });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Couldn't save this follow-up. Please try again.";
+        const message = userMessage(err, "Couldn't save this follow-up. Please try again.");
         setFollowUpError(message);
         toast({ variant: "error", title: "Couldn't log follow-up", description: message });
       } finally {

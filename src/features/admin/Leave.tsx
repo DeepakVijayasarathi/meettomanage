@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listLeave, reviewLeave, toFrontendLeave, type ApiLeaveStatus } from "@/api/academicOps";
 import { LEAVE_REQUESTS } from "@/data/leaves";
@@ -85,7 +85,7 @@ export default function AdminLeave() {
           });
         })
         .catch((err: unknown) => {
-          const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+          const message = userMessage(err, "Something went wrong. Please try again.");
           toast({ variant: "error", title: `Couldn't ${approve ? "approve" : "reject"} leave`, description: message });
           throw err;
         });

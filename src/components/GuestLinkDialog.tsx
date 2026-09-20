@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { createGuestLink, listGuestLinkStudents, type ApiGuestLinkStudent } from "@/api/sessions";
 import type { ClassSession } from "@/types";
+import { userMessage } from "@/lib/api";
 
 interface GuestLinkDialogProps {
   session: ClassSession;
@@ -41,7 +42,7 @@ export function GuestLinkDialog({ session, onClose }: GuestLinkDialogProps) {
         if (!cancelled) setStudents(data);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Couldn't load this batch's students.");
+        if (!cancelled) setLoadError(userMessage(err, "Couldn't load this batch's students."));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -71,7 +72,7 @@ export function GuestLinkDialog({ session, onClose }: GuestLinkDialogProps) {
       toast({
         variant: "error",
         title: "Couldn't create the guest link",
-        description: err instanceof Error ? err.message : undefined,
+        description: err instanceof Error ? userMessage(err) : undefined,
       });
     } finally {
       setCopyingId(null);

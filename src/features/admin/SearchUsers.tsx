@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UserStatusBadge } from "@/components/StatusBadge";
 import { ROLE_META } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listUsers, listStudents, toAppUser, type StudentRow } from "@/api/users";
 import { PARENTS, TEACHERS, ADMISSION_TEAM, SUB_ADMINS } from "@/data/users";
@@ -82,7 +82,7 @@ export default function SearchUsers() {
         if (!cancelled) setUserResults(result.items.map(toAppUser));
       })
       .catch((err: unknown) => {
-        if (!cancelled) setSearchError(err instanceof Error ? err.message : "Search failed. Please try again.");
+        if (!cancelled) setSearchError(userMessage(err, "Search failed. Please try again."));
       })
       .finally(() => {
         if (!cancelled) setSearching(false);

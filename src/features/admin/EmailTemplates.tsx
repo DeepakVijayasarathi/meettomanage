@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn, formatDate } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import {
   listEmailTemplates,
   updateEmailTemplate,
@@ -105,7 +105,7 @@ export default function EmailTemplates() {
         setSelectedId(items[0].id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load email templates.");
+      setError(userMessage(err, "Could not load email templates."));
     } finally {
       setLoaded(true);
     }
@@ -174,7 +174,7 @@ export default function EmailTemplates() {
       setError(null);
       toast({ variant: "success", title: "Template saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the template.";
+      const message = userMessage(err, "Could not save the template.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save template", description: message });
     } finally {

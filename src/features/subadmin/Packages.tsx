@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApiData } from "@/api/hooks";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import {
   cancelSubscription,
@@ -202,7 +202,7 @@ export default function SubAdminPackages() {
       await reloadPlans();
       setPlanDialogOpen(false);
     } catch (e) {
-      setPlanError(e instanceof Error ? e.message : "Couldn't save the plan.");
+      setPlanError(userMessage(e, "Couldn't save the plan."));
     } finally {
       setSavingPlan(false);
     }
@@ -246,7 +246,7 @@ export default function SubAdminPackages() {
       await reloadSubscriptions();
       setSubDialogOpen(false);
     } catch (e) {
-      setSubError(e instanceof Error ? e.message : "Couldn't start the subscription.");
+      setSubError(userMessage(e, "Couldn't start the subscription."));
     } finally {
       setSavingSub(false);
     }
@@ -268,7 +268,7 @@ export default function SubAdminPackages() {
       await renewSubscription(sub.id);
       await reloadSubscriptions();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Couldn't renew the subscription.");
+      setActionError(userMessage(e, "Couldn't renew the subscription."));
     } finally {
       setBusyId(null);
     }

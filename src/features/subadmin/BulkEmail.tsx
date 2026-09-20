@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { CHILDREN } from "@/data/children";
 import { BATCHES } from "@/data/batches";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listBatches } from "@/api/batches";
@@ -144,7 +144,7 @@ function ComposePanel({ canSend }: { canSend: boolean }) {
       setSent(true);
       toast({ variant: "success", title: "Email sent", description: `Delivered to ${result.recipientCount} recipient(s).` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't send the email. Please try again.";
+      const message = userMessage(err, "Couldn't send the email. Please try again.");
       setSendError(message);
       toast({ variant: "error", title: "Couldn't send email", description: message });
     } finally {

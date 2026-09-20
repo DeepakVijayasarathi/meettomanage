@@ -22,7 +22,7 @@ import { getBatchById } from "@/data/batches";
 import { getCourseById } from "@/data/courses";
 import { listHolidays, listMyLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { isJoinable, joinHint } from "@/features/parent/utils";
 import type { ClassSession, SessionStatus } from "@/types";
@@ -131,7 +131,7 @@ export default function TeacherMyClasses() {
       setNotesFor(null);
       reload();
     } catch (err) {
-      toast({ variant: "error", title: "Couldn't save notes", description: err instanceof Error ? err.message : "Please try again." });
+      toast({ variant: "error", title: "Couldn't save notes", description: userMessage(err, "Please try again.") });
     } finally {
       setSavingNotes(false);
     }

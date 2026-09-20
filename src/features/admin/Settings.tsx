@@ -26,7 +26,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { cn, formatCurrency, hexToHslTriple } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { getSettings, toSettingsMap, updateSettings, type SettingCategory, type UpdateSettingItem } from "@/api/settings";
@@ -217,7 +217,7 @@ export default function AdminSettings() {
         }));
         await updateSettings(items);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Could not save settings.";
+        const message = userMessage(err, "Could not save settings.");
         setError(message);
         setSaving(false);
         toast({ variant: "error", title: "Couldn't save settings", description: message });
@@ -735,7 +735,7 @@ function MenuManager() {
       setItems(await listMenuItems(nextPortal));
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load menu items.");
+      setError(userMessage(err, "Could not load menu items."));
     }
   }
 
@@ -776,7 +776,7 @@ function MenuManager() {
       await reload();
       toast({ variant: "success", title: editingId ? "Menu item updated" : "Menu item created" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the menu item.";
+      const message = userMessage(err, "Could not save the menu item.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save menu item", description: message });
     } finally {
@@ -791,7 +791,7 @@ function MenuManager() {
       await reload();
       toast({ variant: "success", title: `"${item.label}" removed` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not delete the menu item.";
+      const message = userMessage(err, "Could not delete the menu item.");
       setError(message);
       toast({ variant: "error", title: "Couldn't delete menu item", description: message });
     } finally {
@@ -815,7 +815,7 @@ function MenuManager() {
       });
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update the menu item.");
+      setError(userMessage(err, "Could not update the menu item."));
     } finally {
       setBusy(false);
     }
@@ -1077,7 +1077,7 @@ function PayoutRatesManager() {
       setAllRates(await listPayoutRates());
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load payout rate cards.");
+      setError(userMessage(err, "Could not load payout rate cards."));
     } finally {
       setLoaded(true);
     }
@@ -1135,7 +1135,7 @@ function PayoutRatesManager() {
       await reload();
       toast({ variant: "success", title: "Rate card saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the rate card.";
+      const message = userMessage(err, "Could not save the rate card.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save the rate card", description: message });
     } finally {
@@ -1320,7 +1320,7 @@ function LeaveAllowanceManager() {
       setAllAllowances(await listLeaveAllowances());
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load leave allowances.");
+      setError(userMessage(err, "Could not load leave allowances."));
     } finally {
       setLoaded(true);
     }
@@ -1372,7 +1372,7 @@ function LeaveAllowanceManager() {
       await reload();
       toast({ variant: "success", title: "Leave allowance saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the leave allowance.";
+      const message = userMessage(err, "Could not save the leave allowance.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save the leave allowance", description: message });
     } finally {
@@ -1630,7 +1630,7 @@ function JitsiRecordingSettings() {
       });
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load Jitsi settings.");
+      setError(userMessage(err, "Could not load Jitsi settings."));
     } finally {
       setLoaded(true);
     }
@@ -1665,7 +1665,7 @@ function JitsiRecordingSettings() {
       setSaved(true);
       toast({ variant: "success", title: "Jitsi settings saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save Jitsi settings.";
+      const message = userMessage(err, "Could not save Jitsi settings.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save Jitsi settings", description: message });
     } finally {
@@ -1821,7 +1821,7 @@ export function IntegrationsManager() {
       setIntegrations(await listIntegrations());
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load integrations.");
+      setError(userMessage(err, "Could not load integrations."));
     } finally {
       setLoaded(true);
     }
@@ -1883,7 +1883,7 @@ export function IntegrationsManager() {
       });
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update the integration.");
+      setError(userMessage(err, "Could not update the integration."));
     } finally {
       setBusy(false);
     }
@@ -1899,7 +1899,7 @@ export function IntegrationsManager() {
       cancelEdit();
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the integration.");
+      setError(userMessage(err, "Could not save the integration."));
     } finally {
       setBusy(false);
     }
@@ -1911,7 +1911,7 @@ export function IntegrationsManager() {
       await deleteIntegration(integration.id);
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete the integration.");
+      setError(userMessage(err, "Could not delete the integration."));
     } finally {
       setBusy(false);
     }

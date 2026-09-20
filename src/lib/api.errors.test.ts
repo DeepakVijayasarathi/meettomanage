@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readProblemMessage } from "@/lib/api";
+import { ApiError, readProblemMessage, userMessage } from "@/lib/api";
 
 const res = (status: number, body?: unknown) =>
   new Response(body === undefined ? null : JSON.stringify(body), { status });
@@ -37,5 +37,22 @@ describe("readProblemMessage", () => {
     expect(await readProblemMessage(res(502))).toMatch(/Something went wrong on our side/);
     expect(await readProblemMessage(res(403))).toBe("You don't have permission to do this.");
     expect(await readProblemMessage(res(404))).toMatch(/couldn't find/);
+  });
+});
+
+describe("userMessage", () => {
+  it("keeps the readable message of an API failure", () => {
+    expect(userMessage(new ApiError(400, "Leave end time must be after the start time."))).toBe("Leave end time must be after the start time.");
+  });
+
+  it("never shows raw runtime or network wording", () => {
+    expect(userMessage(new TypeError("Cannot read properties of undefined (reading 'id')"), "Couldn't save.")).toBe("Couldn't save.");
+    expect(userMessage(new TypeError("Failed to fetch"))).toMatch(/Can't reach the server/);
+    expect(userMessage(new Error("Unexpected token < in JSON at position 0"), "Couldn't load.")).toBe("Couldn't load.");
+  });
+
+  it("keeps a plain sentence thrown on purpose, and falls back for nothing", () => {
+    expect(userMessage(new Error("Please choose a date first."))).toBe("Please choose a date first.");
+    expect(userMessage(undefined, "Try again.")).toBe("Try again.");
   });
 });

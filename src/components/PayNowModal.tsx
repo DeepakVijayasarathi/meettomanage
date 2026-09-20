@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { InlineAlert } from "@/components/InlineAlert";
 import { formatCurrency, safeExternalUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
 import {
   getPaymentMethods,
@@ -173,7 +173,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
       onInitiated?.();
     } catch (e) {
       setStatus("idle");
-      setError(e instanceof Error ? e.message : "Could not start the payment. Please try again.");
+      setError(userMessage(e, "Could not start the payment. Please try again."));
     }
   }
 
@@ -224,7 +224,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
       razorpay.open();
     } catch (e) {
       setStatus("idle");
-      setError(e instanceof Error ? e.message : "Could not start the payment. Please try again.");
+      setError(userMessage(e, "Could not start the payment. Please try again."));
     }
   }
 
@@ -245,7 +245,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
       const settled = await verifyPayment(true);
       if (!settled) {
         setStatus("idle");
-        setError(e instanceof Error ? e.message : "We couldn't verify the payment yet — it will reconcile automatically.");
+        setError(userMessage(e, "We couldn't verify the payment yet — it will reconcile automatically."));
       }
     }
   }

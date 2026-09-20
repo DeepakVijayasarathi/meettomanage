@@ -24,7 +24,7 @@ import {
 import { SESSIONS } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getChildById } from "@/data/children";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, rescheduleSession, scheduleSession, toFrontendSession } from "@/api/sessions";
 import { listBatches, listTeacherOptions } from "@/api/batches";
@@ -146,7 +146,7 @@ export default function CoordinatorCalendar() {
       setScheduleOpen(false);
       reload();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not schedule the session.";
+      const message = userMessage(err, "Could not schedule the session.");
       setScheduleError(message);
       toast({ variant: "error", title: "Couldn't schedule session", description: message });
     } finally {
@@ -175,7 +175,7 @@ export default function CoordinatorCalendar() {
       reloadHolidays();
       toast({ variant: "success", title: "Holiday added" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not add the holiday.";
+      const message = userMessage(err, "Could not add the holiday.");
       setHolidayError(message);
       toast({ variant: "error", title: "Couldn't add holiday", description: message });
     } finally {
@@ -195,7 +195,7 @@ export default function CoordinatorCalendar() {
       reloadHolidays();
       toast({ variant: "success", title: "Holiday removed" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not remove the holiday.";
+      const message = userMessage(err, "Could not remove the holiday.");
       setHolidayError(message);
       toast({ variant: "error", title: "Couldn't remove holiday", description: message });
     } finally {
@@ -229,7 +229,7 @@ export default function CoordinatorCalendar() {
       reload();
       toast({ variant: "success", title: "Session rescheduled", description: `"${session.title}" moved to ${formatDate(nextRescheduleSlot(session).toISOString().slice(0, 10), "long")}.` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not reschedule this session.";
+      const message = userMessage(err, "Could not reschedule this session.");
       toast({ variant: "error", title: "Couldn't reschedule session", description: message });
       throw err;
     }
@@ -246,7 +246,7 @@ export default function CoordinatorCalendar() {
       reload();
       toast({ variant: "success", title: "Session marked as holiday", description: `"${session.title}" was cancelled and freed from the schedule.` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not mark this session as a holiday.";
+      const message = userMessage(err, "Could not mark this session as a holiday.");
       toast({ variant: "error", title: "Couldn't mark holiday", description: message });
       throw err;
     }
@@ -272,7 +272,7 @@ export default function CoordinatorCalendar() {
       const join = await getJitsiJoin(session.id);
       window.open(buildJitsiJoinUrl(join.domain, join.room, join.token, userName), "_blank", "noopener");
     } catch (err) {
-      setJoinError(err instanceof Error ? err.message : "Couldn't join this class.");
+      setJoinError(userMessage(err, "Couldn't join this class."));
     } finally {
       setJoining(false);
     }

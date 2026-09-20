@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { broadcastReload, rescaleJibriNow, setJibriMinReplicas } from "@/api/monitoring";
 import type { CapacityForecast, RecorderStatus, TimeSeriesPoint } from "@/types";
+import { userMessage } from "@/lib/api";
 
 /** Guards every numeric field the API might not send yet on a backend that's a step behind this frontend's deploy. */
 export function num(value: number | undefined | null): number {
@@ -122,7 +123,7 @@ export function RecorderControls({ serverName, recorderStatus }: { serverName: s
       await rescaleJibriNow(serverName);
       setFeedback("Rescale triggered.");
     } catch (err) {
-      setFeedback(err instanceof Error ? err.message : "Rescale failed.");
+      setFeedback(userMessage(err, "Rescale failed."));
     } finally {
       setBusy(null);
     }
@@ -134,7 +135,7 @@ export function RecorderControls({ serverName, recorderStatus }: { serverName: s
     try {
       await setJibriMinReplicas(serverName, next);
     } catch (err) {
-      setFeedback(err instanceof Error ? err.message : "Update failed.");
+      setFeedback(userMessage(err, "Update failed."));
     } finally {
       setBusy(null);
     }
@@ -188,7 +189,7 @@ export function BroadcastReloadButton() {
       await broadcastReload();
       setFeedback("Sent — anyone in a live class will see a refresh prompt.");
     } catch (err) {
-      setFeedback(err instanceof Error ? err.message : "Broadcast failed.");
+      setFeedback(userMessage(err, "Broadcast failed."));
     } finally {
       setBusy(false);
     }

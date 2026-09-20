@@ -12,7 +12,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CHILDREN } from "@/data/children";
 import { getParentById } from "@/data/users";
 import { INVOICES } from "@/data/invoices";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listSuspensions, liftSuspension, type ApiFeeSuspension } from "@/api/billing";
@@ -76,7 +76,7 @@ export default function SubAdminFeeSuspension() {
       await reloadSuspensions();
       toast({ variant: "success", title: "Access restored" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not restore access. Try again.";
+      const message = userMessage(err, "Could not restore access. Try again.");
       setLiftError(message);
       toast({ variant: "error", title: "Couldn't restore access", description: message });
     } finally {

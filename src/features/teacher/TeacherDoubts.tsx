@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useApiData } from "@/api/hooks";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { listChatEscalations, resolveChatEscalation, type ApiChatEscalation } from "@/api/chatbot";
 import { MOCK_CHAT_ESCALATIONS } from "@/data/chatbot";
@@ -72,7 +72,7 @@ export default function TeacherDoubts() {
       reload();
       toast({ variant: "success", title: "Doubt resolved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not resolve that doubt.";
+      const message = userMessage(err, "Could not resolve that doubt.");
       setNoticeVariant("error");
       setNotice(message);
       toast({ variant: "error", title: "Couldn't resolve doubt", description: message });

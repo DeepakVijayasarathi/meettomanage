@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { listMyStudents, type ApiTeacherStudent } from "@/api/batches";
 import { CHILDREN } from "@/data/children";
 import { BATCHES } from "@/data/batches";
@@ -75,7 +75,7 @@ export default function TeacherStudents() {
         if (!cancelled) setRows(result);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load your students.");
+        if (!cancelled) setError(userMessage(err, "Could not load your students."));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

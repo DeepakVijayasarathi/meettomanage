@@ -3,7 +3,7 @@ import { Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/state/session";
 import { getMyAccount, updateMyAccount } from "@/api/account";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const DISMISS_KEY_PREFIX = "trn.tzMismatchDismissed:";
@@ -129,7 +129,7 @@ export function TimezoneMismatchBanner() {
       });
       setTimeZoneId(updated.timeZoneId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't switch your timezone — try Account settings instead.");
+      setError(userMessage(err, "Couldn't switch your timezone — try Account settings instead."));
     } finally {
       setApplying(false);
     }

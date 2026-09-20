@@ -22,7 +22,7 @@ import {
 import { CHILDREN } from "@/data/children";
 import { getParentById } from "@/data/users";
 import { COURSES, getCourseById } from "@/data/courses";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listEnrollmentForms, reviewEnrollmentForm, updateEnrollmentForm, type ApiEnrollmentForm } from "@/api/parentPortal";
@@ -287,7 +287,7 @@ export default function SubAdminEnrollments() {
       setDetail(null);
       reload();
     } catch (e) {
-      setEditError(e instanceof Error ? e.message : "Could not save changes.");
+      setEditError(userMessage(e, "Could not save changes."));
     } finally {
       setSaving(false);
     }
@@ -317,7 +317,7 @@ export default function SubAdminEnrollments() {
         reload();
         setDetail(null);
       } catch (e) {
-        setApproveError(e instanceof Error ? e.message : "Could not approve the enrollment.");
+        setApproveError(userMessage(e, "Could not approve the enrollment."));
       } finally {
         setApproving(false);
       }

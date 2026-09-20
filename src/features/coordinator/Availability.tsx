@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TEACHERS } from "@/data/users";
 import { SESSIONS } from "@/data/sessions";
 import { LEAVE_REQUESTS } from "@/data/leaves";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listHolidays, listLeave, reviewLeave, type ApiLeaveRequest } from "@/api/academicOps";
@@ -141,7 +141,7 @@ export default function CoordinatorAvailability() {
           });
         })
         .catch((err: unknown) => {
-          const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+          const message = userMessage(err, "Something went wrong. Please try again.");
           toast({ variant: "error", title: `Couldn't ${approve ? "approve" : "reject"} leave`, description: message });
           throw err;
         });

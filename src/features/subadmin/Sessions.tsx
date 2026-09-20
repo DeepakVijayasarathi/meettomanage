@@ -26,7 +26,7 @@ import type { ClassSession, SessionStatus } from "@/types";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, rescheduleSession, scheduleSession, toFrontendSession } from "@/api/sessions";
 import { listBatches, listTeacherOptions } from "@/api/batches";
@@ -176,7 +176,7 @@ export default function SubAdminSessions() {
       setScheduleOpen(false);
       reload();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not schedule the session.";
+      const message = userMessage(err, "Could not schedule the session.");
       setScheduleError(message);
       toast({ variant: "error", title: "Couldn't schedule session", description: message });
     } finally {
@@ -203,7 +203,7 @@ export default function SubAdminSessions() {
       setRescheduleTarget(null);
       reload();
     } catch (err) {
-      notify(false, err instanceof Error ? err.message : "Could not reschedule the session.");
+      notify(false, userMessage(err, "Could not reschedule the session."));
     } finally {
       setReschedBusy(false);
     }
@@ -220,7 +220,7 @@ export default function SubAdminSessions() {
       notify(true, `"${cancelTarget.title}" cancelled. Parents and the teacher can see the change.`);
       reload();
     } catch (err) {
-      notify(false, err instanceof Error ? err.message : "Could not cancel the session.");
+      notify(false, userMessage(err, "Could not cancel the session."));
     }
   }
 
@@ -234,7 +234,7 @@ export default function SubAdminSessions() {
       const join = await getJitsiJoin(session.id);
       window.open(buildJitsiJoinUrl(join.domain, join.room, join.token, userName), "_blank", "noopener");
     } catch (err) {
-      notify(false, err instanceof Error ? err.message : "Couldn't join this class.");
+      notify(false, userMessage(err, "Couldn't join this class."));
     } finally {
       setJoiningId(null);
     }

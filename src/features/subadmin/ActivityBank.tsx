@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmojiPickerField } from "@/components/EmojiPickerField";
 import { useApiData } from "@/api/hooks";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { listDepartments, type ApiDepartment } from "@/api/departments";
 import { listCourses, type ApiCourse } from "@/api/courses";
@@ -167,7 +167,7 @@ export default function SubAdminActivityBank() {
       reload();
       toast({ variant: "success", title: editing ? "Activity updated" : "Activity created" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the activity.";
+      const message = userMessage(err, "Could not save the activity.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save activity", description: message });
     } finally {
@@ -189,7 +189,7 @@ export default function SubAdminActivityBank() {
       reload();
       toast({ variant: "success", title: "Activity deleted" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not delete that activity.";
+      const message = userMessage(err, "Could not delete that activity.");
       setNotice(message);
       toast({ variant: "error", title: "Couldn't delete activity", description: message });
     } finally {

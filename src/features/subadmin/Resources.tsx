@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { RESOURCES } from "@/data/resources";
 import { BATCHES } from "@/data/batches";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listResources, toFrontendResource, updateResource, uploadResource, type ApiResourceType } from "@/api/resources";
@@ -94,7 +94,7 @@ export default function SubAdminResources() {
       setPendingFile(null);
       toast({ variant: "success", title: "Resource uploaded" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not upload the file.";
+      const message = userMessage(err, "Could not upload the file.");
       setUploadError(message);
       toast({ variant: "error", title: "Couldn't upload resource", description: message });
     } finally {
@@ -122,7 +122,7 @@ export default function SubAdminResources() {
         await updateResource(row.id, !row.downloadable);
         reload();
       } catch (err) {
-        setToggleError(err instanceof Error ? err.message : "Could not update this resource.");
+        setToggleError(userMessage(err, "Could not update this resource."));
       } finally {
         setDownloadBusyId(null);
       }

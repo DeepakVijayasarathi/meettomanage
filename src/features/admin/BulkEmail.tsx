@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CHILDREN } from "@/data/children";
 import { BATCHES } from "@/data/batches";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listBatches } from "@/api/batches";
 import { getBulkEmailRecipientCount, sendBulkEmail } from "@/api/reports";
@@ -85,7 +85,7 @@ export default function AdminBulkEmail() {
       setSent(true);
       toast({ variant: "success", title: "Email sent", description: `Delivered to ${result.recipientCount} recipient(s).` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't send the email. Please try again.";
+      const message = userMessage(err, "Couldn't send the email. Please try again.");
       setSendError(message);
       toast({ variant: "error", title: "Couldn't send email", description: message });
     } finally {

@@ -16,7 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getLeavesForTeacher } from "@/data/leaves";
 import { getSessionsForTeacher } from "@/data/sessions";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import {
@@ -167,7 +167,7 @@ export default function TeacherLeave() {
         resetClassWiseForm();
       })
       .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : "Could not submit this leave request.";
+        const message = userMessage(err, "Could not submit this leave request.");
         setSubmitError(message);
         toast({ variant: "error", title: "Couldn't submit leave request", description: message });
       })
@@ -254,8 +254,8 @@ export default function TeacherLeave() {
           // Deliberately not resetting the form here — a failed submission keeps the
           // teacher's selected dates/reason in place so they can fix whatever's wrong and
           // retry without repicking the range and retyping the reason.
-          setSubmitError(err.message);
-          toast({ variant: "error", title: "Couldn't submit leave request", description: err.message });
+          setSubmitError(userMessage(err));
+          toast({ variant: "error", title: "Couldn't submit leave request", description: userMessage(err) });
         });
       return;
     }
@@ -299,7 +299,7 @@ export default function TeacherLeave() {
         toast({ variant: "success", title: "Leave request cancelled" });
       })
       .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : "Could not cancel this leave request.";
+        const message = userMessage(err, "Could not cancel this leave request.");
         toast({ variant: "error", title: "Couldn't cancel leave request", description: message });
         throw err;
       });

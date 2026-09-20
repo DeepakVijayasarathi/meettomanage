@@ -15,7 +15,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PARENTS } from "@/data/users";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listPaymentAccounts, setPaymentMapping, updatePaymentAccount, type ApiPaymentAccount } from "@/api/billing";
@@ -230,7 +230,7 @@ export default function SubAdminPaymentMapping() {
       reloadAccounts();
       toast({ variant: "success", title: "Account saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the account.";
+      const message = userMessage(err, "Could not save the account.");
       setEditError(message);
       toast({ variant: "error", title: "Couldn't save account", description: message });
     } finally {
@@ -257,7 +257,7 @@ export default function SubAdminPaymentMapping() {
       setResult({ ok: true, message: `${parentName} is now routed to ${acctName}.` });
       toast({ variant: "success", title: "Mapping saved", description: `${parentName} routed to ${acctName}.` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the mapping.";
+      const message = userMessage(err, "Could not save the mapping.");
       setResult({ ok: false, message });
       toast({ variant: "error", title: "Couldn't save mapping", description: message });
     } finally {

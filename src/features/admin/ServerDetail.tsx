@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getMonitoringSummary, getServerHistory, getServerLogs, restartService, toFrontendMonitoringSummary, type ApiServerLogs, type HistoryRange } from "@/api/monitoring";
 import { MONITORING_SUMMARY } from "@/data/monitoring";
@@ -203,7 +203,7 @@ function ContainerLogsPanel({ serverName, services }: { serverName: string; serv
     try {
       setLogs(await getServerLogs(serverName, container));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't fetch logs.");
+      setError(userMessage(err, "Couldn't fetch logs."));
       setLogs(null);
     } finally {
       setLoading(false);

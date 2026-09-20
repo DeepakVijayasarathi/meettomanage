@@ -23,7 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn, formatDate } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import {
   getMyNotifications,
   markAllNotificationsRead,
@@ -219,7 +219,7 @@ export default function ParentNotifications() {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setReportsError(err instanceof Error ? err.message : "Request failed");
+        setReportsError(userMessage(err, "Request failed"));
         setReportsLoaded(true);
       });
     return () => {
@@ -243,7 +243,7 @@ export default function ParentNotifications() {
         if (cancelled) return;
         // Keep whatever was last loaded (don't clobber it with []) and surface the
         // failure — otherwise a network error renders identically to "no notifications".
-        setLoadError(err instanceof Error ? err.message : "Request failed");
+        setLoadError(userMessage(err, "Request failed"));
         setLoaded(true);
       });
     return () => {
@@ -529,7 +529,7 @@ function BulkEmailReplyBox({ recipientId, onReplied }: { recipientId: string; on
       await replyToBulkEmail(recipientId, trimmed);
       onReplied(trimmed);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't send your reply. Please try again.");
+      setError(userMessage(err, "Couldn't send your reply. Please try again."));
     } finally {
       setSending(false);
     }

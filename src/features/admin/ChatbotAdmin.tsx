@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useApiData } from "@/api/hooks";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import {
   listAllFaqs,
@@ -117,7 +117,7 @@ function FaqManager() {
       reload();
       toast({ variant: "success", title: editing ? "FAQ updated" : "FAQ created" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the FAQ.";
+      const message = userMessage(err, "Could not save the FAQ.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save FAQ", description: message });
     } finally {
@@ -139,7 +139,7 @@ function FaqManager() {
       reload();
       toast({ variant: "success", title: "FAQ deleted" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not delete that FAQ.";
+      const message = userMessage(err, "Could not delete that FAQ.");
       setNotice(message);
       toast({ variant: "error", title: "Couldn't delete FAQ", description: message });
     } finally {
@@ -323,7 +323,7 @@ function EscalationsPanel() {
       reload();
       toast({ variant: "success", title: "Doubt resolved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not resolve that doubt.";
+      const message = userMessage(err, "Could not resolve that doubt.");
       setNotice(message);
       toast({ variant: "error", title: "Couldn't resolve doubt", description: message });
     } finally {
