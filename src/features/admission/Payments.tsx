@@ -218,6 +218,7 @@ export default function AdmissionPayments() {
                 size="sm"
                 disabled={row.status === "paid" || row.status === "cancelled" || linkBusyId === row.id || (!apiEnabled())}
                 onClick={() => handleGenerateLink(row)}
+                title="Generate a payment link and copy it to share with the parent"
               >
                 {linkBusyId === row.id ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -226,7 +227,7 @@ export default function AdmissionPayments() {
                 ) : (
                   <Link2 className="h-3.5 w-3.5" />
                 )}
-                {linkBusyId === row.id ? "Generating…" : copiedId === row.id ? "Link copied" : "Generate & copy link"}
+                {linkBusyId === row.id ? "Generating…" : copiedId === row.id ? "Link copied" : "Payment link"}
               </Button>
             ) : (
               <span className="text-xs text-muted-foreground">—</span>

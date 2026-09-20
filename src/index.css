@@ -62,6 +62,9 @@
   }
 
   .dark {
+    /* Tells the browser to draw its own controls (date-picker calendar icon, scrollbars, select
+       arrows) for a dark surface; without it the date fields' icon is dark-on-dark and invisible. */
+    color-scheme: dark;
     --background: 222 30% 8%;
     --foreground: 210 25% 96%;
 
