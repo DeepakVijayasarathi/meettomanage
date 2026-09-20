@@ -326,7 +326,7 @@ export default function AdminDashboard() {
             <BarChart data={courseRevenue} layout="vertical" margin={{ left: 0, right: 24, top: 8, bottom: 0 }} barCategoryGap={6}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
               <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={formatCurrencyAxisTick} />
-              <YAxis type="category" dataKey="course" tickLine={false} axisLine={false} width={150} interval={0} tick={<TruncatedCategoryTick maxChars={24} />} />
+              <YAxis type="category" dataKey="course" tickLine={false} axisLine={false} width={172} interval={0} tick={<TruncatedCategoryTick maxChars={22} />} />
               <RTooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="revenue" radius={[0, 6, 6, 0]} maxBarSize={22}>
                 {courseRevenue.map((_, i) => (
