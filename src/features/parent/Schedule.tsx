@@ -173,7 +173,17 @@ export default function ParentSchedule() {
                   ))}
                 </div>
               ) : upcoming.length === 0 ? (
-                <EmptyState icon={ListChecks} title="No upcoming sessions" description="New classes will appear here once scheduled." />
+                <EmptyState
+                  icon={ListChecks}
+                  title="No upcoming sessions"
+                  description={
+                    !usingApi
+                      ? "New classes will appear here once scheduled."
+                      : sessions.length === 0
+                        ? `${child?.name ?? "Your child"}'s class timetable hasn't been set up yet. The Reader Nest team adds it once the batch is ready, and you'll be notified here as soon as classes are scheduled. If you're expecting classes to have started, please contact your coordinator.`
+                        : "All scheduled classes so far are done. If the course isn't finished, the next classes will appear here as soon as they're scheduled — or contact your coordinator to check."
+                  }
+                />
               ) : (
                 <div className="flex flex-col gap-3">
                   {upcoming.map((s) => (

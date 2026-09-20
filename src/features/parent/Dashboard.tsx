@@ -220,7 +220,15 @@ export default function ParentDashboard() {
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   {upcoming.length === 0 ? (
-                    <EmptyState icon={CalendarClock} title="No upcoming classes" description="New sessions will appear here once scheduled." />
+                    <EmptyState
+                      icon={CalendarClock}
+                      title="No upcoming classes"
+                      description={
+                        apiEnabled() && sessions.length === 0
+                          ? "The class timetable hasn't been set up yet. You'll be notified as soon as classes are scheduled."
+                          : "New sessions will appear here once scheduled."
+                      }
+                    />
                   ) : (
                     upcoming.map((s) => <UpcomingRow key={s.id} session={s} />)
                   )}
