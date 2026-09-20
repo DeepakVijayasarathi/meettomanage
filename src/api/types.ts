@@ -21,6 +21,8 @@ export interface ApiUser {
   roleDefinitionId: string | null;
   createdAtUtc: string;
   lastLoginAtUtc: string | null;
+  /** A system-issued PIN is stored (encrypted) and an admin can view it. */
+  pinViewable?: boolean;
 }
 
 export interface PagedResult<T> {

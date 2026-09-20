@@ -101,6 +101,7 @@ export function toAppUser(user: ApiUser): AppUser {
     department: user.departmentName ?? undefined,
     departmentId: user.departmentId ?? undefined,
     roleDefinitionId: user.roleDefinitionId ?? undefined,
+    pinViewable: user.pinViewable ?? false,
   };
 }
 
@@ -171,6 +172,12 @@ export interface CredentialChannels {
 /** Which credential-delivery channels are enabled in Settings → Integrations (drives which Send buttons show). */
 export async function getCredentialChannels(): Promise<CredentialChannels> {
   return apiFetch<CredentialChannels>("/api/users/credential-channels");
+}
+
+/** The PIN the system last issued to this user (decrypted server-side; Admin role only, audit-logged). */
+export async function revealPin(userId: string): Promise<string> {
+  const result = await apiFetch<{ pin: string }>(`/api/users/${userId}/pin`);
+  return result.pin;
 }
 
 /**

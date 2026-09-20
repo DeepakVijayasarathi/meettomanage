@@ -24,6 +24,8 @@ export interface AppUser {
   departmentId?: string;
   /** Assigned named role (preset) id; only meaningful for Sub Admin accounts. */
   roleDefinitionId?: string;
+  /** A system-issued PIN is stored (encrypted) and an admin can view it. */
+  pinViewable?: boolean;
 }
 
 export interface Child {

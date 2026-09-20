@@ -748,7 +748,7 @@ export default function AdminUsers() {
 
   // Per-row "Reset & show PIN" -- teachers, parents and staff; students are children with no login.
   const pinColumn: DataTableColumn<AppUser> = useMemo(
-    () => ({ key: "pin", header: "PIN", render: (row) => <UserPinCell userId={row.id} userName={row.name} /> }),
+    () => ({ key: "pin", header: "PIN", render: (row) => <UserPinCell userId={row.id} userName={row.name} viewable={row.pinViewable} /> }),
     []
   );
 
