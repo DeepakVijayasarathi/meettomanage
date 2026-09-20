@@ -350,7 +350,7 @@ export default function AdminDashboard() {
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
               <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} />
               <YAxis type="category" dataKey="stage" tickLine={false} axisLine={false} fontSize={12} width={104} />
-              <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
+              <RTooltip formatter={(value: number) => [formatNumber(value), "Count"]} cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={22}>
                 {enrollmentFunnel.map((_, i) => (
                   <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
@@ -411,6 +411,7 @@ export default function AdminDashboard() {
         <ChartCard
           title="Batch Occupancy by Course"
           description="Fill rate across active batches"
+          className="lg:col-span-2"
           empty={batchOccupancyByCourse.length === 0}
         >
           <ResponsiveContainer width="100%" height="100%">
