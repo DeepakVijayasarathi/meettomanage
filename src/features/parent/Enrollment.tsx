@@ -15,7 +15,7 @@ import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { COURSES } from "@/data/courses";
 import { cn } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
 import { listCourseOptions } from "@/api/courses";
@@ -282,7 +282,7 @@ export default function ParentEnrollment() {
           toast({ variant: "success", title: "Enrollment submitted" });
         })
         .catch((err: Error) => {
-          const message = err.message || "Could not submit the form. Please try again.";
+          const message = userMessage(err, "Could not submit the form. Please try again.");
           setError(message);
           toast({ variant: "error", title: "Couldn't submit enrollment", description: message });
         })

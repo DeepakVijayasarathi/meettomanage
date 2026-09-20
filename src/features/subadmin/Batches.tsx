@@ -29,7 +29,7 @@ import { getTeacherById, TEACHERS } from "@/data/users";
 import type { BatchStatus } from "@/types";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { usePortalBase } from "@/lib/portalBase";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
@@ -248,7 +248,7 @@ export default function SubAdminBatches() {
       }
       reload();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not run the repair.";
+      const message = userMessage(err, "Could not run the repair.");
       toast({ variant: "error", title: "Repair failed", description: message });
     } finally {
       setReconciling(false);
@@ -279,7 +279,7 @@ export default function SubAdminBatches() {
       }
       reload();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not run the repair.";
+      const message = userMessage(err, "Could not run the repair.");
       toast({ variant: "error", title: "Repair failed", description: message });
     } finally {
       setReconcilingDurations(false);
@@ -389,7 +389,7 @@ export default function SubAdminBatches() {
       setAdjResult("Schedule updated — every upcoming session now reflects the new plan; completed sessions were left untouched.");
       reload();
     } catch (err) {
-      setAdjResult(err instanceof Error ? err.message : "Could not update the schedule.");
+      setAdjResult(userMessage(err, "Could not update the schedule."));
     } finally {
       setAdjBusy(false);
     }
@@ -415,7 +415,7 @@ export default function SubAdminBatches() {
       setUnassigned(candidates);
       setRosterError(null);
     } catch (err) {
-      setRosterError(err instanceof Error ? err.message : "Could not load the student roster.");
+      setRosterError(userMessage(err, "Could not load the student roster."));
     } finally {
       setRosterLoading(false);
     }
@@ -430,7 +430,7 @@ export default function SubAdminBatches() {
       await reloadRoster(detail.id);
       reload();
     } catch (err) {
-      setRosterError(err instanceof Error ? err.message : "Could not assign this student.");
+      setRosterError(userMessage(err, "Could not assign this student."));
     } finally {
       setAssigning(false);
     }
@@ -445,7 +445,7 @@ export default function SubAdminBatches() {
       await reloadRoster(detail.id);
       reload();
     } catch (err) {
-      setRosterError(err instanceof Error ? err.message : "Could not remove this student.");
+      setRosterError(userMessage(err, "Could not remove this student."));
     } finally {
       setRemovingId(null);
     }
@@ -510,7 +510,7 @@ export default function SubAdminBatches() {
       setNewPaymentPlan(DEFAULT_PAYMENT_PLAN);
       reload();
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Could not create the batch.");
+      setCreateError(userMessage(err, "Could not create the batch."));
     } finally {
       setCreating(false);
     }
@@ -597,7 +597,7 @@ export default function SubAdminBatches() {
       reload();
       setDetail(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the batch.";
+      const message = userMessage(err, "Could not save the batch.");
       setSaveError(message);
       toast({ variant: "error", title: "Couldn't save batch", description: message });
     } finally {
@@ -630,7 +630,7 @@ export default function SubAdminBatches() {
       setGenResult(`${created.length} sessions created — they now appear on the teacher's and parents' schedules.`);
       reload();
     } catch (err) {
-      setGenResult(err instanceof Error ? err.message : "Could not generate the schedule.");
+      setGenResult(userMessage(err, "Could not generate the schedule."));
     } finally {
       setGenBusy(false);
     }
@@ -650,7 +650,7 @@ export default function SubAdminBatches() {
       reload();
       setDetail(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not archive the batch.";
+      const message = userMessage(err, "Could not archive the batch.");
       setSaveError(message);
       toast({ variant: "error", title: "Couldn't archive batch", description: message });
     } finally {
@@ -672,7 +672,7 @@ export default function SubAdminBatches() {
       reload();
       setDetail(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not delete this batch.";
+      const message = userMessage(err, "Could not delete this batch.");
       setSaveError(message);
       toast({ variant: "error", title: "Couldn't delete batch", description: message });
     } finally {
@@ -690,7 +690,7 @@ export default function SubAdminBatches() {
         title="Batches"
         description="Create, edit and archive the batches assigned to you — capacity, schedule and teacher assignment."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {canEdit && (
               <Button
                 variant="outline"

@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DEMO_FEEDBACKS } from "@/data/feedback";
 import { COURSES } from "@/data/courses";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listCourseOptions } from "@/api/courses";
 import {
@@ -124,7 +124,7 @@ export default function TeacherDemoFeedback() {
         setForm(EMPTY_FORM);
         toast({ variant: "success", title: "Feedback submitted", description: `Feedback for ${active.childName} was recorded.` });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Couldn't submit this feedback. Please try again.";
+        const message = userMessage(err, "Couldn't submit this feedback. Please try again.");
         setSubmitError(message);
         toast({ variant: "error", title: "Couldn't submit feedback", description: message });
       } finally {

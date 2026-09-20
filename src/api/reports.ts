@@ -1,4 +1,4 @@
-import { apiFetch, getAccessToken } from "@/lib/api";
+import { ApiError, apiFetch, getAccessToken, readProblemMessage } from "@/lib/api";
 
 export interface ApiDashboardSummary {
   totalStudents: number;
@@ -189,7 +189,7 @@ export async function downloadReportCsv(
   const response = await fetch(`${baseUrl}/api/reports/export/${report}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
-  if (!response.ok) throw new Error(`Export failed (${response.status})`);
+  if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
 
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);

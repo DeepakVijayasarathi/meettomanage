@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { userMessage } from "@/lib/api";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -54,7 +55,7 @@ export function ConfirmDialog({
       await result;
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(userMessage(err, "Something went wrong. Please try again."));
     } finally {
       setBusy(false);
     }

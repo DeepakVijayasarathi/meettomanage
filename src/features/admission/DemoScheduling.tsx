@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SESSIONS } from "@/data/sessions";
 import { TEACHERS } from "@/data/users";
 import { LEADS } from "./data";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
@@ -210,7 +210,7 @@ export default function AdmissionDemoScheduling() {
       setRescheduleTarget(null);
       reloadRows();
     } catch (err) {
-      setReschedError(err instanceof Error ? err.message : "Could not reschedule this demo.");
+      setReschedError(userMessage(err, "Could not reschedule this demo."));
     } finally {
       setReschedBusy(false);
     }
@@ -301,8 +301,8 @@ export default function AdmissionDemoScheduling() {
           toast({ variant: "success", title: "Demo scheduled" });
         })
         .catch((err: Error) => {
-          setActionError(err.message);
-          toast({ variant: "error", title: "Couldn't schedule demo", description: err.message });
+          setActionError(userMessage(err));
+          toast({ variant: "error", title: "Couldn't schedule demo", description: userMessage(err) });
         })
         .finally(() => setScheduling(false));
       return;
@@ -347,7 +347,7 @@ export default function AdmissionDemoScheduling() {
         toast({ variant: "success", title: "Link resent", description: `${row.childName}'s demo link was re-sent to the parent and teacher.` });
       })
       .catch((err: Error) => {
-        toast({ variant: "error", title: "Couldn't resend link", description: err.message });
+        toast({ variant: "error", title: "Couldn't resend link", description: userMessage(err) });
       })
       .finally(() => setResendingId(null));
   }, [toast]);
@@ -370,7 +370,7 @@ export default function AdmissionDemoScheduling() {
       })
       .catch((err: Error) => {
         setCopyState({ id: row.id, status: "failed" });
-        toast({ variant: "error", title: "Couldn't copy link", description: err.message });
+        toast({ variant: "error", title: "Couldn't copy link", description: userMessage(err) });
       })
       .finally(() => {
         setTimeout(() => setCopyState((s) => (s?.id === row.id ? null : s)), 2500);
@@ -471,7 +471,7 @@ export default function AdmissionDemoScheduling() {
         // even a single button needs, clipping button labels at the table's right edge
         // instead of wrapping them onto their own line as intended.
         render: (row) => (
-          <div className="flex min-w-max flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap sm:min-w-max items-center gap-1.5">
             {row.status === "demo" ? (
               <Button asChild variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
                 <Link to={`${base}/demo-teacher-assignment/${row.id}`}>Reassign</Link>

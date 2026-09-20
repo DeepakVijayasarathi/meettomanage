@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { resetPin } from "@/api/auth";
 import { useLightBrandScope } from "@/lib/theme";
+import { userMessage } from "@/lib/api";
 
 const PIN_LENGTH = 4;
 // Same headline face as Login.tsx (scoped to this page only, not the global font-display).
@@ -109,7 +110,7 @@ export default function ResetPin() {
       setDone(true);
       setTimeout(() => navigate("/login"), 1800);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't reset your PIN. Please try again.");
+      setError(userMessage(err, "Couldn't reset your PIN. Please try again."));
     } finally {
       setSubmitting(false);
     }

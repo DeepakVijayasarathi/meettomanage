@@ -16,6 +16,7 @@ import {
   Lock,
   LogIn,
   MemoryStick,
+  Moon,
   PowerOff,
   RefreshCw,
   RotateCcw,
@@ -67,6 +68,7 @@ import {
   formatAgeShort,
   formatUptime,
 } from "./monitoringShared";
+import { BurstWorkerPanel } from "./BurstWorkerPanel";
 
 const REFRESH_INTERVAL_MS = 20_000;
 
@@ -80,6 +82,7 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   activeClassCount: 0,
   activeAlerts: [],
   todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
+  burstWorkerUsage: null,
   generatedAtUtc: "",
 };
 
@@ -157,6 +160,42 @@ function ServerCard({ server }: { server: ServerStatus }) {
   const [restartTarget, setRestartTarget] = useState<string | null>(null);
 
   if (!server.reachable) {
+    // On-demand servers (e.g. a Hetzner burst worker) are torn down between peaks by design --
+    // that's the normal, healthy state for this card most of the time, so it gets a neutral
+    // "Standby" treatment instead of the red "Unreachable" alarm used for an always-on server
+    // that's actually down.
+    if (server.isOnDemand) {
+      return (
+        <Card className="p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <Moon className="h-[18px] w-[18px]" />
+              </span>
+              <div>
+                <h3 className="text-base font-semibold text-foreground">{server.name}</h3>
+                <p className="text-xs text-muted-foreground">{server.hostname || "Unknown host"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">Standby</Badge>
+              <Link
+                to={`/admin/monitoring/${encodeURIComponent(server.name)}`}
+                className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                Details <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+          <EmptyState
+            icon={Moon}
+            title="Not currently running"
+            description={server.error ?? "This is on-demand burst capacity, created automatically only during a scheduled peak."}
+          />
+        </Card>
+      );
+    }
+
     return (
       <Card className="p-5">
         <div className="mb-4 flex items-center justify-between">
@@ -815,7 +854,7 @@ export default function AdminMonitoring() {
 
       <AlertsBanner alerts={summary.activeAlerts ?? []} loading={loading && summary.servers.length === 0} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <KpiCard
           label="Concurrent Users"
           value={`${num(summary.concurrentClassroomUsers)}`}
@@ -878,7 +917,28 @@ export default function AdminMonitoring() {
           error={error}
           onClick={num(summary.todayRecordings?.failed) > 0 ? () => setFailedRecordingsOpen(true) : undefined}
         />
+        {/* Null (not zeroed) means the usage log couldn't be fetched (e.g. main unreachable) --
+            shown as "—", not a false "never used." */}
+        <KpiCard
+          label="Burst Capacity Cost"
+          value={summary.burstWorkerUsage ? `$${summary.burstWorkerUsage.estimatedCostTodayUsd.toFixed(2)}` : "—"}
+          detail={
+            summary.burstWorkerUsage
+              ? summary.burstWorkerUsage.currentlyActive
+                ? `${summary.burstWorkerUsage.episodesToday} time${summary.burstWorkerUsage.episodesToday === 1 ? "" : "s"} today · running now`
+                : `${summary.burstWorkerUsage.episodesToday} time${summary.burstWorkerUsage.episodesToday === 1 ? "" : "s"} today`
+              : "Usage data unavailable"
+          }
+          icon={Zap}
+          tone={summary.burstWorkerUsage?.currentlyActive ? "primary" : "neutral"}
+          loading={loading}
+          error={error}
+        />
       </div>
+
+      {/* Always rendered (even with no history yet, or if the usage lookup failed) so the emergency
+          Start now button is there when it is actually needed. */}
+      <BurstWorkerPanel usage={summary.burstWorkerUsage} canManage={canManage} onChanged={reload} />
 
       <Dialog open={failedRecordingsOpen} onOpenChange={setFailedRecordingsOpen}>
         <DialogContent>

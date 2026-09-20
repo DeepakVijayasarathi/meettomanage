@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useApiData } from "@/api/hooks";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { listDepartments, createDepartment, updateDepartment, bulkImportDepartments, exportDepartments, type ApiDepartment } from "@/api/departments";
 import { DEMO_DEPARTMENTS } from "@/data/departments";
@@ -80,7 +80,7 @@ export default function SubAdminDepartments() {
       reload();
       toast({ variant: "success", title: editing ? "Department updated" : "Department created" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the department.";
+      const message = userMessage(err, "Could not save the department.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save department", description: message });
     } finally {

@@ -79,6 +79,30 @@ function localDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** Category-axis tick that stays on one line: long names are cut with an ellipsis (full name on hover). */
+function TruncatedCategoryTick({
+  x,
+  y,
+  payload,
+  maxChars = 24,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+  maxChars?: number;
+}) {
+  const full = String(payload?.value ?? "");
+  // "(Individual)" -> "(1:1)" buys ~8 characters, so the level/number that tells two courses apart survives
+  const short = full.replace(/\(Individual\)/i, "(1:1)");
+  const text = short.length > maxChars ? `${short.slice(0, maxChars - 1).trimEnd()}…` : short;
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" fontSize={11} fill="hsl(var(--muted-foreground))">
+      <title>{full}</title>
+      {text}
+    </text>
+  );
+}
+
 export default function AdminDashboard() {
   const brand = useBrand();
   const usingApi = apiEnabled();
@@ -135,6 +159,8 @@ export default function AdminDashboard() {
     { kpis: ZERO_KPIS, revenueTrend: [], departmentRevenue: [], courseRevenue: [], enrollmentFunnel: [], attendanceTrend: [], batchOccupancyByCourse: [] }
   );
   const { kpis, revenueTrend, departmentRevenue, courseRevenue, enrollmentFunnel, attendanceTrend, batchOccupancyByCourse } = dashboard;
+  // Course names are long; on phones the label column has to stay narrow so the bars keep some room.
+  const narrow = typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
   // No per-teacher breakdown endpoint yet (only the aggregate sessions-per-teacher
   // KPI above) — empty chart in API mode.
   const teacherUtilization = usingApi ? [] : TEACHER_UTILIZATION;
@@ -291,12 +317,20 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Course Revenue" description="Collected revenue by course, all time" loading={dashboardLoading} error={dashboardError}>
+        <ChartCard
+          title="Course Revenue"
+          description="Collected revenue by course, all time"
+          loading={dashboardLoading}
+          error={dashboardError}
+          empty={courseRevenue.length === 0}
+          emptyMessage="No revenue collected yet."
+          height={Math.max(280, courseRevenue.length * 30 + 40)}
+        >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={courseRevenue} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
+            <BarChart data={courseRevenue} layout="vertical" margin={{ left: 0, right: 24, top: 8, bottom: 0 }} barCategoryGap={6}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
               <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={formatCurrencyAxisTick} />
-              <YAxis type="category" dataKey="course" tickLine={false} axisLine={false} fontSize={11} width={120} />
+              <YAxis type="category" dataKey="course" tickLine={false} axisLine={false} width={narrow ? 150 : 224} interval={0} tick={<TruncatedCategoryTick maxChars={narrow ? 21 : 33} />} />
               <RTooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="revenue" radius={[0, 6, 6, 0]} maxBarSize={22}>
                 {courseRevenue.map((_, i) => (
@@ -307,13 +341,20 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Enrollment Funnel" description="Demo to enrollment conversion, this quarter" loading={dashboardLoading} error={dashboardError}>
+        <ChartCard
+          title="Enrollment Funnel"
+          description="Demo to enrollment conversion, this quarter"
+          loading={dashboardLoading}
+          error={dashboardError}
+          empty={enrollmentFunnel.every((stage) => !stage.value)}
+          emptyMessage="No demos booked this quarter yet."
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={enrollmentFunnel} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
               <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} />
               <YAxis type="category" dataKey="stage" tickLine={false} axisLine={false} fontSize={12} width={104} />
-              <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
+              <RTooltip formatter={(value: number) => [formatNumber(value), "Count"]} cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={22}>
                 {enrollmentFunnel.map((_, i) => (
                   <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
@@ -374,6 +415,7 @@ export default function AdminDashboard() {
         <ChartCard
           title="Batch Occupancy by Course"
           description="Fill rate across active batches"
+          className="lg:col-span-2"
           empty={batchOccupancyByCourse.length === 0}
         >
           <ResponsiveContainer width="100%" height="100%">

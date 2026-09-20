@@ -10,7 +10,7 @@ import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
-import { apiEnabled, getAccessToken } from "@/lib/api";
+import { apiEnabled, getAccessToken, userMessage } from "@/lib/api";
 import { getRemember, setRemember } from "@/lib/authStorage";
 import { login } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
@@ -123,7 +123,7 @@ export default function Login() {
       setTimeZoneId(response.user.timeZoneId);
       navigate(from ?? homePath);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign in failed. Please try again.");
+      setError(userMessage(err, "Sign in failed. Please try again."));
       // A wrong PIN otherwise just sat there in the boxes — the visitor had to manually
       // clear all 4 digits themselves before they could even start retyping. Clear and
       // refocus the first box so retrying is just "type the PIN again," not "clear, then

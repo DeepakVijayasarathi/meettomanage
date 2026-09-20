@@ -8,7 +8,7 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listStoreInquiries, updateStoreInquiryStatus, type ApiStoreInquiry, type ApiStoreInquiryStatus } from "@/api/store";
@@ -81,7 +81,7 @@ export default function SubAdminStoreInquiries() {
       await reload();
       toast({ variant: "success", title: "Inquiry updated", description: `Marked as ${status}.` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't update this inquiry.";
+      const message = userMessage(err, "Couldn't update this inquiry.");
       setActionError(message);
       toast({ variant: "error", title: "Couldn't update inquiry", description: message });
     } finally {

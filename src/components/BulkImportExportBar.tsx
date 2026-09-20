@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileDropzone } from "@/components/FileDropzone";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { toCsv } from "@/lib/utils";
 import type { BulkImportResult } from "@/api/types";
 
@@ -69,7 +69,7 @@ export function BulkImportExportBar({ entityLabel, templateColumns, onImport, on
       setResult(outcome);
       onImported?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The import failed.");
+      setError(userMessage(err, "The import failed."));
     } finally {
       setUploading(false);
     }

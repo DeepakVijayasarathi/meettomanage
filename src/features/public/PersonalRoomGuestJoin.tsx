@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
-import { apiEnabled, ApiError } from "@/lib/api";
+import { apiEnabled, ApiError, userMessage } from "@/lib/api";
 import { getPersonalRoomGuestJoin, type PersonalRoomGuestJoin as ApiPersonalRoomGuestJoin } from "@/api/account";
 import JitsiLive from "@/features/classroom/JitsiLive";
 
@@ -51,7 +51,7 @@ export default function PersonalRoomGuestJoin() {
       .catch((err: unknown) => {
         if (cancelled) return;
         setPhase("error");
-        setError(err instanceof ApiError ? err.message : "This link is invalid or has expired.");
+        setError(userMessage(err, "This link is invalid or has expired."));
       });
     return () => {
       cancelled = true;

@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import {
@@ -133,7 +133,7 @@ export default function DemoTeacherAssignment() {
         setWorkload(workloadRows);
         setHistoryList(historyRows);
       })
-      .catch((err: Error) => setDetailError(err.message))
+      .catch((err: Error) => setDetailError(userMessage(err)))
       .finally(() => setDetailLoading(false));
   }
 
@@ -198,8 +198,8 @@ export default function DemoTeacherAssignment() {
         toast({ variant: "success", title: "Teacher reassigned" });
       })
       .catch((err: Error) => {
-        setActionError(err.message);
-        toast({ variant: "error", title: "Couldn't reassign teacher", description: err.message });
+        setActionError(userMessage(err));
+        toast({ variant: "error", title: "Couldn't reassign teacher", description: userMessage(err) });
       })
       .finally(() => setSubmitting(false));
   }

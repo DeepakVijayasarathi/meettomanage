@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { useSession } from "@/state/session";
 import { listRefunds, reviewRefund, type ApiRefund } from "@/api/billing";
@@ -51,7 +51,7 @@ export function RefundRequestsPanel() {
       await reviewRefund(refund.id, approve);
       reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : `Could not ${approve ? "approve" : "reject"} this refund.`);
+      setError(userMessage(e, `Could not ${approve ? "approve" : "reject"} this refund.`));
     } finally {
       setBusyId(null);
     }

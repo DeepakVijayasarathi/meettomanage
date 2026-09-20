@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { useSession } from "@/state/session";
 import { listCashIntents, confirmCashIntent, rejectCashIntent, type ApiCashIntent } from "@/api/billing";
@@ -54,7 +54,7 @@ export function CashConfirmationsPanel() {
       await confirmCashIntent(intent.transactionId, amount);
       reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not confirm this payment.");
+      setError(userMessage(e, "Could not confirm this payment."));
       // A stale intent (invoice already paid) is auto-closed server-side — refresh
       // the queue so it disappears instead of erroring again on the next click.
       reload();
@@ -70,7 +70,7 @@ export function CashConfirmationsPanel() {
       await rejectCashIntent(intent.transactionId, "Not collected");
       reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not reject this intent.");
+      setError(userMessage(e, "Could not reject this intent."));
     } finally {
       setBusyId(null);
     }

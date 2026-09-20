@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import {
@@ -110,7 +110,7 @@ export default function SubAdminProgressReports() {
       setSavedAt(Date.now());
       toast({ variant: "success", title: "Draft saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't save the report.";
+      const message = userMessage(err, "Couldn't save the report.");
       setActionError(message);
       toast({ variant: "error", title: "Couldn't save draft", description: message });
     } finally {
@@ -137,7 +137,7 @@ export default function SubAdminProgressReports() {
       await reload();
       toast({ variant: "success", title: "Report sent", description: "The parent has been emailed this report." });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't send the report.";
+      const message = userMessage(err, "Couldn't send the report.");
       setActionError(message);
       toast({ variant: "error", title: "Couldn't send report", description: message });
     } finally {

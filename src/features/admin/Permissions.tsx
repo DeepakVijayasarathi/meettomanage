@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PermissionMatrix, PERMISSION_ACTIONS, type PermissionActionKey } from "@/components/PermissionMatrix";
 import { SUB_ADMINS } from "@/data/users";
 import { getInitials, cn, formatDate } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listUsers, toAppUser } from "@/api/users";
 import {
@@ -183,7 +183,7 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
         setLoadError(null);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Could not load permissions.");
+        if (!cancelled) setLoadError(userMessage(err, "Could not load permissions."));
       });
     return () => {
       cancelled = true;
@@ -258,7 +258,7 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
         setLoadError(null);
         toast({ variant: "success", title: "Preset applied", description: `"${roleName}" permissions applied.` });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Could not apply the preset.";
+        const message = userMessage(err, "Could not apply the preset.");
         setLoadError(message);
         toast({ variant: "error", title: "Couldn't apply preset", description: message });
       }
@@ -282,7 +282,7 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
       setTimeout(() => setSavedTick(null), 2200);
       toast({ variant: "success", title: "Permissions saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save permissions.";
+      const message = userMessage(err, "Could not save permissions.");
       setLoadError(message);
       toast({ variant: "error", title: "Couldn't save permissions", description: message });
     } finally {
@@ -320,7 +320,7 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
       {subAdmins.map((s) => (
         <TabsContent key={s.id} value={s.id}>
           <Card>
-            <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+            <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
               <div className="flex items-center gap-3">
                 <span
                   className="flex h-10 w-10 items-center justify-center rounded-xl"
@@ -333,7 +333,7 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
                   <CardDescription>{s.email}</CardDescription>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                   {grantedCount} / {totalGrants} granted
                 </span>
@@ -441,7 +441,7 @@ function RolePresets({ menusByModule, modules, reloadModules }: MenusByModulePro
       setIsNew(false);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load roles.");
+      setError(userMessage(err, "Could not load roles."));
     }
   }
 
@@ -545,7 +545,7 @@ function RolePresets({ menusByModule, modules, reloadModules }: MenusByModulePro
       setTimeout(() => setSavedTick(null), 2200);
       toast({ variant: "success", title: isNew ? "Role created" : "Role saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the role.";
+      const message = userMessage(err, "Could not save the role.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save role", description: message });
     } finally {
@@ -562,7 +562,7 @@ function RolePresets({ menusByModule, modules, reloadModules }: MenusByModulePro
       await reload(null);
       toast({ variant: "success", title: "Role deleted" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not delete the role.";
+      const message = userMessage(err, "Could not delete the role.");
       setError(message);
       toast({ variant: "error", title: "Couldn't delete role", description: message });
     } finally {
@@ -756,7 +756,7 @@ function ModuleCatalogCard({
       setCatalog(await listPermissionModules());
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load permission modules.");
+      setError(userMessage(err, "Could not load permission modules."));
     }
   }
 
@@ -776,7 +776,7 @@ function ModuleCatalogCard({
       reloadModules();
       toast({ variant: "success", title: "Module created", description: `"${label.trim()}" is now available to grant.` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not create the module.";
+      const message = userMessage(err, "Could not create the module.");
       setError(message);
       toast({ variant: "error", title: "Couldn't create module", description: message });
     } finally {
@@ -1052,7 +1052,7 @@ function GrantAccessDialog({
         setMatrix(expanded);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Could not load this account's current permissions.");
+        if (!cancelled) setLoadError(userMessage(err, "Could not load this account's current permissions."));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -1102,7 +1102,7 @@ function GrantAccessDialog({
       onGranted();
       onClose();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not grant access. Please try again.");
+      setSaveError(userMessage(err, "Could not grant access. Please try again."));
     } finally {
       setSaving(false);
     }

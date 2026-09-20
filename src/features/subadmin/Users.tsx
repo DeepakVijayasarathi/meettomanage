@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
 import { useApiData } from "@/api/hooks";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { formatCurrency, formatDate, isValidEmail } from "@/lib/utils";
 import {
@@ -210,7 +210,7 @@ export default function SubAdminUsers() {
       reloadStudents();
       toast({ variant: "success", title: "Student removed", description: `${deleteChildTarget.name}'s record was removed.` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not remove this student.";
+      const message = userMessage(err, "Could not remove this student.");
       // The first refusal for this specific reason offers a one-click fix instead of leaving
       // the RM to separately go find and withdraw the batch enrolment themselves — hitting it
       // a second time (still refused after withdrawing) is a real, different problem, so only
@@ -246,7 +246,7 @@ export default function SubAdminUsers() {
       setHardDeleteChildTarget(child);
       setHardDeleteChildPreview(preview);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not check what this would delete.";
+      const message = userMessage(err, "Could not check what this would delete.");
       toast({ variant: "error", title: "Couldn't open delete preview", description: message });
     } finally {
       setLoadingHardDeleteChildPreview(false);
@@ -346,7 +346,7 @@ export default function SubAdminUsers() {
       reload();
       toast({ variant: "success", title: "User created" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not create the user.";
+      const message = userMessage(err, "Could not create the user.");
       setAddError(message);
       toast({ variant: "error", title: "Couldn't create user", description: message });
     } finally {
@@ -405,7 +405,7 @@ export default function SubAdminUsers() {
       reload();
       toast({ variant: "success", title: "Profile updated" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not update the profile.";
+      const message = userMessage(err, "Could not update the profile.");
       setEditError(message);
       toast({ variant: "error", title: "Couldn't update profile", description: message });
     } finally {
@@ -448,7 +448,7 @@ export default function SubAdminUsers() {
       setHardDeleteUserTarget(user);
       setHardDeleteUserPreview(preview);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not check what this would delete.";
+      const message = userMessage(err, "Could not check what this would delete.");
       toast({ variant: "error", title: "Couldn't open delete preview", description: message });
     } finally {
       setLoadingHardDeleteUserPreview(false);

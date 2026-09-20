@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { getMyAccount, getMyMeetingRoomShortLink, updateMyAccount } from "@/api/account";
 import { getCalendarFeedUrl } from "@/api/sessions";
@@ -99,7 +99,7 @@ export function AccountDialog({
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save your changes.");
+      setError(userMessage(e, "Couldn't save your changes."));
     } finally {
       setSaving(false);
     }

@@ -24,7 +24,7 @@ import { DEMO_DEPARTMENTS } from "@/data/departments";
 import type { Course } from "@/types";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
   bulkImportCourses,
@@ -143,7 +143,7 @@ export default function AdminCourses() {
       setDuration(String(full.durationMinutes));
       setIsActive(full.isActive);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not load this course.";
+      const message = userMessage(err, "Could not load this course.");
       setSaveError(message);
       toast({ variant: "error", title: "Couldn't load course", description: message });
     } finally {
@@ -209,7 +209,7 @@ export default function AdminCourses() {
       setPrice("");
       reload();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the course.";
+      const message = userMessage(err, "Could not save the course.");
       setSaveError(message);
       toast({ variant: "error", title: "Couldn't save course", description: message });
     } finally {

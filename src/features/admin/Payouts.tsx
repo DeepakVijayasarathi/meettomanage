@@ -30,7 +30,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PAYOUTS } from "@/data/payouts";
 import { getTeacherById } from "@/data/users";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { adjustPayoutItem, finalizePayout, listPayouts, markPayoutPaid, toFrontendPayout } from "@/api/payouts";
 import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
@@ -137,7 +137,7 @@ export default function AdminPayouts() {
       }
       toast({ variant: "success", title: "Adjustment saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save this adjustment.";
+      const message = userMessage(err, "Could not save this adjustment.");
       setReviewError(message);
       toast({ variant: "error", title: "Couldn't save adjustment", description: message });
     } finally {
@@ -161,7 +161,7 @@ export default function AdminPayouts() {
       await reloadPayouts();
       toast({ variant: "success", title: action === "finalize" ? "Payout finalized" : "Payout marked paid" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : `Could not ${action === "finalize" ? "finalize" : "mark paid"} this payout.`;
+      const message = userMessage(err, `Could not ${action === "finalize" ? "finalize" : "mark paid"} this payout.`);
       setActionError(message);
       toast({ variant: "error", title: "Couldn't update payout", description: message });
     } finally {

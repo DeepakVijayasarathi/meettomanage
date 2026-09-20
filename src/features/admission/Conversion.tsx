@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CHART_PALETTE } from "@/lib/roles";
 import { cn, formatDate, getInitials } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listDemoBookings, toApiConversionStatus, toFrontendLead, updateConversionStatus } from "@/api/demoBookings";
@@ -94,7 +94,7 @@ export default function AdmissionConversion() {
         reload();
         toast({ variant: "success", title: "Stage updated", description: `Moved to ${stage}.` });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Couldn't move this lead. Please try again.";
+        const message = userMessage(err, "Couldn't move this lead. Please try again.");
         setMoveError(message);
         toast({ variant: "error", title: "Couldn't move lead", description: message });
       }

@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { useSession } from "@/state/session";
 import { getMyMeetingRoom, getMyMeetingRoomShortLink, type MyMeetingRoom } from "@/api/account";
 import JitsiLive from "./JitsiLive";
+import { userMessage } from "@/lib/api";
 
 /**
  * The member's permanent personal meeting room, embedded in-app the same way a real
@@ -26,7 +27,7 @@ export default function PersonalMeetingRoom() {
         if (!cancelled) setRoom(r);
       })
       .catch((err: Error) => {
-        if (!cancelled) setError(err.message || "Could not open your personal meeting room.");
+        if (!cancelled) setError(userMessage(err, "Could not open your personal meeting room."));
       });
     getMyMeetingRoomShortLink()
       .then(({ url }) => {

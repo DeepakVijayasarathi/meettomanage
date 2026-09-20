@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VideoPlayer } from "@/components/VideoPlayer";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { listMyRecordings, type ApiRecordingListItem } from "@/api/sessions";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
@@ -64,7 +64,7 @@ export default function TeacherRecordings() {
         setPage(result.page);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load recordings.");
+        if (!cancelled) setError(userMessage(err, "Could not load recordings."));
       })
       .finally(() => {
         if (!cancelled) {

@@ -14,7 +14,7 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { SESSIONS } from "@/data/sessions";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { listMyRecordings, type ApiParentRecording } from "@/api/parentPortal";
 import type { ApiSessionRecording } from "@/api/sessions";
 import { formatDate } from "@/lib/utils";
@@ -92,7 +92,7 @@ export default function ParentRecordings() {
         setEntries(flat);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load recordings.");
+        if (!cancelled) setError(userMessage(err, "Could not load recordings."));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

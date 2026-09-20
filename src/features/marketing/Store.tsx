@@ -22,7 +22,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Logo } from "@/components/Logo";
 import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
   bookStoreDemo,
@@ -130,7 +130,7 @@ export default function Store() {
       setSlotsError(null);
       listDemoAvailability(date, demoDepartment)
         .then(setAvailableSlots)
-        .catch((err) => setSlotsError(err instanceof Error ? err.message : "Couldn't load available times."))
+        .catch((err) => setSlotsError(userMessage(err, "Couldn't load available times.")))
         .finally(() => setSlotsLoading(false));
     },
     [demoDepartment]
@@ -196,7 +196,7 @@ export default function Store() {
       });
       setDemoConfirmed(formatDate(confirmation.scheduledStartAtUtc, "datetime"));
     } catch (err) {
-      setDemoError(err instanceof Error ? err.message : "Couldn't book that slot. Please try again.");
+      setDemoError(userMessage(err, "Couldn't book that slot. Please try again."));
       // Someone else likely just took it — clear the stale pick and refresh what's actually
       // still open, instead of leaving a slot chip selected that no longer works.
       setDemoForm((f) => ({ ...f, preferredStart: "" }));
@@ -238,7 +238,7 @@ export default function Store() {
       });
       setSubmitted(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't submit your enquiry. Please try again.");
+      setError(userMessage(err, "Couldn't submit your enquiry. Please try again."));
     } finally {
       setSubmitting(false);
     }

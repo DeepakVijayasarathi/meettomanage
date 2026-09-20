@@ -26,7 +26,7 @@ import type { ClassSession, SessionStatus } from "@/types";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, markNoShow, rescheduleSession, scheduleSession, toFrontendSession, type NoShowParty } from "@/api/sessions";
 import { listBatches, listTeacherOptions } from "@/api/batches";
@@ -171,7 +171,7 @@ export default function AdminSessions() {
       setScheduleOpen(false);
       reload();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not schedule the session.";
+      const message = userMessage(err, "Could not schedule the session.");
       setScheduleError(message);
       toast({ variant: "error", title: "Couldn't schedule session", description: message });
     } finally {
@@ -198,7 +198,7 @@ export default function AdminSessions() {
       setRescheduleTarget(null);
       reload();
     } catch (err) {
-      notify(false, err instanceof Error ? err.message : "Could not save these changes.");
+      notify(false, userMessage(err, "Could not save these changes."));
     } finally {
       setReschedBusy(false);
     }
@@ -224,7 +224,7 @@ export default function AdminSessions() {
       setNoShowNote("");
       reload();
     } catch (err) {
-      notify(false, err instanceof Error ? err.message : "Could not record the no-show.");
+      notify(false, userMessage(err, "Could not record the no-show."));
     } finally {
       setNoShowBusy(false);
     }
@@ -241,7 +241,7 @@ export default function AdminSessions() {
       notify(true, `"${cancelTarget.title}" cancelled. Parents and the teacher can see the change.`);
       reload();
     } catch (err) {
-      notify(false, err instanceof Error ? err.message : "Could not cancel the session.");
+      notify(false, userMessage(err, "Could not cancel the session."));
     }
   }
 
@@ -255,7 +255,7 @@ export default function AdminSessions() {
       const join = await getJitsiJoin(session.id);
       window.open(buildJitsiJoinUrl(join.domain, join.room, join.token, userName), "_blank", "noopener");
     } catch (err) {
-      notify(false, err instanceof Error ? err.message : "Couldn't join this class.");
+      notify(false, userMessage(err, "Couldn't join this class."));
     } finally {
       setJoiningId(null);
     }

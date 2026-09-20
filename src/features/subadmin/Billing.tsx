@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvoiceDetailDialog } from "@/components/InvoiceDetailDialog";
 import { INVOICES } from "@/data/invoices";
 import { useApiData } from "@/api/hooks";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import {
   downloadInvoicePdf,
   listInvoiceRows,
@@ -165,7 +165,7 @@ export default function SubAdminBilling() {
       setTransactions(items);
       toast({ variant: "success", title: "Refund requested", description: `${formatCurrency(amount)} awaiting approval.` });
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Couldn't request this refund.";
+      const message = userMessage(e, "Couldn't request this refund.");
       setRefundError(message);
       toast({ variant: "error", title: "Couldn't request refund", description: message });
     } finally {
@@ -180,7 +180,7 @@ export default function SubAdminBilling() {
     try {
       await downloadInvoicePdf(detail.apiId, detail.id);
     } catch (err) {
-      setPdfError(err instanceof Error ? err.message : "Couldn't download the invoice PDF.");
+      setPdfError(userMessage(err, "Couldn't download the invoice PDF."));
     } finally {
       setPdfDownloading(false);
     }
@@ -219,7 +219,7 @@ export default function SubAdminBilling() {
       setDetail(null);
       toast({ variant: "success", title: "Payment recorded", description: `${formatCurrency(amount)} recorded.` });
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Couldn't record the payment.";
+      const message = userMessage(e, "Couldn't record the payment.");
       setPayError(message);
       toast({ variant: "error", title: "Couldn't record payment", description: message });
     } finally {

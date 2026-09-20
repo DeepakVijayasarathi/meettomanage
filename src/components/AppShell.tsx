@@ -14,6 +14,7 @@ import { listSuspensions } from "@/api/billing";
 import { getParentDashboard, type ApiParentDashboard } from "@/api/parentPortal";
 import { useApiData } from "@/api/hooks";
 import { AccountSuspendedScreen } from "@/components/AccountSuspendedScreen";
+import { TimezoneMismatchBanner } from "@/components/TimezoneMismatchBanner";
 import type { Role } from "@/types";
 
 interface AppShellProps {
@@ -189,6 +190,7 @@ export function AppShell({ role, children }: AppShellProps) {
           tabIndex={-1}
           className="app-content-glow min-w-0 flex-1 overflow-x-hidden px-4 pb-44 pt-6 sm:px-6 sm:pb-28 lg:px-8 focus:outline-none"
         >
+          <TimezoneMismatchBanner />
           <PageTransition>{children}</PageTransition>
         </main>
       </div>

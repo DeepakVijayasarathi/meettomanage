@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { fetchPresentationFile, getPresentation, uploadPresentation } from "@/api/sessions";
+import { userMessage } from "@/lib/api";
 
 /**
  * pdf.js's worker is an ES module (.mjs), which browsers refuse to run unless the server sends
@@ -178,7 +179,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
       await loadDeckBytes(bytes, file.name);
       onSlideChange?.(0);
     } catch (err) {
-      toast({ variant: "error", title: "Couldn't upload the deck", description: err instanceof Error ? err.message : "Try again." });
+      toast({ variant: "error", title: "Couldn't upload the deck", description: userMessage(err, "Try again.") });
     } finally {
       setUploading(false);
     }

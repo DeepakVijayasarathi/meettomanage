@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { requestPinReset } from "@/api/auth";
 import { useLightBrandScope } from "@/lib/theme";
 
@@ -31,7 +31,7 @@ export default function ForgotPin() {
       // actually has an account — the UI must never leak that distinction.
       setSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't send the reset link. Please try again.");
+      setError(userMessage(err, "Couldn't send the reset link. Please try again."));
     } finally {
       setSubmitting(false);
     }

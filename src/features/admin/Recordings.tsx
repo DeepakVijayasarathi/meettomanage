@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { useToast } from "@/hooks/use-toast";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { deleteRecording, listAllRecordings, type ApiRecordingListItem } from "@/api/sessions";
 import { SESSIONS } from "@/data/sessions";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
@@ -73,7 +73,7 @@ export default function AdminRecordings() {
         setPage(result.page);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load recordings.");
+        if (!cancelled) setError(userMessage(err, "Could not load recordings."));
       })
       .finally(() => {
         if (!cancelled) {

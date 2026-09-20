@@ -210,7 +210,7 @@ export default function AdmissionReports() {
             <LineChart data={conversionTrend} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} width={40} tickFormatter={(v) => `${v}%`} />
+              <YAxis tickLine={false} axisLine={false} fontSize={12} width={54} tickFormatter={(v) => `${v}%`} />
               <RTooltip
                 formatter={(value: number) => [`${value}%`, "Conversion Rate"]}
                 contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }}
@@ -220,7 +220,7 @@ export default function AdmissionReports() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Demos Per Teacher" description="Demo classes conducted, all-time">
+        <ChartCard title="Demos Per Teacher" description="Demo classes conducted, all-time" empty={demosPerTeacher.length === 0} emptyMessage="No demos conducted yet.">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={demosPerTeacher} margin={{ left: -12, right: 12, top: 8, bottom: 24 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />

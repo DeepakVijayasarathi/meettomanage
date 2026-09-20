@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useApiData } from "@/api/hooks";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { listDepartments, type ApiDepartment } from "@/api/departments";
 import { listCourses, type ApiCourse } from "@/api/courses";
@@ -153,7 +153,7 @@ export default function SubAdminQuizQuestions() {
       reload();
       toast({ variant: "success", title: editing ? "Question updated" : "Question created" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the question.";
+      const message = userMessage(err, "Could not save the question.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save question", description: message });
     } finally {
@@ -175,7 +175,7 @@ export default function SubAdminQuizQuestions() {
       reload();
       toast({ variant: "success", title: "Question deleted" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not delete that question.";
+      const message = userMessage(err, "Could not delete that question.");
       setNotice(message);
       toast({ variant: "error", title: "Couldn't delete question", description: message });
     } finally {

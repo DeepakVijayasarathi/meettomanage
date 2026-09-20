@@ -11,7 +11,7 @@ import { useSession } from "@/state/session";
 import { useToast } from "@/hooks/use-toast";
 import { postEngagement } from "@/api/engagement";
 import { completeSession, getClassroomSettings, getJitsiJoin, registerRecording } from "@/api/sessions";
-import { ApiError } from "@/lib/api";
+import { ApiError, userMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { primeAudioUnlock } from "@/lib/sounds";
 import InteractivePanel from "./InteractivePanel";
@@ -594,7 +594,7 @@ export default function JitsiLive({
           // 400 here is almost always "already completed" (e.g. a double-click on the
           // confirm button) — not a real failure, so nothing needs surfacing.
           if (err instanceof ApiError && err.status === 400) return;
-          const message = err instanceof Error ? err.message : "Could not save this class's completion.";
+          const message = userMessage(err, "Could not save this class's completion.");
           toast({
             variant: "error",
             title: "Class ended, but completion didn't save",
@@ -825,8 +825,8 @@ export default function JitsiLive({
             // toast stays for the fleeting notification; setError puts the actual reason on
             // screen persistently, using the same error card every other init() failure
             // already falls back to.
-            toast({ variant: "error", title: "Couldn't join the class", description: err.message });
-            setError(err.message);
+            toast({ variant: "error", title: "Couldn't join the class", description: userMessage(err) });
+            setError(userMessage(err));
             return;
           }
         }
@@ -1300,7 +1300,7 @@ export default function JitsiLive({
           jitsiApiRef.current = null;
           setJitsiReady(false);
           setTimeout(() => {
-            if (!cancelled) init().catch((err: Error) => setError(err.message));
+            if (!cancelled) init().catch((err: Error) => setError(userMessage(err)));
           }, 2000 * authRetryCount);
           return;
         }
@@ -1322,7 +1322,7 @@ export default function JitsiLive({
           jitsiApiRef.current = null;
           setJitsiReady(false);
           setTimeout(() => {
-            if (!cancelled) init().catch((err: Error) => setError(err.message));
+            if (!cancelled) init().catch((err: Error) => setError(userMessage(err)));
           }, 2000 * connectionRetryCount);
           return;
         }
@@ -1353,7 +1353,7 @@ export default function JitsiLive({
       });
     }
 
-    init().catch((err: Error) => setError(err.message));
+    init().catch((err: Error) => setError(userMessage(err)));
 
     return () => {
       cancelled = true;

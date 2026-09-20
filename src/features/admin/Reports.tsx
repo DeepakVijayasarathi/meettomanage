@@ -191,7 +191,7 @@ export default function AdminReports() {
                 <LineChart data={rows.map(([label, value]) => ({ label, value }))} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
-                  <YAxis tickLine={false} axisLine={false} fontSize={12} width={40} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={12} width={54} />
                   <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
                   <Line type="monotone" dataKey="value" stroke={CHART_PALETTE[0]} strokeWidth={2.5} dot={{ r: 4, fill: CHART_PALETTE[0] }} />
                 </LineChart>
@@ -208,7 +208,7 @@ export default function AdminReports() {
                     textAnchor={generated === "performance" ? "end" : "middle"}
                     height={generated === "performance" ? 70 : 24}
                   />
-                  <YAxis tickLine={false} axisLine={false} fontSize={12} width={48} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={12} width={54} />
                   <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
                   <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={40}>
                     {rows.map((_, i) => (

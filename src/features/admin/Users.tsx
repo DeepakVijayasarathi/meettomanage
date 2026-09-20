@@ -31,7 +31,7 @@ import { DEMO_DEPARTMENTS } from "@/data/departments";
 import type { AppUser, Child } from "@/types";
 import { cn, formatCurrency, formatDate, getInitials, isValidEmail } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
   bulkImportStudents,
@@ -300,7 +300,7 @@ export default function AdminUsers() {
       reloadStaff();
       toast({ variant: "success", title: "Profile updated" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not update the profile.";
+      const message = userMessage(err, "Could not update the profile.");
       setEditError(message);
       toast({ variant: "error", title: "Couldn't update profile", description: message });
     } finally {
@@ -335,7 +335,7 @@ export default function AdminUsers() {
       reloadStaff();
       toast({ variant: "success", title: "Account deleted", description: `${deleteTarget.name}'s account was removed.` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not delete the account.";
+      const message = userMessage(err, "Could not delete the account.");
       setBanner({ ok: false, text: message });
       toast({ variant: "error", title: "Couldn't delete account", description: message });
     }
@@ -359,7 +359,7 @@ export default function AdminUsers() {
       reloadStudents();
       toast({ variant: "success", title: "Student removed", description: `${deleteChildTarget.name}'s record was removed.` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not remove this student.";
+      const message = userMessage(err, "Could not remove this student.");
       // The first refusal for this specific reason offers a one-click fix instead of leaving
       // the admin to separately go find and withdraw the batch enrolment themselves — hitting
       // it a second time (still refused after withdrawing) is a real, different problem, so
@@ -402,7 +402,7 @@ export default function AdminUsers() {
       setHardDeleteUserTarget(user);
       setHardDeleteUserPreview(preview);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not check what this would delete.";
+      const message = userMessage(err, "Could not check what this would delete.");
       toast({ variant: "error", title: "Couldn't open delete preview", description: message });
     } finally {
       setLoadingHardDeleteUserPreview(false);
@@ -442,7 +442,7 @@ export default function AdminUsers() {
       setHardDeleteChildTarget(child);
       setHardDeleteChildPreview(preview);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not check what this would delete.";
+      const message = userMessage(err, "Could not check what this would delete.");
       toast({ variant: "error", title: "Couldn't open delete preview", description: message });
     } finally {
       setLoadingHardDeleteChildPreview(false);
@@ -521,7 +521,7 @@ export default function AdminUsers() {
       setPinResult({ ok: true, pin });
       toast({ variant: "success", title: "PIN reset", description: `A new PIN was generated for ${detailUser.name}.` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not reset the PIN.";
+      const message = userMessage(err, "Could not reset the PIN.");
       setPinResult({ ok: false, message });
       toast({ variant: "error", title: "Couldn't reset PIN", description: message });
     } finally {
@@ -643,7 +643,7 @@ export default function AdminUsers() {
           : `Welcome ${channel === "Sms" ? "SMS" : "WhatsApp"} with a new temporary PIN sent to ${detailUser.phone}.`,
       });
     } catch (err) {
-      setSendResult({ ok: false, message: err instanceof Error ? err.message : `Could not send the ${channel} message.` });
+      setSendResult({ ok: false, message: userMessage(err, `Could not send the ${channel} message.`) });
     } finally {
       setSending(null);
     }
@@ -696,7 +696,7 @@ export default function AdminUsers() {
       reloadStaff();
       toast({ variant: "success", title: "User created" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not create the user.";
+      const message = userMessage(err, "Could not create the user.");
       setAddError(message);
       toast({ variant: "error", title: "Couldn't create user", description: message });
     } finally {

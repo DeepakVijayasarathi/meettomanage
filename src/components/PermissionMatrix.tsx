@@ -2,6 +2,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import type { ApiPermission, PermissionModuleName, PermissionModuleOption } from "@/api/permissions";
+import { summarizeMenus } from "@/lib/permissionMenus";
 
 export const PERMISSION_ACTIONS = [
   { key: "canView", label: "View" },
@@ -108,8 +109,8 @@ export function PermissionMatrix({ modules, permissions, menusByModule, onToggle
                     </span>
                     <span className="min-w-0">{mod.label}</span>
                   </span>
-                  <span className="mt-1 block pl-9 text-xs font-normal text-muted-foreground">
-                    {menus.length > 0 ? `Menus: ${menus.join(", ")}` : "No menu currently depends on this module"}
+                  <span className="mt-1 block pl-9 text-xs font-normal text-muted-foreground" title={menus.length > 0 ? summarizeMenus(menus).full : undefined}>
+                    {menus.length > 0 ? summarizeMenus(menus).text : "No menu currently depends on this module"}
                   </span>
                 </button>
               </div>
@@ -184,8 +185,8 @@ export function PermissionMatrix({ modules, permissions, menusByModule, onToggle
                         </span>
                         {mod.label}
                       </span>
-                      <span className="mt-0.5 block pl-9 text-xs font-normal text-muted-foreground">
-                        {menus.length > 0 ? `Menus: ${menus.join(", ")}` : "No menu currently depends on this module"}
+                      <span className="mt-0.5 block pl-9 text-xs font-normal text-muted-foreground" title={menus.length > 0 ? summarizeMenus(menus).full : undefined}>
+                        {menus.length > 0 ? summarizeMenus(menus).text : "No menu currently depends on this module"}
                       </span>
                     </button>
                   </div>

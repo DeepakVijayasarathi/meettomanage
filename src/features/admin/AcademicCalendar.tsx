@@ -21,7 +21,7 @@ import {
 import { SESSIONS } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getChildById } from "@/data/children";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listSessions, toFrontendSession } from "@/api/sessions";
 import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
@@ -81,7 +81,7 @@ export default function AdminAcademicCalendar() {
       reloadHolidays();
       toast({ variant: "success", title: "Holiday added" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not add the holiday.";
+      const message = userMessage(err, "Could not add the holiday.");
       setHolidayError(message);
       toast({ variant: "error", title: "Couldn't add holiday", description: message });
     } finally {
@@ -101,7 +101,7 @@ export default function AdminAcademicCalendar() {
       reloadHolidays();
       toast({ variant: "success", title: "Holiday removed" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not remove the holiday.";
+      const message = userMessage(err, "Could not remove the holiday.");
       setHolidayError(message);
       toast({ variant: "error", title: "Couldn't remove holiday", description: message });
     } finally {
