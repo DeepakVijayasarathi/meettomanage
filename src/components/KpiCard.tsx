@@ -99,7 +99,9 @@ export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "prima
           <p
             className={cn(
               "mt-1.5 break-words font-bold leading-tight tracking-tight text-foreground",
-              value.length > 7 ? "text-lg sm:text-xl" : "text-xl sm:text-2xl"
+              // 10 = "₹16,76,904" (a typical monthly figure) — keeps it the same size as the
+              // plain numbers beside it; only genuinely long values (crores) step down.
+              value.length > 10 ? "text-lg sm:text-xl" : "text-xl sm:text-2xl"
             )}
           >
             {value}

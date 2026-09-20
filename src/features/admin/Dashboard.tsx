@@ -195,7 +195,7 @@ export default function AdminDashboard() {
           error={dashboardError}
         />
         <KpiCard
-          label="Revenue This Month"
+          label="Monthly Revenue"
           value={formatCurrency(kpis.revenueThisMonth)}
           icon={IndianRupee}
           tone="primary"
