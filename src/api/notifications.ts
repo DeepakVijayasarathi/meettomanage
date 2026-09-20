@@ -122,6 +122,8 @@ const ROUTE_BY_TEMPLATE_KEY: Record<string, string> = {
 /** Resolves the click-through route for one notification, or undefined if there's
  *  nowhere more specific to send the viewer than wherever they already are. */
 function routeFor(type: ApiNotificationType, templateKey: string | null, role: Role | null): string | undefined {
+  // Goes to both Admin and Admission, whose report pages live under different portals.
+  if (templateKey === "parent-feedback-received") return role === "admission" ? "/admission/parent-feedback" : "/admin/parent-feedback";
   if (templateKey && ROUTE_BY_TEMPLATE_KEY[templateKey]) return ROUTE_BY_TEMPLATE_KEY[templateKey];
   if (!role) return undefined;
   return ROUTE_BY_ROLE_AND_TYPE[role]?.[type];

@@ -12,6 +12,7 @@ export interface ApiResource {
   courseId: string | null;
   batchId: string | null;
   batchName: string | null;
+  folderId: string | null;
   isDownloadable: boolean;
   description: string | null;
   createdAtUtc: string;
@@ -39,6 +40,7 @@ export function toFrontendResource(resource: ApiResource): Resource {
     // real and displayed instead; courseCategory stays undefined here rather than a lie.
     batchId: resource.batchId ?? undefined,
     courseId: resource.courseId ?? undefined,
+    folderId: resource.folderId ?? undefined,
     batchName: resource.batchName ?? undefined,
     uploadedOn: resource.createdAtUtc.slice(0, 10),
     downloadable: resource.isDownloadable,
@@ -102,6 +104,7 @@ export async function uploadResource(
     type: ApiResourceType;
     courseId?: string;
     batchId?: string;
+    folderId?: string;
     isDownloadable?: boolean;
     description?: string;
   }
@@ -110,6 +113,7 @@ export async function uploadResource(
   form.set("file", file);
   form.set("Title", metadata.title);
   form.set("Type", metadata.type);
+  if (metadata.folderId) form.set("FolderId", metadata.folderId);
   if (metadata.courseId) form.set("CourseId", metadata.courseId);
   if (metadata.batchId) form.set("BatchId", metadata.batchId);
   form.set("IsDownloadable", String(metadata.isDownloadable ?? false));

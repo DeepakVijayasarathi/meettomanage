@@ -33,6 +33,7 @@ const AdminPaymentMapping = lazy(() => import("@/features/admin/PaymentMapping")
 const AdminPayouts = lazy(() => import("@/features/admin/Payouts"));
 const AdminFeeSuspension = lazy(() => import("@/features/admin/FeeSuspension"));
 const AdminReports = lazy(() => import("@/features/admin/Reports"));
+const ParentFeedbackReport = lazy(() => import("@/features/admin/ParentFeedback"));
 const AdminBulkEmail = lazy(() => import("@/features/admin/BulkEmail"));
 const AdminBulkEmailHistory = lazy(() => import("@/features/admin/BulkEmailHistory"));
 const AdminEmailTemplates = lazy(() => import("@/features/admin/EmailTemplates"));
@@ -87,7 +88,6 @@ const SubAdminCourses = lazy(() => import("@/features/subadmin/Courses"));
 const SubAdminDepartments = lazy(() => import("@/features/subadmin/Departments"));
 const SubAdminQuizQuestions = lazy(() => import("@/features/subadmin/QuizQuestions"));
 const SubAdminActivityBank = lazy(() => import("@/features/subadmin/ActivityBank"));
-const SubAdminResources = lazy(() => import("@/features/subadmin/Resources"));
 const SubAdminPackages = lazy(() => import("@/features/subadmin/Packages"));
 const SubAdminBilling = lazy(() => import("@/features/subadmin/Billing"));
 const SubAdminEnrollments = lazy(() => import("@/features/subadmin/Enrollments"));
@@ -226,6 +226,7 @@ export default function App() {
               <Route path="enrollments" element={<AdminEnrollments />} />
               <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
+              <Route path="parent-feedback" element={<ParentFeedbackReport />} />
               <Route path="leave" element={<AdminLeave />} />
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
@@ -267,6 +268,7 @@ export default function App() {
               <Route path="enrollments" element={<AdminEnrollments />} />
               <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
+              <Route path="parent-feedback" element={<ParentFeedbackReport />} />
               <Route path="leave" element={<AdminLeave />} />
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
@@ -326,7 +328,7 @@ export default function App() {
               <Route path="departments" element={<SubAdminDepartments />} />
               <Route path="quiz-bank" element={<SubAdminQuizQuestions />} />
               <Route path="activity-bank" element={<SubAdminActivityBank />} />
-              <Route path="resources" element={<SubAdminResources />} />
+              <Route path="resources" element={<AdminResources />} />
               <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="reports" element={<SubAdminReports />} />
@@ -360,6 +362,7 @@ export default function App() {
               <Route path="payments" element={<AdmissionPayments />} />
               <Route path="conversion" element={<AdmissionConversion />} />
               <Route path="reports" element={<AdmissionReports />} />
+              <Route path="parent-feedback" element={<ParentFeedbackReport />} />
               <Route path="calendar" element={<CoordinatorCalendar />} />
               <Route path="availability" element={<CoordinatorAvailability />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
@@ -376,7 +379,7 @@ export default function App() {
               <Route path="departments" element={<SubAdminDepartments />} />
               <Route path="quiz-bank" element={<SubAdminQuizQuestions />} />
               <Route path="activity-bank" element={<SubAdminActivityBank />} />
-              <Route path="resources" element={<SubAdminResources />} />
+              <Route path="resources" element={<AdminResources />} />
               <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
@@ -408,7 +411,7 @@ export default function App() {
               <Route path="departments" element={<SubAdminDepartments />} />
               <Route path="quiz-bank" element={<SubAdminQuizQuestions />} />
               <Route path="activity-bank" element={<SubAdminActivityBank />} />
-              <Route path="resources" element={<SubAdminResources />} />
+              <Route path="resources" element={<AdminResources />} />
               <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
@@ -445,7 +448,7 @@ export default function App() {
               <Route path="departments" element={<SubAdminDepartments />} />
               <Route path="quiz-bank" element={<SubAdminQuizQuestions />} />
               <Route path="activity-bank" element={<SubAdminActivityBank />} />
-              <Route path="resources" element={<SubAdminResources />} />
+              <Route path="resources" element={<AdminResources />} />
               <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />

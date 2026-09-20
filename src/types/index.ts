@@ -237,6 +237,8 @@ export interface Resource {
   courseCategory?: Course["category"];
   batchId?: string;
   courseId?: string;
+  /** The Content & Resources folder the file lives in; undefined = top level. */
+  folderId?: string;
   /** Live mode: the resource's linked batch name (from the API). Demo mode resolves this
    *  from BATCHES by batchId instead — see admin/Resources.tsx. */
   batchName?: string;

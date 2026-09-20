@@ -35,6 +35,7 @@ import {
   FileText,
   ScrollText,
   ShoppingBag,
+  Star,
   PencilRuler,
   Sparkles,
   Video,
@@ -81,6 +82,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Roles & Permissions", to: "/admin/permissions", icon: ShieldCheck },
       { label: "Enrollment Review", to: "/admin/enrollments", icon: ClipboardCheck },
       { label: "Store Inquiries", to: "/admin/store-inquiries", icon: ShoppingBag },
+      { label: "Parent Feedback", to: "/admin/parent-feedback", icon: Star },
       { label: "Leave Management", to: "/admin/leave", icon: CalendarOff },
       { label: "Teacher Availability", to: "/admin/availability", icon: CalendarRange },
     ],
@@ -212,7 +214,10 @@ export const ADMISSION_NAV: NavSection[] = [
   },
   {
     title: "Insights",
-    items: [{ label: "Reports", to: "/admission/reports", icon: BarChart3 }],
+    items: [
+      { label: "Reports", to: "/admission/reports", icon: BarChart3 },
+      { label: "Parent Feedback", to: "/admission/parent-feedback", icon: Star },
+    ],
   },
 ];
 
