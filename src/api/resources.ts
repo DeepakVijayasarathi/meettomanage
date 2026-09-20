@@ -38,6 +38,7 @@ export function toFrontendResource(resource: ApiResource): Resource {
     // No per-resource category in the live API — batchName (below) is what's actually
     // real and displayed instead; courseCategory stays undefined here rather than a lie.
     batchId: resource.batchId ?? undefined,
+    courseId: resource.courseId ?? undefined,
     batchName: resource.batchName ?? undefined,
     uploadedOn: resource.createdAtUtc.slice(0, 10),
     downloadable: resource.isDownloadable,

@@ -58,6 +58,7 @@ import {
   type StudentRow,
 } from "@/api/users";
 import { BulkImportExportBar } from "@/components/BulkImportExportBar";
+import { UserPinCell } from "@/components/UserPinCell";
 import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
 import type { ApiRole } from "@/api/types";
 import { applyRoleToUser, listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
@@ -745,6 +746,14 @@ export default function AdminUsers() {
     []
   );
 
+  // Per-row "Reset & show PIN" -- teachers, parents and staff; students are children with no login.
+  const pinColumn: DataTableColumn<AppUser> = useMemo(
+    () => ({ key: "pin", header: "PIN", render: (row) => <UserPinCell userId={row.id} userName={row.name} /> }),
+    []
+  );
+
+  const teacherColumns = useMemo(() => [...userColumns, pinColumn], [userColumns, pinColumn]);
+
   // Same as userColumns but with "Department" (always blank for a parent) swapped for
   // "Children" — both a useful column on its own (batches are organized by child) and, since
   // it's part of the row DataTable searches against, what makes searching by a child's name find
@@ -761,8 +770,9 @@ export default function AdminUsers() {
       },
       userColumns[3],
       userColumns[4],
+      pinColumn as unknown as DataTableColumn<AppUser & { childrenNames: string }>,
     ],
-    [userColumns]
+    [userColumns, pinColumn]
   );
 
   const studentColumns: DataTableColumn<StudentRow>[] = useMemo(
@@ -852,8 +862,9 @@ export default function AdminUsers() {
       },
       { ...userColumns[3] },
       { ...userColumns[4] },
+      pinColumn,
     ],
-    [userColumns, addUserRoleOptions]
+    [userColumns, addUserRoleOptions, pinColumn]
   );
 
   return (
@@ -961,7 +972,7 @@ export default function AdminUsers() {
         <TabsContent value="teachers">
           <DataTable
             data={teachers}
-            columns={userColumns}
+            columns={teacherColumns}
             rowKey={(row) => row.id}
             searchPlaceholder="Search teachers by name or email…"
             onRowClick={(row) => setDetailUser(row)}

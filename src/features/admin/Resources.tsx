@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookOpen, ClipboardList, Loader2, Upload, Video } from "lucide-react";
+import { BookOpen, ChevronRight, ClipboardList, Folder, FolderOpen, LayoutList, Loader2, Upload, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { RESOURCES } from "@/data/resources";
 import { BATCHES } from "@/data/batches";
+import { COURSES } from "@/data/courses";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listResources, toFrontendResource, updateResource, uploadResource, type ApiResourceType } from "@/api/resources";
@@ -39,6 +40,30 @@ function inferResourceType(file: File): ApiResourceType {
   if (file.type.startsWith("video/")) return "Other";
   if (file.type === "application/epub+zip") return "ReadingBook";
   return "Worksheet";
+}
+
+const NONE = "__none";
+
+type FolderPath = { course?: string; batch?: string };
+
+function FolderCard({ label, count, onOpen }: { label: string; count: number; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex items-center gap-3 rounded-xl border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-accent/40"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <Folder className="h-5 w-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate font-semibold text-foreground">{label}</span>
+        <span className="text-xs text-muted-foreground">
+          {count} {count === 1 ? "file" : "files"}
+        </span>
+      </span>
+    </button>
+  );
 }
 
 export default function AdminResources() {
@@ -125,6 +150,58 @@ export default function AdminResources() {
     });
     return map;
   }, [apiBatches]);
+
+  // Folder tree: Course → Batch → files. A batch belongs to exactly one course, so the course
+  // is derived from the batch first and only falls back to the resource's own courseId.
+  const batchInfo = useMemo(() => {
+    const map = new Map<string, { name: string; courseId?: string }>();
+    (apiEnabled() ? apiBatches : BATCHES).forEach((b) => map.set(b.id, { name: b.name, courseId: b.courseId }));
+    return map;
+  }, [apiBatches]);
+
+  const courseNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    if (apiEnabled()) apiBatches.forEach((b) => b.courseId && b.courseName && map.set(b.courseId, b.courseName));
+    else COURSES.forEach((c) => map.set(c.id, c.name));
+    return map;
+  }, [apiBatches]);
+
+  const [viewMode, setViewMode] = useState<"folders" | "all">("folders");
+  const [path, setPath] = useState<FolderPath>({});
+
+  const courseKeyOf = useCallback(
+    (r: Resource) => (r.batchId && batchInfo.get(r.batchId)?.courseId) || r.courseId || NONE,
+    [batchInfo]
+  );
+  const courseLabel = useCallback(
+    (key: string) => (key === NONE ? "Unassigned" : (courseNameById.get(key) ?? "Course")),
+    [courseNameById]
+  );
+  const batchLabel = useCallback((key: string) => batchInfo.get(key)?.name ?? "Batch", [batchInfo]);
+
+  const courseFolders = useMemo(() => {
+    const map = new Map<string, number>();
+    resources.forEach((r) => map.set(courseKeyOf(r), (map.get(courseKeyOf(r)) ?? 0) + 1));
+    return [...map.entries()].sort((a, b) => courseLabel(a[0]).localeCompare(courseLabel(b[0])));
+  }, [resources, courseKeyOf, courseLabel]);
+
+  const inCourse = useMemo(
+    () => (path.course ? resources.filter((r) => courseKeyOf(r) === path.course) : []),
+    [resources, path.course, courseKeyOf]
+  );
+
+  const batchFolders = useMemo(() => {
+    const map = new Map<string, number>();
+    inCourse.forEach((r) => r.batchId && map.set(r.batchId, (map.get(r.batchId) ?? 0) + 1));
+    return [...map.entries()].sort((a, b) => batchLabel(a[0]).localeCompare(batchLabel(b[0])));
+  }, [inCourse, batchLabel]);
+
+  const visibleFiles = useMemo(() => {
+    if (viewMode === "all") return resources;
+    if (!path.course) return [];
+    if (path.batch) return inCourse.filter((r) => r.batchId === path.batch);
+    return inCourse.filter((r) => !r.batchId); // batch-less files sit directly in the course folder
+  }, [viewMode, resources, path, inCourse]);
 
   const columns: DataTableColumn<Resource>[] = useMemo(
     () => [
@@ -216,16 +293,80 @@ export default function AdminResources() {
 
       {toggleError && <p className="mb-4 text-sm font-medium text-destructive">{toggleError}</p>}
 
-      <DataTable
-        data={resources}
-        columns={columns}
-        rowKey={(row) => row.id}
-        searchPlaceholder="Search resources by title…"
-        emptyTitle="No resources uploaded yet"
-        emptyDescription="Upload a reading book, worksheet or recording with the button above to make it available to parents and teachers."
-        error={apiEnabled() ? resourcesError : null}
-        onRetry={reload}
-      />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <nav className="flex flex-wrap items-center gap-1 text-sm" aria-label="Folder path">
+          {viewMode === "all" ? (
+            <span className="font-medium text-foreground">All files</span>
+          ) : (
+            <>
+              <button type="button" className="font-medium text-primary hover:underline" onClick={() => setPath({})}>
+                All folders
+              </button>
+              {path.course && (
+                <>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <button
+                    type="button"
+                    className={path.batch ? "font-medium text-primary hover:underline" : "font-medium text-foreground"}
+                    onClick={() => setPath({ course: path.course })}
+                  >
+                    {courseLabel(path.course)}
+                  </button>
+                </>
+              )}
+              {path.batch && (
+                <>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground">{batchLabel(path.batch)}</span>
+                </>
+              )}
+            </>
+          )}
+        </nav>
+        <div className="inline-flex rounded-lg border p-0.5">
+          <Button size="sm" variant={viewMode === "folders" ? "secondary" : "ghost"} onClick={() => setViewMode("folders")}>
+            <FolderOpen className="h-4 w-4" /> Folders
+          </Button>
+          <Button size="sm" variant={viewMode === "all" ? "secondary" : "ghost"} onClick={() => setViewMode("all")}>
+            <LayoutList className="h-4 w-4" /> All files
+          </Button>
+        </div>
+      </div>
+
+      {viewMode === "folders" && !path.batch && (path.course ? batchFolders.length > 0 : courseFolders.length > 0) && (
+        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {path.course
+            ? batchFolders.map(([key, count]) => (
+                <FolderCard key={key} label={batchLabel(key)} count={count} onOpen={() => setPath({ course: path.course, batch: key })} />
+              ))
+            : courseFolders.map(([key, count]) => (
+                <FolderCard key={key} label={courseLabel(key)} count={count} onOpen={() => setPath({ course: key })} />
+              ))}
+        </div>
+      )}
+
+      {viewMode === "folders" && !path.course && courseFolders.length === 0 && (
+        <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+          No resources uploaded yet. Use Upload Resource to add a reading book, worksheet or recording.
+        </p>
+      )}
+
+      {(viewMode === "all" || path.course) && (
+        <DataTable
+          data={visibleFiles}
+          columns={columns}
+          rowKey={(row) => row.id}
+          searchPlaceholder="Search resources by title…"
+          emptyTitle={viewMode === "all" ? "No resources uploaded yet" : "No files directly in this folder"}
+          emptyDescription={
+            viewMode === "all"
+              ? "Upload a reading book, worksheet or recording with the button above to make it available to parents and teachers."
+              : "Open a sub-folder above, or upload a file with the button at the top."
+          }
+          error={apiEnabled() ? resourcesError : null}
+          onRetry={reload}
+        />
+      )}
 
       <Dialog
         open={uploadOpen}

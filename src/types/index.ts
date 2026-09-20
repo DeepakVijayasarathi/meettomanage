@@ -234,6 +234,7 @@ export interface Resource {
   // there â€” display code must fall back to batchName rather than assert a fake value.
   courseCategory?: Course["category"];
   batchId?: string;
+  courseId?: string;
   /** Live mode: the resource's linked batch name (from the API). Demo mode resolves this
    *  from BATCHES by batchId instead â€” see admin/Resources.tsx. */
   batchName?: string;
@@ -480,15 +481,15 @@ export interface BurstWorkerEpisode {
   /** Null means still running right now. */
   deletedAtUtc: string | null;
   durationHours: number;
-  /** Per minute actually run, at the configured hourly rate — an estimate from our own timestamps, not a real Hetzner invoice line. */
+  /** Per minute actually run, at the configured hourly rate ï¿½ an estimate from our own timestamps, not a real Hetzner invoice line. */
   estimatedCostUsd: number;
-  /** Whole started hours (min 1) — what this would cost if Hetzner bills every started hour in full (unverified, so an upper bound). */
+  /** Whole started hours (min 1) ï¿½ what this would cost if Hetzner bills every started hour in full (unverified, so an upper bound). */
   billedHours: number;
   maxBilledCostUsd: number;
   /** "auto" = created by the capacity check; "manual" = someone pressed Start now. */
   trigger: string;
   requestedBy: string | null;
-  /** Recordings copied off this server to main while it ran — what the spend actually bought. */
+  /** Recordings copied off this server to main while it ran ï¿½ what the spend actually bought. */
   recordingsHandled: number;
 }
 
@@ -528,7 +529,7 @@ export interface BurstWorkerUsage {
   recentEpisodes: BurstWorkerEpisode[];
 }
 
-/** Result of pressing Start now / Stop — the last lines of the scale log, so the admin sees what really happened. */
+/** Result of pressing Start now / Stop ï¿½ the last lines of the scale log, so the admin sees what really happened. */
 export interface BurstWorkerControlResult {
   action: string;
   logTail: string[];
