@@ -25,6 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,7 +34,15 @@ import { RESOURCES } from "@/data/resources";
 import { BATCHES } from "@/data/batches";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listResources, toFrontendResource, updateResource, uploadResource, type ApiResourceType } from "@/api/resources";
+import {
+  listResources,
+  needsLargeUpload,
+  toFrontendResource,
+  updateResource,
+  uploadLargeResource,
+  uploadResource,
+  type ApiResourceType,
+} from "@/api/resources";
 import {
   createResourceFolder,
   deleteResourceFolder,
@@ -246,8 +255,12 @@ export default function AdminResources() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [progress, setProgress] = useState(0);
 
   function openUpload() {
+    setProgress(0);
+    setUploadTitle("");
     setUploadFolder(viewMode === "folders" && currentId ? currentId : ROOT);
     setUploadOpen(true);
   }
@@ -260,15 +273,19 @@ export default function AdminResources() {
     }
     setUploading(true);
     setUploadError(null);
+    setProgress(0);
     try {
-      await uploadResource(pendingFile, {
-        title: pendingFile.name.replace(/\.[^.]+$/, ""),
+      const metadata = {
+        title: uploadTitle.trim() || pendingFile.name.replace(/\.[^.]+$/, ""),
         type: inferResourceType(pendingFile),
         isDownloadable: inferResourceType(pendingFile) === "Worksheet",
         batchId: uploadBatch || undefined,
         courseId: apiBatches.find((b) => b.id === uploadBatch)?.courseId,
         folderId: uploadFolder === ROOT ? undefined : uploadFolder,
-      });
+      };
+      // Big files (recordings) go straight to storage in parts; everything else through the API as before.
+      if (needsLargeUpload(pendingFile)) await uploadLargeResource(pendingFile, metadata, setProgress);
+      else await uploadResource(pendingFile, metadata);
       reloadAll();
       setUploadOpen(false);
       setPendingFile(null);
@@ -645,6 +662,7 @@ export default function AdminResources() {
       <Dialog
         open={uploadOpen}
         onOpenChange={(open) => {
+          if (uploading) return; // closing mid-upload would leave a half-sent file
           setUploadOpen(open);
           if (!open) {
             setPendingFile(null);
@@ -661,7 +679,20 @@ export default function AdminResources() {
             </DialogDescription>
           </DialogHeader>
 
-          <FileDropzone label="Drag & drop a file or click to browse" onFile={(file) => setPendingFile(file)} />
+          <FileDropzone
+            label="Drag & drop a file or click to browse"
+            hint="PDF, Word, PowerPoint, Excel, images, audio, ZIP or video (MP4/WEBM/MOV). Files over 100MB (up to 20GB, e.g. recordings) upload in parts, so keep this tab open."
+            onFile={(file) => {
+              setPendingFile(file);
+              setUploadTitle(file.name.replace(/\.[^.]+$/, ""));
+            }}
+          />
+          {pendingFile && (
+            <div className="grid gap-1.5">
+              <Label htmlFor="resource-upload-title">Title</Label>
+              <Input id="resource-upload-title" maxLength={200} value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} disabled={uploading} />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-4">
             <div className="grid gap-1.5">
@@ -700,10 +731,17 @@ export default function AdminResources() {
             </div>
           </div>
 
+          {uploading && pendingFile && needsLargeUpload(pendingFile) && (
+            <div className="grid gap-1.5">
+              <Progress value={Math.round(progress * 100)} aria-label="Upload progress" />
+              <p className="text-xs text-muted-foreground">{Math.round(progress * 100)}% uploaded. Keep this tab open until it finishes.</p>
+            </div>
+          )}
+
           {uploadError && <p className="text-sm font-medium text-destructive">{uploadError}</p>}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setUploadOpen(false)}>
+            <Button variant="outline" onClick={() => setUploadOpen(false)} disabled={uploading}>
               Cancel
             </Button>
             <Button disabled={!pendingFile || uploading} onClick={handleUpload}>

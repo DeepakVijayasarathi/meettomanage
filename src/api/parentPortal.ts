@@ -279,3 +279,14 @@ export async function reviewEnrollmentForm(
     body: JSON.stringify(input),
   });
 }
+
+export interface ApiResourcePlayback {
+  url: string;
+  mimeType: string | null;
+  expiresAtUtc: string;
+}
+
+/** A short-lived, view-only link to play a resource shared with this parent (e.g. a recording). */
+export async function getResourcePlayUrl(id: string): Promise<ApiResourcePlayback> {
+  return apiFetch<ApiResourcePlayback>(`/api/parent-portal/resources/${id}/play`);
+}
