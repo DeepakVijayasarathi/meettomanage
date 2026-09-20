@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, DoorOpen, GripVertical, Loader2, Pencil, PartyPopper, PhoneOff, Pin, PinOff, Sparkles, UserPlus, Users, Volume2, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, GripVertical, Loader2, Maximize2, Minimize2, Pencil, PartyPopper, PhoneOff, Pin, PinOff, Sparkles, UserPlus, Users, Video, Volume2, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -159,6 +159,14 @@ export default function JitsiLive({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [boardMaximized, setBoardMaximized] = useState(false);
+  // The floating video tile shown over the full-screen board: it can be shrunk further, or tucked
+  // away entirely when the teacher doesn't need to see the class right now (a hidden tile keeps
+  // running -- it is only made invisible, never unmounted, so the call doesn't reconnect).
+  const [floatCompact, setFloatCompact] = useState(false);
+  const [floatHidden, setFloatHidden] = useState(false);
+  useEffect(() => {
+    if (!boardMaximized) setFloatHidden(false);
+  }, [boardMaximized]);
   const navigate = useNavigate();
   const { userName: accountName } = useSession();
   const userName = displayName || accountName;
@@ -2014,16 +2022,57 @@ export default function JitsiLive({
               real room to render, not just enough to show a tile. Paired with the panel's
               own max-h shrinking from 45vh to 38vh below, so both sides actually fit
               together on a real phone screen instead of just shifting which one starves. */}
+          {boardMaximized && floatHidden && (
+            <button
+              type="button"
+              onClick={() => setFloatHidden(false)}
+              title="Show the class video again"
+              aria-label="Show the class video"
+              className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-brand-navy/95 px-4 py-2.5 text-sm font-semibold text-white shadow-2xl shadow-black/50 ring-1 ring-white/20 backdrop-blur-xl transition-all hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Video className="h-4 w-4" /> Show video
+            </button>
+          )}
           <div
             className={cn(
               "relative min-h-[300px] min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5",
               // Board full-screen covers the whole stage (fixed, z-40), hiding the call. Same
               // element, restyled to a floating tile above it (z-50) — the iframe is never
               // re-parented, so the call doesn't reconnect.
-              boardMaximized && "fixed bottom-4 right-4 z-50 h-[210px] min-h-0 w-[300px] flex-none ring-2 ring-primary/60 sm:h-[240px] sm:w-[360px]"
+              boardMaximized &&
+                cn(
+                  "fixed bottom-4 right-4 z-50 min-h-0 flex-none ring-2 ring-primary/60 transition-[width,height] duration-200",
+                  floatCompact ? "h-[110px] w-[170px] sm:h-[126px] sm:w-[200px]" : "h-[170px] w-[240px] sm:h-[200px] sm:w-[290px]",
+                  // Cards/buttons that live inside the tile (celebrate, leaderboard, roster, hints)
+                  // are laid out for the big view and would swamp a small tile.
+                  "[&_[data-float-hide]]:hidden",
+                  floatHidden && "pointer-events-none invisible"
+                )
             )}
           >
             <div ref={containerRef} className="h-full w-full" />
+            {boardMaximized && !floatHidden && (
+              <div className="absolute inset-x-0 top-0 z-40 flex items-center justify-end gap-1 bg-gradient-to-b from-black/70 to-transparent p-1.5">
+                <button
+                  type="button"
+                  onClick={() => setFloatCompact((c) => !c)}
+                  title={floatCompact ? "Make the video bigger" : "Make the video smaller"}
+                  aria-label={floatCompact ? "Make the video bigger" : "Make the video smaller"}
+                  className="flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white/90 ring-1 ring-white/20 transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {floatCompact ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFloatHidden(true)}
+                  title="Hide the video (the class keeps running)"
+                  aria-label="Hide the video"
+                  className="flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white/90 ring-1 ring-white/20 transition-colors hover:bg-destructive hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             {/* Sits above the Jitsi iframe (which owns nothing above z-20 of its own) so a
                 mark drawn here shows on top of whatever's currently on screen — camera or a
                 shared screen. Renders for students too (read-only) so they see the teacher's
@@ -2073,7 +2122,7 @@ export default function JitsiLive({
                 own controls around/behind it. Sits low, clear of Jitsi's centered avatar and
                 its own toolbar (~64px+ tall) at the very bottom. */}
             {mode === "teacher" && jitsiReady && participants.length === 0 && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-20 z-10 flex justify-center px-6">
+              <div data-float-hide className="pointer-events-none absolute inset-x-0 bottom-20 z-10 flex justify-center px-6">
                 <p className="flex items-center gap-2.5 rounded-full border border-white/10 bg-brand-navy/80 px-4 py-2 text-xs font-medium text-white/70 shadow-xl shadow-black/30 ring-1 ring-white/5 backdrop-blur-xl">
                   <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-amber opacity-60" />
@@ -2099,6 +2148,7 @@ export default function JitsiLive({
                 title="Send a celebration to the class"
                 aria-label="Send a celebration to the class"
                 onClick={() => (celebrateAllRef.current ?? celebrate)("Great job, everyone! 🎉")}
+                data-float-hide
                 className="group absolute bottom-20 right-3 z-20 flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-amber to-brand-violet px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-violet/40 ring-1 ring-white/20 transition-all hover:shadow-xl hover:shadow-brand-violet/50 hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <PartyPopper className="h-4 w-4 transition-transform group-hover:rotate-12" />
@@ -2114,7 +2164,7 @@ export default function JitsiLive({
                 same right-3 top-3 corner used to render them directly on top of each other
                 (confirmed from a live screenshot: the leaderboard's trophy icon peeking out
                 from behind the Joined card). */}
-            <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
+            <div data-float-hide className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
               {/* The celebration confetti/banner portion of GamificationOverlay uses `fixed
                   inset-0` internally, so mounting it inside this flex stack doesn't affect
                   where that renders — only the leaderboard mini-card (stacked) is laid out
