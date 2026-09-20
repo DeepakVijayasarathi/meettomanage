@@ -175,7 +175,7 @@ export default function AdminDashboard() {
       />
 
       {/* KPI row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 min-[1360px]:grid-cols-5">
         <KpiCard
           label="Total Students"
           value={formatNumber(kpis.totalStudents)}

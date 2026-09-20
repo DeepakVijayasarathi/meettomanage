@@ -299,7 +299,7 @@ export default function AdminResources() {
             <span className="font-medium text-foreground">All files</span>
           ) : (
             <>
-              <button type="button" className="font-medium text-primary hover:underline" onClick={() => setPath({})}>
+              <button type="button" className="-my-1.5 px-0.5 py-1.5 font-medium text-primary hover:underline" onClick={() => setPath({})}>
                 All folders
               </button>
               {path.course && (

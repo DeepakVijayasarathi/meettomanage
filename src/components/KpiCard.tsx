@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { LucideIcon } from "lucide-react";
 import { AlertCircle, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -36,6 +36,35 @@ const TONE_STYLES: Record<NonNullable<KpiCardProps["tone"]>, string> = {
 
 export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "primary", className, loading, error, onClick }: KpiCardProps) {
   const positive = trend ? trend.value >= 0 : true;
+
+  // Fit the figure to the card instead of guessing a size from its length: the same number needs
+  // different room in a 5-up desktop row, a 2-up tablet row and a phone. Start at the largest step and
+  // drop one step at a time until it fits on one line; only if even the smallest step (14-16px) overflows does
+  // it wrap (never truncated -- the number is the point of the card). Re-measured from the top whenever
+  // the value changes or the card's width does.
+  const valueRef = useRef<HTMLParagraphElement>(null);
+  const [fitStep, setFitStep] = useState(0);
+  useLayoutEffect(() => {
+    setFitStep(0);
+  }, [value]);
+  useLayoutEffect(() => {
+    const el = valueRef.current;
+    if (el && fitStep < 3 && el.scrollWidth > el.clientWidth + 1) setFitStep((step) => step + 1);
+  }, [fitStep, value, loading, error]);
+  useLayoutEffect(() => {
+    const el = valueRef.current?.parentElement;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let lastWidth = el.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth !== lastWidth) {
+        lastWidth = el.clientWidth;
+        setFitStep(0);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+    // The value element only exists once loading/error have cleared, so re-attach then.
+  }, [loading, error]);
 
   if (loading) {
     return (
@@ -97,11 +126,13 @@ export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "prima
               truncation it replaced; the smaller size fits every KPI value seen in this
               app on one line in a 5-up row without needing to wrap at all. */}
           <p
+            ref={valueRef}
             className={cn(
-              "mt-1.5 break-words font-bold leading-tight tracking-tight text-foreground",
-              // 10 = "₹16,76,904" (a typical monthly figure) — keeps it the same size as the
-              // plain numbers beside it; only genuinely long values (crores) step down.
-              value.length > 10 ? "text-lg sm:text-xl" : "text-xl sm:text-2xl"
+              "mt-1.5 font-bold leading-tight tracking-tight text-foreground",
+              fitStep === 0 && "whitespace-nowrap text-xl sm:text-2xl",
+              fitStep === 1 && "whitespace-nowrap text-lg sm:text-xl",
+              fitStep === 2 && "whitespace-nowrap text-base sm:text-lg",
+              fitStep >= 3 && "break-words text-sm sm:text-base"
             )}
           >
             {value}
