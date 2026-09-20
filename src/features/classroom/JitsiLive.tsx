@@ -163,7 +163,7 @@ export default function JitsiLive({
   // The floating video tile shown over the full-screen board: it can be shrunk further, or tucked
   // away entirely when the teacher doesn't need to see the class right now (a hidden tile keeps
   // running -- it is only made invisible, never unmounted, so the call doesn't reconnect).
-  const [floatCompact, setFloatCompact] = useState(false);
+  const [floatSize, setFloatSize] = useState<"normal" | "large">("normal");
   const [floatHidden, setFloatHidden] = useState(false);
   useEffect(() => {
     if (!boardMaximized) setFloatHidden(false);
@@ -2070,7 +2070,12 @@ export default function JitsiLive({
               boardMaximized &&
                 cn(
                   "fixed bottom-4 right-4 z-50 min-h-0 flex-none ring-2 ring-primary/60 transition-[width,height] duration-200",
-                  floatCompact ? "h-[110px] w-[170px] sm:h-[126px] sm:w-[200px]" : "h-[170px] w-[240px] sm:h-[200px] sm:w-[290px]",
+                  // Below roughly 320px tall Jitsi drops every participant tile and shows only its control
+                  // bar (confirmed on a phone: a blank dark box with mic/camera buttons and no faces), so
+                  // there is no useful "small" size -- only normal (enough for a few faces) and large. To
+                  // get it out of the way, use the close button.
+                  floatSize === "normal" && "h-[min(46vh,340px)] min-h-[320px] w-[min(90vw,340px)] sm:w-[360px]",
+                  floatSize === "large" && "h-[min(64vh,460px)] min-h-[320px] w-[min(94vw,680px)]",
                   // Cards/buttons that live inside the tile (celebrate, leaderboard, roster, hints)
                   // are laid out for the big view and would swamp a small tile.
                   "[&_[data-float-hide]]:hidden",
@@ -2083,12 +2088,23 @@ export default function JitsiLive({
               <div className="absolute inset-x-0 top-0 z-40 flex items-center justify-end gap-1 bg-gradient-to-b from-black/70 to-transparent p-1.5">
                 <button
                   type="button"
-                  onClick={() => setFloatCompact((c) => !c)}
-                  title={floatCompact ? "Make the video bigger" : "Make the video smaller"}
-                  aria-label={floatCompact ? "Make the video bigger" : "Make the video smaller"}
+                  onClick={() => setFloatSize("normal")}
+                  disabled={floatSize === "normal"}
+                  title="Make the video smaller"
+                  aria-label="Make the video smaller"
                   className="flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white/90 ring-1 ring-white/20 transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {floatCompact ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
+                  <Minimize2 className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFloatSize("large")}
+                  disabled={floatSize === "large"}
+                  title="Make the video bigger"
+                  aria-label="Make the video bigger"
+                  className="flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white/90 ring-1 ring-white/20 transition-colors hover:bg-black/80 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Maximize2 className="h-3 w-3" />
                 </button>
                 <button
                   type="button"
