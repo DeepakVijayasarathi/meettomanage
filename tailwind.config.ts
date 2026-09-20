@@ -11,6 +11,10 @@ export default {
       screens: { "2xl": "1400px" },
     },
     extend: {
+      screens: {
+        // A phone held sideways: wide enough for two columns but too short to stack them.
+        short: { raw: "(orientation: landscape) and (max-height: 520px)" },
+      },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
         display: ["Inter", "system-ui", "sans-serif"],

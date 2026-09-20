@@ -1472,7 +1472,7 @@ export default function JitsiLive({
     >
       <header
         ref={headerRef}
-        className="relative z-50 flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-b from-brand-navyDark/95 to-brand-navyDark/75 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-md sm:px-5"
+        className="relative z-50 flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-b from-brand-navyDark/95 to-brand-navyDark/75 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-md short:py-1.5 sm:px-5"
       >
         {/* Thin brand-gradient hairline instead of a flat border — ties the header to the
             same violet/amber accent used by the celebrate button and active toggles below,
@@ -1488,7 +1488,7 @@ export default function JitsiLive({
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
               </span>
               <p className={cn("truncate text-sm font-semibold tracking-tight text-white", mode === "teacher" && "hidden sm:block")}>{title ?? "Live class"}</p>
-              {mode === "teacher" && <span className="text-xs font-semibold text-white/80 sm:hidden">Live</span>}
+              {mode === "teacher" && <span className="hidden text-xs font-semibold text-white/80 min-[400px]:inline sm:hidden">Live</span>}
             </div>
             <p className="hidden text-[10px] font-medium uppercase tracking-wide text-white/40 sm:block">Live classroom</p>
           </div>
@@ -1980,9 +1980,12 @@ export default function JitsiLive({
         </div>
       )}
       {mode === "student" && !isRecordingObserver && jitsiReady && !soundHintDismissed && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
+        <div className="mx-3 mt-3 flex shrink-0 items-start short:hidden gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
           <Volume2 className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
-          <p className="flex-1">Can't hear the teacher? Tap anywhere on the video once — some phones and tablets block sound until you do.</p>
+          <p className="flex-1">
+            <span className="sm:hidden">Can't hear? Tap the video once.</span>
+            <span className="hidden sm:inline">Can't hear the teacher? Tap anywhere on the video once — some phones and tablets block sound until you do.</span>
+          </p>
           <button
             type="button"
             onClick={() => setSoundHintDismissed(true)}
@@ -2013,7 +2016,7 @@ export default function JitsiLive({
         // separate inset, rounded cards with real breathing room between them and the
         // window edge, instead of both stretching edge-to-edge with a flat divider —
         // reads as a deliberately designed workspace rather than a raw video embed.
-        <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 lg:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 short:flex-row short:gap-2 short:p-2 lg:flex-row">
           {/* min-h-[300px]: a real floating desktop PiP was ruled out (the call runs in a
               cross-origin iframe with no way to read out individual participant video and
               float it above other windows — no safe workaround exists). This is the
@@ -2040,7 +2043,7 @@ export default function JitsiLive({
           )}
           <div
             className={cn(
-              "relative min-h-[300px] min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5",
+              "relative min-h-[300px] min-w-0 flex-1 overflow-hidden rounded-2xl short:min-h-0 border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5",
               // Board full-screen covers the whole stage (fixed, z-40), hiding the call. Same
               // element, restyled to a floating tile above it (z-50) — the iframe is never
               // re-parented, so the call doesn't reconnect.
@@ -2273,7 +2276,7 @@ export default function JitsiLive({
             <aside
               style={{ ["--panel-w" as string]: `${panelWidth}px` }}
               className={cn(
-                "flex max-h-[38vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 lg:max-h-none lg:w-[var(--panel-w)]",
+                "flex max-h-[38vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 short:max-h-none short:w-[min(42vw,340px)] lg:max-h-none lg:w-[var(--panel-w)]",
                 !panelOpen && "hidden"
               )}
             >
