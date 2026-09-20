@@ -210,7 +210,7 @@ export default function AdmissionReports() {
             <LineChart data={conversionTrend} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} width={40} tickFormatter={(v) => `${v}%`} />
+              <YAxis tickLine={false} axisLine={false} fontSize={12} width={54} tickFormatter={(v) => `${v}%`} />
               <RTooltip
                 formatter={(value: number) => [`${value}%`, "Conversion Rate"]}
                 contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }}

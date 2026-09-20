@@ -320,7 +320,7 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
       {subAdmins.map((s) => (
         <TabsContent key={s.id} value={s.id}>
           <Card>
-            <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+            <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
               <div className="flex items-center gap-3">
                 <span
                   className="flex h-10 w-10 items-center justify-center rounded-xl"
@@ -333,7 +333,7 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
                   <CardDescription>{s.email}</CardDescription>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                   {grantedCount} / {totalGrants} granted
                 </span>

@@ -657,7 +657,7 @@ export default function AdminBatches() {
         title="Batches"
         description="View and manage active, dormant and upcoming batches — capacity, schedule and teacher assignment."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" onClick={handleReconcile} disabled={reconciling} title="Fix any batch whose already-scheduled sessions still show a previous teacher after a reassignment">
               {reconciling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
               Repair stale teacher assignments

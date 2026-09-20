@@ -151,8 +151,8 @@ export default function TeacherPayout() {
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                 <Lock className="h-4 w-4" />
               </span>
-              You're viewing payout records for <strong className="text-foreground">{userName} (you)</strong> only. Other teachers' payout data is
-              never visible from this screen.
+              <p className="min-w-0">You're viewing payout records for <strong className="text-foreground">{userName} (you)</strong> only. Other teachers' payout data is
+              never visible from this screen.</p>
             </CardContent>
           </Card>
 

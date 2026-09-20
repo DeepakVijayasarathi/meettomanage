@@ -690,7 +690,7 @@ export default function SubAdminBatches() {
         title="Batches"
         description="Create, edit and archive the batches assigned to you — capacity, schedule and teacher assignment."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {canEdit && (
               <Button
                 variant="outline"
