@@ -15,6 +15,7 @@ import { ApiError, userMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { primeAudioUnlock } from "@/lib/sounds";
 import InteractivePanel from "./InteractivePanel";
+import ClassroomBlocked from "./ClassroomBlocked";
 import GamificationOverlay from "./GamificationOverlay";
 import AnnotationOverlay, { type AnnotationOverlayHandle, type AnnotationOp } from "./AnnotationOverlay";
 import type { LeaderboardEntry } from "./classroomData";
@@ -194,6 +195,13 @@ export default function JitsiLive({
     return () => observer.disconnect();
   }, []);
 
+  const blockedBack =
+    !isPersonalRoom && !isRecordingObserver && !joinOverride
+      ? mode === "teacher"
+        ? { label: "Go to my classes", go: () => navigate("/teacher/classes", { replace: true }) }
+        : { label: "Go to my schedule", go: () => navigate("/parent/schedule", { replace: true }) }
+      : undefined;
+
   async function copyInviteLink() {
     if (!inviteUrl) return;
     try {
@@ -213,6 +221,9 @@ export default function JitsiLive({
   // accrues) or double-fire (readyToClose + the Leave button both reachable in one visit).
   const completedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  // HTTP status when the failure was the backend refusing the join lookup (404 class not found,
+  // 403 not your class, 400 not open yet / already ended); null for failures during the call itself.
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   // Non-fatal, auto-clearing: shown while conference.authenticationRequired's own retry
   // (see the conferenceFailed listener below) is in flight, instead of the full-screen
   // `error` state -- that one replaces the whole call UI, which would be a false "it's
@@ -851,7 +862,8 @@ export default function JitsiLive({
             // toast stays for the fleeting notification; setError puts the actual reason on
             // screen persistently, using the same error card every other init() failure
             // already falls back to.
-            toast({ variant: "error", title: "Couldn't join the class", description: userMessage(err) });
+            // The full-page ClassroomBlocked screen says this in words; a toast on top just repeats it.
+            setErrorStatus(err.status);
             setError(userMessage(err));
             return;
           }
@@ -1484,8 +1496,8 @@ export default function JitsiLive({
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
               <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
+                {!error && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />}
+                <span className={cn("relative inline-flex h-2 w-2 rounded-full", error ? "bg-white/30" : "bg-destructive")} />
               </span>
               <p className={cn("truncate text-sm font-semibold tracking-tight text-white", mode === "teacher" && "hidden sm:block")}>{title ?? "Live class"}</p>
               {mode === "teacher" && <span className="hidden text-xs font-semibold text-white/80 min-[400px]:inline sm:hidden">Live</span>}
@@ -1516,7 +1528,7 @@ export default function JitsiLive({
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {/* Grouped as one segmented control (shared pill housing) instead of two
               independently-bordered chips — reads as one family of view toggles. */}
-          {(mode === "teacher" || interactive) && (
+          {(mode === "teacher" || interactive) && !error && (
             <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur">
               {mode === "teacher" && (
                 <Button
@@ -1578,7 +1590,7 @@ export default function JitsiLive({
               )}
             </div>
           )}
-          {inviteUrl && (
+          {inviteUrl && !error && (
             <Button
               size="sm"
               variant="secondary"
@@ -1593,7 +1605,7 @@ export default function JitsiLive({
           )}
           {/* No Leave button for the recording observer -- there's no human to click it, and
               the token it joined with is moderator: false anyway. */}
-          {!isRecordingObserver && (
+          {!isRecordingObserver && !(error && errorStatus !== null && blockedBack) && (
             <>
               <div className="h-6 w-px bg-white/10" aria-hidden="true" />
               <Button
@@ -2004,6 +2016,14 @@ export default function JitsiLive({
             <p className="font-medium">Call ended.</p>
           </div>
         </div>
+      ) : error && errorStatus !== null ? (
+        <ClassroomBlocked
+          message={error}
+          status={errorStatus}
+          backLabel={blockedBack?.label}
+          onBack={blockedBack?.go}
+          onRetry={() => window.location.reload()}
+        />
       ) : error ? (
         <div className="flex flex-1 items-center justify-center px-6">
           <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-5 py-4 text-sm text-red-200 shadow-2xl shadow-black/40 backdrop-blur-md">
