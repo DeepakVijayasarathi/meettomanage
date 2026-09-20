@@ -998,6 +998,10 @@ export default function JitsiLive({
           // and press Jitsi's own "Ask to Join" button, and the lobby's "Enter meeting password"
           // option (nothing here uses room passwords) is removed so a child or parent isn't
           // offered a step that can only fail.
+          // The Jitsi server draws its logo over the top-left of the video, on top of participant tiles;
+          // the header above already carries ours. A transparent 1px image in its place (kept for the
+          // recording observer so recordings stay branded).
+          ...(isRecordingObserver ? {} : { defaultLogoUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'/>" }),
           lobby: { autoKnock: true },
           // Meet/Zoom behaviour for the control bar: on a touch screen there is no hover to bring
           // it back, so Jitsi's default auto-hide leaves a child hunting for the mic/camera
