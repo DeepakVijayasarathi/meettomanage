@@ -554,7 +554,7 @@ export default function ParentEnrollment() {
                 </Field>
 
                 <fieldset className="flex flex-col gap-1.5">
-                  <legend className="text-sm font-medium leading-none text-foreground/90">
+                  <legend className="mb-1.5 text-sm font-medium leading-none text-foreground/90">
                     Batch type<span className="ml-0.5 text-destructive">*</span>
                   </legend>
                   <div className="flex flex-wrap gap-1.5">
@@ -588,7 +588,7 @@ export default function ParentEnrollment() {
                 </fieldset>
 
                 <fieldset className="flex flex-col gap-1.5">
-                  <legend className="text-sm font-medium leading-none text-foreground/90">Preferred class days</legend>
+                  <legend className="mb-1.5 text-sm font-medium leading-none text-foreground/90">Preferred class days</legend>
                   <div className="flex flex-wrap gap-1.5">
                     {DAYS.map((d) => (
                       <Button
@@ -672,7 +672,7 @@ export default function ParentEnrollment() {
                   disabled={submitting}
                   className="!bg-brand-green !text-white hover:!bg-brand-greenDark"
                 >
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{submitting ? "Submitting…" : "Submit & Unlock Dashboard"}
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{submitting ? "Submitting…" : (<><span className="sm:hidden">Submit</span><span className="hidden sm:inline">Submit &amp; Unlock Dashboard</span></>)}
                 </Button>
               )}
             </div>

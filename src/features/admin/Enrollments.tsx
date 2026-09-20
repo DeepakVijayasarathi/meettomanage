@@ -761,7 +761,7 @@ export default function AdminEnrollments() {
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Schedule preferences</p>
               <div className="flex flex-col gap-4">
                 <fieldset className="flex flex-col gap-1.5">
-                  <legend className="text-sm font-medium leading-none text-foreground/90">Preferred class days</legend>
+                  <legend className="mb-1.5 text-sm font-medium leading-none text-foreground/90">Preferred class days</legend>
                   <div className="flex flex-wrap gap-1.5">
                     {EDIT_DAYS.map((d) => (
                       <Button
