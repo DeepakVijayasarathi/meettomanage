@@ -9,6 +9,7 @@ import {
   CalendarRange,
   LineChart,
   Cpu,
+  Crown,
   type LucideIcon,
 } from "lucide-react";
 
@@ -138,6 +139,22 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     icon: Cpu,
     available: true,
     homePath: "/itadmin",
+  },
+  // Not a separate backend role either — the "admin-management" persona (RoleDefinition.DefaultRoute
+  // = "/executive"): Admin-portal pages and the Management executive pages under one login. The
+  // Admin and Management portals stay separate; which of the combined menu's items show is decided
+  // by this role's permission grants, not here.
+  executive: {
+    role: "executive",
+    label: "Admin & Management",
+    shortLabel: "Admin & Mgmt",
+    description: "Admin and Management menus together, driven by the role's permissions.",
+    colorVar: "role-executive",
+    // Kept in sync with role.executive in tailwind.config.ts.
+    hex: "#B45309",
+    icon: Crown,
+    available: true,
+    homePath: "/executive",
   },
 };
 

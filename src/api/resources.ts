@@ -79,6 +79,32 @@ export async function uploadMyResource(
   return apiFetch<ApiResource>("/api/resources/mine", { method: "POST", body: form });
 }
 
+/**
+ * Staff (Admin / Sub Admin / Admission with Content Access): opens a resource in a new browser tab so
+ * it can be looked at without being saved first. The tab is opened synchronously (a popup blocker
+ * only allows that inside the click) and pointed at the file once it has been fetched.
+ */
+export async function openResourceInNewTab(id: string): Promise<void> {
+  const tab = window.open("", "_blank");
+  try {
+    const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+    const token = getAccessToken();
+    const response = await fetch(`${baseUrl}/api/resources/${id}/download`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
+
+    const url = URL.createObjectURL(await response.blob());
+    if (tab) tab.location.href = url;
+    else window.location.assign(url); // popup blocked outright: fall back to this tab
+    // Long enough for the new tab to load the blob before it is released.
+    window.setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+  } catch (err) {
+    tab?.close();
+    throw err;
+  }
+}
+
 /** Teacher portal: download a resource the teacher owns. */
 export async function downloadMyResource(id: string, fallbackName: string): Promise<void> {
   const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");

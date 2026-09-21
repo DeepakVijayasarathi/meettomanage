@@ -418,6 +418,8 @@ function RolePresets({ menusByModule, modules, reloadModules }: MenusByModulePro
   // same mechanism Coordinator/Management use) — just the index item, offered as a single
   // portal-level choice rather than every one of its ~28 reused Admin screens.
   const [itAdminHome, setItAdminHome] = useState<ApiMenuItem | null>(null);
+  // Admin & Management ("executive") portal home — same single portal-level choice as IT Admin.
+  const [executiveHome, setExecutiveHome] = useState<ApiMenuItem | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   async function reload(selectId?: string | null) {
@@ -457,6 +459,11 @@ function RolePresets({ menusByModule, modules, reloadModules }: MenusByModulePro
       .then((items) => setItAdminHome(items.find((i) => i.path === "/itadmin") ?? null))
       .catch(() => {
         /* IT Admin option just stays out of the dropdown */
+      });
+    listMenuItems("executive")
+      .then((items) => setExecutiveHome(items.find((i) => i.path === "/executive") ?? null))
+      .catch(() => {
+        /* Admin & Management option just stays out of the dropdown */
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -667,6 +674,9 @@ function RolePresets({ menusByModule, modules, reloadModules }: MenusByModulePro
                     <SelectItem value="__none">Relationship Manager dashboard (default)</SelectItem>
                     {itAdminHome && (
                       <SelectItem value={itAdminHome.path}>IT Admin — Overall Dashboard (own portal)</SelectItem>
+                    )}
+                    {executiveHome && (
+                      <SelectItem value={executiveHome.path}>Admin &amp; Management — Overall Dashboard (own portal)</SelectItem>
                     )}
                     {subadminRoutes.map((item) => (
                       <SelectItem key={item.id} value={item.path}>

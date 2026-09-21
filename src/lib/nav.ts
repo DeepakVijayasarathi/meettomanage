@@ -43,6 +43,7 @@ import {
   Activity,
   MessageCircleQuestion,
   Radar,
+  LineChart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -318,6 +319,80 @@ export const ITADMIN_NAV: NavSection[] = [
   },
 ];
 
+// Demo-mode / loading fallback for the "executive" (Admin & Management) portal — mirrors the
+// real, DB-seeded menu (DatabaseInitializer.EnsureExecutiveMenuAsync). The live sidebar is
+// filtered by the role's module grants; this static copy only shows before that loads.
+export const EXECUTIVE_NAV: NavSection[] = [
+  { items: [{ label: "Overall Dashboard", to: "/executive", icon: LayoutDashboard, end: true }] },
+  {
+    title: "Management",
+    items: [
+      { label: "Executive Overview", to: "/executive/overview", icon: LineChart },
+      { label: "Revenue & Courses", to: "/executive/revenue", icon: TrendingUp },
+      { label: "Teacher & Batch Performance", to: "/executive/performance", icon: Gauge },
+      { label: "Management Reports", to: "/executive/management-reports", icon: FileBarChart },
+    ],
+  },
+  {
+    title: "Academics",
+    items: [
+      { label: "Courses", to: "/executive/courses", icon: BookOpen },
+      { label: "Departments", to: "/executive/departments", icon: Building2 },
+      { label: "Batches", to: "/executive/batches", icon: Layers },
+      { label: "Academic Calendar", to: "/executive/calendar", icon: CalendarDays },
+      { label: "Sessions", to: "/executive/sessions", icon: CalendarClock },
+      { label: "Recordings", to: "/executive/recordings", icon: Video },
+      { label: "Quiz Bank", to: "/executive/quiz-bank", icon: Sparkles },
+      { label: "Activity Bank", to: "/executive/activity-bank", icon: PencilRuler },
+    ],
+  },
+  {
+    title: "People",
+    items: [
+      { label: "Users", to: "/executive/users", icon: Users },
+      { label: "Roles & Permissions", to: "/executive/permissions", icon: ShieldCheck },
+      { label: "Enrollment Review", to: "/executive/enrollments", icon: ClipboardCheck },
+      { label: "Store Inquiries", to: "/executive/store-inquiries", icon: ShoppingBag },
+      { label: "Parent Feedback", to: "/executive/parent-feedback", icon: Star },
+      { label: "Leave Management", to: "/executive/leave", icon: CalendarOff },
+      { label: "Teacher Availability", to: "/executive/availability", icon: CalendarRange },
+    ],
+  },
+  {
+    title: "Content",
+    items: [{ label: "Content & Resources", to: "/executive/resources", icon: FolderOpen }],
+  },
+  {
+    title: "Finance",
+    items: [
+      { label: "Billing & Finance", to: "/executive/billing", icon: Receipt },
+      { label: "Packages & Subscriptions", to: "/executive/packages", icon: CreditCard },
+      { label: "Payment Gateway Mapping", to: "/executive/payment-mapping", icon: Landmark },
+      { label: "Teacher Payouts", to: "/executive/payouts", icon: Wallet },
+      { label: "Fee Suspension", to: "/executive/fee-suspension", icon: Ban },
+    ],
+  },
+  {
+    title: "Insights",
+    items: [
+      { label: "Reports & Analytics", to: "/executive/reports", icon: BarChart3 },
+      { label: "Bulk Email", to: "/executive/bulk-email", icon: Mail },
+      { label: "Bulk Email History", to: "/executive/bulk-email/history", icon: History },
+      { label: "Email Templates", to: "/executive/email-templates", icon: FileText },
+      { label: "Progress Reports", to: "/executive/progress-reports", icon: ScrollText },
+      { label: "Doubt Chatbot", to: "/executive/chatbot", icon: MessageCircleQuestion },
+    ],
+  },
+  {
+    title: "System",
+    items: [
+      { label: "Settings & Branding", to: "/executive/settings", icon: Settings },
+      { label: "Server Monitoring", to: "/executive/monitoring", icon: Activity },
+      { label: "Class Session Logs", to: "/executive/class-logs", icon: Radar },
+    ],
+  },
+];
+
 export const NAV_BY_ROLE: Record<Role, NavSection[]> = {
   admin: ADMIN_NAV,
   teacher: TEACHER_NAV,
@@ -328,4 +403,5 @@ export const NAV_BY_ROLE: Record<Role, NavSection[]> = {
   management: MANAGEMENT_NAV,
   student: STUDENT_NAV,
   itadmin: ITADMIN_NAV,
+  executive: EXECUTIVE_NAV,
 };

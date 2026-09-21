@@ -3,6 +3,7 @@ import {
   BookOpen,
   ChevronRight,
   ClipboardList,
+  Eye,
   Folder,
   FolderInput,
   FolderOpen,
@@ -37,6 +38,7 @@ import { useApiData } from "@/api/hooks";
 import {
   listResources,
   needsLargeUpload,
+  openResourceInNewTab,
   toFrontendResource,
   updateResource,
   uploadLargeResource,
@@ -103,9 +105,15 @@ function FolderCard({
         <span className="min-w-0">
           <span className="block truncate font-semibold text-foreground">{folder.name}</span>
           <span className="block text-xs text-muted-foreground">{detail}</span>
-          {folder.sharedParentCount > 0 && (
+          {(folder.sharedBatchCount > 0 || folder.sharedParentCount > 0) && (
             <span className="mt-0.5 block text-xs font-medium text-primary">
-              Shared with {folder.sharedParentCount} parent{folder.sharedParentCount === 1 ? "" : "s"}
+              Shared with{" "}
+              {[
+                folder.sharedBatchCount > 0 ? `${folder.sharedBatchCount} batch${folder.sharedBatchCount === 1 ? "" : "es"}` : null,
+                folder.sharedParentCount > 0 ? `${folder.sharedParentCount} parent${folder.sharedParentCount === 1 ? "" : "s"}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </span>
           )}
         </span>
@@ -219,7 +227,7 @@ export default function AdminResources() {
       if (!apiEnabled()) {
         setDemoFolders((prev) =>
           nameDialog.mode === "create"
-            ? [...prev, { id: `demo-${Date.now()}`, name, description: null, parentFolderId: currentId, fileCount: 0, subfolderCount: 0, sharedParentCount: 0, createdAtUtc: new Date().toISOString() }]
+            ? [...prev, { id: `demo-${Date.now()}`, name, description: null, parentFolderId: currentId, fileCount: 0, subfolderCount: 0, sharedParentCount: 0, sharedBatchCount: 0, createdAtUtc: new Date().toISOString() }]
             : prev.map((f) => (f.id === nameDialog.folder!.id ? { ...f, name } : f))
         );
       } else if (nameDialog.mode === "create") {
@@ -333,6 +341,21 @@ export default function AdminResources() {
     setResources((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: !r[field] } : r)));
   }
 
+  const [openBusyId, setOpenBusyId] = useState<string | null>(null);
+
+  /** Opens the real file in a new tab so staff can check what they uploaded. Live mode only — demo rows have no file. */
+  const openRow = useCallback(async (row: Resource) => {
+    setToggleError(null);
+    setOpenBusyId(row.id);
+    try {
+      await openResourceInNewTab(row.id);
+    } catch (err) {
+      setToggleError(userMessage(err, `Could not open "${row.title}".`));
+    } finally {
+      setOpenBusyId(null);
+    }
+  }, []);
+
   const toggleDownloadable = useCallback(
     async (row: Resource) => {
       if (!apiEnabled()) {
@@ -379,7 +402,18 @@ export default function AdminResources() {
                 <Icon className="h-[18px] w-[18px]" />
               </span>
               <div className="min-w-0">
-                <p className="truncate font-semibold text-foreground">{row.title}</p>
+                {apiEnabled() ? (
+                  <button
+                    type="button"
+                    className="block max-w-full truncate text-left font-semibold text-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    title="Open this file"
+                    onClick={() => void openRow(row)}
+                  >
+                    {row.title}
+                  </button>
+                ) : (
+                  <p className="truncate font-semibold text-foreground">{row.title}</p>
+                )}
                 <p className="text-xs text-muted-foreground">{row.sizeLabel ?? "Streamed content"}</p>
               </div>
             </div>
@@ -434,7 +468,7 @@ export default function AdminResources() {
               </TooltipTrigger>
               <TooltipContent>
                 {row.folderId
-                  ? "Parents see this file through the folders it sits in — use Share on the folder to choose who."
+                  ? "Parents see this file through the folder it sits in — use Share on the folder to choose which batches or parents."
                   : "Put this file in a folder and share the folder to give many parents access at once."}
               </TooltipContent>
             </Tooltip>
@@ -442,6 +476,27 @@ export default function AdminResources() {
             <Switch checked={row.visibleToParents ?? false} onCheckedChange={() => toggleField(row.id, "visibleToParents")} />
           ),
       },
+      ...(apiEnabled()
+        ? [
+            {
+              key: "open",
+              header: "",
+              render: (row: Resource) => (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  aria-label={`Open ${row.title}`}
+                  title="Open"
+                  disabled={openBusyId === row.id}
+                  onClick={() => void openRow(row)}
+                >
+                  {openBusyId === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              ),
+            } satisfies DataTableColumn<Resource>,
+          ]
+        : []),
       ...(canEdit
         ? [
             {
@@ -467,7 +522,7 @@ export default function AdminResources() {
           ]
         : []),
     ],
-    [downloadBusyId, toggleDownloadable, batchNameById, viewMode, pathLabel, canEdit]
+    [downloadBusyId, toggleDownloadable, batchNameById, viewMode, pathLabel, canEdit, openBusyId, openRow]
   );
 
   const chain = chainOf(currentId);
@@ -478,7 +533,7 @@ export default function AdminResources() {
       <PageHeader
         eyebrow="Content Library"
         title="Content & Resources"
-        description="Upload once into folders, then share a whole folder with as many parents as you need."
+        description="Upload once into folders, then share a whole folder with as many batches or parents as you need."
         actions={
           <div className="flex flex-wrap gap-2">
             {canCreate && (
@@ -525,6 +580,12 @@ export default function AdminResources() {
             </>
           )}
         </nav>
+        <div className="flex flex-wrap items-center gap-2">
+          {apiEnabled() && canEdit && viewMode === "folders" && chain.length > 0 && (
+            <Button size="sm" variant="outline" onClick={() => setSharing(chain[chain.length - 1])}>
+              <Share2 className="h-4 w-4" /> Share this folder
+            </Button>
+          )}
         <div className="inline-flex rounded-lg border p-0.5">
           <Button size="sm" variant={viewMode === "folders" ? "secondary" : "ghost"} onClick={() => setViewMode("folders")}>
             <FolderOpen className="h-4 w-4" /> Folders
@@ -532,6 +593,7 @@ export default function AdminResources() {
           <Button size="sm" variant={viewMode === "all" ? "secondary" : "ghost"} onClick={() => setViewMode("all")}>
             <LayoutList className="h-4 w-4" /> All files
           </Button>
+        </div>
         </div>
       </div>
 

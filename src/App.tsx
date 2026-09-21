@@ -277,6 +277,51 @@ export default function App() {
               <Route path="class-logs" element={<AdminClassSessionLogs />} />
             </Route>
 
+            {/* Admin & Management ("executive"): a Sub Admin persona (RoleDefinition
+                "admin-management", DefaultRoute = "/executive"), not a merge of the two portals —
+                /admin and /management are untouched. Mounts every Admin page plus the Management
+                executive pages so one login can reach both; the sidebar (DB menu rows gated by
+                module) decides what actually shows, so narrowing it is a Roles & Permissions edit. */}
+            <Route path="/executive" element={<RequireAuth role="executive"><AppShell role="executive"><Outlet /></AppShell></RequireAuth>}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="overview" element={<ManagementDashboard />} />
+              <Route path="revenue" element={<ManagementRevenue />} />
+              <Route path="performance" element={<ManagementPerformance />} />
+              <Route path="management-reports" element={<ManagementReports />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="permissions" element={<AdminPermissions />} />
+              <Route path="courses" element={<AdminCourses />} />
+              <Route path="departments" element={<AdminDepartments />} />
+              <Route path="quiz-bank" element={<AdminQuizQuestions />} />
+              <Route path="activity-bank" element={<AdminActivityBank />} />
+              <Route path="batches" element={<AdminBatches />} />
+              <Route path="calendar" element={<AdminAcademicCalendar />} />
+              <Route path="sessions" element={<AdminSessions />} />
+              <Route path="recordings" element={<AdminRecordings />} />
+              <Route path="resources" element={<AdminResources />} />
+              <Route path="billing" element={<AdminBilling />} />
+              <Route path="packages" element={<AdminPackages />} />
+              <Route path="payment-mapping" element={<AdminPaymentMapping />} />
+              <Route path="payouts" element={<AdminPayouts />} />
+              <Route path="fee-suspension" element={<AdminFeeSuspension />} />
+              <Route path="reports" element={<AdminReports />} />
+              <Route path="bulk-email" element={<AdminBulkEmail />} />
+              <Route path="bulk-email/history" element={<AdminBulkEmailHistory />} />
+              <Route path="email-templates" element={<AdminEmailTemplates />} />
+              <Route path="progress-reports" element={<AdminProgressReports />} />
+              <Route path="chatbot" element={<AdminChatbot />} />
+              <Route path="enrollments" element={<AdminEnrollments />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
+              <Route path="store-inquiries" element={<AdminStoreInquiries />} />
+              <Route path="parent-feedback" element={<ParentFeedbackReport />} />
+              <Route path="leave" element={<AdminLeave />} />
+              <Route path="availability" element={<AdminAvailability />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="monitoring" element={<AdminMonitoring />} />
+              <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
+              <Route path="class-logs" element={<AdminClassSessionLogs />} />
+            </Route>
+
             <Route path="/teacher" element={<RequireAuth role="teacher"><AppShell role="teacher"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<TeacherDashboard />} />
               <Route path="classes" element={<TeacherMyClasses />} />

@@ -28,7 +28,7 @@ const COLLAPSE_KEY = "trn.sidebarCollapsed";
 // Coordinator/Admission/Management/IT Admin aren't separate backend roles — they're
 // display portals a Sub Admin's assigned preset (RoleDefinition.DefaultRoute) routes to.
 // The account's real, login-issued role is always "subadmin". See the role-sync effect below.
-const SUBADMIN_PRESET_PORTALS: Role[] = ["coordinator", "admission", "management", "itadmin"];
+const SUBADMIN_PRESET_PORTALS: Role[] = ["coordinator", "admission", "management", "itadmin", "executive"];
 
 export function AppShell({ role, children }: AppShellProps) {
   const { setRole, permissions, activeChildId } = useSession();
