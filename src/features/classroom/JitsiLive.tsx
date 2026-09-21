@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { primeAudioUnlock } from "@/lib/sounds";
 import InteractivePanel from "./InteractivePanel";
 import ClassroomBlocked from "./ClassroomBlocked";
+import { detectPlatform, getMediaHelp } from "@/lib/mediaPermissionHelp";
 import GamificationOverlay from "./GamificationOverlay";
 import AnnotationOverlay, { type AnnotationOverlayHandle, type AnnotationOp } from "./AnnotationOverlay";
 import type { LeaderboardEntry } from "./classroomData";
@@ -1786,15 +1787,23 @@ export default function JitsiLive({
             </DialogDescription>
           </DialogHeader>
           {mediaDialog === "blocked" && (
-            <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
-              <li>Click the camera / lock icon at the left of the address bar.</li>
-              <li>Set Camera and Microphone to <span className="font-semibold text-foreground">Allow</span>.</li>
-              <li>Come back and press <span className="font-semibold text-foreground">Try again</span>.</li>
-              <li className="text-xs">Still stuck? Check Windows Settings → Privacy → Camera / Microphone (or Mac System Settings → Privacy &amp; Security).</li>
-            </ol>
+            (() => {
+              // Where the setting lives depends on the device (a tablet has no "Windows Settings").
+              const help = getMediaHelp(detectPlatform(navigator.userAgent, navigator.maxTouchPoints));
+              return (
+                <>
+                  <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
+                    {help.steps.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                  <p className="text-xs text-muted-foreground">{help.stillStuck}</p>
+                </>
+              );
+            })()
           )}
           {mediaRetryFailed && (
-            <p className="text-sm font-medium text-destructive">Still blocked — please allow access in the address bar first.</p>
+            <p className="text-sm font-medium text-destructive">Still blocked — please allow Camera and Microphone in the site settings first (steps above).</p>
           )}
           <DialogFooter className="flex-wrap">
             <Button variant="outline" onClick={() => setMediaDialog(null)}>
