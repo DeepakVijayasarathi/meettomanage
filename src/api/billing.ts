@@ -114,17 +114,6 @@ export async function listInvoiceRows<T>(
   return { rows: page.items.map(map), totalCount: page.totalCount };
 }
 
-export async function createInvoice(input: {
-  parentProfileId: string;
-  childId?: string;
-  subscriptionId?: string;
-  departmentId: string;
-  amount: number;
-  dueDate: string;
-}): Promise<ApiInvoice> {
-  return apiFetch<ApiInvoice>("/api/invoices", { method: "POST", body: JSON.stringify(input) });
-}
-
 export async function recordPayment(
   invoiceId: string,
   input: { amount: number; method?: ApiPaymentMethod; gatewayTransactionId?: string }

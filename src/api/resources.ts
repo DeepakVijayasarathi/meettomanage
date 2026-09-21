@@ -248,39 +248,10 @@ export async function uploadLargeResource(
   }
 }
 
-/** Fetches the file with the bearer token (a plain <a href> cannot carry it) and saves it. */
-export async function downloadResource(id: string, fallbackName: string): Promise<void> {
-  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-  const token = getAccessToken();
-  const response = await fetch(`${baseUrl}/api/resources/${id}/download`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
-  if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
-
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = fallbackName;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
 /** Admin console: toggle whether a resource is downloadable (books stay view-only server-side regardless). */
 export async function updateResource(id: string, isDownloadable: boolean): Promise<ApiResource> {
   return apiFetch<ApiResource>(`/api/resources/${id}`, {
     method: "PUT",
     body: JSON.stringify({ isDownloadable }),
-  });
-}
-
-export async function grantResourceAccess(
-  id: string,
-  parentProfileIds: string[],
-  visibleOnDashboard = true
-): Promise<void> {
-  await apiFetch<void>(`/api/resources/${id}/grants`, {
-    method: "POST",
-    body: JSON.stringify({ parentProfileIds, visibleOnDashboard }),
   });
 }

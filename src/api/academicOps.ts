@@ -152,16 +152,6 @@ export async function cancelLeave(id: string): Promise<void> {
   await apiFetch<void>(`/api/leave-requests/${id}`, { method: "DELETE" });
 }
 
-export async function captureAttendance(
-  sessionId: string,
-  entries: { childId?: string; teacherProfileId?: string; status: ApiAttendanceStatus }[]
-): Promise<ApiSessionAttendance[]> {
-  return apiFetch<ApiSessionAttendance[]>(`/api/sessions/${sessionId}/attendance`, {
-    method: "POST",
-    body: JSON.stringify({ entries }),
-  });
-}
-
 export async function listAttendance(sessionId: string): Promise<ApiSessionAttendance[]> {
   return apiFetch<ApiSessionAttendance[]>(`/api/sessions/${sessionId}/attendance`);
 }
