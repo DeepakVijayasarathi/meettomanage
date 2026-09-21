@@ -68,7 +68,8 @@ export default function AdmissionDashboard() {
     SESSIONS
   );
   const { data: collectedRevenue, loading: revenueLoading, error: revenueError } = useApiData<number>(
-    () => getDashboardSummary().then((s) => s.revenueCollected),
+    // This calendar month (the trend's last point) -- revenueCollected is all-time.
+    () => getDashboardSummary().then((s) => s.revenueTrend.at(-1)?.revenue ?? 0),
     getRevenueThisMonth(),
     0
   );
@@ -141,7 +142,7 @@ export default function AdmissionDashboard() {
           error={kpiError}
         />
         <KpiCard
-          label="Revenue From Conversions"
+          label="Revenue This Month"
           value={formatCurrency(revenueThisMonth)}
           icon={IndianRupee}
           tone="warning"

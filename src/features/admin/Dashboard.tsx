@@ -125,7 +125,8 @@ export default function AdminDashboard() {
         kpis: {
           totalStudents: s.totalStudents,
           activeStudents: s.activeStudents,
-          revenueThisMonth: s.revenueCollected,
+          // revenueCollected is every rupee ever paid (all-time); the trend's last point is this calendar month.
+          revenueThisMonth: s.revenueTrend.at(-1)?.revenue ?? 0,
           revenueGrowth: 0,
           enrollments: s.totalEnrollments,
           conversionRate: s.conversionRatePercent,
