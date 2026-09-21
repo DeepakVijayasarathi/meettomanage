@@ -229,6 +229,7 @@ export const COORDINATOR_NAV: NavSection[] = [
       { label: "Academic Calendar", to: "/coordinator/calendar", icon: CalendarDays },
       { label: "Teacher Availability", to: "/coordinator/availability", icon: CalendarRange },
       { label: "Sessions", to: "/coordinator/sessions", icon: CalendarClock },
+      { label: "Recordings", to: "/coordinator/recordings", icon: Video },
     ],
   },
 ];

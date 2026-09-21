@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { useToast } from "@/hooks/use-toast";
+import { useSession } from "@/state/session";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { deleteRecording, listAllRecordings, type ApiRecordingListItem } from "@/api/sessions";
 import { SESSIONS } from "@/data/sessions";
@@ -43,6 +44,10 @@ function recordingTitle(item: ApiRecordingListItem): string {
 export default function AdminRecordings() {
   const usingApi = apiEnabled();
   const { toast } = useToast();
+  // Mounted under every Sub Admin-type portal too (Coordinator, IT Admin, ...) — those can
+  // watch any recording, but only Admin may delete one (server-side rule as well).
+  const { role } = useSession();
+  const canDelete = role === "admin";
 
   const [items, setItems] = useState<ApiRecordingListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -198,7 +203,7 @@ export default function AdminRecordings() {
                     <Button size="sm" className="flex-1" onClick={() => setPreview(item)}>
                       <PlayCircle className="h-3.5 w-3.5" /> Watch
                     </Button>
-                    {usingApi && (
+                    {usingApi && canDelete && (
                       <Button
                         size="sm"
                         variant="outline"

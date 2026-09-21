@@ -314,6 +314,7 @@ export default function App() {
                 Dashboard/Reports imports above for why those aren't cross-mounted too. */}
             <Route path="/subadmin" element={<RequireAuth role="subadmin"><AppShell role="subadmin"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<SubAdminDashboard />} />
+              <Route path="recordings" element={<AdminRecordings />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
               <Route path="integrations" element={<SubAdminIntegrations />} />
               <Route path="class-logs" element={<SubAdminClassSessionLogs />} />
@@ -354,6 +355,7 @@ export default function App() {
 
             <Route path="/admission" element={<RequireAuth role="admission"><AppShell role="admission"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<AdmissionDashboard />} />
+              <Route path="recordings" element={<AdminRecordings />} />
               <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
               <Route path="demo-teacher-assignment" element={<AdmissionDemoTeacherAssignment />} />
               <Route path="demo-teacher-assignment/:bookingId" element={<AdmissionDemoTeacherAssignment />} />
@@ -395,6 +397,7 @@ export default function App() {
 
             <Route path="/coordinator" element={<RequireAuth role="coordinator"><AppShell role="coordinator"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<CoordinatorDashboard />} />
+              <Route path="recordings" element={<AdminRecordings />} />
               <Route path="calendar" element={<CoordinatorCalendar />} />
               <Route path="availability" element={<CoordinatorAvailability />} />
               <Route path="permissions" element={<SubAdminPermissions />} />
@@ -434,6 +437,7 @@ export default function App() {
 
             <Route path="/management" element={<RequireAuth role="management"><AppShell role="management"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<ManagementDashboard />} />
+              <Route path="recordings" element={<AdminRecordings />} />
               <Route path="revenue" element={<ManagementRevenue />} />
               <Route path="performance" element={<ManagementPerformance />} />
               <Route path="reports" element={<ManagementReports />} />
