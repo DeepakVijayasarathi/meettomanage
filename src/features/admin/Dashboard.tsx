@@ -205,7 +205,8 @@ export default function AdminDashboard() {
           error={dashboardError}
         />
         <KpiCard
-          label="New Enrollments"
+          // totalEnrollments is the count of currently ACTIVE enrollments, not ones started recently.
+          label="Active Enrollments"
           value={formatNumber(kpis.enrollments)}
           icon={GraduationCap}
           tone="primary"
@@ -223,8 +224,11 @@ export default function AdminDashboard() {
           error={dashboardError}
         />
         <KpiCard
-          label="Teacher Utilization"
-          value={formatPercent(kpis.teacherUtilization)}
+          // With the API this figure is completed sessions per active teacher over the last 30 days (a
+          // count, e.g. 39), not a percentage -- formatting it as "39%" misreported it.
+          label={usingApi ? "Sessions per Teacher" : "Teacher Utilization"}
+          value={usingApi ? formatNumber(kpis.teacherUtilization) : formatPercent(kpis.teacherUtilization)}
+          detail={usingApi ? "completed, last 30 days" : undefined}
           icon={ClipboardCheck}
           tone="primary"
           trend={usingApi ? undefined : { value: -1.2, label: "vs last month" }}
@@ -233,7 +237,10 @@ export default function AdminDashboard() {
         />
         <KpiCard
           label="Attendance Rate"
-          value={formatPercent(kpis.attendanceRate)}
+          // There is no attendance aggregate in the dashboard API yet, so the value is a placeholder 0;
+          // showing "0%" reads as "nobody attends" -- show a dash and say why instead.
+          value={usingApi ? "—" : formatPercent(kpis.attendanceRate)}
+          detail={usingApi ? "not available yet" : undefined}
           icon={CalendarCheck2}
           tone="success"
           trend={usingApi ? undefined : { value: 1.5, label: "vs last month" }}
