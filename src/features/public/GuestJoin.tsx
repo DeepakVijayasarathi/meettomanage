@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
-import { apiEnabled, ApiError, userMessage } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { guestJoin, type ApiGuestJoin } from "@/api/sessions";
 import JitsiLive from "@/features/classroom/JitsiLive";
 

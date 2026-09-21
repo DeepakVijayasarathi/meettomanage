@@ -17,6 +17,9 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: false,
+    // Agent worktrees under .claude/ hold full repo copies with their own node_modules
+    // resolution; collecting them yields duplicate-React failures unrelated to this app.
+    exclude: ["**/node_modules/**", "**/dist/**", ".claude/**"],
   },
   build: {
     rollupOptions: {

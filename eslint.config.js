@@ -5,7 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "node_modules"] },
+  { ignores: ["dist", "node_modules", ".claude"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -33,5 +33,20 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "warn",
     },
+  },
+  {
+    // These modules intentionally co-export helpers/hooks/constants next to components
+    // (shadcn `*Variants`, context hooks, shared badge/matrix helpers). The rule only
+    // affects dev-server hot reload (full reload instead of fast refresh), never
+    // production behaviour, and splitting them would churn dozens of importers.
+    files: [
+      "src/components/ui/**",
+      "src/components/BatchPaymentPlanFields.tsx",
+      "src/components/PermissionMatrix.tsx",
+      "src/components/StatusBadge.tsx",
+      "src/features/admin/monitoringShared.tsx",
+      "src/state/session.tsx",
+    ],
+    rules: { "react-refresh/only-export-components": "off" },
   }
 );
