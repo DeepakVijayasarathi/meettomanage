@@ -69,7 +69,7 @@ import {
   formatUptime,
 } from "./monitoringShared";
 import { BurstWorkerPanel } from "./BurstWorkerPanel";
-import { RecordingPipelinePanel, RecorderCapacityStrip } from "./RecordingPipelinePanel";
+import { RecordingPipelinePanel, RecorderCapacityStrip, ReadinessCard } from "./RecordingPipelinePanel";
 
 const REFRESH_INTERVAL_MS = 20_000;
 
@@ -575,6 +575,17 @@ function SessionRow({ s }: { s: SessionHistoryEntry }) {
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">{s.teacherName}</TableCell>
       <TableCell>
+        {s.batchName === null || s.actualStartAtUtc === null ? (
+          <span className="text-xs text-muted-foreground">—</span>
+        ) : s.hasRecording ? (
+          <Badge variant="success" className="text-[11px]">Recorded</Badge>
+        ) : s.status === "InProgress" ? (
+          <Badge variant="muted" className="text-[11px]">Recording…</Badge>
+        ) : (
+          <Badge variant="destructive" className="text-[11px]">Not synced</Badge>
+        )}
+      </TableCell>
+      <TableCell>
         <Badge variant={SESSION_STATUS_VARIANT[s.status] ?? "muted"} className="text-[11px]">
           {s.status}
         </Badge>
@@ -623,6 +634,7 @@ function TodaySessionsCard({ sessions, loading }: { sessions: SessionHistoryEntr
                 <TableHead>Time</TableHead>
                 <TableHead>Class</TableHead>
                 <TableHead>Teacher</TableHead>
+                <TableHead>Recording</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Attendance</TableHead>
               </TableRow>
@@ -855,6 +867,7 @@ export default function AdminMonitoring() {
       />
 
       <AlertsBanner alerts={summary.activeAlerts ?? []} loading={loading && summary.servers.length === 0} />
+      <ReadinessCard summary={summary} loading={loading} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <KpiCard
