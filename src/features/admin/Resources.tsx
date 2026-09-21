@@ -348,7 +348,7 @@ export default function AdminResources() {
     setToggleError(null);
     setOpenBusyId(row.id);
     try {
-      await openResourceInNewTab(row.id);
+      await openResourceInNewTab(row.id, row.title);
     } catch (err) {
       setToggleError(userMessage(err, `Could not open "${row.title}".`));
     } finally {

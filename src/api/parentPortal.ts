@@ -1,4 +1,5 @@
 import { ApiError, apiFetch, getAccessToken, readProblemMessage } from "@/lib/api";
+import { fileNameFor } from "@/lib/fileName";
 import type { ApiInvoice } from "@/api/billing";
 import type { ApiClassSession, ApiSessionRecording } from "@/api/sessions";
 import type { ApiResource } from "@/api/resources";
@@ -122,7 +123,7 @@ export async function downloadParentResource(id: string, fallbackName: string): 
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = fallbackName;
+  anchor.download = fileNameFor(fallbackName, blob.type);
   anchor.click();
   URL.revokeObjectURL(url);
 }
