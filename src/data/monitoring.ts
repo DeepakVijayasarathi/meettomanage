@@ -33,6 +33,22 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
   activeClassCount: 2,
   activeAlerts: [],
   todayRecordings: { started: 42, succeeded: 40, failed: 1, stillProcessing: 1 },
+  recordingPipeline: {
+    registeredToday: 38,
+    unattachedToday: 2,
+    failedToday: 0,
+    pendingRegistration: 0,
+    newestRecordingUtc: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+    diskTotalGb: 300,
+    diskFreeGb: 208,
+    diskFreePercent: 69.3,
+    growthLast24hGb: 13.4,
+    daysOfDiskLeft: 15.5,
+    unattached: [
+      { room: "trn-49a79a0e7ed747059254edd97925fdab", atUtc: new Date(Date.now() - 3 * 3600 * 1000).toISOString(), durationSeconds: 375 },
+      { room: "trn-zzloadtest-02", atUtc: new Date(Date.now() - 6 * 3600 * 1000).toISOString(), durationSeconds: 97 },
+    ],
+  },
   burstWorkerUsage: {
     episodesToday: 2,
     hoursToday: 1.95,

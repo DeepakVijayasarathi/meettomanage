@@ -540,6 +540,29 @@ export interface BurstWorkerControlResult {
   performedAtUtc: string;
 }
 
+/** A recording that finished today but is not attached to any class (personal/demo/ad-hoc room). */
+export interface UnattachedRecording {
+  room: string;
+  atUtc: string;
+  durationSeconds: number;
+}
+
+/** Recording pipeline health on the video server: did finished recordings reach the portal, is anything stuck, disk headroom. */
+export interface RecordingPipeline {
+  registeredToday: number;
+  unattachedToday: number;
+  failedToday: number;
+  pendingRegistration: number;
+  newestRecordingUtc: string | null;
+  diskTotalGb: number;
+  diskFreeGb: number;
+  diskFreePercent: number;
+  growthLast24hGb: number;
+  daysOfDiskLeft: number | null;
+  /** Newest first. */
+  unattached: UnattachedRecording[];
+}
+
 export interface MonitoringSummary {
   servers: ServerStatus[];
   apiHealthy: boolean;
@@ -553,5 +576,7 @@ export interface MonitoringSummary {
   todayRecordings: RecordingSummary;
   /** Null if the usage log couldn't be fetched (e.g. main unreachable) — treat as unknown, not "never used." */
   burstWorkerUsage: BurstWorkerUsage | null;
+  /** Null if main could not be reached — unknown, not "healthy". */
+  recordingPipeline: RecordingPipeline | null;
   generatedAtUtc: string;
 }

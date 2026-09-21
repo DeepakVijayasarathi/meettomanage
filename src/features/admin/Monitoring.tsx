@@ -69,6 +69,7 @@ import {
   formatUptime,
 } from "./monitoringShared";
 import { BurstWorkerPanel } from "./BurstWorkerPanel";
+import { RecordingPipelinePanel, RecorderCapacityStrip } from "./RecordingPipelinePanel";
 
 const REFRESH_INTERVAL_MS = 20_000;
 
@@ -83,6 +84,7 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   activeAlerts: [],
   todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
   burstWorkerUsage: null,
+  recordingPipeline: null,
   generatedAtUtc: "",
 };
 
@@ -938,6 +940,9 @@ export default function AdminMonitoring() {
 
       {/* Always rendered (even with no history yet, or if the usage lookup failed) so the emergency
           Start now button is there when it is actually needed. */}
+      <RecorderCapacityStrip servers={summary.servers} />
+      <RecordingPipelinePanel pipeline={summary.recordingPipeline} />
+
       <BurstWorkerPanel usage={summary.burstWorkerUsage} canManage={canManage} onChanged={reload} />
 
       <Dialog open={failedRecordingsOpen} onOpenChange={setFailedRecordingsOpen}>

@@ -178,6 +178,20 @@ export interface ApiBurstWorkerControlResult {
   performedAtUtc: string;
 }
 
+export interface ApiRecordingPipeline {
+  registeredToday: number;
+  unattachedToday: number;
+  failedToday: number;
+  pendingRegistration: number;
+  newestRecordingUtc: string | null;
+  diskTotalGb: number;
+  diskFreeGb: number;
+  diskFreePercent: number;
+  growthLast24hGb: number;
+  daysOfDiskLeft: number | null;
+  unattached: { room: string; atUtc: string; durationSeconds: number }[];
+}
+
 export interface ApiMonitoringSummary {
   servers: ApiServerStatus[];
   apiHealthy: boolean;
@@ -189,6 +203,7 @@ export interface ApiMonitoringSummary {
   activeAlerts: ApiMonitoringAlert[];
   todayRecordings: ApiRecordingSummary;
   burstWorkerUsage: ApiBurstWorkerUsage | null;
+  recordingPipeline: ApiRecordingPipeline | null;
   generatedAtUtc: string;
 }
 
@@ -370,6 +385,7 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
     activeAlerts: api.activeAlerts,
     todayRecordings: api.todayRecordings,
     burstWorkerUsage: api.burstWorkerUsage,
+    recordingPipeline: api.recordingPipeline ?? null,
     generatedAtUtc: api.generatedAtUtc,
     servers: api.servers.map((s) => ({
       name: s.name,
