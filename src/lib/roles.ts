@@ -141,14 +141,15 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     homePath: "/itadmin",
   },
   // Not a separate backend role either — the "admin-management" persona (RoleDefinition.DefaultRoute
-  // = "/executive"): Admin-portal pages and the Management executive pages under one login. The
-  // Admin and Management portals stay separate; which of the combined menu's items show is decided
-  // by this role's permission grants, not here.
+  // = "/executive"), renamed "Founder Dashboard" 2026-09-22: Management Dashboard + Admin Dashboard
+  // on one login, one merged landing page, no switching between two dashboards. /admin and
+  // /management stay separate for anyone still assigned those; which of this combined menu's
+  // items show is decided by this role's permission grants, not here.
   executive: {
     role: "executive",
-    label: "Admin & Management",
-    shortLabel: "Admin & Mgmt",
-    description: "Admin and Management menus together, driven by the role's permissions.",
+    label: "Founder Dashboard",
+    shortLabel: "Founder",
+    description: "Complete visibility and control — Management's business view plus every Admin permission, in one dashboard.",
     colorVar: "role-executive",
     // Kept in sync with role.executive in tailwind.config.ts.
     hex: "#B45309",

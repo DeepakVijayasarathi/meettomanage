@@ -169,7 +169,7 @@ const PORTAL_LABELS: Record<string, string> = {
   management: "Management",
   student: "Student",
   itadmin: "IT Admin",
-  executive: "Admin & Management",
+  executive: "Founder Dashboard",
 };
 
 /**

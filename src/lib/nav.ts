@@ -43,7 +43,6 @@ import {
   Activity,
   MessageCircleQuestion,
   Radar,
-  LineChart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -319,15 +318,14 @@ export const ITADMIN_NAV: NavSection[] = [
   },
 ];
 
-// Demo-mode / loading fallback for the "executive" (Admin & Management) portal — mirrors the
+// Demo-mode / loading fallback for the "executive" (Founder Dashboard) portal — mirrors the
 // real, DB-seeded menu (DatabaseInitializer.EnsureExecutiveMenuAsync). The live sidebar is
 // filtered by the role's module grants; this static copy only shows before that loads.
 export const EXECUTIVE_NAV: NavSection[] = [
-  { items: [{ label: "Overall Dashboard", to: "/executive", icon: LayoutDashboard, end: true }] },
+  { items: [{ label: "Founder Dashboard", to: "/executive", icon: LayoutDashboard, end: true }] },
   {
     title: "Management",
     items: [
-      { label: "Executive Overview", to: "/executive/overview", icon: LineChart },
       { label: "Revenue & Courses", to: "/executive/revenue", icon: TrendingUp },
       { label: "Teacher & Batch Performance", to: "/executive/performance", icon: Gauge },
       { label: "Management Reports", to: "/executive/management-reports", icon: FileBarChart },

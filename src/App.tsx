@@ -16,6 +16,7 @@ const ResetPin = lazy(() => import("@/features/auth/ResetPin"));
 const NotFound = lazy(() => import("@/features/auth/NotFound"));
 
 const AdminDashboard = lazy(() => import("@/features/admin/Dashboard"));
+const FounderDashboard = lazy(() => import("@/features/founder/Dashboard"));
 const AdminUsers = lazy(() => import("@/features/admin/Users"));
 const AdminPermissions = lazy(() => import("@/features/admin/Permissions"));
 const AdminCourses = lazy(() => import("@/features/admin/Courses"));
@@ -277,14 +278,19 @@ export default function App() {
               <Route path="class-logs" element={<AdminClassSessionLogs />} />
             </Route>
 
-            {/* Admin & Management ("executive"): a Sub Admin persona (RoleDefinition
-                "admin-management", DefaultRoute = "/executive"), not a merge of the two portals —
-                /admin and /management are untouched. Mounts every Admin page plus the Management
-                executive pages so one login can reach both; the sidebar (DB menu rows gated by
-                module) decides what actually shows, so narrowing it is a Roles & Permissions edit. */}
+            {/* Founder Dashboard ("executive"): a Sub Admin persona (RoleDefinition
+                "admin-management", DefaultRoute = "/executive") — Founder = Management Dashboard +
+                Admin Dashboard on one login, renamed from "Admin & Management" 2026-09-22.
+                /admin and /management stay live (existing staff on those aren't moved), but the
+                Founder never needs to switch between them: this mounts every Admin page plus the
+                Management pages, with a single merged FounderDashboard landing page instead of two
+                separate dashboards. The sidebar (DB menu rows gated by module) decides what
+                actually shows, so narrowing it is a Roles & Permissions edit. */}
             <Route path="/executive" element={<RequireAuth role="executive"><AppShell role="executive"><Outlet /></AppShell></RequireAuth>}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="overview" element={<ManagementDashboard />} />
+              <Route index element={<FounderDashboard />} />
+              {/* "/executive/overview" (ManagementDashboard) merged into the index page above
+                  2026-09-22 — redirect rather than 404 for anyone with the old link bookmarked. */}
+              <Route path="overview" element={<Navigate to="/executive" replace />} />
               <Route path="revenue" element={<ManagementRevenue />} />
               <Route path="performance" element={<ManagementPerformance />} />
               <Route path="management-reports" element={<ManagementReports />} />
