@@ -563,6 +563,16 @@ export interface RecordingPipeline {
   unattached: UnattachedRecording[];
 }
 
+/** One participant's stretch of degraded audio/video on one call, derived from JVB's own bandwidth-estimation warnings. */
+export interface CallQualityIncident {
+  roomName: string;
+  participantLabel: string;
+  firstAtUtc: string;
+  lastAtUtc: string;
+  eventCount: number;
+  lowestKbps: number;
+}
+
 export interface MonitoringSummary {
   servers: ServerStatus[];
   apiHealthy: boolean;
@@ -578,5 +588,9 @@ export interface MonitoringSummary {
   burstWorkerUsage: BurstWorkerUsage | null;
   /** Null if main could not be reached — unknown, not "healthy". */
   recordingPipeline: RecordingPipeline | null;
+  /** Recent per-participant audio/video degradation incidents, newest first. */
+  callQualityIncidents: CallQualityIncident[];
+  /** True when the incidents' spread across distinct rooms suggests shared bridge contention rather than individual network variance. */
+  callQualityIncidentsLookSystemic: boolean;
   generatedAtUtc: string;
 }

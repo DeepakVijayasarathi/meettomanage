@@ -1,8 +1,9 @@
-import { AlertTriangle, CheckCircle2, Clock, Disc, HardDrive, HelpCircle, Layers, Link2Off, ShieldCheck, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Disc, HardDrive, HelpCircle, Layers, Link2Off, Mic, ShieldCheck, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import type { MonitoringSummary, RecordingPipeline, ServerStatus } from "@/types";
+import type { CallQualityIncident, MonitoringSummary, RecordingPipeline, ServerStatus } from "@/types";
 import { StatTile } from "./monitoringShared";
 
 function ago(iso: string | null): string {
@@ -288,6 +289,85 @@ export function ReadinessCard({ summary, loading }: { summary: MonitoringSummary
           );
         })}
       </div>
+    </Card>
+  );
+}
+
+function durationLabel(firstIso: string, lastIso: string): string {
+  const seconds = Math.max(0, Math.round((new Date(lastIso).getTime() - new Date(firstIso).getTime()) / 1000));
+  if (seconds < 60) return "a moment";
+  const minutes = Math.round(seconds / 60);
+  return `${minutes} min`;
+}
+
+const clockIncident = (iso: string) => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+/**
+ * Per-participant audio/video trouble, straight from JVB's own bandwidth-estimation warnings --
+ * "camera works, mic doesn't" (or the reverse) shows up here as a participant's bandwidth collapsing
+ * to near zero. The distinction that matters: many different rooms in a short window points at
+ * shared bridge contention (a server problem); a lone row is ordinary individual network variance
+ * that no server change eliminates -- callQualityIncidentsLookSystemic tells them apart.
+ */
+export function CallQualityIncidentsPanel({ incidents, looksSystemic }: { incidents: CallQualityIncident[]; looksSystemic: boolean }) {
+  return (
+    <Card className="mt-6 p-5">
+      <CardHeader className="p-0 pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Mic className="h-4 w-4 text-primary" />
+              Audio/Video Incidents
+            </CardTitle>
+            <CardDescription>
+              Participants whose call quality collapsed, last 24 hours &mdash; from the video bridge&apos;s own reports.
+            </CardDescription>
+          </div>
+          {incidents.length === 0 ? (
+            <Badge variant="success" className="gap-1"><CheckCircle2 className="h-3 w-3" />None in 24h</Badge>
+          ) : looksSystemic ? (
+            <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" />Spread across several classes</Badge>
+          ) : (
+            <Badge variant="secondary">Isolated ({incidents.length})</Badge>
+          )}
+        </div>
+      </CardHeader>
+
+      {incidents.length === 0 ? (
+        <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+          No participant reported a bandwidth collapse in the last 24 hours.
+        </p>
+      ) : (
+        <>
+          <p className="mb-3 text-xs text-muted-foreground">
+            {looksSystemic
+              ? "Several different classes affected around the same time -- likely a shared server issue, not individual networks."
+              : "Each row below is its own isolated case -- consistent with that participant's own network at the time, not a server problem."}
+          </p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Class room</TableHead>
+                <TableHead>Participant</TableHead>
+                <TableHead>When</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead className="text-right">Lowest bandwidth</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {incidents.slice(0, 10).map((i) => (
+                <TableRow key={i.roomName + i.participantLabel + i.firstAtUtc}>
+                  <TableCell className="max-w-[220px] truncate font-mono text-xs text-foreground">{i.roomName}</TableCell>
+                  <TableCell className="text-sm text-foreground">{i.participantLabel}</TableCell>
+                  <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{clockIncident(i.firstAtUtc)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{durationLabel(i.firstAtUtc, i.lastAtUtc)}</TableCell>
+                  <TableCell className="text-right text-xs font-medium text-destructive">{i.lowestKbps.toFixed(0)} kbps</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </>
+      )}
     </Card>
   );
 }
