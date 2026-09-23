@@ -406,6 +406,14 @@ export async function cancelSession(id: string, reason: string): Promise<ApiClas
   });
 }
 
+/** Parent cancels their own child's upcoming class — immediate, no admin approval; the teacher is emailed the reason. */
+export async function cancelSessionAsParent(id: string, reason: string): Promise<ApiClassSession> {
+  return apiFetch<ApiClassSession>(`/api/sessions/${id}/parent-cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
 export interface ApiSessionPresentation {
   id: string;
   classSessionId: string;

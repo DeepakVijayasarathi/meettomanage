@@ -36,6 +36,7 @@ const AdminFeeSuspension = lazy(() => import("@/features/admin/FeeSuspension"));
 const AdminReports = lazy(() => import("@/features/admin/Reports"));
 const ParentFeedbackReport = lazy(() => import("@/features/admin/ParentFeedback"));
 const SupportTicketsQueue = lazy(() => import("@/features/admin/SupportTickets"));
+const PayoutApprovals = lazy(() => import("@/features/admin/PayoutApprovals"));
 const ParentSupport = lazy(() => import("@/features/parent/Support"));
 const AdminBulkEmail = lazy(() => import("@/features/admin/BulkEmail"));
 const AdminBulkEmailHistory = lazy(() => import("@/features/admin/BulkEmailHistory"));
@@ -219,6 +220,7 @@ export default function App() {
               <Route path="packages" element={<AdminPackages />} />
               <Route path="payment-mapping" element={<AdminPaymentMapping />} />
               <Route path="payouts" element={<AdminPayouts />} />
+              <Route path="payout-approvals" element={<PayoutApprovals />} />
               <Route path="fee-suspension" element={<AdminFeeSuspension />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="bulk-email" element={<AdminBulkEmail />} />
@@ -262,6 +264,7 @@ export default function App() {
               <Route path="packages" element={<AdminPackages />} />
               <Route path="payment-mapping" element={<AdminPaymentMapping />} />
               <Route path="payouts" element={<AdminPayouts />} />
+              <Route path="payout-approvals" element={<PayoutApprovals />} />
               <Route path="fee-suspension" element={<AdminFeeSuspension />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="bulk-email" element={<AdminBulkEmail />} />
@@ -313,6 +316,7 @@ export default function App() {
               <Route path="packages" element={<AdminPackages />} />
               <Route path="payment-mapping" element={<AdminPaymentMapping />} />
               <Route path="payouts" element={<AdminPayouts />} />
+              <Route path="payout-approvals" element={<PayoutApprovals />} />
               <Route path="fee-suspension" element={<AdminFeeSuspension />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="bulk-email" element={<AdminBulkEmail />} />
@@ -501,6 +505,7 @@ export default function App() {
               <Route path="reports" element={<ManagementReports />} />
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
+              <Route path="payout-approvals" element={<PayoutApprovals />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
               <Route path="enrollments" element={<SubAdminEnrollments />} />

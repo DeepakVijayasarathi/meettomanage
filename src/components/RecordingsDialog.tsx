@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { useCanDownloadRecordings } from "@/lib/recordingAccess";
 import { deleteRecording, listRecordings, type ApiSessionRecording } from "@/api/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
@@ -31,6 +32,7 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
 
   const canManage = apiEnabled() && GUID_RE.test(session.id);
   const canDelete = role === "admin";
+  const canDownload = useCanDownloadRecordings();
 
   async function handleDelete(recordingId: string) {
     setDeletingId(recordingId);
@@ -143,7 +145,7 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
                         ? `Visible to parents until ${formatDate(r.expiresAtUtc.slice(0, 10), "long")}`
                         : "Registered"}
                     </p>
-                    {isPlaying && safeUrl && <VideoPlayer src={safeUrl} autoPlay className="mt-3" />}
+                    {isPlaying && safeUrl && <VideoPlayer src={safeUrl} autoPlay className="mt-3" downloadable={canDownload} />}
                   </div>
                   );
                 })}

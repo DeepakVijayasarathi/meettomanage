@@ -100,6 +100,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Packages & Subscriptions", to: "/admin/packages", icon: CreditCard },
       { label: "Payment Gateway Mapping", to: "/admin/payment-mapping", icon: Landmark },
       { label: "Teacher Payouts", to: "/admin/payouts", icon: Wallet },
+      { label: "Payout Approvals", to: "/admin/payout-approvals", icon: ClipboardCheck },
       { label: "Fee Suspension", to: "/admin/fee-suspension", icon: Ban, badge: "2" },
     ],
   },
@@ -187,6 +188,7 @@ export const SUBADMIN_NAV: NavSection[] = [
   {
     title: "Delegated Work",
     items: [
+      { label: "Academic Calendar", to: "/subadmin/calendar", icon: CalendarDays },
       { label: "Sessions", to: "/subadmin/sessions", icon: CalendarClock },
       { label: "Search Users", to: "/subadmin/search-users", icon: UserSearch },
       { label: "Parent Tickets", to: "/subadmin/support-tickets", icon: LifeBuoy },
@@ -205,6 +207,7 @@ export const ADMISSION_NAV: NavSection[] = [
       { label: "Teacher Assignment", to: "/admission/demo-teacher-assignment", icon: UserCog },
       { label: "Demo Feedback", to: "/admission/demo-feedback", icon: ClipboardCheck },
       { label: "Conversion Board", to: "/admission/conversion", icon: KanbanSquare },
+      { label: "Academic Calendar", to: "/admission/calendar", icon: CalendarDays },
       { label: "Sessions", to: "/admission/sessions", icon: CalendarClock },
     ],
   },
@@ -245,7 +248,10 @@ export const MANAGEMENT_NAV: NavSection[] = [
     items: [
       { label: "Revenue & Courses", to: "/management/revenue", icon: TrendingUp },
       { label: "Teacher & Batch Performance", to: "/management/performance", icon: Gauge },
+      { label: "Academic Calendar", to: "/management/calendar", icon: CalendarDays },
       { label: "Sessions", to: "/management/sessions", icon: CalendarClock },
+      { label: "Recordings", to: "/management/recordings", icon: Video },
+      { label: "Payout Approvals", to: "/management/payout-approvals", icon: ClipboardCheck },
     ],
   },
   {
@@ -371,6 +377,7 @@ export const EXECUTIVE_NAV: NavSection[] = [
       { label: "Packages & Subscriptions", to: "/executive/packages", icon: CreditCard },
       { label: "Payment Gateway Mapping", to: "/executive/payment-mapping", icon: Landmark },
       { label: "Teacher Payouts", to: "/executive/payouts", icon: Wallet },
+      { label: "Payout Approvals", to: "/executive/payout-approvals", icon: ClipboardCheck },
       { label: "Fee Suspension", to: "/executive/fee-suspension", icon: Ban },
     ],
   },

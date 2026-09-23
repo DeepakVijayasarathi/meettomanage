@@ -16,6 +16,8 @@ export type ApiConversionStatus =
   | "ReadyForEnrollment";
 
 export interface ApiDemoParticipant {
+  /** Set on reads; send it back on an edit so the invitee keeps their own join link. */
+  id?: string | null;
   name: string;
   /** Adults carry an email for the confirmation; additional children don't. */
   email: string | null;
@@ -175,6 +177,27 @@ export async function rescheduleDemoBooking(
   return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${bookingId}/reschedule`, {
     method: "PUT",
     body: JSON.stringify({ scheduledStartAtUtc, scheduledEndAtUtc }),
+  });
+}
+
+export interface UpdateDemoBookingPayload {
+  parentName: string;
+  parentEmail: string;
+  parentPhone: string | null;
+  childName: string;
+  childAge: number | null;
+  departmentId: string | null;
+  /** Replaces the extra-invitee list: entries with an id are updated, new ones added, missing ones removed. */
+  participants: ApiDemoParticipant[];
+}
+
+/** Corrects a booking's parent/child details (e.g. a mistyped email) without touching its slot,
+ *  teacher or stage. The API emails the join link to any new or changed address while the demo
+ *  is still upcoming. */
+export async function updateDemoBooking(bookingId: string, payload: UpdateDemoBookingPayload): Promise<ApiDemoBooking> {
+  return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${bookingId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
   });
 }
 
