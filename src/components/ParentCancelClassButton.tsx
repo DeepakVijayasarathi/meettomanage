@@ -18,8 +18,9 @@ export function canParentCancel(session: ClassSession): boolean {
 
 /**
  * Parent-side "Cancel class": takes effect immediately (no admin approval) and emails the
- * class's teacher that the parent cancelled, with the reason given here. A shared group class
- * is refused by the API with a message pointing to Help & Support.
+ * class's teacher that the parent cancelled, with the reason given here. The family's own
+ * class is cancelled with a make-up scheduled automatically; in a shared group class only
+ * their child is marked absent and the class goes ahead for everyone else.
  */
 export function ParentCancelClassButton({
   session,
@@ -46,7 +47,7 @@ export function ParentCancelClassButton({
     setBusy(true);
     try {
       await cancelSessionAsParent(session.id, reason.trim());
-      toast({ variant: "success", title: "Class cancelled", description: "The teacher has been notified with your reason." });
+      toast({ variant: "success", title: "Cancellation sent", description: "The teacher has been notified with your reason. Any make-up class appears on your schedule." });
       setOpen(false);
       setReason("");
       onCancelled?.();
@@ -68,7 +69,8 @@ export function ParentCancelClassButton({
             <DialogTitle>Cancel this class?</DialogTitle>
             <DialogDescription>
               {session.title} · {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} with {session.teacherName}.
-              The class will be cancelled straight away and the teacher will be emailed your reason.
+              Your own class is cancelled straight away and a make-up class is scheduled for you; in a group class, your
+              child is marked as not attending and the class goes ahead for the others. The teacher is emailed your reason.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-1.5">

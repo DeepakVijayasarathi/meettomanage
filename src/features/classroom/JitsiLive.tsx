@@ -1310,12 +1310,12 @@ export default function JitsiLive({
       // (tile view has no filmstrip/duplicate at all). toggleFilmStrip is a toggle, so the
       // visibility is tracked locally — flipped optimistically on toggle and then confirmed by
       // filmstripDisplayChanged — to never double-toggle while an event is still in flight.
-      // Student/parent view only: the teacher keeps the filmstrip even while spotlighting a
-      // share, since it's her only view of the students ("PPT takes over, I can't see my
-      // students" was its own earlier complaint).
+      // Applies to the teacher too, but only while a share is spotlighted/pinned: a teacher's
+      // share otherwise stays one tile in the grid (screenSharingStatusChanged re-asserts tile
+      // view), so she still sees every student unless she deliberately focuses the screen —
+      // and un-pinning brings the grid and the students straight back.
       const shareLayout = { sharingIds: [] as string[], tileView: true, filmstripVisible: true };
       const syncFilmstripForShare = () => {
-        if (mode === "teacher") return;
         const shouldHide = shareLayout.sharingIds.length > 0 && !shareLayout.tileView;
         if (shouldHide === !shareLayout.filmstripVisible) return;
         shareLayout.filmstripVisible = !shareLayout.filmstripVisible;
