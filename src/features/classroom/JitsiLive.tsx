@@ -978,7 +978,30 @@ export default function JitsiLive({
               echoCancellation: true,
               noiseSuppression: true,
             },
+            // Meet/Zoom-style: capture a modest camera size by default instead of the browser's
+            // 720p+ default, which needs ~2.5 Mbps upstream per person -- more than a phone hotspot
+            // or a shared home connection can hold steady, and the reason weak links stall instead
+            // of just looking a bit softer. 360p ideal (480p ceiling) is plenty for a small class,
+            // costs a fraction of the bandwidth, and Jitsi's simulcast still steps down from there
+            // when the link gets worse. Teachers get a little more headroom (they show materials on
+            // camera). Screen sharing is a separate track and is unaffected.
+            video: {
+              height: { ideal: mode === "teacher" ? 480 : 360, max: mode === "teacher" ? 720 : 480, min: 180 },
+            },
           },
+          // Audio that survives a bad link: RED sends each audio frame twice so a lost packet doesn't
+          // become a dropout (what Meet/Zoom do), DTX stops sending during silence, and a 32 kbps cap
+          // keeps voice clear while leaving room for the rest of a weak connection. Video is what
+          // degrades first; the voice should be the last thing to break.
+          audioQuality: {
+            stereo: false,
+            opusMaxAverageBitrate: 32000,
+            enableOpusDtx: true,
+            enableOpusRed: true,
+          },
+          // Stop uploading video layers nobody is receiving -- frees uplink for participants on a
+          // weak connection.
+          enableLayerSuspension: true,
           // A curated default virtual background (our own brand navy/violet/amber gradient,
           // offered as a preset next to Jitsi's own stock options in the camera-background
           // picker) instead of everyone starting from Jitsi's generic defaults or having to
