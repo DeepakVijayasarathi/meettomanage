@@ -9,6 +9,7 @@ import {
   CalendarRange,
   LineChart,
   Cpu,
+  Crown,
   type LucideIcon,
 } from "lucide-react";
 
@@ -138,6 +139,23 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     icon: Cpu,
     available: true,
     homePath: "/itadmin",
+  },
+  // Not a separate backend role either — the "admin-management" persona (RoleDefinition.DefaultRoute
+  // = "/executive"), renamed "Founder Dashboard" 2026-09-22: Management Dashboard + Admin Dashboard
+  // on one login, one merged landing page, no switching between two dashboards. /admin and
+  // /management stay separate for anyone still assigned those; which of this combined menu's
+  // items show is decided by this role's permission grants, not here.
+  executive: {
+    role: "executive",
+    label: "Founder Dashboard",
+    shortLabel: "Founder",
+    description: "Complete visibility and control — Management's business view plus every Admin permission, in one dashboard.",
+    colorVar: "role-executive",
+    // Kept in sync with role.executive in tailwind.config.ts.
+    hex: "#B45309",
+    icon: Crown,
+    available: true,
+    homePath: "/executive",
   },
 };
 

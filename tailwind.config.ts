@@ -108,6 +108,8 @@ export default {
           management: "#4F46E5",
           // Kept in sync with ROLE_META.itadmin.hex in src/lib/roles.ts.
           itadmin: "#0891B2",
+          // Kept in sync with ROLE_META.executive.hex in src/lib/roles.ts.
+          executive: "#B45309",
         },
         status: {
           scheduled: "#EAB308",

@@ -23,6 +23,7 @@ import {
   History,
   KanbanSquare,
   Landmark,
+  LineChart,
   Layers,
   LayoutDashboard,
   Link2,
@@ -123,6 +124,7 @@ export const MENU_ICONS: Record<string, LucideIcon> = {
   Building2,
   MessageCircleQuestion,
   Radar,
+  LineChart,
 };
 
 export function resolveMenuIcon(name: string): LucideIcon {
@@ -166,6 +168,8 @@ const PORTAL_LABELS: Record<string, string> = {
   coordinator: "Coordinator",
   management: "Management",
   student: "Student",
+  itadmin: "IT Admin",
+  executive: "Founder Dashboard",
 };
 
 /**

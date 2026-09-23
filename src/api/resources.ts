@@ -1,5 +1,6 @@
 import { ApiError, apiFetch, getAccessToken, readProblemMessage } from "@/lib/api";
 import type { Resource } from "@/types";
+import { fileNameFor, isInlineViewable } from "@/lib/fileName";
 
 export type ApiResourceType = "ReadingBook" | "Worksheet" | "Other";
 
@@ -79,6 +80,52 @@ export async function uploadMyResource(
   return apiFetch<ApiResource>("/api/resources/mine", { method: "POST", body: form });
 }
 
+/**
+ * Staff (Admin / Sub Admin / Admission with Content Access): opens a resource in a new browser tab so
+ * it can be looked at without being saved first. The tab is opened synchronously (a popup blocker
+ * only allows that inside the click) and filled once the file has been fetched. A PDF, image, video,
+ * audio or text file is shown in a page titled with the resource's own name — a bare blob URL would
+ * title the tab with a random id. Anything else (Word, PowerPoint, ...) is saved under its proper
+ * name instead, as is everything when the browser refused the new tab.
+ */
+export async function openResourceInNewTab(id: string, title: string): Promise<void> {
+  const tab = window.open("", "_blank");
+  try {
+    const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+    const token = getAccessToken();
+    const response = await fetch(`${baseUrl}/api/resources/${id}/download`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    // Long enough for the new tab to load the blob before it is released.
+    window.setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+
+    if (tab && isInlineViewable(blob.type)) {
+      const doc = tab.document;
+      doc.title = title;
+      doc.body.style.margin = "0";
+      const frame = doc.createElement("iframe");
+      frame.src = url;
+      frame.title = title;
+      frame.style.cssText = "border:0;display:block;width:100vw;height:100vh";
+      doc.body.replaceChildren(frame);
+      return;
+    }
+
+    tab?.close();
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileNameFor(title, blob.type);
+    anchor.click();
+  } catch (err) {
+    tab?.close();
+    throw err;
+  }
+}
+
 /** Teacher portal: download a resource the teacher owns. */
 export async function downloadMyResource(id: string, fallbackName: string): Promise<void> {
   const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
@@ -92,7 +139,7 @@ export async function downloadMyResource(id: string, fallbackName: string): Prom
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = fallbackName;
+  anchor.download = fileNameFor(fallbackName, blob.type);
   anchor.click();
   URL.revokeObjectURL(url);
 }

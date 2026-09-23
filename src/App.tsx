@@ -16,6 +16,7 @@ const ResetPin = lazy(() => import("@/features/auth/ResetPin"));
 const NotFound = lazy(() => import("@/features/auth/NotFound"));
 
 const AdminDashboard = lazy(() => import("@/features/admin/Dashboard"));
+const FounderDashboard = lazy(() => import("@/features/founder/Dashboard"));
 const AdminUsers = lazy(() => import("@/features/admin/Users"));
 const AdminPermissions = lazy(() => import("@/features/admin/Permissions"));
 const AdminCourses = lazy(() => import("@/features/admin/Courses"));
@@ -243,6 +244,56 @@ export default function App() {
                 Dashboard" instead of AdminDashboard. */}
             <Route path="/itadmin" element={<RequireAuth role="itadmin"><AppShell role="itadmin"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<ItAdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="permissions" element={<AdminPermissions />} />
+              <Route path="courses" element={<AdminCourses />} />
+              <Route path="departments" element={<AdminDepartments />} />
+              <Route path="quiz-bank" element={<AdminQuizQuestions />} />
+              <Route path="activity-bank" element={<AdminActivityBank />} />
+              <Route path="batches" element={<AdminBatches />} />
+              <Route path="calendar" element={<AdminAcademicCalendar />} />
+              <Route path="sessions" element={<AdminSessions />} />
+              <Route path="recordings" element={<AdminRecordings />} />
+              <Route path="resources" element={<AdminResources />} />
+              <Route path="billing" element={<AdminBilling />} />
+              <Route path="packages" element={<AdminPackages />} />
+              <Route path="payment-mapping" element={<AdminPaymentMapping />} />
+              <Route path="payouts" element={<AdminPayouts />} />
+              <Route path="fee-suspension" element={<AdminFeeSuspension />} />
+              <Route path="reports" element={<AdminReports />} />
+              <Route path="bulk-email" element={<AdminBulkEmail />} />
+              <Route path="bulk-email/history" element={<AdminBulkEmailHistory />} />
+              <Route path="email-templates" element={<AdminEmailTemplates />} />
+              <Route path="progress-reports" element={<AdminProgressReports />} />
+              <Route path="chatbot" element={<AdminChatbot />} />
+              <Route path="enrollments" element={<AdminEnrollments />} />
+              <Route path="search-users" element={<AdminSearchUsers />} />
+              <Route path="store-inquiries" element={<AdminStoreInquiries />} />
+              <Route path="parent-feedback" element={<ParentFeedbackReport />} />
+              <Route path="leave" element={<AdminLeave />} />
+              <Route path="availability" element={<AdminAvailability />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="monitoring" element={<AdminMonitoring />} />
+              <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
+              <Route path="class-logs" element={<AdminClassSessionLogs />} />
+            </Route>
+
+            {/* Founder Dashboard ("executive"): a Sub Admin persona (RoleDefinition
+                "admin-management", DefaultRoute = "/executive") — Founder = Management Dashboard +
+                Admin Dashboard on one login, renamed from "Admin & Management" 2026-09-22.
+                /admin and /management stay live (existing staff on those aren't moved), but the
+                Founder never needs to switch between them: this mounts every Admin page plus the
+                Management pages, with a single merged FounderDashboard landing page instead of two
+                separate dashboards. The sidebar (DB menu rows gated by module) decides what
+                actually shows, so narrowing it is a Roles & Permissions edit. */}
+            <Route path="/executive" element={<RequireAuth role="executive"><AppShell role="executive"><Outlet /></AppShell></RequireAuth>}>
+              <Route index element={<FounderDashboard />} />
+              {/* "/executive/overview" (ManagementDashboard) merged into the index page above
+                  2026-09-22 — redirect rather than 404 for anyone with the old link bookmarked. */}
+              <Route path="overview" element={<Navigate to="/executive" replace />} />
+              <Route path="revenue" element={<ManagementRevenue />} />
+              <Route path="performance" element={<ManagementPerformance />} />
+              <Route path="management-reports" element={<ManagementReports />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="permissions" element={<AdminPermissions />} />
               <Route path="courses" element={<AdminCourses />} />

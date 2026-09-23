@@ -84,6 +84,11 @@ export default function ParentResources() {
   const worksheets = resources.filter((r) => r.type === "worksheet");
   const recordings = resources.filter((r) => r.type === "recording");
 
+  // Open on the first tab that actually has something (a folder-shared worksheet used to hide behind an
+  // empty "Reading Books" tab), until the parent picks one themselves.
+  const [pickedTab, setPickedTab] = useState<string | null>(null);
+  const activeTab = pickedTab ?? (books.length ? "books" : worksheets.length ? "worksheets" : recordings.length ? "recordings" : "books");
+
   async function handleDownload(resource: Resource) {
     if (apiEnabled()) {
       setDownloadingId(resource.id);
@@ -144,7 +149,7 @@ export default function ParentResources() {
       {!child ? (
         <EmptyState icon={BookOpen} title="No child selected" className="mt-6" />
       ) : (
-        <Tabs defaultValue="books" className="mt-6">
+        <Tabs value={activeTab} onValueChange={setPickedTab} className="mt-6">
           <TabsList>
             <TabsTrigger value="books">Reading Books ({books.length})</TabsTrigger>
             <TabsTrigger value="worksheets">Worksheets ({worksheets.length})</TabsTrigger>

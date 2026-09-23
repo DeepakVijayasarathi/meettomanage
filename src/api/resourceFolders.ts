@@ -11,6 +11,8 @@ export interface ApiResourceFolder {
   subfolderCount: number;
   /** Parents this folder is shared with directly. */
   sharedParentCount: number;
+  /** Batches this folder is shared with directly (every enrolled parent in them sees it). */
+  sharedBatchCount: number;
   createdAtUtc: string;
 }
 
@@ -19,6 +21,13 @@ export interface ApiFolderAccess {
   parentName: string;
   parentEmail: string;
   childNames: string;
+  sharedAtUtc: string;
+}
+
+export interface ApiFolderBatchAccess {
+  batchId: string;
+  batchName: string;
+  courseName: string | null;
   sharedAtUtc: string;
 }
 
@@ -46,6 +55,15 @@ export const setFolderAccess = (id: string, addParentProfileIds: string[], remov
   apiFetch<ApiFolderAccess[]>(`/api/resource-folders/${id}/access`, {
     method: "PUT",
     body: JSON.stringify({ addParentProfileIds, removeParentProfileIds }),
+  });
+
+export const listFolderBatchAccess = (id: string) => apiFetch<ApiFolderBatchAccess[]>(`/api/resource-folders/${id}/batch-access`);
+
+/** Shares with / unshares from any number of batches in one call; returns which batches have access afterwards. */
+export const setFolderBatchAccess = (id: string, addBatchIds: string[], removeBatchIds: string[]) =>
+  apiFetch<ApiFolderBatchAccess[]>(`/api/resource-folders/${id}/batch-access`, {
+    method: "PUT",
+    body: JSON.stringify({ addBatchIds, removeBatchIds }),
   });
 
 /** Moves a file into a folder (null = top level). */
