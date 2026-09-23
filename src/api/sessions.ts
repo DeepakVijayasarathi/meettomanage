@@ -228,6 +228,10 @@ export interface ApiJitsiJoin {
   scheduledEndAtUtc: string;
   /** True for a Demo-type session — auto-recording is scoped to real, Regular classes only. */
   isDemo: boolean;
+  /** Display names of every active Admin/RM/Coordinator/Counselor/Admission/Management user.
+   *  Only populated for a teacher/admin caller; the classroom auto-admits a waiting-room knock
+   *  from any of these so staff enter without the teacher having to let them in. */
+  staffNames?: string[];
 }
 
 /**

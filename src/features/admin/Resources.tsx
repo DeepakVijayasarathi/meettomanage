@@ -39,6 +39,7 @@ import {
   listResources,
   needsLargeUpload,
   openResourceInNewTab,
+  deleteResource,
   toFrontendResource,
   updateResource,
   uploadLargeResource,
@@ -210,6 +211,7 @@ export default function AdminResources() {
   const [folderBusy, setFolderBusy] = useState(false);
   const [folderError, setFolderError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ApiResourceFolder | null>(null);
+  const [deletingFile, setDeletingFile] = useState<Resource | null>(null);
   const [sharing, setSharing] = useState<ApiResourceFolder | null>(null);
 
   function openNameDialog(mode: "create" | "rename", folder?: ApiResourceFolder) {
@@ -254,6 +256,17 @@ export default function AdminResources() {
     await deleteResourceFolder(deleting.id); // rejects (with the reason) if the folder isn't empty; ConfirmDialog shows it
     reloadFolders();
     toast({ variant: "success", title: "Folder deleted" });
+  }
+
+  async function confirmDeleteFile() {
+    if (!deletingFile) return;
+    if (!apiEnabled()) {
+      setResources((prev) => prev.filter((r) => r.id !== deletingFile.id));
+      return;
+    }
+    await deleteResource(deletingFile.id);
+    reloadAll();
+    toast({ variant: "success", title: "File deleted" });
   }
 
   // ---- upload -----------------------------------------------------------------------------
@@ -521,8 +534,28 @@ export default function AdminResources() {
             } satisfies DataTableColumn<Resource>,
           ]
         : []),
+      ...(canDelete
+        ? [
+            {
+              key: "delete",
+              header: "",
+              render: (row: Resource) => (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  aria-label={`Delete ${row.title}`}
+                  title="Delete file"
+                  onClick={() => setDeletingFile(row)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              ),
+            } satisfies DataTableColumn<Resource>,
+          ]
+        : []),
     ],
-    [downloadBusyId, toggleDownloadable, batchNameById, viewMode, pathLabel, canEdit, openBusyId, openRow]
+    [downloadBusyId, toggleDownloadable, batchNameById, viewMode, pathLabel, canEdit, canDelete, openBusyId, openRow]
   );
 
   const chain = chainOf(currentId);
@@ -669,10 +702,20 @@ export default function AdminResources() {
       </Dialog>
 
       <ConfirmDialog
+        open={deletingFile !== null}
+        onOpenChange={(open) => !open && setDeletingFile(null)}
+        title={`Delete “${deletingFile?.title}”?`}
+        description="The file is removed from Content & Resources and every parent or batch that could see it loses access. This can't be undone."
+        confirmLabel="Delete file"
+        destructive
+        onConfirm={confirmDeleteFile}
+      />
+
+      <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
         title={`Delete “${deleting?.name}”?`}
-        description="Only an empty folder can be deleted. Move its files out first. Parents it was shared with lose that access."
+        description="Only an empty folder can be deleted. Delete or move its files out first (the bin icon on each file). Parents it was shared with lose that access."
         confirmLabel="Delete folder"
         destructive
         onConfirm={confirmDelete}

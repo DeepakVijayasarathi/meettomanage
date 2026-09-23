@@ -44,6 +44,8 @@ type JitsiExternalApi = {
       handRaised?: boolean;
       // participantRoleChanged only: "moderator" or "none" (Jitsi's own two roles).
       role?: string;
+      // knockingParticipant only: someone waiting in the lobby to be let in.
+      participant?: { id?: string; name?: string };
       // recordingStatusChanged only: Jitsi's own reason when a recording request is
       // rejected or drops (e.g. "resource-constraint", "service-unavailable" — no Jibri
       // free in the pool; "error" — a generic Jibri-side failure).
@@ -543,6 +545,9 @@ export default function JitsiLive({
   // Guards the one-time enable-lobby-on-join attempt below (see participantRoleChanged) so a
   // role event that fires more than once in one call never issues the command twice.
   const lobbyEnableAttemptedRef = useRef(false);
+  // Lower-cased display names of staff (Admin/RM/Coordinator/Counselor/Admission/Management)
+  // who may enter without knocking — filled from the join response (teacher/admin only).
+  const staffNamesRef = useRef<Set<string>>(new Set());
   // The init effect below only depends on [room, mode] (see its own comment on why), so
   // anything it closes over from render — including userName — would otherwise be frozen
   // at whatever it was on first mount. flushMedia posts engagement (talk-time, camera-on)
@@ -841,6 +846,7 @@ export default function JitsiLive({
           joinRoom = join.room;
           joinDomain = join.domain;
           joinToken = join.token ?? undefined;
+          staffNamesRef.current = new Set((join.staffNames ?? []).map((n) => n.trim().toLowerCase()));
           // See effectiveSessionIdRef's own doc comment: this class may have been edited
           // since whatever gave this component its `sessionId` prop was fetched — join.sessionId
           // is whatever it's actually become, and everything session-scoped from here on
@@ -1008,14 +1014,6 @@ export default function JitsiLive({
           // Stop uploading video layers nobody is receiving -- frees uplink for participants on a
           // weak connection.
           enableLayerSuspension: true,
-          // A curated default virtual background (our own brand navy/violet/amber gradient,
-          // offered as a preset next to Jitsi's own stock options in the camera-background
-          // picker) instead of everyone starting from Jitsi's generic defaults or having to
-          // upload their own — same idea as Google Meet's built-in background gallery.
-          // branding.json's "virtualBackgrounds" array is what actually supplies it; this
-          // config key just tells Jitsi where to fetch that JSON from. Served by the same
-          // Jitsi web container as everything else (see docker-compose.yml's web volumes).
-          dynamicBrandingUrl: "https://thereadernest.co.in/branding/branding.json",
           // Don't let the browser suggest/remember this room outside our own scheduling flow.
           doNotStoreRoom: true,
           // Without an explicit subject, Jitsi's own top bar falls back to displaying the
@@ -1183,11 +1181,9 @@ export default function JitsiLive({
         // Prosody hands the role to whoever's connection actually lands first on a fresh empty
         // room regardless of app role — that needs the server-side JWT room auth this was
         // always meant to get eventually.
-        // Removed 2026-09-18: teachers used to get our own on-brand background force-
-        // applied as their starting camera background on every join (dynamicBrandingUrl,
-        // just above, still lists it as an optional *choice* in Jitsi's own background
-        // picker -- only the auto-apply-on-join default is gone). Everyone now starts on
-        // "none" (their own real camera), same as students/children already did.
+        // The customised on-brand background is removed entirely (auto-apply on join
+        // dropped 2026-09-18; the branding.json preset in Jitsi's picker dropped
+        // 2026-09-23). Everyone starts on "none" (their own real camera).
         //
         // Not just "skip setting one" — Jitsi remembers the last-picked virtual background
         // per browser (jitsi-meet.localStorage), so a teacher's device that got the branded
@@ -1263,6 +1259,16 @@ export default function JitsiLive({
           lobbyEnableAttemptedRef.current = true;
           api?.executeCommand("toggleLobby", true);
           setLobbyEnabled(true);
+        }
+      });
+      // Staff walk in without knocking: the moderator's client answers a waiting-room knock
+      // from a known staff name immediately, so the teacher never sees a request for them.
+      // Everyone else still waits for the teacher's manual admit.
+      api.addListener("knockingParticipant", (payload) => {
+        const knocker = payload?.participant;
+        if (mode !== "teacher" || !knocker?.id || !knocker.name) return;
+        if (staffNamesRef.current.has(knocker.name.trim().toLowerCase())) {
+          api?.executeCommand("answerKnockingParticipant", knocker.id, true);
         }
       });
       api.addListener("dominantSpeakerChanged", (payload) => {
