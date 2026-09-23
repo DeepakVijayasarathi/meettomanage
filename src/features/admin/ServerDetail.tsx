@@ -49,6 +49,8 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
   burstWorkerUsage: null,
   recordingPipeline: null,
+  callQualityIncidents: [],
+  callQualityIncidentsLookSystemic: false,
   generatedAtUtc: "",
 };
 

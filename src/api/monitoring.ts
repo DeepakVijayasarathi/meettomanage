@@ -192,6 +192,15 @@ export interface ApiRecordingPipeline {
   unattached: { room: string; atUtc: string; durationSeconds: number }[];
 }
 
+export interface ApiCallQualityIncident {
+  roomName: string;
+  participantLabel: string;
+  firstAtUtc: string;
+  lastAtUtc: string;
+  eventCount: number;
+  lowestKbps: number;
+}
+
 export interface ApiMonitoringSummary {
   servers: ApiServerStatus[];
   apiHealthy: boolean;
@@ -204,6 +213,8 @@ export interface ApiMonitoringSummary {
   todayRecordings: ApiRecordingSummary;
   burstWorkerUsage: ApiBurstWorkerUsage | null;
   recordingPipeline: ApiRecordingPipeline | null;
+  callQualityIncidents: ApiCallQualityIncident[];
+  callQualityIncidentsLookSystemic: boolean;
   generatedAtUtc: string;
 }
 
@@ -328,7 +339,7 @@ export async function rescaleJibriNow(serverName: string): Promise<ApiJibriContr
   return apiFetch<ApiJibriControlResult>(`/api/monitoring/servers/jibri/rescale?serverName=${encodeURIComponent(serverName)}`, { method: "POST" });
 }
 
-/** Emergency manual start of the on-demand burst recording worker (billed hourly while it exists). holdMinutes keeps it up even if idle — see BurstWorkerControlService. */
+/** Emergency manual start of the on-demand burst recording worker (billed hourly while it exists). holdMinutes keeps it up even if idle ï¿½ see BurstWorkerControlService. */
 export async function startBurstWorker(holdMinutes: number): Promise<ApiBurstWorkerControlResult> {
   return apiFetch<ApiBurstWorkerControlResult>(`/api/monitoring/burst-worker/start?holdMinutes=${holdMinutes}`, { method: "POST" });
 }
@@ -386,6 +397,8 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
     todayRecordings: api.todayRecordings,
     burstWorkerUsage: api.burstWorkerUsage,
     recordingPipeline: api.recordingPipeline ?? null,
+    callQualityIncidents: api.callQualityIncidents ?? [],
+    callQualityIncidentsLookSystemic: api.callQualityIncidentsLookSystemic ?? false,
     generatedAtUtc: api.generatedAtUtc,
     servers: api.servers.map((s) => ({
       name: s.name,

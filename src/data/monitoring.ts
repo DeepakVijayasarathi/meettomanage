@@ -49,6 +49,25 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
       { room: "trn-zzloadtest-02", atUtc: new Date(Date.now() - 6 * 3600 * 1000).toISOString(), durationSeconds: 97 },
     ],
   },
+  callQualityIncidents: [
+    {
+      roomName: "trn-d4895a8031954877a7c643669d808219",
+      participantLabel: "Lelah-JW7",
+      firstAtUtc: new Date(Date.now() - 7 * 3600 * 1000).toISOString(),
+      lastAtUtc: new Date(Date.now() - 7 * 3600 * 1000 + 11 * 60 * 1000).toISOString(),
+      eventCount: 12,
+      lowestKbps: 5,
+    },
+    {
+      roomName: "trn-f9dbf690b06c410fac5605a8230f6db5",
+      participantLabel: "Kennith-b22",
+      firstAtUtc: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
+      lastAtUtc: new Date(Date.now() - 39 * 60 * 1000).toISOString(),
+      eventCount: 2,
+      lowestKbps: 5,
+    },
+  ],
+  callQualityIncidentsLookSystemic: false,
   burstWorkerUsage: {
     episodesToday: 2,
     hoursToday: 1.95,
