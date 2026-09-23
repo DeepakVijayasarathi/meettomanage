@@ -35,6 +35,11 @@ const AdminPayouts = lazy(() => import("@/features/admin/Payouts"));
 const AdminFeeSuspension = lazy(() => import("@/features/admin/FeeSuspension"));
 const AdminReports = lazy(() => import("@/features/admin/Reports"));
 const ParentFeedbackReport = lazy(() => import("@/features/admin/ParentFeedback"));
+const SupportTicketsQueue = lazy(() => import("@/features/admin/SupportTickets"));
+const PayoutApprovals = lazy(() => import("@/features/admin/PayoutApprovals"));
+const StaffMyLeave = lazy(() => import("@/features/subadmin/MyLeave"));
+const AdminStaffLeave = lazy(() => import("@/features/admin/StaffLeave"));
+const ParentSupport = lazy(() => import("@/features/parent/Support"));
 const AdminBulkEmail = lazy(() => import("@/features/admin/BulkEmail"));
 const AdminBulkEmailHistory = lazy(() => import("@/features/admin/BulkEmailHistory"));
 const AdminEmailTemplates = lazy(() => import("@/features/admin/EmailTemplates"));
@@ -217,6 +222,7 @@ export default function App() {
               <Route path="packages" element={<AdminPackages />} />
               <Route path="payment-mapping" element={<AdminPaymentMapping />} />
               <Route path="payouts" element={<AdminPayouts />} />
+              <Route path="payout-approvals" element={<PayoutApprovals />} />
               <Route path="fee-suspension" element={<AdminFeeSuspension />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="bulk-email" element={<AdminBulkEmail />} />
@@ -228,7 +234,9 @@ export default function App() {
               <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="parent-feedback" element={<ParentFeedbackReport />} />
+              <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="leave" element={<AdminLeave />} />
+              <Route path="staff-leave" element={<AdminStaffLeave />} />
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="monitoring" element={<AdminMonitoring />} />
@@ -259,6 +267,7 @@ export default function App() {
               <Route path="packages" element={<AdminPackages />} />
               <Route path="payment-mapping" element={<AdminPaymentMapping />} />
               <Route path="payouts" element={<AdminPayouts />} />
+              <Route path="payout-approvals" element={<PayoutApprovals />} />
               <Route path="fee-suspension" element={<AdminFeeSuspension />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="bulk-email" element={<AdminBulkEmail />} />
@@ -270,6 +279,7 @@ export default function App() {
               <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="parent-feedback" element={<ParentFeedbackReport />} />
+              <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="leave" element={<AdminLeave />} />
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
@@ -309,6 +319,7 @@ export default function App() {
               <Route path="packages" element={<AdminPackages />} />
               <Route path="payment-mapping" element={<AdminPaymentMapping />} />
               <Route path="payouts" element={<AdminPayouts />} />
+              <Route path="payout-approvals" element={<PayoutApprovals />} />
               <Route path="fee-suspension" element={<AdminFeeSuspension />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="bulk-email" element={<AdminBulkEmail />} />
@@ -320,7 +331,9 @@ export default function App() {
               <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="parent-feedback" element={<ParentFeedbackReport />} />
+              <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="leave" element={<AdminLeave />} />
+              <Route path="staff-leave" element={<AdminStaffLeave />} />
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="monitoring" element={<AdminMonitoring />} />
@@ -349,6 +362,7 @@ export default function App() {
               <Route path="recordings" element={<ParentRecordings />} />
               <Route path="billing" element={<ParentBilling />} />
               <Route path="notifications" element={<ParentNotifications />} />
+              <Route path="support" element={<ParentSupport />} />
               <Route path="add-child" element={<ParentAddChild />} />
             </Route>
 
@@ -371,6 +385,7 @@ export default function App() {
               <Route path="class-logs" element={<SubAdminClassSessionLogs />} />
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
+              <Route path="my-leave" element={<StaffMyLeave />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
               <Route path="enrollments" element={<SubAdminEnrollments />} />
@@ -383,6 +398,7 @@ export default function App() {
               <Route path="resources" element={<AdminResources />} />
               <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
+              <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="reports" element={<SubAdminReports />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
               <Route path="bulk-email" element={<SubAdminBulkEmail />} />
@@ -423,6 +439,7 @@ export default function App() {
               <Route path="class-logs" element={<SubAdminClassSessionLogs />} />
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
+              <Route path="my-leave" element={<StaffMyLeave />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
               <Route path="enrollments" element={<SubAdminEnrollments />} />
@@ -456,6 +473,7 @@ export default function App() {
               <Route path="class-logs" element={<SubAdminClassSessionLogs />} />
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
+              <Route path="my-leave" element={<StaffMyLeave />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
               <Route path="enrollments" element={<SubAdminEnrollments />} />
@@ -494,6 +512,8 @@ export default function App() {
               <Route path="reports" element={<ManagementReports />} />
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
+              <Route path="my-leave" element={<StaffMyLeave />} />
+              <Route path="payout-approvals" element={<PayoutApprovals />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
               <Route path="enrollments" element={<SubAdminEnrollments />} />

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { useCanDownloadRecordings } from "@/lib/recordingAccess";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/state/session";
 import { apiEnabled, userMessage } from "@/lib/api";
@@ -48,6 +49,7 @@ export default function AdminRecordings() {
   // watch any recording, but only Admin may delete one (server-side rule as well).
   const { role } = useSession();
   const canDelete = role === "admin";
+  const canDownload = useCanDownloadRecordings();
 
   const [items, setItems] = useState<ApiRecordingListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -242,7 +244,7 @@ export default function AdminRecordings() {
                 </DialogDescription>
               </DialogHeader>
               {preview.storageUrl ? (
-                <VideoPlayer src={preview.storageUrl} />
+                <VideoPlayer src={preview.storageUrl} downloadable={canDownload} />
               ) : (
                 <div className="flex aspect-video items-center justify-center rounded-xl bg-muted/60">
                   <PlayCircle className="h-12 w-12 text-muted-foreground/60" />

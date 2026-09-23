@@ -90,9 +90,8 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "brand.logoUrl": { category: "Branding", isPublic: true, fallback: "" },
   "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#1F6FE0" },
   "brand.accentColor": { category: "Branding", isPublic: true, fallback: "#57B33B" },
-  // Attendance/no-show thresholds for the teacher payout pipeline -- were fixed constants in
-  // PayoutService and NoShowDetectionBackgroundService until now.
-  "payroll.minAttendancePercentForReview": { category: "General", fallback: "50" },
+  // No-show grace for the teacher payout pipeline -- was a fixed constant in
+  // NoShowDetectionBackgroundService until now.
   "payroll.noShowGraceMinutes": { category: "General", fallback: "20" },
   "notify.feeReminders": { category: "Notifications", fallback: "true" },
   "billing.reminderDaysBeforeDue": { category: "Notifications", fallback: "3" },
@@ -587,23 +586,11 @@ export default function AdminSettings() {
             <CardHeader>
               <CardTitle>Attendance &amp; No-Show Thresholds</CardTitle>
               <CardDescription>
-                These used to be fixed in code. A session is flagged for review before its payout can be
-                finalized when the teacher's captured attendance falls under this percentage of the
-                scheduled class.
+                Any class that runs shorter than its scheduled duration is sent to Payout Approvals for an
+                Admin / Management decision before its payout can be finalized.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label htmlFor="payroll-min-attendance">Minimum attendance for automatic payout (%)</Label>
-                <Input
-                  id="payroll-min-attendance"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={values["payroll.minAttendancePercentForReview"]}
-                  onChange={(e) => setValue("payroll.minAttendancePercentForReview", e.target.value)}
-                />
-              </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="payroll-noshow-grace">No-show detection grace period (minutes)</Label>
                 <Input

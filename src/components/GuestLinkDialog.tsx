@@ -55,8 +55,7 @@ export function GuestLinkDialog({ session, onClose }: GuestLinkDialogProps) {
   async function copyLink(childId?: string) {
     setCopyingId(childId ?? "");
     try {
-      const token = await createGuestLink(session.id, childId);
-      const url = `${window.location.origin}/guest-join?token=${encodeURIComponent(token)}`;
+      const url = await createGuestLink(session.id, childId);
       if (!navigator.clipboard) {
         throw new Error("Clipboard unavailable in this browser");
       }

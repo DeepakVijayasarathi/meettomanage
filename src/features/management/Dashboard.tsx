@@ -20,6 +20,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
+import { PayoutApprovalsBanner } from "@/components/PayoutApprovalsBanner";
 import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";
 import { ChartCard } from "@/components/ChartCard";
@@ -98,6 +99,7 @@ export default function ManagementDashboard() {
         description={`A curated view of enrollment, revenue and retention health across ${brand.name} — as of ${formatDate(TODAY, "long")}.`}
         actions={<PersonalMeetingButton />}
       />
+      <PayoutApprovalsBanner />
 
       {/* Hero KPI row — the handful of numbers a board actually asks about */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

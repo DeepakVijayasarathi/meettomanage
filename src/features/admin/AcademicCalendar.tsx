@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarClock, Loader2, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Loader2, Plus, Trash2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarBoard } from "@/components/CalendarBoard";
@@ -23,7 +23,9 @@ import { getBatchById } from "@/data/batches";
 import { getChildById } from "@/data/children";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listSessions, toFrontendSession } from "@/api/sessions";
+import { getJitsiJoin, listSessions, toFrontendSession } from "@/api/sessions";
+import { buildJitsiJoinUrl } from "@/lib/jitsi";
+import { useSession } from "@/state/session";
 import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import type { ClassSession } from "@/types";
@@ -59,6 +61,27 @@ export default function AdminAcademicCalendar() {
   const [holidayError, setHolidayError] = useState<string | null>(null);
   const [deletingHolidayId, setDeletingHolidayId] = useState<string | null>(null);
   const [holidayDeleteTarget, setHolidayDeleteTarget] = useState<ApiHoliday | null>(null);
+  const { userName } = useSession();
+  const [joining, setJoining] = useState(false);
+
+  // Admin-team monitor join: available for any upcoming or ongoing class at any time (not
+  // just the 10-minute pre-start window families get) and lands straight in the room as a
+  // moderator, so there's no lobby approval to wait for.
+  async function handleJoin(session: ClassSession) {
+    if (!apiEnabled()) {
+      toast({ variant: "success", title: "Demo mode", description: "Joining a live class needs the API connected." });
+      return;
+    }
+    setJoining(true);
+    try {
+      const join = await getJitsiJoin(session.id);
+      window.open(buildJitsiJoinUrl(join.domain, join.room, join.token, userName), "_blank", "noopener");
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't join this class", description: userMessage(err, "Please try again.") });
+    } finally {
+      setJoining(false);
+    }
+  }
 
   async function handleAddHoliday() {
     if (!holidayDate || !holidayName.trim()) return;
@@ -226,6 +249,11 @@ export default function AdminAcademicCalendar() {
                 {selected.status !== "holiday" && selected.status !== "leave" && (
                   <Button variant="outline" asChild>
                     <Link to="/admin/sessions">Manage in Sessions</Link>
+                  </Button>
+                )}
+                {(selected.status === "scheduled" || selected.status === "demo") && selected.meetingRoomId && (
+                  <Button disabled={joining} onClick={() => void handleJoin(selected)}>
+                    {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />} Join Class
                   </Button>
                 )}
               </DialogFooter>

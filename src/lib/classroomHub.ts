@@ -40,6 +40,11 @@ export interface ClassroomHubEvents {
    *  automatic reload — see that endpoint's own comment on why an unannounced refresh
    *  mid-class would be worse than the deploy it's trying to deliver. */
   reloadRequested: (message: string) => void;
+  /** Fired after an automatic reconnect, just before re-joining the session. JoinSession
+   *  replays the whole board history to a (re)joining connection, and not every board op is
+   *  idempotent (strokeAppend re-appends points, removePage removes another page), so the
+   *  board must be wiped first and rebuilt from that replay rather than replayed on top of. */
+  resync: () => void;
 }
 
 /**
@@ -104,7 +109,15 @@ export class ClassroomHubClient {
         accessTokenFactory: () => this.hubTokenOverride ?? getAccessToken() ?? "",
         ...hubTransportOptions(),
       })
-      .withAutomaticReconnect()
+      // Never give up. The default policy stops after 4 tries (~42s) and lands on
+      // "disconnected" for good — the teacher can press Retry, but a child on a tablet
+      // won't, and the Jibri recording observer can't, so one blip left the board and
+      // annotations invisible to them (and missing from the recording) for the rest of
+      // the class. Jitsi carries the call meanwhile, so retrying forever costs nothing.
+      .withAutomaticReconnect({
+        nextRetryDelayInMilliseconds: ({ previousRetryCount }) =>
+          [0, 2000, 5000, 10000][previousRetryCount] ?? 15000,
+      })
       .configureLogging(LogLevel.Warning)
       .build();
 
@@ -136,6 +149,7 @@ export class ClassroomHubClient {
 
     // Re-join the session group after an automatic reconnect (new connection id).
     connection.onreconnected(() => {
+      handlers.resync?.();
       connection.invoke("JoinSession", this.sessionId, displayName).catch(() => undefined);
       onStateChange?.("connected");
     });

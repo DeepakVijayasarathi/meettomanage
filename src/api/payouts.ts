@@ -158,3 +158,50 @@ export async function savePayoutRate(input: {
 }): Promise<ApiPayoutRate> {
   return apiFetch<ApiPayoutRate>("/api/payout-rates", { method: "POST", body: JSON.stringify(input) });
 }
+
+// --- Payout Approvals (short classes) ---
+
+export type PayoutReviewDecision = "ApprovedFull" | "ApprovedPartial" | "Rejected";
+
+/** A class that ran shorter than scheduled (or had no teacher attendance) — one row on Payout Approvals. */
+export interface ApiPayoutApproval {
+  itemId: string;
+  payoutId: string;
+  payoutStatus: ApiPayoutStatus;
+  classSessionId: string | null;
+  teacherName: string;
+  className: string;
+  studentNames: string | null;
+  scheduledStartAtUtc: string | null;
+  scheduledEndAtUtc: string | null;
+  actualStartAtUtc: string | null;
+  actualEndAtUtc: string | null;
+  scheduledMinutes: number | null;
+  /** Null when no teacher attendance was recorded at all. */
+  deliveredMinutes: number | null;
+  shortfallMinutes: number | null;
+  fullAmount: number;
+  /** Full amount pro-rated to the delivered minutes — the suggested partial payout. */
+  proRatedAmount: number;
+  amount: number;
+  pending: boolean;
+  decision: PayoutReviewDecision | null;
+  reviewedByName: string | null;
+  reviewedAtUtc: string | null;
+  note: string | null;
+  createdAtUtc: string;
+}
+
+export async function listPayoutApprovals(pending: boolean): Promise<ApiPayoutApproval[]> {
+  return apiFetch<ApiPayoutApproval[]>(`/api/payouts/approvals?pending=${pending}`);
+}
+
+export async function decidePayoutApproval(
+  itemId: string,
+  input: { decision: PayoutReviewDecision; amount?: number; note?: string },
+): Promise<ApiPayoutApproval> {
+  return apiFetch<ApiPayoutApproval>(`/api/payouts/approvals/${itemId}/decide`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarPlus, ChevronDown, ChevronUp, Loader2, Trash2, UserPlus, Users2 } from "lucide-react";
+import { CalendarPlus, ChevronDown, ChevronUp, Loader2, Pencil, Trash2, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -27,6 +27,7 @@ import { formatDate, formatTimeLabel, getInitials, isValidEmail } from "@/lib/ut
 import { getUserTimeZoneAbbreviation, localToUtcIso, utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { usePortalBase } from "@/lib/portalBase";
+import { EditDemoDialog } from "./EditDemoDialog";
 import type { SessionStatus } from "@/types";
 
 interface DemoParentField {
@@ -128,6 +129,11 @@ export default function AdmissionDemoScheduling() {
   // "Schedule a Demo" form specifically against the account's Create grant -- POST
   // /api/demo-bookings needs Admission:Create, not just Admission:View.
   const canCreate = !apiEnabled() || hasPermission("Admission", "Create");
+  // Same idea for the row actions: PUT /api/demo-bookings/{id} needs Admission:Edit and DELETE
+  // needs Admission:Delete. Delete used to be shown to everyone and simply 403'd for any
+  // account without that grant, which read as "the delete option doesn't work".
+  const canEdit = apiEnabled() && hasPermission("Admission", "Edit");
+  const canDelete = !apiEnabled() || hasPermission("Admission", "Delete");
   const base = usePortalBase();
   const { data: apiRows, error: rowsError, reload: reloadRows } = useApiData(
     () => listDemoBookings().then((bookings) => bookings.map(bookingToRow)),
@@ -165,6 +171,7 @@ export default function AdmissionDemoScheduling() {
   // keeps it on the list (notifying invitees); this removes the row entirely and frees the
   // teacher's slot, for a test entry or a mistaken double-booking rather than a real cancellation.
   const [deleteTarget, setDeleteTarget] = useState<DemoRow | null>(null);
+  const [editTargetId, setEditTargetId] = useState<string | null>(null);
   // Set once the user has tried to submit an invalid form -- gates the per-field error
   // messages below so they don't show up before the user has even touched the form.
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
@@ -472,6 +479,20 @@ export default function AdmissionDemoScheduling() {
         // instead of wrapping them onto their own line as intended.
         render: (row) => (
           <div className="flex flex-wrap sm:min-w-max items-center gap-1.5">
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                title="Fix parent or child details (e.g. a wrong email) without rebooking"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditTargetId(row.id);
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" /> Edit
+              </Button>
+            )}
             {row.status === "demo" ? (
               <Button asChild variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
                 <Link to={`${base}/demo-teacher-assignment/${row.id}`}>Reassign</Link>
@@ -545,23 +566,25 @@ export default function AdmissionDemoScheduling() {
                     : "Failed"
                 : "Copy Link"}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1 text-destructive hover:text-destructive"
-              title="Permanently remove this demo booking"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeleteTarget(row);
-              }}
-            >
-              <Trash2 className="h-3.5 w-3.5" /> Delete
-            </Button>
+            {canDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1 text-destructive hover:text-destructive"
+                title="Permanently remove this demo booking and free the teacher's slot"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteTarget(row);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </Button>
+            )}
           </div>
         ),
       },
     ],
-    [base, resendingId, copyState, handleResendLink, handleCopyLink]
+    [base, resendingId, copyState, handleResendLink, handleCopyLink, canEdit, canDelete]
   );
 
   return (
@@ -893,7 +916,11 @@ export default function AdmissionDemoScheduling() {
         open={!!cancelTarget}
         onOpenChange={(open) => !open && setCancelTarget(null)}
         title="Cancel this demo?"
-        description={cancelTarget ? `"${cancelTarget.childName}"'s demo will be cancelled. All invited parents/guardians will be notified.` : undefined}
+        description={
+          cancelTarget
+            ? `"${cancelTarget.childName}"'s demo will be cancelled and the teacher's slot freed. All invited parents/guardians will be notified.`
+            : undefined
+        }
         confirmLabel="Cancel Demo"
         destructive
         onConfirm={() => {
@@ -935,6 +962,17 @@ export default function AdmissionDemoScheduling() {
             });
           }
           setRows((prev) => prev.filter((r) => r.id !== deleteTarget.id));
+        }}
+      />
+
+      <EditDemoDialog
+        bookingId={editTargetId}
+        onClose={() => setEditTargetId(null)}
+        onSaved={() => {
+          setEditTargetId(null);
+          setActionError(null);
+          reloadRows();
+          toast({ variant: "success", title: "Demo details updated" });
         }}
       />
     </div>

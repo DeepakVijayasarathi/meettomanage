@@ -259,18 +259,20 @@ export async function listGuestLinkStudents(sessionId: string): Promise<ApiGuest
 }
 
 /**
- * Mints a shareable Guest Link token for this session. Pass `childId` to bind it to one
- * specific, currently-active enrollment (the /guest-join bridge page auto-fills their name,
- * skips prejoin, and marks their attendance on open); omit it for a generic guest link (the
- * opener types their own name, attendance isn't marked automatically). Returns just the opaque
- * token — build the shareable URL as `${origin}/guest-join?token=...`.
+ * Mints a shareable Guest Link for this session. Pass `childId` to bind it to one specific,
+ * currently-active enrollment (the /guest-join bridge page auto-fills their name, skips
+ * prejoin, and marks their attendance on open); omit it for a generic guest link (the opener
+ * types their own name, attendance isn't marked automatically). Returns a genuinely short
+ * `/m/{slug}` URL (the backend wraps the real, much longer "/guest-join?token=<JWT>" link in a
+ * ShortLink) — a raw JWT-bearing URL reads as broken/suspicious pasted into WhatsApp, and can
+ * get silently truncated mid-paste, which is exactly the incident that prompted this.
  */
 export async function createGuestLink(sessionId: string, childId?: string): Promise<string> {
-  const { token } = await apiFetch<{ token: string }>(`/api/sessions/${sessionId}/guest-link`, {
+  const { url } = await apiFetch<{ url: string }>(`/api/sessions/${sessionId}/guest-link`, {
     method: "POST",
     body: JSON.stringify({ childId }),
   });
-  return token;
+  return url;
 }
 
 export interface ApiGuestJoin {
@@ -399,6 +401,14 @@ export async function markNoShow(id: string, party: NoShowParty, note?: string):
 
 export async function cancelSession(id: string, reason: string): Promise<ApiClassSession> {
   return apiFetch<ApiClassSession>(`/api/sessions/${id}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+/** Parent cancels their own child's upcoming class — immediate, no admin approval; the teacher is emailed the reason. */
+export async function cancelSessionAsParent(id: string, reason: string): Promise<ApiClassSession> {
+  return apiFetch<ApiClassSession>(`/api/sessions/${id}/parent-cancel`, {
     method: "POST",
     body: JSON.stringify({ reason }),
   });

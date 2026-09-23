@@ -364,7 +364,7 @@ export default function TeacherLeave() {
     <div>
       <PageHeader
         title="Leave Management"
-        description="Apply for leave over any date range. Requests must be submitted at least 6 hours before any scheduled session it covers."
+        description="Apply for leave over any date range, whenever you need it."
         eyebrow="My Account"
       />
 
