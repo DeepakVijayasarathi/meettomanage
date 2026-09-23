@@ -40,6 +40,7 @@ import {
   Sparkles,
   Building2,
   MessageCircleQuestion,
+  LifeBuoy,
   TrendingUp,
   UserCog,
   UserPlus,
@@ -123,6 +124,7 @@ export const MENU_ICONS: Record<string, LucideIcon> = {
   Sparkles,
   Building2,
   MessageCircleQuestion,
+  LifeBuoy,
   Radar,
   LineChart,
 };

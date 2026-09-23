@@ -35,6 +35,8 @@ const AdminPayouts = lazy(() => import("@/features/admin/Payouts"));
 const AdminFeeSuspension = lazy(() => import("@/features/admin/FeeSuspension"));
 const AdminReports = lazy(() => import("@/features/admin/Reports"));
 const ParentFeedbackReport = lazy(() => import("@/features/admin/ParentFeedback"));
+const SupportTicketsQueue = lazy(() => import("@/features/admin/SupportTickets"));
+const ParentSupport = lazy(() => import("@/features/parent/Support"));
 const AdminBulkEmail = lazy(() => import("@/features/admin/BulkEmail"));
 const AdminBulkEmailHistory = lazy(() => import("@/features/admin/BulkEmailHistory"));
 const AdminEmailTemplates = lazy(() => import("@/features/admin/EmailTemplates"));
@@ -228,6 +230,7 @@ export default function App() {
               <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="parent-feedback" element={<ParentFeedbackReport />} />
+              <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="leave" element={<AdminLeave />} />
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
@@ -270,6 +273,7 @@ export default function App() {
               <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="parent-feedback" element={<ParentFeedbackReport />} />
+              <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="leave" element={<AdminLeave />} />
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
@@ -320,6 +324,7 @@ export default function App() {
               <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="parent-feedback" element={<ParentFeedbackReport />} />
+              <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="leave" element={<AdminLeave />} />
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
@@ -349,6 +354,7 @@ export default function App() {
               <Route path="recordings" element={<ParentRecordings />} />
               <Route path="billing" element={<ParentBilling />} />
               <Route path="notifications" element={<ParentNotifications />} />
+              <Route path="support" element={<ParentSupport />} />
               <Route path="add-child" element={<ParentAddChild />} />
             </Route>
 
@@ -383,6 +389,7 @@ export default function App() {
               <Route path="resources" element={<AdminResources />} />
               <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
+              <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="reports" element={<SubAdminReports />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
               <Route path="bulk-email" element={<SubAdminBulkEmail />} />

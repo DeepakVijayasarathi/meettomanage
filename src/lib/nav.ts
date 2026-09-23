@@ -42,6 +42,7 @@ import {
   Building2,
   Activity,
   MessageCircleQuestion,
+  LifeBuoy,
   Radar,
   type LucideIcon,
 } from "lucide-react";
@@ -83,6 +84,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Enrollment Review", to: "/admin/enrollments", icon: ClipboardCheck },
       { label: "Store Inquiries", to: "/admin/store-inquiries", icon: ShoppingBag },
       { label: "Parent Feedback", to: "/admin/parent-feedback", icon: Star },
+      { label: "Parent Tickets", to: "/admin/support-tickets", icon: LifeBuoy },
       { label: "Leave Management", to: "/admin/leave", icon: CalendarOff },
       { label: "Teacher Availability", to: "/admin/availability", icon: CalendarRange },
     ],
@@ -167,6 +169,7 @@ export const PARENT_NAV: NavSection[] = [
     items: [
       { label: "Payments & Billing", to: "/parent/billing", icon: CreditCard },
       { label: "Notifications & Reports", to: "/parent/notifications", icon: Bell },
+      { label: "Help & Support", to: "/parent/support", icon: LifeBuoy },
       { label: "Add Child", to: "/parent/add-child", icon: UserPlus },
     ],
   },
@@ -186,6 +189,7 @@ export const SUBADMIN_NAV: NavSection[] = [
     items: [
       { label: "Sessions", to: "/subadmin/sessions", icon: CalendarClock },
       { label: "Search Users", to: "/subadmin/search-users", icon: UserSearch },
+      { label: "Parent Tickets", to: "/subadmin/support-tickets", icon: LifeBuoy },
       { label: "Assigned Reports", to: "/subadmin/reports", icon: BarChart3 },
       { label: "Audit Log", to: "/subadmin/audit-log", icon: History },
     ],
