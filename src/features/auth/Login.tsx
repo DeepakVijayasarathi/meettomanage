@@ -66,7 +66,24 @@ export default function Login() {
   }
 
   function setDigit(index: number, raw: string) {
-    const digit = raw.replace(/\D/g, "").slice(-1);
+    const digits = raw.replace(/\D/g, "");
+    // More than "old digit + newly typed one" arriving at once means iOS/iPadOS Keychain
+    // autofill (or the QuickType bar's suggestion) dropped the whole saved PIN into a single
+    // box — it fills the one field marked autoComplete="current-password" and never fires a
+    // paste event. Keeping only the last digit here left boxes 2-4 empty, so the required
+    // fields blocked submit and repeated tries ran into the lockout: reported as parents
+    // "unable to log in through the iPad" while the same account worked on a phone.
+    if (digits.length > 2) {
+      const spread = digits.slice(0, PIN_LENGTH - index).split("");
+      setPin((prev) => {
+        const next = [...prev];
+        spread.forEach((d, i) => (next[index + i] = d));
+        return next;
+      });
+      pinRefs.current[Math.min(index + spread.length, PIN_LENGTH - 1)]?.focus();
+      return;
+    }
+    const digit = digits.slice(-1);
     setPin((prev) => {
       const next = [...prev];
       next[index] = digit;
@@ -260,7 +277,10 @@ export default function Login() {
                     type="text"
                     inputMode="numeric"
                     pattern="\d*"
-                    maxLength={1}
+                    // PIN_LENGTH, not 1: WebKit truncates an autofilled value to maxLength
+                    // before onChange ever sees it, which would defeat setDigit's spreading
+                    // of a whole autofilled PIN. The controlled value still holds one digit.
+                    maxLength={PIN_LENGTH}
                     autoComplete={i === 0 ? "current-password" : "off"}
                     value={digit}
                     onChange={(e) => setDigit(i, e.target.value)}

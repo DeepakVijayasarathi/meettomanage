@@ -72,10 +72,9 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [hubDetail, setHubDetail] = useState<string | null>(null);
   // Bumping this re-runs the connect effect below, standing up a brand new hub connection.
-  // Needed because SignalR's own withAutomaticReconnect gives up after its own backoff window
-  // and lands on "disconnected" for good — reported live (a prolonged app-server hiccup) with
-  // no way back into live sync for the rest of the class short of reloading the whole page and
-  // losing local whiteboard state. See the Retry button in the disconnected banner below.
+  // Needed because an initial connect that fails (start() throwing) is never retried by
+  // SignalR itself — only drops after a successful start are. Bumped by the Retry button in
+  // the disconnected banner below, and automatically by the auto-retry effect further down.
   const [retryToken, setRetryToken] = useState(0);
   const [roster, setRoster] = useState<HubParticipant[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -150,6 +149,13 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
         slide: (pageIndex) => presentationRef.current?.applyRemoteSlide(pageIndex),
         pinned: (participantId) => onPinChanged?.(participantId),
         reloadRequested: (message) => onReloadRequested?.(message),
+        resync: () => {
+          boardHandlers.current.forEach((handler) => handler({ kind: "reset" }));
+          // The server revokes a board grant when the old connection drops (grants are per
+          // connection id), so don't keep showing drawing tools it will now silently ignore —
+          // the teacher re-grants from the People tab against the new connection.
+          setBoardAllowed(false);
+        },
       }, (state, detail) => {
         if (!disposed) {
           setHubState(state);
@@ -186,6 +192,23 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, retryToken]);
+
+  // Keep retrying a failed connect in the background instead of waiting on the Retry button:
+  // a child on a tablet won't press it and the Jibri recording observer can't, so a hub that
+  // was briefly unreachable at join time otherwise left the board and annotations missing for
+  // them (and from the recording) for the whole class. hubDetail is only set once a connect
+  // attempt has actually failed, so this never fires during the very first attempt; the two
+  // failures a retry can't fix (no access, bad session id) are left to the banner.
+  useEffect(() => {
+    if (hubState !== "disconnected" || !hubDetail) return;
+    if (hubDetail.includes("don't have access") || hubDetail.includes("id looks wrong")) return;
+    const timer = setTimeout(() => {
+      setHubState("reconnecting");
+      setHubDetail(null);
+      setRetryToken((t) => t + 1);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [hubState, hubDetail]);
 
   // Seed the leaderboard from persisted awards (covers rejoin/reconnect); the hub
   // stream overwrites it as new answers come in.

@@ -399,6 +399,9 @@ export default function JitsiLive({
   // real resilience out of a brief capacity blip (another class's recording finishing a few
   // seconds later) requires the frontend to actually ask again, not just wait longer.
   const recordingRetryCountRef = useRef(0);
+  // Last on/off state recordingStatusChanged reported — read synchronously inside that
+  // listener to tell "a running recording just died" apart from "a start attempt failed".
+  const recordingOnRef = useRef(false);
   // Jibri only ever records the room's own stage/dominant view -- it can't see our whiteboard/
   // quiz overlay, which lives in a separate cross-origin-iframed page it has no access to. The
   // one reliable fix that needs no server-side changes: have the teacher screen-share this same
@@ -1410,7 +1413,20 @@ export default function JitsiLive({
       });
       api.addListener("recordingStatusChanged", (payload) => {
         const isOn = !!payload?.on;
+        const wasOn = recordingOnRef.current;
+        recordingOnRef.current = isOn;
         setRecording(isOn);
+        // A recording that WAS running and then stops WITH an error means the Jibri
+        // instance died mid-class (a teacher's own Stop from the toolbar arrives with no
+        // error) — reported live as "the recording did not work". Nothing re-armed it
+        // before, so the rest of the class went unrecorded; restart it through the same
+        // bounded retry loop a failed initial start uses.
+        if (!isOn && wasOn && payload?.error && mode === "teacher" && autoRecordRef.current && !isRecordingObserver && hasClassSession && !sessionIsDemo) {
+          recordingErrorReasonRef.current = payload.error;
+          recordingRetryCountRef.current = 0;
+          attemptStartRecording();
+          return;
+        }
         if (isOn) {
           // Confirmed running — cancel the watchdog and clear any earlier warning.
           if (recordingWatchdogRef.current) {
