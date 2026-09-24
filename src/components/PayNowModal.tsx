@@ -102,6 +102,12 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
   const payAmount = parsedCustom !== null && !customInvalid ? parsedCustom : amount;
   // Only sent when it differs from the full balance, so a full payment behaves exactly as before.
   const requestedAmount = payAmount < amount ? payAmount : undefined;
+  // Captured when Pay is pressed: the caller reloads its invoices once a payment starts, which
+  // changes `amount` (the balance) under us — the confirmation must describe THIS payment, and
+  // "did it go through?" must compare against the balance as it was before it.
+  const [paying, setPaying] = useState<{ amount: number; balanceBefore: number } | null>(null);
+  const paidAmount = paying?.amount ?? payAmount;
+  const remainingAfter = paying ? Math.max(0, paying.balanceBefore - paying.amount) : 0;
 
   // Load enabled payment gateways (+ Cash) each time the popup opens.
   useEffect(() => {
@@ -132,6 +138,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
     }
     setError(null);
     setBlockedUrl(null);
+    setPaying({ amount: payAmount, balanceBefore: amount });
     setStatus("processing");
 
     if (!liveFlow) {
@@ -272,7 +279,11 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
     setVerifying(true);
     try {
       const invoice = await refreshInvoicePayment(invoiceId!);
-      if (invoice.status === "Paid") {
+      // An installment leaves the invoice PartiallyPaid, not Paid — it went through when the
+      // balance dropped below what it was before this payment started.
+      const balanceBefore = paying?.balanceBefore ?? amount;
+      const balanceNow = invoice.amount - invoice.amountPaid;
+      if (invoice.status === "Paid" || balanceNow < balanceBefore - 0.005) {
         setStatus("success");
         onInitiated?.();
         return true;
@@ -308,6 +319,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
         setResultMessage(null);
         setError(null);
         setVerifyNote(null);
+        setPaying(null);
       }, 200);
     }
   }
@@ -353,7 +365,9 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
             </span>
             <DialogTitle className="text-lg font-bold">Payment successful</DialogTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              {formatCurrency(payAmount)} received{invoiceLabel ? ` for ${invoiceLabel}` : ""}. A receipt has been sent to your email and access has been restored.
+              {remainingAfter > 0.005
+                ? `${formatCurrency(paidAmount)} received${invoiceLabel ? ` for ${invoiceLabel}` : ""}. Remaining balance: ${formatCurrency(remainingAfter)} — pay it any time with Pay Now. A receipt has been sent to your email.`
+                : `${formatCurrency(paidAmount)} received${invoiceLabel ? ` for ${invoiceLabel}` : ""}. A receipt has been sent to your email and access has been restored.`}
             </p>
             <Button className="mt-6 w-full" onClick={() => handleClose(false)}>
               Done
