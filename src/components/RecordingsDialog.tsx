@@ -21,7 +21,7 @@ const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * Deleting one is Admin-only — it unregisters the row, the underlying file is untouched.
  */
 export function RecordingsDialog({ session, onClose }: { session: ClassSession; onClose: () => void }) {
-  const { role } = useSession();
+  const { role, hasPermission } = useSession();
   const { toast } = useToast();
   const [recordings, setRecordings] = useState<ApiSessionRecording[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ export function RecordingsDialog({ session, onClose }: { session: ClassSession; 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const canManage = apiEnabled() && GUID_RE.test(session.id);
-  const canDelete = role === "admin";
+  const canDelete = role === "admin" || hasPermission("SessionCalendarManagement", "Delete");
   const canDownload = useCanDownloadRecordings();
 
   async function handleDelete(recordingId: string) {
