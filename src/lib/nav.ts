@@ -198,6 +198,12 @@ export const SUBADMIN_NAV: NavSection[] = [
       { label: "Audit Log", to: "/subadmin/audit-log", icon: History },
     ],
   },
+  // Demo/loading fallback only: the real sidebar is DB-driven and module-gated, adding a
+  // Courses/Content/Finance/... item per module this account holds (EnsureSubAdminModuleMenusAsync).
+  {
+    title: "Content",
+    items: [{ label: "Content & Resources", to: "/subadmin/resources", icon: FolderOpen }],
+  },
 ];
 
 export const ADMISSION_NAV: NavSection[] = [
