@@ -30,8 +30,6 @@ import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, markNoShow, rescheduleSession, scheduleSession, toFrontendSession, type NoShowParty } from "@/api/sessions";
 import { listBatches, listTeacherOptions } from "@/api/batches";
-import { buildJitsiJoinUrl } from "@/lib/jitsi";
-import { useSession } from "@/state/session";
 
 // Monitor-only, same as Coordinator's own Join Class (coordinator/Calendar.tsx) --
 // Admin had no way at all to drop into a live class from this screen, real or demo.
@@ -54,7 +52,6 @@ const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
 export default function AdminSessions() {
   const { toast } = useToast();
   const usingApi = apiEnabled();
-  const { userName } = useSession();
   const { data: apiSessions, error: sessionsError, reload } = useApiData<ClassSession[]>(
     () => listSessions().then((items) => items.map(toFrontendSession)),
     []
@@ -253,13 +250,14 @@ export default function AdminSessions() {
     setJoiningId(session.id);
     try {
       const join = await getJitsiJoin(session.id);
-      window.open(buildJitsiJoinUrl(join.domain, join.room, join.token, userName), "_blank", "noopener");
+      // The in-app monitor view (StaffLiveClassroom), not a raw Jitsi tab — see its doc comment.
+      window.open(`/staff/live/${join.sessionId}`, "_blank", "noopener");
     } catch (err) {
       notify(false, userMessage(err, "Couldn't join this class."));
     } finally {
       setJoiningId(null);
     }
-  }, [usingApi, notify, userName]);
+  }, [usingApi, notify]);
 
   const columns: DataTableColumn<ClassSession>[] = useMemo(
     () => [

@@ -3,16 +3,20 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   BarChart3,
+  BookOpen,
   CalendarClock,
   CheckCircle2,
   Clock,
   EyeOff,
+  FolderOpen,
   History,
   Layers,
   LayoutGrid,
   Lock,
   Mail,
+  Receipt,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
@@ -159,6 +163,22 @@ export default function SubAdminDashboard() {
   const sessionsToday = usingApi
     ? apiSessions.filter((s) => s.date === todayIso).length
     : SESSIONS.filter((s) => s.date === TODAY).length;
+  // Working lists for the RM (who builds and runs the batches): batches that need a hand, and
+  // today's classes. Derived from data already fetched above — no extra requests.
+  const batchesNeedingAttention = (usingApi ? apiBatches : BATCHES)
+    .filter((b) => b.status !== "dormant")
+    .map((b) => {
+      const fill = b.capacity > 0 ? b.enrolled / b.capacity : 0;
+      const reason = !b.teacherId ? "No teacher assigned" : b.status === "active" && fill < 0.5 ? `Only ${b.enrolled} of ${b.capacity} seats filled` : null;
+      return { batch: b, reason };
+    })
+    .filter((x): x is { batch: (typeof apiBatches)[number]; reason: string } => x.reason !== null)
+    .slice(0, 5);
+  const todaysSessions = (usingApi ? apiSessions : SESSIONS)
+    .filter((sess) => sess.date === (usingApi ? todayIso : TODAY) && sess.status !== "cancelled")
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+    .slice(0, 6);
+  const canCreateBatch = usingApi && hasPermission("CourseBatchManagement", "Create");
   const recentActivity: ActivityRow[] = usingApi ? apiActivity : AUDIT_LOG.slice(0, 5);
   const attendanceRate = usingApi ? liveSummary.attendance : ADMIN_KPIS.attendanceRate;
 
@@ -221,6 +241,62 @@ export default function SubAdminDashboard() {
             stat: "Reports available in your scope",
             ctaLabel: "Open reports",
             to: `${base}/reports`,
+          },
+        ]
+      : []),
+    // Quick links for the other granted modules. Their pages are routed under this portal and
+    // listed in the sidebar (EnsureSubAdminModuleMenusAsync); without a card here a module the RM
+    // holds (e.g. Content & Resources) looked absent from the dashboard. No data fetch — the stat
+    // line just states what the grant allows.
+    ...(hasPermission("ContentAccessManagement", "View")
+      ? [
+          {
+            id: "content",
+            title: "Content & Resources",
+            icon: FolderOpen,
+            color: CHART_PALETTE[1],
+            stat: hasPermission("ContentAccessManagement", "Create") ? "Upload and organise files and folders" : "Browse shared files and folders",
+            ctaLabel: "Open resources",
+            to: `${base}/resources`,
+          },
+        ]
+      : []),
+    ...(hasPermission("CourseBatchManagement", "View")
+      ? [
+          {
+            id: "courses",
+            title: "Courses & Departments",
+            icon: BookOpen,
+            color: CHART_PALETTE[4],
+            stat: "Courses, departments and the quiz bank",
+            ctaLabel: "Open courses",
+            to: `${base}/courses`,
+          },
+        ]
+      : []),
+    ...(hasPermission("UserManagement", "View")
+      ? [
+          {
+            id: "users",
+            title: "Users",
+            icon: Users,
+            color: CHART_PALETTE[0],
+            stat: "Parents, students and teachers in your scope",
+            ctaLabel: "Open users",
+            to: `${base}/users`,
+          },
+        ]
+      : []),
+    ...(hasPermission("BillingFinance", "View")
+      ? [
+          {
+            id: "billing",
+            title: "Billing & Finance",
+            icon: Receipt,
+            color: CHART_PALETTE[7 % CHART_PALETTE.length],
+            stat: "Invoices, packages and payments",
+            ctaLabel: "Open billing",
+            to: `${base}/billing`,
           },
         ]
       : []),
@@ -359,6 +435,72 @@ export default function SubAdminDashboard() {
           ))}
         </div>
       </div>
+
+      {/* Working lists — each gated by its module's View grant, like the KPI row */}
+      {(canSeeBatches || canSeeSessions) && (
+        <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {canSeeBatches && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-4 flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Batches needing attention</p>
+                    <p className="text-xs text-muted-foreground">No teacher, or under half full</p>
+                  </div>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link to={`${base}/batches`}>
+                      {canCreateBatch ? "Manage / create" : "View batches"} <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+                {batchesNeedingAttention.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">All batches have a teacher and healthy enrolment.</p>
+                ) : (
+                  <div className="flex flex-col divide-y divide-border">
+                    {batchesNeedingAttention.map(({ batch, reason }) => (
+                      <Link key={batch.id} to={`${base}/batches`} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0 hover:text-primary">
+                        <span className="min-w-0 truncate text-sm font-medium text-foreground">{batch.name}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">{reason}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          {canSeeSessions && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-4 flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Today's sessions</p>
+                    <p className="text-xs text-muted-foreground">In start-time order</p>
+                  </div>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link to={`${base}/sessions`}>
+                      All sessions <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+                {todaysSessions.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">No sessions scheduled today.</p>
+                ) : (
+                  <div className="flex flex-col divide-y divide-border">
+                    {todaysSessions.map((sess) => (
+                      <Link key={sess.id} to={`${base}/sessions`} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0 hover:text-primary">
+                        <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                          {sess.startTime} · {sess.title}
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground">{sess.teacherName}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Recent activity + access request */}
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">

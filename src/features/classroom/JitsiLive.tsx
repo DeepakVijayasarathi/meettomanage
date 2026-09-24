@@ -44,10 +44,18 @@ type JitsiExternalApi = {
       handRaised?: boolean;
       // participantRoleChanged only: "moderator" or "none" (Jitsi's own two roles).
       role?: string;
+      // knockingParticipant only: someone waiting in the lobby to be let in.
+      participant?: { id?: string; name?: string };
       // recordingStatusChanged only: Jitsi's own reason when a recording request is
       // rejected or drops (e.g. "resource-constraint", "service-unavailable" — no Jibri
       // free in the pool; "error" — a generic Jibri-side failure).
       error?: string;
+      // contentSharingParticipantsChanged only: ids of everyone currently screen-sharing.
+      data?: string[];
+      // tileViewChanged only.
+      enabled?: boolean;
+      // filmstripDisplayChanged only.
+      visible?: boolean;
     }) => void
   ) => void;
   executeCommand: (command: string, ...args: unknown[]) => void;
@@ -121,6 +129,8 @@ export default function JitsiLive({
   isRecordingObserver,
   hubToken,
   isPersonalRoom,
+  roleLabel,
+  onLeave,
 }: {
   room: string;
   title?: string;
@@ -158,6 +168,12 @@ export default function JitsiLive({
    *  Interactive panel itself (whiteboard/quiz/roster/chat) still mounts normally off `sessionId`
    *  alone, same as a real class. */
   isPersonalRoom?: boolean;
+  /** Overrides the header's role badge (default "Teacher"/"Student") — e.g. "Monitor" for an
+   *  admin-team member dropping into a class (StaffLiveClassroom.tsx). */
+  roleLabel?: string;
+  /** Where Leave (and every other exit) goes, instead of the default navigate(-1) — the staff
+   *  monitor view opens in its own tab, where there's no history to go back to. */
+  onLeave?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [boardMaximized, setBoardMaximized] = useState(false);
@@ -170,6 +186,15 @@ export default function JitsiLive({
     if (!boardMaximized) setFloatHidden(false);
   }, [boardMaximized]);
   const navigate = useNavigate();
+  // Every exit (Leave, End Class, Jitsi's own hang-up) goes through here. A ref, not the prop
+  // directly, because the Jitsi init effect only re-runs on [room, mode] and would otherwise
+  // keep calling whatever onLeave was on first render.
+  const onLeaveRef = useRef(onLeave);
+  onLeaveRef.current = onLeave;
+  function exitClassroom() {
+    if (onLeaveRef.current) onLeaveRef.current();
+    else navigate(-1);
+  }
   const { userName: accountName } = useSession();
   const userName = displayName || accountName;
   const { toast } = useToast();
@@ -358,6 +383,30 @@ export default function JitsiLive({
   // A ref, not state, since the init effect below only depends on [room, mode] and would
   // otherwise close over whatever this was at mount (same reason userNameRef exists).
   const locallyPinnedIdRef = useRef<string | null>(null);
+  // Admin-team monitors (Admin, RM, Coordinator, Management, ...) must enter without the host
+  // having to admit them. This Jitsi deployment's lobby lets nobody skip it on a moderator
+  // token alone (only room owners/members, a whitelist or the room password do — verified live
+  // on UAT, where a Coordinator's moderator token still landed on "Ask to Join"), so the host's
+  // own classroom admits them: the backend pushes "StaffJoining" with the name it just signed
+  // into that staff member's token (SessionsController.GetJitsiJoin), and a lobby knock under
+  // that name within the next few minutes is answered automatically. Teacher view only (the
+  // host is the moderator who can admit); anyone else still waits for the teacher as before.
+  const expectedStaffRef = useRef(new Map<string, number>());
+  const knockingRef = useRef(new Map<string, string>());
+  const STAFF_ADMIT_WINDOW_MS = 3 * 60_000;
+  function admitIfExpectedStaff(knockId: string) {
+    if (mode !== "teacher") return;
+    const name = (knockingRef.current.get(knockId) ?? "").trim().toLowerCase();
+    const expiresAt = expectedStaffRef.current.get(name);
+    if (!name || !expiresAt || expiresAt < Date.now()) return;
+    jitsiApiRef.current?.executeCommand("answerKnockingParticipant", knockId, true);
+    knockingRef.current.delete(knockId);
+  }
+  function onStaffJoining(displayName: string) {
+    expectedStaffRef.current.set(displayName.trim().toLowerCase(), Date.now() + STAFF_ADMIT_WINDOW_MS);
+    // The knock can arrive before this push (the staff tab opens as soon as the join call returns).
+    for (const knockId of Array.from(knockingRef.current.keys())) admitIfExpectedStaff(knockId);
+  }
   const annotationOverlayRef = useRef<AnnotationOverlayHandle>(null);
   // Teacher-only "mark on top of what's on screen" tool — off by default so it never
   // steals pointer events from Jitsi's own controls (screen-share picker, mute, etc.)
@@ -399,6 +448,9 @@ export default function JitsiLive({
   // real resilience out of a brief capacity blip (another class's recording finishing a few
   // seconds later) requires the frontend to actually ask again, not just wait longer.
   const recordingRetryCountRef = useRef(0);
+  // Last on/off state recordingStatusChanged reported — read synchronously inside that
+  // listener to tell "a running recording just died" apart from "a start attempt failed".
+  const recordingOnRef = useRef(false);
   // Jibri only ever records the room's own stage/dominant view -- it can't see our whiteboard/
   // quiz overlay, which lives in a separate cross-origin-iframed page it has no access to. The
   // one reliable fix that needs no server-side changes: have the teacher screen-share this same
@@ -534,6 +586,9 @@ export default function JitsiLive({
   // Guards the one-time enable-lobby-on-join attempt below (see participantRoleChanged) so a
   // role event that fires more than once in one call never issues the command twice.
   const lobbyEnableAttemptedRef = useRef(false);
+  // Lower-cased display names of staff (Admin/RM/Coordinator/Counselor/Admission/Management)
+  // who may enter without knocking — filled from the join response (teacher/admin only).
+  const staffNamesRef = useRef<Set<string>>(new Set());
   // The init effect below only depends on [room, mode] (see its own comment on why), so
   // anything it closes over from render — including userName — would otherwise be frozen
   // at whatever it was on first mount. flushMedia posts engagement (talk-time, camera-on)
@@ -640,7 +695,7 @@ export default function JitsiLive({
           });
         });
     }
-    navigate(-1);
+    exitClassroom();
   }
 
   // Post-class feedback (teacher feedback: parents want to know what was actually covered,
@@ -819,12 +874,10 @@ export default function JitsiLive({
       let joinRoom = room;
       let joinDomain = JITSI_DOMAIN_FALLBACK;
       let joinToken: string | undefined;
-      // "Don't record demo and personal link, only record session and class" -- the
-      // Personal Meeting Room never reaches the interactive branch below at all (it always
-      // has joinOverride, never a real sessionId), so it's excluded from auto-recording by
-      // construction. A Demo *does* have a real session/sessionId, so it needs its own
-      // explicit check against the type the join response reports.
-      let sessionIsDemo = false;
+      // The Personal Meeting Room is never auto-recorded: it never reaches the interactive
+      // branch below (it always has joinOverride, never a real sessionId). Demo classes ARE
+      // recorded now, like every other class -- the earlier "don't record demo" rule was
+      // reversed so Coordinators (and the admission team) can review demo recordings.
       if (joinOverride) {
         joinDomain = joinOverride.domain;
         joinToken = joinOverride.token ?? undefined;
@@ -834,7 +887,7 @@ export default function JitsiLive({
           joinRoom = join.room;
           joinDomain = join.domain;
           joinToken = join.token ?? undefined;
-          sessionIsDemo = join.isDemo;
+          staffNamesRef.current = new Set((join.staffNames ?? []).map((n) => n.trim().toLowerCase()));
           // See effectiveSessionIdRef's own doc comment: this class may have been edited
           // since whatever gave this component its `sessionId` prop was fetched — join.sessionId
           // is whatever it's actually become, and everything session-scoped from here on
@@ -1002,14 +1055,6 @@ export default function JitsiLive({
           // Stop uploading video layers nobody is receiving -- frees uplink for participants on a
           // weak connection.
           enableLayerSuspension: true,
-          // A curated default virtual background (our own brand navy/violet/amber gradient,
-          // offered as a preset next to Jitsi's own stock options in the camera-background
-          // picker) instead of everyone starting from Jitsi's generic defaults or having to
-          // upload their own — same idea as Google Meet's built-in background gallery.
-          // branding.json's "virtualBackgrounds" array is what actually supplies it; this
-          // config key just tells Jitsi where to fetch that JSON from. Served by the same
-          // Jitsi web container as everything else (see docker-compose.yml's web volumes).
-          dynamicBrandingUrl: "https://thereadernest.co.in/branding/branding.json",
           // Don't let the browser suggest/remember this room outside our own scheduling flow.
           doNotStoreRoom: true,
           // Without an explicit subject, Jitsi's own top bar falls back to displaying the
@@ -1125,7 +1170,7 @@ export default function JitsiLive({
         if (isRecordingObserver) {
           setCallEnded(true);
         } else {
-          navigate(-1);
+          exitClassroom();
         }
       });
       api.addListener("videoConferenceJoined", (payload) => {
@@ -1177,11 +1222,9 @@ export default function JitsiLive({
         // Prosody hands the role to whoever's connection actually lands first on a fresh empty
         // room regardless of app role — that needs the server-side JWT room auth this was
         // always meant to get eventually.
-        // Removed 2026-09-18: teachers used to get our own on-brand background force-
-        // applied as their starting camera background on every join (dynamicBrandingUrl,
-        // just above, still lists it as an optional *choice* in Jitsi's own background
-        // picker -- only the auto-apply-on-join default is gone). Everyone now starts on
-        // "none" (their own real camera), same as students/children already did.
+        // The customised on-brand background is removed entirely (auto-apply on join
+        // dropped 2026-09-18; the branding.json preset in Jitsi's picker dropped
+        // 2026-09-23). Everyone starts on "none" (their own real camera).
         //
         // Not just "skip setting one" — Jitsi remembers the last-picked virtual background
         // per browser (jitsi-meet.localStorage), so a teacher's device that got the branded
@@ -1215,7 +1258,7 @@ export default function JitsiLive({
         // already in progress) — and with the retry loop below, that turned one harmless
         // reconnect into three doomed retries and a scary "recording failed" banner for a
         // class that was, the whole time, being recorded just fine.
-        if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver && hasClassSession && !sessionIsDemo) {
+        if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver && hasClassSession) {
           setRecording((alreadyRecording) => {
             if (!alreadyRecording) {
               recordingErrorReasonRef.current = null;
@@ -1258,6 +1301,21 @@ export default function JitsiLive({
           api?.executeCommand("toggleLobby", true);
           setLobbyEnabled(true);
         }
+      });
+      // Staff walk in without knocking: the moderator's client answers a waiting-room knock
+      // immediately when it's either a known, unambiguous staff name (join.staffNames) or the
+      // monitor the backend has just authorized (StaffJoining push — covers a staff name that
+      // clashes with a parent/teacher and so isn't in the static list). Everyone else still
+      // waits for the teacher's manual admit.
+      api.addListener("knockingParticipant", (payload) => {
+        const knocker = payload?.participant;
+        if (mode !== "teacher" || !knocker?.id) return;
+        if (knocker.name && staffNamesRef.current.has(knocker.name.trim().toLowerCase())) {
+          api?.executeCommand("answerKnockingParticipant", knocker.id, true);
+          return;
+        }
+        knockingRef.current.set(knocker.id, knocker.name ?? "");
+        admitIfExpectedStaff(knocker.id);
       });
       api.addListener("dominantSpeakerChanged", (payload) => {
         const now = Date.now();
@@ -1318,6 +1376,36 @@ export default function JitsiLive({
         if (mode !== "teacher") return;
         setPinnedParticipantId(payload?.id ?? null);
         setPinnedRef.current?.(payload?.id ?? null);
+      });
+      // Duplicate screen-share tile (client report: "2 tiles, one big and one small"): when a
+      // shared screen is on Jitsi's stage (i.e. not in tile view — spotlighted/pinned, or a
+      // viewer Jitsi auto-staged it for), the same share ALSO sits in the filmstrip as a small
+      // thumbnail. Jitsi has no config to drop just that thumbnail, so the filmstrip is hidden
+      // while a share is on stage and restored the moment sharing stops or tile view returns
+      // (tile view has no filmstrip/duplicate at all). toggleFilmStrip is a toggle, so the
+      // visibility is tracked locally — flipped optimistically on toggle and then confirmed by
+      // filmstripDisplayChanged — to never double-toggle while an event is still in flight.
+      // Applies to the teacher too, but only while a share is spotlighted/pinned: a teacher's
+      // share otherwise stays one tile in the grid (screenSharingStatusChanged re-asserts tile
+      // view), so she still sees every student unless she deliberately focuses the screen —
+      // and un-pinning brings the grid and the students straight back.
+      const shareLayout = { sharingIds: [] as string[], tileView: true, filmstripVisible: true };
+      const syncFilmstripForShare = () => {
+        const shouldHide = shareLayout.sharingIds.length > 0 && !shareLayout.tileView;
+        if (shouldHide === !shareLayout.filmstripVisible) return;
+        shareLayout.filmstripVisible = !shareLayout.filmstripVisible;
+        api?.executeCommand("toggleFilmStrip");
+      };
+      api.addListener("contentSharingParticipantsChanged", (payload) => {
+        shareLayout.sharingIds = payload?.data ?? [];
+        syncFilmstripForShare();
+      });
+      api.addListener("tileViewChanged", (payload) => {
+        shareLayout.tileView = Boolean(payload?.enabled);
+        syncFilmstripForShare();
+      });
+      api.addListener("filmstripDisplayChanged", (payload) => {
+        if (typeof payload?.visible === "boolean") shareLayout.filmstripVisible = payload.visible;
       });
       // Jitsi's own signal for a dropped media/XMPP connection mid-call — the video
       // tiles freeze silently otherwise, with nothing in our own chrome saying why.
@@ -1433,7 +1521,20 @@ export default function JitsiLive({
       });
       api.addListener("recordingStatusChanged", (payload) => {
         const isOn = !!payload?.on;
+        const wasOn = recordingOnRef.current;
+        recordingOnRef.current = isOn;
         setRecording(isOn);
+        // A recording that WAS running and then stops WITH an error means the Jibri
+        // instance died mid-class (a teacher's own Stop from the toolbar arrives with no
+        // error) — reported live as "the recording did not work". Nothing re-armed it
+        // before, so the rest of the class went unrecorded; restart it through the same
+        // bounded retry loop a failed initial start uses.
+        if (!isOn && wasOn && payload?.error && mode === "teacher" && autoRecordRef.current && !isRecordingObserver && hasClassSession) {
+          recordingErrorReasonRef.current = payload.error;
+          recordingRetryCountRef.current = 0;
+          attemptStartRecording();
+          return;
+        }
         if (isOn) {
           // Confirmed running — cancel the watchdog and clear any earlier warning.
           if (recordingWatchdogRef.current) {
@@ -1536,7 +1637,7 @@ export default function JitsiLive({
               mode === "teacher" ? "bg-role-teacher/15 text-role-teacher" : "bg-role-student/15 text-role-student"
             )}
           >
-            {mode === "teacher" ? "Teacher" : "Student"}
+            {roleLabel ?? (mode === "teacher" ? "Teacher" : "Student")}
           </span>
           {recording && (
             <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-300 ring-1 ring-inset ring-destructive/25">
@@ -1698,9 +1799,9 @@ export default function JitsiLive({
                   // act on it.
                   if (jitsiApiRef.current && lobbyEnabled) {
                     jitsiApiRef.current.executeCommand("toggleLobby", false);
-                    setTimeout(() => navigate(-1), 400);
+                    setTimeout(() => exitClassroom(), 400);
                   } else {
-                    navigate(-1);
+                    exitClassroom();
                   }
                 }}
               >
@@ -1726,7 +1827,7 @@ export default function JitsiLive({
           description="You can rejoin any time before the class ends."
           confirmLabel="Leave"
           destructive
-          onConfirm={() => navigate(-1)}
+          onConfirm={() => exitClassroom()}
         />
       )}
       {/* Teacher feedback (WBS Round 2 #2): parents only ever saw an engagement-stats
@@ -2375,6 +2476,7 @@ export default function JitsiLive({
                 onBoardMaximizedChange={setBoardMaximized}
                 onPinChanged={(participantId) => jitsiApiRef.current?.executeCommand("pinParticipant", participantId)}
                 onReloadRequested={(message) => setReloadNotice(message)}
+                onStaffJoining={onStaffJoining}
               />
             </aside>
           )}

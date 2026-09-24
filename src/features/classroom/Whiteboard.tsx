@@ -79,7 +79,12 @@ export type BoardOp =
   // action that actually reaches the class, not just a personal drawing-comfort setting.
   // Students can still shrink their own view back down afterward if it doesn't suit them;
   // this only sets where they land when the teacher changes it.
-  | { kind: "maximize"; value: boolean };
+  | { kind: "maximize"; value: boolean }
+  // Local-only, never sent over the hub: wipes the board back to one empty page right
+  // before a reconnect re-joins, so ClassroomHub's full board-history replay rebuilds it
+  // from scratch instead of layering non-idempotent ops (strokeAppend, removePage) a
+  // second time on top of what was already drawn — see ClassroomHubEvents.resync.
+  | { kind: "reset" };
 
 interface Page {
   id: string;
@@ -619,6 +624,10 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
           break;
         case "maximize":
           setMaximized(op.value);
+          break;
+        case "reset":
+          setPages([{ id: nextId(), strokes: [] }]);
+          setPageIndex(0);
           break;
       }
     });

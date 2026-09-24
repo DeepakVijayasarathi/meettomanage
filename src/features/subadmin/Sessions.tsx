@@ -30,7 +30,6 @@ import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, rescheduleSession, scheduleSession, toFrontendSession } from "@/api/sessions";
 import { listBatches, listTeacherOptions } from "@/api/batches";
-import { buildJitsiJoinUrl } from "@/lib/jitsi";
 import { useSession } from "@/state/session";
 
 // Same monitor-only join affordance as admin/Sessions.tsx — "rescheduled" is the old record
@@ -61,7 +60,7 @@ const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
 export default function SubAdminSessions() {
   const { toast } = useToast();
   const usingApi = apiEnabled();
-  const { userName, hasPermission } = useSession();
+  const { hasPermission } = useSession();
   const canSchedule = !usingApi || hasPermission("SessionCalendarManagement", "Create");
   const canManage = !usingApi || hasPermission("SessionCalendarManagement", "Edit");
   // GET /api/batches requires CourseBatchManagement:View server-side — a delegated-portal
@@ -232,13 +231,14 @@ export default function SubAdminSessions() {
     setJoiningId(session.id);
     try {
       const join = await getJitsiJoin(session.id);
-      window.open(buildJitsiJoinUrl(join.domain, join.room, join.token, userName), "_blank", "noopener");
+      // The in-app monitor view (StaffLiveClassroom), not a raw Jitsi tab — see its doc comment.
+      window.open(`/staff/live/${join.sessionId}`, "_blank", "noopener");
     } catch (err) {
       notify(false, userMessage(err, "Couldn't join this class."));
     } finally {
       setJoiningId(null);
     }
-  }, [usingApi, notify, userName]);
+  }, [usingApi, notify]);
 
   const columns: DataTableColumn<ClassSession>[] = useMemo(
     () => [

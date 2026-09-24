@@ -19,6 +19,8 @@ export default function ForgotPin() {
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A mobile number (no "@") goes to the team for WhatsApp-only parents with no email.
+  const isPhone = !email.includes("@") && email.replace(/\D/g, "").length >= 7;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -60,11 +62,20 @@ export default function ForgotPin() {
               <CheckCircle2 className="h-6 w-6" />
             </span>
             <h2 style={{ fontFamily: HEADLINE_FONT }} className="text-lg font-semibold tracking-tight text-brand-ink sm:text-xl">
-              Check your email
+              {isPhone ? "Request sent" : "Check your email"}
             </h2>
             <p className="mt-1.5 text-sm text-brand-ink/70">
-              If <strong className="text-brand-ink">{email.trim()}</strong> has an account with us, a reset link is on
-              its way — it expires in 30 minutes and works once.
+              {isPhone ? (
+                <>
+                  If <strong className="text-brand-ink">{email.trim()}</strong> has an account with us, you'll get a new PIN: by
+                  email if your account has one, otherwise our team will send it to you on WhatsApp shortly.
+                </>
+              ) : (
+                <>
+                  If <strong className="text-brand-ink">{email.trim()}</strong> has an account with us, a reset link is on
+                  its way — it expires in 30 minutes and works once.
+                </>
+              )}
             </p>
           </>
         ) : (
@@ -76,22 +87,23 @@ export default function ForgotPin() {
               Forgot your PIN?
             </h2>
             <p className="mt-1.5 text-sm text-brand-ink/70">
-              Enter the email on your account and we'll send you a link to set a new PIN.
+              Enter the email or mobile number you log in with and we'll help you set a new PIN.
             </p>
             <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3 text-left">
               <div className="grid gap-1.5">
                 <Label htmlFor="forgot-email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
-                  Email
+                  Email or mobile number
                 </Label>
                 <div className="relative">
                   <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-ink/35" />
                   <Input
                     id="forgot-email"
-                    type="email"
+                    type="text"
+                    inputMode="email"
                     required
                     autoFocus
                     className="h-11 pl-9"
-                    placeholder="you@example.com"
+                    placeholder="you@example.com or 98765 43210"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />

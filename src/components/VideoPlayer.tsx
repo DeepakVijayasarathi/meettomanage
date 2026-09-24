@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Maximize, Minimize, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { Download, Maximize, Minimize, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function formatDuration(seconds: number): string {
@@ -16,6 +16,12 @@ export interface VideoPlayerProps {
   /** RecordingsDialog's "Play" toggle mounts this already-expecting-to-play, matching the
    *  native-`<video autoPlay>` behavior it's replacing there. */
   autoPlay?: boolean;
+  /** Shows a Download control. Off by default: only Admin and Management / Founder may
+   *  download class recordings (see lib/recordingAccess.ts); everyone else can only watch,
+   *  so the element also opts out of the browser's own save/download affordances. */
+  downloadable?: boolean;
+  /** Suggested file name for the download. */
+  downloadName?: string;
 }
 
 /**
@@ -25,7 +31,7 @@ export interface VideoPlayerProps {
  * inconsistent with everything else here being custom-built to this app's design tokens.
  * `controls={false}` on the underlying element; every control below is our own.
  */
-export function VideoPlayer({ src, className, autoPlay }: VideoPlayerProps) {
+export function VideoPlayer({ src, className, autoPlay, downloadable = false, downloadName }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -88,6 +94,8 @@ export function VideoPlayer({ src, className, autoPlay }: VideoPlayerProps) {
         ref={videoRef}
         src={src}
         autoPlay={autoPlay}
+        controlsList={downloadable ? undefined : "nodownload"}
+        onContextMenu={downloadable ? undefined : (e) => e.preventDefault()}
         className="h-full w-full cursor-pointer"
         onClick={togglePlay}
         onPlay={() => setPlaying(true)}
@@ -170,6 +178,20 @@ export function VideoPlayer({ src, className, autoPlay }: VideoPlayerProps) {
         >
           {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
         </button>
+
+        {downloadable && (
+          <a
+            href={src}
+            download={downloadName ?? true}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Download recording"
+            title="Download recording"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+          >
+            <Download className="h-4 w-4" />
+          </a>
+        )}
 
         <button
           type="button"

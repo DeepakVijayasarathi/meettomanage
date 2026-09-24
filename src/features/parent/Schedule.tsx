@@ -8,6 +8,7 @@ import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
+import { ParentCancelClassButton } from "@/components/ParentCancelClassButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -187,7 +188,7 @@ export default function ParentSchedule() {
               ) : (
                 <div className="flex flex-col gap-3">
                   {upcoming.map((s) => (
-                    <ScheduleRow key={s.id} session={s} />
+                    <ScheduleRow key={s.id} session={s} onCancelled={reloadSessions} />
                   ))}
                 </div>
               )}
@@ -244,6 +245,15 @@ export default function ParentSchedule() {
                   <span className="text-xs text-muted-foreground">{joinHint(selected)}</span>
                 )}
               </div>
+              <div className="flex justify-end">
+                <ParentCancelClassButton
+                  session={selected}
+                  onCancelled={() => {
+                    setSelected(null);
+                    reloadSessions();
+                  }}
+                />
+              </div>
             </>
           )}
         </DialogContent>
@@ -252,7 +262,7 @@ export default function ParentSchedule() {
   );
 }
 
-function ScheduleRow({ session }: { session: ClassSession }) {
+function ScheduleRow({ session, onCancelled }: { session: ClassSession; onCancelled?: () => void }) {
   const joinable = isJoinable(session);
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
@@ -264,6 +274,7 @@ function ScheduleRow({ session }: { session: ClassSession }) {
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <SessionStatusBadge status={session.status} label={noShowLabel(session)} />
+        <ParentCancelClassButton session={session} onCancelled={onCancelled} />
         {joinable ? (
           <Button size="sm" asChild>
             <Link

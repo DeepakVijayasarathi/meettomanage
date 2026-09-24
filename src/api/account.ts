@@ -48,7 +48,7 @@ export async function getMyMeetingRoom(): Promise<MyMeetingRoom> {
 
 /**
  * A short, shareable redirect to the same room getMyMeetingRoom builds — the long form
- * (domain/room#jwt=<huge signed token>) reads as broken/suspicious pasted into WhatsApp or
+ * (domain/room?jwt=<huge signed token>) reads as broken/suspicious pasted into WhatsApp or
  * email. Mints a fresh one per call (backend: 6h expiry, matching the token it wraps).
  */
 export async function getMyMeetingRoomShortLink(): Promise<{ url: string; expiresAtUtc: string }> {

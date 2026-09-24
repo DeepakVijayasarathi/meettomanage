@@ -7,6 +7,7 @@ import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { FeeStatusBadge, SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
 import { PayNowModal } from "@/components/PayNowModal";
 import { EmptyState } from "@/components/EmptyState";
+import { ParentCancelClassButton } from "@/components/ParentCancelClassButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +65,7 @@ export default function ParentDashboard() {
 
   // Live overlay: the API's per-child summary and real schedule replace the mock numbers
   const { data: apiDash, loading: dashLoading, error: dashError } = useApiData<ApiParentDashboard | null>(() => getParentDashboard(), null, null);
-  const { data: apiSessions } = useApiData<ClassSession[]>(
+  const { data: apiSessions, reload: reloadSchedule } = useApiData<ClassSession[]>(
     () => {
       const [from, to] = defaultParentScheduleWindow();
       return getParentSchedule(from, to).then((items) => items.map(toFrontendSession));
@@ -230,7 +231,7 @@ export default function ParentDashboard() {
                       }
                     />
                   ) : (
-                    upcoming.map((s) => <UpcomingRow key={s.id} session={s} />)
+                    upcoming.map((s) => <UpcomingRow key={s.id} session={s} onCancelled={reloadSchedule} />)
                   )}
                 </CardContent>
               </Card>
@@ -398,7 +399,7 @@ function FeeCard({
   );
 }
 
-function UpcomingRow({ session }: { session: ClassSession }) {
+function UpcomingRow({ session, onCancelled }: { session: ClassSession; onCancelled?: () => void }) {
   const joinable = isJoinable(session);
   return (
     <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -410,6 +411,7 @@ function UpcomingRow({ session }: { session: ClassSession }) {
       </div>
       <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
         <SessionStatusBadge status={session.status} label={noShowLabel(session)} />
+        <ParentCancelClassButton session={session} onCancelled={onCancelled} />
         {joinable ? (
           <Button size="sm" asChild>
             <Link

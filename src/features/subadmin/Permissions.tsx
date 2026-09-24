@@ -25,6 +25,7 @@ import {
   NO_ACCESS_MODULES,
 } from "./data";
 import { summarizeMenus } from "@/lib/permissionMenus";
+import { usePortalBase } from "@/lib/portalBase";
 
 const ADMIN_CONTACT = "Ananya Rao";
 
@@ -36,6 +37,7 @@ function isGranted(permissions: string[], role: string | null, module: Permissio
 
 export default function SubAdminPermissions() {
   const { userName, role, permissions } = useSession();
+  const portal = usePortalBase().replace(/^\//, "") || "subadmin";
   const [menusByModule, setMenusByModule] = useState<Partial<Record<PermissionModuleName, string[]>>>({});
   const { data: modules } = useApiData(
     () => listPermissionModules().then((list) => list.map((m) => ({ value: m.key, label: m.label }))),
@@ -45,7 +47,9 @@ export default function SubAdminPermissions() {
   useEffect(() => {
     if (!apiEnabled()) return;
     listMenuItems()
-      .then((items) => setMenusByModule(groupMenusByModule(items)))
+      // Only this account's own portal: the unfiltered list also names Admin/IT Admin pages an RM
+      // never gets, so a granted module looked like it unlocked menus that were never in the sidebar.
+      .then((items) => setMenusByModule(groupMenusByModule(items.filter((i) => i.portal === portal))))
       .catch(() => {
         /* captions just stay empty */
       });

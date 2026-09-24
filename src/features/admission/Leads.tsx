@@ -24,6 +24,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate, getInitials } from "@/lib/utils";
+import { displayEmail } from "@/lib/parentLogin";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
@@ -34,8 +35,10 @@ import {
   toApiConversionStatus,
   toFrontendLead,
   updateConversionStatus,
+  type ApiIssuedParentLogin,
   type ApiParentDemoHistory,
 } from "@/api/demoBookings";
+import { IssuedLoginDialog } from "./IssuedLoginDialog";
 import { LEADS as INITIAL_LEADS, type ConversionStage, type FollowUpNote, type Lead } from "./data";
 
 const STAGE_OPTIONS: { value: ConversionStage | "all"; label: string }[] = [
@@ -74,6 +77,7 @@ export default function AdmissionLeads() {
   useEffect(() => setLeads(apiLeads), [apiLeads]);
   const [stageFilter, setStageFilter] = useState<ConversionStage | "all">("all");
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  const [issuedLogin, setIssuedLogin] = useState<ApiIssuedParentLogin | null>(null);
   // Per-parent demo record (every demo this parent has ever taken) for the open lead.
   const [history, setHistory] = useState<ApiParentDemoHistory | null>(null);
   useEffect(() => {
@@ -146,8 +150,9 @@ export default function AdmissionLeads() {
       setLoggingFollowUp(true);
       setFollowUpError(null);
       try {
-        await updateConversionStatus(activeLead.id, toApiConversionStatus(newStage), noteText.trim(), nextFollowUp || undefined);
+        const updated = await updateConversionStatus(activeLead.id, toApiConversionStatus(newStage), noteText.trim(), nextFollowUp || undefined);
         reload();
+        if (updated.issuedLogin) setIssuedLogin(updated.issuedLogin);
         setJustLogged(activeLead.childName);
         setTimeout(() => setJustLogged(null), 4000);
         setActiveLead(null);
@@ -223,7 +228,7 @@ export default function AdmissionLeads() {
               <Phone className="h-3 w-3" /> {row.phone}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Mail className="h-3 w-3" /> {row.email}
+              <Mail className="h-3 w-3" /> {displayEmail(row.email)}
             </span>
           </div>
         ),
@@ -442,6 +447,7 @@ export default function AdmissionLeads() {
           )}
         </DialogContent>
       </Dialog>
+      <IssuedLoginDialog login={issuedLogin} onClose={() => setIssuedLogin(null)} />
     </div>
   );
 }

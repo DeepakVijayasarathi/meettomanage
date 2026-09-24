@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PlayCircle, Trash2, Video } from "lucide-react";
+import { FolderPlus, PlayCircle, Trash2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -10,10 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { useCanDownloadRecordings } from "@/lib/recordingAccess";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/state/session";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { deleteRecording, listAllRecordings, type ApiRecordingListItem } from "@/api/sessions";
+import { addRecordingToResources } from "@/api/resources";
+import { listResourceFolders, type ApiResourceFolder } from "@/api/resourceFolders";
 import { SESSIONS } from "@/data/sessions";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
@@ -46,8 +49,9 @@ export default function AdminRecordings() {
   const { toast } = useToast();
   // Mounted under every Sub Admin-type portal too (Coordinator, IT Admin, ...) — those can
   // watch any recording, but only Admin may delete one (server-side rule as well).
-  const { role } = useSession();
-  const canDelete = role === "admin";
+  const { role, hasPermission } = useSession();
+  const canDelete = role === "admin" || hasPermission("SessionCalendarManagement", "Delete");
+  const canDownload = useCanDownloadRecordings();
 
   const [items, setItems] = useState<ApiRecordingListItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -58,6 +62,12 @@ export default function AdminRecordings() {
   const [preview, setPreview] = useState<ApiRecordingListItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteEntry, setConfirmDeleteEntry] = useState<ApiRecordingListItem | null>(null);
+  // "Add to Resources": files this recording into a Content and Resources folder by
+  // reference (no copy), so it can then be shared to any number of parents/batches there.
+  const [resourceTarget, setResourceTarget] = useState<ApiRecordingListItem | null>(null);
+  const [folders, setFolders] = useState<ApiResourceFolder[]>([]);
+  const [folderId, setFolderId] = useState("");
+  const [addingToResources, setAddingToResources] = useState(false);
   const [dateFilter, setDateFilter] = useState("");
 
   const load = useCallback((targetPage: number, replace: boolean) => {
@@ -115,6 +125,32 @@ export default function AdminRecordings() {
 
   const rows = usingApi ? items : demoItems;
   const hasMore = usingApi && items.length < totalCount;
+
+  const canAddToResources = role === "admin" || hasPermission("ContentAccessManagement", "Create");
+
+  function openAddToResources(item: ApiRecordingListItem) {
+    setResourceTarget(item);
+    setFolderId("");
+    listResourceFolders().then(setFolders).catch(() => setFolders([]));
+  }
+
+  async function handleAddToResources() {
+    if (!resourceTarget) return;
+    setAddingToResources(true);
+    try {
+      await addRecordingToResources(resourceTarget.id, folderId || null);
+      toast({
+        variant: "success",
+        title: "Added to Content & Resources",
+        description: "Share its folder with parents or batches from the Content & Resources page.",
+      });
+      setResourceTarget(null);
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't add the recording", description: userMessage(err, "Please try again.") });
+    } finally {
+      setAddingToResources(false);
+    }
+  }
 
   async function handleDelete(item: ApiRecordingListItem) {
     setDeletingId(item.id);
@@ -203,6 +239,17 @@ export default function AdminRecordings() {
                     <Button size="sm" className="flex-1" onClick={() => setPreview(item)}>
                       <PlayCircle className="h-3.5 w-3.5" /> Watch
                     </Button>
+                    {usingApi && canAddToResources && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        title="Add to Content & Resources so it can be shared with parents"
+                        aria-label="Add to Content and Resources"
+                        onClick={() => openAddToResources(item)}
+                      >
+                        <FolderPlus className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     {usingApi && canDelete && (
                       <Button
                         size="sm"
@@ -230,6 +277,42 @@ export default function AdminRecordings() {
         </>
       )}
 
+      <Dialog open={!!resourceTarget} onOpenChange={(o) => !o && setResourceTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add to Content &amp; Resources</DialogTitle>
+            <DialogDescription>
+              {resourceTarget ? recordingTitle(resourceTarget) : ""} is filed by reference — nothing is copied or re-uploaded.
+              Share the folder with as many parents or batches as you like from the Content &amp; Resources page.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="text-sm font-medium text-foreground" htmlFor="recording-folder">
+            Folder
+          </label>
+          <select
+            id="recording-folder"
+            value={folderId}
+            onChange={(e) => setFolderId(e.target.value)}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="">Top level (no folder)</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+          <div className="mt-2 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setResourceTarget(null)}>
+              Cancel
+            </Button>
+            <Button disabled={addingToResources} onClick={handleAddToResources}>
+              {addingToResources ? "Adding…" : "Add"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
         <DialogContent className="max-w-2xl">
           {preview && (
@@ -242,7 +325,7 @@ export default function AdminRecordings() {
                 </DialogDescription>
               </DialogHeader>
               {preview.storageUrl ? (
-                <VideoPlayer src={preview.storageUrl} />
+                <VideoPlayer src={preview.storageUrl} downloadable={canDownload} />
               ) : (
                 <div className="flex aspect-video items-center justify-center rounded-xl bg-muted/60">
                   <PlayCircle className="h-12 w-12 text-muted-foreground/60" />

@@ -120,6 +120,8 @@ export interface ApiMonitoringAlert {
   state: string;
   activeSince: string;
   instance: string | null;
+  person?: string | null;
+  className?: string | null;
 }
 
 export interface ApiRecordingSummary {

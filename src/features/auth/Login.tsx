@@ -66,7 +66,24 @@ export default function Login() {
   }
 
   function setDigit(index: number, raw: string) {
-    const digit = raw.replace(/\D/g, "").slice(-1);
+    const digits = raw.replace(/\D/g, "");
+    // More than "old digit + newly typed one" arriving at once means iOS/iPadOS Keychain
+    // autofill (or the QuickType bar's suggestion) dropped the whole saved PIN into a single
+    // box — it fills the one field marked autoComplete="current-password" and never fires a
+    // paste event. Keeping only the last digit here left boxes 2-4 empty, so the required
+    // fields blocked submit and repeated tries ran into the lockout: reported as parents
+    // "unable to log in through the iPad" while the same account worked on a phone.
+    if (digits.length > 2) {
+      const spread = digits.slice(0, PIN_LENGTH - index).split("");
+      setPin((prev) => {
+        const next = [...prev];
+        spread.forEach((d, i) => (next[index + i] = d));
+        return next;
+      });
+      pinRefs.current[Math.min(index + spread.length, PIN_LENGTH - 1)]?.focus();
+      return;
+    }
+    const digit = digits.slice(-1);
     setPin((prev) => {
       const next = [...prev];
       next[index] = digit;
@@ -222,15 +239,16 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
-                Email
+                Email or mobile number
               </Label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-ink/35" />
                 <Input
                   id="email"
-                  type="email"
+                  type="text"
+                  inputMode="email"
                   autoComplete="username"
-                  placeholder="you@readernest.com"
+                  placeholder="you@readernest.com or 98765 43210"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-11 pl-9"
@@ -260,7 +278,10 @@ export default function Login() {
                     type="text"
                     inputMode="numeric"
                     pattern="\d*"
-                    maxLength={1}
+                    // PIN_LENGTH, not 1: WebKit truncates an autofilled value to maxLength
+                    // before onChange ever sees it, which would defeat setDigit's spreading
+                    // of a whole autofilled PIN. The controlled value still holds one digit.
+                    maxLength={PIN_LENGTH}
                     autoComplete={i === 0 ? "current-password" : "off"}
                     value={digit}
                     onChange={(e) => setDigit(i, e.target.value)}

@@ -469,6 +469,10 @@ export interface MonitoringAlert {
   state: string;
   activeSince: string;
   instance: string | null;
+  /** Participant named by a call-quality alert (e.g. PoorConnection); absent otherwise. */
+  person?: string | null;
+  /** Class the alert is about, already resolved from the Jitsi room to a readable name. */
+  className?: string | null;
 }
 
 /** Today's (IST) real batch classes vs. how many actually have a registered recording. stillProcessing is a class still in progress with no recording yet — not a failure, just not done. */

@@ -228,6 +228,10 @@ export interface ApiJitsiJoin {
   scheduledEndAtUtc: string;
   /** True for a Demo-type session — auto-recording is scoped to real, Regular classes only. */
   isDemo: boolean;
+  /** Display names of every active Admin/RM/Coordinator/Counselor/Admission/Management user.
+   *  Only populated for a teacher/admin caller; the classroom auto-admits a waiting-room knock
+   *  from any of these so staff enter without the teacher having to let them in. */
+  staffNames?: string[];
 }
 
 /**
@@ -401,6 +405,14 @@ export async function markNoShow(id: string, party: NoShowParty, note?: string):
 
 export async function cancelSession(id: string, reason: string): Promise<ApiClassSession> {
   return apiFetch<ApiClassSession>(`/api/sessions/${id}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+/** Parent cancels their own child's upcoming class — immediate, no admin approval; the teacher is emailed the reason. */
+export async function cancelSessionAsParent(id: string, reason: string): Promise<ApiClassSession> {
+  return apiFetch<ApiClassSession>(`/api/sessions/${id}/parent-cancel`, {
     method: "POST",
     body: JSON.stringify({ reason }),
   });

@@ -52,6 +52,19 @@ export function toFrontendResource(resource: ApiResource): Resource {
   };
 }
 
+/** Removes a file from Content and Resources (and every parent/batch grant on it). */
+export async function deleteResource(id: string): Promise<void> {
+  await apiFetch<void>(`/api/resources/${id}`, { method: "DELETE" });
+}
+
+/** Files a registered class recording into a Content and Resources folder by reference (no copy). */
+export async function addRecordingToResources(recordingId: string, folderId: string | null, title?: string): Promise<ApiResource> {
+  return apiFetch<ApiResource>("/api/resources/from-recording", {
+    method: "POST",
+    body: JSON.stringify({ recordingId, folderId, title: title?.trim() || null }),
+  });
+}
+
 export async function listResources(type?: ApiResourceType): Promise<ApiResource[]> {
   const query = type ? `?type=${type}` : "";
   return apiFetch<ApiResource[]>(`/api/resources${query}`);
@@ -91,12 +104,36 @@ export async function uploadMyResource(
 export async function openResourceInNewTab(id: string, title: string): Promise<void> {
   const tab = window.open("", "_blank");
   try {
+    // Preferred: a short-lived direct link, so the browser streams the file itself instead of
+    // this page first downloading all of it (a big PDF left the new tab blank for minutes).
+    try {
+      const view = await apiFetch<{ url: string | null }>(`/api/resources/${id}/view-url`);
+      if (view.url && /^https?:\/\//i.test(view.url)) {
+        if (tab) tab.location.href = view.url;
+        else window.open(view.url, "_blank", "noopener");
+        return;
+      }
+    } catch {
+      // fall through to the download-and-show path below
+    }
+
     const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
     const token = getAccessToken();
     const response = await fetch(`${baseUrl}/api/resources/${id}/download`, {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
     if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
+
+    // A class recording filed into Resources by reference answers with its own https URL
+    // instead of file bytes — just point the tab at it.
+    if (response.headers.get("content-type")?.includes("application/json")) {
+      const body = (await response.clone().json().catch(() => null)) as { externalUrl?: string } | null;
+      if (body?.externalUrl && /^https?:\/\//i.test(body.externalUrl)) {
+        if (tab) tab.location.href = body.externalUrl;
+        else window.open(body.externalUrl, "_blank", "noopener");
+        return;
+      }
+    }
 
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);

@@ -30,7 +30,6 @@ import { cancelSession, getJitsiJoin, listSessions, rescheduleSession, scheduleS
 import { listBatches, listTeacherOptions } from "@/api/batches";
 import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
-import { buildJitsiJoinUrl } from "@/lib/jitsi";
 import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { useSession } from "@/state/session";
 import type { ClassSession } from "@/types";
@@ -44,7 +43,7 @@ const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo"];
 export default function CoordinatorCalendar() {
   const { toast } = useToast();
   const usingApi = apiEnabled();
-  const { userName, hasPermission } = useSession();
+  const { hasPermission } = useSession();
   // Reachable from any Sub Admin-type portal now (see App.tsx's shared page pool) --
   // SessionCalendarManagement is guaranteed by the menu gate that got someone here, but
   // LeaveManagement isn't, and GET /api/leave-requests requires it server-side. Confirmed
@@ -270,7 +269,8 @@ export default function CoordinatorCalendar() {
     setJoinError(null);
     try {
       const join = await getJitsiJoin(session.id);
-      window.open(buildJitsiJoinUrl(join.domain, join.room, join.token, userName), "_blank", "noopener");
+      // The in-app monitor view (StaffLiveClassroom), not a raw Jitsi tab — see its doc comment.
+      window.open(`/staff/live/${join.sessionId}`, "_blank", "noopener");
     } catch (err) {
       setJoinError(userMessage(err, "Couldn't join this class."));
     } finally {

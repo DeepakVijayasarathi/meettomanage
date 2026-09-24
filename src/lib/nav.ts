@@ -42,6 +42,7 @@ import {
   Building2,
   Activity,
   MessageCircleQuestion,
+  LifeBuoy,
   Radar,
   type LucideIcon,
 } from "lucide-react";
@@ -83,7 +84,9 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Enrollment Review", to: "/admin/enrollments", icon: ClipboardCheck },
       { label: "Store Inquiries", to: "/admin/store-inquiries", icon: ShoppingBag },
       { label: "Parent Feedback", to: "/admin/parent-feedback", icon: Star },
+      { label: "Parent Tickets", to: "/admin/support-tickets", icon: LifeBuoy },
       { label: "Leave Management", to: "/admin/leave", icon: CalendarOff },
+      { label: "Staff Leave", to: "/admin/staff-leave", icon: CalendarOff },
       { label: "Teacher Availability", to: "/admin/availability", icon: CalendarRange },
     ],
   },
@@ -98,6 +101,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Packages & Subscriptions", to: "/admin/packages", icon: CreditCard },
       { label: "Payment Gateway Mapping", to: "/admin/payment-mapping", icon: Landmark },
       { label: "Teacher Payouts", to: "/admin/payouts", icon: Wallet },
+      { label: "Payout Approvals", to: "/admin/payout-approvals", icon: ClipboardCheck },
       { label: "Fee Suspension", to: "/admin/fee-suspension", icon: Ban, badge: "2" },
     ],
   },
@@ -167,6 +171,7 @@ export const PARENT_NAV: NavSection[] = [
     items: [
       { label: "Payments & Billing", to: "/parent/billing", icon: CreditCard },
       { label: "Notifications & Reports", to: "/parent/notifications", icon: Bell },
+      { label: "Help & Support", to: "/parent/support", icon: LifeBuoy },
       { label: "Add Child", to: "/parent/add-child", icon: UserPlus },
     ],
   },
@@ -184,11 +189,20 @@ export const SUBADMIN_NAV: NavSection[] = [
   {
     title: "Delegated Work",
     items: [
+      { label: "Academic Calendar", to: "/subadmin/calendar", icon: CalendarDays },
       { label: "Sessions", to: "/subadmin/sessions", icon: CalendarClock },
+      { label: "My Leave", to: "/subadmin/my-leave", icon: CalendarOff },
       { label: "Search Users", to: "/subadmin/search-users", icon: UserSearch },
+      { label: "Parent Tickets", to: "/subadmin/support-tickets", icon: LifeBuoy },
       { label: "Assigned Reports", to: "/subadmin/reports", icon: BarChart3 },
       { label: "Audit Log", to: "/subadmin/audit-log", icon: History },
     ],
+  },
+  // Demo/loading fallback only: the real sidebar is DB-driven and module-gated, adding a
+  // Courses/Content/Finance/... item per module this account holds (EnsureSubAdminModuleMenusAsync).
+  {
+    title: "Content",
+    items: [{ label: "Content & Resources", to: "/subadmin/resources", icon: FolderOpen }],
   },
 ];
 
@@ -201,7 +215,9 @@ export const ADMISSION_NAV: NavSection[] = [
       { label: "Teacher Assignment", to: "/admission/demo-teacher-assignment", icon: UserCog },
       { label: "Demo Feedback", to: "/admission/demo-feedback", icon: ClipboardCheck },
       { label: "Conversion Board", to: "/admission/conversion", icon: KanbanSquare },
+      { label: "Academic Calendar", to: "/admission/calendar", icon: CalendarDays },
       { label: "Sessions", to: "/admission/sessions", icon: CalendarClock },
+      { label: "My Leave", to: "/admission/my-leave", icon: CalendarOff },
     ],
   },
   {
@@ -229,6 +245,7 @@ export const COORDINATOR_NAV: NavSection[] = [
       { label: "Academic Calendar", to: "/coordinator/calendar", icon: CalendarDays },
       { label: "Teacher Availability", to: "/coordinator/availability", icon: CalendarRange },
       { label: "Sessions", to: "/coordinator/sessions", icon: CalendarClock },
+      { label: "My Leave", to: "/coordinator/my-leave", icon: CalendarOff },
       { label: "Recordings", to: "/coordinator/recordings", icon: Video },
     ],
   },
@@ -241,7 +258,11 @@ export const MANAGEMENT_NAV: NavSection[] = [
     items: [
       { label: "Revenue & Courses", to: "/management/revenue", icon: TrendingUp },
       { label: "Teacher & Batch Performance", to: "/management/performance", icon: Gauge },
+      { label: "Academic Calendar", to: "/management/calendar", icon: CalendarDays },
       { label: "Sessions", to: "/management/sessions", icon: CalendarClock },
+      { label: "My Leave", to: "/management/my-leave", icon: CalendarOff },
+      { label: "Recordings", to: "/management/recordings", icon: Video },
+      { label: "Payout Approvals", to: "/management/payout-approvals", icon: ClipboardCheck },
     ],
   },
   {
@@ -353,6 +374,7 @@ export const EXECUTIVE_NAV: NavSection[] = [
       { label: "Store Inquiries", to: "/executive/store-inquiries", icon: ShoppingBag },
       { label: "Parent Feedback", to: "/executive/parent-feedback", icon: Star },
       { label: "Leave Management", to: "/executive/leave", icon: CalendarOff },
+      { label: "Staff Leave", to: "/executive/staff-leave", icon: CalendarOff },
       { label: "Teacher Availability", to: "/executive/availability", icon: CalendarRange },
     ],
   },
@@ -367,6 +389,7 @@ export const EXECUTIVE_NAV: NavSection[] = [
       { label: "Packages & Subscriptions", to: "/executive/packages", icon: CreditCard },
       { label: "Payment Gateway Mapping", to: "/executive/payment-mapping", icon: Landmark },
       { label: "Teacher Payouts", to: "/executive/payouts", icon: Wallet },
+      { label: "Payout Approvals", to: "/executive/payout-approvals", icon: ClipboardCheck },
       { label: "Fee Suspension", to: "/executive/fee-suspension", icon: Ban },
     ],
   },

@@ -19,6 +19,7 @@ export const DEMO_PERMISSION_MODULES = [
   { value: "Settings", label: "Settings" },
   { value: "SystemMonitoring", label: "Server Monitoring" },
   { value: "ClassSessionLogs", label: "Class Session Logs" },
+  { value: "SupportTickets", label: "Support Tickets" },
 ] as const;
 
 /** A module's key — a built-in enum name or an Admin-defined custom module's Key. Not a

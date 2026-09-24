@@ -202,10 +202,10 @@ export interface ParentPaymentResult {
 }
 
 /** Pay Now: cash records a pending intent; a gateway key returns a checkout URL. */
-export async function payInvoice(invoiceId: string, methodKey: string): Promise<ParentPaymentResult> {
+export async function payInvoice(invoiceId: string, methodKey: string, amount?: number): Promise<ParentPaymentResult> {
   return apiFetch<ParentPaymentResult>(`/api/parent-portal/invoices/${invoiceId}/pay`, {
     method: "POST",
-    body: JSON.stringify({ methodKey }),
+    body: JSON.stringify({ methodKey, amount }),
   });
 }
 
@@ -230,10 +230,10 @@ export interface ApiInlineCheckout {
 }
 
 /** Creates the gateway order for an in-page checkout popup — the payer never leaves the page. */
-export async function startInlineCheckout(invoiceId: string, methodKey: string): Promise<ApiInlineCheckout> {
+export async function startInlineCheckout(invoiceId: string, methodKey: string, amount?: number): Promise<ApiInlineCheckout> {
   return apiFetch<ApiInlineCheckout>(`/api/parent-portal/invoices/${invoiceId}/checkout`, {
     method: "POST",
-    body: JSON.stringify({ methodKey }),
+    body: JSON.stringify({ methodKey, amount }),
   });
 }
 

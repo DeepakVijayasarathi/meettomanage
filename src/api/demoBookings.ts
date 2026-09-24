@@ -16,6 +16,8 @@ export type ApiConversionStatus =
   | "ReadyForEnrollment";
 
 export interface ApiDemoParticipant {
+  /** Set on reads; send it back on an edit so the invitee keeps their own join link. */
+  id?: string | null;
   name: string;
   /** Adults carry an email for the confirmation; additional children don't. */
   email: string | null;
@@ -46,6 +48,16 @@ export interface ApiDemoBooking {
   /** Auto-calculated demo fee: ₹50 per demo, ₹100 once Enrolled. */
   payableAmount: number;
   participants: ApiDemoParticipant[];
+  /** Only on the move to "Ready for enrollment" that just created a no-email parent's login. */
+  issuedLogin?: ApiIssuedParentLogin | null;
+}
+
+/** A no-email parent's new mobile-number login, for staff to send on WhatsApp (shown once). */
+export interface ApiIssuedParentLogin {
+  loginId: string;
+  temporaryPin: string;
+  loginUrl: string;
+  whatsAppMessage: string;
 }
 
 /** Per-parent demo record: every demo this parent has taken, with fee totals. */
@@ -178,6 +190,27 @@ export async function rescheduleDemoBooking(
   });
 }
 
+export interface UpdateDemoBookingPayload {
+  parentName: string;
+  parentEmail: string | null;
+  parentPhone: string | null;
+  childName: string;
+  childAge: number | null;
+  departmentId: string | null;
+  /** Replaces the extra-invitee list: entries with an id are updated, new ones added, missing ones removed. */
+  participants: ApiDemoParticipant[];
+}
+
+/** Corrects a booking's parent/child details (e.g. a mistyped email) without touching its slot,
+ *  teacher or stage. The API emails the join link to any new or changed address while the demo
+ *  is still upcoming. */
+export async function updateDemoBooking(bookingId: string, payload: UpdateDemoBookingPayload): Promise<ApiDemoBooking> {
+  return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${bookingId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 /** Re-sends the demo's join link to the parent, every extra invitee, and the assigned teacher. */
 export async function resendDemoLink(bookingId: string): Promise<ApiDemoBooking> {
   return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${bookingId}/resend-link`, {
@@ -200,7 +233,7 @@ export async function deleteDemoBooking(bookingId: string): Promise<void> {
 
 export async function createDemoBooking(input: {
   parentName: string;
-  parentEmail: string;
+  parentEmail?: string;
   parentPhone?: string;
   childName: string;
   childAge?: number;
@@ -325,4 +358,55 @@ export function toAwaitingFeedback(booking: ApiDemoBooking): DemoFeedback {
     remarks: "",
     submitted: false,
   };
+}
+
+/** "Admit manually": counselor completes admission for a parent who shares nothing by email. */
+export interface ManualAdmissionPayload {
+  parentName: string;
+  parentEmail: string | null;
+  parentPhone: string | null;
+  childFirstName: string;
+  childLastName: string | null;
+  childDateOfBirth: string;
+  /** Recurring plan, where the org uses plans; otherwise null and courseId + amount bill a one-off course fee. */
+  packagePlanId: string | null;
+  courseId: string | null;
+  /** Course fee to invoice; null uses the course price. */
+  amount: number | null;
+  batchId: string | null;
+}
+
+export interface ManualAdmissionOptions {
+  plans: { id: string; name: string; courseName: string | null; price: number }[];
+  courses: { id: string; name: string; departmentName: string; price: number }[];
+  batches: { id: string; courseId: string; name: string; courseName: string; teacherName: string; seatsLeft: number }[];
+}
+
+export interface ManualAdmissionResult {
+  booking: ApiDemoBooking;
+  parentUserId: string;
+  childId: string;
+  /** What the parent types in the login box: email, or mobile number when they have none. */
+  loginId: string;
+  /** Only when this admission created the account; an existing parent keeps their PIN. */
+  temporaryPin: string | null;
+  loginUrl: string;
+  invoiceId: string | null;
+  invoiceNumber: string | null;
+  amountDue: number;
+  currency: string;
+  paymentLinkUrl: string | null;
+  paymentLinkError: string | null;
+  whatsAppMessage: string;
+}
+
+export async function getManualAdmissionOptions(): Promise<ManualAdmissionOptions> {
+  return apiFetch<ManualAdmissionOptions>("/api/demo-bookings/manual-admission/options");
+}
+
+export async function admitManually(bookingId: string, payload: ManualAdmissionPayload): Promise<ManualAdmissionResult> {
+  return apiFetch<ManualAdmissionResult>(`/api/demo-bookings/${bookingId}/manual-admission`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
