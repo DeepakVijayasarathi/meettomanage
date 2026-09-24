@@ -239,15 +239,16 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
-                Email
+                Email or mobile number
               </Label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-ink/35" />
                 <Input
                   id="email"
-                  type="email"
+                  type="text"
+                  inputMode="email"
                   autoComplete="username"
-                  placeholder="you@readernest.com"
+                  placeholder="you@readernest.com or 98765 43210"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-11 pl-9"

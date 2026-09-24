@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { getDemoBooking, updateDemoBooking, type ApiDemoBooking } from "@/api/demoBookings";
 import { userMessage } from "@/lib/api";
 import { isValidEmail } from "@/lib/utils";
+import { realEmail } from "@/lib/parentLogin";
 
 interface ExtraAdult {
   key: string;
@@ -65,7 +66,7 @@ export function EditDemoDialog({ bookingId, onClose, onSaved }: EditDemoDialogPr
         if (cancelled) return;
         setBooking(b);
         setParentName(b.parentName);
-        setParentEmail(b.parentEmail);
+        setParentEmail(realEmail(b.parentEmail));
         setParentPhone(b.parentPhone ?? "");
         setChildName(b.childName);
         setChildAge(b.childAge != null ? String(b.childAge) : "");
@@ -88,7 +89,9 @@ export function EditDemoDialog({ bookingId, onClose, onSaved }: EditDemoDialogPr
   const ageValid = ageNumber === null || (Number.isInteger(ageNumber) && ageNumber >= 1 && ageNumber <= 18);
   const errors = {
     parentName: !parentName.trim(),
-    parentEmail: !isValidEmail(parentEmail.trim()),
+    // Optional (WhatsApp-only parents) but then the phone is needed: it is their login.
+    parentEmail: parentEmail.trim() !== "" && !isValidEmail(parentEmail.trim()),
+    parentPhone: parentEmail.trim() === "" && parentPhone.replace(/\D/g, "").length < 7,
     childName: !childName.trim(),
     childAge: !ageValid,
     adults: adults.some((a) => !a.name.trim() || !isValidEmail(a.email.trim())),
@@ -104,7 +107,7 @@ export function EditDemoDialog({ bookingId, onClose, onSaved }: EditDemoDialogPr
     try {
       const saved = await updateDemoBooking(bookingId, {
         parentName: parentName.trim(),
-        parentEmail: parentEmail.trim(),
+        parentEmail: parentEmail.trim() || null,
         parentPhone: parentPhone.trim() || null,
         childName: childName.trim(),
         childAge: ageNumber,
@@ -122,7 +125,7 @@ export function EditDemoDialog({ bookingId, onClose, onSaved }: EditDemoDialogPr
     }
   }
 
-  const emailChanged = booking != null && parentEmail.trim().toLowerCase() !== booking.parentEmail.toLowerCase();
+  const emailChanged = booking != null && parentEmail.trim() !== "" && parentEmail.trim().toLowerCase() !== realEmail(booking.parentEmail).toLowerCase();
 
   return (
     <Dialog open={!!bookingId} onOpenChange={(open) => !open && !saving && onClose()}>
@@ -163,11 +166,12 @@ export function EditDemoDialog({ bookingId, onClose, onSaved }: EditDemoDialogPr
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="edit-parent-phone">Parent phone</Label>
-                <Input id="edit-parent-phone" type="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} />
+                <Input id="edit-parent-phone" type="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} aria-invalid={attempted && errors.parentPhone} />
+                {attempted && errors.parentPhone && <p className="text-xs font-medium text-destructive">Enter a mobile number (needed when there is no email).</p>}
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-parent-email">Parent email</Label>
+              <Label htmlFor="edit-parent-email">Parent email <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Input id="edit-parent-email" type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} aria-invalid={attempted && errors.parentEmail} />
               {attempted && errors.parentEmail && <p className="text-xs font-medium text-destructive">Enter a valid email address.</p>}
               {emailChanged && !errors.parentEmail && (

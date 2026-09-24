@@ -24,6 +24,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate, getInitials } from "@/lib/utils";
+import { displayEmail } from "@/lib/parentLogin";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
@@ -223,7 +224,7 @@ export default function AdmissionLeads() {
               <Phone className="h-3 w-3" /> {row.phone}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Mail className="h-3 w-3" /> {row.email}
+              <Mail className="h-3 w-3" /> {displayEmail(row.email)}
             </span>
           </div>
         ),

@@ -182,7 +182,7 @@ export async function rescheduleDemoBooking(
 
 export interface UpdateDemoBookingPayload {
   parentName: string;
-  parentEmail: string;
+  parentEmail: string | null;
   parentPhone: string | null;
   childName: string;
   childAge: number | null;
@@ -223,7 +223,7 @@ export async function deleteDemoBooking(bookingId: string): Promise<void> {
 
 export async function createDemoBooking(input: {
   parentName: string;
-  parentEmail: string;
+  parentEmail?: string;
   parentPhone?: string;
   childName: string;
   childAge?: number;
@@ -348,4 +348,50 @@ export function toAwaitingFeedback(booking: ApiDemoBooking): DemoFeedback {
     remarks: "",
     submitted: false,
   };
+}
+
+/** "Admit manually": counselor completes admission for a parent who shares nothing by email. */
+export interface ManualAdmissionPayload {
+  parentName: string;
+  parentEmail: string | null;
+  parentPhone: string | null;
+  childFirstName: string;
+  childLastName: string | null;
+  childDateOfBirth: string;
+  packagePlanId: string;
+  batchId: string | null;
+}
+
+export interface ManualAdmissionOptions {
+  plans: { id: string; name: string; courseName: string | null; price: number }[];
+  batches: { id: string; name: string; courseName: string; teacherName: string; seatsLeft: number }[];
+}
+
+export interface ManualAdmissionResult {
+  booking: ApiDemoBooking;
+  parentUserId: string;
+  childId: string;
+  /** What the parent types in the login box: email, or mobile number when they have none. */
+  loginId: string;
+  /** Only when this admission created the account; an existing parent keeps their PIN. */
+  temporaryPin: string | null;
+  loginUrl: string;
+  invoiceId: string | null;
+  invoiceNumber: string | null;
+  amountDue: number;
+  currency: string;
+  paymentLinkUrl: string | null;
+  paymentLinkError: string | null;
+  whatsAppMessage: string;
+}
+
+export async function getManualAdmissionOptions(): Promise<ManualAdmissionOptions> {
+  return apiFetch<ManualAdmissionOptions>("/api/demo-bookings/manual-admission/options");
+}
+
+export async function admitManually(bookingId: string, payload: ManualAdmissionPayload): Promise<ManualAdmissionResult> {
+  return apiFetch<ManualAdmissionResult>(`/api/demo-bookings/${bookingId}/manual-admission`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

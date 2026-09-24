@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarPlus, ChevronDown, ChevronUp, Loader2, Pencil, Trash2, UserPlus, Users2 } from "lucide-react";
+import { CalendarPlus, ChevronDown, ChevronUp, Loader2, Pencil, Trash2, UserCheck, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -24,10 +24,12 @@ import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
 import { createDemoBooking, deleteDemoBooking, getDemoJoinLink, listDemoBookings, rescheduleDemoBooking, resendDemoLink, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
 import { formatDate, formatTimeLabel, getInitials, isValidEmail } from "@/lib/utils";
+import { displayEmail } from "@/lib/parentLogin";
 import { getUserTimeZoneAbbreviation, localToUtcIso, utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { usePortalBase } from "@/lib/portalBase";
 import { EditDemoDialog } from "./EditDemoDialog";
+import { ManualAdmissionDialog } from "./ManualAdmissionDialog";
 import type { SessionStatus } from "@/types";
 
 interface DemoParentField {
@@ -54,6 +56,8 @@ interface DemoRow {
   status: SessionStatus;
   /** Auto-calculated demo fee: ₹50 per demo, ₹100 once the lead is Enrolled. */
   payableAmount: number;
+  /** API stage of the lead (DemoScheduled, PaymentPending, Enrolled…); absent for demo-mode rows. */
+  conversionStatus?: string;
   notes?: string;
   isNew?: boolean;
 }
@@ -100,7 +104,7 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
     childAge: booking.childAge ?? undefined,
     extraChildren: kids.map((k) => k.name),
     parents: [
-      { id: `${booking.id}-p1`, name: booking.parentName, phone: booking.parentPhone ?? "—", email: booking.parentEmail },
+      { id: `${booking.id}-p1`, name: booking.parentName, phone: booking.parentPhone ?? "—", email: displayEmail(booking.parentEmail) },
       ...adults.map((p, index) => ({
         id: `${booking.id}-x${index}`,
         name: p.name,
@@ -119,6 +123,7 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
     status,
     payableAmount: booking.payableAmount,
     notes: booking.followUpNotes ?? undefined,
+    conversionStatus: booking.conversionStatus,
   };
 }
 
@@ -172,6 +177,7 @@ export default function AdmissionDemoScheduling() {
   // teacher's slot, for a test entry or a mistaken double-booking rather than a real cancellation.
   const [deleteTarget, setDeleteTarget] = useState<DemoRow | null>(null);
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
+  const [admitTargetId, setAdmitTargetId] = useState<string | null>(null);
   // Set once the user has tried to submit an invalid form -- gates the per-field error
   // messages below so they don't show up before the user has even touched the form.
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
@@ -250,8 +256,9 @@ export default function AdmissionDemoScheduling() {
     !childAgeError &&
     date.length > 0 &&
     time.length > 0 &&
-    // API mode auto-assigns a teacher when none is picked, but needs the parent's email
-    (apiEnabled() ? isValidEmail(parents[0].email) : teacherId.length > 0) &&
+    // API mode auto-assigns a teacher when none is picked. The main parent's email is optional
+    // (WhatsApp-only parents): their phone, required below, becomes their portal login.
+    (apiEnabled() ? parents[0].email.trim().length === 0 || isValidEmail(parents[0].email) : teacherId.length > 0) &&
     parents.every((p) => p.name.trim().length > 0 && p.phone.trim().length > 0) &&
     // Every parent past the first is only ever added to be invited as a participant, and the
     // API requires an email for any adult invitee (it has no other way to send a confirmation/
@@ -260,7 +267,7 @@ export default function AdmissionDemoScheduling() {
     // A well-formed check, not just non-empty -- a typo'd address doesn't error here, it just
     // silently never reaches anyone, so it needs to be caught before submit, same reasoning
     // as admin/subadmin Users.tsx's own Add User form.
-    (!apiEnabled() || parents.every((p) => isValidEmail(p.email)));
+    (!apiEnabled() || parents.slice(1).every((p) => isValidEmail(p.email)));
 
   function resetForm() {
     setChildName("");
@@ -286,7 +293,7 @@ export default function AdmissionDemoScheduling() {
       const endUtc = new Date(new Date(startUtc).getTime() + 30 * 60_000).toISOString();
       createDemoBooking({
         parentName: primary.name.trim(),
-        parentEmail: primary.email.trim(),
+        parentEmail: primary.email.trim() || undefined,
         parentPhone: primary.phone.trim() || undefined,
         childName: childName.trim(),
         childAge: childAge ? Number(childAge) : undefined,
@@ -491,6 +498,20 @@ export default function AdmissionDemoScheduling() {
                 }}
               >
                 <Pencil className="h-3.5 w-3.5" /> Edit
+              </Button>
+            )}
+            {canEdit && row.conversionStatus && !["PaymentPending", "Enrolled", "NotInterested"].includes(row.conversionStatus) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                title="Parent has no email / wants WhatsApp: enter their details and get a payment link to send"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAdmitTargetId(row.id);
+                }}
+              >
+                <UserCheck className="h-3.5 w-3.5" /> Admit manually
               </Button>
             )}
             {row.status === "demo" ? (
@@ -719,7 +740,7 @@ export default function AdmissionDemoScheduling() {
               <Label className="text-xs text-muted-foreground">Name</Label>
               <Label className="text-xs text-muted-foreground">Phone</Label>
               <Label className="text-xs text-muted-foreground">
-                Email {apiEnabled() ? <span className="text-destructive">*</span> : "(required to invite)"}
+                Email {apiEnabled() ? "(optional for the main parent)" : "(required to invite)"}
               </Label>
               <span />
             </div>
@@ -727,7 +748,7 @@ export default function AdmissionDemoScheduling() {
               {parents.map((p, idx) => {
                 const nameMissing = attemptedSubmit && p.name.trim().length === 0;
                 const phoneMissing = attemptedSubmit && p.phone.trim().length === 0;
-                const emailMissing = attemptedSubmit && apiEnabled() && p.email.trim().length === 0;
+                const emailMissing = attemptedSubmit && apiEnabled() && idx > 0 && p.email.trim().length === 0;
                 const emailInvalid = attemptedSubmit && apiEnabled() && p.email.trim().length > 0 && !isValidEmail(p.email);
                 return (
                 <div key={p.id} className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
@@ -741,8 +762,8 @@ export default function AdmissionDemoScheduling() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <Input
-                      placeholder={apiEnabled() ? "Email address (required)" : "Email address"}
-                      aria-label={`Parent/guardian ${idx + 1} email address${apiEnabled() ? " (required)" : ""}`}
+                      placeholder={apiEnabled() ? (idx === 0 ? "Email (optional, WhatsApp only)" : "Email address (required)") : "Email address"}
+                      aria-label={`Parent/guardian ${idx + 1} email address${apiEnabled() && idx > 0 ? " (required)" : ""}`}
                       value={p.email}
                       onChange={(e) => updateParent(p.id, "email", e.target.value)}
                       aria-invalid={emailMissing || emailInvalid}
@@ -973,6 +994,15 @@ export default function AdmissionDemoScheduling() {
           setActionError(null);
           reloadRows();
           toast({ variant: "success", title: "Demo details updated" });
+        }}
+      />
+
+      <ManualAdmissionDialog
+        bookingId={admitTargetId}
+        onClose={() => setAdmitTargetId(null)}
+        onAdmitted={() => {
+          setActionError(null);
+          reloadRows();
         }}
       />
     </div>
