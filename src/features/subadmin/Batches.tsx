@@ -991,16 +991,7 @@ export default function SubAdminBatches() {
                 )}
               </div>
 
-              {batchSessions.length > 0 && futureBatchSessions.length === 0 ? (
-                <div className="rounded-xl border border-border bg-muted/30 p-4">
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                    <CalendarPlus className="h-4 w-4" /> Class schedule
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Every session for this batch has already been completed or cancelled — nothing left to adjust.
-                  </p>
-                </div>
-              ) : batchSessions.length > 0 && canAdjustSchedule ? (
+              {futureBatchSessions.length > 0 && canAdjustSchedule ? (
                 <div className="rounded-xl border border-border bg-muted/30 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                     <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -1069,7 +1060,7 @@ export default function SubAdminBatches() {
                   </Button>
                   {adjResult && <p className="mt-2 text-xs font-medium text-foreground">{adjResult}</p>}
                 </div>
-              ) : batchSessions.length === 0 && canScheduleClasses ? (
+              ) : futureBatchSessions.length === 0 && canScheduleClasses ? (
                 <div className="rounded-xl border border-border bg-muted/30 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                     <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -1077,6 +1068,13 @@ export default function SubAdminBatches() {
                     </p>
                     <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
                   </div>
+                  {batchSessions.length > 0 && (
+                    <p className="mt-0.5 text-xs font-medium text-foreground">
+                      All {batchSessions.length} existing session{batchSessions.length === 1 ? " is" : "s are"} completed or
+                      cancelled. Set a start date after the last one and the number of new sessions to add (e.g. after the
+                      payment for the next block is received).
+                    </p>
+                  )}
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     Creates sessions from a start date on the selected weekdays (holidays skipped), each at its own
                     time — e.g. Monday/Wednesday at 5 PM but Friday at noon. By default, every session of the course;
