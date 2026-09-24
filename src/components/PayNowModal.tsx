@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentType } from "react";
 import { Banknote, CheckCircle2, CreditCard, ExternalLink, Landmark, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InlineAlert } from "@/components/InlineAlert";
 import { formatCurrency, safeExternalUrl } from "@/lib/utils";
@@ -94,10 +95,19 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
   const [verifyNote, setVerifyNote] = useState<string | null>(null);
   const [blockedUrl, setBlockedUrl] = useState<string | null>(null);
   const liveFlow = apiEnabled() && !!invoiceId;
+  // Installment payers can pay any part of the balance. Blank / full balance = pay it all.
+  const [customAmount, setCustomAmount] = useState("");
+  const parsedCustom = customAmount.trim() === "" ? null : Number(customAmount);
+  const customInvalid = parsedCustom !== null && (!Number.isFinite(parsedCustom) || parsedCustom < 1 || parsedCustom > amount);
+  const payAmount = parsedCustom !== null && !customInvalid ? parsedCustom : amount;
+  // Only sent when it differs from the full balance, so a full payment behaves exactly as before.
+  const requestedAmount = payAmount < amount ? payAmount : undefined;
 
   // Load enabled payment gateways (+ Cash) each time the popup opens.
   useEffect(() => {
-    if (!open || !apiEnabled()) return;
+    if (!open) return;
+    setCustomAmount("");
+    if (!apiEnabled()) return;
     let cancelled = false;
     getPaymentMethods()
       .then((gateways) => {
@@ -116,6 +126,10 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
   }, [open]);
 
   async function handlePay() {
+    if (customInvalid) {
+      setError(`Enter an amount between ${formatCurrency(1)} and ${formatCurrency(amount)}.`);
+      return;
+    }
     setError(null);
     setBlockedUrl(null);
     setStatus("processing");
@@ -138,7 +152,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
 
   async function payViaLinkOrCash() {
     try {
-      const result = await payInvoice(invoiceId!, method);
+      const result = await payInvoice(invoiceId!, method, requestedAmount);
       // Chosen gateway can't start a checkout (turned off / missing keys) → keep the payer on
       // the form with the actionable reason so they can pick another method.
       if (result.mode === "unavailable") {
@@ -180,7 +194,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
   /** In-page Razorpay popup: order → checkout.js → server-verified settlement, no redirect. */
   async function payInline() {
     try {
-      const checkout = await startInlineCheckout(invoiceId!, method);
+      const checkout = await startInlineCheckout(invoiceId!, method, requestedAmount);
       if (checkout.mode === "unavailable") {
         setStatus("idle");
         setError(checkout.message ?? "This payment method is not available right now.");
@@ -339,7 +353,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
             </span>
             <DialogTitle className="text-lg font-bold">Payment successful</DialogTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              {formatCurrency(amount)} received{invoiceLabel ? ` for ${invoiceLabel}` : ""}. A receipt has been sent to your email and access has been restored.
+              {formatCurrency(payAmount)} received{invoiceLabel ? ` for ${invoiceLabel}` : ""}. A receipt has been sent to your email and access has been restored.
             </p>
             <Button className="mt-6 w-full" onClick={() => handleClose(false)}>
               Done
@@ -392,6 +406,36 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
               <p className="text-xs font-medium text-muted-foreground">Amount due</p>
               <p className="text-2xl font-bold tracking-tight">{formatCurrency(amount)}</p>
             </div>
+            {liveFlow && amount > 1 && (
+              <div>
+                <label htmlFor="pay-amount" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                  Amount to pay now (paying in installments? enter any amount up to the balance)
+                </label>
+                <Input
+                  id="pay-amount"
+                  type="number"
+                  inputMode="decimal"
+                  min={1}
+                  max={amount}
+                  step="any"
+                  placeholder={String(amount)}
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  aria-invalid={customInvalid}
+                />
+                {customInvalid ? (
+                  <p className="mt-1 text-xs font-medium text-destructive">
+                    Enter an amount between {formatCurrency(1)} and {formatCurrency(amount)}.
+                  </p>
+                ) : (
+                  requestedAmount !== undefined && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Remaining after this payment: {formatCurrency(amount - payAmount)}
+                    </p>
+                  )
+                )}
+              </div>
+            )}
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">Choose a payment method</p>
               {methods.length === 0 ? (
@@ -433,8 +477,8 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
                 Open payment page →
               </a>
             )}
-            <Button className="w-full" onClick={handlePay} disabled={status === "processing" || !method}>
-              {status === "processing" ? "Processing…" : `Pay ${formatCurrency(amount)}`}
+            <Button className="w-full" onClick={handlePay} disabled={status === "processing" || !method || customInvalid}>
+              {status === "processing" ? "Processing…" : `Pay ${formatCurrency(payAmount)}`}
             </Button>
             <p className="text-center text-[11px] text-muted-foreground">
               {liveFlow ? "Secured, encrypted payment via the centre's payment gateway." : "Secured, encrypted payment · This is a demo checkout."}
