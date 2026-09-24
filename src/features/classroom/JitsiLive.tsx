@@ -48,6 +48,8 @@ type JitsiExternalApi = {
       // rejected or drops (e.g. "resource-constraint", "service-unavailable" — no Jibri
       // free in the pool; "error" — a generic Jibri-side failure).
       error?: string;
+      // knockingParticipant only: who is waiting in the lobby.
+      participant?: { id?: string; name?: string };
       // contentSharingParticipantsChanged only: ids of everyone currently screen-sharing.
       data?: string[];
       // tileViewChanged only.
@@ -364,6 +366,30 @@ export default function JitsiLive({
   // A ref, not state, since the init effect below only depends on [room, mode] and would
   // otherwise close over whatever this was at mount (same reason userNameRef exists).
   const locallyPinnedIdRef = useRef<string | null>(null);
+  // Admin-team monitors (Admin, RM, Coordinator, Management, ...) must enter without the host
+  // having to admit them. This Jitsi deployment's lobby lets nobody skip it on a moderator
+  // token alone (only room owners/members, a whitelist or the room password do — verified live
+  // on UAT, where a Coordinator's moderator token still landed on "Ask to Join"), so the host's
+  // own classroom admits them: the backend pushes "StaffJoining" with the name it just signed
+  // into that staff member's token (SessionsController.GetJitsiJoin), and a lobby knock under
+  // that name within the next few minutes is answered automatically. Teacher view only (the
+  // host is the moderator who can admit); anyone else still waits for the teacher as before.
+  const expectedStaffRef = useRef(new Map<string, number>());
+  const knockingRef = useRef(new Map<string, string>());
+  const STAFF_ADMIT_WINDOW_MS = 3 * 60_000;
+  function admitIfExpectedStaff(knockId: string) {
+    if (mode !== "teacher") return;
+    const name = (knockingRef.current.get(knockId) ?? "").trim().toLowerCase();
+    const expiresAt = expectedStaffRef.current.get(name);
+    if (!name || !expiresAt || expiresAt < Date.now()) return;
+    jitsiApiRef.current?.executeCommand("answerKnockingParticipant", knockId, true);
+    knockingRef.current.delete(knockId);
+  }
+  function onStaffJoining(displayName: string) {
+    expectedStaffRef.current.set(displayName.trim().toLowerCase(), Date.now() + STAFF_ADMIT_WINDOW_MS);
+    // The knock can arrive before this push (the staff tab opens as soon as the join call returns).
+    for (const knockId of Array.from(knockingRef.current.keys())) admitIfExpectedStaff(knockId);
+  }
   const annotationOverlayRef = useRef<AnnotationOverlayHandle>(null);
   // Teacher-only "mark on top of what's on screen" tool — off by default so it never
   // steals pointer events from Jitsi's own controls (screen-share picker, mute, etc.)
@@ -1328,6 +1354,12 @@ export default function JitsiLive({
       api.addListener("tileViewChanged", (payload) => {
         shareLayout.tileView = Boolean(payload?.enabled);
         syncFilmstripForShare();
+      });
+      api.addListener("knockingParticipant", (payload) => {
+        const knock = payload?.participant;
+        if (!knock?.id) return;
+        knockingRef.current.set(knock.id, knock.name ?? "");
+        admitIfExpectedStaff(knock.id);
       });
       api.addListener("filmstripDisplayChanged", (payload) => {
         if (typeof payload?.visible === "boolean") shareLayout.filmstripVisible = payload.visible;
@@ -2401,6 +2433,7 @@ export default function JitsiLive({
                 onBoardMaximizedChange={setBoardMaximized}
                 onPinChanged={(participantId) => jitsiApiRef.current?.executeCommand("pinParticipant", participantId)}
                 onReloadRequested={(message) => setReloadNotice(message)}
+                onStaffJoining={onStaffJoining}
               />
             </aside>
           )}

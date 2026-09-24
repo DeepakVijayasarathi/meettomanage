@@ -59,6 +59,9 @@ interface InteractivePanelProps {
    *  this panel has no space for. This panel owns the hub connection, so it's the only
    *  place that can actually receive "ReloadRequested" broadcasts. */
   onReloadRequested?: (message: string) => void;
+  /** Fires when the backend authorizes an admin-team member to join this class (see
+   *  SessionsController.GetJitsiJoin) — the host (JitsiLive) admits their lobby knock. */
+  onStaffJoining?: (displayName: string) => void;
 }
 
 /**
@@ -67,7 +70,7 @@ interface InteractivePanelProps {
  * board access — all synced through the classroom SignalR hub. If the hub is
  * unreachable everything still renders locally (the call itself is unaffected).
  */
-export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onBoardMaximizedChange, onPinChanged, onReloadRequested }: InteractivePanelProps) {
+export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onBoardMaximizedChange, onPinChanged, onReloadRequested, onStaffJoining }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [hubDetail, setHubDetail] = useState<string | null>(null);
@@ -149,6 +152,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
         slide: (pageIndex) => presentationRef.current?.applyRemoteSlide(pageIndex),
         pinned: (participantId) => onPinChanged?.(participantId),
         reloadRequested: (message) => onReloadRequested?.(message),
+        staffJoining: (name) => onStaffJoining?.(name),
         resync: () => {
           boardHandlers.current.forEach((handler) => handler({ kind: "reset" }));
           // The server revokes a board grant when the old connection drops (grants are per

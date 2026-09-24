@@ -40,6 +40,8 @@ export interface ClassroomHubEvents {
    *  automatic reload — see that endpoint's own comment on why an unannounced refresh
    *  mid-class would be worse than the deploy it's trying to deliver. */
   reloadRequested: (message: string) => void;
+  /** An admin-team member was just authorized to join (GET jitsi-join) — the host admits their lobby knock. */
+  staffJoining: (displayName: string) => void;
   /** Fired after an automatic reconnect, just before re-joining the session. JoinSession
    *  replays the whole board history to a (re)joining connection, and not every board op is
    *  idempotent (strokeAppend re-appends points, removePage removes another page), so the
@@ -134,6 +136,7 @@ export class ClassroomHubClient {
     if (handlers.boardAccess) connection.on("BoardAccess", handlers.boardAccess);
     if (handlers.pinned) connection.on("Pinned", handlers.pinned);
     if (handlers.reloadRequested) connection.on("ReloadRequested", handlers.reloadRequested);
+    if (handlers.staffJoining) connection.on("StaffJoining", handlers.staffJoining);
 
     // SignalR's own retry loop — surface it so the UI can stop pretending sync
     // is healthy the instant it isn't, instead of only knowing "connected" once

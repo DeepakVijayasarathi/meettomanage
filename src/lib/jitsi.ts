@@ -12,12 +12,18 @@
  * that person.
  */
 export function buildJitsiJoinUrl(domain: string, room: string, token?: string | null, displayName?: string): string {
+  // The token MUST go in the query string: Jitsi's web client only reads `jwt` from
+  // `?jwt=`, never from the `#` fragment. Carried in the fragment it was silently ignored,
+  // so a staff member's moderator token never applied — verified live on UAT: a
+  // Coordinator opening Join Class landed on the lobby's "Ask to Join / Enter meeting
+  // password" screen (the password option is only offered to non-moderators), while the
+  // same token as `?jwt=` joined straight in as a moderator.
+  const query = token ? `?jwt=${encodeURIComponent(token)}` : "";
   const hashParts = [
-    token ? `jwt=${token}` : null,
     displayName ? "config.prejoinConfig.enabled=false" : null,
     displayName ? `userInfo.displayName=${encodeURIComponent(JSON.stringify(displayName))}` : null,
   ].filter((part): part is string => part !== null);
-  return `https://${domain}/${room}${hashParts.length ? `#${hashParts.join("&")}` : ""}`;
+  return `https://${domain}/${room}${query}${hashParts.length ? `#${hashParts.join("&")}` : ""}`;
 }
 
 // Repeated live report: a parent granted the site's own camera/mic permission (visibly
