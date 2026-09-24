@@ -24,8 +24,6 @@ import { getChildById } from "@/data/children";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getJitsiJoin, listSessions, toFrontendSession } from "@/api/sessions";
-import { buildJitsiJoinUrl } from "@/lib/jitsi";
-import { useSession } from "@/state/session";
 import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import type { ClassSession } from "@/types";
@@ -61,7 +59,6 @@ export default function AdminAcademicCalendar() {
   const [holidayError, setHolidayError] = useState<string | null>(null);
   const [deletingHolidayId, setDeletingHolidayId] = useState<string | null>(null);
   const [holidayDeleteTarget, setHolidayDeleteTarget] = useState<ApiHoliday | null>(null);
-  const { userName } = useSession();
   const [joining, setJoining] = useState(false);
 
   // Admin-team monitor join: available for any upcoming or ongoing class at any time (not
@@ -75,7 +72,8 @@ export default function AdminAcademicCalendar() {
     setJoining(true);
     try {
       const join = await getJitsiJoin(session.id);
-      window.open(buildJitsiJoinUrl(join.domain, join.room, join.token, userName), "_blank", "noopener");
+      // The in-app monitor view (StaffLiveClassroom), not a raw Jitsi tab — see its doc comment.
+      window.open(`/staff/live/${join.sessionId}`, "_blank", "noopener");
     } catch (err) {
       toast({ variant: "error", title: "Couldn't join this class", description: userMessage(err, "Please try again.") });
     } finally {

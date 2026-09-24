@@ -21,6 +21,11 @@ export function buildJitsiJoinUrl(domain: string, room: string, token?: string |
   const query = token ? `?jwt=${encodeURIComponent(token)}` : "";
   const hashParts = [
     displayName ? "config.prejoinConfig.enabled=false" : null,
+    // When the class's waiting room is on, knock straight away instead of stopping on Jitsi's
+    // "Ask to Join" button — the host's classroom then admits an authorized staff member
+    // automatically (JitsiLive's staff auto-admit), so they walk in with no clicks at all.
+    // Verified live on UAT: without it the staff tab just sat on "Ask to Join", never knocking.
+    displayName ? "config.lobby.autoKnock=true" : null,
     displayName ? `userInfo.displayName=${encodeURIComponent(JSON.stringify(displayName))}` : null,
   ].filter((part): part is string => part !== null);
   return `https://${domain}/${room}${query}${hashParts.length ? `#${hashParts.join("&")}` : ""}`;

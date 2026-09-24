@@ -129,6 +129,8 @@ export default function JitsiLive({
   isRecordingObserver,
   hubToken,
   isPersonalRoom,
+  roleLabel,
+  onLeave,
 }: {
   room: string;
   title?: string;
@@ -166,6 +168,12 @@ export default function JitsiLive({
    *  Interactive panel itself (whiteboard/quiz/roster/chat) still mounts normally off `sessionId`
    *  alone, same as a real class. */
   isPersonalRoom?: boolean;
+  /** Overrides the header's role badge (default "Teacher"/"Student") — e.g. "Monitor" for an
+   *  admin-team member dropping into a class (StaffLiveClassroom.tsx). */
+  roleLabel?: string;
+  /** Where Leave (and every other exit) goes, instead of the default navigate(-1) — the staff
+   *  monitor view opens in its own tab, where there's no history to go back to. */
+  onLeave?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [boardMaximized, setBoardMaximized] = useState(false);
@@ -178,6 +186,15 @@ export default function JitsiLive({
     if (!boardMaximized) setFloatHidden(false);
   }, [boardMaximized]);
   const navigate = useNavigate();
+  // Every exit (Leave, End Class, Jitsi's own hang-up) goes through here. A ref, not the prop
+  // directly, because the Jitsi init effect only re-runs on [room, mode] and would otherwise
+  // keep calling whatever onLeave was on first render.
+  const onLeaveRef = useRef(onLeave);
+  onLeaveRef.current = onLeave;
+  function exitClassroom() {
+    if (onLeaveRef.current) onLeaveRef.current();
+    else navigate(-1);
+  }
   const { userName: accountName } = useSession();
   const userName = displayName || accountName;
   const { toast } = useToast();
@@ -678,7 +695,7 @@ export default function JitsiLive({
           });
         });
     }
-    navigate(-1);
+    exitClassroom();
   }
 
   // Post-class feedback (teacher feedback: parents want to know what was actually covered,
@@ -1153,7 +1170,7 @@ export default function JitsiLive({
         if (isRecordingObserver) {
           setCallEnded(true);
         } else {
-          navigate(-1);
+          exitClassroom();
         }
       });
       api.addListener("videoConferenceJoined", (payload) => {
@@ -1620,7 +1637,7 @@ export default function JitsiLive({
               mode === "teacher" ? "bg-role-teacher/15 text-role-teacher" : "bg-role-student/15 text-role-student"
             )}
           >
-            {mode === "teacher" ? "Teacher" : "Student"}
+            {roleLabel ?? (mode === "teacher" ? "Teacher" : "Student")}
           </span>
           {recording && (
             <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-300 ring-1 ring-inset ring-destructive/25">
@@ -1782,9 +1799,9 @@ export default function JitsiLive({
                   // act on it.
                   if (jitsiApiRef.current && lobbyEnabled) {
                     jitsiApiRef.current.executeCommand("toggleLobby", false);
-                    setTimeout(() => navigate(-1), 400);
+                    setTimeout(() => exitClassroom(), 400);
                   } else {
-                    navigate(-1);
+                    exitClassroom();
                   }
                 }}
               >
@@ -1810,7 +1827,7 @@ export default function JitsiLive({
           description="You can rejoin any time before the class ends."
           confirmLabel="Leave"
           destructive
-          onConfirm={() => navigate(-1)}
+          onConfirm={() => exitClassroom()}
         />
       )}
       {/* Teacher feedback (WBS Round 2 #2): parents only ever saw an engagement-stats

@@ -78,6 +78,7 @@ const ParentNotifications = lazy(() => import("@/features/parent/Notifications")
 const ParentAddChild = lazy(() => import("@/features/parent/AddChild"));
 
 const LiveClassroom = lazy(() => import("@/features/classroom/LiveClassroom"));
+const StaffLiveClassroom = lazy(() => import("@/features/classroom/StaffLiveClassroom"));
 const PersonalMeetingRoom = lazy(() => import("@/features/classroom/PersonalMeetingRoom"));
 const RecordingObserver = lazy(() => import("@/features/classroom/RecordingObserver"));
 const GuestJoin = lazy(() => import("@/features/public/GuestJoin"));
@@ -158,6 +159,16 @@ export default function App() {
             <Route path="/reset-pin" element={<ResetPin />} />
 
             {/* Immersive, full-screen classroom — rendered outside the portal shell */}
+            {/* Admin-team monitor view of a live class (Join Class from Sessions/Calendar) — the
+                embedded classroom instead of a raw Jitsi tab; see StaffLiveClassroom.tsx. */}
+            <Route
+              path="/staff/live/:sessionId"
+              element={
+                <RequireAuth role="admin" also={["subadmin", "management", "coordinator", "admission", "itadmin", "executive"]}>
+                  <StaffLiveClassroom />
+                </RequireAuth>
+              }
+            />
             <Route
               path="/teacher/live/:sessionId"
               element={

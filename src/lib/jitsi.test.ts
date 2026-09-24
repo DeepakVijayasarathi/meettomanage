@@ -7,6 +7,7 @@ describe("buildJitsiJoinUrl", () => {
     expect(url.startsWith("https://meet.example.org/trn-room?jwt=a.b.c#")).toBe(true);
     expect(url).not.toContain("#jwt=");
     expect(url).toContain("config.prejoinConfig.enabled=false");
+    expect(url).toContain("config.lobby.autoKnock=true");
     expect(url).toContain("userInfo.displayName=");
   });
 
