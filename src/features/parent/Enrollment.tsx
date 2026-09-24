@@ -21,6 +21,7 @@ import { useApiData } from "@/api/hooks";
 import { listCourseOptions } from "@/api/courses";
 import { submitEnrollmentForm } from "@/api/parentPortal";
 import { getMyAccount } from "@/api/account";
+import { realEmail } from "@/lib/parentLogin";
 
 const STEPS = ["Student Details", "Parent & Contact", "Course & Consent"] as const;
 
@@ -159,7 +160,8 @@ export default function ParentEnrollment() {
           ...f,
           parentName: f.parentName || account.fullName,
           parentPhone: f.parentPhone || account.phone || "",
-          parentEmail: f.parentEmail || account.email,
+          // A parent who signs in with their mobile number has no real email to prefill.
+          parentEmail: f.parentEmail || realEmail(account.email),
         }));
       })
       .catch(() => {
@@ -215,7 +217,8 @@ export default function ParentEnrollment() {
       if (!form.relationship) next.relationship = "Select your relationship to the student.";
       const parentPhoneError = phoneError(form.parentPhone, "Contact number");
       if (parentPhoneError) next.parentPhone = parentPhoneError;
-      if (!EMAIL_RE.test(form.parentEmail.trim())) next.parentEmail = "Enter a valid email address.";
+      // Optional: WhatsApp-only parents have none (they sign in with their mobile number).
+      if (form.parentEmail.trim() && !EMAIL_RE.test(form.parentEmail.trim())) next.parentEmail = "Enter a valid email address.";
       if (form.emergencyContactName.trim().length < 2) next.emergencyContactName = "Emergency contact name is required.";
       const emergencyPhoneError = phoneError(form.emergencyContactPhone, "Emergency contact number");
       if (emergencyPhoneError) next.emergencyContactPhone = emergencyPhoneError;
@@ -494,11 +497,10 @@ export default function ParentEnrollment() {
                       placeholder="+91 98765 43210"
                     />
                   </Field>
-                  <Field label="Email" htmlFor="parentEmail" required error={errors.parentEmail}>
+                  <Field label="Email (optional)" htmlFor="parentEmail" error={errors.parentEmail}>
                     <Input
                       id="parentEmail"
                       type="email"
-                      required
                       value={form.parentEmail}
                       onChange={(e) => update("parentEmail", e.target.value)}
                       placeholder="you@email.com"

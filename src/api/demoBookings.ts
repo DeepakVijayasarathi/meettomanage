@@ -358,13 +358,18 @@ export interface ManualAdmissionPayload {
   childFirstName: string;
   childLastName: string | null;
   childDateOfBirth: string;
-  packagePlanId: string;
+  /** Recurring plan, where the org uses plans; otherwise null and courseId + amount bill a one-off course fee. */
+  packagePlanId: string | null;
+  courseId: string | null;
+  /** Course fee to invoice; null uses the course price. */
+  amount: number | null;
   batchId: string | null;
 }
 
 export interface ManualAdmissionOptions {
   plans: { id: string; name: string; courseName: string | null; price: number }[];
-  batches: { id: string; name: string; courseName: string; teacherName: string; seatsLeft: number }[];
+  courses: { id: string; name: string; departmentName: string; price: number }[];
+  batches: { id: string; courseId: string; name: string; courseName: string; teacherName: string; seatsLeft: number }[];
 }
 
 export interface ManualAdmissionResult {

@@ -10,6 +10,7 @@ import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { getMyAccount, getMyMeetingRoomShortLink, updateMyAccount } from "@/api/account";
 import { getCalendarFeedUrl } from "@/api/sessions";
+import { displayEmail } from "@/lib/parentLogin";
 
 const TIMEZONES = ["Asia/Kolkata", "Asia/Dubai", "Europe/London", "America/New_York", "America/Los_Angeles", "Australia/Sydney"];
 
@@ -64,7 +65,7 @@ export function AccountDialog({
       .then((a) => {
         setFirstName(a.firstName);
         setLastName(a.lastName);
-        setEmail(a.email);
+        setEmail(displayEmail(a.email));
         setRole(a.role);
         setPhone(a.phone ?? "");
         setTimeZoneId(a.timeZoneId || "Asia/Kolkata");

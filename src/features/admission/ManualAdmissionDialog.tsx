@@ -42,6 +42,9 @@ export function ManualAdmissionDialog({ bookingId, onClose, onAdmitted }: Manual
   const [childLastName, setChildLastName] = useState("");
   const [childDob, setChildDob] = useState("");
   const [planId, setPlanId] = useState("");
+  const [billBy, setBillBy] = useState<"course" | "plan">("course");
+  const [courseId, setCourseId] = useState("");
+  const [fee, setFee] = useState("");
   const [batchId, setBatchId] = useState(NO_BATCH);
   const [attempted, setAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -58,6 +61,9 @@ export function ManualAdmissionDialog({ bookingId, onClose, onAdmitted }: Manual
     setAttempted(false);
     setResult(null);
     setPlanId("");
+    setBillBy("course");
+    setCourseId("");
+    setFee("");
     setBatchId(NO_BATCH);
     setChildDob("");
     Promise.all([getDemoBooking(bookingId), getManualAdmissionOptions()])
@@ -86,7 +92,9 @@ export function ManualAdmissionDialog({ bookingId, onClose, onAdmitted }: Manual
     parentEmail: parentEmail.trim() !== "" && !isValidEmail(parentEmail.trim()),
     childFirstName: !childFirstName.trim(),
     childDob: !childDob || childDob > today,
-    planId: !planId,
+    planId: billBy === "plan" && !planId,
+    courseId: billBy === "course" && !courseId,
+    fee: billBy === "course" && (fee.trim() === "" || !(Number(fee) >= 0)),
   };
   const hasErrors = Object.values(errors).some(Boolean);
 
@@ -103,7 +111,9 @@ export function ManualAdmissionDialog({ bookingId, onClose, onAdmitted }: Manual
         childFirstName: childFirstName.trim(),
         childLastName: childLastName.trim() || null,
         childDateOfBirth: childDob,
-        packagePlanId: planId,
+        packagePlanId: billBy === "plan" ? planId : null,
+        courseId: billBy === "course" ? courseId : null,
+        amount: billBy === "course" ? Number(fee) : null,
         batchId: batchId === NO_BATCH ? null : batchId,
       });
       setResult(admitted);
@@ -114,6 +124,18 @@ export function ManualAdmissionDialog({ bookingId, onClose, onAdmitted }: Manual
       setSaving(false);
     }
   }
+
+  // Picking a course fills in its standard fee (still editable for an agreed discount) and
+  // drops a batch picked for a different course.
+  function pickCourse(id: string) {
+    setCourseId(id);
+    const picked = options?.courses.find((c) => c.id === id);
+    if (picked) setFee(String(picked.price));
+    const batch = options?.batches.find((b) => b.id === batchId);
+    if (batch && batch.courseId !== id) setBatchId(NO_BATCH);
+  }
+
+  const visibleBatches = (options?.batches ?? []).filter((b) => billBy !== "course" || !courseId || b.courseId === courseId);
 
   async function copy(key: string, text: string) {
     try {
@@ -239,23 +261,60 @@ export function ManualAdmissionDialog({ bookingId, onClose, onAdmitted }: Manual
               {attempted && errors.childDob && <p className="text-xs font-medium text-destructive">Enter a valid date of birth.</p>}
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ma-plan">Course plan</Label>
-              <Select value={planId} onValueChange={setPlanId}>
-                <SelectTrigger id="ma-plan" aria-invalid={attempted && errors.planId}>
-                  <SelectValue placeholder="Select a plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {options.plans.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                      {p.courseName ? ` · ${p.courseName}` : ""} · ₹{p.price.toLocaleString("en-IN")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {attempted && errors.planId && <p className="text-xs font-medium text-destructive">Pick the plan to bill.</p>}
-            </div>
+            {options.plans.length > 0 && (
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant={billBy === "course" ? "default" : "outline"} onClick={() => setBillBy("course")}>
+                  Course fee
+                </Button>
+                <Button type="button" size="sm" variant={billBy === "plan" ? "default" : "outline"} onClick={() => setBillBy("plan")}>
+                  Monthly plan
+                </Button>
+              </div>
+            )}
+
+            {billBy === "plan" ? (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="ma-plan">Plan</Label>
+                <Select value={planId} onValueChange={setPlanId}>
+                  <SelectTrigger id="ma-plan" aria-invalid={attempted && errors.planId}>
+                    <SelectValue placeholder="Select a plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {options.plans.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                        {p.courseName ? ` · ${p.courseName}` : ""} · ₹{p.price.toLocaleString("en-IN")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {attempted && errors.planId && <p className="text-xs font-medium text-destructive">Pick the plan to bill.</p>}
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="ma-course">Course</Label>
+                  <Select value={courseId} onValueChange={pickCourse}>
+                    <SelectTrigger id="ma-course" aria-invalid={attempted && errors.courseId}>
+                      <SelectValue placeholder="Select the course" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {options.courses.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} · ₹{c.price.toLocaleString("en-IN")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {attempted && errors.courseId && <p className="text-xs font-medium text-destructive">Pick the course.</p>}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="ma-fee">Fee (₹)</Label>
+                  <Input id="ma-fee" type="number" min={0} inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} aria-invalid={attempted && errors.fee} />
+                  {attempted && errors.fee && <p className="text-xs font-medium text-destructive">Enter the fee.</p>}
+                </div>
+              </div>
+            )}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ma-batch">
                 Batch <span className="font-normal text-muted-foreground">(optional, can be done later)</span>
@@ -266,7 +325,7 @@ export function ManualAdmissionDialog({ bookingId, onClose, onAdmitted }: Manual
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_BATCH}>Assign later</SelectItem>
-                  {options.batches.map((b) => (
+                  {visibleBatches.map((b) => (
                     <SelectItem key={b.id} value={b.id} disabled={b.seatsLeft <= 0}>
                       {b.name} · {b.courseName} · {b.teacherName} ({b.seatsLeft > 0 ? `${b.seatsLeft} seats left` : "full"})
                     </SelectItem>
