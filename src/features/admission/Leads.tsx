@@ -35,8 +35,10 @@ import {
   toApiConversionStatus,
   toFrontendLead,
   updateConversionStatus,
+  type ApiIssuedParentLogin,
   type ApiParentDemoHistory,
 } from "@/api/demoBookings";
+import { IssuedLoginDialog } from "./IssuedLoginDialog";
 import { LEADS as INITIAL_LEADS, type ConversionStage, type FollowUpNote, type Lead } from "./data";
 
 const STAGE_OPTIONS: { value: ConversionStage | "all"; label: string }[] = [
@@ -75,6 +77,7 @@ export default function AdmissionLeads() {
   useEffect(() => setLeads(apiLeads), [apiLeads]);
   const [stageFilter, setStageFilter] = useState<ConversionStage | "all">("all");
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  const [issuedLogin, setIssuedLogin] = useState<ApiIssuedParentLogin | null>(null);
   // Per-parent demo record (every demo this parent has ever taken) for the open lead.
   const [history, setHistory] = useState<ApiParentDemoHistory | null>(null);
   useEffect(() => {
@@ -147,8 +150,9 @@ export default function AdmissionLeads() {
       setLoggingFollowUp(true);
       setFollowUpError(null);
       try {
-        await updateConversionStatus(activeLead.id, toApiConversionStatus(newStage), noteText.trim(), nextFollowUp || undefined);
+        const updated = await updateConversionStatus(activeLead.id, toApiConversionStatus(newStage), noteText.trim(), nextFollowUp || undefined);
         reload();
+        if (updated.issuedLogin) setIssuedLogin(updated.issuedLogin);
         setJustLogged(activeLead.childName);
         setTimeout(() => setJustLogged(null), 4000);
         setActiveLead(null);
@@ -443,6 +447,7 @@ export default function AdmissionLeads() {
           )}
         </DialogContent>
       </Dialog>
+      <IssuedLoginDialog login={issuedLogin} onClose={() => setIssuedLogin(null)} />
     </div>
   );
 }

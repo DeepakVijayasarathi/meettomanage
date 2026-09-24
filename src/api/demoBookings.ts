@@ -48,6 +48,16 @@ export interface ApiDemoBooking {
   /** Auto-calculated demo fee: ₹50 per demo, ₹100 once Enrolled. */
   payableAmount: number;
   participants: ApiDemoParticipant[];
+  /** Only on the move to "Ready for enrollment" that just created a no-email parent's login. */
+  issuedLogin?: ApiIssuedParentLogin | null;
+}
+
+/** A no-email parent's new mobile-number login, for staff to send on WhatsApp (shown once). */
+export interface ApiIssuedParentLogin {
+  loginId: string;
+  temporaryPin: string;
+  loginUrl: string;
+  whatsAppMessage: string;
 }
 
 /** Per-parent demo record: every demo this parent has taken, with fee totals. */

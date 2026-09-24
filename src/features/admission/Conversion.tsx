@@ -14,7 +14,8 @@ import { cn, formatDate, getInitials } from "@/lib/utils";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
-import { listDemoBookings, toApiConversionStatus, toFrontendLead, updateConversionStatus } from "@/api/demoBookings";
+import { listDemoBookings, toApiConversionStatus, toFrontendLead, updateConversionStatus, type ApiIssuedParentLogin } from "@/api/demoBookings";
+import { IssuedLoginDialog } from "./IssuedLoginDialog";
 import { LEADS as INITIAL_LEADS, type ConversionStage, type Lead } from "./data";
 
 type BoardStage =
@@ -69,6 +70,7 @@ export default function AdmissionConversion() {
   const [demoLeads, setDemoLeads] = useState<Lead[]>(() => INITIAL_LEADS);
   const leads = usingApi ? apiLeads : demoLeads;
   const [moveError, setMoveError] = useState<string | null>(null);
+  const [issuedLogin, setIssuedLogin] = useState<ApiIssuedParentLogin | null>(null);
 
   const columns = useMemo(() => {
     const grouped: Record<BoardStage, Lead[]> = {
@@ -90,8 +92,9 @@ export default function AdmissionConversion() {
     if (usingApi) {
       setMoveError(null);
       try {
-        await updateConversionStatus(leadId, toApiConversionStatus(stage));
+        const updated = await updateConversionStatus(leadId, toApiConversionStatus(stage));
         reload();
+        if (updated.issuedLogin) setIssuedLogin(updated.issuedLogin);
         toast({ variant: "success", title: "Stage updated", description: `Moved to ${stage}.` });
       } catch (err) {
         const message = userMessage(err, "Couldn't move this lead. Please try again.");
@@ -207,6 +210,7 @@ export default function AdmissionConversion() {
           </div>
         </div>
       )}
+      <IssuedLoginDialog login={issuedLogin} onClose={() => setIssuedLogin(null)} />
     </div>
   );
 }
