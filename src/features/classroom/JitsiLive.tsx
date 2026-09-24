@@ -50,8 +50,6 @@ type JitsiExternalApi = {
       // rejected or drops (e.g. "resource-constraint", "service-unavailable" — no Jibri
       // free in the pool; "error" — a generic Jibri-side failure).
       error?: string;
-      // knockingParticipant only: who is waiting in the lobby.
-      participant?: { id?: string; name?: string };
       // contentSharingParticipantsChanged only: ids of everyone currently screen-sharing.
       data?: string[];
       // tileViewChanged only.
@@ -1288,14 +1286,19 @@ export default function JitsiLive({
         }
       });
       // Staff walk in without knocking: the moderator's client answers a waiting-room knock
-      // from a known staff name immediately, so the teacher never sees a request for them.
-      // Everyone else still waits for the teacher's manual admit.
+      // immediately when it's either a known, unambiguous staff name (join.staffNames) or the
+      // monitor the backend has just authorized (StaffJoining push — covers a staff name that
+      // clashes with a parent/teacher and so isn't in the static list). Everyone else still
+      // waits for the teacher's manual admit.
       api.addListener("knockingParticipant", (payload) => {
         const knocker = payload?.participant;
-        if (mode !== "teacher" || !knocker?.id || !knocker.name) return;
-        if (staffNamesRef.current.has(knocker.name.trim().toLowerCase())) {
+        if (mode !== "teacher" || !knocker?.id) return;
+        if (knocker.name && staffNamesRef.current.has(knocker.name.trim().toLowerCase())) {
           api?.executeCommand("answerKnockingParticipant", knocker.id, true);
+          return;
         }
+        knockingRef.current.set(knocker.id, knocker.name ?? "");
+        admitIfExpectedStaff(knocker.id);
       });
       api.addListener("dominantSpeakerChanged", (payload) => {
         const now = Date.now();
@@ -1383,12 +1386,6 @@ export default function JitsiLive({
       api.addListener("tileViewChanged", (payload) => {
         shareLayout.tileView = Boolean(payload?.enabled);
         syncFilmstripForShare();
-      });
-      api.addListener("knockingParticipant", (payload) => {
-        const knock = payload?.participant;
-        if (!knock?.id) return;
-        knockingRef.current.set(knock.id, knock.name ?? "");
-        admitIfExpectedStaff(knock.id);
       });
       api.addListener("filmstripDisplayChanged", (payload) => {
         if (typeof payload?.visible === "boolean") shareLayout.filmstripVisible = payload.visible;
