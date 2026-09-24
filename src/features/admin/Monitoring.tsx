@@ -53,6 +53,7 @@ import {
 } from "@/api/monitoring";
 import { LIVE_USERS, MONITORING_SUMMARY, SESSION_HISTORY } from "@/data/monitoring";
 import { MonitoringHubClient } from "@/lib/monitoringHub";
+import { isNetworkAlert, splitNetworkAlerts } from "@/lib/networkAlerts";
 import { useSession } from "@/state/session";
 import type { CallQuality, DatabaseInsights, LiveClassSession, MonitoringAlert, MonitoringSummary, ServerStatus, SessionHistoryEntry } from "@/types";
 import {
@@ -155,6 +156,35 @@ function AlertsBanner({ alerts, loading }: { alerts: MonitoringAlert[]; loading:
         ))}
       </div>
     </div>
+  );
+}
+
+/** One line pointing at the Network Alerts page; per-person connection alerts live there, not in the banner. */
+function NetworkAlertsLink({ alerts }: { alerts: MonitoringAlert[] }) {
+  const { people, systemWide } = splitNetworkAlerts(alerts);
+  if (people.length === 0 && systemWide.length === 0) return null;
+
+  const parts = [
+    people.length > 0 ? `${people.length} ${people.length === 1 ? "person" : "people"} with poor connection` : null,
+    systemWide.length > 0 ? `${systemWide.length} problem${systemWide.length === 1 ? "" : "s"} affecting everyone` : null,
+  ].filter(Boolean);
+
+  return (
+    <Link
+      to="network-alerts"
+      className={cn(
+        "mb-6 flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium transition-colors",
+        systemWide.length > 0
+          ? "border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10"
+          : "border-warning/30 bg-warning/5 text-warning-foreground hover:bg-warning/10"
+      )}
+    >
+      <WifiOff className="h-4 w-4 shrink-0" />
+      <span className="flex-1">{parts.join(" · ")}</span>
+      <span className="flex items-center gap-1 text-xs">
+        View network alerts <ArrowRight className="h-3.5 w-3.5" />
+      </span>
+    </Link>
   );
 }
 
@@ -868,7 +898,11 @@ export default function AdminMonitoring() {
         }
       />
 
-      <AlertsBanner alerts={summary.activeAlerts ?? []} loading={loading && summary.servers.length === 0} />
+      <AlertsBanner
+        alerts={(summary.activeAlerts ?? []).filter((a) => !isNetworkAlert(a))}
+        loading={loading && summary.servers.length === 0}
+      />
+      <NetworkAlertsLink alerts={summary.activeAlerts ?? []} />
       <ReadinessCard summary={summary} loading={loading} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

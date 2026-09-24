@@ -52,6 +52,7 @@ const AdminLeave = lazy(() => import("@/features/admin/Leave"));
 const AdminAvailability = lazy(() => import("@/features/admin/Availability"));
 const AdminSettings = lazy(() => import("@/features/admin/Settings"));
 const AdminMonitoring = lazy(() => import("@/features/admin/Monitoring"));
+const AdminNetworkAlerts = lazy(() => import("@/features/admin/NetworkAlerts"));
 const AdminServerDetail = lazy(() => import("@/features/admin/ServerDetail"));
 const AdminClassSessionLogs = lazy(() => import("@/features/admin/ClassSessionLogs"));
 
@@ -251,6 +252,7 @@ export default function App() {
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="monitoring" element={<AdminMonitoring />} />
+              <Route path="monitoring/network-alerts" element={<AdminNetworkAlerts />} />
               <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
               <Route path="class-logs" element={<AdminClassSessionLogs />} />
             </Route>
@@ -295,6 +297,7 @@ export default function App() {
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="monitoring" element={<AdminMonitoring />} />
+              <Route path="monitoring/network-alerts" element={<AdminNetworkAlerts />} />
               <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
               <Route path="class-logs" element={<AdminClassSessionLogs />} />
             </Route>
@@ -348,6 +351,7 @@ export default function App() {
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="monitoring" element={<AdminMonitoring />} />
+              <Route path="monitoring/network-alerts" element={<AdminNetworkAlerts />} />
               <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
               <Route path="class-logs" element={<AdminClassSessionLogs />} />
             </Route>
