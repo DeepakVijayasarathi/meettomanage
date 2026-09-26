@@ -19,8 +19,9 @@ const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
 /**
  * The page behind the payment link an admission counsellor shares (/pay/:token). The parent has no
  * login yet -- it's emailed only after the counsellor verifies the payment and clicks Enroll -- so
- * this is anonymous and keyed by the link's own token. Payment can't start until the Terms &
- * Conditions are accepted; the acceptance is recorded server-side when "Pay now" is pressed.
+ * this is anonymous and keyed by the link's own token. The Terms & Conditions are asked only at
+ * the parent's FIRST payment (recorded server-side when "Pay now" is pressed); a parent who has
+ * accepted before goes straight to payment.
  */
 export default function AdmissionPayment() {
   useLightBrandScope();
@@ -41,12 +42,14 @@ export default function AdmissionPayment() {
     };
   }, [token]);
 
+  const termsRequired = details?.termsRequired ?? true;
+
   async function handlePay() {
-    if (!accepted || starting) return;
+    if ((termsRequired && !accepted) || starting) return;
     setStarting(true);
     setError(null);
     try {
-      const { url } = await startPublicAdmissionPayment(token, true);
+      const { url } = await startPublicAdmissionPayment(token, termsRequired);
       window.location.assign(url);
     } catch (err) {
       setError(userMessage(err, "Couldn't start the payment. Please try again."));
@@ -103,6 +106,7 @@ export default function AdmissionPayment() {
               </div>
             </dl>
 
+            {termsRequired && (
             <div className="mt-5 rounded-2xl border border-brand-ink/10 p-4">
               <p className="flex items-center gap-2 text-sm font-semibold text-brand-ink">
                 <ShieldCheck className="h-4 w-4 text-brand-green" /> Terms &amp; Conditions
@@ -135,6 +139,7 @@ export default function AdmissionPayment() {
                 <span>I have read and accept the Terms &amp; Conditions.</span>
               </label>
             </div>
+            )}
 
             {error && (
               <p role="alert" className="mt-3 text-sm font-medium text-destructive">
@@ -142,11 +147,13 @@ export default function AdmissionPayment() {
               </p>
             )}
 
-            <Button className="mt-5 w-full" size="lg" disabled={!accepted || starting} onClick={handlePay}>
+            <Button className="mt-5 w-full" size="lg" disabled={(termsRequired && !accepted) || starting} onClick={handlePay}>
               {starting && <Loader2 className="h-4 w-4 animate-spin" />}
               {starting ? "Opening secure payment…" : "Pay now"}
             </Button>
-            {!accepted && <p className="mt-2 text-center text-xs text-brand-ink/60">Accept the Terms &amp; Conditions to continue.</p>}
+            {termsRequired && !accepted && (
+              <p className="mt-2 text-center text-xs text-brand-ink/60">Accept the Terms &amp; Conditions to continue.</p>
+            )}
           </>
         )}
       </div>

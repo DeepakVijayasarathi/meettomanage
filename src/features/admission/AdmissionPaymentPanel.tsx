@@ -12,6 +12,7 @@ import {
   getManualAdmissionOptions,
   sendAdmissionPaymentLink,
   verifyAndEnrollLead,
+  type ApiIssuedParentLogin,
   type ManualAdmissionOptions,
 } from "@/api/demoBookings";
 import type { Lead } from "./data";
@@ -21,10 +22,21 @@ const LINK_STAGES: Lead["conversionStage"][] = ["Demo Completed", "Follow-up", "
 
 /**
  * The counsellor's side of the portal admission flow, shown on a lead: issue the parent's payment
- * link for a course at the agreed (discounted) amount, then -- once the parent has paid -- verify
- * the payment and click Enroll, which emails the parent's login automatically.
+ * link for a course at the agreed (discounted) amount, then -- as soon as any payment has come in,
+ * even part of it -- click Enroll, which emails the parent's login automatically (or, for a parent
+ * with no email, hands the counsellor the mobile login + PIN to send on WhatsApp).
  */
-export function AdmissionPaymentPanel({ lead, canEdit, onChanged }: { lead: Lead; canEdit: boolean; onChanged: () => void }) {
+export function AdmissionPaymentPanel({
+  lead,
+  canEdit,
+  onChanged,
+  onIssuedLogin,
+}: {
+  lead: Lead;
+  canEdit: boolean;
+  onChanged: () => void;
+  onIssuedLogin?: (login: ApiIssuedParentLogin) => void;
+}) {
   const { toast } = useToast();
   const [options, setOptions] = useState<ManualAdmissionOptions | null>(null);
   const [courseId, setCourseId] = useState(lead.courseId ?? "");
@@ -35,7 +47,8 @@ export function AdmissionPaymentPanel({ lead, canEdit, onChanged }: { lead: Lead
   const [copied, setCopied] = useState<string | null>(null);
 
   const canIssue = LINK_STAGES.includes(lead.conversionStage);
-  const awaitingVerification = lead.conversionStage === "Payment Received";
+  const paymentReceived = lead.conversionStage === "Payment Received";
+  const balanceDue = Math.max(0, (lead.invoiceAmount ?? 0) - (lead.invoiceAmountPaid ?? 0));
 
   useEffect(() => {
     if (!apiEnabled() || !canIssue || options) return;
@@ -51,7 +64,7 @@ export function AdmissionPaymentPanel({ lead, canEdit, onChanged }: { lead: Lead
   }, [course, lead.invoiceAmount]);
 
   if (!apiEnabled()) return null;
-  if (!canIssue && !awaitingVerification && lead.conversionStage !== "Ready for Enrollment") return null;
+  if (!canIssue && !paymentReceived && lead.conversionStage !== "Ready for Enrollment") return null;
 
   const amountNumber = Number(amount);
   const amountValid = amount.trim() !== "" && Number.isFinite(amountNumber) && amountNumber > 0 && (!course || amountNumber <= course.price);
@@ -89,8 +102,14 @@ export function AdmissionPaymentPanel({ lead, canEdit, onChanged }: { lead: Lead
     setBusy(true);
     setError(null);
     try {
-      await verifyAndEnrollLead(lead.id);
-      toast({ variant: "success", title: "Enrolled", description: "The parent's login has been emailed automatically." });
+      const enrolled = await verifyAndEnrollLead(lead.id);
+      if (enrolled.issuedLogin) {
+        // No email on file: nothing was emailed, so hand the counsellor the mobile login + PIN once.
+        onIssuedLogin?.(enrolled.issuedLogin);
+        toast({ variant: "success", title: "Enrolled", description: "Send the parent their login on WhatsApp." });
+      } else {
+        toast({ variant: "success", title: "Enrolled", description: "The parent's login has been emailed automatically." });
+      }
       onChanged();
     } catch (err) {
       const message = userMessage(err, "Couldn't enroll this lead.");
@@ -108,27 +127,29 @@ export function AdmissionPaymentPanel({ lead, canEdit, onChanged }: { lead: Lead
       {lead.conversionStage === "Ready for Enrollment" && (
         <InlineAlert variant="success" className="text-sm">
           <span>
-            <strong>Enrolled.</strong> Payment verified
-            {lead.paymentVerifiedAtUtc ? ` on ${formatDate(lead.paymentVerifiedAtUtc.slice(0, 10), "long")}` : ""} and the parent's login
-            was emailed. Next, the parent adds their child's details for RM review.
+            <strong>Enrolled</strong>
+            {lead.paymentVerifiedAtUtc ? ` on ${formatDate(lead.paymentVerifiedAtUtc.slice(0, 10), "long")}` : ""} — the parent's login
+            was sent. Next, the parent adds their child's details for RM review.
+            {balanceDue > 0 ? ` A balance of ${formatCurrency(balanceDue)} is still due on their invoice.` : ""}
           </span>
         </InlineAlert>
       )}
 
-      {awaitingVerification && (
+      {paymentReceived && (
         <>
           <InlineAlert variant="info" className="text-sm">
             <span>
-              <strong>{formatCurrency(lead.invoiceAmountPaid ?? lead.invoiceAmount ?? 0)}</strong> received
-              {lead.termsAcceptedAtUtc ? " - Terms & Conditions accepted" : ""}. Verify the payment, then click Enroll: the parent's account
-              details carry over automatically and their welcome email (portal link, email and PIN) is sent right away.
+              <strong>{formatCurrency(lead.invoiceAmountPaid ?? 0)}</strong> of {formatCurrency(lead.invoiceAmount ?? 0)} received
+              {balanceDue > 0 ? ` (balance ${formatCurrency(balanceDue)} still due)` : ""}
+              {lead.termsAcceptedAtUtc ? " · Terms & Conditions accepted" : ""}. Click Enroll: the parent's account details carry over
+              automatically and their welcome email (portal link, email and PIN) is sent right away.
             </span>
           </InlineAlert>
           {canEdit && (
             <div>
               <Button disabled={busy} onClick={handleEnroll}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
-                {busy ? "Enrolling…" : "Verify payment & Enroll"}
+                {busy ? "Enrolling…" : "Enroll"}
               </Button>
             </div>
           )}
@@ -222,7 +243,7 @@ export function AdmissionPaymentPanel({ lead, canEdit, onChanged }: { lead: Lead
       )}
 
       {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-      {!canEdit && (canIssue || awaitingVerification) && (
+      {!canEdit && (canIssue || paymentReceived) && (
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <BadgeCheck className="h-3.5 w-3.5" /> Ask your Admin for Edit access on Admission to issue links or enroll.
         </p>

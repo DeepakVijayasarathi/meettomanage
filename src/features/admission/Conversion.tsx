@@ -52,7 +52,7 @@ const STAGE_META: Record<BoardStage, { icon: LucideIcon; color: string; descript
   "Payment Received": {
     icon: BadgeCheck,
     color: CHART_PALETTE[1],
-    description: "Paid in full — verify the payment and click Enroll (open the lead in Leads)",
+    description: "Payment received — open the lead in Leads and click Enroll",
   },
   Enrolled: { icon: Trophy, color: "hsl(var(--success))", description: "Converted — enrollment confirmed" },
   "Not Interested": { icon: ThumbsDown, color: "hsl(var(--destructive))", description: "Not proceeding for now" },

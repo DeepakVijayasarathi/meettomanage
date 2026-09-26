@@ -291,3 +291,13 @@ export interface ApiResourcePlayback {
 export async function getResourcePlayUrl(id: string): Promise<ApiResourcePlayback> {
   return apiFetch<ApiResourcePlayback>(`/api/parent-portal/resources/${id}/play`);
 }
+
+/** Whether the Terms & Conditions still need accepting -- only before this parent's first payment. */
+export async function getTermsStatus(): Promise<{ required: boolean }> {
+  return apiFetch<{ required: boolean }>("/api/parent-portal/terms-status");
+}
+
+/** Records the parent's Terms & Conditions acceptance (asked once, at their first payment). */
+export async function acceptTerms(): Promise<void> {
+  await apiFetch<void>("/api/parent-portal/terms/accept", { method: "POST" });
+}

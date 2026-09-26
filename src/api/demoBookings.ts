@@ -433,6 +433,8 @@ export interface PublicAdmissionPayment {
   amountPaid: number;
   currency: string;
   isPaid: boolean;
+  /** Only the parent's first payment asks for the Terms & Conditions. */
+  termsRequired: boolean;
   termsUrl: string | null;
   termsText: string | null;
 }

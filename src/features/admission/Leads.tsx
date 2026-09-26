@@ -395,7 +395,7 @@ export default function AdmissionLeads() {
                 </Card>
               )}
 
-              <AdmissionPaymentPanel lead={activeLead} canEdit={canLogFollowUp} onChanged={reload} />
+              <AdmissionPaymentPanel lead={activeLead} canEdit={canLogFollowUp} onChanged={reload} onIssuedLogin={setIssuedLogin} />
 
               <Separator />
 

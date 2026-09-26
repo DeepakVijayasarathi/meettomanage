@@ -11,7 +11,9 @@ import { cn } from "@/lib/utils";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
 import {
+  acceptTerms,
   getPaymentMethods,
+  getTermsStatus,
   payInvoice,
   refreshInvoicePayment,
   startInlineCheckout,
@@ -89,9 +91,11 @@ function iconForGateway(key: string): PayMethod["icon"] {
 export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceId, onInitiated }: PayNowModalProps) {
   const brand = useBrand();
   const policies = usePolicies();
-  // Terms & Conditions must be accepted before any payment can start (re-asked every time the
-  // popup opens). Only enforced against a live payment: the demo checkout takes no real money.
+  // Terms & Conditions are asked once, at the parent's first payment, and never again (client
+  // decision). Until the API says otherwise the checkbox is required, so a failed status lookup
+  // fails safe. Only enforced against a live payment: the demo checkout takes no real money.
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsRequired, setTermsRequired] = useState(true);
   const [methods, setMethods] = useState<PayMethod[]>(DEMO_METHODS);
   const [method, setMethod] = useState<string>(DEMO_METHODS[0].id);
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "redirect" | "cash" | "inline">("idle");
@@ -122,6 +126,9 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
     setTermsAccepted(false);
     if (!apiEnabled()) return;
     let cancelled = false;
+    getTermsStatus()
+      .then((s) => !cancelled && setTermsRequired(s.required))
+      .catch(() => !cancelled && setTermsRequired(true));
     getPaymentMethods()
       .then((gateways) => {
         if (cancelled) return;
@@ -139,7 +146,8 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
   }, [open]);
 
   async function handlePay() {
-    if (liveFlow && !termsAccepted) {
+    const needsTerms = liveFlow && termsRequired;
+    if (needsTerms && !termsAccepted) {
       setError("Please accept the Terms & Conditions to continue.");
       return;
     }
@@ -149,6 +157,18 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
     }
     setError(null);
     setBlockedUrl(null);
+
+    // First payment: record the acceptance before any money moves, so it is never asked again.
+    if (needsTerms) {
+      try {
+        await acceptTerms();
+        setTermsRequired(false);
+      } catch (err) {
+        setError(userMessage(err, "Couldn't record your acceptance of the Terms & Conditions. Please try again."));
+        return;
+      }
+    }
+
     setPaying({ amount: payAmount, balanceBefore: amount });
     setStatus("processing");
 
@@ -502,7 +522,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
                 Open payment page →
               </a>
             )}
-            {liveFlow && (
+            {liveFlow && termsRequired && (
               <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3 text-sm text-foreground">
                 <Checkbox
                   checked={termsAccepted}
@@ -529,7 +549,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
                 </span>
               </label>
             )}
-            {liveFlow && policies.termsText && (
+            {liveFlow && termsRequired && policies.termsText && (
               <div className="max-h-28 overflow-y-auto whitespace-pre-line rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
                 {policies.termsText}
               </div>
@@ -537,7 +557,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
             <Button
               className="w-full"
               onClick={handlePay}
-              disabled={status === "processing" || !method || customInvalid || (liveFlow && !termsAccepted)}
+              disabled={status === "processing" || !method || customInvalid || (liveFlow && termsRequired && !termsAccepted)}
             >
               {status === "processing" ? "Processing…" : `Pay ${formatCurrency(payAmount)}`}
             </Button>
