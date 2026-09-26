@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { userMessage } from "@/lib/api";
 import { useLightBrandScope } from "@/lib/theme";
 import { formatCurrency } from "@/lib/utils";
+import { TERMS_ACCEPT_LABEL, TERMS_PAGE_PATH } from "@/content/terms";
 import {
   getPublicAdmissionPayment,
   startPublicAdmissionPayment,
@@ -116,27 +117,23 @@ export default function AdmissionPayment() {
                   {details.termsText}
                 </div>
               )}
-              {details.termsUrl && (
-                <a
-                  href={details.termsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-blue underline"
-                >
-                  Read the full Terms &amp; Conditions <ExternalLink className="h-3 w-3" />
-                </a>
-              )}
-              {!details.termsText && !details.termsUrl && (
-                <p className="mt-2 text-xs text-brand-ink/70">Please read our Terms &amp; Conditions before you pay.</p>
-              )}
+              {/* Always a way to read the full terms: the admin's own link if set, else the in-portal page. */}
+              <a
+                href={details.termsUrl || TERMS_PAGE_PATH}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-blue underline"
+              >
+                Read the full Terms &amp; Conditions <ExternalLink className="h-3 w-3" />
+              </a>
               <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-brand-ink">
                 <Checkbox
                   checked={accepted}
                   onCheckedChange={(v) => setAccepted(v === true)}
-                  aria-label="I have read and accept the Terms and Conditions"
+                  aria-label={TERMS_ACCEPT_LABEL}
                   className="mt-0.5"
                 />
-                <span>I have read and accept the Terms &amp; Conditions.</span>
+                <span>{TERMS_ACCEPT_LABEL}</span>
               </label>
             </div>
             )}

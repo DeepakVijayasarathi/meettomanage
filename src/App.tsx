@@ -15,6 +15,7 @@ const ForgotPin = lazy(() => import("@/features/auth/ForgotPin"));
 const ResetPin = lazy(() => import("@/features/auth/ResetPin"));
 const NotFound = lazy(() => import("@/features/auth/NotFound"));
 const AdmissionPayment = lazy(() => import("@/features/public/AdmissionPayment"));
+const Terms = lazy(() => import("@/features/public/Terms"));
 
 const AdminDashboard = lazy(() => import("@/features/admin/Dashboard"));
 const FounderDashboard = lazy(() => import("@/features/founder/Dashboard"));
@@ -161,6 +162,8 @@ export default function App() {
             <Route path="/reset-pin" element={<ResetPin />} />
             {/* Anonymous payment page behind an admission counsellor's payment link (T&C first). */}
             <Route path="/pay/:token" element={<AdmissionPayment />} />
+            {/* Full Terms & Conditions and Refund Policy, linked from every payment screen. */}
+            <Route path="/terms" element={<Terms />} />
 
             {/* Immersive, full-screen classroom — rendered outside the portal shell */}
             {/* Admin-team monitor view of a live class (Join Class from Sessions/Calendar) — the

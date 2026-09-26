@@ -612,7 +612,7 @@ export default function AdminSettings() {
                   onChange={(e) => setValue("admission.termsText", e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Displayed on the payment screen above the checkbox — use it for a short summary, or paste the terms in full (up to 2000 characters).
+                  Optional short summary shown on the payment screen (up to 2000 characters). The full Terms &amp; Conditions are always linked from the payment screen at /terms.
                 </p>
               </div>
               <div className="grid gap-1.5 sm:max-w-xs">

@@ -3,6 +3,7 @@ import { Banknote, CheckCircle2, CreditCard, ExternalLink, Landmark, ShieldCheck
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { usePolicies } from "@/lib/policies";
+import { TERMS_ACCEPT_LABEL, TERMS_PAGE_PATH } from "@/content/terms";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -527,25 +528,21 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
                 <Checkbox
                   checked={termsAccepted}
                   onCheckedChange={(v) => setTermsAccepted(v === true)}
-                  aria-label="I have read and accept the Terms and Conditions"
+                  aria-label={TERMS_ACCEPT_LABEL}
                   className="mt-0.5"
                 />
                 <span>
-                  I have read and accept the{" "}
-                  {policies.termsUrl ? (
-                    <a
-                      href={safeExternalUrl(policies.termsUrl) ?? undefined}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-semibold text-primary underline underline-offset-2"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Terms &amp; Conditions
-                    </a>
-                  ) : (
-                    "Terms & Conditions"
-                  )}
-                  .
+                  {TERMS_ACCEPT_LABEL}{" "}
+                  {/* The admin's own link if set, else the in-portal page with the full text. */}
+                  <a
+                    href={(policies.termsUrl && safeExternalUrl(policies.termsUrl)) || TERMS_PAGE_PATH}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-primary underline underline-offset-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Read them here
+                  </a>
                 </span>
               </label>
             )}
