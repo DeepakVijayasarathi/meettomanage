@@ -118,6 +118,10 @@ export interface ClassSession {
    *  can tell at a glance whether it was them (docks pay) or the student (doesn't) instead
    *  of a single generic "No-Show" badge reading as if it's always blaming them. */
   noShowParty?: "teacher" | "student";
+  /** Real batch name from the API (the demo-mode lookup by batchId finds nothing for live data). */
+  batchName?: string;
+  /** Who the class is for — the batch's active students, or a demo's child — staff views only. */
+  studentNames?: string[];
 }
 
 export interface Invoice {

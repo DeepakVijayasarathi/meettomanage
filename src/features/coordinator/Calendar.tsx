@@ -27,6 +27,7 @@ import { getChildById } from "@/data/children";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, rescheduleSession, scheduleSession, toFrontendSession } from "@/api/sessions";
+import { staffCanJoin } from "@/lib/staffJoin";
 import { listBatches, listTeacherOptions } from "@/api/batches";
 import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
@@ -38,7 +39,6 @@ import { formatDate, formatTimeLabel } from "@/lib/utils";
 const LOCKED_STATUSES: ClassSession["status"][] = ["cancelled", "completed", "holiday", "leave"];
 // "rescheduled" is the old record a reschedule moved off of, not a live session — leaving
 // it here duplicated the join entry alongside the new, actually-scheduled session.
-const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo"];
 
 export default function CoordinatorCalendar() {
   const { toast } = useToast();
@@ -390,14 +390,16 @@ export default function CoordinatorCalendar() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Batch</p>
-                  <p className="mt-1 font-medium text-foreground">{selected.batchId ? getBatchById(selected.batchId)?.name ?? "—" : "—"}</p>
+                  <p className="mt-1 font-medium text-foreground">{selected.batchName ?? (selected.batchId ? getBatchById(selected.batchId)?.name ?? "—" : "—")}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Students</p>
                   <p className="mt-1 font-medium text-foreground">
-                    {selected.childIds.length === 0
-                      ? "No students assigned"
-                      : selected.childIds.map((id) => getChildById(id)?.name ?? id).join(", ")}
+                    {selected.studentNames && selected.studentNames.length > 0
+                      ? selected.studentNames.join(", ")
+                      : selected.childIds.length === 0
+                        ? "No students assigned"
+                        : selected.childIds.map((id) => getChildById(id)?.name ?? id).join(", ")}
                   </p>
                 </div>
               </div>
@@ -422,7 +424,7 @@ export default function CoordinatorCalendar() {
                   </Button>
                 )}
                 {/* Monitor-only: the coordinator can drop into any ongoing/upcoming class or demo. */}
-                {JOINABLE_STATUSES.includes(selected.status) && selected.meetingRoomId && canGuestLink && (
+                {staffCanJoin(selected) && canGuestLink && (
                   <Button
                     variant="outline"
                     title="Copy a shareable guest link for a parent, grandparent or caretaker"
@@ -431,7 +433,7 @@ export default function CoordinatorCalendar() {
                     <Link2 className="h-4 w-4" /> Copy Guest Link
                   </Button>
                 )}
-                {JOINABLE_STATUSES.includes(selected.status) && selected.meetingRoomId && (
+                {staffCanJoin(selected) && (
                   <Button disabled={joining} onClick={() => joinSession(selected)}>
                     <Video className="h-4 w-4" /> Join Class
                   </Button>
