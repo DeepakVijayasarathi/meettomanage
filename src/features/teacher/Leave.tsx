@@ -37,7 +37,6 @@ const TEACHER_ID = "t-1";
 const TEACHER_NAME = "Karan Mehta";
 // Deterministic reference "now" for this demo — never use new Date() with no args here.
 const NOW = new Date("2026-07-09T12:00:00");
-const MIN_HOURS_NOTICE = 6;
 
 
 // session.date/startTime are the signed-in teacher's own timezone's wall-clock values
@@ -179,8 +178,8 @@ export default function TeacherLeave() {
   // selected calendar days, purely for preview -- the backend re-derives this from the
   // actual start/end timestamps sent below and is the real source of truth.
   const coveredSessions = rangeValid ? eligibleSessions.filter((s) => s.date >= fromDate && s.date <= toDate) : [];
-  const earliestBlocking = coveredSessions.find((s) => hoursBetween(sessionDateTime(s), now) < MIN_HOURS_NOTICE) ?? null;
-  const isBlocked = !!earliestBlocking;
+  // No minimum notice: the client removed the old 6-hour rule (urgent leave must be possible),
+  // and the backend no longer enforces it -- this screen still did, blocking teachers live.
 
   // Nothing stopped picking a range that's already covered (in whole or in part) by an
   // earlier request of your own — SubmitLeaveAsync rejects it server-side, but silently,
@@ -202,7 +201,7 @@ export default function TeacherLeave() {
         ) ?? null)
       : null;
 
-  const canSubmit = rangeValid && reason.trim().length > 0 && !isBlocked && !overlappingLeave;
+  const canSubmit = rangeValid && reason.trim().length > 0 && !overlappingLeave;
 
   function resetForm() {
     setFromDate("");
@@ -468,16 +467,10 @@ export default function TeacherLeave() {
               )}
 
               {rangeValid && !overlappingLeave && (
-                <InlineAlert variant={isBlocked ? "error" : coveredSessions.length > 0 ? "success" : "info"} className="text-sm">
-                  {isBlocked && earliestBlocking ? (
+                <InlineAlert variant={coveredSessions.length > 0 ? "success" : "info"} className="text-sm">
+                  {coveredSessions.length > 0 ? (
                     <span>
-                      This covers a class on {formatDate(earliestBlocking.date, "long")} at {formatTimeLabel(earliestBlocking.startTime)}, which
-                      starts in <strong>{hoursBetween(sessionDateTime(earliestBlocking), now).toFixed(1)} hours</strong>. Leave requests must be
-                      submitted at least {MIN_HOURS_NOTICE} hours before a scheduled class — this request cannot be submitted.
-                    </span>
-                  ) : coveredSessions.length > 0 ? (
-                    <span>
-                      This covers <strong>{coveredSessions.length} scheduled session(s)</strong>, each with enough notice — you're clear to submit.
+                      This covers <strong>{coveredSessions.length} scheduled session(s)</strong> — you're clear to submit.
                     </span>
                   ) : (
                     <span>No scheduled sessions fall in this range yet — the leave will still be recorded for these dates.</span>
@@ -531,7 +524,9 @@ export default function TeacherLeave() {
                   ) : (
                     <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
                       {sessionsOnClassWiseDate.map((session) => {
-                        const tooSoon = hoursBetween(sessionDateTime(session), now) < MIN_HOURS_NOTICE;
+                        // No notice period (client removed the 6-hour rule) — only a class that has
+                        // already started can't be cancelled any more.
+                        const tooSoon = sessionDateTime(session) <= now;
                         return (
                           <label
                             key={session.id}
@@ -546,7 +541,7 @@ export default function TeacherLeave() {
                               <span className="font-medium text-foreground">{session.title}</span>{" "}
                               <span className="text-muted-foreground">· {formatTimeLabel(session.startTime)}</span>
                             </span>
-                            {tooSoon && <span className="text-xs font-medium text-destructive">Too soon (needs {MIN_HOURS_NOTICE}h notice)</span>}
+                            {tooSoon && <span className="text-xs font-medium text-destructive">Already started</span>}
                           </label>
                         );
                       })}
