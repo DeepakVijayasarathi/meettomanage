@@ -29,12 +29,12 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, rescheduleSession, scheduleSession, toFrontendSession } from "@/api/sessions";
+import { staffCanJoin } from "@/lib/staffJoin";
 import { listBatches, listTeacherOptions } from "@/api/batches";
 import { useSession } from "@/state/session";
 
 // Same monitor-only join affordance as admin/Sessions.tsx — "rescheduled" is the old record
 // a reschedule moved off of, not a live session.
-const JOINABLE_STATUSES: SessionStatus[] = ["scheduled", "demo"];
 
 const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
   { value: "all", label: "All statuses" },
@@ -322,7 +322,7 @@ export default function SubAdminSessions() {
             </div>
           ) : (
             <div className="flex items-center justify-end gap-1.5">
-              {JOINABLE_STATUSES.includes(row.status) && row.meetingRoomId && (
+              {staffCanJoin(row) && (
                 <>
                   {canGuestLink && (
                     <Button

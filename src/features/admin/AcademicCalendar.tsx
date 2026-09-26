@@ -227,15 +227,17 @@ export default function AdminAcademicCalendar() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Batch</p>
                   {/* API sessions carry the batch name as the title; the mock lookup is demo-only */}
                   <p className="mt-1 font-medium text-foreground">
-                    {selected.batchId ? (apiEnabled() ? selected.title : getBatchById(selected.batchId)?.name ?? "—") : "—"}
+                    {selected.batchName ?? (selected.batchId ? getBatchById(selected.batchId)?.name ?? "—" : "—")}
                   </p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Students</p>
                   <p className="mt-1 font-medium text-foreground">
-                    {selected.childIds.length === 0
-                      ? "No students assigned"
-                      : selected.childIds.map((id) => getChildById(id)?.name ?? id).join(", ")}
+                    {selected.studentNames && selected.studentNames.length > 0
+                      ? selected.studentNames.join(", ")
+                      : selected.childIds.length === 0
+                        ? "No students assigned"
+                        : selected.childIds.map((id) => getChildById(id)?.name ?? id).join(", ")}
                   </p>
                 </div>
               </div>

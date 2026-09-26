@@ -37,6 +37,8 @@ export interface ApiClassSession {
   /** DemoBooking's own free-text child name, for a Demo-type session only — there's no Child FK to
    * link to at booking time, so this is the only way to say whose demo a session is. */
   demoChildName: string | null;
+  /** Staff views: the batch's active students, or a demo's child. */
+  studentNames?: string[];
 }
 
 const STATUS_FROM_API: Record<ApiClassSession["status"], SessionStatus> = {
@@ -66,6 +68,8 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
       session.batchName ??
       (session.type === "Demo" ? (session.demoChildName ? `Demo — ${session.demoChildName}` : "Demo class") : "Class session"),
     batchId: session.batchId ?? undefined,
+    batchName: session.batchName ?? undefined,
+    studentNames: session.studentNames ?? [],
     teacherId: session.teacherProfileId,
     teacherName: session.teacherName,
     childIds: session.childIds ?? [],

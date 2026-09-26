@@ -38,6 +38,7 @@ import {
   hardDeleteStudent,
   listAllUsers,
   listStudents,
+  resetPin,
   toAppUser,
   updateStudentNotes,
   updateUser,
@@ -133,6 +134,47 @@ export default function SubAdminUsers() {
   const deepLinkStudentId = searchParams.get("studentId");
   const [activeTab, setActiveTab] = useState(deepLinkStudentId ? "students" : "people");
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
+
+  // Parent -> their children's names (reported live: an RM couldn't see whose parent an account
+  // was). Keyed like features/admin/Users.tsx: parentUserId is the account id in API mode.
+  const childrenByParentUserId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const s of students) {
+      const key = s.parentUserId || s.parentId;
+      if (!key) continue;
+      map.set(key, [...(map.get(key) ?? []), s.name]);
+    }
+    return map;
+  }, [students]);
+  const usersWithChildren = useMemo(
+    () => users.map((u) => ({ ...u, childrenNames: (childrenByParentUserId.get(u.id) ?? []).join(", ") })),
+    [users, childrenByParentUserId]
+  );
+
+  // Reset PIN (reported live: missing from the RM portal) -- shows the new PIN here to relay on
+  // WhatsApp/phone; POST /api/users/{id}/reset-pin needs UserManagement:Edit, same as Edit Profile.
+  const [resettingPin, setResettingPin] = useState(false);
+  const [pinResult, setPinResult] = useState<{ ok: true; pin: string } | { ok: false; message: string } | null>(null);
+  useEffect(() => setPinResult(null), [detailUser]);
+
+  async function handleResetPin() {
+    if (!detailUser) return;
+    setPinResult(null);
+    if (!apiEnabled()) {
+      setPinResult({ ok: true, pin: String(Math.floor(1000 + Math.random() * 9000)) });
+      return;
+    }
+    setResettingPin(true);
+    try {
+      const pin = await resetPin(detailUser.id);
+      setPinResult({ ok: true, pin });
+      toast({ variant: "success", title: "PIN reset", description: `A new PIN was generated for ${detailUser.name}.` });
+    } catch (err) {
+      setPinResult({ ok: false, message: userMessage(err, "Could not reset the PIN.") });
+    } finally {
+      setResettingPin(false);
+    }
+  }
   const [detailChild, setDetailChild] = useState<Child | null>(null);
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -472,7 +514,7 @@ export default function SubAdminUsers() {
     });
   }
 
-  const columns: DataTableColumn<AppUser>[] = useMemo(
+  const columns: DataTableColumn<AppUser & { childrenNames: string }>[] = useMemo(
     () => [
       {
         key: "name",
@@ -494,6 +536,12 @@ export default function SubAdminUsers() {
         ),
       },
       { key: "phone", header: "Phone", render: (row) => <span className="text-sm text-muted-foreground">{row.phone}</span> },
+      {
+        key: "childrenNames",
+        header: "Children",
+        accessor: (row) => row.childrenNames,
+        render: (row) => (row.childrenNames ? <span className="text-sm">{row.childrenNames}</span> : <span className="text-muted-foreground">—</span>),
+      },
       {
         key: "role",
         header: "Role",
@@ -628,10 +676,10 @@ export default function SubAdminUsers() {
 
         <TabsContent value="people">
           <DataTable
-            data={users}
+            data={usersWithChildren}
             columns={columns}
             rowKey={(row) => row.id}
-            searchPlaceholder="Search users by name or email…"
+            searchPlaceholder="Search users by name, email or child…"
             emptyTitle="No users yet"
             emptyDescription="Accounts will appear here once they're created."
             error={apiEnabled() ? error : null}
@@ -683,6 +731,12 @@ export default function SubAdminUsers() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Joined</p>
                   <p className="mt-1 font-medium text-foreground">{formatDate(detailUser.joinedOn, "long")}</p>
                 </div>
+                {detailUser.role === "parent" && (
+                  <div className="col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Children</p>
+                    <p className="mt-1 font-medium text-foreground">{(childrenByParentUserId.get(detailUser.id) ?? []).join(", ") || "—"}</p>
+                  </div>
+                )}
                 {detailUser.department && (
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Department</p>
@@ -690,6 +744,18 @@ export default function SubAdminUsers() {
                   </div>
                 )}
               </div>
+
+              {pinResult && (
+                <InlineAlert variant={pinResult.ok ? "success" : "error"} className="text-sm">
+                  {pinResult.ok ? (
+                    <span>
+                      New PIN: <strong className="font-mono text-base">{pinResult.pin}</strong> — send it to them (e.g. on WhatsApp). It's shown only now.
+                    </span>
+                  ) : (
+                    pinResult.message
+                  )}
+                </InlineAlert>
+              )}
 
               <DialogFooter className="border-t border-border pt-4 sm:flex-wrap sm:items-center sm:justify-between">
                 {canDelete ? (
@@ -725,6 +791,11 @@ export default function SubAdminUsers() {
                   <Button variant="outline" onClick={() => setDetailUser(null)}>
                     Close
                   </Button>
+                  {canEdit && detailUser.role !== "admin" && (
+                    <Button variant="outline" disabled={resettingPin} onClick={handleResetPin}>
+                      {resettingPin && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Reset PIN
+                    </Button>
+                  )}
                   {canEdit && <Button onClick={() => openEdit(detailUser)}>Edit Profile</Button>}
                 </div>
               </DialogFooter>

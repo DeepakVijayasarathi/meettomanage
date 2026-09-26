@@ -29,13 +29,13 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, markNoShow, rescheduleSession, scheduleSession, toFrontendSession, type NoShowParty } from "@/api/sessions";
+import { staffCanJoin } from "@/lib/staffJoin";
 import { listBatches, listTeacherOptions } from "@/api/batches";
 
 // Monitor-only, same as Coordinator's own Join Class (coordinator/Calendar.tsx) --
 // Admin had no way at all to drop into a live class from this screen, real or demo.
 // "rescheduled" is the old record a reschedule moved off of, not a live session — leaving
 // it here duplicated the join entry alongside the new, actually-scheduled session.
-const JOINABLE_STATUSES: SessionStatus[] = ["scheduled", "demo"];
 
 const STATUS_OPTIONS: { value: SessionStatus | "all"; label: string }[] = [
   { value: "all", label: "All statuses" },
@@ -341,7 +341,7 @@ export default function AdminSessions() {
             </div>
           ) : (
             <div className="flex items-center justify-end gap-1.5">
-              {JOINABLE_STATUSES.includes(row.status) && row.meetingRoomId && (
+              {staffCanJoin(row) && (
                 <>
                   <Button
                     variant="outline"
