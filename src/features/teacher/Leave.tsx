@@ -590,6 +590,14 @@ export default function TeacherLeave() {
                   {classWiseSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck2 className="h-4 w-4" />}
                   {classWiseSubmitting ? "Submitting…" : "Cancel Selected Classes"}
                 </Button>
+                {/* The greyed-out button alone left teachers stuck (reported live): say what's missing. */}
+                {!classWiseCanSubmit && !classWiseSubmitting && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {selectedCount === 0
+                      ? "Tick the class(es) you want to cancel."
+                      : "Type a reason above to send this request."}
+                  </p>
+                )}
               </div>
             </div>
           )}
