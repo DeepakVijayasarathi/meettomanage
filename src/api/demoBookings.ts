@@ -13,7 +13,9 @@ export type ApiConversionStatus =
   /** Choosing this auto-creates the parent's login (welcome-credentials email with a
    *  temporary PIN) if one doesn't already exist for their email — see ConversionStatus's
    *  own doc comment on the backend. */
-  | "ReadyForEnrollment";
+  | "ReadyForEnrollment"
+  /** Portal admission flow: paid in full, waiting for the counsellor to verify and click Enroll. */
+  | "PaymentReceived";
 
 export interface ApiDemoParticipant {
   /** Set on reads; send it back on an edit so the invitee keeps their own join link. */
@@ -48,6 +50,17 @@ export interface ApiDemoBooking {
   /** Auto-calculated demo fee: ₹50 per demo, ₹100 once Enrolled. */
   payableAmount: number;
   participants: ApiDemoParticipant[];
+  // Portal admission flow (payment link -> counsellor verification -> Enroll).
+  courseId?: string | null;
+  courseName?: string | null;
+  /** Parent-facing payment page (/pay/{token}) the counsellor shares. */
+  paymentLinkUrl?: string | null;
+  invoiceId?: string | null;
+  /** The agreed (possibly discounted) amount the link bills. */
+  invoiceAmount?: number | null;
+  invoiceAmountPaid?: number | null;
+  termsAcceptedAtUtc?: string | null;
+  paymentVerifiedAtUtc?: string | null;
   /** Only on the move to "Ready for enrollment" that just created a no-email parent's login. */
   issuedLogin?: ApiIssuedParentLogin | null;
 }
@@ -84,6 +97,7 @@ const STAGE_FROM_API: Record<ApiConversionStatus, ConversionStage> = {
   FollowUpInProgress: "Follow-up",
   PaymentPending: "Payment Pending",
   PartiallyPaid: "Partially Paid",
+  PaymentReceived: "Payment Received",
   Enrolled: "Enrolled",
   NotInterested: "Not Interested",
 };
@@ -95,6 +109,7 @@ const STAGE_TO_API: Record<ConversionStage, ApiConversionStatus> = {
   "Follow-up": "FollowUpInProgress",
   "Payment Pending": "PaymentPending",
   "Partially Paid": "PartiallyPaid",
+  "Payment Received": "PaymentReceived",
   Enrolled: "Enrolled",
   "Not Interested": "NotInterested",
 };
@@ -124,6 +139,12 @@ export function toFrontendLead(booking: ApiDemoBooking): Lead {
     nextFollowUpOn: booking.nextFollowUpOn ?? undefined,
     assignedTo: "",
     createdOn: demoDate,
+    courseId: booking.courseId ?? undefined,
+    paymentLinkUrl: booking.paymentLinkUrl ?? undefined,
+    invoiceAmount: booking.invoiceAmount ?? undefined,
+    invoiceAmountPaid: booking.invoiceAmountPaid ?? undefined,
+    termsAcceptedAtUtc: booking.termsAcceptedAtUtc ?? undefined,
+    paymentVerifiedAtUtc: booking.paymentVerifiedAtUtc ?? undefined,
     // Real per-note date/author history is fetched separately (see getDemoFollowUpNotes) once a
     // lead is opened -- the API no longer collapses every note ever logged into a single string.
     notes: [],
@@ -374,6 +395,59 @@ export interface ManualAdmissionPayload {
   /** Course fee to invoice; null uses the course price. */
   amount: number | null;
   batchId: string | null;
+}
+
+export interface AdmissionPaymentLink {
+  booking: ApiDemoBooking;
+  /** Parent-facing payment page to share; it shows the Terms & Conditions before paying. */
+  paymentUrl: string;
+  courseName: string;
+  listPrice: number;
+  amount: number;
+  currency: string;
+  /** Ready-to-copy text for the counsellor to send with the link. */
+  shareMessage: string;
+}
+
+/** Counsellor issues the parent's payment link for a course at the agreed (discounted) amount. */
+export async function sendAdmissionPaymentLink(
+  bookingId: string,
+  payload: { courseId: string; amount?: number }
+): Promise<AdmissionPaymentLink> {
+  return apiFetch<AdmissionPaymentLink>(`/api/demo-bookings/${bookingId}/payment-link`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Counsellor verified the payment: emails the parent's login automatically and moves the lead on. */
+export async function verifyAndEnrollLead(bookingId: string): Promise<ApiDemoBooking> {
+  return apiFetch<ApiDemoBooking>(`/api/demo-bookings/${bookingId}/enroll`, { method: "POST" });
+}
+
+export interface PublicAdmissionPayment {
+  parentName: string;
+  childName: string;
+  courseName: string;
+  amount: number;
+  amountPaid: number;
+  currency: string;
+  isPaid: boolean;
+  termsUrl: string | null;
+  termsText: string | null;
+}
+
+/** Anonymous: the /pay/{token} page's data. */
+export async function getPublicAdmissionPayment(token: string): Promise<PublicAdmissionPayment> {
+  return apiFetch<PublicAdmissionPayment>(`/api/public/admission-payments/${encodeURIComponent(token)}`);
+}
+
+/** Anonymous: records the Terms & Conditions acceptance and returns the gateway checkout URL. */
+export async function startPublicAdmissionPayment(token: string, termsAccepted: boolean): Promise<{ url: string }> {
+  return apiFetch<{ url: string }>(`/api/public/admission-payments/${encodeURIComponent(token)}/start`, {
+    method: "POST",
+    body: JSON.stringify({ termsAccepted }),
+  });
 }
 
 export interface ManualAdmissionOptions {

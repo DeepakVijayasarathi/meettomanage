@@ -35,7 +35,8 @@ import { toFrontendInvoice } from "@/api/billing";
 import { cn, formatCurrency, formatDate, formatTimeLabel, invoiceBalance } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import type { Child, ClassSession, Invoice } from "@/types";
-import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart, PREFERRED_TIME_LABELS } from "./utils";
+import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart } from "./utils";
+import { formatSchedulePreference, readSchedulePreference } from "@/lib/schedulePreference";
 
 const PARENT_ID = "p-1";
 
@@ -497,7 +498,7 @@ function PendingEnrollments({
         const childName = text("childName") === "—" ? "(name pending)" : text("childName");
         const rejected = form.status === "Rejected";
         const courseName = courseOptions.find((c) => c.id === answers.courseInterest)?.name ?? "—";
-        const days = Array.isArray(answers.preferredDays) && answers.preferredDays.length > 0 ? (answers.preferredDays as string[]).join(", ") : "—";
+        const schedulePreference = formatSchedulePreference(readSchedulePreference(answers));
 
         return (
           <Card key={form.id} className={cn("p-5", rejected ? "border-destructive/40 bg-destructive/5" : "border-warning/40 bg-warning/5")}>
@@ -526,11 +527,7 @@ function PendingEnrollments({
               <PendingValue label="Grade" value={text("grade")} />
               <PendingValue label="School" value={text("schoolName")} />
               <PendingValue label="Course" value={courseName} />
-              <PendingValue label="Preferred days" value={days} />
-              <PendingValue
-                label="Preferred time"
-                value={text("preferredTime") === "—" ? "—" : PREFERRED_TIME_LABELS[text("preferredTime")] ?? text("preferredTime")}
-              />
+              <PendingValue label="Preferred schedule" value={schedulePreference} />
             </div>
 
             <p className="mt-4 text-xs text-muted-foreground">

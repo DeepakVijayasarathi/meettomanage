@@ -17,6 +17,7 @@ export type ConversionStage =
   | "Follow-up"
   | "Payment Pending"
   | "Partially Paid"
+  | "Payment Received"
   | "Enrolled"
   | "Not Interested";
 export type PaymentStatus = "Pending" | "Paid" | "Partially Paid";
@@ -51,6 +52,13 @@ export interface Lead {
   assignedTo: string;
   createdOn: string;
   notes: FollowUpNote[];
+  /** Portal admission flow (API mode only): the counsellor-issued payment page and its state. */
+  courseId?: string;
+  paymentLinkUrl?: string;
+  invoiceAmount?: number;
+  invoiceAmountPaid?: number;
+  termsAcceptedAtUtc?: string;
+  paymentVerifiedAtUtc?: string;
 }
 
 export interface PaymentLink {

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -96,6 +97,11 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "notify.feeReminders": { category: "Notifications", fallback: "true" },
   "billing.reminderDaysBeforeDue": { category: "Notifications", fallback: "3" },
   "billing.suspensionGraceDays": { category: "Notifications", fallback: "0" },
+  // Admission & class policies. Public because the anonymous /pay page and the parent portal read
+  // them (see lib/policies.ts); the API enforces the cancellation cut-off regardless.
+  "admission.termsUrl": { category: "Notifications", isPublic: true, fallback: "" },
+  "admission.termsText": { category: "Notifications", isPublic: true, fallback: "" },
+  "parent.cancelCutoffMinutes": { category: "Notifications", isPublic: true, fallback: "60" },
   "notify.leaveRequests": { category: "Notifications", fallback: "true" },
   "notify.lowAttendance": { category: "Notifications", fallback: "false" },
   "notify.weeklyDigest": { category: "Notifications", fallback: "true" },
@@ -571,6 +577,56 @@ export default function AdminSettings() {
                 />
                 <p className="text-xs text-muted-foreground">
                   How many days an invoice can stay overdue before the parent's account is automatically suspended. 0 = suspend as soon as it's overdue.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Admission &amp; Class Policies</CardTitle>
+              <CardDescription>
+                The Terms &amp; Conditions parents must accept before every payment, and how close to a class parents can still
+                cancel it online.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="admission-terms-url">Terms &amp; Conditions link</Label>
+                <Input
+                  id="admission-terms-url"
+                  type="url"
+                  placeholder="https://…"
+                  value={values["admission.termsUrl"]}
+                  onChange={(e) => setValue("admission.termsUrl", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">Shown as a link next to the "I accept" checkbox on every payment screen.</p>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="admission-terms-text">Terms &amp; Conditions text (optional)</Label>
+                <Textarea
+                  id="admission-terms-text"
+                  rows={5}
+                  maxLength={2000}
+                  value={values["admission.termsText"]}
+                  onChange={(e) => setValue("admission.termsText", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Displayed on the payment screen above the checkbox — use it for a short summary, or paste the terms in full (up to 2000 characters).
+                </p>
+              </div>
+              <div className="grid gap-1.5 sm:max-w-xs">
+                <Label htmlFor="parent-cancel-cutoff">Class cancellation cut-off (minutes before class)</Label>
+                <Input
+                  id="parent-cancel-cutoff"
+                  type="number"
+                  min={0}
+                  value={values["parent.cancelCutoffMinutes"]}
+                  onChange={(e) => setValue("parent.cancelCutoffMinutes", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Parents can cancel or apply for leave until this many minutes before the class starts (60 = a 4:00 PM class can be
+                  cancelled until 3:00 PM). After that the option is disabled.
                 </p>
               </div>
             </CardContent>
