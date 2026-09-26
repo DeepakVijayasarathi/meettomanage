@@ -23,6 +23,7 @@ import { CHILDREN } from "@/data/children";
 import { getParentById } from "@/data/users";
 import { COURSES, getCourseById } from "@/data/courses";
 import { apiEnabled, userMessage } from "@/lib/api";
+import { formatSchedulePreference, readSchedulePreference } from "@/lib/schedulePreference";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listEnrollmentForms, reviewEnrollmentForm, updateEnrollmentForm, type ApiEnrollmentForm } from "@/api/parentPortal";
@@ -53,6 +54,9 @@ type EnrollmentRow = Child & {
   address?: string;
   preferredDays?: string[];
   preferredTime?: string;
+  /** Per-day preferred start times from the parent's schedule preference, e.g. { Mon: "16:00" }. */
+  dayTimes?: Record<string, string>;
+  daysPerWeek?: number | null;
   allergies?: string;
   notes?: string;
 };
@@ -111,6 +115,8 @@ function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
     address: str("address"),
     preferredDays: Array.isArray(answers.preferredDays) ? (answers.preferredDays as string[]) : [],
     preferredTime: str("preferredTime"),
+    dayTimes: readSchedulePreference(answers).dayTimes,
+    daysPerWeek: readSchedulePreference(answers).daysPerWeek,
     allergies: str("allergies"),
     notes: str("notes"),
   };
@@ -269,6 +275,13 @@ export default function SubAdminEnrollments() {
     answers.address = editAddress.trim() || undefined;
     answers.preferredDays = editPreferredDays;
     answers.preferredTime = editPreferredTime || undefined;
+    // Keep the per-day times in step with the (possibly edited) day list: drop times for days no
+    // longer selected; a day added here simply has no time until the parent or RM sets one.
+    const keptTimes = Object.fromEntries(
+      Object.entries(readSchedulePreference(answers).dayTimes).filter(([d]) => editPreferredDays.includes(d))
+    );
+    answers.dayTimes = Object.keys(keptTimes).length > 0 ? keptTimes : undefined;
+    answers.daysPerWeek = editPreferredDays.length > 0 ? editPreferredDays.length : undefined;
     answers.allergies = editAllergies.trim() || undefined;
     answers.notes = editNotes.trim() || undefined;
 
@@ -512,6 +525,18 @@ export default function SubAdminEnrollments() {
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Batch Type</p>
                   <p className="mt-1 font-medium text-foreground">{batchTypeLabel(detail.batchType)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Schedule Preference</p>
+                  <p className="mt-1 font-medium text-foreground">
+                    {detail.daysPerWeek ? `${detail.daysPerWeek} day${detail.daysPerWeek === 1 ? "" : "s"}/week · ` : ""}
+                    {formatSchedulePreference({
+                      daysPerWeek: detail.daysPerWeek ?? null,
+                      days: detail.preferredDays ?? [],
+                      dayTimes: detail.dayTimes ?? {},
+                      legacyTime: detail.preferredTime ?? "",
+                    })}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>

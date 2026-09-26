@@ -10,10 +10,13 @@ import { apiEnabled, userMessage } from "@/lib/api";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
 import type { ClassSession } from "@/types";
 import { minutesUntilStart } from "@/features/parent/utils";
+import { DEFAULT_CANCEL_CUTOFF_MINUTES, usePolicies } from "@/lib/policies";
 
 /** Upcoming batch classes only — a demo, a class already under way, or a finished one can't be cancelled here. */
-export function canParentCancel(session: ClassSession): boolean {
-  return session.status === "scheduled" && Boolean(session.batchId) && minutesUntilStart(session) > 0;
+export function canParentCancel(session: ClassSession, cutoffMinutes = DEFAULT_CANCEL_CUTOFF_MINUTES): boolean {
+  // Cancelling closes `cutoffMinutes` before the class (e.g. a 4:00 PM class, 60 min: until 3:00 PM);
+  // after that the button disappears and the class stays as scheduled. The API enforces it too.
+  return session.status === "scheduled" && Boolean(session.batchId) && minutesUntilStart(session) >= cutoffMinutes;
 }
 
 /**
@@ -34,8 +37,9 @@ export function ParentCancelClassButton({
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const { cancelCutoffMinutes } = usePolicies();
 
-  if (!canParentCancel(session)) return null;
+  if (!canParentCancel(session, cancelCutoffMinutes)) return null;
 
   async function submit() {
     if (!reason.trim()) return;
@@ -70,7 +74,7 @@ export function ParentCancelClassButton({
             <DialogDescription>
               {session.title} · {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} with {session.teacherName}.
               Your own class is cancelled straight away and a make-up class is scheduled for you; in a group class, your
-              child is marked as not attending and the class goes ahead for the others. The teacher is emailed your reason.
+              child is marked as not attending and the class goes ahead for the others. The teacher is emailed your reason. Cancellations close {cancelCutoffMinutes} minutes before the class starts.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-1.5">

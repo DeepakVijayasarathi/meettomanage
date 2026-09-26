@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarCheck2, KeyRound, PhoneCall, PieChart, Sparkles, ThumbsDown, Trophy, Wallet } from "lucide-react";
+import { BadgeCheck, CalendarCheck2, KeyRound, PhoneCall, PieChart, Sparkles, ThumbsDown, Trophy, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,7 @@ type BoardStage =
   | "Follow-up"
   | "Payment Pending"
   | "Partially Paid"
+  | "Payment Received"
   | "Enrolled"
   | "Not Interested";
 
@@ -33,6 +34,7 @@ const BOARD_STAGES: BoardStage[] = [
   "Follow-up",
   "Payment Pending",
   "Partially Paid",
+  "Payment Received",
   "Enrolled",
   "Not Interested",
 ];
@@ -47,7 +49,12 @@ const STAGE_META: Record<BoardStage, { icon: LucideIcon; color: string; descript
   "Follow-up": { icon: PhoneCall, color: CHART_PALETTE[6], description: "In active follow-up with the parent" },
   "Payment Pending": { icon: Wallet, color: CHART_PALETTE[3], description: "Payment link shared, awaiting payment" },
   "Partially Paid": { icon: PieChart, color: CHART_PALETTE[4], description: "Some payment received, balance due" },
-  Enrolled: { icon: Trophy, color: "hsl(var(--success))", description: "Converted — payment received" },
+  "Payment Received": {
+    icon: BadgeCheck,
+    color: CHART_PALETTE[1],
+    description: "Paid in full — verify the payment and click Enroll (open the lead in Leads)",
+  },
+  Enrolled: { icon: Trophy, color: "hsl(var(--success))", description: "Converted — enrollment confirmed" },
   "Not Interested": { icon: ThumbsDown, color: "hsl(var(--destructive))", description: "Not proceeding for now" },
 };
 
@@ -79,6 +86,7 @@ export default function AdmissionConversion() {
       "Follow-up": [],
       "Payment Pending": [],
       "Partially Paid": [],
+      "Payment Received": [],
       Enrolled: [],
       "Not Interested": [],
     };

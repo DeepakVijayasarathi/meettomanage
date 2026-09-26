@@ -256,9 +256,9 @@ export default function AdmissionDemoScheduling() {
     !childAgeError &&
     date.length > 0 &&
     time.length > 0 &&
-    // API mode auto-assigns a teacher when none is picked. The main parent's email is optional
-    // (WhatsApp-only parents): their phone, required below, becomes their portal login.
-    (apiEnabled() ? parents[0].email.trim().length === 0 || isValidEmail(parents[0].email) : teacherId.length > 0) &&
+    // API mode auto-assigns a teacher when none is picked. The main parent's email is mandatory:
+    // admission runs on the portal, and their account + welcome email are created from it on Enroll.
+    (apiEnabled() ? isValidEmail(parents[0].email) : teacherId.length > 0) &&
     parents.every((p) => p.name.trim().length > 0 && p.phone.trim().length > 0) &&
     // Every parent past the first is only ever added to be invited as a participant, and the
     // API requires an email for any adult invitee (it has no other way to send a confirmation/
@@ -293,8 +293,8 @@ export default function AdmissionDemoScheduling() {
       const endUtc = new Date(new Date(startUtc).getTime() + 30 * 60_000).toISOString();
       createDemoBooking({
         parentName: primary.name.trim(),
-        parentEmail: primary.email.trim() || undefined,
-        parentPhone: primary.phone.trim() || undefined,
+        parentEmail: primary.email.trim(),
+        parentPhone: primary.phone.trim(),
         childName: childName.trim(),
         childAge: childAge ? Number(childAge) : undefined,
         teacherProfileId: teacherId || undefined,
@@ -740,7 +740,7 @@ export default function AdmissionDemoScheduling() {
               <Label className="text-xs text-muted-foreground">Name</Label>
               <Label className="text-xs text-muted-foreground">Phone</Label>
               <Label className="text-xs text-muted-foreground">
-                Email {apiEnabled() ? "(optional for the main parent)" : "(required to invite)"}
+                Email {apiEnabled() ? "(required)" : "(required to invite)"}
               </Label>
               <span />
             </div>
@@ -748,7 +748,7 @@ export default function AdmissionDemoScheduling() {
               {parents.map((p, idx) => {
                 const nameMissing = attemptedSubmit && p.name.trim().length === 0;
                 const phoneMissing = attemptedSubmit && p.phone.trim().length === 0;
-                const emailMissing = attemptedSubmit && apiEnabled() && idx > 0 && p.email.trim().length === 0;
+                const emailMissing = attemptedSubmit && apiEnabled() && p.email.trim().length === 0;
                 const emailInvalid = attemptedSubmit && apiEnabled() && p.email.trim().length > 0 && !isValidEmail(p.email);
                 return (
                 <div key={p.id} className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
@@ -762,13 +762,13 @@ export default function AdmissionDemoScheduling() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <Input
-                      placeholder={apiEnabled() ? (idx === 0 ? "Email (optional, WhatsApp only)" : "Email address (required)") : "Email address"}
-                      aria-label={`Parent/guardian ${idx + 1} email address${apiEnabled() && idx > 0 ? " (required)" : ""}`}
+                      placeholder={apiEnabled() ? "Email address (required)" : "Email address"}
+                      aria-label={`Parent/guardian ${idx + 1} email address${apiEnabled() ? " (required)" : ""}`}
                       value={p.email}
                       onChange={(e) => updateParent(p.id, "email", e.target.value)}
                       aria-invalid={emailMissing || emailInvalid}
                     />
-                    {emailMissing && <p role="alert" className="text-xs text-destructive">Email is required to send an invite.</p>}
+                    {emailMissing && <p role="alert" className="text-xs text-destructive">{idx === 0 ? "Parent's email is required." : "Email is required to send an invite."}</p>}
                     {emailInvalid && <p role="alert" className="text-xs text-destructive">Enter a valid email address.</p>}
                   </div>
                   <Button

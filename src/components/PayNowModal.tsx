@@ -1,6 +1,8 @@
 import { useEffect, useState, type ComponentType } from "react";
 import { Banknote, CheckCircle2, CreditCard, ExternalLink, Landmark, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { usePolicies } from "@/lib/policies";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -86,6 +88,10 @@ function iconForGateway(key: string): PayMethod["icon"] {
 
 export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceId, onInitiated }: PayNowModalProps) {
   const brand = useBrand();
+  const policies = usePolicies();
+  // Terms & Conditions must be accepted before any payment can start (re-asked every time the
+  // popup opens). Only enforced against a live payment: the demo checkout takes no real money.
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [methods, setMethods] = useState<PayMethod[]>(DEMO_METHODS);
   const [method, setMethod] = useState<string>(DEMO_METHODS[0].id);
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "redirect" | "cash" | "inline">("idle");
@@ -113,6 +119,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
   useEffect(() => {
     if (!open) return;
     setCustomAmount("");
+    setTermsAccepted(false);
     if (!apiEnabled()) return;
     let cancelled = false;
     getPaymentMethods()
@@ -132,6 +139,10 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
   }, [open]);
 
   async function handlePay() {
+    if (liveFlow && !termsAccepted) {
+      setError("Please accept the Terms & Conditions to continue.");
+      return;
+    }
     if (customInvalid) {
       setError(`Enter an amount between ${formatCurrency(1)} and ${formatCurrency(amount)}.`);
       return;
@@ -491,7 +502,43 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
                 Open payment page →
               </a>
             )}
-            <Button className="w-full" onClick={handlePay} disabled={status === "processing" || !method || customInvalid}>
+            {liveFlow && (
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3 text-sm text-foreground">
+                <Checkbox
+                  checked={termsAccepted}
+                  onCheckedChange={(v) => setTermsAccepted(v === true)}
+                  aria-label="I have read and accept the Terms and Conditions"
+                  className="mt-0.5"
+                />
+                <span>
+                  I have read and accept the{" "}
+                  {policies.termsUrl ? (
+                    <a
+                      href={safeExternalUrl(policies.termsUrl) ?? undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-primary underline underline-offset-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Terms &amp; Conditions
+                    </a>
+                  ) : (
+                    "Terms & Conditions"
+                  )}
+                  .
+                </span>
+              </label>
+            )}
+            {liveFlow && policies.termsText && (
+              <div className="max-h-28 overflow-y-auto whitespace-pre-line rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
+                {policies.termsText}
+              </div>
+            )}
+            <Button
+              className="w-full"
+              onClick={handlePay}
+              disabled={status === "processing" || !method || customInvalid || (liveFlow && !termsAccepted)}
+            >
               {status === "processing" ? "Processing…" : `Pay ${formatCurrency(payAmount)}`}
             </Button>
             <p className="text-center text-[11px] text-muted-foreground">

@@ -22,10 +22,9 @@ import { listCourseOptions } from "@/api/courses";
 import { submitEnrollmentForm } from "@/api/parentPortal";
 import { getMyAccount } from "@/api/account";
 import { realEmail } from "@/lib/parentLogin";
+import { DAYS_PER_WEEK_OPTIONS, SCHEDULE_DAYS, TIME_OPTIONS, timeBucket } from "@/lib/schedulePreference";
 
 const STEPS = ["Student Details", "Parent & Contact", "Course & Consent"] as const;
-
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -61,7 +60,12 @@ interface EnrollmentForm {
   // Course & consent
   courseInterest: string;
   batchType: "group" | "individual" | "";
+  /** How many days a week (1-7); the parent then picks exactly that many days and a time for each. */
+  daysPerWeek: number | null;
   preferredDays: string[];
+  /** Preferred start time per chosen day, e.g. { Mon: "16:00" }. */
+  dayTimes: Record<string, string>;
+  /** Coarse morning/afternoon/evening bucket of the earliest chosen day -- kept for older readers. */
   preferredTime: string;
   allergies: string;
   notes: string;
@@ -115,7 +119,9 @@ export default function ParentEnrollment() {
       address: prev?.address ?? "",
       courseInterest: child?.courseId ?? "",
       batchType: "",
+      daysPerWeek: null,
       preferredDays: [],
+      dayTimes: {},
       preferredTime: "",
       allergies: "",
       notes: "",
@@ -188,7 +194,7 @@ export default function ParentEnrollment() {
     [usingApi, apiCourseOptions]
   );
 
-  type FieldErrors = Partial<Record<keyof EnrollmentForm, string>>;
+  type FieldErrors = Partial<Record<keyof EnrollmentForm | "schedule", string>>;
   const [errors, setErrors] = useState<FieldErrors>({});
 
   function update<K extends keyof EnrollmentForm>(key: K, value: EnrollmentForm[K]) {
@@ -229,6 +235,10 @@ export default function ParentEnrollment() {
     } else {
       if (!form.courseInterest) next.courseInterest = "Select a course to continue.";
       if (!form.batchType) next.batchType = "Select group or individual batch.";
+      if (!form.daysPerWeek) next.schedule = "Select how many days a week you'd like classes.";
+      else if (form.preferredDays.length !== form.daysPerWeek)
+        next.schedule = `Choose exactly ${form.daysPerWeek} preferred day${form.daysPerWeek === 1 ? "" : "s"} (${form.preferredDays.length} selected).`;
+      else if (form.preferredDays.some((d) => !form.dayTimes[d])) next.schedule = "Choose a preferred time for each selected day.";
       if (!form.consent) next.consent = "Please confirm the details and give consent to submit.";
     }
     return next;
@@ -254,11 +264,31 @@ export default function ParentEnrollment() {
     setStep((s) => s + 1);
   }
 
+  function setDaysPerWeek(count: number) {
+    setForm((f) => {
+      // Lowering the count trims the surplus days (the latest picks first) and their times.
+      const days = f.preferredDays.slice(0, count);
+      const dayTimes = Object.fromEntries(Object.entries(f.dayTimes).filter(([d]) => days.includes(d)));
+      return { ...f, daysPerWeek: count, preferredDays: days, dayTimes };
+    });
+    setErrors((e) => (e.schedule ? { ...e, schedule: undefined } : e));
+  }
+
   function toggleDay(day: string) {
-    setForm((f) => ({
-      ...f,
-      preferredDays: f.preferredDays.includes(day) ? f.preferredDays.filter((d) => d !== day) : [...f.preferredDays, day],
-    }));
+    setForm((f) => {
+      if (f.preferredDays.includes(day)) {
+        const dayTimes = Object.fromEntries(Object.entries(f.dayTimes).filter(([d]) => d !== day));
+        return { ...f, preferredDays: f.preferredDays.filter((d) => d !== day), dayTimes };
+      }
+      if (f.daysPerWeek !== null && f.preferredDays.length >= f.daysPerWeek) return f;
+      return { ...f, preferredDays: [...f.preferredDays, day] };
+    });
+    setErrors((e) => (e.schedule ? { ...e, schedule: undefined } : e));
+  }
+
+  function setDayTime(day: string, time: string) {
+    setForm((f) => ({ ...f, dayTimes: { ...f.dayTimes, [day]: time } }));
+    setErrors((e) => (e.schedule ? { ...e, schedule: undefined } : e));
   }
 
   function handleSubmit(e: FormEvent) {
@@ -277,7 +307,9 @@ export default function ParentEnrollment() {
       setSubmitting(true);
       setError(null);
       // Answers travel as a JSON document keyed by field id (client-configurable schema).
-      submitEnrollmentForm({ ...form })
+      const orderedDays = SCHEDULE_DAYS.filter((d) => form.preferredDays.includes(d));
+      const earliest = orderedDays.map((d) => form.dayTimes[d]).filter(Boolean).sort()[0] ?? "";
+      submitEnrollmentForm({ ...form, preferredDays: orderedDays, preferredTime: timeBucket(earliest) })
         .then(() => {
           markEnrollmentComplete(childId);
           setActiveChildId(childId);
@@ -589,36 +621,84 @@ export default function ParentEnrollment() {
                   )}
                 </fieldset>
 
-                <fieldset className="flex flex-col gap-1.5">
-                  <legend className="mb-1.5 text-sm font-medium leading-none text-foreground/90">Preferred class days</legend>
-                  <div className="flex flex-wrap gap-1.5">
-                    {DAYS.map((d) => (
-                      <Button
-                        key={d}
-                        type="button"
-                        variant="pill"
-                        size="pill"
-                        aria-pressed={form.preferredDays.includes(d)}
-                        onClick={() => toggleDay(d)}
-                      >
-                        {d}
-                      </Button>
-                    ))}
-                  </div>
-                </fieldset>
+                <fieldset className="flex flex-col gap-3 rounded-xl border border-border p-4">
+                  <legend className="px-1 text-sm font-semibold text-foreground">Schedule preference</legend>
+                  <p className="text-xs text-muted-foreground">
+                    Tell us when you'd like classes so our team can find a teacher and set up the schedule without calling you.
+                  </p>
 
-                <Field label="Preferred time slot" htmlFor="preferredTime">
-                  <Select value={form.preferredTime} onValueChange={(v) => update("preferredTime", v)}>
-                    <SelectTrigger id="preferredTime">
-                      <SelectValue placeholder="Select a time slot (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="morning">Morning (8am–12pm)</SelectItem>
-                      <SelectItem value="afternoon">Afternoon (12pm–4pm)</SelectItem>
-                      <SelectItem value="evening">Evening (4pm–8pm)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-sm font-medium leading-none text-foreground/90">
+                      How many days per week? <span className="text-destructive">*</span>
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DAYS_PER_WEEK_OPTIONS.map((n) => (
+                        <Button
+                          key={n}
+                          type="button"
+                          variant="pill"
+                          size="pill"
+                          aria-pressed={form.daysPerWeek === n}
+                          onClick={() => setDaysPerWeek(n)}
+                        >
+                          {n} day{n === 1 ? "" : "s"}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {form.daysPerWeek !== null && (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-sm font-medium leading-none text-foreground/90">
+                        Preferred days ({form.preferredDays.length} of {form.daysPerWeek} chosen)
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {SCHEDULE_DAYS.map((d) => (
+                          <Button
+                            key={d}
+                            type="button"
+                            variant="pill"
+                            size="pill"
+                            aria-pressed={form.preferredDays.includes(d)}
+                            disabled={!form.preferredDays.includes(d) && form.preferredDays.length >= form.daysPerWeek!}
+                            onClick={() => toggleDay(d)}
+                          >
+                            {d}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {form.preferredDays.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-medium leading-none text-foreground/90">Preferred time for each day</span>
+                      {SCHEDULE_DAYS.filter((d) => form.preferredDays.includes(d)).map((d) => (
+                        <div key={d} className="flex items-center gap-3">
+                          <span className="w-12 text-sm font-semibold text-foreground">{d}</span>
+                          <Select value={form.dayTimes[d] ?? ""} onValueChange={(v) => setDayTime(d, v)}>
+                            <SelectTrigger aria-label={`Preferred time on ${d}`} className="max-w-[200px]">
+                              <SelectValue placeholder="Select time" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {TIME_OPTIONS.map((t) => (
+                                <SelectItem key={t.value} value={t.value}>
+                                  {t.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {errors.schedule && (
+                    <p role="alert" className="text-xs font-medium text-destructive">
+                      {errors.schedule}
+                    </p>
+                  )}
+                </fieldset>
 
                 <Field label="Allergies or medical notes (optional)" htmlFor="allergies">
                   <Textarea

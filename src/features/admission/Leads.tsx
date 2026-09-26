@@ -39,6 +39,7 @@ import {
   type ApiParentDemoHistory,
 } from "@/api/demoBookings";
 import { IssuedLoginDialog } from "./IssuedLoginDialog";
+import { AdmissionPaymentPanel } from "./AdmissionPaymentPanel";
 import { LEADS as INITIAL_LEADS, type ConversionStage, type FollowUpNote, type Lead } from "./data";
 
 const STAGE_OPTIONS: { value: ConversionStage | "all"; label: string }[] = [
@@ -49,6 +50,7 @@ const STAGE_OPTIONS: { value: ConversionStage | "all"; label: string }[] = [
   { value: "Follow-up", label: "Follow-up" },
   { value: "Payment Pending", label: "Payment Pending" },
   { value: "Partially Paid", label: "Partially Paid" },
+  { value: "Payment Received", label: "Payment Received (verify)" },
   { value: "Enrolled", label: "Enrolled" },
   { value: "Not Interested", label: "Not Interested" },
 ];
@@ -60,6 +62,7 @@ const STAGE_BADGE: Record<ConversionStage, BadgeProps["variant"]> = {
   "Follow-up": "warning",
   "Payment Pending": "warning",
   "Partially Paid": "secondary",
+  "Payment Received": "default",
   Enrolled: "success",
   "Not Interested": "destructive",
 };
@@ -75,6 +78,11 @@ export default function AdmissionLeads() {
   );
   const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS);
   useEffect(() => setLeads(apiLeads), [apiLeads]);
+  // After a payment link is issued / a lead is enrolled the list reloads; keep the open dialog on
+  // the fresh row so its payment panel shows the new state instead of the stale snapshot.
+  useEffect(() => {
+    setActiveLead((current) => (current ? (apiLeads.find((l) => l.id === current.id) ?? current) : current));
+  }, [apiLeads]);
   const [stageFilter, setStageFilter] = useState<ConversionStage | "all">("all");
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
   const [issuedLogin, setIssuedLogin] = useState<ApiIssuedParentLogin | null>(null);
@@ -386,6 +394,8 @@ export default function AdmissionLeads() {
                   </CardContent>
                 </Card>
               )}
+
+              <AdmissionPaymentPanel lead={activeLead} canEdit={canLogFollowUp} onChanged={reload} />
 
               <Separator />
 
