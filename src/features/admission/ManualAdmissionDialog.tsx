@@ -94,7 +94,7 @@ export function ManualAdmissionDialog({ bookingId, onClose, onAdmitted }: Manual
     childDob: !childDob || childDob > today,
     planId: billBy === "plan" && !planId,
     courseId: billBy === "course" && !courseId,
-    fee: billBy === "course" && (fee.trim() === "" || !(Number(fee) >= 0)),
+    fee: (fee.trim() === "" || !(Number(fee) >= 0)),
   };
   const hasErrors = Object.values(errors).some(Boolean);
 
@@ -113,7 +113,7 @@ export function ManualAdmissionDialog({ bookingId, onClose, onAdmitted }: Manual
         childDateOfBirth: childDob,
         packagePlanId: billBy === "plan" ? planId : null,
         courseId: billBy === "course" ? courseId : null,
-        amount: billBy === "course" ? Number(fee) : null,
+        amount: Number(fee),
         batchId: batchId === NO_BATCH ? null : batchId,
       });
       setResult(admitted);
@@ -125,12 +125,10 @@ export function ManualAdmissionDialog({ bookingId, onClose, onAdmitted }: Manual
     }
   }
 
-  // Picking a course fills in its standard fee (still editable for an agreed discount) and
-  // drops a batch picked for a different course.
+  // The counselor types the agreed fee themselves (the course's standard price is only shown as
+  // a hint). Picking a course drops a batch picked for a different course.
   function pickCourse(id: string) {
     setCourseId(id);
-    const picked = options?.courses.find((c) => c.id === id);
-    if (picked) setFee(String(picked.price));
     const batch = options?.batches.find((b) => b.id === batchId);
     if (batch && batch.courseId !== id) setBatchId(NO_BATCH);
   }
@@ -289,6 +287,9 @@ export function ManualAdmissionDialog({ bookingId, onClose, onAdmitted }: Manual
                   </SelectContent>
                 </Select>
                 {attempted && errors.planId && <p className="text-xs font-medium text-destructive">Pick the plan to bill.</p>}
+                <Label htmlFor="ma-plan-fee" className="mt-2">Fee (₹)</Label>
+                <Input id="ma-plan-fee" type="number" min={0} inputMode="decimal" placeholder="Enter amount" value={fee} onChange={(e) => setFee(e.target.value)} aria-invalid={attempted && errors.fee} />
+                {attempted && errors.fee && <p className="text-xs font-medium text-destructive">Enter the fee.</p>}
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
@@ -310,7 +311,7 @@ export function ManualAdmissionDialog({ bookingId, onClose, onAdmitted }: Manual
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="ma-fee">Fee (₹)</Label>
-                  <Input id="ma-fee" type="number" min={0} inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} aria-invalid={attempted && errors.fee} />
+                  <Input id="ma-fee" type="number" min={0} inputMode="decimal" placeholder="Enter amount" value={fee} onChange={(e) => setFee(e.target.value)} aria-invalid={attempted && errors.fee} />
                   {attempted && errors.fee && <p className="text-xs font-medium text-destructive">Enter the fee.</p>}
                 </div>
               </div>
