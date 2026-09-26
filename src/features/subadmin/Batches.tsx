@@ -198,7 +198,9 @@ export default function SubAdminBatches() {
     { raw: [], mapped: [] }
   );
   const { data: teacherOptions } = useApiData(() => listTeacherOptions(), [], undefined, { cacheKey: "teacherOptions" });
-  const { data: courseOptions } = useApiData<ApiCourseOption[]>(
+  // loading/error/reload used by the New Batch dialog: a failed or slow first load used to leave
+  // the Course dropdown silently empty (it opened nothing) with no retry -- reported live.
+  const { data: courseOptions, loading: coursesLoading, error: coursesError, reload: reloadCourses } = useApiData<ApiCourseOption[]>(
     () => listCourseOptions(),
     COURSES.map((c) => ({ id: c.id, name: c.name, type: c.type === "group" ? ("Group" as const) : ("Individual" as const) }))
   );
@@ -714,7 +716,7 @@ export default function SubAdminBatches() {
               </Button>
             )}
             {canCreate && (
-              <Button onClick={() => { setCreateOpen(true); setCreateError(null); }}>
+              <Button onClick={() => { setCreateOpen(true); setCreateError(null); reloadCourses(); }}>
                 <Plus className="h-4 w-4" /> New Batch
               </Button>
             )}
@@ -1244,6 +1246,20 @@ export default function SubAdminBatches() {
                     ))}
                   </SelectContent>
                 </Select>
+                {courseOptions.length === 0 && (
+                  <p className="text-xs text-destructive">
+                    {coursesLoading
+                      ? "Loading courses…"
+                      : coursesError
+                        ? "Couldn't load the course list."
+                        : "No active courses yet — add one under Courses first."}{" "}
+                    {!coursesLoading && (
+                      <button type="button" className="font-semibold underline" onClick={reloadCourses}>
+                        Retry
+                      </button>
+                    )}
+                  </p>
+                )}
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="new-batch-teacher-select">Teacher <span className="text-destructive">*</span></Label>
