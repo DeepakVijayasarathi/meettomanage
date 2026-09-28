@@ -310,3 +310,11 @@ export async function reconcileStaleSessionDurations(): Promise<ReconcileStaleSe
     method: "POST",
   });
 }
+
+/**
+ * Cancels all of a batch's upcoming classes in one go — the batch, its students and completed
+ * classes are kept — so a fresh schedule can be generated (instead of deleting the batch).
+ */
+export async function cancelUpcomingSessions(batchId: string): Promise<{ cancelled: number }> {
+  return apiFetch<{ cancelled: number }>(`/api/batches/${batchId}/cancel-upcoming`, { method: "POST" });
+}

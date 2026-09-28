@@ -50,6 +50,7 @@ import {
   toFrontendBatch,
   updateBatchFields,
   updateFutureSchedule,
+  cancelUpcomingSessions,
   type ApiBatch,
   type ApiBatchStudent,
   type ApiUnassignedChild,
@@ -326,6 +327,8 @@ export default function SubAdminBatches() {
   const [adjRemainingCount, setAdjRemainingCount] = useState("");
   const [adjBusy, setAdjBusy] = useState(false);
   const [adjResult, setAdjResult] = useState<string | null>(null);
+  // "Cancel all upcoming classes" (client: rather than deleting a batch to change its schedule).
+  const [cancelUpcomingOpen, setCancelUpcomingOpen] = useState(false);
 
   function toggleAdjDay(day: number) {
     setAdjTimeByDay((prev) => {
@@ -1085,6 +1088,21 @@ export default function SubAdminBatches() {
                     {adjBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {adjBusy ? "Updating…" : "Update remaining sessions"}
                   </Button>
                   {adjResult && <p className="mt-2 text-xs font-medium text-foreground">{adjResult}</p>}
+                  <div className="mt-4 border-t border-border pt-3">
+                    <p className="text-xs text-muted-foreground">
+                      Need to start over (new timing or days)? Cancel all {futureBatchSessions.length} upcoming class
+                      {futureBatchSessions.length === 1 ? "" : "es"} in one go, then create the new schedule here. The batch, its
+                      students and completed classes are kept.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 text-destructive hover:text-destructive"
+                      onClick={() => setCancelUpcomingOpen(true)}
+                    >
+                      Cancel all upcoming classes
+                    </Button>
+                  </div>
                 </div>
               ) : futureBatchSessions.length === 0 && canScheduleClasses ? (
                 <div className="rounded-xl border border-border bg-muted/30 p-4">
@@ -1213,6 +1231,23 @@ export default function SubAdminBatches() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={cancelUpcomingOpen}
+        onOpenChange={setCancelUpcomingOpen}
+        title="Cancel all upcoming classes?"
+        description={`All ${futureBatchSessions.length} upcoming class${futureBatchSessions.length === 1 ? "" : "es"} of this batch will be cancelled (recorded as cancelled by you). The batch, its students and its completed classes stay. You can then create the new schedule from this same screen.`}
+        confirmLabel="Cancel upcoming classes"
+        destructive
+        onConfirm={async () => {
+          if (!detail) return;
+          const { cancelled } = await cancelUpcomingSessions(detail.id);
+          await reloadBatchSessions(detail.id);
+          reload();
+          setAdjResult(null);
+          toast({ variant: "success", title: `${cancelled} upcoming class${cancelled === 1 ? "" : "es"} cancelled`, description: "Now set the new schedule for this batch." });
+        }}
+      />
 
       <ConfirmDialog
         open={!!deleteTarget}
