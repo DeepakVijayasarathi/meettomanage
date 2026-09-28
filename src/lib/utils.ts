@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { getUserTimeZone } from "@/lib/datetime";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -34,20 +35,46 @@ export function formatCurrencyAxisTick(value: number) {
   return `₹${label}k`;
 }
 
-export function formatDate(value: string | Date, pattern: "short" | "long" | "time" | "datetime" = "short") {
-  const date = typeof value === "string" ? new Date(value) : value;
+function formatDateWithZone(date: Date, pattern: "short" | "long" | "time" | "datetime", timeZone: string) {
   switch (pattern) {
     case "long":
-      return date.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+      return date.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone });
     case "time":
       // hour12 explicit, not left to en-IN's default -- Intl's locale defaults are an
       // implementation detail, not a guarantee; this is a platform-wide 12-hour convention.
-      return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
+      return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true, timeZone });
     case "datetime":
-      return `${date.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}, ${date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })}`;
+      return `${date.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone })}, ${date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true, timeZone })}`;
     default:
-      return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+      return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone });
   }
+}
+
+/**
+ * `value` is either a plain "YYYY-MM-DD" calendar date (already resolved to the right day by
+ * whoever built it -- typically utcIsoToLocalDateTime/utcIsoToZonedDateTime, which convert a UTC
+ * instant into a *specific* timezone) or a real UTC instant (Date / full ISO string) still
+ * needing that conversion.
+ *
+ * Client-reported bug: a "YYYY-MM-DD" string has no timezone of its own left to apply, but this
+ * used to get re-parsed with `new Date(value)` (interpreted as UTC midnight) and rendered with no
+ * `timeZone` option, silently falling back to the *browser's* own ambient zone -- a third,
+ * uncontrolled timezone with no relation to the account's chosen one. For India-based accounts
+ * whose browser also happens to be set to IST this never shows up; for anyone further from UTC
+ * (reported: Canadian parents) it silently shifted the calendar day by one. Fixed by never letting
+ * a resolved calendar date pass through a timezone conversion again (rendered as a fixed UTC
+ * instant, so no zone can shift it), and by converting a genuine instant using the signed-in
+ * account's own timezone (getUserTimeZone(), same as utcIsoToLocalDateTime) instead of the
+ * browser's.
+ */
+export function formatDate(value: string | Date, pattern: "short" | "long" | "time" | "datetime" = "short") {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return formatDateWithZone(new Date(Date.UTC(year, month - 1, day)), pattern, "UTC");
+  }
+
+  const date = typeof value === "string" ? new Date(value) : value;
+  return formatDateWithZone(date, pattern, getUserTimeZone());
 }
 
 /**

@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { escapeCsvCell, pickAccentForegroundHsl, safeExternalUrl, safeInternalPath, toCsv } from "./utils";
+import { afterEach, describe, expect, it } from "vitest";
+import { escapeCsvCell, formatDate, pickAccentForegroundHsl, safeExternalUrl, safeInternalPath, toCsv } from "./utils";
+import { setUserTimeZone } from "./datetime";
 import { ROLE_META } from "./roles";
 
 function hslTripleToRgb(triple: string): [number, number, number] {
@@ -119,6 +120,37 @@ describe("escapeCsvCell", () => {
 
   it("quotes a neutralized formula value that also contains a comma", () => {
     expect(escapeCsvCell("=A,B")).toBe('"\'=A,B"');
+  });
+});
+
+describe("formatDate", () => {
+  afterEach(() => {
+    setUserTimeZone(null);
+  });
+
+  // Client-reported bug: a Canadian parent saw a class under the wrong calendar date. Root
+  // cause: session.date is already a "YYYY-MM-DD" resolved to the RIGHT day by
+  // utcIsoToLocalDateTime, but formatDate used to re-parse it with `new Date(value)`
+  // (UTC midnight) and render with no timeZone, silently falling back to the *browser's* own
+  // ambient zone — invisible for an India-based browser, but a real day-shift for anyone whose
+  // browser zone disagrees with UTC by enough to cross midnight. A resolved calendar date has
+  // no zone left to convert, so it must render the same regardless of the browser/account zone.
+  it("never shifts a resolved 'YYYY-MM-DD' calendar date, whatever the account's timezone", () => {
+    setUserTimeZone("America/Toronto");
+    expect(formatDate("2026-09-28", "long")).toBe("28 September 2026");
+    expect(formatDate("2026-09-28", "short")).toContain("28");
+
+    setUserTimeZone("Pacific/Kiritimati"); // UTC+14 — the other extreme from Toronto's UTC-4/-5
+    expect(formatDate("2026-09-28", "long")).toBe("28 September 2026");
+  });
+
+  it("converts a real UTC instant using the signed-in account's own timezone, not a fixed default", () => {
+    // 2026-09-29T02:00:00Z is 28 Sept in Toronto (UTC-4 in September) and 29 Sept in Kolkata.
+    setUserTimeZone("America/Toronto");
+    expect(formatDate("2026-09-29T02:00:00Z", "long")).toBe("28 September 2026");
+
+    setUserTimeZone("Asia/Kolkata");
+    expect(formatDate("2026-09-29T02:00:00Z", "long")).toBe("29 September 2026");
   });
 });
 
