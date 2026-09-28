@@ -68,6 +68,22 @@ export function isJoinable(session: ClassSession): boolean {
   return minsUntil <= 10 && minsUntil > -(JOIN_WINDOW_GRACE_HOURS * 60);
 }
 
+/**
+ * The teacher's own "Start Class" — open "all the time" (client, reported live): any time before
+ * the class, and until 3 hours after its scheduled end even if the system already auto-marked it
+ * (No-Show, or Completed because nobody had joined yet). Only a cancelled/moved class is closed.
+ * Mirrors SessionService.GetJitsiJoinAsync's teacher rule.
+ */
+export function isTeacherJoinable(session: ClassSession): boolean {
+  if (session.status === "cancelled" || session.status === "rescheduled") return false;
+  const endPlusGrace = sessionStart(session).getTime() + (session.duration + JOIN_WINDOW_GRACE_HOURS * 60) * 60_000;
+  if (now().getTime() > endPlusGrace) return false;
+  if (JOINABLE_STATUSES.includes(session.status) || session.status === "noshow") return true;
+  // A class already taught and ended shows its record instead; an auto-"completed" one can still
+  // be joined while its scheduled time is running.
+  return session.status === "completed" && now().getTime() < sessionStart(session).getTime() + session.duration * 60_000;
+}
+
 export function joinHint(session: ClassSession): string {
   const minsUntil = minutesUntilStart(session);
   if (minsUntil > 10) {

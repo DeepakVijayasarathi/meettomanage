@@ -27,6 +27,7 @@ import { getChildById } from "@/data/children";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, rescheduleSession, scheduleSession, toFrontendSession } from "@/api/sessions";
+import { parseCancellation } from "@/lib/cancelledBy";
 import { staffCanJoin } from "@/lib/staffJoin";
 import { listBatches, listTeacherOptions } from "@/api/batches";
 import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
@@ -402,6 +403,15 @@ export default function CoordinatorCalendar() {
                         : selected.childIds.map((id) => getChildById(id)?.name ?? id).join(", ")}
                   </p>
                 </div>
+                {selected.status === "cancelled" && selected.cancellationReason && (
+                  <div className="col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cancelled by</p>
+                    <p className="mt-1 font-medium text-foreground">{parseCancellation(selected.cancellationReason).who ?? "Not recorded"}</p>
+                    {parseCancellation(selected.cancellationReason).details && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{parseCancellation(selected.cancellationReason).details}</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <DialogFooter>

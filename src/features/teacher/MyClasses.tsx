@@ -24,7 +24,7 @@ import { listHolidays, listMyLeave, type ApiHoliday, type ApiLeaveRequest } from
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
-import { isJoinable, joinHint } from "@/features/parent/utils";
+import { isTeacherJoinable, joinHint } from "@/features/parent/utils";
 import type { ClassSession, SessionStatus } from "@/types";
 
 /** Status-eligible for live class, independent of whether the join window is open yet. */
@@ -192,7 +192,7 @@ export default function TeacherMyClasses() {
       // parent/Billing.tsx's action column).
       header: "",
       render: (row) =>
-        isJoinable(row) ? (
+        isTeacherJoinable(row) ? (
           <Button size="sm" disabled={startingId === row.id} onClick={(e) => { e.stopPropagation(); startClass(row); }}>
             {startingId === row.id ? "Starting…" : row.status === "demo" ? "Start Demo" : "Start Class"}
           </Button>
@@ -327,7 +327,7 @@ export default function TeacherMyClasses() {
                     Recording
                   </Button>
                 )}
-                {isJoinable(selected) ? (
+                {isTeacherJoinable(selected) ? (
                   <Button disabled={startingId === selected.id} onClick={() => startClass(selected)}>
                     {startingId === selected.id ? "Starting…" : selected.status === "demo" ? "Start Demo" : "Start Class"}
                   </Button>

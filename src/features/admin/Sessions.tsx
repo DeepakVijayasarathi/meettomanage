@@ -30,6 +30,7 @@ import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, markNoShow, rescheduleSession, scheduleSession, toFrontendSession, type NoShowParty } from "@/api/sessions";
 import { staffCanJoin } from "@/lib/staffJoin";
+import { parseCancellation } from "@/lib/cancelledBy";
 import { listBatches, listTeacherOptions } from "@/api/batches";
 
 // Monitor-only, same as Coordinator's own Join Class (coordinator/Calendar.tsx) --
@@ -319,7 +320,20 @@ export default function AdminSessions() {
         header: "Status",
         sortable: true,
         accessor: (row) => row.status,
-        render: (row) => <SessionStatusBadge status={row.status} label={noShowLabel(row)} />,
+        render: (row) => {
+          // Who cancelled it (reported live: admin and the founder couldn't tell).
+          const cancelled = row.status === "cancelled" ? parseCancellation(row.cancellationReason) : null;
+          return (
+            <div className="flex flex-col gap-1">
+              <SessionStatusBadge status={row.status} label={noShowLabel(row)} />
+              {cancelled && (cancelled.who || cancelled.details) && (
+                <span className="max-w-[14rem] truncate text-xs text-muted-foreground" title={row.cancellationReason}>
+                  {cancelled.who ? `by ${cancelled.who}` : cancelled.details}
+                </span>
+              )}
+            </div>
+          );
+        },
       },
       {
         key: "actions",
