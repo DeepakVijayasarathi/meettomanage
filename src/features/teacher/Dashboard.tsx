@@ -43,7 +43,7 @@ import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatCurrency, formatDate, formatTimeLabel } from "@/lib/utils";
-import { isJoinable, joinHint } from "@/features/parent/utils";
+import { isTeacherJoinable, joinHint } from "@/features/parent/utils";
 import type { ClassSession, DemoFeedback, SessionStatus, TeacherPayout } from "@/types";
 
 const TEACHER_ID = "t-1";
@@ -278,7 +278,7 @@ export default function TeacherDashboard() {
               <div className="flex flex-col gap-3">
                 {todaysSessions.map((session, i) => {
                   const hex = CHART_PALETTE[i % CHART_PALETTE.length];
-                  const joinable = isJoinable(session);
+                  const joinable = isTeacherJoinable(session);
                   return (
                     <div
                       key={session.id}

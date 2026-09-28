@@ -24,6 +24,7 @@ import { getChildById } from "@/data/children";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getJitsiJoin, listSessions, toFrontendSession } from "@/api/sessions";
+import { parseCancellation } from "@/lib/cancelledBy";
 import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import type { ClassSession } from "@/types";
@@ -240,6 +241,15 @@ export default function AdminAcademicCalendar() {
                         : selected.childIds.map((id) => getChildById(id)?.name ?? id).join(", ")}
                   </p>
                 </div>
+                {selected.status === "cancelled" && selected.cancellationReason && (
+                  <div className="col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cancelled by</p>
+                    <p className="mt-1 font-medium text-foreground">{parseCancellation(selected.cancellationReason).who ?? "Not recorded"}</p>
+                    {parseCancellation(selected.cancellationReason).details && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{parseCancellation(selected.cancellationReason).details}</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <DialogFooter>

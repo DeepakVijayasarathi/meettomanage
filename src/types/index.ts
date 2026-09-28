@@ -122,6 +122,8 @@ export interface ClassSession {
   batchName?: string;
   /** Who the class is for — the batch's active students, or a demo's child — staff views only. */
   studentNames?: string[];
+  /** Why and by whom a cancelled class was cancelled ("Cancelled by {name} ({role}): {detail}"). */
+  cancellationReason?: string;
 }
 
 export interface Invoice {

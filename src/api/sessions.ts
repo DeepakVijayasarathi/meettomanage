@@ -70,6 +70,7 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
     batchId: session.batchId ?? undefined,
     batchName: session.batchName ?? undefined,
     studentNames: session.studentNames ?? [],
+    cancellationReason: session.cancellationReason ?? undefined,
     teacherId: session.teacherProfileId,
     teacherName: session.teacherName,
     childIds: session.childIds ?? [],
