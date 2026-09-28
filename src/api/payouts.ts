@@ -122,6 +122,35 @@ export async function listMyPayouts(): Promise<ApiPayout[]> {
   return apiFetch<ApiPayout[]>("/api/payouts/mine");
 }
 
+/** One batch's row on "My Earnings" for a month. */
+export interface ApiTeacherBatchEarnings {
+  /** Null for a demo/ad-hoc session with no batch behind it. */
+  batchId: string | null;
+  batchName: string;
+  /** The batch's flat per-class rate if it has one; otherwise the effective average for a per-minute-rate batch. */
+  ratePerClass: number | null;
+  classesTaken: number;
+  totalEarned: number;
+}
+
+/** "My Earnings" (client requirement): a teacher's classes-taken and earnings per batch for one month. */
+export interface ApiTeacherEarningsSummary {
+  periodYear: number;
+  periodMonth: number;
+  status: ApiPayoutStatus | null;
+  totalAmount: number;
+  batches: ApiTeacherBatchEarnings[];
+}
+
+/** Batch-wise breakdown for one month, defaulting to the current month. */
+export async function getMyEarningsSummary(year?: number, month?: number): Promise<ApiTeacherEarningsSummary> {
+  const params = new URLSearchParams();
+  if (year) params.set("year", String(year));
+  if (month) params.set("month", String(month));
+  const query = params.size > 0 ? `?${params}` : "";
+  return apiFetch<ApiTeacherEarningsSummary>(`/api/payouts/mine/summary${query}`);
+}
+
 export async function finalizePayout(id: string): Promise<ApiPayout> {
   return apiFetch<ApiPayout>(`/api/payouts/${id}/finalize`, { method: "POST" });
 }

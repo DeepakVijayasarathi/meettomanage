@@ -83,6 +83,8 @@ export interface Batch {
   paymentPlanType?: BatchPaymentPlanType;
   paymentAfterSessionsCount?: number | null;
   paymentDueDate?: string | null;
+  /** Flat amount paid to this batch's teacher per completed class; null/undefined means the centre's per-minute rate card applies instead. */
+  teacherPayoutPerClass?: number | null;
 }
 
 export type SessionStatus =

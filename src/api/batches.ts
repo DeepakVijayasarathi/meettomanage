@@ -23,6 +23,8 @@ export interface ApiBatch {
   paymentPlanType: BatchPaymentPlanType;
   paymentAfterSessionsCount: number | null;
   paymentDueDate: string | null;
+  /** Flat amount paid to this batch's teacher per completed class; null means the centre's per-minute rate card applies instead. */
+  teacherPayoutPerClass: number | null;
 }
 
 export interface TeacherOption {
@@ -64,6 +66,7 @@ export function toFrontendBatch(batch: ApiBatch): DisplayBatch {
     paymentPlanType: batch.paymentPlanType,
     paymentAfterSessionsCount: batch.paymentAfterSessionsCount,
     paymentDueDate: batch.paymentDueDate,
+    teacherPayoutPerClass: batch.teacherPayoutPerClass,
   };
 }
 
@@ -104,6 +107,8 @@ export async function updateBatchFields(
     paymentAfterSessionsCount?: number | null;
     /** Pass null explicitly to clear it (e.g. switching away from the DueOnDate plan). */
     paymentDueDate?: string | null;
+    /** Pass null explicitly to clear it (batch goes back to the centre's per-minute rate card). */
+    teacherPayoutPerClass?: number | null;
   }
 ): Promise<ApiBatch> {
   return apiFetch<ApiBatch>(`/api/batches/${batch.id}`, {
@@ -119,6 +124,7 @@ export async function updateBatchFields(
       paymentPlanType: fields.paymentPlanType ?? batch.paymentPlanType,
       paymentAfterSessionsCount: fields.paymentAfterSessionsCount !== undefined ? fields.paymentAfterSessionsCount : batch.paymentAfterSessionsCount,
       paymentDueDate: fields.paymentDueDate !== undefined ? fields.paymentDueDate : batch.paymentDueDate,
+      teacherPayoutPerClass: fields.teacherPayoutPerClass !== undefined ? fields.teacherPayoutPerClass : batch.teacherPayoutPerClass,
     }),
   });
 }
@@ -133,6 +139,7 @@ export async function createBatch(input: {
   paymentPlanType?: BatchPaymentPlanType;
   paymentAfterSessionsCount?: number | null;
   paymentDueDate?: string | null;
+  teacherPayoutPerClass?: number | null;
 }): Promise<ApiBatch> {
   return apiFetch<ApiBatch>("/api/batches", { method: "POST", body: JSON.stringify(input) });
 }

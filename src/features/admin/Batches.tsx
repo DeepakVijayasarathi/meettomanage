@@ -207,6 +207,9 @@ export default function AdminBatches() {
   // detail dialog just never exposed an input for it.
   const [editName, setEditName] = useState("");
   const [editPaymentPlan, setEditPaymentPlan] = useState<BatchPaymentPlanState>(DEFAULT_PAYMENT_PLAN);
+  // Per-batch teacher payout (client requirement) — editable after creation too. Blank keeps/
+  // reverts to the centre's per-minute rate card.
+  const [editPayoutPerClass, setEditPayoutPerClass] = useState("");
 
   // One-time repair for batches reassigned before the teacher-reassignment cascade fix existed —
   // their already-generated sessions were left pointing at the old teacher (see BatchService's
@@ -277,6 +280,9 @@ export default function AdminBatches() {
   const [newTeacher, setNewTeacher] = useState("");
   const [newCapacity, setNewCapacity] = useState("8");
   const [newStart, setNewStart] = useState("");
+  // Per-batch teacher payout (client requirement): entered at batch creation since every
+  // teacher may be paid differently per batch. Blank keeps the centre's per-minute rate card.
+  const [newPayoutPerClass, setNewPayoutPerClass] = useState("");
   const [newPaymentPlan, setNewPaymentPlan] = useState<BatchPaymentPlanState>(DEFAULT_PAYMENT_PLAN);
   const [creating, setCreating] = useState(false);
   // Individual (1:1) courses always run a single-seat batch — BatchService.CreateAsync
@@ -485,6 +491,7 @@ export default function AdminBatches() {
             ? Number(newPaymentPlan.paymentAfterSessionsCount)
             : null,
         paymentDueDate: newPaymentPlan.paymentPlanType === "DueOnDate" && newPaymentPlan.paymentDueDate.trim() ? newPaymentPlan.paymentDueDate : null,
+        teacherPayoutPerClass: newPayoutPerClass.trim() ? Number(newPayoutPerClass) : null,
       });
       setBanner(`Batch "${newName.trim()}" created. Open Manage → Generate schedule to create its sessions.`);
       setCreateOpen(false);
@@ -497,6 +504,7 @@ export default function AdminBatches() {
       setNewTeacher("");
       setNewCapacity("8");
       setNewStart("");
+      setNewPayoutPerClass("");
       setNewPaymentPlan(DEFAULT_PAYMENT_PLAN);
       reload();
     } catch (err) {
@@ -575,6 +583,7 @@ export default function AdminBatches() {
       paymentAfterSessionsCount: b.paymentAfterSessionsCount != null ? String(b.paymentAfterSessionsCount) : "",
       paymentDueDate: b.paymentDueDate ?? "",
     });
+    setEditPayoutPerClass(b.teacherPayoutPerClass != null ? String(b.teacherPayoutPerClass) : "");
     setSaved(false);
     setSavingDetail(false);
     setSaveError(null);
@@ -617,6 +626,7 @@ export default function AdminBatches() {
             ? Number(editPaymentPlan.paymentAfterSessionsCount)
             : null,
         paymentDueDate: editPaymentPlan.paymentPlanType === "DueOnDate" && editPaymentPlan.paymentDueDate.trim() ? editPaymentPlan.paymentDueDate : null,
+        teacherPayoutPerClass: editPayoutPerClass.trim() ? Number(editPayoutPerClass) : null,
       });
       setSaved(true);
       reload();
@@ -845,6 +855,19 @@ export default function AdminBatches() {
                     <p className="text-xs text-muted-foreground">
                       Leave blank to follow the course's own {detail.courseDuration ?? "—"}-minute default.
                     </p>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="batch-payout-per-class">Teacher payout per class</Label>
+                    <Input
+                      id="batch-payout-per-class"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="Leave blank to use the teacher's rate card"
+                      value={editPayoutPerClass}
+                      onChange={(e) => setEditPayoutPerClass(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Flat amount paid per completed class in this batch. Leave blank for the centre's per-minute rate card.</p>
                   </div>
                 </div>
               )}
@@ -1246,6 +1269,19 @@ export default function AdminBatches() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="nb-payout-per-class">Teacher payout per class (optional)</Label>
+              <Input
+                id="nb-payout-per-class"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="e.g. 125 — leave blank to use the teacher's rate card"
+                value={newPayoutPerClass}
+                onChange={(e) => setNewPayoutPerClass(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Flat amount paid to this batch's teacher per completed class. Leave blank to keep the centre's per-minute rate card instead.</p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">

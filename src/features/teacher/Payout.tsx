@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { parse } from "date-fns";
-import { Banknote, CalendarCheck, GraduationCap, Lock, TrendingUp, Wallet } from "lucide-react";
+import { format, parse } from "date-fns";
+import { Banknote, CalendarCheck, GraduationCap, Layers, Lock, TrendingUp, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -8,12 +8,14 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { getPayoutsForTeacher } from "@/data/payouts";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
+import { getMyEarningsSummary, listMyPayouts, toFrontendPayout, type ApiTeacherEarningsSummary } from "@/api/payouts";
 import { useSession } from "@/state/session";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import type { TeacherPayout, TeacherPayoutItem } from "@/types";
@@ -44,6 +46,38 @@ export default function TeacherPayout() {
   const lifetimeTotal = payouts.reduce((sum, p) => sum + p.finalAmount, 0);
   const lifetimeSessions = payouts.reduce((sum, p) => sum + p.sessionsCompleted, 0);
   const [selectedPayout, setSelectedPayout] = useState<TeacherPayout | null>(null);
+
+  // "My Earnings" batch-wise breakdown (client requirement): every batch this teacher is
+  // taking, its rate per class, classes taken and total earned — for whichever month is
+  // selected below. A month picker built from the payout history above (plus the current
+  // month, which may not have a Payout row yet) rather than a fixed range, so it always
+  // covers exactly the months this teacher actually has data for.
+  const now = new Date();
+  const monthOptions = (() => {
+    const opts = payouts.map((p) => {
+      const d = parseMonth(p.month);
+      return { year: d.getFullYear(), month: d.getMonth() + 1, label: p.month };
+    });
+    const currentLabel = format(now, "MMMM yyyy");
+    if (!opts.some((o) => o.label === currentLabel)) {
+      opts.unshift({ year: now.getFullYear(), month: now.getMonth() + 1, label: currentLabel });
+    }
+    return opts.sort((a, b) => b.year - a.year || b.month - a.month);
+  })();
+  const [summaryYear, setSummaryYear] = useState(now.getFullYear());
+  const [summaryMonth, setSummaryMonth] = useState(now.getMonth() + 1);
+  const emptySummary: ApiTeacherEarningsSummary = { periodYear: summaryYear, periodMonth: summaryMonth, status: null, totalAmount: 0, batches: [] };
+  const { data: summary, loading: summaryLoading, error: summaryError, reload: reloadSummary } = useApiData(
+    () => getMyEarningsSummary(summaryYear, summaryMonth),
+    emptySummary
+  );
+
+  function changeSummaryPeriod(value: string) {
+    const [y, m] = value.split("-").map(Number);
+    setSummaryYear(y);
+    setSummaryMonth(m);
+    reloadSummary();
+  }
 
   const columns: DataTableColumn<TeacherPayout>[] = [
     {
@@ -104,8 +138,8 @@ export default function TeacherPayout() {
   return (
     <div>
       <PageHeader
-        title="My Payout"
-        description="Your monthly payout calculation and history. This view is private to you — teachers cannot see each other's payouts."
+        title="My Earnings"
+        description="Your batch-wise earnings and monthly payout history. This view is private to you — teachers cannot see each other's payouts."
         eyebrow="My Account"
       />
 
@@ -155,6 +189,60 @@ export default function TeacherPayout() {
               never visible from this screen.</p>
             </CardContent>
           </Card>
+
+          <div className="mt-6">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Earnings by Batch</h2>
+                <p className="text-xs text-muted-foreground">Every batch you're taking, its rate per class, classes taken and total earned for the selected month.</p>
+              </div>
+              <Select value={`${summaryYear}-${summaryMonth}`} onValueChange={changeSummaryPeriod}>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map((o) => (
+                    <SelectItem key={`${o.year}-${o.month}`} value={`${o.year}-${o.month}`}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {summaryError && apiEnabled() ? (
+              <InlineAlert variant="warning" className="mb-3">Could not load this month's batch breakdown ({summaryError}).</InlineAlert>
+            ) : summaryLoading ? (
+              <div className="flex justify-center rounded-xl border border-border py-10">
+                <span className="text-sm text-muted-foreground">Loading…</span>
+              </div>
+            ) : summary.batches.length === 0 ? (
+              <EmptyState icon={Layers} title="No classes taken yet this month" description="Once you complete a class this month, its batch will show up here." />
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableHead>Batch</TableHead>
+                      <TableHead>Rate / Class</TableHead>
+                      <TableHead>Classes Taken</TableHead>
+                      <TableHead>Total Earned</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {summary.batches.map((b) => (
+                      <TableRow key={b.batchId ?? b.batchName}>
+                        <TableCell className="font-medium text-foreground">{b.batchName}</TableCell>
+                        <TableCell className="text-muted-foreground">{b.ratePerClass !== null ? formatCurrency(b.ratePerClass) : "—"}</TableCell>
+                        <TableCell>{b.classesTaken}</TableCell>
+                        <TableCell className="font-semibold text-foreground">{formatCurrency(b.totalEarned)}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="bg-muted/20 hover:bg-muted/20">
+                      <TableCell colSpan={3} className="text-right font-semibold text-foreground">Total this month</TableCell>
+                      <TableCell className="font-bold text-foreground">{formatCurrency(summary.totalAmount)}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
 
           <div className="mt-6">
             <h2 className="mb-3 text-base font-semibold text-foreground">Payout History</h2>

@@ -41,6 +41,8 @@ const SupportTicketsQueue = lazy(() => import("@/features/admin/SupportTickets")
 const PayoutApprovals = lazy(() => import("@/features/admin/PayoutApprovals"));
 const StaffMyLeave = lazy(() => import("@/features/subadmin/MyLeave"));
 const AdminStaffLeave = lazy(() => import("@/features/admin/StaffLeave"));
+const StaffMySalary = lazy(() => import("@/features/subadmin/MySalary"));
+const AdminStaffPayroll = lazy(() => import("@/features/admin/StaffPayroll"));
 const ParentSupport = lazy(() => import("@/features/parent/Support"));
 const AdminBulkEmail = lazy(() => import("@/features/admin/BulkEmail"));
 const AdminBulkEmailHistory = lazy(() => import("@/features/admin/BulkEmailHistory"));
@@ -255,6 +257,9 @@ export default function App() {
               <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="leave" element={<AdminLeave />} />
               <Route path="staff-leave" element={<AdminStaffLeave />} />
+              <Route path="my-leave" element={<StaffMyLeave approverLabel="Management" />} />
+              <Route path="my-salary" element={<StaffMySalary />} />
+              <Route path="staff-payroll" element={<AdminStaffPayroll />} />
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="monitoring" element={<AdminMonitoring />} />
@@ -354,6 +359,9 @@ export default function App() {
               <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="leave" element={<AdminLeave />} />
               <Route path="staff-leave" element={<AdminStaffLeave />} />
+              <Route path="my-leave" element={<StaffMyLeave approverLabel="Management" />} />
+              <Route path="my-salary" element={<StaffMySalary />} />
+              <Route path="staff-payroll" element={<AdminStaffPayroll />} />
               <Route path="availability" element={<AdminAvailability />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="monitoring" element={<AdminMonitoring />} />
@@ -407,6 +415,7 @@ export default function App() {
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="my-leave" element={<StaffMyLeave />} />
+              <Route path="my-salary" element={<StaffMySalary />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
               <Route path="enrollments" element={<SubAdminEnrollments />} />
@@ -461,6 +470,7 @@ export default function App() {
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="my-leave" element={<StaffMyLeave />} />
+              <Route path="my-salary" element={<StaffMySalary />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
               <Route path="enrollments" element={<SubAdminEnrollments />} />
@@ -495,6 +505,7 @@ export default function App() {
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="my-leave" element={<StaffMyLeave />} />
+              <Route path="my-salary" element={<StaffMySalary />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
               <Route path="enrollments" element={<SubAdminEnrollments />} />
@@ -534,6 +545,8 @@ export default function App() {
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="my-leave" element={<StaffMyLeave />} />
+              <Route path="my-salary" element={<StaffMySalary />} />
+              <Route path="staff-payroll" element={<AdminStaffPayroll />} />
               <Route path="payout-approvals" element={<PayoutApprovals />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />

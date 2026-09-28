@@ -36,8 +36,12 @@ function todayIso(): string {
 /**
  * "My Leave" for admin-team members (RM, Coordinator, Management, Admission) — apply whenever
  * needed, no minimum notice; Admin / Founder approve. Shared across those portals.
+ *
+ * `approverLabel` overrides who the description says reviews it — used for Admin's own leave
+ * (mounted under /admin and /executive), which only Management can approve, never another
+ * Admin (StaffLeaveService.ReviewAsync's own carve-out); every other portal keeps the default.
  */
-export default function MyLeave() {
+export default function MyLeave({ approverLabel = "Admin" }: { approverLabel?: string }) {
   const { data: leaves, loading, error, reload } = useApiData(() => listMyStaffLeave(), [] as ApiStaffLeave[]);
   const [open, setOpen] = useState(false);
   const [startDate, setStartDate] = useState(todayIso());
@@ -67,7 +71,7 @@ export default function MyLeave() {
     setSaving(true);
     try {
       await applyStaffLeave({ startDate, endDate, reason: reason.trim() });
-      toast({ variant: "success", title: "Leave applied", description: "Admin has been notified for approval." });
+      toast({ variant: "success", title: "Leave applied", description: `${approverLabel} has been notified for approval.` });
       setOpen(false);
       reload();
     } catch (err) {
@@ -95,7 +99,7 @@ export default function MyLeave() {
       <PageHeader
         eyebrow="Leave"
         title="My Leave"
-        description="Apply for leave whenever you need it — there's no minimum notice. Admin reviews every request."
+        description={`Apply for leave whenever you need it — there's no minimum notice. ${approverLabel} reviews every request.`}
         actions={
           <Button onClick={startNew}>
             <Plus className="h-4 w-4" /> Apply for leave
