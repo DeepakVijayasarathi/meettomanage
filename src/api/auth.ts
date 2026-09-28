@@ -23,11 +23,7 @@ export function logout() {
   setAccessToken(null);
 }
 
-/**
- * Always resolves the same way whether or not the address has an account —
- * the caller shows one fixed "if that email exists, we've sent a link"
- * message either way, so the UI itself never reveals which emails are real.
- */
+/** Rejects with a 404 ApiError (readable message) if the identifier has no account. */
 export async function requestPinReset(email: string): Promise<void> {
   await apiFetch<void>("/api/auth/forgot-pin", {
     method: "POST",
