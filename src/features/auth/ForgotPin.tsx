@@ -29,10 +29,9 @@ export default function ForgotPin() {
     setError(null);
     try {
       await requestPinReset(email.trim());
-      // Always the same message on success, regardless of whether the address
-      // actually has an account — the UI must never leak that distinction.
       setSent(true);
     } catch (err) {
+      // A 404 here means no account matches — the backend's message says so plainly.
       setError(userMessage(err, "Couldn't send the reset link. Please try again."));
     } finally {
       setSubmitting(false);
@@ -67,13 +66,13 @@ export default function ForgotPin() {
             <p className="mt-1.5 text-sm text-brand-ink/70">
               {isPhone ? (
                 <>
-                  If <strong className="text-brand-ink">{email.trim()}</strong> has an account with us, you'll get a new PIN: by
-                  email if your account has one, otherwise our team will send it to you on WhatsApp shortly.
+                  You'll get a new PIN for <strong className="text-brand-ink">{email.trim()}</strong>: by email if your
+                  account has one, otherwise our team will send it to you on WhatsApp shortly.
                 </>
               ) : (
                 <>
-                  If <strong className="text-brand-ink">{email.trim()}</strong> has an account with us, a reset link is on
-                  its way — it expires in 30 minutes and works once.
+                  A reset link is on its way to <strong className="text-brand-ink">{email.trim()}</strong> — it expires in
+                  30 minutes and works once.
                 </>
               )}
             </p>
