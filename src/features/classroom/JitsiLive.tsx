@@ -182,6 +182,12 @@ export default function JitsiLive({
   // running -- it is only made invisible, never unmounted, so the call doesn't reconnect).
   const [floatSize, setFloatSize] = useState<"normal" | "large">("normal");
   const [floatHidden, setFloatHidden] = useState(false);
+  // Anyone in the call screen-sharing (Jitsi's contentSharingParticipantsChanged). Reported live
+  // (student on a phone): the teacher had maximized the board -- which maximizes every student's
+  // board too -- then shared her screen, and the lesson was stuck in the small floating tile over
+  // a blank board. While a share is on, a student's call takes the whole stage instead.
+  const [someoneSharing, setSomeoneSharing] = useState(false);
+  const shareTakesStage = boardMaximized && someoneSharing && mode !== "teacher";
   useEffect(() => {
     if (!boardMaximized) setFloatHidden(false);
   }, [boardMaximized]);
@@ -1087,8 +1093,14 @@ export default function JitsiLive({
           // Meet/Zoom behaviour for the control bar: on a touch screen there is no hover to bring
           // it back, so Jitsi's default auto-hide leaves a child hunting for the mic/camera
           // buttons -- keep it pinned there; on desktop it still tucks away after a few idle seconds.
+          // Not on a landscape phone, though (reported live): there the pinned bar sat across the
+          // middle of the teacher's shared screen, covering the lesson -- it auto-hides there and
+          // a tap brings it back.
           toolbarConfig: {
-            alwaysVisible: typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches,
+            alwaysVisible:
+              typeof window !== "undefined" &&
+              window.matchMedia("(pointer: coarse)").matches &&
+              !window.matchMedia("(orientation: landscape) and (max-height: 520px)").matches,
             initialTimeout: 8000,
             timeout: 5000,
           },
@@ -1398,6 +1410,7 @@ export default function JitsiLive({
       };
       api.addListener("contentSharingParticipantsChanged", (payload) => {
         shareLayout.sharingIds = payload?.data ?? [];
+        setSomeoneSharing(shareLayout.sharingIds.length > 0);
         syncFilmstripForShare();
       });
       api.addListener("tileViewChanged", (payload) => {
@@ -2207,8 +2220,15 @@ export default function JitsiLive({
                   // bar (confirmed on a phone: a blank dark box with mic/camera buttons and no faces), so
                   // there is no useful "small" size -- only normal (enough for a few faces) and large. To
                   // get it out of the way, use the close button.
-                  floatSize === "normal" && "h-[min(46vh,340px)] min-h-[320px] w-[min(90vw,340px)] sm:w-[360px]",
-                  floatSize === "large" && "h-[min(64vh,460px)] min-h-[320px] w-[min(94vw,680px)]",
+                  // A student watching a screen share: the shared lesson IS the content, so it fills
+                  // the screen (the ✕ still tucks it away to get back to the board).
+                  shareTakesStage && "inset-2 h-auto w-auto",
+                  !shareTakesStage && floatSize === "normal" && "h-[min(46vh,340px)] min-h-[320px] w-[min(90vw,340px)] sm:w-[360px]",
+                  !shareTakesStage && floatSize === "large" && "h-[min(64vh,460px)] min-h-[320px] w-[min(94vw,680px)]",
+                  // A landscape phone is only ~350px tall: the fixed 320px minimum overflowed it.
+                  !shareTakesStage && "short:bottom-2 short:right-2 short:h-[calc(100dvh-1rem)] short:min-h-0",
+                  !shareTakesStage && floatSize === "normal" && "short:w-[min(55vw,560px)]",
+                  !shareTakesStage && floatSize === "large" && "short:w-[calc(100vw-1rem)]",
                   // Cards/buttons that live inside the tile (celebrate, leaderboard, roster, hints)
                   // are laid out for the big view and would swamp a small tile.
                   "[&_[data-float-hide]]:hidden",
