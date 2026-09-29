@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/state/session";
+import { useToast } from "@/hooks/use-toast";
 import { getMyAccount, updateMyAccount } from "@/api/account";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -83,7 +84,8 @@ function labelForZone(zone: string): string {
  * a raw form-validation error rather than a friendly one-off nudge.
  */
 export function TimezoneMismatchBanner() {
-  const { timeZoneId, setTimeZoneId } = useSession();
+  const { timeZoneId, setTimeZoneId, role } = useSession();
+  const { toast } = useToast();
   const [detectedZone, setDetectedZone] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -103,6 +105,27 @@ export function TimezoneMismatchBanner() {
     }
     setDetectedZone(zone);
     setDismissed(localStorage.getItem(`${DISMISS_KEY_PREFIX}${timeZoneId}:${zone}`) === "1");
+
+    // Reported live, repeatedly: parents abroad still saw every class in India time -- they never
+    // acted on this banner. A parent/student account still on the India default (the server's
+    // default for every new account) is switched to the device's own zone automatically, once;
+    // saved to the account, so reminder emails follow too. Staff keep the one-click prompt.
+    const autoKey = `trn.tzAutoApplied:${zone}`;
+    if ((role === "parent" || role === "student") && zonesAreEquivalent(timeZoneId, "Asia/Kolkata")) {
+      let alreadyTried = false;
+      try {
+        alreadyTried = localStorage.getItem(autoKey) === "1";
+        localStorage.setItem(autoKey, "1");
+      } catch {
+        alreadyTried = false;
+      }
+      if (!alreadyTried) {
+        void applyZone(zone).then((ok) =>
+          ok && toast({ variant: "success", title: "Class times now shown in your local time", description: `Your timezone was set to ${zone}. You can change it in Account settings.` })
+        );
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeZoneId]);
 
   if (!detectedZone || dismissed) return null;
@@ -114,6 +137,11 @@ export function TimezoneMismatchBanner() {
 
   async function applyDetected() {
     if (!detectedZone) return;
+    await applyZone(detectedZone);
+  }
+
+  async function applyZone(zoneToApply: string): Promise<boolean> {
+    const detectedZone = zoneToApply;
     setApplying(true);
     setError(null);
     try {
@@ -128,8 +156,10 @@ export function TimezoneMismatchBanner() {
         timeZoneId: detectedZone,
       });
       setTimeZoneId(updated.timeZoneId);
+      return true;
     } catch (err) {
       setError(userMessage(err, "Couldn't switch your timezone — try Account settings instead."));
+      return false;
     } finally {
       setApplying(false);
     }

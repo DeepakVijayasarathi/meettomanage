@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { cn, formatCurrency, hexToHslTriple } from "@/lib/utils";
+import { cn, formatCurrency, hexToHslTriple, isValidEmail } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
@@ -48,6 +48,7 @@ import {
   createIntegration,
   deleteIntegration,
   listIntegrations,
+  sendTestEmail,
   updateIntegration,
   type ApiIntegration,
   type IntegrationCategory as IntegrationCategoryName,
@@ -671,6 +672,7 @@ export default function AdminSettings() {
 
         <TabsContent value="integrations" className="flex flex-col gap-6">
           <JitsiRecordingSettings />
+          <EmailDeliveryCheck />
           <IntegrationsManager />
         </TabsContent>
 
@@ -2197,6 +2199,55 @@ export function IntegrationsManager() {
         destructive
         onConfirm={() => (deleteTarget ? remove(deleteTarget) : undefined)}
       />
+    </Card>
+  );
+}
+
+/**
+ * "Check email delivery" — reported live: parents never received their PIN-reset emails and
+ * nothing showed why (normal sending never reports a problem). Sends a real test email and shows
+ * the exact reason when it can't be delivered.
+ */
+function EmailDeliveryCheck() {
+  const { hasPermission } = useSession();
+  const [to, setTo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  if (!apiEnabled() || !hasPermission("Settings", "Edit")) return null;
+
+  async function run() {
+    if (!isValidEmail(to.trim()) || busy) return;
+    setBusy(true);
+    setResult(null);
+    try {
+      setResult(await sendTestEmail(to.trim()));
+    } catch (err) {
+      setResult({ ok: false, message: userMessage(err, "Couldn't run the email check.") });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Check email delivery</CardTitle>
+        <CardDescription>
+          Send a test email to any address (for example a Gmail you can open) to confirm that parents will receive
+          PIN-reset links, logins and other emails. If something is wrong, you'll see exactly what.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input type="email" placeholder="name@gmail.com" value={to} onChange={(e) => setTo(e.target.value)} className="sm:max-w-sm" />
+          <Button onClick={run} disabled={busy || !isValidEmail(to.trim())}>
+            {busy ? "Sending…" : "Send test email"}
+          </Button>
+        </div>
+        {result && (
+          <p className={result.ok ? "text-sm font-medium text-success" : "text-sm font-medium text-destructive"}>{result.message}</p>
+        )}
+      </CardContent>
     </Card>
   );
 }

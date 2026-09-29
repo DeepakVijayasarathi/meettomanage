@@ -37,3 +37,11 @@ export async function resetPin(token: string, newPin: string): Promise<void> {
     body: JSON.stringify({ token, newPin }),
   });
 }
+
+/** The signed-in user (any role, Admin included) changes their own PIN. */
+export async function changePin(currentPin: string, newPin: string): Promise<void> {
+  await apiFetch<void>("/api/auth/change-pin", {
+    method: "POST",
+    body: JSON.stringify({ currentPin, newPin }),
+  });
+}

@@ -64,8 +64,9 @@ const JOIN_WINDOW_GRACE_HOURS = 3;
  *  the backend is the real gatekeeper for anything more precise than that (see comment above). */
 export function isJoinable(session: ClassSession): boolean {
   if (!JOINABLE_STATUSES.includes(session.status)) return false;
-  const minsUntil = minutesUntilStart(session);
-  return minsUntil <= 10 && minsUntil > -(JOIN_WINDOW_GRACE_HOURS * 60);
+  // Client: Join is open at all times -- no "opens 10 minutes before" wait any more (the backend
+  // allows it too); it only closes a few hours after the class ends.
+  return minutesUntilStart(session) > -(JOIN_WINDOW_GRACE_HOURS * 60);
 }
 
 /**
@@ -86,9 +87,6 @@ export function isTeacherJoinable(session: ClassSession): boolean {
 
 export function joinHint(session: ClassSession): string {
   const minsUntil = minutesUntilStart(session);
-  if (minsUntil > 10) {
-    return `Join opens 10 min before start — ${format(sessionStart(session), "d MMM, h:mm a")}`;
-  }
   if (minsUntil <= -(JOIN_WINDOW_GRACE_HOURS * 60)) return "This class has ended";
   return "Ready to join";
 }

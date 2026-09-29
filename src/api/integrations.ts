@@ -37,3 +37,11 @@ export async function updateIntegration(id: string, request: SaveIntegrationRequ
 export async function deleteIntegration(id: string): Promise<void> {
   await apiFetch<void>(`/api/integrations/${id}`, { method: "DELETE" });
 }
+
+/** Sends a real test email; `message` says exactly what's wrong when delivery isn't working. */
+export async function sendTestEmail(to: string): Promise<{ ok: boolean; message: string }> {
+  return apiFetch<{ ok: boolean; message: string }>("/api/integrations/email/test", {
+    method: "POST",
+    body: JSON.stringify({ to }),
+  });
+}
