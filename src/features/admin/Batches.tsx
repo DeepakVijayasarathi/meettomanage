@@ -870,7 +870,7 @@ export default function AdminBatches() {
                       value={editPayoutPerClass}
                       onChange={(e) => setEditPayoutPerClass(e.target.value)}
                     />
-                    <p className="text-xs text-muted-foreground">Flat amount paid per completed class in this batch. Leave blank for the centre's per-minute rate card.</p>
+                    <p className="text-xs text-muted-foreground">Flat amount paid per completed class in this batch. Leave blank only if the teacher has a per-minute rate card — with neither, completed classes earn ₹0 for the teacher.</p>
                   </div>
                 </div>
               )}
@@ -1316,7 +1316,7 @@ export default function AdminBatches() {
                 value={newPayoutPerClass}
                 onChange={(e) => setNewPayoutPerClass(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Flat amount paid to this batch's teacher per completed class. Leave blank to keep the centre's per-minute rate card instead.</p>
+              <p className="text-xs text-muted-foreground">Flat amount paid to this batch's teacher per completed class. Leave blank only if the teacher has a per-minute rate card — with neither, completed classes earn ₹0 for the teacher.</p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">

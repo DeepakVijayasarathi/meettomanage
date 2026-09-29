@@ -229,7 +229,7 @@ export default function TeacherPayout() {
                     {summary.batches.map((b) => (
                       <TableRow key={b.batchId ?? b.batchName}>
                         <TableCell className="font-medium text-foreground">{b.batchName}</TableCell>
-                        <TableCell className="text-muted-foreground">{b.ratePerClass !== null ? formatCurrency(b.ratePerClass) : "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{b.ratePerClass ? formatCurrency(b.ratePerClass) : <span title="No payout rate has been set for this batch yet — please ask the admin.">Not set</span>}</TableCell>
                         <TableCell>{b.classesTaken}</TableCell>
                         <TableCell className="font-semibold text-foreground">{formatCurrency(b.totalEarned)}</TableCell>
                       </TableRow>
