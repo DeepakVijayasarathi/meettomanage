@@ -59,7 +59,6 @@ export default function SupportTickets() {
   const linkedTicketId = searchParams.get("ticket");
   useEffect(() => {
     if (linkedTicketId && apiEnabled()) void openThread(linkedTicketId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedTicketId]);
 
   function refresh() {
