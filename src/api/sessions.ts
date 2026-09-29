@@ -24,6 +24,7 @@ export interface ApiClassSession {
   meetingRoomId: string | null;
   rescheduledFromSessionId: string | null;
   cancellationReason: string | null;
+  parentTimeZones?: string[];
   /** Teacher's class notes, or an auto-generated one from engagement data — set on completion. */
   summary: string | null;
   /** Which of the calling parent's children this session belongs to — populated only by
@@ -71,6 +72,7 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
     batchName: session.batchName ?? undefined,
     studentNames: session.studentNames ?? [],
     cancellationReason: session.cancellationReason ?? undefined,
+    parentTimeZones: session.parentTimeZones ?? [],
     teacherId: session.teacherProfileId,
     teacherName: session.teacherName,
     childIds: session.childIds ?? [],

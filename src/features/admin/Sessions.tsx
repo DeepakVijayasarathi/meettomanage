@@ -31,6 +31,7 @@ import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, markNoShow, rescheduleSession, scheduleSession, toFrontendSession, type NoShowParty } from "@/api/sessions";
 import { staffCanJoin } from "@/lib/staffJoin";
 import { parseCancellation } from "@/lib/cancelledBy";
+import { familyTimes } from "@/lib/familyTime";
 import { listBatches, listTeacherOptions } from "@/api/batches";
 
 // Monitor-only, same as Coordinator's own Join Class (coordinator/Calendar.tsx) --
@@ -288,9 +289,17 @@ export default function AdminSessions() {
         sortable: true,
         accessor: (row) => `${row.date} ${row.startTime}`,
         render: (row) => (
-          <span className="text-sm text-muted-foreground">
-            {formatDate(row.date)} · {formatTimeLabel(row.startTime)}
-          </span>
+          <div className="flex flex-col">
+            <span className="text-sm text-muted-foreground">
+              {formatDate(row.date)} · {formatTimeLabel(row.startTime)}
+            </span>
+            {/* The family abroad may be on a different day (e.g. 3:30 AM IST Tue = 6 PM Mon in the US). */}
+            {familyTimes(row.date, row.startTime, row.parentTimeZones).map((t) => (
+              <span key={t} className="text-xs font-medium text-amber-600 dark:text-amber-400" title="The family's own local time">
+                Family: {t}
+              </span>
+            ))}
+          </div>
         ),
       },
       {

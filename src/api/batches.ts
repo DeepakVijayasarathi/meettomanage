@@ -204,6 +204,8 @@ export interface ApiBatchStudent {
   academicLevel: string | null;
   status: "Active" | "Completed" | "Withdrawn";
   enrolledAtUtc: string;
+  /** The parent's own time zone (schedule editors show the family's local day/time). */
+  parentTimeZoneId?: string | null;
 }
 
 export interface ApiUnassignedChild {

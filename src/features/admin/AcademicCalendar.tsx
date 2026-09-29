@@ -25,6 +25,7 @@ import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getJitsiJoin, listSessions, toFrontendSession } from "@/api/sessions";
 import { parseCancellation } from "@/lib/cancelledBy";
+import { familyTimes } from "@/lib/familyTime";
 import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import type { ClassSession } from "@/types";
@@ -207,6 +208,11 @@ export default function AdminAcademicCalendar() {
                 <DialogDescription>
                   {formatDate(selected.date, "long")} · {formatTimeLabel(selected.startTime)} · {selected.duration} min
                 </DialogDescription>
+                {familyTimes(selected.date, selected.startTime, selected.parentTimeZones).map((t) => (
+                  <p key={t} className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                    Family's local time: {t}
+                  </p>
+                ))}
               </DialogHeader>
 
               <div className="grid grid-cols-2 gap-4 text-sm">

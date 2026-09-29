@@ -28,6 +28,7 @@ import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { cancelSession, getJitsiJoin, listSessions, rescheduleSession, scheduleSession, toFrontendSession } from "@/api/sessions";
 import { parseCancellation } from "@/lib/cancelledBy";
+import { familyTimes } from "@/lib/familyTime";
 import { staffCanJoin } from "@/lib/staffJoin";
 import { listBatches, listTeacherOptions } from "@/api/batches";
 import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
@@ -372,6 +373,11 @@ export default function CoordinatorCalendar() {
                 <DialogDescription>
                   {formatDate(selected.date, "long")} · {formatTimeLabel(selected.startTime)} · {selected.duration} min
                 </DialogDescription>
+                {familyTimes(selected.date, selected.startTime, selected.parentTimeZones).map((t) => (
+                  <p key={t} className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                    Family's local time: {t}
+                  </p>
+                ))}
               </DialogHeader>
 
               <div className="grid grid-cols-2 gap-4 text-sm">

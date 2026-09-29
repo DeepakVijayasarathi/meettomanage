@@ -126,6 +126,8 @@ export interface ClassSession {
   studentNames?: string[];
   /** Why and by whom a cancelled class was cancelled ("Cancelled by {name} ({role}): {detail}"). */
   cancellationReason?: string;
+  /** Time zones of the students' parents (staff views) -- to show the family's own local time. */
+  parentTimeZones?: string[];
 }
 
 export interface Invoice {

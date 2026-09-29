@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { getUserTimeZoneAbbreviation } from "@/lib/datetime";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CalendarDays, ListChecks, PlayCircle, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -48,7 +49,7 @@ function recurringPatternLabel(sessions: ClassSession[]): string | undefined {
   }
   const mostCommonTime = [...timeCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
   const dayLabels = [...weekdays].sort((a, b) => a - b).map((d) => WEEKDAY_LABELS[d]);
-  return `${dayLabels.join(", ")} · ${formatTimeLabel(mostCommonTime)}`;
+  return `${dayLabels.join(", ")} · ${formatTimeLabel(mostCommonTime)} ${getUserTimeZoneAbbreviation()}`;
 }
 
 export default function ParentSchedule() {
@@ -227,7 +228,7 @@ export default function ParentSchedule() {
               <DialogHeader>
                 <DialogTitle>{selected.title}</DialogTitle>
                 <DialogDescription>
-                  {formatDate(selected.date, "long")} · {formatTimeLabel(selected.startTime)} · {selected.teacherName}
+                  {formatDate(selected.date, "long")} · {formatTimeLabel(selected.startTime)} {getUserTimeZoneAbbreviation()} · {selected.teacherName}
                 </DialogDescription>
               </DialogHeader>
               <div className="flex items-center justify-between">
@@ -269,7 +270,7 @@ function ScheduleRow({ session, onCancelled }: { session: ClassSession; onCancel
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-foreground">{session.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} · {session.teacherName}
+          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} {getUserTimeZoneAbbreviation()} · {session.teacherName}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -311,7 +312,7 @@ function PastRow({ session }: { session: ClassSession }) {
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-foreground">{session.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} · {session.teacherName}
+          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} {getUserTimeZoneAbbreviation()} · {session.teacherName}
         </p>
       </div>
       <div className="flex items-center gap-2">

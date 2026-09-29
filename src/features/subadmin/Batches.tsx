@@ -4,6 +4,7 @@ import { Archive, CalendarDays, CalendarPlus, Clock, Layers, Loader2, Moon, Plus
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { istSlotInZone } from "@/lib/familyTime";
 import { BatchPaymentPlanFields, DEFAULT_PAYMENT_PLAN, isPaymentPlanValid, type BatchPaymentPlanState } from "@/components/BatchPaymentPlanFields";
 import { useToast } from "@/hooks/use-toast";
 import { EmptyState } from "@/components/EmptyState";
@@ -408,6 +409,12 @@ export default function SubAdminBatches() {
   // in or out of a batch even though POST/DELETE /enrollments is CourseBatchManagement:Edit,
   // a module RMs can already hold.
   const [roster, setRoster] = useState<ApiBatchStudent[]>([]);
+  // Families abroad: their own time zones, so the schedule editors show the family's local day/time
+  // next to the IST slot (3:30 AM IST Tue is 6 PM Mon in the US -- reported live).
+  const familyZones = useMemo(
+    () => Array.from(new Set(roster.map((s) => s.parentTimeZoneId).filter((z): z is string => !!z && z !== "Asia/Kolkata" && z !== "Asia/Calcutta"))),
+    [roster]
+  );
   const [unassigned, setUnassigned] = useState<ApiUnassignedChild[]>([]);
   const [rosterLoading, setRosterLoading] = useState(false);
   const [rosterError, setRosterError] = useState<string | null>(null);
@@ -1062,6 +1069,9 @@ export default function SubAdminBatches() {
                             className="h-8 max-w-[140px] text-sm"
                           />
                           <span className="text-xs text-muted-foreground">IST</span>
+                          {familyZones.map((z) => istSlotInZone(d.value, adjTimeByDay[d.value], z)).filter(Boolean).map((t) => (
+                            <span key={t} className="text-xs font-medium text-amber-600 dark:text-amber-400">→ family: {t}</span>
+                          ))}
                         </div>
                       ))}
                     </div>
@@ -1173,6 +1183,9 @@ export default function SubAdminBatches() {
                             className="h-8 max-w-[140px] text-sm"
                           />
                           <span className="text-xs text-muted-foreground">IST</span>
+                          {familyZones.map((z) => istSlotInZone(d.value, genTimeByDay[d.value], z)).filter(Boolean).map((t) => (
+                            <span key={t} className="text-xs font-medium text-amber-600 dark:text-amber-400">→ family: {t}</span>
+                          ))}
                         </div>
                       ))}
                     </div>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { getUserTimeZoneAbbreviation } from "@/lib/datetime";
 import { Link } from "react-router-dom";
 import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Clock3, Loader2, PlayCircle, Sparkles, TrendingUp, Video, Wallet, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -407,7 +408,7 @@ function UpcomingRow({ session, onCancelled }: { session: ClassSession; onCancel
       <div className="min-w-0 w-full sm:w-auto">
         <p className="truncate text-sm font-semibold text-foreground">{session.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} · {session.teacherName}
+          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} {getUserTimeZoneAbbreviation()} · {session.teacherName}
         </p>
       </div>
       <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
