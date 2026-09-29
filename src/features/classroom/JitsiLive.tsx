@@ -401,7 +401,11 @@ export default function JitsiLive({
   const knockingRef = useRef(new Map<string, string>());
   const STAFF_ADMIT_WINDOW_MS = 3 * 60_000;
   function admitIfExpectedStaff(knockId: string) {
-    if (mode !== "teacher") return;
+    // Any mode, not just the teacher's: when the teacher drops out or exits by accident, the
+    // child's client becomes the room's moderator and her rejoin knock used to wait for the child
+    // to click Accept (reported live). The server announces an authorized rejoin by her (and by
+    // staff) via StaffJoining, so whoever holds the room now lets exactly that person back in.
+    // answerKnockingParticipant is a no-op for a client that isn't a moderator.
     const name = (knockingRef.current.get(knockId) ?? "").trim().toLowerCase();
     const expiresAt = expectedStaffRef.current.get(name);
     if (!name || !expiresAt || expiresAt < Date.now()) return;
@@ -1321,8 +1325,10 @@ export default function JitsiLive({
       // waits for the teacher's manual admit.
       api.addListener("knockingParticipant", (payload) => {
         const knocker = payload?.participant;
-        if (mode !== "teacher" || !knocker?.id) return;
-        if (knocker.name && staffNamesRef.current.has(knocker.name.trim().toLowerCase())) {
+        if (!knocker?.id) return;
+        // The static staff-name list is only ever sent to teacher/admin clients (empty here for a
+        // student); the announced-rejoin path below works in every mode.
+        if (mode === "teacher" && knocker.name && staffNamesRef.current.has(knocker.name.trim().toLowerCase())) {
           api?.executeCommand("answerKnockingParticipant", knocker.id, true);
           return;
         }
