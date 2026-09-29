@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { getUserTimeZoneAbbreviation } from "@/lib/datetime";
+import { sessionBelongsToChild } from "@/lib/sessionForChild";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CalendarDays, ListChecks, PlayCircle, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -86,8 +87,9 @@ export default function ParentSchedule() {
     // Demo sessions aren't tied to a specific enrolled child yet (childIds is empty for
     // them) and stay visible regardless of which child is selected; regular batch
     // sessions are scoped to whichever of the parent's children are in that batch.
-    return apiSessions.filter((s) => s.childIds.length === 0 || s.childIds.includes(child.id));
-  }, [usingApi, apiSessions, mockChild, child]);
+    // Demos: only under the child named on the booking (sessionBelongsToChild).
+    return apiSessions.filter((s) => sessionBelongsToChild(s, child.id, sessionChildren));
+  }, [usingApi, apiSessions, mockChild, child, sessionChildren]);
 
   const upcoming = useMemo(
     () =>

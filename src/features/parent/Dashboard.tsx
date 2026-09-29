@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { getUserTimeZoneAbbreviation } from "@/lib/datetime";
+import { sessionBelongsToChild } from "@/lib/sessionForChild";
 import { Link } from "react-router-dom";
 import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Clock3, Loader2, PlayCircle, Sparkles, TrendingUp, Video, Wallet, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -61,7 +62,7 @@ function apiChildToChild(summary: ApiParentChildSummary, enrolled: boolean, inde
 }
 
 export default function ParentDashboard() {
-  const { activeChildId, enrolledChildIds, userName } = useSession();
+  const { activeChildId, enrolledChildIds, userName, children: familyChildren } = useSession();
   const mockChild = getChildById(activeChildId);
   const [payOpen, setPayOpen] = useState(false);
 
@@ -104,8 +105,9 @@ export default function ParentDashboard() {
     // Demo sessions aren't tied to a specific enrolled child yet (childIds is empty for
     // them) and stay visible regardless of which child is selected; regular batch
     // sessions are scoped to whichever of the parent's children are in that batch.
-    return apiSessions.filter((s) => s.childIds.length === 0 || s.childIds.includes(child.id));
-  }, [apiSessions, child]);
+    // Demos: only under the child named on the booking (sessionBelongsToChild).
+    return apiSessions.filter((s) => sessionBelongsToChild(s, child.id, familyChildren));
+  }, [apiSessions, child, familyChildren]);
 
   const upcoming = useMemo(
     () =>

@@ -128,6 +128,8 @@ export interface ClassSession {
   cancellationReason?: string;
   /** Time zones of the students' parents (staff views) -- to show the family's own local time. */
   parentTimeZones?: string[];
+  /** Demo only: the child named on the booking (a demo isn't linked to a child record). */
+  demoChildName?: string;
 }
 
 export interface Invoice {

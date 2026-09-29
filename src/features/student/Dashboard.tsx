@@ -22,6 +22,7 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { apiEnabled } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
+import { sessionBelongsToChild } from "@/lib/sessionForChild";
 import { useSession } from "@/state/session";
 import { getParentDashboard, getParentResources, getParentSchedule } from "@/api/parentPortal";
 import { toFrontendSession } from "@/api/sessions";
@@ -405,7 +406,7 @@ function ApiStudentDashboard() {
   const todaySession = todaySessions.find(
     (s) =>
       (s.status === "scheduled" || s.status === "demo") &&
-      (s.childIds.length === 0 || s.childIds.includes(activeChild.id))
+      sessionBelongsToChild(s, activeChild.id, children)
   );
 
   const sorted = [...leaderboard].sort((a, b) => b.stars - a.stars);
