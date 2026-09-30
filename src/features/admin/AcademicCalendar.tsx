@@ -23,7 +23,7 @@ import { getBatchById } from "@/data/batches";
 import { getChildById } from "@/data/children";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { getJitsiJoin, listSessions, toFrontendSession } from "@/api/sessions";
+import { getJitsiJoin, listSessions, monthWindow, toFrontendSession } from "@/api/sessions";
 import { parseCancellation } from "@/lib/cancelledBy";
 import { familyTimes } from "@/lib/familyTime";
 import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
@@ -34,8 +34,10 @@ import { formatDate, formatTimeLabel } from "@/lib/utils";
 export default function AdminAcademicCalendar() {
   const { toast } = useToast();
   const [selected, setSelected] = useState<ClassSession | null>(null);
-  const { data: sessions } = useApiData<ClassSession[]>(
-    () => listSessions().then((items) => items.map(toFrontendSession)),
+  // Only the month on screen (+ a week each side) -- it used to load 15 months of every class.
+  const [viewMonth, setViewMonth] = useState(() => new Date());
+  const { data: sessions, reload: reloadMonth } = useApiData<ClassSession[]>(
+    () => listSessions(monthWindow(viewMonth)).then((items) => items.map(toFrontendSession)),
     SESSIONS
   );
   const { data: holidays, reload: reloadHolidays } = useApiData<ApiHoliday[]>(() => listHolidays(), []);
@@ -144,6 +146,11 @@ export default function AdminAcademicCalendar() {
         <CalendarBoard
           sessions={calendarEvents}
           initialMonth={apiEnabled() ? new Date() : new Date(2026, 6, 1)}
+          onMonthChange={(m) => {
+            if (m.getFullYear() === viewMonth.getFullYear() && m.getMonth() === viewMonth.getMonth()) return;
+            setViewMonth(m);
+            reloadMonth();
+          }}
           onSessionClick={setSelected}
         />
       </Card>

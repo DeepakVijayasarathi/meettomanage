@@ -24,6 +24,7 @@ import { listBatches } from "@/api/batches";
 import {
   getBulkEmailRecipientCount,
   sendBulkEmail,
+  waitForBulkEmailDelivery,
   getBulkEmailHistory,
   getBulkEmailBlastDetail,
   getEmailHistory,
@@ -101,6 +102,7 @@ function ComposePanel({ canSend }: { canSend: boolean }) {
   const [sent, setSent] = useState(false);
   const [sentCount, setSentCount] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
+  const [sendProgress, setSendProgress] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendConfirmOpen, setSendConfirmOpen] = useState(false);
 
@@ -139,16 +141,25 @@ function ComposePanel({ canSend }: { canSend: boolean }) {
     setSending(true);
     setSendError(null);
     try {
+      const startedAt = Date.now();
       const result = await sendBulkEmail({ subject, body, batchId: scope === "batch" ? batchId : undefined });
+      setSendProgress(`0 of ${result.recipientCount}`);
+      // Delivery runs in the background on the server; keep the spinner up until it's done.
+      const outcome = await waitForBulkEmailDelivery(subject, startedAt, (done, total) => setSendProgress(`${done} of ${total}`));
       setSentCount(result.recipientCount);
       setSent(true);
-      toast({ variant: "success", title: "Email sent", description: `Delivered to ${result.recipientCount} recipient(s).` });
+      if (outcome && outcome.failed > 0) {
+        toast({ variant: "error", title: "Email sent with some failures", description: `Delivered to ${outcome.success} of ${result.recipientCount} recipient(s); ${outcome.failed} failed. See Bulk Email History.` });
+      } else {
+        toast({ variant: "success", title: "Email sent", description: `Delivered to ${result.recipientCount} recipient(s).` });
+      }
     } catch (err) {
       const message = userMessage(err, "Couldn't send the email. Please try again.");
       setSendError(message);
       toast({ variant: "error", title: "Couldn't send email", description: message });
     } finally {
       setSending(false);
+      setSendProgress(null);
     }
   }
 
@@ -252,7 +263,7 @@ function ComposePanel({ canSend }: { canSend: boolean }) {
             </p>
             <Button disabled={!subject.trim() || !body.trim() || sending || recipientCount === null} onClick={() => setSendConfirmOpen(true)}>
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              {sending ? "Sending…" : "Send"}
+              {sending ? `Sending${sendProgress ? ` ${sendProgress}` : ""}…` : "Send"}
             </Button>
           </div>
           {sendError && <p className="text-sm font-medium text-destructive">{sendError}</p>}

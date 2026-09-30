@@ -41,6 +41,35 @@ export async function sendBulkEmail(input: {
   });
 }
 
+/**
+ * The server answers a Bulk Email send at once and delivers in the background, so the compose
+ * screen keeps its "Sending…" spinner up by polling history until this blast has attempted
+ * every recipient. Resolves with the final counts; gives up quietly after ~10 minutes (the
+ * send itself keeps going server-side) and returns null.
+ */
+export async function waitForBulkEmailDelivery(
+  subject: string,
+  startedAtMs: number,
+  onProgress?: (done: number, total: number) => void
+): Promise<{ success: number; failed: number } | null> {
+  const deadline = Date.now() + 10 * 60_000;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      const history = await getBulkEmailHistory();
+      // History is newest first; allow a little clock skew between browser and server.
+      const blast = history.find((h) => h.subject === subject && new Date(h.sentAtUtc).getTime() >= startedAtMs - 60_000);
+      if (!blast) continue;
+      const done = blast.successCount + blast.failureCount;
+      onProgress?.(done, blast.totalRecipients);
+      if (done >= blast.totalRecipients) return { success: blast.successCount, failed: blast.failureCount };
+    } catch {
+      /* transient poll failure: keep waiting */
+    }
+  }
+  return null;
+}
+
 /** Live recipient count for the compose screen — same rule the send itself uses. */
 export async function getBulkEmailRecipientCount(batchId?: string): Promise<number> {
   const query = batchId ? `?batchId=${encodeURIComponent(batchId)}` : "";

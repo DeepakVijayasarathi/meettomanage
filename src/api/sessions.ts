@@ -349,21 +349,37 @@ export async function getRecordingObserverJoin(room: string): Promise<ApiRecordi
 // GenerateScheduleAsync's own worst case (a weekly course, ~365 days) instead of another
 // arbitrary cap that would just recur for a slightly longer schedule; the backward side stays
 // tight since only recent history matters there (attendance/records lookups).
-const SESSIONS_LOOKBACK_DAYS = 60;
-const SESSIONS_LOOKAHEAD_DAYS = 400;
+/** [fromUtc, toUtc] covering `backDays` before and `aheadDays` after `around` (default now). */
+export function sessionWindow(backDays: number, aheadDays: number, around: Date = new Date()): [string, string] {
+  return [
+    new Date(around.getTime() - backDays * 86400_000).toISOString(),
+    new Date(around.getTime() + aheadDays * 86400_000).toISOString(),
+  ];
+}
 
-/** The signed-in teacher's own sessions — their whole batch schedules included, not just
- *  what falls in the next couple of months. */
-export async function listMySessions(): Promise<ApiClassSession[]> {
-  const from = new Date(Date.now() - SESSIONS_LOOKBACK_DAYS * 86400_000).toISOString();
-  const to = new Date(Date.now() + SESSIONS_LOOKAHEAD_DAYS * 86400_000).toISOString();
+/** The whole calendar month containing `month`, padded a week each side (the grid shows those days). */
+export function monthWindow(month: Date): [string, string] {
+  const start = new Date(month.getFullYear(), month.getMonth(), 1);
+  const end = new Date(month.getFullYear(), month.getMonth() + 1, 1);
+  return [new Date(start.getTime() - 7 * 86400_000).toISOString(), new Date(end.getTime() + 7 * 86400_000).toISOString()];
+}
+
+// Reported live as "APIs take 7 seconds": every staff screen (all dashboards, Sessions, both
+// calendars) loaded 460 days of the WHOLE academy's classes on each visit -- 4.4 MB, 12-17 s on
+// the server -- which also stalled everyone else's requests behind it. Each screen now asks for
+// only the dates it shows; these defaults are for callers that don't say.
+const MY_SESSIONS_DEFAULT: [number, number] = [45, 120];
+const ALL_SESSIONS_DEFAULT: [number, number] = [30, 60];
+
+/** The signed-in teacher's own sessions (default: 45 days back, 120 ahead). */
+export async function listMySessions(range?: [string, string]): Promise<ApiClassSession[]> {
+  const [from, to] = range ?? sessionWindow(...MY_SESSIONS_DEFAULT);
   return apiFetch<ApiClassSession[]>(`/api/sessions/mine?fromUtc=${from}&toUtc=${to}`);
 }
 
-/** Admin/coordinator calendar: every session in the same window as listMySessions. */
-export async function listSessions(): Promise<ApiClassSession[]> {
-  const from = new Date(Date.now() - SESSIONS_LOOKBACK_DAYS * 86400_000).toISOString();
-  const to = new Date(Date.now() + SESSIONS_LOOKAHEAD_DAYS * 86400_000).toISOString();
+/** Every session in the academy in [from, to] (default: 30 days back, 60 ahead). */
+export async function listSessions(range?: [string, string]): Promise<ApiClassSession[]> {
+  const [from, to] = range ?? sessionWindow(...ALL_SESSIONS_DEFAULT);
   return apiFetch<ApiClassSession[]>(`/api/sessions?fromUtc=${from}&toUtc=${to}`);
 }
 
