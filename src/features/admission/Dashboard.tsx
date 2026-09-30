@@ -26,7 +26,7 @@ import { SESSIONS } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listDemoBookings, toFrontendLead } from "@/api/demoBookings";
-import { listSessions, toFrontendSession } from "@/api/sessions";
+import { listSessions, sessionWindow, toFrontendSession } from "@/api/sessions";
 import { getDashboardSummary } from "@/api/reports";
 import { useSession } from "@/state/session";
 import { usePortalBase } from "@/lib/portalBase";
@@ -64,7 +64,7 @@ export default function AdmissionDashboard() {
   const base = usePortalBase();
   const { data: leads, loading: leadsLoading, error: leadsError } = useApiData<Lead[]>(() => listDemoBookings().then((b) => b.map(toFrontendLead)), LEADS);
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(
-    () => listSessions().then((s) => s.map(toFrontendSession)),
+    () => listSessions(sessionWindow(35, 35)).then((s) => s.map(toFrontendSession)),
     SESSIONS
   );
   const { data: collectedRevenue, loading: revenueLoading, error: revenueError } = useApiData<number>(

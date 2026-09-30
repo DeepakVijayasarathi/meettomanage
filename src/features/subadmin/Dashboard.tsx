@@ -34,7 +34,7 @@ import { apiEnabled, userMessage } from "@/lib/api";
 import { usePortalBase } from "@/lib/portalBase";
 import { useApiData } from "@/api/hooks";
 import { listBatches, toFrontendBatch } from "@/api/batches";
-import { listSessions, toFrontendSession } from "@/api/sessions";
+import { listSessions, sessionWindow, toFrontendSession } from "@/api/sessions";
 import { getDashboardSummary } from "@/api/reports";
 import { listAuditLogs } from "@/api/audit";
 import { DEMO_PERMISSION_MODULES, type PermissionModuleName, type PermissionModuleOption } from "@/api/permissions";
@@ -121,7 +121,7 @@ export default function SubAdminDashboard() {
     []
   );
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData(
-    () => (canSeeSessions ? listSessions().then((items) => items.map(toFrontendSession)) : Promise.resolve([])),
+    () => (canSeeSessions ? listSessions(sessionWindow(35, 35)).then((items) => items.map(toFrontendSession)) : Promise.resolve([])),
     []
   );
   const { data: liveSummary, loading: summaryLoading, error: summaryError } = useApiData(

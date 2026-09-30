@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addDays,
   addMonths,
@@ -23,12 +23,19 @@ interface CalendarBoardProps {
   initialMonth?: Date;
   onSessionClick?: (session: ClassSession) => void;
   legendStatuses?: SessionStatus[];
+  /** Called whenever the shown month changes, so the page can load just that month's classes. */
+  onMonthChange?: (month: Date) => void;
 }
 
 const DEFAULT_LEGEND: SessionStatus[] = ["scheduled", "completed", "cancelled", "noshow", "demo", "rescheduled", "holiday", "leave"];
 
-export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendStatuses = DEFAULT_LEGEND }: CalendarBoardProps) {
+export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendStatuses = DEFAULT_LEGEND, onMonthChange }: CalendarBoardProps) {
   const [cursor, setCursor] = useState(initialMonth ?? new Date());
+  const onMonthChangeRef = useRef(onMonthChange);
+  onMonthChangeRef.current = onMonthChange;
+  useEffect(() => {
+    onMonthChangeRef.current?.(cursor);
+  }, [cursor]);
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(cursor));

@@ -26,7 +26,7 @@ import { getBatchById } from "@/data/batches";
 import { getChildById } from "@/data/children";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { cancelSession, getJitsiJoin, listSessions, rescheduleSession, scheduleSession, toFrontendSession } from "@/api/sessions";
+import { cancelSession, getJitsiJoin, listSessions, monthWindow, rescheduleSession, scheduleSession, toFrontendSession } from "@/api/sessions";
 import { parseCancellation } from "@/lib/cancelledBy";
 import { familyTimes } from "@/lib/familyTime";
 import { staffCanJoin } from "@/lib/staffJoin";
@@ -66,8 +66,10 @@ export default function CoordinatorCalendar() {
   // right, same permission this whole page already requires to load a calendar at all — not a
   // separate/stricter grant. See Documentation/Client_Feedback_2026-09-15_RM-Emergency-Class-Link.md §10.
   const canGuestLink = !usingApi || hasPermission("SessionCalendarManagement", "View");
+  // Only the month on screen (+ a week each side) -- it used to load 15 months of every class.
+  const [viewMonth, setViewMonth] = useState(() => new Date());
   const { data: apiSessions, reload } = useApiData<ClassSession[]>(
-    () => listSessions().then((s) => s.map(toFrontendSession)),
+    () => listSessions(monthWindow(viewMonth)).then((s) => s.map(toFrontendSession)),
     SESSIONS
   );
   const [demoSessions, setDemoSessions] = useState<ClassSession[]>(SESSIONS);
@@ -306,6 +308,11 @@ export default function CoordinatorCalendar() {
         <CalendarBoard
           sessions={sessions}
           initialMonth={usingApi ? new Date() : new Date(2026, 6, 1)}
+          onMonthChange={(m) => {
+            if (m.getFullYear() === viewMonth.getFullYear() && m.getMonth() === viewMonth.getMonth()) return;
+            setViewMonth(m);
+            reload();
+          }}
           onSessionClick={(s) => setSelectedId(s.id)}
         />
       </Card>

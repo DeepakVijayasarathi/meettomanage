@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listSessions, toFrontendSession } from "@/api/sessions";
+import { listSessions, sessionWindow, toFrontendSession } from "@/api/sessions";
 import { listLeave, toFrontendLeave } from "@/api/academicOps";
 import { SESSIONS } from "@/data/sessions";
 import { LEAVE_REQUESTS } from "@/data/leaves";
@@ -38,7 +38,7 @@ interface AttentionItem {
  * real sessions + leave (mock fallback in demo mode).
  */
 export function ScheduleConflictsPanel() {
-  const { data: sessions } = useApiData<ClassSession[]>(() => listSessions().then((s) => s.map(toFrontendSession)), SESSIONS);
+  const { data: sessions } = useApiData<ClassSession[]>(() => listSessions(sessionWindow(1, 60)).then((s) => s.map(toFrontendSession)), SESSIONS);
   const { data: leaves } = useApiData<LeaveRequest[]>(() => listLeave().then((l) => l.map(toFrontendLeave)), LEAVE_REQUESTS);
   const items = useMemo(() => {
     // Computed inside the memo (not as a render-scoped variable) so `new Date()`

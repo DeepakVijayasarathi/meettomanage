@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, Link2, Loader2, Plus, Users2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +28,7 @@ import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { cancelSession, getJitsiJoin, listSessions, markNoShow, rescheduleSession, scheduleSession, toFrontendSession, type NoShowParty } from "@/api/sessions";
+import { cancelSession, getJitsiJoin, listSessions, sessionWindow, markNoShow, rescheduleSession, scheduleSession, toFrontendSession, type NoShowParty } from "@/api/sessions";
 import { staffCanJoin } from "@/lib/staffJoin";
 import { parseCancellation } from "@/lib/cancelledBy";
 import { familyTimes } from "@/lib/familyTime";
@@ -55,7 +55,7 @@ export default function AdminSessions() {
   const { toast } = useToast();
   const usingApi = apiEnabled();
   const { data: apiSessions, error: sessionsError, reload } = useApiData<ClassSession[]>(
-    () => listSessions().then((items) => items.map(toFrontendSession)),
+    () => listSessions(dateFilter ? sessionWindow(1, 2, new Date(`${dateFilter}T12:00:00`)) : sessionWindow(30, 90)).then((items) => items.map(toFrontendSession)),
     []
   );
   const { data: batches } = useApiData(() => listBatches(), [], undefined, { cacheKey: "batches" });
@@ -67,6 +67,15 @@ export default function AdminSessions() {
 
   const [statusFilter, setStatusFilter] = useState<SessionStatus | "all">("all");
   const [dateFilter, setDateFilter] = useState("");
+  // The list loads only ~4 months around today (it used to pull 15 months of every class --
+  // reported live as the app taking 7+ seconds); picking a date loads that date instead.
+  const dateFilterLoaded = useRef(dateFilter);
+  useEffect(() => {
+    if (dateFilterLoaded.current === dateFilter) return;
+    dateFilterLoaded.current = dateFilter;
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFilter]);
   const [rescheduleTarget, setRescheduleTarget] = useState<ClassSession | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ClassSession | null>(null);
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);

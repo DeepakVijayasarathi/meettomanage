@@ -25,7 +25,7 @@ import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listSessions, toFrontendSession } from "@/api/sessions";
+import { listSessions, sessionWindow, toFrontendSession } from "@/api/sessions";
 import { listLeave, toFrontendLeave } from "@/api/academicOps";
 import type { ClassSession, LeaveRequest, SessionStatus } from "@/types";
 
@@ -46,7 +46,7 @@ export default function CoordinatorDashboard() {
   // coordinator/Availability.tsx and Calendar.tsx for the identical call — this dashboard
   // widget was the one place still calling it unconditionally.
   const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
-  const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(() => listSessions().then((s) => s.map(toFrontendSession)), SESSIONS);
+  const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(() => listSessions(sessionWindow(35, 35)).then((s) => s.map(toFrontendSession)), SESSIONS);
   const { data: apiLeaves, loading: leavesLoading, error: leavesError } = useApiData<LeaveRequest[]>(
     () => (canSeeLeave ? listLeave().then((l) => l.map(toFrontendLeave)) : Promise.resolve([])),
     LEAVE_REQUESTS

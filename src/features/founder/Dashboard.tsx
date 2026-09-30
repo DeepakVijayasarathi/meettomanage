@@ -55,7 +55,7 @@ import { useMemo } from "react";
 import { useApiData } from "@/api/hooks";
 import { useSession } from "@/state/session";
 import { getDashboardSummary, type ApiDashboardSummary } from "@/api/reports";
-import { listSessions, toFrontendSession } from "@/api/sessions";
+import { listSessions, sessionWindow, toFrontendSession } from "@/api/sessions";
 import type { ClassSession } from "@/types";
 
 // Cosmetic ("as of <date>") but still wrong near local midnight if computed in UTC.
@@ -152,7 +152,7 @@ export default function FounderDashboard() {
   const todayKey = usingApi ? localDateKey(new Date()) : TODAY_SESSIONS;
 
   const { data: apiSessions, loading: sessionsLoading } = useApiData<ClassSession[]>(
-    () => listSessions().then((items) => items.map(toFrontendSession)),
+    () => listSessions(sessionWindow(35, 35)).then((items) => items.map(toFrontendSession)),
     []
   );
   const todaySessions = useMemo(
