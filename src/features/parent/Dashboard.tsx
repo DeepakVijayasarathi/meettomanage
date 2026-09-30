@@ -6,7 +6,7 @@ import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Clock3, Loader2
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
-import { FeeStatusBadge, SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
+import { FeeStatusBadge, SessionStatusBadge, sessionStatusLabel } from "@/components/StatusBadge";
 import { PayNowModal } from "@/components/PayNowModal";
 import { EmptyState } from "@/components/EmptyState";
 import { ParentCancelClassButton } from "@/components/ParentCancelClassButton";
@@ -414,7 +414,7 @@ function UpcomingRow({ session, onCancelled }: { session: ClassSession; onCancel
         </p>
       </div>
       <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
-        <SessionStatusBadge status={session.status} label={noShowLabel(session)} />
+        <SessionStatusBadge status={session.status} label={sessionStatusLabel(session)} />
         <ParentCancelClassButton session={session} onCancelled={onCancelled} />
         {joinable ? (
           <Button size="sm" asChild>

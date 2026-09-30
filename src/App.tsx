@@ -415,6 +415,7 @@ export default function App() {
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="my-leave" element={<StaffMyLeave />} />
+              <Route path="leave" element={<AdminLeave />} />
               <Route path="my-salary" element={<StaffMySalary />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
@@ -470,6 +471,7 @@ export default function App() {
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="my-leave" element={<StaffMyLeave />} />
+              <Route path="leave" element={<AdminLeave />} />
               <Route path="my-salary" element={<StaffMySalary />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
@@ -505,6 +507,7 @@ export default function App() {
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="my-leave" element={<StaffMyLeave />} />
+              <Route path="leave" element={<AdminLeave />} />
               <Route path="my-salary" element={<StaffMySalary />} />
               <Route path="payouts" element={<SubAdminPayouts />} />
               <Route path="billing" element={<SubAdminBilling />} />
@@ -545,6 +548,7 @@ export default function App() {
               <Route path="batches" element={<SubAdminBatches />} />
               <Route path="sessions" element={<SubAdminSessions />} />
               <Route path="my-leave" element={<StaffMyLeave />} />
+              <Route path="leave" element={<AdminLeave />} />
               <Route path="my-salary" element={<StaffMySalary />} />
               <Route path="staff-payroll" element={<AdminStaffPayroll />} />
               <Route path="payout-approvals" element={<PayoutApprovals />} />

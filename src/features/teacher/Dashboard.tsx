@@ -21,7 +21,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
-import { SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
+import { SessionStatusBadge, sessionStatusLabel } from "@/components/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -299,7 +299,7 @@ export default function TeacherDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 sm:justify-end">
-                        <SessionStatusBadge status={session.status} label={noShowLabel(session)} />
+                        <SessionStatusBadge status={session.status} label={sessionStatusLabel(session)} />
                         {session.type === "demo" && usingApi && (
                           <Button
                             size="sm"
