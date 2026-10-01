@@ -31,7 +31,7 @@ import { parseCancellation } from "@/lib/cancelledBy";
 import { familyTimes } from "@/lib/familyTime";
 import { staffCanJoin } from "@/lib/staffJoin";
 import { listBatches, listTeacherOptions } from "@/api/batches";
-import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
+import { createHoliday, deleteHoliday, listHolidays, reconcileHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { useSession } from "@/state/session";
@@ -101,6 +101,7 @@ export default function CoordinatorCalendar() {
   const [holidayName, setHolidayName] = useState("");
   const [savingHoliday, setSavingHoliday] = useState(false);
   const [holidayError, setHolidayError] = useState<string | null>(null);
+  const [reconciling, setReconciling] = useState(false);
   const [deletingHolidayId, setDeletingHolidayId] = useState<string | null>(null);
   const [holidayDeleteTarget, setHolidayDeleteTarget] = useState<ApiHoliday | null>(null);
   const [demoHolidays, setDemoHolidays] = useState<ApiHoliday[]>([]);
@@ -183,6 +184,26 @@ export default function CoordinatorCalendar() {
       toast({ variant: "error", title: "Couldn't add holiday", description: message });
     } finally {
       setSavingHoliday(false);
+    }
+  }
+
+  async function handleReconcileHolidays() {
+    setReconciling(true);
+    setHolidayError(null);
+    try {
+      const { movedSessions } = await reconcileHolidays();
+      reload();
+      toast({
+        variant: "success",
+        title: movedSessions > 0 ? `${movedSessions} session${movedSessions === 1 ? "" : "s"} moved off holidays` : "No sessions on holidays",
+        description: movedSessions > 0 ? "Each was cancelled and carried forward to the next working day." : undefined,
+      });
+    } catch (err) {
+      const message = userMessage(err, "Could not move sessions off holidays.");
+      setHolidayError(message);
+      toast({ variant: "error", title: "Couldn't update sessions", description: message });
+    } finally {
+      setReconciling(false);
     }
   }
 
@@ -344,6 +365,11 @@ export default function CoordinatorCalendar() {
               </div>
             )}
             {holidayError && <p className="text-sm font-medium text-destructive">{holidayError}</p>}
+            <div>
+              <Button variant="outline" size="sm" onClick={handleReconcileHolidays} disabled={reconciling}>
+                {reconciling ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}{reconciling ? "Updating…" : "Move sessions off holidays"}
+              </Button>
+            </div>
             {visibleHolidays.length > 0 && (
               <ul className="flex flex-col divide-y divide-border">
                 {visibleHolidays.map((h) => (

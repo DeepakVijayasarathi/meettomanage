@@ -1,5 +1,6 @@
 import type { ClassSession, SessionStatus, UserStatus } from "@/types";
 import { cn } from "@/lib/utils";
+import { cancelledByLabel } from "@/lib/cancelledBy";
 
 /** "Teacher No-Show" / "Student No-Show" for a noshow session, else undefined (falls back to
  *  the generic per-status label) — pass straight into SessionStatusBadge's `label` prop. */
@@ -7,6 +8,14 @@ export function noShowLabel(session: Pick<ClassSession, "noShowParty">): string 
   if (session.noShowParty === "teacher") return "Teacher No-Show";
   if (session.noShowParty === "student") return "Student No-Show";
   return undefined;
+}
+
+/** noShowLabel, plus "Cancelled by Parent/Teacher/…" for a cancelled class — for the teacher and
+ *  parent portals, which otherwise only said "Cancelled" with no hint of who or why. */
+export function sessionStatusLabel(
+  session: Pick<ClassSession, "noShowParty" | "status" | "cancellationReason">
+): string | undefined {
+  return noShowLabel(session) ?? cancelledByLabel(session);
 }
 
 const SESSION_STATUS_LABEL: Record<SessionStatus, string> = {

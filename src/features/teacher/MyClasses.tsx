@@ -9,7 +9,8 @@ import { FilterBar } from "@/components/FilterBar";
 import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
-import { SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
+import { SessionStatusBadge, sessionStatusLabel } from "@/components/StatusBadge";
+import { parseCancellation } from "@/lib/cancelledBy";
 import { RecordingsDialog } from "@/components/RecordingsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -181,7 +182,19 @@ export default function TeacherMyClasses() {
       header: "Status",
       accessor: (row) => row.status,
       sortable: true,
-      render: (row) => <SessionStatusBadge status={row.status} label={noShowLabel(row)} />,
+      render: (row) => {
+        const reason = row.status === "cancelled" ? parseCancellation(row.cancellationReason).details : "";
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <SessionStatusBadge status={row.status} label={sessionStatusLabel(row)} />
+            {reason && (
+              <span className="max-w-[14rem] truncate text-xs text-muted-foreground" title={reason}>
+                {reason}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "action",
@@ -308,8 +321,14 @@ export default function TeacherMyClasses() {
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                   <span className="text-muted-foreground">Status</span>
-                  <SessionStatusBadge status={selected.status} label={noShowLabel(selected)} />
+                  <SessionStatusBadge status={selected.status} label={sessionStatusLabel(selected)} />
                 </div>
+                {selected.status === "cancelled" && parseCancellation(selected.cancellationReason).details && (
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <span className="text-muted-foreground">Reason</span>
+                    <p className="mt-1 font-medium text-foreground">{parseCancellation(selected.cancellationReason).details}</p>
+                  </div>
+                )}
                 <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                   <span className="text-muted-foreground">Roster</span>
                   <span className="flex items-center gap-1.5 font-medium text-foreground">

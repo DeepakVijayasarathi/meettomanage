@@ -82,8 +82,12 @@ export default function PayoutApprovals() {
   async function decide(decision: PayoutReviewDecision) {
     if (!target) return;
     const amount = decision === "ApprovedPartial" ? Number(partialAmount) : undefined;
-    if (decision === "ApprovedPartial" && (!Number.isFinite(amount) || amount! < 0 || amount! > target.fullAmount)) {
-      toast({ variant: "error", title: "Enter a partial amount", description: `Between ${formatCurrency(0)} and ${formatCurrency(target.fullAmount)}.` });
+    if (decision === "ApprovedPartial" && (!Number.isFinite(amount) || amount! < 0 || (target.fullAmount > 0 && amount! > target.fullAmount))) {
+      toast({
+        variant: "error",
+        title: "Enter a partial amount",
+        description: target.fullAmount > 0 ? `Between ${formatCurrency(0)} and ${formatCurrency(target.fullAmount)}.` : "Enter the amount to pay (0 or more).",
+      });
       return;
     }
     setBusy(decision);
@@ -226,13 +230,15 @@ export default function PayoutApprovals() {
                   id="partial-amount"
                   type="number"
                   min={0}
-                  max={target.fullAmount}
+                  max={target.fullAmount > 0 ? target.fullAmount : undefined}
                   step="0.01"
                   value={partialAmount}
                   onChange={(e) => setPartialAmount(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Pre-filled pro-rated to the minutes taught ({formatCurrency(target.proRatedAmount)} of {formatCurrency(target.fullAmount)}).
+                  {target.fullAmount > 0
+                    ? `Pre-filled pro-rated to the minutes taught (${formatCurrency(target.proRatedAmount)} of ${formatCurrency(target.fullAmount)}).`
+                    : "No payout was priced for this class (no rate was set when it finished), so enter the amount to pay."}
                 </p>
               </div>
               <div className="grid gap-1.5">

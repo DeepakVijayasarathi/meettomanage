@@ -8,7 +8,8 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { CalendarBoard } from "@/components/CalendarBoard";
-import { SessionStatusBadge, noShowLabel } from "@/components/StatusBadge";
+import { SessionStatusBadge, sessionStatusLabel } from "@/components/StatusBadge";
+import { parseCancellation } from "@/lib/cancelledBy";
 import { EmptyState } from "@/components/EmptyState";
 import { ParentCancelClassButton } from "@/components/ParentCancelClassButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -233,8 +234,13 @@ export default function ParentSchedule() {
                   {formatDate(selected.date, "long")} · {formatTimeLabel(selected.startTime)} {getUserTimeZoneAbbreviation()} · {selected.teacherName}
                 </DialogDescription>
               </DialogHeader>
+              {selected.status === "cancelled" && selected.cancellationReason && (
+                <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                  {parseCancellation(selected.cancellationReason).details || parseCancellation(selected.cancellationReason).who}
+                </p>
+              )}
               <div className="flex items-center justify-between">
-                <SessionStatusBadge status={selected.status} label={noShowLabel(selected)} />
+                <SessionStatusBadge status={selected.status} label={sessionStatusLabel(selected)} />
                 {isJoinable(selected) ? (
                   <Button asChild size="sm">
                     <Link
@@ -276,7 +282,7 @@ function ScheduleRow({ session, onCancelled }: { session: ClassSession; onCancel
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <SessionStatusBadge status={session.status} label={noShowLabel(session)} />
+        <SessionStatusBadge status={session.status} label={sessionStatusLabel(session)} />
         <ParentCancelClassButton session={session} onCancelled={onCancelled} />
         {joinable ? (
           <Button size="sm" asChild>
@@ -318,7 +324,7 @@ function PastRow({ session }: { session: ClassSession }) {
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <SessionStatusBadge status={session.status} label={noShowLabel(session)} />
+        <SessionStatusBadge status={session.status} label={sessionStatusLabel(session)} />
         {recInfo ? (
           // Same fix as parent/Dashboard.tsx's RecentRow: recordings live on their own
           // dedicated page, not Resources (teacher-uploaded worksheets/books/videos).

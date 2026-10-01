@@ -94,6 +94,11 @@ export async function createHoliday(input: { date: string; name: string; descrip
   return apiFetch<ApiHoliday>("/api/holidays", { method: "POST", body: JSON.stringify(input) });
 }
 
+/** Moves any upcoming session still sitting on a holiday date to the next working day. */
+export async function reconcileHolidays(): Promise<{ movedSessions: number }> {
+  return apiFetch<{ movedSessions: number }>("/api/holidays/reconcile", { method: "POST" });
+}
+
 export async function deleteHoliday(id: string): Promise<void> {
   await apiFetch<void>(`/api/holidays/${id}`, { method: "DELETE" });
 }
