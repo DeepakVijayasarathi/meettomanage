@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChildSchedulePreferenceSummary } from "@/components/ChildSchedulePreferenceSummary";
 import { useSearchParams } from "react-router-dom";
 import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
 import { useBrand } from "@/lib/branding";
@@ -1475,6 +1476,8 @@ export default function AdminUsers() {
                   )}
                 </div>
               )}
+
+              <ChildSchedulePreferenceSummary preference={(detailChild as StudentRow | null)?.schedulePreference} />
 
               {/* RM special enrolment notes — visible on the profile to whoever is the RM. */}
               <div className="mt-2 flex flex-col gap-1.5">

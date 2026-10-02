@@ -255,6 +255,57 @@ export async function refreshInvoicePayment(invoiceId: string): Promise<ApiInvoi
   });
 }
 
+/** A child's details + preferred class schedule as entered by the parent (basics pre-filled when nothing is saved yet). */
+export interface ApiChildSchedulePreference {
+  childId: string;
+  childName: string;
+  dateOfBirth: string | null;
+  gender: "Male" | "Female" | "Other" | null;
+  grade: string | null;
+  courseId: string | null;
+  courseName: string | null;
+  preferredStartDate: string | null;
+  daysPerWeek: number | null;
+  preferredDays: string[];
+  dayTimes: Record<string, string>;
+  schoolName: string | null;
+  priorExperience: string | null;
+  allergies: string | null;
+  notes: string | null;
+  hasSubmitted: boolean;
+  submittedAtUtc: string | null;
+}
+
+export interface SaveChildSchedulePreferenceInput {
+  courseId: string | null;
+  preferredStartDate: string | null;
+  daysPerWeek: number;
+  preferredDays: string[];
+  dayTimes: Record<string, string>;
+  schoolName: string | null;
+  grade: string | null;
+  dateOfBirth: string | null;
+  gender: string | null;
+  priorExperience: string | null;
+  allergies: string | null;
+  notes: string | null;
+}
+
+export async function getChildSchedulePreference(childId: string): Promise<ApiChildSchedulePreference> {
+  return apiFetch<ApiChildSchedulePreference>(`/api/parent-portal/children/${childId}/schedule-preference`);
+}
+
+/** Saves the details onto the EXISTING child (no second child record is created). */
+export async function saveChildSchedulePreference(
+  childId: string,
+  input: SaveChildSchedulePreferenceInput,
+): Promise<ApiChildSchedulePreference> {
+  return apiFetch<ApiChildSchedulePreference>(`/api/parent-portal/children/${childId}/schedule-preference`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
 /** Admin edits the submitted answers before approval. */
 export async function updateEnrollmentForm(id: string, formData: Record<string, unknown>): Promise<ApiEnrollmentForm> {
   return apiFetch<ApiEnrollmentForm>(`/api/enrollment-forms/${id}`, {

@@ -6,6 +6,7 @@ import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Clock3, Loader2
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
+import { ChildDetailsPrompt } from "@/components/ChildDetailsPrompt";
 import { FeeStatusBadge, SessionStatusBadge, sessionStatusLabel } from "@/components/StatusBadge";
 import { PayNowModal } from "@/components/PayNowModal";
 import { EmptyState } from "@/components/EmptyState";
@@ -198,6 +199,8 @@ export default function ParentDashboard() {
       />
 
       <MultiChildSwitcher />
+
+      {usingApi && isEnrolled && <ChildDetailsPrompt childId={child.id} childName={child.name} />}
 
       {awaitingForms.length > 0 && (
         <div className="mt-6">

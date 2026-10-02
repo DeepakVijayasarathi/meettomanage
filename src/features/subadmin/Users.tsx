@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChildSchedulePreferenceSummary } from "@/components/ChildSchedulePreferenceSummary";
 import { useSearchParams } from "react-router-dom";
 import { GraduationCap, Loader2, Mic, Plus, Sparkles, Trash2, Users as UsersIcon, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -917,6 +918,8 @@ export default function SubAdminUsers() {
                   )}
                 </div>
               )}
+
+              <ChildSchedulePreferenceSummary preference={(detailChild as StudentRow | null)?.schedulePreference} />
 
               {/* RM special enrolment notes — gated behind canEdit, same as the onboarding panel
                   above (updateStudentNotes is UserManagement:Edit on the backend). */}
