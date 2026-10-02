@@ -64,7 +64,7 @@ export default function AdmissionDashboard() {
   const base = usePortalBase();
   const { data: leads, loading: leadsLoading, error: leadsError } = useApiData<Lead[]>(() => listDemoBookings().then((b) => b.map(toFrontendLead)), LEADS);
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(
-    () => listSessions(sessionWindow(35, 35)).then((s) => s.map(toFrontendSession)),
+    () => listSessions(sessionWindow(7, 35)).then((s) => s.map(toFrontendSession)),
     SESSIONS
   );
   // Each counselor's OWN collections (client: "we don't want all payments recorded together for

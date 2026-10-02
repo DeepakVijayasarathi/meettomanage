@@ -55,7 +55,7 @@ import { useBrand } from "@/lib/branding";
 import { useMemo } from "react";
 import { useApiData } from "@/api/hooks";
 import { getDashboardSummary } from "@/api/reports";
-import { listSessions, sessionWindow, toFrontendSession } from "@/api/sessions";
+import { listSessions, todayWindow, toFrontendSession } from "@/api/sessions";
 import type { ClassSession } from "@/types";
 
 const TODAY = "2026-07-09";
@@ -109,7 +109,7 @@ export default function AdminDashboard() {
   const usingApi = apiEnabled();
   const todayKey = usingApi ? localDateKey(new Date()) : TODAY;
   const { data: apiSessions, loading: sessionsLoading } = useApiData<ClassSession[]>(
-    () => listSessions(sessionWindow(35, 35)).then((items) => items.map(toFrontendSession)),
+    () => listSessions(todayWindow()).then((items) => items.map(toFrontendSession)),
     []
   );
   const todaySessions = useMemo(
