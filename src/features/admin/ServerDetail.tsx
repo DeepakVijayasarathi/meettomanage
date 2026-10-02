@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import { cn, setVisibleInterval } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -295,7 +295,7 @@ export default function AdminServerDetail() {
   // Fallback poll — only while the live push isn't connected.
   useEffect(() => {
     if (!usingApi || hubConnected) return;
-    const interval = setInterval(reload, REFRESH_INTERVAL_MS);
+    const interval = setVisibleInterval(reload, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [usingApi, hubConnected, reload]);
 

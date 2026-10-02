@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Wifi, WifiOff } from "lucide-react";
 import { apiEnabled } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, setVisibleInterval } from "@/lib/utils";
 
 type Status = "online" | "slow" | "offline";
 
@@ -48,7 +48,7 @@ function useNetworkStatus() {
     }
 
     check();
-    const interval = setInterval(check, PING_INTERVAL_MS);
+    const interval = setVisibleInterval(check, PING_INTERVAL_MS);
     window.addEventListener("online", check);
     window.addEventListener("offline", check);
     return () => {

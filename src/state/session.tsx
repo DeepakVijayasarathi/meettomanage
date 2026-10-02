@@ -6,7 +6,7 @@ import { authStorage, clearAuthStorage } from "@/lib/authStorage";
 import { getParentChildren } from "@/api/parentPortal";
 import { getCurrentUser } from "@/api/auth";
 import { checkPermission, type PermissionAction } from "@/lib/permissions";
-import { safeInternalPath } from "@/lib/utils";
+import { safeInternalPath, setVisibleInterval } from "@/lib/utils";
 import type { PermissionModuleName } from "@/api/permissions";
 import { getUserTimeZone, setUserTimeZone } from "@/lib/datetime";
 
@@ -169,7 +169,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
 
     refresh();
-    const intervalId = setInterval(refresh, 3 * 60_000);
+    const intervalId = setVisibleInterval(refresh, 3 * 60_000);
     return () => {
       cancelled = true;
       clearInterval(intervalId);

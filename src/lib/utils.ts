@@ -253,3 +253,13 @@ export function toCsv(columns: string[], rows: (string | number)[][]): string {
   const lines = [columns.map(escapeCsvCell).join(","), ...rows.map((r) => r.map(escapeCsvCell).join(","))];
   return lines.join("\n");
 }
+
+/**
+ * Like setInterval (clear it with clearInterval) but skips ticks while the browser tab is hidden,
+ * so a background tab left open all day doesn't keep polling the API.
+ */
+export function setVisibleInterval(callback: () => void, ms: number): ReturnType<typeof setInterval> {
+  return setInterval(() => {
+    if (typeof document === "undefined" || document.visibilityState === "visible") callback();
+  }, ms);
+}

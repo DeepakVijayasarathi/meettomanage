@@ -38,7 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { cn, setVisibleInterval } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -842,7 +842,7 @@ export default function AdminMonitoring() {
   // down hub doesn't leave the page silently stale.
   useEffect(() => {
     if (!usingApi || hubConnected) return;
-    const interval = setInterval(reload, REFRESH_INTERVAL_MS);
+    const interval = setVisibleInterval(reload, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [usingApi, hubConnected, reload]);
 
@@ -850,13 +850,13 @@ export default function AdminMonitoring() {
   // can actually see it, since it's other users' real-time presence.
   useEffect(() => {
     if (!usingApi || !canViewLiveUsers) return;
-    const interval = setInterval(reloadLiveUsers, REFRESH_INTERVAL_MS);
+    const interval = setVisibleInterval(reloadLiveUsers, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [usingApi, canViewLiveUsers, reloadLiveUsers]);
 
   useEffect(() => {
     if (!usingApi || !canViewLiveUsers) return;
-    const interval = setInterval(reloadTodaySessions, REFRESH_INTERVAL_MS);
+    const interval = setVisibleInterval(reloadTodaySessions, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [usingApi, canViewLiveUsers, reloadTodaySessions]);
 
