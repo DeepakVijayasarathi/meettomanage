@@ -67,6 +67,8 @@ interface EnrollmentForm {
   dayTimes: Record<string, string>;
   /** Coarse morning/afternoon/evening bucket of the earliest chosen day -- kept for older readers. */
   preferredTime: string;
+  /** Date the family would like classes to start (yyyy-MM-dd). */
+  startDate: string;
   allergies: string;
   notes: string;
   consent: boolean;
@@ -93,6 +95,11 @@ export default function ParentEnrollment() {
       ? { id: mockChild.id, name: mockChild.name, grade: mockChild.grade, courseId: mockChild.courseId }
       : undefined;
   const childFirstName = child?.name.split(" ")[0];
+  // Opened from a child the admission counselor already created (dashboard "Share class
+  // preferences"): the form fills in that child's details instead of enrolling a new child.
+  const requestedChildId = params.get("childId");
+  const existingChildId =
+    usingApi && requestedChildId && sessionChildren.some((c) => c.id === requestedChildId) ? requestedChildId : null;
 
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -123,6 +130,7 @@ export default function ParentEnrollment() {
       preferredDays: [],
       dayTimes: {},
       preferredTime: "",
+      startDate: "",
       allergies: "",
       notes: "",
       consent: false,
@@ -239,6 +247,7 @@ export default function ParentEnrollment() {
       else if (form.preferredDays.length !== form.daysPerWeek)
         next.schedule = `Choose exactly ${form.daysPerWeek} preferred day${form.daysPerWeek === 1 ? "" : "s"} (${form.preferredDays.length} selected).`;
       else if (form.preferredDays.some((d) => !form.dayTimes[d])) next.schedule = "Choose a preferred time for each selected day.";
+      if (!form.startDate) next.startDate = "Choose the date you'd like classes to start.";
       if (!form.consent) next.consent = "Please confirm the details and give consent to submit.";
     }
     return next;
@@ -309,7 +318,7 @@ export default function ParentEnrollment() {
       // Answers travel as a JSON document keyed by field id (client-configurable schema).
       const orderedDays = SCHEDULE_DAYS.filter((d) => form.preferredDays.includes(d));
       const earliest = orderedDays.map((d) => form.dayTimes[d]).filter(Boolean).sort()[0] ?? "";
-      submitEnrollmentForm({ ...form, preferredDays: orderedDays, preferredTime: timeBucket(earliest) })
+      submitEnrollmentForm({ ...form, preferredDays: orderedDays, preferredTime: timeBucket(earliest) }, existingChildId ?? undefined)
         .then(() => {
           markEnrollmentComplete(childId);
           setActiveChildId(childId);
@@ -373,8 +382,8 @@ export default function ParentEnrollment() {
     <div>
       <PageHeader
         eyebrow="Mandatory before dashboard access"
-        title={childFirstName ? `Complete ${childFirstName}'s Enrollment` : "Complete Your Child's Enrollment"}
-        description="A few quick details unlock classes, attendance, resources and billing for this child."
+        title={existingChildId && childFirstName ? `Share ${childFirstName}'s Class Preferences` : childFirstName ? `Complete ${childFirstName}'s Enrollment` : "Complete Your Child's Enrollment"}
+        description={existingChildId ? "Your preferred class days and timings, start date and school details help us set up the class schedule." : "A few quick details unlock classes, attendance, resources and billing for this child."}
       />
 
       <Card className="mx-auto max-w-2xl">
@@ -699,6 +708,17 @@ export default function ParentEnrollment() {
                     </p>
                   )}
                 </fieldset>
+
+                <Field label="Preferred start date" htmlFor="startDate" required error={errors.startDate}>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    required
+                    min={new Date().toISOString().slice(0, 10)}
+                    value={form.startDate}
+                    onChange={(e) => update("startDate", e.target.value)}
+                  />
+                </Field>
 
                 <Field label="Allergies or medical notes (optional)" htmlFor="allergies">
                   <Textarea

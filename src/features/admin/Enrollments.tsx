@@ -30,7 +30,7 @@ import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
 import { listPackagePlans, type ApiPackagePlan } from "@/api/billing";
 import { listBatches, type ApiBatch } from "@/api/batches";
 import type { Child } from "@/types";
-import { formatCurrency, getInitials } from "@/lib/utils";
+import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
 
 /** Mock Child rows and live enrollment-form rows share one table shape. The optional fields
  * beyond parentName/parentPhone/formJson/dob mirror every other answer the parent enrollment
@@ -53,6 +53,8 @@ type EnrollmentRow = Child & {
   address?: string;
   preferredDays?: string[];
   preferredTime?: string;
+  /** Date the family would like classes to start (yyyy-MM-dd). */
+  startDate?: string;
   /** Per-day preferred start times from the parent's schedule preference, e.g. { Mon: "16:00" }. */
   dayTimes?: Record<string, string>;
   daysPerWeek?: number | null;
@@ -117,6 +119,7 @@ function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
     address: str("address"),
     preferredDays: Array.isArray(answers.preferredDays) ? (answers.preferredDays as string[]) : [],
     preferredTime: str("preferredTime"),
+    startDate: str("startDate"),
     dayTimes: readSchedulePreference(answers).dayTimes,
     daysPerWeek: readSchedulePreference(answers).daysPerWeek,
     allergies: str("allergies"),
@@ -532,6 +535,10 @@ export default function AdminEnrollments() {
                       legacyTime: detail.preferredTime ?? "",
                     })}
                   </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preferred Start Date</p>
+                  <p className="mt-1 font-medium text-foreground">{detail.startDate ? formatDate(detail.startDate, "long") : "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
