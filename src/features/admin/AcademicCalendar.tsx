@@ -119,15 +119,19 @@ export default function AdminAcademicCalendar() {
     setReconciling(true);
     setHolidayError(null);
     try {
-      const { movedSessions } = await reconcileHolidays();
+      const { cancelledSessions, removedShiftedSessions } = await reconcileHolidays();
       reloadMonth();
+      const parts = [
+        removedShiftedSessions > 0 ? `${removedShiftedSessions} shifted class${removedShiftedSessions === 1 ? "" : "es"} removed — schedule restored` : null,
+        cancelledSessions > 0 ? `${cancelledSessions} class${cancelledSessions === 1 ? "" : "es"} on holidays cancelled` : null,
+      ].filter(Boolean);
       toast({
         variant: "success",
-        title: movedSessions > 0 ? `${movedSessions} session${movedSessions === 1 ? "" : "s"} moved off holidays` : "No sessions on holidays",
-        description: movedSessions > 0 ? "Each was cancelled and carried forward to the next working day." : undefined,
+        title: parts.length > 0 ? "Holiday schedule fixed" : "Nothing to fix",
+        description: parts.length > 0 ? parts.join("; ") + "." : "No shifted or holiday classes were found.",
       });
     } catch (err) {
-      const message = userMessage(err, "Could not move sessions off holidays.");
+      const message = userMessage(err, "Could not fix the holiday schedule.");
       setHolidayError(message);
       toast({ variant: "error", title: "Couldn't update sessions", description: message });
     } finally {
@@ -202,7 +206,7 @@ export default function AdminAcademicCalendar() {
           {holidayError && <p className="text-sm font-medium text-destructive">{holidayError}</p>}
           <div>
             <Button variant="outline" size="sm" onClick={handleReconcileHolidays} disabled={reconciling}>
-              {reconciling ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}{reconciling ? "Updating…" : "Move sessions off holidays"}
+              {reconciling ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}{reconciling ? "Updating…" : "Fix holiday schedule"}
             </Button>
           </div>
           {visibleHolidays.length > 0 && (
