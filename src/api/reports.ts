@@ -30,6 +30,18 @@ export async function getDashboardSummary(): Promise<ApiDashboardSummary> {
   return apiFetch<ApiDashboardSummary>("/api/reports/dashboard-summary");
 }
 
+/** The signed-in staff member's own collections (her demo leads' payments + invoices she raised), IST months. */
+export interface ApiMyCollections {
+  thisMonth: number;
+  thisMonthPayments: number;
+  lastMonth: number;
+  payments: { paidAtUtc: string; amount: number; invoiceNumber: string; parentName: string; childName?: string | null; method?: string | null }[];
+}
+
+export async function getMyCollections(): Promise<ApiMyCollections> {
+  return apiFetch<ApiMyCollections>("/api/reports/my-collections");
+}
+
 export async function sendBulkEmail(input: {
   subject: string;
   body: string;
