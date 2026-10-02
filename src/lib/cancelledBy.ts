@@ -26,3 +26,14 @@ export function cancelledByLabel(session: { status: string; cancellationReason?:
   if (role) return `Cancelled by ${role}`;
   return `Cancelled by ${who}`;
 }
+
+/**
+ * When a holiday is added, the server cancels that day's classes with the reason
+ * "Cancelled by ...: holiday — {name}" (parents get "Cancelled by the academy: holiday — {name}").
+ * Returns the holiday's name for such a reason, or null for any ordinary cancellation. Used to show
+ * those classes as "Holiday" instead of a regular cancellation.
+ */
+export function holidayNameFromReason(reason: string | null | undefined): string | null {
+  const match = /holiday\s*[—-]\s*([^;]+)/i.exec(reason ?? "");
+  return match ? match[1].trim() : null;
+}

@@ -1,5 +1,6 @@
 import { apiFetch, downloadFile } from "@/lib/api";
 import type { AppUser, Child } from "@/types";
+import type { ApiChildSchedulePreference } from "./parentPortal";
 import { toFrontendRole, toFrontendStatus, type ApiRole, type ApiUser, type BulkImportResult, type PagedResult } from "./types";
 
 /** A students-directory row: the mock Child shape plus resolved parent/course names from the API.
@@ -11,6 +12,8 @@ export type StudentRow = Child & {
   parentName?: string;
   courseName?: string;
   rmNotes?: string;
+  /** What the parent filled in from the portal; absent until they have. */
+  schedulePreference?: ApiChildSchedulePreference;
   parentUserId?: string;
   /** Sum of this child's Paid invoices. Zero (or undefined, in demo mode) means nothing was
    *  ever collected — deleting them needs no refund warning. */
@@ -36,6 +39,7 @@ export interface ApiStudent {
   parentName: string;
   courseName: string | null;
   rmNotes: string | null;
+  schedulePreference: ApiChildSchedulePreference | null;
   isActive: boolean;
   paidInvoiceTotal: number;
 }
@@ -84,6 +88,7 @@ export async function listStudents(): Promise<StudentRow[]> {
     parentName: s.parentName,
     courseName: s.courseName ?? undefined,
     rmNotes: s.rmNotes ?? undefined,
+    schedulePreference: s.schedulePreference ?? undefined,
     paidInvoiceTotal: s.paidInvoiceTotal,
   }));
 }

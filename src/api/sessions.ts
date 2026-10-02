@@ -1,4 +1,5 @@
 import { apiFetch, getAccessToken, ApiError, readProblemMessage } from "@/lib/api";
+import { holidayNameFromReason } from "@/lib/cancelledBy";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import type { ClassSession, SessionStatus } from "@/types";
 import type { PagedResult } from "@/api/types";
@@ -54,6 +55,7 @@ const STATUS_FROM_API: Record<ApiClassSession["status"], SessionStatus> = {
 };
 
 export function toFrontendSession(session: ApiClassSession): ClassSession {
+  const cancelledForHoliday = session.status === "Cancelled" && holidayNameFromReason(session.cancellationReason) !== null;
   const start = new Date(session.scheduledStartAtUtc);
   const end = new Date(session.scheduledEndAtUtc);
   const minutes = Math.round((end.getTime() - start.getTime()) / 60000);
@@ -80,7 +82,8 @@ export function toFrontendSession(session: ApiClassSession): ClassSession {
     date: local.date,
     startTime: local.time,
     duration: minutes,
-    status: session.type === "Demo" && session.status === "Scheduled" ? "demo" : STATUS_FROM_API[session.status],
+    // A class cancelled only because that day is a holiday is shown as "Holiday", not as a normal cancellation.
+    status: cancelledForHoliday ? "holiday" : session.type === "Demo" && session.status === "Scheduled" ? "demo" : STATUS_FROM_API[session.status],
     type: session.type === "Demo" ? "demo" : "group",
     recordingAvailable: session.hasRecording,
     recordingExpiresOn: session.recordingExpiresAtUtc ?? undefined,

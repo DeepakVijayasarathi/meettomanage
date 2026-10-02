@@ -251,6 +251,8 @@ export default function App() {
               <Route path="progress-reports" element={<AdminProgressReports />} />
               <Route path="chatbot" element={<AdminChatbot />} />
               <Route path="enrollments" element={<AdminEnrollments />} />
+              <Route path="leads" element={<AdmissionLeads />} />
+              <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
               <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
               <Route path="parent-feedback" element={<ParentFeedbackReport />} />

@@ -25,6 +25,8 @@ import { getBatchById } from "@/data/batches";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { toFrontendSession } from "@/api/sessions";
+import { listHolidays, type ApiHoliday } from "@/api/academicOps";
+import { holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import { defaultParentScheduleWindow, getParentSchedule } from "@/api/parentPortal";
 import { cn, formatDate, formatTimeLabel } from "@/lib/utils";
 import type { ClassSession } from "@/types";
@@ -82,6 +84,8 @@ export default function ParentSchedule() {
     },
     []
   );
+  // Holiday dates for the calendar, so a holiday shows as a greyed "Holiday" day even when no class was due.
+  const { data: holidays } = useApiData<ApiHoliday[]>(() => listHolidays(), [], undefined, { cacheKey: "holidays" });
   const sessions = useMemo(() => {
     if (!usingApi) return mockChild ? getSessionsForChild(mockChild.id) : [];
     if (!child) return [];
@@ -107,8 +111,13 @@ export default function ParentSchedule() {
     [sessions]
   );
 
+  const calendarEvents = useMemo(
+    () => (usingApi ? [...sessions, ...holidaysToCalendarEvents(holidays)] : sessions),
+    [usingApi, sessions, holidays]
+  );
+
   const past = useMemo(
-    () => sessions.filter((s) => ["completed", "cancelled", "noshow"].includes(s.status)).sort(compareSessionDesc),
+    () => sessions.filter((s) => ["completed", "cancelled", "noshow", "holiday"].includes(s.status)).sort(compareSessionDesc),
     [sessions]
   );
 
@@ -200,7 +209,7 @@ export default function ParentSchedule() {
             <TabsContent value="calendar">
               <Card>
                 <CardContent className="pt-5">
-                  <CalendarBoard sessions={sessions} onSessionClick={setSelected} />
+                  <CalendarBoard sessions={calendarEvents} onSessionClick={(s) => !s.id.startsWith("holiday-") && setSelected(s)} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -234,6 +243,11 @@ export default function ParentSchedule() {
                   {formatDate(selected.date, "long")} · {formatTimeLabel(selected.startTime)} {getUserTimeZoneAbbreviation()} · {selected.teacherName}
                 </DialogDescription>
               </DialogHeader>
+              {selected.status === "holiday" && (
+                <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                  This day is a holiday, so there is no class — it isn't a cancellation. Your regular schedule continues on the next scheduled day.
+                </p>
+              )}
               {selected.status === "cancelled" && selected.cancellationReason && (
                 <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
                   {parseCancellation(selected.cancellationReason).details || parseCancellation(selected.cancellationReason).who}

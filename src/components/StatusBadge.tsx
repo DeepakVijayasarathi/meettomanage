@@ -1,6 +1,6 @@
 import type { ClassSession, SessionStatus, UserStatus } from "@/types";
 import { cn } from "@/lib/utils";
-import { cancelledByLabel } from "@/lib/cancelledBy";
+import { cancelledByLabel, holidayNameFromReason } from "@/lib/cancelledBy";
 
 /** "Teacher No-Show" / "Student No-Show" for a noshow session, else undefined (falls back to
  *  the generic per-status label) — pass straight into SessionStatusBadge's `label` prop. */
@@ -15,6 +15,10 @@ export function noShowLabel(session: Pick<ClassSession, "noShowParty">): string 
 export function sessionStatusLabel(
   session: Pick<ClassSession, "noShowParty" | "status" | "cancellationReason">
 ): string | undefined {
+  if (session.status === "holiday") {
+    const name = holidayNameFromReason(session.cancellationReason);
+    return name ? `Holiday — ${name}` : undefined;
+  }
   return noShowLabel(session) ?? cancelledByLabel(session);
 }
 
