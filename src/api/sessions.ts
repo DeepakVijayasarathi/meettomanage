@@ -357,6 +357,20 @@ export function sessionWindow(backDays: number, aheadDays: number, around: Date 
   ];
 }
 
+/** Just today (local midnight to local midnight) — for dashboards that only list today's classes. */
+export function todayWindow(now: Date = new Date()): [string, string] {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return [start.toISOString(), end.toISOString()];
+}
+
+/** The local Sunday-to-Saturday week containing `now` (matches date-fns startOfWeek/endOfWeek defaults). */
+export function weekWindow(now: Date = new Date()): [string, string] {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+  return [start.toISOString(), end.toISOString()];
+}
+
 /** The whole calendar month containing `month`, padded a week each side (the grid shows those days). */
 export function monthWindow(month: Date): [string, string] {
   const start = new Date(month.getFullYear(), month.getMonth(), 1);
