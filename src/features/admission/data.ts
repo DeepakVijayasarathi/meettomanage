@@ -45,6 +45,8 @@ export interface Lead {
   teacherName: string;
   demoDate: string;
   demoSessionId?: string;
+  /** Other children who sat in on this lead's demo (by name only; each needs its own lead to pay). */
+  extraChildren?: string[];
   recommendedCourse: string;
   conversionStage: ConversionStage;
   lastContactedOn: string;

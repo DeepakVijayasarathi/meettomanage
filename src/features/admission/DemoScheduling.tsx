@@ -141,7 +141,8 @@ export default function AdmissionDemoScheduling() {
   const canDelete = !apiEnabled() || hasPermission("Admission", "Delete");
   const base = usePortalBase();
   const { data: apiRows, error: rowsError, reload: reloadRows } = useApiData(
-    () => listDemoBookings().then((bookings) => bookings.map(bookingToRow)),
+    // Direct-admission leads have no demo class, so they belong on Leads, not here.
+    () => listDemoBookings().then((bookings) => bookings.filter((b) => b.classSessionId).map(bookingToRow)),
     seedRows()
   );
   const { data: teacherOptions } = useApiData(
