@@ -133,6 +133,7 @@ export function toFrontendLead(booking: ApiDemoBooking): Lead {
     teacherName: booking.teacherName ?? "",
     demoDate,
     demoSessionId: booking.classSessionId ?? undefined,
+    extraChildren: booking.participants.filter((p) => p.isChild).map((p) => p.name),
     recommendedCourse: booking.departmentName ?? "—",
     conversionStage: STAGE_FROM_API[booking.conversionStatus],
     lastContactedOn: demoDate,
@@ -268,6 +269,22 @@ export async function createDemoBooking(input: {
   return apiFetch<ApiDemoBooking>("/api/demo-bookings", {
     method: "POST",
     body: JSON.stringify({ participants: [], ...input }),
+  });
+}
+
+/** A lead with no demo class, ready for a payment link: a family enrolling directly, or (with
+ *  siblingOfBookingId, which copies the parent) a second child who sat in on a sibling's demo. */
+export async function createDirectAdmissionLead(input: {
+  siblingOfBookingId?: string;
+  parentName?: string;
+  parentEmail?: string;
+  parentPhone?: string;
+  childName: string;
+  childAge?: number;
+}): Promise<ApiDemoBooking> {
+  return apiFetch<ApiDemoBooking>("/api/demo-bookings/direct-admission", {
+    method: "POST",
+    body: JSON.stringify(input),
   });
 }
 
