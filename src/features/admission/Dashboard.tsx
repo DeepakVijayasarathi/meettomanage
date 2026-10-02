@@ -27,7 +27,7 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listDemoBookings, toFrontendLead } from "@/api/demoBookings";
 import { listSessions, sessionWindow, toFrontendSession } from "@/api/sessions";
-import { getDashboardSummary } from "@/api/reports";
+import { getMyCollections, type ApiMyCollections } from "@/api/reports";
 import { useSession } from "@/state/session";
 import { usePortalBase } from "@/lib/portalBase";
 import { LEADS, getConversionFunnel, getConversionRate, getRevenueThisMonth, type Lead, type ConversionStage } from "./data";
@@ -67,12 +67,14 @@ export default function AdmissionDashboard() {
     () => listSessions(sessionWindow(35, 35)).then((s) => s.map(toFrontendSession)),
     SESSIONS
   );
-  const { data: collectedRevenue, loading: revenueLoading, error: revenueError } = useApiData<number>(
-    // This calendar month (the trend's last point) -- revenueCollected is all-time.
-    () => getDashboardSummary().then((s) => s.revenueTrend.at(-1)?.revenue ?? 0),
-    getRevenueThisMonth(),
-    0
+  // Each counselor's OWN collections (client: "we don't want all payments recorded together for
+  // all the counsellors") -- her demo leads' payments plus invoices she raised, this IST month.
+  const { data: myCollections, loading: revenueLoading, error: revenueError } = useApiData<ApiMyCollections>(
+    getMyCollections,
+    { thisMonth: getRevenueThisMonth(), thisMonthPayments: 0, lastMonth: 0, payments: [] },
+    { thisMonth: 0, thisMonthPayments: 0, lastMonth: 0, payments: [] }
   );
+  const collectedRevenue = myCollections.thisMonth;
   const kpiLoading = leadsLoading || sessionsLoading || revenueLoading;
   const kpiError = leadsError || sessionsError || revenueError;
 
@@ -142,12 +144,9 @@ export default function AdmissionDashboard() {
           error={kpiError}
         />
         <KpiCard
-          // Asked live: "I collected 56,200 but it shows 48,400" / "I collected nothing yet it
-          // shows an amount". This is the whole academy's payments recorded in the portal this
-          // month (IST), not one counselor's own collection -- say so on the card.
-          label="Academy Collections This Month"
+          label="My Collections This Month"
           value={formatCurrency(revenueThisMonth)}
-          detail={`All payments recorded in the portal by the whole team since 1 ${new Date().toLocaleString("en-IN", { month: "short", timeZone: "Asia/Kolkata" })}`}
+          detail={`${myCollections.thisMonthPayments} payment${myCollections.thisMonthPayments === 1 ? "" : "s"} from your leads since 1 ${new Date().toLocaleString("en-IN", { month: "short", timeZone: "Asia/Kolkata" })} · last month ${formatCurrency(myCollections.lastMonth)}`}
           icon={IndianRupee}
           tone="warning"
           trend={usingApi ? undefined : { value: 9.2, label: "this month" }}
