@@ -213,7 +213,6 @@ export default function ParentDashboard() {
           <EnrollmentGate child={child} />
         ) : (
           <div className="flex flex-col gap-6">
-            {usingApi && !myForms.some((f) => f.childId === child.id) && <ClassPreferencesPrompt child={child} />}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <KpiCard label="Classes Completed" value={String(child.classesCompleted)} icon={CheckCircle2} tone="success" loading={usingApi && dashLoading} />
               <KpiCard label="Classes Remaining" value={String(child.classesRemaining)} icon={CalendarClock} tone="primary" loading={usingApi && dashLoading} />
@@ -565,39 +564,6 @@ function PendingValue({ label, value }: { label: string; value: string }) {
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-0.5 font-medium capitalize text-foreground">{value}</p>
     </div>
-  );
-}
-
-/**
- * A child the admission counselor already created (manual admission / demo conversion) has no
- * enrollment form behind it, so the family's preferred days, timings, start date and school used
- * to be collected over WhatsApp. Shown until the parent shares them for this child.
- */
-function ClassPreferencesPrompt({ child }: { child: Child }) {
-  const first = child.name.split(" ")[0];
-  return (
-    <Card className="border-primary/30 bg-primary/5 p-5">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <CalendarClock className="h-5 w-5" />
-          </span>
-          <div>
-            <Link to={`/parent/enrollment?childId=${child.id}`} className="font-semibold text-foreground hover:underline">
-              {child.name}
-            </Link>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Tell us {first}'s preferred class days and timings, start date and school so we can set up the class schedule.
-            </p>
-          </div>
-        </div>
-        <Button asChild size="sm">
-          <Link to={`/parent/enrollment?childId=${child.id}`}>
-            Share class preferences <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </Button>
-      </div>
-    </Card>
   );
 }
 
