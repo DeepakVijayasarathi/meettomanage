@@ -156,10 +156,11 @@ export async function getPaymentMethods(): Promise<ApiPaymentMethod[]> {
 }
 
 /** Mandatory first-login enrollment form (answers as a JSON document). */
-export async function submitEnrollmentForm(formData: Record<string, unknown>): Promise<ApiEnrollmentForm> {
+/** childId: filling in details for a child who already exists (no new child is created on approval). */
+export async function submitEnrollmentForm(formData: Record<string, unknown>, childId?: string): Promise<ApiEnrollmentForm> {
   return apiFetch<ApiEnrollmentForm>("/api/enrollment-forms", {
     method: "POST",
-    body: JSON.stringify({ formDataJson: JSON.stringify(formData) }),
+    body: JSON.stringify({ formDataJson: JSON.stringify(formData), childId }),
   });
 }
 
