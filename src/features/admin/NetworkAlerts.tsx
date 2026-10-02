@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import { cn, setVisibleInterval } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getMonitoringSummary, toFrontendMonitoringSummary } from "@/api/monitoring";
@@ -73,7 +73,7 @@ export default function NetworkAlerts() {
 
   useEffect(() => {
     if (!usingApi || hubConnected) return;
-    const interval = setInterval(reload, REFRESH_INTERVAL_MS);
+    const interval = setVisibleInterval(reload, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [usingApi, hubConnected, reload]);
 

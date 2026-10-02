@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { formatDate, toCsv as toCsvEscaped } from "@/lib/utils";
+import { formatDate, toCsv as toCsvEscaped, setVisibleInterval } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
@@ -305,7 +305,7 @@ export default function AdminClassSessionLogs() {
   // so this is the only thing that keeps "live now" / "next up" from going stale.
   useEffect(() => {
     if (!usingApi) return;
-    const interval = setInterval(refreshAll, REFRESH_INTERVAL_MS);
+    const interval = setVisibleInterval(refreshAll, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usingApi]);
