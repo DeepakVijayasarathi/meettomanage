@@ -142,8 +142,12 @@ export default function AdmissionDashboard() {
           error={kpiError}
         />
         <KpiCard
-          label="Revenue This Month"
+          // Asked live: "I collected 56,200 but it shows 48,400" / "I collected nothing yet it
+          // shows an amount". This is the whole academy's payments recorded in the portal this
+          // month (IST), not one counselor's own collection -- say so on the card.
+          label="Academy Collections This Month"
           value={formatCurrency(revenueThisMonth)}
+          detail={`All payments recorded in the portal by the whole team since 1 ${new Date().toLocaleString("en-IN", { month: "short", timeZone: "Asia/Kolkata" })}`}
           icon={IndianRupee}
           tone="warning"
           trend={usingApi ? undefined : { value: 9.2, label: "this month" }}
