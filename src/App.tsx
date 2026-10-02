@@ -486,6 +486,7 @@ export default function App() {
               <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="bulk-email" element={<SubAdminBulkEmail />} />
               <Route path="email-templates" element={<SubAdminEmailTemplates />} />
               <Route path="chatbot" element={<SubAdminChatbot />} />
@@ -522,6 +523,8 @@ export default function App() {
               <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="support-tickets" element={<SupportTicketsQueue />} />
+              <Route path="reports" element={<SubAdminReports />} />
               <Route path="bulk-email" element={<SubAdminBulkEmail />} />
               <Route path="email-templates" element={<SubAdminEmailTemplates />} />
               <Route path="chatbot" element={<SubAdminChatbot />} />
@@ -565,6 +568,7 @@ export default function App() {
               <Route path="packages" element={<SubAdminPackages />} />
               <Route path="users" element={<SubAdminUsers />} />
               <Route path="audit-log" element={<SubAdminAuditLog />} />
+              <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="bulk-email" element={<SubAdminBulkEmail />} />
               <Route path="email-templates" element={<SubAdminEmailTemplates />} />
               <Route path="chatbot" element={<SubAdminChatbot />} />
