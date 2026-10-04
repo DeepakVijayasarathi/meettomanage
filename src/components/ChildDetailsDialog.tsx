@@ -11,7 +11,9 @@ import { useApiData } from "@/api/hooks";
 import { listCourseOptions } from "@/api/courses";
 import { getChildSchedulePreference, saveChildSchedulePreference, type ApiChildSchedulePreference } from "@/api/parentPortal";
 import { userMessage } from "@/lib/api";
-import { DAYS_PER_WEEK_OPTIONS, SCHEDULE_DAYS, timeOptionsFor } from "@/lib/schedulePreference";
+import { DAYS_PER_WEEK_OPTIONS, SCHEDULE_DAYS, classHoursLabel, timeOptionsFor } from "@/lib/schedulePreference";
+import { getUserTimeZone } from "@/lib/datetime";
+import { isAcademyClock, zoneCity } from "@/lib/familyTime";
 
 interface FormState {
   courseId: string;
@@ -85,7 +87,10 @@ export function ChildDetailsDialog({
   const [error, setError] = useState<string | null>(null);
   const { data: courses } = useApiData(() => listCourseOptions(), [], undefined, { cacheKey: "course-options" });
   // Group classes run 4–8 PM, individual 10 AM–10 PM, every 15 minutes (client requirement).
-  const timeOptions = timeOptionsFor(courses.find((c) => c.id === form.courseId)?.type);
+  // The parent picks in their own clock (a family in Melbourne sees the class hours in Melbourne time).
+  const zone = getUserTimeZone();
+  const courseType = courses.find((c) => c.id === form.courseId)?.type;
+  const timeOptions = timeOptionsFor(courseType, zone);
   const firstName = childName.split(" ")[0];
 
   // Re-load every time it opens (or the child changes) so a second child never shows the first's answers.
@@ -160,6 +165,7 @@ export function ChildDetailsDialog({
         daysPerWeek: form.daysPerWeek!,
         preferredDays: ordered,
         dayTimes: Object.fromEntries(ordered.map((d) => [d, form.dayTimes[d]])),
+        timeZoneId: zone,
         schoolName: form.schoolName.trim() || null,
         grade: form.grade.trim() || null,
         dateOfBirth: form.dateOfBirth || null,
@@ -203,7 +209,7 @@ export function ChildDetailsDialog({
                 onValueChange={(v) => {
                   // Switching between a group and an individual course changes the allowed hours;
                   // drop any picked time that's no longer offered so it can't be submitted unseen.
-                  const allowed = new Set(timeOptionsFor(courses.find((c) => c.id === v)?.type).map((t) => t.value));
+                  const allowed = new Set(timeOptionsFor(courses.find((c) => c.id === v)?.type, zone).map((t) => t.value));
                   setForm((f) => ({
                     ...f,
                     courseId: v,
@@ -280,6 +286,12 @@ export function ChildDetailsDialog({
               {form.days.length > 0 && (
                 <div className="flex flex-col gap-2">
                   <span className="text-sm font-medium leading-none text-foreground/90">Preferred time for each day</span>
+                  {!isAcademyClock(zone) && (
+                    <span className="text-xs text-muted-foreground">
+                      Times are in your local time ({zoneCity(zone)}). Classes run {classHoursLabel(courseType, "Asia/Kolkata")} India time, which is{" "}
+                      {classHoursLabel(courseType, zone)} for you.
+                    </span>
+                  )}
                   {SCHEDULE_DAYS.filter((d) => form.days.includes(d)).map((d) => (
                     <div key={d} className="flex items-center gap-3">
                       <span className="w-12 text-sm font-semibold text-foreground">{d}</span>

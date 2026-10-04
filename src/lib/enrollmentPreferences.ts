@@ -16,6 +16,8 @@ export interface PreferenceFields {
   daysPerWeek?: number | null;
   preferredDays?: string[];
   dayTimes?: Record<string, string>;
+  /** IANA zone the parent chose the day times in; null/undefined = India time. */
+  timeZoneId?: string | null;
   schoolName?: string;
   grade?: string;
   dob?: string;
@@ -31,6 +33,7 @@ export function preferenceFields(p: ApiChildSchedulePreference): PreferenceField
     preferredDays: p.preferredDays,
     dayTimes: p.dayTimes,
   };
+  if (p.timeZoneId) fields.timeZoneId = p.timeZoneId;
   if (p.courseId) fields.courseId = p.courseId;
   if (p.preferredStartDate) fields.startDate = p.preferredStartDate;
   if (p.schoolName) fields.schoolName = p.schoolName;

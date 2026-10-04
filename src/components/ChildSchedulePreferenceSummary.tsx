@@ -1,7 +1,8 @@
 import { CalendarClock } from "lucide-react";
 import type { ApiChildSchedulePreference } from "@/api/parentPortal";
 import { formatDate } from "@/lib/utils";
-import { SCHEDULE_DAYS, timeLabel } from "@/lib/schedulePreference";
+import { SCHEDULE_DAYS } from "@/lib/schedulePreference";
+import { describePreferredSlot, isAcademyClock, zoneCity } from "@/lib/familyTime";
 
 /**
  * Staff view (Users → Students) of what the parent entered from the portal: preferred days and
@@ -36,10 +37,15 @@ export function ChildSchedulePreferenceSummary({ preference }: { preference?: Ap
       <div className="mt-2 flex flex-wrap gap-1.5">
         {days.map((d) => (
           <span key={d} className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-            {d} · {preference.dayTimes[d] ? timeLabel(preference.dayTimes[d]) : "—"}
+            {preference.dayTimes[d] ? describePreferredSlot(d, preference.dayTimes[d], preference.timeZoneId) : `${d} · —`}
           </span>
         ))}
       </div>
+      {!isAcademyClock(preference.timeZoneId) && preference.timeZoneId && (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          The parent chose these in {zoneCity(preference.timeZoneId)} time; India time is in brackets.
+        </p>
+      )}
       <dl className="mt-3 grid gap-x-4 gap-y-1.5 text-sm sm:grid-cols-[auto_1fr]">
         {rows
           .filter(([, v]) => v)

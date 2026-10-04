@@ -23,7 +23,8 @@ import { CHILDREN } from "@/data/children";
 import { getParentById } from "@/data/users";
 import { COURSES, getCourseById } from "@/data/courses";
 import { apiEnabled, userMessage } from "@/lib/api";
-import { formatSchedulePreference, readSchedulePreference } from "@/lib/schedulePreference";
+import { SCHEDULE_DAYS, formatSchedulePreference, readSchedulePreference } from "@/lib/schedulePreference";
+import { describePreferredSlot, isAcademyClock } from "@/lib/familyTime";
 import { useApiData } from "@/api/hooks";
 import { listEnrollmentForms, reviewEnrollmentForm, updateEnrollmentForm, type ApiEnrollmentForm } from "@/api/parentPortal";
 import { listStudents, type StudentRow } from "@/api/users";
@@ -39,6 +40,8 @@ import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
  * form (features/parent/Enrollment.tsx) collects, so the Edit dialog below can correct any of
  * it, not just name/DOB/grade/course. */
 type EnrollmentRow = Child & {
+  /** IANA zone the parent chose the day times in (their saved details); unset = India time. */
+  timeZoneId?: string | null;
   /** The child this form is for, once it exists (links the parent's saved class details). */
   childId?: string | null;
   parentName?: string;
@@ -535,12 +538,16 @@ export default function AdminEnrollments() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Schedule Preference</p>
                   <p className="mt-1 font-medium text-foreground">
                     {detail.daysPerWeek ? `${detail.daysPerWeek} day${detail.daysPerWeek === 1 ? "" : "s"}/week · ` : ""}
-                    {formatSchedulePreference({
+                    {detail.timeZoneId && !isAcademyClock(detail.timeZoneId)
+                      ? SCHEDULE_DAYS.filter((d) => (detail.preferredDays ?? []).includes(d) && detail.dayTimes?.[d])
+                          .map((d) => describePreferredSlot(d, detail.dayTimes![d], detail.timeZoneId))
+                          .join(" · ")
+                      : formatSchedulePreference({
                       daysPerWeek: detail.daysPerWeek ?? null,
                       days: detail.preferredDays ?? [],
                       dayTimes: detail.dayTimes ?? {},
                       legacyTime: detail.preferredTime ?? "",
-                    })}
+                      })}
                   </p>
                 </div>
                 <div>

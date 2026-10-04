@@ -1,3 +1,5 @@
+import { isAcademyClock, zoneOffsetMinutes } from "@/lib/familyTime";
+
 /**
  * Schedule preference collected on the parent's enrollment form: how many days a week, which days,
  * and a preferred start time for each day -- so the RM can pick a teacher and build the batch
@@ -39,8 +41,29 @@ export const GROUP_TIME_OPTIONS = quarterHourOptions(16, 20);
 export const INDIVIDUAL_TIME_OPTIONS = quarterHourOptions(10, 22);
 export const TIME_OPTIONS: { value: string; label: string }[] = INDIVIDUAL_TIME_OPTIONS;
 
-export function timeOptionsFor(courseType: "Individual" | "Group" | "group" | "individual" | "" | null | undefined) {
-  return courseType?.toLowerCase() === "group" ? GROUP_TIME_OPTIONS : INDIVIDUAL_TIME_OPTIONS;
+/**
+ * The class hours above are India (IST) hours. A family in another zone picks in their own clock,
+ * so for `zone` each IST slot is shifted to that zone's time of day (keeping IST order, so a range
+ * crossing midnight -- 9:30 PM to 1:30 AM in Melbourne -- still reads start to end).
+ */
+export function timeOptionsFor(
+  courseType: "Individual" | "Group" | "group" | "individual" | "" | null | undefined,
+  zone?: string | null
+) {
+  const ist = courseType?.toLowerCase() === "group" ? GROUP_TIME_OPTIONS : INDIVIDUAL_TIME_OPTIONS;
+  if (!zone || isAcademyClock(zone)) return ist;
+  const shift = zoneOffsetMinutes(zone) - zoneOffsetMinutes("Asia/Kolkata");
+  return ist.map((t) => {
+    const [h, m] = t.value.split(":").map(Number);
+    const local = (((h * 60 + m + shift) % 1440) + 1440) % 1440;
+    return { value: `${String(Math.floor(local / 60)).padStart(2, "0")}:${String(local % 60).padStart(2, "0")}`, label: toLabel(local) };
+  });
+}
+
+/** "4:00 PM – 8:00 PM" for the course type, in `zone` when given. */
+export function classHoursLabel(courseType: Parameters<typeof timeOptionsFor>[0], zone?: string | null): string {
+  const options = timeOptionsFor(courseType, zone);
+  return `${options[0].label} – ${options[options.length - 1].label}`;
 }
 
 const LEGACY_TIME_LABELS: Record<string, string> = {
