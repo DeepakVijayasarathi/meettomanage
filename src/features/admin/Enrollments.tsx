@@ -26,6 +26,8 @@ import { apiEnabled, userMessage } from "@/lib/api";
 import { formatSchedulePreference, readSchedulePreference } from "@/lib/schedulePreference";
 import { useApiData } from "@/api/hooks";
 import { listEnrollmentForms, reviewEnrollmentForm, updateEnrollmentForm, type ApiEnrollmentForm } from "@/api/parentPortal";
+import { listStudents, type StudentRow } from "@/api/users";
+import { withSavedPreferences } from "@/lib/enrollmentPreferences";
 import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
 import { listPackagePlans, type ApiPackagePlan } from "@/api/billing";
 import { listBatches, type ApiBatch } from "@/api/batches";
@@ -37,6 +39,8 @@ import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
  * form (features/parent/Enrollment.tsx) collects, so the Edit dialog below can correct any of
  * it, not just name/DOB/grade/course. */
 type EnrollmentRow = Child & {
+  /** The child this form is for, once it exists (links the parent's saved class details). */
+  childId?: string | null;
   parentName?: string;
   parentPhone?: string;
   formJson?: string;
@@ -105,6 +109,7 @@ function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
     attendancePercent: 0,
     feeStatus: "due",
     enrollmentComplete: form.status === "Approved",
+    childId: form.childId,
     formJson: form.formDataJson,
     formStatus: form.status,
     dob,
@@ -137,7 +142,9 @@ export default function AdminEnrollments() {
     () => listEnrollmentForms().then((forms) => forms.map(toEnrollmentRow)),
     CHILDREN
   );
-  const rows = useMemo(() => allRows.filter((r) => r.formStatus !== "Rejected"), [allRows]);
+  // What the parent filled in on the child (ChildDetailsDialog) -- shown here too; see enrollmentPreferences.
+  const { data: students } = useApiData<StudentRow[]>(() => listStudents().catch(() => []), []);
+  const rows = useMemo(() => withSavedPreferences(allRows.filter((r) => r.formStatus !== "Rejected"), students, toEnrollmentRow), [allRows, students]);
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<EnrollmentRow | null>(null);
   const [rejectTarget, setRejectTarget] = useState<EnrollmentRow | null>(null);
