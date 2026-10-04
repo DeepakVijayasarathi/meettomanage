@@ -22,7 +22,7 @@ import { listCourseOptions } from "@/api/courses";
 import { submitEnrollmentForm } from "@/api/parentPortal";
 import { getMyAccount } from "@/api/account";
 import { realEmail } from "@/lib/parentLogin";
-import { DAYS_PER_WEEK_OPTIONS, SCHEDULE_DAYS, TIME_OPTIONS, timeBucket } from "@/lib/schedulePreference";
+import { DAYS_PER_WEEK_OPTIONS, SCHEDULE_DAYS, timeBucket, timeOptionsFor } from "@/lib/schedulePreference";
 
 const STEPS = ["Student Details", "Parent & Contact", "Course & Consent"] as const;
 
@@ -690,7 +690,7 @@ export default function ParentEnrollment() {
                               <SelectValue placeholder="Select time" />
                             </SelectTrigger>
                             <SelectContent>
-                              {TIME_OPTIONS.map((t) => (
+                              {timeOptionsFor(form.batchType).map((t) => (
                                 <SelectItem key={t.value} value={t.value}>
                                   {t.label}
                                 </SelectItem>

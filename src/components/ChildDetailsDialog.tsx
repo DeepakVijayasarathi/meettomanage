@@ -11,7 +11,7 @@ import { useApiData } from "@/api/hooks";
 import { listCourseOptions } from "@/api/courses";
 import { getChildSchedulePreference, saveChildSchedulePreference, type ApiChildSchedulePreference } from "@/api/parentPortal";
 import { userMessage } from "@/lib/api";
-import { DAYS_PER_WEEK_OPTIONS, SCHEDULE_DAYS, TIME_OPTIONS } from "@/lib/schedulePreference";
+import { DAYS_PER_WEEK_OPTIONS, SCHEDULE_DAYS, timeOptionsFor } from "@/lib/schedulePreference";
 
 interface FormState {
   courseId: string;
@@ -84,6 +84,8 @@ export function ChildDetailsDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: courses } = useApiData(() => listCourseOptions(), [], undefined, { cacheKey: "course-options" });
+  // Group classes run 4–8 PM, individual 10 AM–10 PM, every 15 minutes (client requirement).
+  const timeOptions = timeOptionsFor(courses.find((c) => c.id === form.courseId)?.type);
   const firstName = childName.split(" ")[0];
 
   // Re-load every time it opens (or the child changes) so a second child never shows the first's answers.
@@ -196,7 +198,19 @@ export function ChildDetailsDialog({
               <Label>
                 Course <span className="text-destructive">*</span>
               </Label>
-              <Select value={form.courseId} onValueChange={(v) => set("courseId", v)}>
+              <Select
+                value={form.courseId}
+                onValueChange={(v) => {
+                  // Switching between a group and an individual course changes the allowed hours;
+                  // drop any picked time that's no longer offered so it can't be submitted unseen.
+                  const allowed = new Set(timeOptionsFor(courses.find((c) => c.id === v)?.type).map((t) => t.value));
+                  setForm((f) => ({
+                    ...f,
+                    courseId: v,
+                    dayTimes: Object.fromEntries(Object.entries(f.dayTimes).filter(([, t]) => allowed.has(t))),
+                  }));
+                }}
+              >
                 <SelectTrigger aria-label="Course">
                   <SelectValue placeholder="Select the course" />
                 </SelectTrigger>
@@ -274,7 +288,7 @@ export function ChildDetailsDialog({
                           <SelectValue placeholder="Select time" />
                         </SelectTrigger>
                         <SelectContent>
-                          {TIME_OPTIONS.map((t) => (
+                          {timeOptions.map((t) => (
                             <SelectItem key={t.value} value={t.value}>
                               {t.label}
                             </SelectItem>
