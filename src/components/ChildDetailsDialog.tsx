@@ -13,7 +13,7 @@ import { getChildSchedulePreference, saveChildSchedulePreference, type ApiChildS
 import { userMessage } from "@/lib/api";
 import { DAYS_PER_WEEK_OPTIONS, SCHEDULE_DAYS, classHoursLabel, timeOptionsFor } from "@/lib/schedulePreference";
 import { getUserTimeZone } from "@/lib/datetime";
-import { isAcademyClock, zoneCity } from "@/lib/familyTime";
+import { isAcademyClock, weeklySlotIn, zoneCity, zoneOffsetMinutes } from "@/lib/familyTime";
 
 interface FormState {
   courseId: string;
@@ -45,13 +45,34 @@ const EMPTY: FormState = {
   notes: "",
 };
 
-function fromApi(p: ApiChildSchedulePreference): FormState {
+/**
+ * Saved days/times are in the zone they were chosen in (null = India time, for details saved
+ * before zones were kept). Show them in the parent's current clock so the time picker -- which
+ * lists their own local times -- shows what they actually chose, weekday included.
+ */
+function toViewerClock(p: ApiChildSchedulePreference, viewerZone: string): { days: string[]; dayTimes: Record<string, string> } {
+  const savedZone = p.timeZoneId ?? "Asia/Kolkata";
+  if (savedZone === viewerZone || zoneOffsetMinutes(savedZone) === zoneOffsetMinutes(viewerZone)) {
+    return { days: p.preferredDays, dayTimes: p.dayTimes };
+  }
+  const dayTimes: Record<string, string> = {};
+  for (const day of p.preferredDays) {
+    const time = p.dayTimes[day];
+    const moved = time ? weeklySlotIn(day, time, savedZone, viewerZone) : null;
+    if (moved) dayTimes[moved.day] = moved.time;
+  }
+  const days = SCHEDULE_DAYS.filter((d) => d in dayTimes);
+  return days.length === p.preferredDays.length ? { days, dayTimes } : { days: p.preferredDays, dayTimes: p.dayTimes };
+}
+
+function fromApi(p: ApiChildSchedulePreference, viewerZone: string): FormState {
+  const { days, dayTimes } = toViewerClock(p, viewerZone);
   return {
     courseId: p.courseId ?? "",
     startDate: p.preferredStartDate ?? "",
     daysPerWeek: p.daysPerWeek,
-    days: p.preferredDays,
-    dayTimes: p.dayTimes,
+    days,
+    dayTimes,
     schoolName: p.schoolName ?? "",
     grade: p.grade ?? "",
     dateOfBirth: p.dateOfBirth ?? "",
@@ -102,7 +123,7 @@ export function ChildDetailsDialog({
     setForm(EMPTY);
     getChildSchedulePreference(childId)
       .then((p) => {
-        if (!cancelled) setForm(fromApi(p));
+        if (!cancelled) setForm(fromApi(p, getUserTimeZone()));
       })
       .catch((err) => {
         if (!cancelled) setError(userMessage(err, "Couldn't load the details. Please try again."));

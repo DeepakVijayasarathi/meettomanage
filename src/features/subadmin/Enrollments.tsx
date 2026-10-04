@@ -126,6 +126,7 @@ function toEnrollmentRow(form: ApiEnrollmentForm): EnrollmentRow {
     preferredDays: Array.isArray(answers.preferredDays) ? (answers.preferredDays as string[]) : [],
     preferredTime: str("preferredTime"),
     startDate: str("startDate"),
+    timeZoneId: str("timeZoneId"),
     dayTimes: readSchedulePreference(answers).dayTimes,
     daysPerWeek: readSchedulePreference(answers).daysPerWeek,
     allergies: str("allergies"),
