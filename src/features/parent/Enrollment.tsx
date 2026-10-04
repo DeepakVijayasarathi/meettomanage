@@ -22,7 +22,9 @@ import { listCourseOptions } from "@/api/courses";
 import { submitEnrollmentForm } from "@/api/parentPortal";
 import { getMyAccount } from "@/api/account";
 import { realEmail } from "@/lib/parentLogin";
-import { DAYS_PER_WEEK_OPTIONS, SCHEDULE_DAYS, timeBucket, timeOptionsFor } from "@/lib/schedulePreference";
+import { DAYS_PER_WEEK_OPTIONS, SCHEDULE_DAYS, classHoursLabel, timeBucket, timeOptionsFor } from "@/lib/schedulePreference";
+import { getUserTimeZone } from "@/lib/datetime";
+import { isAcademyClock, zoneCity } from "@/lib/familyTime";
 
 const STEPS = ["Student Details", "Parent & Contact", "Course & Consent"] as const;
 
@@ -95,6 +97,9 @@ export default function ParentEnrollment() {
       ? { id: mockChild.id, name: mockChild.name, grade: mockChild.grade, courseId: mockChild.courseId }
       : undefined;
   const childFirstName = child?.name.split(" ")[0];
+  // Preferred times are picked on the family's own clock (class hours shown converted for families
+  // abroad) and the zone travels with the answers so staff can read them in India time.
+  const parentZone = getUserTimeZone();
   // Opened from a child the admission counselor already created (dashboard "Share class
   // preferences"): the form fills in that child's details instead of enrolling a new child.
   const requestedChildId = params.get("childId");
@@ -318,7 +323,7 @@ export default function ParentEnrollment() {
       // Answers travel as a JSON document keyed by field id (client-configurable schema).
       const orderedDays = SCHEDULE_DAYS.filter((d) => form.preferredDays.includes(d));
       const earliest = orderedDays.map((d) => form.dayTimes[d]).filter(Boolean).sort()[0] ?? "";
-      submitEnrollmentForm({ ...form, preferredDays: orderedDays, preferredTime: timeBucket(earliest) }, existingChildId ?? undefined)
+      submitEnrollmentForm({ ...form, preferredDays: orderedDays, preferredTime: timeBucket(earliest), timeZoneId: parentZone }, existingChildId ?? undefined)
         .then(() => {
           markEnrollmentComplete(childId);
           setActiveChildId(childId);
@@ -682,6 +687,12 @@ export default function ParentEnrollment() {
                   {form.preferredDays.length > 0 && (
                     <div className="flex flex-col gap-2">
                       <span className="text-sm font-medium leading-none text-foreground/90">Preferred time for each day</span>
+                      {!isAcademyClock(parentZone) && (
+                        <span className="text-xs text-muted-foreground">
+                          Times are in your local time ({zoneCity(parentZone)}). Classes run {classHoursLabel(form.batchType, "Asia/Kolkata")} India time, which is{" "}
+                          {classHoursLabel(form.batchType, parentZone)} for you.
+                        </span>
+                      )}
                       {SCHEDULE_DAYS.filter((d) => form.preferredDays.includes(d)).map((d) => (
                         <div key={d} className="flex items-center gap-3">
                           <span className="w-12 text-sm font-semibold text-foreground">{d}</span>
@@ -690,7 +701,7 @@ export default function ParentEnrollment() {
                               <SelectValue placeholder="Select time" />
                             </SelectTrigger>
                             <SelectContent>
-                              {timeOptionsFor(form.batchType).map((t) => (
+                              {timeOptionsFor(form.batchType, parentZone).map((t) => (
                                 <SelectItem key={t.value} value={t.value}>
                                   {t.label}
                                 </SelectItem>
