@@ -1,3 +1,5 @@
+import { isAcademyClock, zoneOffsetMinutes } from "@/lib/familyTime";
+
 /**
  * Schedule preference collected on the parent's enrollment form: how many days a week, which days,
  * and a preferred start time for each day -- so the RM can pick a teacher and build the batch
@@ -13,12 +15,56 @@ export const SCHEDULE_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] a
 
 export const DAYS_PER_WEEK_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
 
-/** Hourly start times, 8 AM to 8 PM: the value is the 24-hour "HH:00" the RM schedules against. */
-export const TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 13 }, (_, i) => {
-  const hour = 8 + i;
-  const label = `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}`;
-  return { value: `${String(hour).padStart(2, "0")}:00`, label };
-});
+/** "HH:mm" (24-hour) -> "4:15 PM". */
+function toLabel(minutesOfDay: number): string {
+  const hour = Math.floor(minutesOfDay / 60);
+  const minute = minutesOfDay % 60;
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h12}:${String(minute).padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
+}
+
+/** Start times every 15 minutes from `from` to `to` (inclusive), as 24-hour "HH:mm" values. */
+function quarterHourOptions(fromHour: number, toHour: number): { value: string; label: string }[] {
+  const options: { value: string; label: string }[] = [];
+  for (let m = fromHour * 60; m <= toHour * 60; m += 15) {
+    options.push({ value: `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`, label: toLabel(m) });
+  }
+  return options;
+}
+
+/**
+ * Class start times a parent can pick, every 15 minutes (client: parents need 4:15, 4:30, ...).
+ * Group classes run 4–8 PM; individual (1:1) classes 10 AM–10 PM. Before a course is chosen the
+ * wider individual range is offered.
+ */
+export const GROUP_TIME_OPTIONS = quarterHourOptions(16, 20);
+export const INDIVIDUAL_TIME_OPTIONS = quarterHourOptions(10, 22);
+export const TIME_OPTIONS: { value: string; label: string }[] = INDIVIDUAL_TIME_OPTIONS;
+
+/**
+ * The class hours above are India (IST) hours. A family in another zone picks in their own clock,
+ * so for `zone` each IST slot is shifted to that zone's time of day (keeping IST order, so a range
+ * crossing midnight -- 9:30 PM to 1:30 AM in Melbourne -- still reads start to end).
+ */
+export function timeOptionsFor(
+  courseType: "Individual" | "Group" | "group" | "individual" | "" | null | undefined,
+  zone?: string | null
+) {
+  const ist = courseType?.toLowerCase() === "group" ? GROUP_TIME_OPTIONS : INDIVIDUAL_TIME_OPTIONS;
+  if (!zone || isAcademyClock(zone)) return ist;
+  const shift = zoneOffsetMinutes(zone) - zoneOffsetMinutes("Asia/Kolkata");
+  return ist.map((t) => {
+    const [h, m] = t.value.split(":").map(Number);
+    const local = (((h * 60 + m + shift) % 1440) + 1440) % 1440;
+    return { value: `${String(Math.floor(local / 60)).padStart(2, "0")}:${String(local % 60).padStart(2, "0")}`, label: toLabel(local) };
+  });
+}
+
+/** "4:00 PM – 8:00 PM" for the course type, in `zone` when given. */
+export function classHoursLabel(courseType: Parameters<typeof timeOptionsFor>[0], zone?: string | null): string {
+  const options = timeOptionsFor(courseType, zone);
+  return `${options[0].label} – ${options[options.length - 1].label}`;
+}
 
 const LEGACY_TIME_LABELS: Record<string, string> = {
   morning: "Morning (8am–12pm)",
@@ -27,7 +73,9 @@ const LEGACY_TIME_LABELS: Record<string, string> = {
 };
 
 export function timeLabel(value: string): string {
-  return TIME_OPTIONS.find((t) => t.value === value)?.label ?? LEGACY_TIME_LABELS[value] ?? value;
+  const m = /^(\d{2}):(\d{2})$/.exec(value);
+  if (m) return toLabel(Number(m[1]) * 60 + Number(m[2]));
+  return LEGACY_TIME_LABELS[value] ?? value;
 }
 
 /** morning / afternoon / evening bucket for an "HH:mm" value, for the legacy `preferredTime` field. */

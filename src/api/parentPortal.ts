@@ -268,6 +268,8 @@ export interface ApiChildSchedulePreference {
   daysPerWeek: number | null;
   preferredDays: string[];
   dayTimes: Record<string, string>;
+  /** IANA zone the day times are in (the parent's own); null = India time. */
+  timeZoneId: string | null;
   schoolName: string | null;
   priorExperience: string | null;
   allergies: string | null;
@@ -282,6 +284,8 @@ export interface SaveChildSchedulePreferenceInput {
   daysPerWeek: number;
   preferredDays: string[];
   dayTimes: Record<string, string>;
+  /** IANA zone the parent picked the times in (their own). */
+  timeZoneId?: string;
   schoolName: string | null;
   grade: string | null;
   dateOfBirth: string | null;
