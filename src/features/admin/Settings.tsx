@@ -28,6 +28,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { cn, formatCurrency, hexToHslTriple, isValidEmail } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled, userMessage } from "@/lib/api";
+import { getStorageStatus, startStorageSync, type ApiStorageStatus } from "@/api/storage";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { getSettings, toSettingsMap, updateSettings, type SettingCategory, type UpdateSettingItem } from "@/api/settings";
@@ -673,6 +674,7 @@ export default function AdminSettings() {
         <TabsContent value="integrations" className="flex flex-col gap-6">
           <JitsiRecordingSettings />
           <EmailDeliveryCheck />
+          <StorageSyncCard />
           <IntegrationsManager />
         </TabsContent>
 
@@ -2247,6 +2249,125 @@ function EmailDeliveryCheck() {
         {result && (
           <p className={result.ok ? "text-sm font-medium text-success" : "text-sm font-medium text-destructive"}>{result.message}</p>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  return `${Math.round(bytes / 1024)} KB`;
+}
+
+/**
+ * Where uploaded resources and class presentations are kept (S3 or the server's own disk), and the
+ * Sync buttons that copy every file across before switching Storage:Provider -- so moving storage
+ * needs no command line. Copies only, never deletes; safe to press again.
+ */
+function StorageSyncCard() {
+  const { hasPermission } = useSession();
+  const canEdit = hasPermission("Settings", "Edit");
+  const [status, setStatus] = useState<ApiStorageStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [starting, setStarting] = useState<"local" | "s3" | null>(null);
+  const running = status?.sync?.running ?? false;
+
+  useEffect(() => {
+    if (!apiEnabled() || !hasPermission("Settings", "View")) return;
+    let cancelled = false;
+    const load = () =>
+      getStorageStatus()
+        .then((s) => !cancelled && (setStatus(s), setError(null)))
+        .catch((err) => !cancelled && setError(userMessage(err, "Couldn't load the storage status.")));
+    load();
+    // Poll while a sync runs so the progress moves on its own.
+    const id = running ? setInterval(load, 2000) : undefined;
+    return () => {
+      cancelled = true;
+      if (id) clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running]);
+
+  if (!apiEnabled() || !hasPermission("Settings", "View")) return null;
+
+  async function sync(to: "local" | "s3") {
+    setStarting(to);
+    setError(null);
+    try {
+      const started = await startStorageSync(to);
+      setStatus((s) => (s ? { ...s, sync: started } : s));
+    } catch (err) {
+      setError(userMessage(err, "Couldn't start the sync."));
+    } finally {
+      setStarting(null);
+    }
+  }
+
+  const s = status?.sync;
+  const done = s ? s.copied + s.skipped + s.failed : 0;
+  const percent = s && s.total > 0 ? Math.round((done / s.total) * 100) : 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>File storage</CardTitle>
+        <CardDescription>
+          Uploaded resources and class presentations are stored in{" "}
+          <span className="font-semibold text-foreground">{status ? (status.provider === "Local" ? "this server's disk" : "S3 (object storage)") : "…"}</span>.
+          Before switching, use Sync to copy every file across. Sync only copies — nothing is ever deleted — and files
+          already copied are skipped, so it's safe to run again.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {status && (
+          <p className="text-sm text-muted-foreground">
+            On this server: {status.localFileCount} file{status.localFileCount === 1 ? "" : "s"} ({formatBytes(status.localBytes)})
+            {!status.s3Configured && " · S3 isn't set up on this server, so there's nothing to sync with."}
+          </p>
+        )}
+
+        {canEdit && (
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button onClick={() => sync("local")} disabled={running || starting !== null || !status?.s3Configured}>
+              {starting === "local" ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Sync S3 → this server
+            </Button>
+            <Button variant="outline" onClick={() => sync("s3")} disabled={running || starting !== null || !status?.s3Configured}>
+              {starting === "s3" ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Sync this server → S3
+            </Button>
+          </div>
+        )}
+
+        {s && (
+          <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+            <p className="font-medium text-foreground">
+              {s.running ? "Syncing" : "Last sync"}: {s.to === "local" ? "S3 → this server" : "this server → S3"}
+              {s.running && s.total > 0 && ` — ${done} of ${s.total} (${percent}%)`}
+            </p>
+            {s.running && (
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted" aria-label={`${percent}% done`}>
+                <div className="h-full bg-primary transition-all" style={{ width: `${percent}%` }} />
+              </div>
+            )}
+            {!s.running && !s.error && (
+              <p className={s.failed === 0 ? "font-medium text-success" : "font-medium text-destructive"}>
+                {s.copied} copied ({formatBytes(s.copiedBytes)}), {s.skipped} already there, {s.failed} failed
+                {s.failed === 0 ? " — all files are in place." : "."}
+              </p>
+            )}
+            {s.error && <p className="font-medium text-destructive">{s.error}</p>}
+            {s.failedFiles.length > 0 && (
+              <ul className="list-disc pl-5 text-xs text-muted-foreground">
+                {s.failedFiles.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {error && <p className="text-sm font-medium text-destructive">{error}</p>}
       </CardContent>
     </Card>
   );
