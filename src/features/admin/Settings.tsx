@@ -2386,8 +2386,9 @@ function StorageSyncCard() {
             )}
             {s.ignored > 0 && (
               <p className="text-xs text-muted-foreground">
-                {s.ignored} other item{s.ignored === 1 ? "" : "s"} in S3 (such as class recordings) aren't portal uploads and were
-                left where they are.
+                {s.ignored} other item{s.ignored === 1 ? "" : "s"} in S3 {s.ignored === 1 ? "isn't" : "aren't"} used by this site
+                (such as class recordings, or the other site's uploads when UAT and live share a bucket) and{" "}
+                {s.ignored === 1 ? "was" : "were"} left where {s.ignored === 1 ? "it is" : "they are"}.
               </p>
             )}
             {s.error && <p className="font-medium text-destructive">{s.error}</p>}
