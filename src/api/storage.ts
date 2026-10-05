@@ -29,6 +29,10 @@ export interface ApiStorageStatus {
   localFreeBytes: number | null;
   /** False = the local folder isn't mounted from the server, so files there would be lost on redeploy. */
   localFolderMounted: boolean | null;
+  /** Files the portal uses (resources + class presentations), and how many are on this server -- the readiness check before switching to Local. */
+  portalFiles: number;
+  portalFilesOnServer: number;
+  missingOnServerSample: string[];
   sync: ApiStorageSync | null;
 }
 

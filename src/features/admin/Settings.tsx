@@ -2328,6 +2328,26 @@ function StorageSyncCard() {
             {!status.s3Configured && " · S3 isn't set up on this server, so there's nothing to sync with."}
           </p>
         )}
+        {status && status.portalFiles > 0 && (() => {
+          const missing = status.portalFiles - status.portalFilesOnServer;
+          if (missing === 0) {
+            return (
+              <p className="text-sm font-medium text-success">
+                Ready: all {status.portalFiles} files the portal uses are on this server.
+              </p>
+            );
+          }
+          return (
+            <p className={cn("text-sm font-medium", status.provider === "Local" && !status.s3Configured ? "text-destructive" : "text-warning-foreground")}>
+              {missing} of the {status.portalFiles} files the portal uses {missing === 1 ? "is" : "are"} not on this server yet
+              {status.provider === "Local"
+                ? status.s3Configured
+                  ? " — they're opened from S3 for now. Run Sync S3 → this server to bring them over."
+                  : " — and S3 isn't set up, so they can't be opened. Copy them to this server."
+                : " — run Sync S3 → this server before switching to local storage."}
+            </p>
+          );
+        })()}
         {status?.localFolderMounted === false && (
           <InlineAlert variant="error" bordered>
             The storage folder on this server ({status.localPath}) isn't connected to the server's disk, so files kept there
