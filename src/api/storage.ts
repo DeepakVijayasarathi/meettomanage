@@ -9,6 +9,8 @@ export interface ApiStorageSync {
   copied: number;
   skipped: number;
   failed: number;
+  /** Things in the bucket that aren't portal uploads (e.g. class recordings) -- left in S3. */
+  ignored: number;
   copiedBytes: number;
   startedAtUtc: string | null;
   finishedAtUtc: string | null;
@@ -23,6 +25,10 @@ export interface ApiStorageStatus {
   localPath: string;
   localFileCount: number;
   localBytes: number;
+  /** Free space on the server disk the local folder is on (null if unknown). */
+  localFreeBytes: number | null;
+  /** False = the local folder isn't mounted from the server, so files there would be lost on redeploy. */
+  localFolderMounted: boolean | null;
   sync: ApiStorageSync | null;
 }
 

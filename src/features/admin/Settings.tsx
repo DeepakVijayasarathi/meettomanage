@@ -2324,8 +2324,16 @@ function StorageSyncCard() {
         {status && (
           <p className="text-sm text-muted-foreground">
             On this server: {status.localFileCount} file{status.localFileCount === 1 ? "" : "s"} ({formatBytes(status.localBytes)})
+            {status.localFreeBytes != null && ` · ${formatBytes(status.localFreeBytes)} free on the disk`}
             {!status.s3Configured && " · S3 isn't set up on this server, so there's nothing to sync with."}
           </p>
+        )}
+        {status?.localFolderMounted === false && (
+          <InlineAlert variant="error" bordered>
+            The storage folder on this server ({status.localPath}) isn't connected to the server's disk, so files kept there
+            would be lost on the next deploy. Syncing to this server is blocked until it is mounted
+            {status.provider === "Local" && " — and new uploads are at risk right now"}.
+          </InlineAlert>
         )}
 
         {canEdit && (
@@ -2354,6 +2362,12 @@ function StorageSyncCard() {
               <p className={s.failed === 0 ? "font-medium text-success" : "font-medium text-destructive"}>
                 {s.copied} copied ({formatBytes(s.copiedBytes)}), {s.skipped} already there, {s.failed} failed
                 {s.failed === 0 ? " — all files are in place." : "."}
+              </p>
+            )}
+            {s.ignored > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {s.ignored} other item{s.ignored === 1 ? "" : "s"} in S3 (such as class recordings) aren't portal uploads and were
+                left where they are.
               </p>
             )}
             {s.error && <p className="font-medium text-destructive">{s.error}</p>}
