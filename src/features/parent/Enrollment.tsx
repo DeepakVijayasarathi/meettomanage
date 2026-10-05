@@ -22,7 +22,16 @@ import { listCourseOptions } from "@/api/courses";
 import { submitEnrollmentForm } from "@/api/parentPortal";
 import { getMyAccount } from "@/api/account";
 import { realEmail } from "@/lib/parentLogin";
-import { DAYS_PER_WEEK_OPTIONS, SCHEDULE_DAYS, classHoursLabel, timeBucket, timeOptionsFor } from "@/lib/schedulePreference";
+import {
+  DAYS_PER_WEEK_OPTIONS,
+  GROUP_SLOTS_PER_DAY,
+  SCHEDULE_DAYS,
+  classHoursLabel,
+  daySlotsComplete,
+  splitSlots,
+  timeBucket,
+  timeOptionsFor,
+} from "@/lib/schedulePreference";
 import { getUserTimeZone } from "@/lib/datetime";
 import { isAcademyClock, zoneCity } from "@/lib/familyTime";
 
@@ -207,6 +216,10 @@ export default function ParentEnrollment() {
     [usingApi, apiCourseOptions]
   );
 
+  // A group batch asks for a first and a second slot on each chosen day, so the team has a
+  // fallback when the first isn't free; an individual batch keeps one.
+  const slotsPerDay = form.batchType === "group" ? GROUP_SLOTS_PER_DAY : 1;
+
   type FieldErrors = Partial<Record<keyof EnrollmentForm | "schedule", string>>;
   const [errors, setErrors] = useState<FieldErrors>({});
 
@@ -251,7 +264,11 @@ export default function ParentEnrollment() {
       if (!form.daysPerWeek) next.schedule = "Select how many days a week you'd like classes.";
       else if (form.preferredDays.length !== form.daysPerWeek)
         next.schedule = `Choose exactly ${form.daysPerWeek} preferred day${form.daysPerWeek === 1 ? "" : "s"} (${form.preferredDays.length} selected).`;
-      else if (form.preferredDays.some((d) => !form.dayTimes[d])) next.schedule = "Choose a preferred time for each selected day.";
+      else if (form.preferredDays.some((d) => !daySlotsComplete(form.dayTimes[d], slotsPerDay)))
+        next.schedule =
+          slotsPerDay > 1
+            ? `Choose ${slotsPerDay} different preferred time slots for each selected day.`
+            : "Choose a preferred time for each selected day.";
       if (!form.startDate) next.startDate = "Choose the date you'd like classes to start.";
       if (!form.consent) next.consent = "Please confirm the details and give consent to submit.";
     }
@@ -300,9 +317,32 @@ export default function ParentEnrollment() {
     setErrors((e) => (e.schedule ? { ...e, schedule: undefined } : e));
   }
 
-  function setDayTime(day: string, time: string) {
-    setForm((f) => ({ ...f, dayTimes: { ...f.dayTimes, [day]: time } }));
+  function setDayTime(day: string, slotIndex: number, time: string) {
+    setForm((f) => {
+      const slots = splitSlots(f.dayTimes[day]);
+      slots[slotIndex] = time;
+      // Fill any gap with "" so a second pick made first still lands in the second box.
+      const filled = Array.from({ length: Math.max(slots.length, slotIndex + 1) }, (_, i) => slots[i] ?? "");
+      return { ...f, dayTimes: { ...f.dayTimes, [day]: filled.join(",") } };
+    });
     setErrors((e) => (e.schedule ? { ...e, schedule: undefined } : e));
+  }
+
+  // Group and individual batches offer different hours and a different number of slots per day,
+  // so switching keeps only the picks that are still valid (and at most the new slot count).
+  function setBatchType(type: "group" | "individual") {
+    setForm((f) => {
+      if (f.batchType === type) return f;
+      const allowed = new Set(timeOptionsFor(type, parentZone).map((t) => t.value));
+      const max = type === "group" ? GROUP_SLOTS_PER_DAY : 1;
+      const dayTimes = Object.fromEntries(
+        Object.entries(f.dayTimes)
+          .map(([d, v]) => [d, splitSlots(v).filter((t) => allowed.has(t)).slice(0, max).join(",")] as const)
+          .filter(([, v]) => v)
+      );
+      return { ...f, batchType: type, dayTimes };
+    });
+    setErrors((e) => (e.batchType || e.schedule ? { ...e, batchType: undefined, schedule: undefined } : e));
   }
 
   function handleSubmit(e: FormEvent) {
@@ -322,7 +362,7 @@ export default function ParentEnrollment() {
       setError(null);
       // Answers travel as a JSON document keyed by field id (client-configurable schema).
       const orderedDays = SCHEDULE_DAYS.filter((d) => form.preferredDays.includes(d));
-      const earliest = orderedDays.map((d) => form.dayTimes[d]).filter(Boolean).sort()[0] ?? "";
+      const earliest = orderedDays.flatMap((d) => splitSlots(form.dayTimes[d])).sort()[0] ?? "";
       submitEnrollmentForm({ ...form, preferredDays: orderedDays, preferredTime: timeBucket(earliest), timeZoneId: parentZone }, existingChildId ?? undefined)
         .then(() => {
           markEnrollmentComplete(childId);
@@ -611,7 +651,7 @@ export default function ParentEnrollment() {
                       variant="pill"
                       size="pill"
                       aria-pressed={form.batchType === "group"}
-                      onClick={() => update("batchType", "group")}
+                      onClick={() => setBatchType("group")}
                     >
                       Group Batch
                     </Button>
@@ -620,7 +660,7 @@ export default function ParentEnrollment() {
                       variant="pill"
                       size="pill"
                       aria-pressed={form.batchType === "individual"}
-                      onClick={() => update("batchType", "individual")}
+                      onClick={() => setBatchType("individual")}
                     >
                       Individual Batch
                     </Button>
@@ -686,7 +726,9 @@ export default function ParentEnrollment() {
 
                   {form.preferredDays.length > 0 && (
                     <div className="flex flex-col gap-2">
-                      <span className="text-sm font-medium leading-none text-foreground/90">Preferred time for each day</span>
+                      <span className="text-sm font-medium leading-none text-foreground/90">
+                        {slotsPerDay > 1 ? `${slotsPerDay} preferred time slots for each day` : "Preferred time for each day"}
+                      </span>
                       {!isAcademyClock(parentZone) && (
                         <span className="text-xs text-muted-foreground">
                           Times are in your local time ({zoneCity(parentZone)}). Classes run {classHoursLabel(form.batchType, "Asia/Kolkata")} India time, which is{" "}
@@ -694,20 +736,25 @@ export default function ParentEnrollment() {
                         </span>
                       )}
                       {SCHEDULE_DAYS.filter((d) => form.preferredDays.includes(d)).map((d) => (
-                        <div key={d} className="flex items-center gap-3">
+                        <div key={d} className="flex flex-wrap items-center gap-3">
                           <span className="w-12 text-sm font-semibold text-foreground">{d}</span>
-                          <Select value={form.dayTimes[d] ?? ""} onValueChange={(v) => setDayTime(d, v)}>
-                            <SelectTrigger aria-label={`Preferred time on ${d}`} className="max-w-[200px]">
-                              <SelectValue placeholder="Select time" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {timeOptionsFor(form.batchType, parentZone).map((t) => (
-                                <SelectItem key={t.value} value={t.value}>
-                                  {t.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          {Array.from({ length: slotsPerDay }, (_, i) => (
+                            <Select key={i} value={splitSlots(form.dayTimes[d])[i] ?? ""} onValueChange={(v) => setDayTime(d, i, v)}>
+                              <SelectTrigger
+                                aria-label={slotsPerDay > 1 ? `${i === 0 ? "First" : "Second"} preferred time on ${d}` : `Preferred time on ${d}`}
+                                className="max-w-[200px]"
+                              >
+                                <SelectValue placeholder={slotsPerDay > 1 ? `${i === 0 ? "1st" : "2nd"} choice` : "Select time"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timeOptionsFor(form.batchType, parentZone).map((t) => (
+                                  <SelectItem key={t.value} value={t.value} disabled={splitSlots(form.dayTimes[d]).some((s, j) => j !== i && s === t.value)}>
+                                    {t.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ))}
                         </div>
                       ))}
                     </div>

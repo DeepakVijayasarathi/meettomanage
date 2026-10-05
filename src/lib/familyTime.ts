@@ -156,6 +156,12 @@ function clockLabel(time: string): string {
  * Melbourne parent's "6:00 PM" was read as 6:00 PM India time.
  */
 export function describePreferredSlot(day: string, time: string, zone: string | null | undefined): string {
+  // A group batch's day carries two comma-joined slots ("16:00,18:00"): describe each one.
+  if (time.includes(",")) {
+    const slots = time.split(",").map((s) => s.trim()).filter(Boolean);
+    if (slots.length > 1) return slots.map((s) => describePreferredSlot(day, s, zone)).join(" + ");
+    time = slots[0] ?? time;
+  }
   const local = `${day} ${clockLabel(time)}`;
   if (!zone || isAcademyClock(zone)) return local;
   const ist = weeklySlotIn(day, time, zone, ACADEMY_ZONE);

@@ -11,7 +11,15 @@ import { useApiData } from "@/api/hooks";
 import { listCourseOptions } from "@/api/courses";
 import { getChildSchedulePreference, saveChildSchedulePreference, type ApiChildSchedulePreference } from "@/api/parentPortal";
 import { userMessage } from "@/lib/api";
-import { DAYS_PER_WEEK_OPTIONS, SCHEDULE_DAYS, classHoursLabel, timeOptionsFor } from "@/lib/schedulePreference";
+import {
+  DAYS_PER_WEEK_OPTIONS,
+  GROUP_SLOTS_PER_DAY,
+  SCHEDULE_DAYS,
+  classHoursLabel,
+  daySlotsComplete,
+  splitSlots,
+  timeOptionsFor,
+} from "@/lib/schedulePreference";
 import { getUserTimeZone } from "@/lib/datetime";
 import { isAcademyClock, weeklySlotIn, zoneCity, zoneOffsetMinutes } from "@/lib/familyTime";
 
@@ -57,9 +65,9 @@ function toViewerClock(p: ApiChildSchedulePreference, viewerZone: string): { day
   }
   const dayTimes: Record<string, string> = {};
   for (const day of p.preferredDays) {
-    const time = p.dayTimes[day];
-    const moved = time ? weeklySlotIn(day, time, savedZone, viewerZone) : null;
-    if (moved) dayTimes[moved.day] = moved.time;
+    // A group batch's day holds two comma-joined slots; both must land on the same local weekday.
+    const moved = splitSlots(p.dayTimes[day]).map((t) => weeklySlotIn(day, t, savedZone, viewerZone));
+    if (moved.length > 0 && moved.every((m) => m && m.day === moved[0]!.day)) dayTimes[moved[0]!.day] = moved.map((m) => m!.time).join(",");
   }
   const days = SCHEDULE_DAYS.filter((d) => d in dayTimes);
   return days.length === p.preferredDays.length ? { days, dayTimes } : { days: p.preferredDays, dayTimes: p.dayTimes };
@@ -112,6 +120,9 @@ export function ChildDetailsDialog({
   const zone = getUserTimeZone();
   const courseType = courses.find((c) => c.id === form.courseId)?.type;
   const timeOptions = timeOptionsFor(courseType, zone);
+  // A group course asks for a first and a second slot on each chosen day (a fallback if the first
+  // isn't free); an individual course keeps one.
+  const slotsPerDay = courseType?.toLowerCase() === "group" ? GROUP_SLOTS_PER_DAY : 1;
   const firstName = childName.split(" ")[0];
 
   // Re-load every time it opens (or the child changes) so a second child never shows the first's answers.
@@ -160,11 +171,23 @@ export function ChildDetailsDialog({
     setError(null);
   }
 
+  function setSlot(day: string, slotIndex: number, time: string) {
+    setForm((f) => {
+      const slots = splitSlots(f.dayTimes[day]);
+      slots[slotIndex] = time;
+      // Fill any gap with "" so a second pick made first still lands in the second box.
+      const filled = Array.from({ length: Math.max(slots.length, slotIndex + 1) }, (_, i) => slots[i] ?? "");
+      return { ...f, dayTimes: { ...f.dayTimes, [day]: filled.join(",") } };
+    });
+    setError(null);
+  }
+
   function validate(): string | null {
     if (!form.daysPerWeek) return "Select how many days a week you'd like classes.";
     if (form.days.length !== form.daysPerWeek)
       return `Choose exactly ${form.daysPerWeek} preferred day${form.daysPerWeek === 1 ? "" : "s"} (${form.days.length} selected).`;
-    if (form.days.some((d) => !form.dayTimes[d])) return "Choose a preferred time for each selected day.";
+    if (form.days.some((d) => !daySlotsComplete(form.dayTimes[d], slotsPerDay)))
+      return slotsPerDay > 1 ? `Choose ${slotsPerDay} different preferred time slots for each selected day.` : "Choose a preferred time for each selected day.";
     if (!form.startDate) return "Choose the date you'd like classes to start from.";
     if (!form.courseId) return "Choose the course.";
     return null;
@@ -230,11 +253,17 @@ export function ChildDetailsDialog({
                 onValueChange={(v) => {
                   // Switching between a group and an individual course changes the allowed hours;
                   // drop any picked time that's no longer offered so it can't be submitted unseen.
-                  const allowed = new Set(timeOptionsFor(courses.find((c) => c.id === v)?.type, zone).map((t) => t.value));
+                  const nextType = courses.find((c) => c.id === v)?.type;
+                  const allowed = new Set(timeOptionsFor(nextType, zone).map((t) => t.value));
+                  const max = nextType?.toLowerCase() === "group" ? GROUP_SLOTS_PER_DAY : 1;
                   setForm((f) => ({
                     ...f,
                     courseId: v,
-                    dayTimes: Object.fromEntries(Object.entries(f.dayTimes).filter(([, t]) => allowed.has(t))),
+                    dayTimes: Object.fromEntries(
+                      Object.entries(f.dayTimes)
+                        .map(([d, t]) => [d, splitSlots(t).filter((s) => allowed.has(s)).slice(0, max).join(",")] as const)
+                        .filter(([, t]) => t)
+                    ),
                   }));
                 }}
               >
@@ -306,7 +335,9 @@ export function ChildDetailsDialog({
 
               {form.days.length > 0 && (
                 <div className="flex flex-col gap-2">
-                  <span className="text-sm font-medium leading-none text-foreground/90">Preferred time for each day</span>
+                  <span className="text-sm font-medium leading-none text-foreground/90">
+                    {slotsPerDay > 1 ? `${slotsPerDay} preferred time slots for each day` : "Preferred time for each day"}
+                  </span>
                   {!isAcademyClock(zone) && (
                     <span className="text-xs text-muted-foreground">
                       Times are in your local time ({zoneCity(zone)}). Classes run {classHoursLabel(courseType, "Asia/Kolkata")} India time, which is{" "}
@@ -314,20 +345,25 @@ export function ChildDetailsDialog({
                     </span>
                   )}
                   {SCHEDULE_DAYS.filter((d) => form.days.includes(d)).map((d) => (
-                    <div key={d} className="flex items-center gap-3">
+                    <div key={d} className="flex flex-wrap items-center gap-3">
                       <span className="w-12 text-sm font-semibold text-foreground">{d}</span>
-                      <Select value={form.dayTimes[d] ?? ""} onValueChange={(v) => set("dayTimes", { ...form.dayTimes, [d]: v })}>
-                        <SelectTrigger aria-label={`Preferred time on ${d}`} className="max-w-[200px]">
-                          <SelectValue placeholder="Select time" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {timeOptions.map((t) => (
-                            <SelectItem key={t.value} value={t.value}>
-                              {t.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {Array.from({ length: slotsPerDay }, (_, i) => (
+                        <Select key={i} value={splitSlots(form.dayTimes[d])[i] ?? ""} onValueChange={(v) => setSlot(d, i, v)}>
+                          <SelectTrigger
+                            aria-label={slotsPerDay > 1 ? `${i === 0 ? "First" : "Second"} preferred time on ${d}` : `Preferred time on ${d}`}
+                            className="max-w-[200px]"
+                          >
+                            <SelectValue placeholder={slotsPerDay > 1 ? `${i === 0 ? "1st" : "2nd"} choice` : "Select time"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {timeOptions.map((t) => (
+                              <SelectItem key={t.value} value={t.value} disabled={splitSlots(form.dayTimes[d]).some((s, j) => j !== i && s === t.value)}>
+                                {t.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ))}
                     </div>
                   ))}
                 </div>
