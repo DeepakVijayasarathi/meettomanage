@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { userMessage } from "@/lib/api";
 import { useLightBrandScope } from "@/lib/theme";
 import { formatCurrency } from "@/lib/utils";
+import { FeeDisclaimer } from "@/components/FeeDisclaimer";
 import { TERMS_ACCEPT_LABEL, TERMS_PAGE_PATH } from "@/content/terms";
 import {
   getPublicAdmissionPayment,
@@ -102,10 +103,11 @@ export default function AdmissionPayment() {
               <div className="flex items-center justify-between gap-3 px-4 py-3">
                 <dt className="text-brand-ink/70">Amount to pay</dt>
                 <dd className="text-right text-base font-bold text-brand-ink">
-                  {formatCurrency(details.amount - details.amountPaid, details.currency)}
+                  {formatCurrency(details.amount - details.amountPaid, details.currency)}*
                 </dd>
               </div>
             </dl>
+            <FeeDisclaimer className="mt-2 !text-brand-ink/60" />
 
             {termsRequired && (
             <div className="mt-5 rounded-2xl border border-brand-ink/10 p-4">

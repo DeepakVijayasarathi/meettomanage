@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { CheckCircle2, ClipboardCheck, Clock, Loader2, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, ClipboardCheck, Clock, Loader2, Video, XCircle } from "lucide-react";
+import { VideoPlayer } from "@/components/VideoPlayer";
+import { useCanDownloadRecordings } from "@/lib/recordingAccess";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -13,10 +15,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useApiData } from "@/api/hooks";
 import {
   decidePayoutApproval,
+  listPayoutApprovalRecordings,
   listPayoutApprovals,
   type ApiPayoutApproval,
   type PayoutReviewDecision,
 } from "@/api/payouts";
+import type { ApiSessionRecording } from "@/api/sessions";
 import { toast } from "@/hooks/use-toast";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { getUserTimeZone } from "@/lib/datetime";
@@ -73,11 +77,33 @@ export default function PayoutApprovals() {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<PayoutReviewDecision | null>(null);
 
+  const canDownload = useCanDownloadRecordings();
+  // The class's recording(s), fetched when the Review dialog opens so the reviewer can watch
+  // what actually happened before deciding the payout. Not every class has one registered.
+  const [recordings, setRecordings] = useState<ApiSessionRecording[] | null>(null);
+  const [recordingsFailed, setRecordingsFailed] = useState(false);
+  const [showRecording, setShowRecording] = useState(false);
+
   function open(row: ApiPayoutApproval) {
     setTarget(row);
     setPartialAmount(String(row.proRatedAmount));
     setNote("");
   }
+
+  const targetItemId = target?.itemId;
+  useEffect(() => {
+    setRecordings(null);
+    setRecordingsFailed(false);
+    setShowRecording(false);
+    if (!targetItemId || !apiEnabled()) return;
+    let cancelled = false;
+    listPayoutApprovalRecordings(targetItemId)
+      .then((r) => !cancelled && setRecordings(r))
+      .catch(() => !cancelled && setRecordingsFailed(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [targetItemId]);
 
   async function decide(decision: PayoutReviewDecision) {
     if (!target) return;
@@ -199,7 +225,7 @@ export default function PayoutApprovals() {
       )}
 
       <Dialog open={!!target} onOpenChange={(o) => !o && !busy && setTarget(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto sm:max-w-xl">
           {target && (
             <>
               <DialogHeader>
@@ -222,6 +248,34 @@ export default function PayoutApprovals() {
                   <p className="text-xs text-muted-foreground">Shortfall</p>
                   <p className="font-semibold text-destructive">{target.shortfallMinutes ?? "—"} min</p>
                 </div>
+              </div>
+
+              <div className="grid gap-2 rounded-xl border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-1.5 text-sm font-medium">
+                    <Video className="h-4 w-4 text-muted-foreground" /> Class recording
+                  </p>
+                  {recordings === null && !recordingsFailed ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : recordings && recordings.length > 0 ? (
+                    <Button type="button" size="sm" variant="outline" onClick={() => setShowRecording((v) => !v)}>
+                      {showRecording ? "Hide recording" : "Watch recording"}
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      {recordingsFailed ? "Couldn't load the recording" : "No recording registered for this class"}
+                    </span>
+                  )}
+                </div>
+                {showRecording &&
+                  recordings?.map((rec) => (
+                    <div key={rec.id} className="grid gap-1">
+                      {rec.durationSeconds ? (
+                        <p className="text-xs text-muted-foreground">{Math.round(rec.durationSeconds / 60)} min recording</p>
+                      ) : null}
+                      <VideoPlayer src={rec.storageUrl} downloadable={canDownload} />
+                    </div>
+                  ))}
               </div>
 
               <div className="grid gap-1.5">

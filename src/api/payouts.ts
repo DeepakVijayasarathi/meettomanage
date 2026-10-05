@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import type { TeacherPayout } from "@/types";
+import type { ApiSessionRecording } from "@/api/sessions";
 
 export type ApiPayoutStatus = "Pending" | "Finalized" | "Paid";
 
@@ -223,6 +224,11 @@ export interface ApiPayoutApproval {
 
 export async function listPayoutApprovals(pending: boolean): Promise<ApiPayoutApproval[]> {
   return apiFetch<ApiPayoutApproval[]>(`/api/payouts/approvals?pending=${pending}`);
+}
+
+/** The recordings of the class behind one approval row (gated by the Payouts permission, not by being in the class). */
+export async function listPayoutApprovalRecordings(itemId: string): Promise<ApiSessionRecording[]> {
+  return apiFetch<ApiSessionRecording[]>(`/api/payouts/approvals/${itemId}/recordings`);
 }
 
 export async function decidePayoutApproval(

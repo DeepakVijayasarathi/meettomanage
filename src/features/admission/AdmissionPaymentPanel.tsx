@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BadgeCheck, Check, Copy, Link2, Loader2, UserCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
+import { FeeDisclaimer } from "@/components/FeeDisclaimer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,7 +68,7 @@ export function AdmissionPaymentPanel({
   if (!canIssue && !paymentReceived && lead.conversionStage !== "Ready for Enrollment") return null;
 
   const amountNumber = Number(amount);
-  const amountValid = amount.trim() !== "" && Number.isFinite(amountNumber) && amountNumber > 0 && (!course || amountNumber <= course.price);
+  const amountValid = amount.trim() !== "" && Number.isFinite(amountNumber) && amountNumber > 0;
 
   async function copy(id: string, text: string) {
     try {
@@ -188,7 +189,7 @@ export function AdmissionPaymentPanel({
                   <SelectContent>
                     {(options?.courses ?? []).map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.name} - {formatCurrency(c.price)}
+                        {c.name} - {formatCurrency(c.price)}*
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -200,7 +201,6 @@ export function AdmissionPaymentPanel({
                   id="admission-amount"
                   type="number"
                   min={1}
-                  max={course?.price}
                   inputMode="decimal"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -208,16 +208,16 @@ export function AdmissionPaymentPanel({
                 />
                 {course && (
                   <p className="text-xs text-muted-foreground">
-                    Course fee {formatCurrency(course.price)}
+                    Course fee {formatCurrency(course.price)}*
                     {amountValid && amountNumber < course.price ? ` - discount ${formatCurrency(course.price - amountNumber)}` : ""}
+                    {amountValid && amountNumber > course.price ? ` - ${formatCurrency(amountNumber - course.price)} above the course fee` : ""}
                   </p>
-                )}
-                {course && amount.trim() !== "" && amountNumber > course.price && (
-                  <p className="text-xs font-medium text-destructive">Can't be more than the course fee.</p>
                 )}
               </div>
             </div>
           )}
+
+          {canEdit && <FeeDisclaimer />}
 
           {canEdit && (
             <div>

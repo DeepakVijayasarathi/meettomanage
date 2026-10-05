@@ -72,10 +72,33 @@ const LEGACY_TIME_LABELS: Record<string, string> = {
   evening: "Evening (4pm–8pm)",
 };
 
+/** A group batch needs this many preferred slots on every chosen day (an individual batch needs one). */
+export const GROUP_SLOTS_PER_DAY = 2;
+
+/**
+ * A day's value in `dayTimes` is one "HH:mm" for an individual batch, or the two slots joined with
+ * a comma ("16:00,18:00", first choice first) for a group batch -- so the stored shape (a string
+ * per day) and the older single-time values keep working unchanged.
+ */
+export function splitSlots(value: string | undefined): string[] {
+  return (value ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+/** True when every slot a day needs is filled in and (for a group batch) the slots differ. */
+export function daySlotsComplete(value: string | undefined, slotsNeeded: number): boolean {
+  const slots = splitSlots(value);
+  return slots.length === slotsNeeded && new Set(slots).size === slots.length;
+}
+
+/** "4:00 PM" for one slot, "4:00 PM + 6:00 PM" for a day's two group slots. */
 export function timeLabel(value: string): string {
-  const m = /^(\d{2}):(\d{2})$/.exec(value);
-  if (m) return toLabel(Number(m[1]) * 60 + Number(m[2]));
-  return LEGACY_TIME_LABELS[value] ?? value;
+  return splitSlots(value)
+    .map((slot) => {
+      const m = /^(\d{2}):(\d{2})$/.exec(slot);
+      if (m) return toLabel(Number(m[1]) * 60 + Number(m[2]));
+      return LEGACY_TIME_LABELS[slot] ?? slot;
+    })
+    .join(" + ");
 }
 
 /** morning / afternoon / evening bucket for an "HH:mm" value, for the legacy `preferredTime` field. */

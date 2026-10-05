@@ -35,6 +35,7 @@ import {
   type ApiStorePlan,
 } from "@/api/store";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { FeeDisclaimer } from "@/components/FeeDisclaimer";
 import { DEMO_DEPARTMENTS } from "@/data/departments";
 
 const DEMO_PLANS: ApiStorePlan[] = [
@@ -313,7 +314,7 @@ export default function Store() {
                 <h3 className="font-display mt-4 text-lg font-bold tracking-tight text-brand-ink">{plan.name}</h3>
                 {plan.courseName && <p className="mt-0.5 text-sm text-brand-ink/60">{plan.courseName}</p>}
                 <div className="mt-4 flex items-baseline gap-1.5">
-                  <span className="text-2xl font-extrabold text-brand-ink">{formatCurrency(plan.price)}</span>
+                  <span className="text-2xl font-extrabold text-brand-ink">{formatCurrency(plan.price)}*</span>
                   <span className="text-xs font-medium text-brand-ink/50">{BILLING_LABEL[plan.billingCycle]}</span>
                 </div>
                 {plan.sessionsIncluded && (
@@ -326,6 +327,7 @@ export default function Store() {
             ))}
           </div>
         )}
+        {plans.length > 0 && <FeeDisclaimer className="mt-4 !text-brand-ink/60" />}
       </section>
 
       <Dialog open={selectedPlan !== null} onOpenChange={(open) => !open && setSelectedPlan(null)}>
