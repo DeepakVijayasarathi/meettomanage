@@ -47,8 +47,11 @@ export interface ClassSessionLogDashboard {
 }
 
 /** Live/next class status snapshot plus today's rollup counts — the dashboard header. */
-export async function getClassSessionLogDashboard(): Promise<ClassSessionLogDashboard> {
-  return apiFetch<ClassSessionLogDashboard>("/api/class-session-logs/dashboard");
+export async function getClassSessionLogDashboard(search?: string): Promise<ClassSessionLogDashboard> {
+  const q = new URLSearchParams();
+  if (search?.trim()) q.set("search", search.trim());
+  const qs = q.toString();
+  return apiFetch<ClassSessionLogDashboard>(`/api/class-session-logs/dashboard${qs ? `?${qs}` : ""}`);
 }
 
 /** Paged, filterable event trail — every join/leave/start/end/no-show/denial, demo or live. */
@@ -59,6 +62,8 @@ export async function listClassSessionLogs(params?: {
   teacherProfileId?: string;
   eventType?: ClassSessionEventType;
   expectedOnly?: boolean;
+  /** Case-insensitive match on the class's batch name or teacher name. */
+  search?: string;
   page?: number;
   pageSize?: number;
 }): Promise<ClassSessionEventLogPage> {
@@ -69,6 +74,7 @@ export async function listClassSessionLogs(params?: {
   if (params?.teacherProfileId) q.set("teacherProfileId", params.teacherProfileId);
   if (params?.eventType) q.set("eventType", params.eventType);
   if (params?.expectedOnly !== undefined) q.set("expectedOnly", String(params.expectedOnly));
+  if (params?.search?.trim()) q.set("search", params.search.trim());
   q.set("page", String(params?.page ?? 1));
   q.set("pageSize", String(params?.pageSize ?? 25));
   return apiFetch<ClassSessionEventLogPage>(`/api/class-session-logs?${q}`);

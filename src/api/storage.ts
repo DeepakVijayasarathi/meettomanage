@@ -43,3 +43,8 @@ export async function getStorageStatus(): Promise<ApiStorageStatus> {
 export async function startStorageSync(to: "local" | "s3"): Promise<ApiStorageSync> {
   return apiFetch<ApiStorageSync>("/api/storage/sync", { method: "POST", body: JSON.stringify({ to }) });
 }
+
+/** Switches where new uploads are stored, at once (saved in the database). Returns the new status. */
+export async function setStorageProvider(provider: "S3" | "Local"): Promise<ApiStorageStatus> {
+  return apiFetch<ApiStorageStatus>("/api/storage/provider", { method: "PUT", body: JSON.stringify({ provider }) });
+}

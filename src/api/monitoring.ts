@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import type { LiveClassSession, MonitoringSummary, SessionHistoryEntry } from "@/types";
+import type { LiveClassSession, MonitoringSummary, ScheduledTask, SessionHistoryEntry } from "@/types";
 
 export interface ApiMonitoredService {
   name: string;
@@ -131,55 +131,6 @@ export interface ApiRecordingSummary {
   stillProcessing: number;
 }
 
-export interface ApiBurstWorkerEpisode {
-  serverId: number;
-  createdAtUtc: string;
-  deletedAtUtc: string | null;
-  durationHours: number;
-  estimatedCostUsd: number;
-  billedHours: number;
-  maxBilledCostUsd: number;
-  trigger: string;
-  requestedBy: string | null;
-  recordingsHandled: number;
-}
-
-export interface ApiBurstWorkerStatus {
-  known: boolean;
-  exists: boolean;
-  serverId: number | null;
-  createdAtUtc: string | null;
-  holdUntilUtc: string | null;
-}
-
-export interface ApiBurstWorkerUsage {
-  episodesToday: number;
-  hoursToday: number;
-  estimatedCostTodayUsd: number;
-  maxBilledCostTodayUsd: number;
-  recordingsHandledToday: number;
-  episodesThisMonth: number;
-  hoursThisMonth: number;
-  estimatedCostThisMonthUsd: number;
-  maxBilledCostThisMonthUsd: number;
-  recordingsHandledThisMonth: number;
-  episodesAllTime: number;
-  hoursAllTime: number;
-  estimatedCostAllTimeUsd: number;
-  maxBilledCostAllTimeUsd: number;
-  hourlyRateUsd: number;
-  currentlyActive: boolean;
-  status: ApiBurstWorkerStatus;
-  recentActivity: string[];
-  recentEpisodes: ApiBurstWorkerEpisode[];
-}
-
-export interface ApiBurstWorkerControlResult {
-  action: string;
-  logTail: string[];
-  performedAtUtc: string;
-}
-
 export interface ApiRecordingPipeline {
   registeredToday: number;
   unattachedToday: number;
@@ -213,7 +164,7 @@ export interface ApiMonitoringSummary {
   activeClassCount: number;
   activeAlerts: ApiMonitoringAlert[];
   todayRecordings: ApiRecordingSummary;
-  burstWorkerUsage: ApiBurstWorkerUsage | null;
+  scheduledTasks: ScheduledTask[];
   recordingPipeline: ApiRecordingPipeline | null;
   callQualityIncidents: ApiCallQualityIncident[];
   callQualityIncidentsLookSystemic: boolean;
@@ -323,6 +274,12 @@ export async function getServerLogs(serverName: string, container: string, lines
   return apiFetch<ApiServerLogs>(`/api/monitoring/servers/logs?${params.toString()}`);
 }
 
+/** Recent log of one scheduled (cron) task on one server, as written by rn-job. */
+export async function getScheduledTaskLog(serverName: string, task: string, lines = 300): Promise<ApiServerLogs> {
+  const params = new URLSearchParams({ serverName, task, lines: String(lines) });
+  return apiFetch<ApiServerLogs>(`/api/monitoring/servers/task-log?${params.toString()}`);
+}
+
 export interface ApiJibriControlResult {
   server: string;
   action: string;
@@ -339,16 +296,6 @@ export interface ApiServiceRestartResult {
 /** Runs the Jibri autoscaler immediately instead of waiting out its next cron minute — see IServerControlService. serverName is a query param; see getServerLogs for why. */
 export async function rescaleJibriNow(serverName: string): Promise<ApiJibriControlResult> {
   return apiFetch<ApiJibriControlResult>(`/api/monitoring/servers/jibri/rescale?serverName=${encodeURIComponent(serverName)}`, { method: "POST" });
-}
-
-/** Emergency manual start of the on-demand burst recording worker (billed hourly while it exists). holdMinutes keeps it up even if idle � see BurstWorkerControlService. */
-export async function startBurstWorker(holdMinutes: number): Promise<ApiBurstWorkerControlResult> {
-  return apiFetch<ApiBurstWorkerControlResult>(`/api/monitoring/burst-worker/start?holdMinutes=${holdMinutes}`, { method: "POST" });
-}
-
-/** Stops the burst worker as soon as it is safe (every recorder idle, every recording on main). Never force-deletes. */
-export async function stopBurstWorker(): Promise<ApiBurstWorkerControlResult> {
-  return apiFetch<ApiBurstWorkerControlResult>("/api/monitoring/burst-worker/stop", { method: "POST" });
 }
 
 /** Tells every browser currently in a live class to show a dismissible "update available"
@@ -397,7 +344,7 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
     activeClassCount: api.activeClassCount,
     activeAlerts: api.activeAlerts,
     todayRecordings: api.todayRecordings,
-    burstWorkerUsage: api.burstWorkerUsage,
+    scheduledTasks: api.scheduledTasks ?? [],
     recordingPipeline: api.recordingPipeline ?? null,
     callQualityIncidents: api.callQualityIncidents ?? [],
     callQualityIncidentsLookSystemic: api.callQualityIncidentsLookSystemic ?? false,

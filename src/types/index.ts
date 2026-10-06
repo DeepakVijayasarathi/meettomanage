@@ -426,7 +426,7 @@ export interface ServerStatus {
   /** false means the agent itself couldn't be reached — every other field is meaningless then, not zero. */
   reachable: boolean;
   error?: string | null;
-  /** True for a server expected to not exist most of the time (e.g. an on-demand burst worker) — pair with reachable:false to show a calm "Standby" state instead of an alarming "unreachable" one. */
+  /** True for a server expected to not exist most of the time (e.g. an on-demand worker) — pair with reachable:false to show a calm "Standby" state instead of an alarming "unreachable" one. */
   isOnDemand: boolean;
   /** This server's configured container whitelist, always populated regardless of reachable — unlike `services` (live facts, empty when unreachable), the log viewer only needs valid container names, so it stays usable while an on-demand server is in standby. */
   configuredServices: string[];
@@ -495,68 +495,6 @@ export interface RecordingSummary {
   stillProcessing: number;
 }
 
-/** One create-to-delete (or still-running) lifecycle of the Hetzner burst worker. */
-export interface BurstWorkerEpisode {
-  serverId: number;
-  createdAtUtc: string;
-  /** Null means still running right now. */
-  deletedAtUtc: string | null;
-  durationHours: number;
-  /** Per minute actually run, at the configured hourly rate � an estimate from our own timestamps, not a real Hetzner invoice line. */
-  estimatedCostUsd: number;
-  /** Whole started hours (min 1) � what this would cost if Hetzner bills every started hour in full (unverified, so an upper bound). */
-  billedHours: number;
-  maxBilledCostUsd: number;
-  /** "auto" = created by the capacity check; "manual" = someone pressed Start now. */
-  trigger: string;
-  requestedBy: string | null;
-  /** Recordings copied off this server to main while it ran � what the spend actually bought. */
-  recordingsHandled: number;
-}
-
-/** The burst worker's state right now, read live from the cloud API. */
-export interface BurstWorkerStatus {
-  /** False = the cloud API couldn't be read; show "unknown", never assume standby. */
-  known: boolean;
-  exists: boolean;
-  serverId: number | null;
-  createdAtUtc: string | null;
-  /** While set, the automatic teardown will not delete the server before this time even if it is idle. */
-  holdUntilUtc: string | null;
-}
-
-/** How often and for how long the on-demand Hetzner burst worker has actually been used. */
-export interface BurstWorkerUsage {
-  episodesToday: number;
-  hoursToday: number;
-  estimatedCostTodayUsd: number;
-  maxBilledCostTodayUsd: number;
-  recordingsHandledToday: number;
-  episodesThisMonth: number;
-  hoursThisMonth: number;
-  estimatedCostThisMonthUsd: number;
-  maxBilledCostThisMonthUsd: number;
-  recordingsHandledThisMonth: number;
-  episodesAllTime: number;
-  hoursAllTime: number;
-  estimatedCostAllTimeUsd: number;
-  maxBilledCostAllTimeUsd: number;
-  hourlyRateUsd: number;
-  currentlyActive: boolean;
-  status: BurstWorkerStatus;
-  /** Recent scale-up / scale-down / copy / registration log lines, oldest first. */
-  recentActivity: string[];
-  /** Most recent first. */
-  recentEpisodes: BurstWorkerEpisode[];
-}
-
-/** Result of pressing Start now / Stop � the last lines of the scale log, so the admin sees what really happened. */
-export interface BurstWorkerControlResult {
-  action: string;
-  logTail: string[];
-  performedAtUtc: string;
-}
-
 /** A recording that finished today but is not attached to any class (personal/demo/ad-hoc room). */
 export interface UnattachedRecording {
   room: string;
@@ -601,8 +539,9 @@ export interface MonitoringSummary {
   activeClassCount: number;
   activeAlerts: MonitoringAlert[];
   todayRecordings: RecordingSummary;
+  /** Every cron task on every server (via rn-job), grouped by server then task. */
+  scheduledTasks: ScheduledTask[];
   /** Null if the usage log couldn't be fetched (e.g. main unreachable) — treat as unknown, not "never used." */
-  burstWorkerUsage: BurstWorkerUsage | null;
   /** Null if main could not be reached — unknown, not "healthy". */
   recordingPipeline: RecordingPipeline | null;
   /** Recent per-participant audio/video degradation incidents, newest first. */
@@ -610,4 +549,17 @@ export interface MonitoringSummary {
   /** True when the incidents' spread across distinct rooms suggests shared bridge contention rather than individual network variance. */
   callQualityIncidentsLookSystemic: boolean;
   generatedAtUtc: string;
+}
+
+/** One cron task on one server, as reported by rn-job. status: "ok" | "failed" (last run exited non-zero) | "late" (hasn't run for over twice its interval + 5 min). */
+export interface ScheduledTask {
+  server: string;
+  task: string;
+  status: "ok" | "failed" | "late" | string;
+  lastRunUtc: string;
+  /** Null if it has never succeeded since tracking started. */
+  lastSuccessUtc: string | null;
+  lastExitCode: number;
+  durationSeconds: number;
+  expectedIntervalSeconds: number;
 }
