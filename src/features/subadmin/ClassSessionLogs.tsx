@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock, Download, Loader2, LogIn, LogOut, Radar, RefreshCw, ShieldAlert, type LucideIcon, UserPlus, Users, Video, WifiOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Download, Loader2, LogIn, LogOut, Radar, RefreshCw, Search, ShieldAlert, type LucideIcon, UserPlus, Users, Video, WifiOff } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -8,6 +8,7 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatDate, toCsv as toCsvEscaped, setVisibleInterval } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
@@ -53,6 +54,7 @@ const EVENT_META: Record<ClassSessionEventType, { label: string; icon: LucideIco
 const EVENT_TYPE_OPTIONS = Object.entries(EVENT_META).map(([value, meta]) => ({ value, label: meta.label }));
 
 const RANGE_OPTIONS = [
+  { value: "1h", label: "Last 1 hour" },
   { value: "24h", label: "Last 24 hours" },
   { value: "7d", label: "Last 7 days" },
   { value: "30d", label: "Last 30 days" },
@@ -61,6 +63,7 @@ const RANGE_OPTIONS = [
 
 function rangeToFromUtc(range: string): string | undefined {
   const now = Date.now();
+  if (range === "1h") return new Date(now - 60 * 60 * 1000).toISOString();
   if (range === "24h") return new Date(now - 24 * 60 * 60 * 1000).toISOString();
   if (range === "7d") return new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
   if (range === "30d") return new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -267,6 +270,9 @@ export default function SubAdminClassSessionLogs() {
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [rangeFilter, setRangeFilter] = useState<string>("7d");
+  // What the box shows vs. what is applied: the query only changes after a short pause in typing.
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
   const [openSessionId, setOpenSessionId] = useState<string | null>(null);
@@ -276,7 +282,7 @@ export default function SubAdminClassSessionLogs() {
     loading: dashboardLoading,
     error: dashboardError,
     reload: reloadDashboard,
-  } = useApiData(getClassSessionLogDashboard, EMPTY_DASHBOARD, EMPTY_DASHBOARD);
+  } = useApiData(() => getClassSessionLogDashboard(search), EMPTY_DASHBOARD, EMPTY_DASHBOARD);
 
   const {
     data: logPage,
@@ -289,6 +295,7 @@ export default function SubAdminClassSessionLogs() {
         fromUtc: rangeToFromUtc(rangeFilter),
         eventType: eventTypeFilter === "all" ? undefined : (eventTypeFilter as ClassSessionEventType),
         expectedOnly: statusFilter === "all" ? undefined : statusFilter === "expected",
+        search,
         page,
         pageSize: PAGE_SIZE,
       }),
@@ -310,6 +317,18 @@ export default function SubAdminClassSessionLogs() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usingApi]);
 
+  useEffect(() => {
+    const next = searchInput.trim();
+    if (next === search) return;
+    const timer = setTimeout(() => {
+      setSearch(next);
+      setPage(1);
+      refreshAll();
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
+
   function goToPage(next: number) {
     setPage(next);
     reloadLogs();
@@ -328,6 +347,7 @@ export default function SubAdminClassSessionLogs() {
         fromUtc: rangeToFromUtc(rangeFilter),
         eventType: eventTypeFilter === "all" ? undefined : (eventTypeFilter as ClassSessionEventType),
         expectedOnly: statusFilter === "all" ? undefined : statusFilter === "expected",
+        search,
         page: 1,
         pageSize: EXPORT_SIZE,
       });
@@ -352,6 +372,17 @@ export default function SubAdminClassSessionLogs() {
           </Button>
         }
       />
+
+      <div className="relative mb-4 max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search by batch or teacher…"
+          aria-label="Search by batch or teacher"
+          className="pl-9"
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
@@ -397,7 +428,11 @@ export default function SubAdminClassSessionLogs() {
             <h3 className="text-sm font-semibold text-foreground">Live now</h3>
           </div>
           {dashboard.liveClasses.length === 0 ? (
-            <EmptyState icon={Video} title="No class is live" description="Nothing is currently in progress." />
+            <EmptyState
+              icon={Video}
+              title="No class is live"
+              description={search ? "No live class matches this batch or teacher." : "Nothing is running right now."}
+            />
           ) : (
             <div className="space-y-2">
               {dashboard.liveClasses.map((s) => (
