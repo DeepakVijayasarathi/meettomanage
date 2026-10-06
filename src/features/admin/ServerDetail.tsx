@@ -47,6 +47,7 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   activeClassCount: 0,
   activeAlerts: [],
   todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
+  scheduledTasks: [],
   recordingPipeline: null,
   callQualityIncidents: [],
   callQualityIncidentsLookSystemic: false,

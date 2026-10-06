@@ -70,6 +70,7 @@ import {
   formatUptime,
 } from "./monitoringShared";
 import { RecordingPipelinePanel, RecorderCapacityStrip, ReadinessCard, CallQualityIncidentsPanel } from "./RecordingPipelinePanel";
+import { ScheduledTasksPanel } from "./ScheduledTasksPanel";
 
 const REFRESH_INTERVAL_MS = 20_000;
 
@@ -83,6 +84,7 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   activeClassCount: 0,
   activeAlerts: [],
   todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
+  scheduledTasks: [],
   recordingPipeline: null,
   callQualityIncidents: [],
   callQualityIncidentsLookSystemic: false,
@@ -971,6 +973,7 @@ export default function AdminMonitoring() {
       <RecorderCapacityStrip servers={summary.servers} />
       <RecordingPipelinePanel pipeline={summary.recordingPipeline} />
       <CallQualityIncidentsPanel incidents={summary.callQualityIncidents} looksSystemic={summary.callQualityIncidentsLookSystemic} />
+      <ScheduledTasksPanel tasks={summary.scheduledTasks ?? []} />
 
       <Dialog open={failedRecordingsOpen} onOpenChange={setFailedRecordingsOpen}>
         <DialogContent>

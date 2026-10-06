@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import type { LiveClassSession, MonitoringSummary, SessionHistoryEntry } from "@/types";
+import type { LiveClassSession, MonitoringSummary, ScheduledTask, SessionHistoryEntry } from "@/types";
 
 export interface ApiMonitoredService {
   name: string;
@@ -164,6 +164,7 @@ export interface ApiMonitoringSummary {
   activeClassCount: number;
   activeAlerts: ApiMonitoringAlert[];
   todayRecordings: ApiRecordingSummary;
+  scheduledTasks: ScheduledTask[];
   recordingPipeline: ApiRecordingPipeline | null;
   callQualityIncidents: ApiCallQualityIncident[];
   callQualityIncidentsLookSystemic: boolean;
@@ -273,6 +274,12 @@ export async function getServerLogs(serverName: string, container: string, lines
   return apiFetch<ApiServerLogs>(`/api/monitoring/servers/logs?${params.toString()}`);
 }
 
+/** Recent log of one scheduled (cron) task on one server, as written by rn-job. */
+export async function getScheduledTaskLog(serverName: string, task: string, lines = 300): Promise<ApiServerLogs> {
+  const params = new URLSearchParams({ serverName, task, lines: String(lines) });
+  return apiFetch<ApiServerLogs>(`/api/monitoring/servers/task-log?${params.toString()}`);
+}
+
 export interface ApiJibriControlResult {
   server: string;
   action: string;
@@ -337,6 +344,7 @@ export function toFrontendMonitoringSummary(api: ApiMonitoringSummary): Monitori
     activeClassCount: api.activeClassCount,
     activeAlerts: api.activeAlerts,
     todayRecordings: api.todayRecordings,
+    scheduledTasks: api.scheduledTasks ?? [],
     recordingPipeline: api.recordingPipeline ?? null,
     callQualityIncidents: api.callQualityIncidents ?? [],
     callQualityIncidentsLookSystemic: api.callQualityIncidentsLookSystemic ?? false,

@@ -33,6 +33,10 @@ export const MONITORING_SUMMARY: MonitoringSummary = {
   activeClassCount: 2,
   activeAlerts: [],
   todayRecordings: { started: 42, succeeded: 40, failed: 1, stillProcessing: 1 },
+  scheduledTasks: [
+    { server: "Jitsi / Video", task: "turn-refresh", status: "ok", lastRunUtc: "2026-08-23T04:17:03Z", lastSuccessUtc: "2026-08-23T04:17:03Z", lastExitCode: 0, durationSeconds: 3, expectedIntervalSeconds: 3600 },
+    { server: "Recording Worker", task: "recordings-backup-copy", status: "failed", lastRunUtc: "2026-08-22T22:41:10Z", lastSuccessUtc: "2026-08-21T22:38:55Z", lastExitCode: 23, durationSeconds: 2410, expectedIntervalSeconds: 86400 },
+  ],
   recordingPipeline: {
     registeredToday: 38,
     unattachedToday: 2,

@@ -539,6 +539,8 @@ export interface MonitoringSummary {
   activeClassCount: number;
   activeAlerts: MonitoringAlert[];
   todayRecordings: RecordingSummary;
+  /** Every cron task on every server (via rn-job), grouped by server then task. */
+  scheduledTasks: ScheduledTask[];
   /** Null if the usage log couldn't be fetched (e.g. main unreachable) — treat as unknown, not "never used." */
   /** Null if main could not be reached — unknown, not "healthy". */
   recordingPipeline: RecordingPipeline | null;
@@ -547,4 +549,17 @@ export interface MonitoringSummary {
   /** True when the incidents' spread across distinct rooms suggests shared bridge contention rather than individual network variance. */
   callQualityIncidentsLookSystemic: boolean;
   generatedAtUtc: string;
+}
+
+/** One cron task on one server, as reported by rn-job. status: "ok" | "failed" (last run exited non-zero) | "late" (hasn't run for over twice its interval + 5 min). */
+export interface ScheduledTask {
+  server: string;
+  task: string;
+  status: "ok" | "failed" | "late" | string;
+  lastRunUtc: string;
+  /** Null if it has never succeeded since tracking started. */
+  lastSuccessUtc: string | null;
+  lastExitCode: number;
+  durationSeconds: number;
+  expectedIntervalSeconds: number;
 }
