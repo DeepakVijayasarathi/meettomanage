@@ -69,7 +69,6 @@ import {
   formatAgeShort,
   formatUptime,
 } from "./monitoringShared";
-import { BurstWorkerPanel } from "./BurstWorkerPanel";
 import { RecordingPipelinePanel, RecorderCapacityStrip, ReadinessCard, CallQualityIncidentsPanel } from "./RecordingPipelinePanel";
 
 const REFRESH_INTERVAL_MS = 20_000;
@@ -84,7 +83,6 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   activeClassCount: 0,
   activeAlerts: [],
   todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
-  burstWorkerUsage: null,
   recordingPipeline: null,
   callQualityIncidents: [],
   callQualityIncidentsLookSystemic: false,
@@ -194,7 +192,7 @@ function ServerCard({ server }: { server: ServerStatus }) {
   const [restartTarget, setRestartTarget] = useState<string | null>(null);
 
   if (!server.reachable) {
-    // On-demand servers (e.g. a Hetzner burst worker) are torn down between peaks by design --
+    // On-demand servers are torn down between peaks by design --
     // that's the normal, healthy state for this card most of the time, so it gets a neutral
     // "Standby" treatment instead of the red "Unreachable" alarm used for an always-on server
     // that's actually down.
@@ -224,7 +222,7 @@ function ServerCard({ server }: { server: ServerStatus }) {
           <EmptyState
             icon={Moon}
             title="Not currently running"
-            description={server.error ?? "This is on-demand burst capacity, created automatically only during a scheduled peak."}
+            description={server.error ?? "This is an on-demand server that only runs when it is needed."}
           />
         </Card>
       );
@@ -968,32 +966,11 @@ export default function AdminMonitoring() {
           error={error}
           onClick={num(summary.todayRecordings?.failed) > 0 ? () => setFailedRecordingsOpen(true) : undefined}
         />
-        {/* Null (not zeroed) means the usage log couldn't be fetched (e.g. main unreachable) --
-            shown as "—", not a false "never used." */}
-        <KpiCard
-          label="Burst Capacity Cost"
-          value={summary.burstWorkerUsage ? `$${summary.burstWorkerUsage.estimatedCostTodayUsd.toFixed(2)}` : "—"}
-          detail={
-            summary.burstWorkerUsage
-              ? summary.burstWorkerUsage.currentlyActive
-                ? `${summary.burstWorkerUsage.episodesToday} time${summary.burstWorkerUsage.episodesToday === 1 ? "" : "s"} today · running now`
-                : `${summary.burstWorkerUsage.episodesToday} time${summary.burstWorkerUsage.episodesToday === 1 ? "" : "s"} today`
-              : "Usage data unavailable"
-          }
-          icon={Zap}
-          tone={summary.burstWorkerUsage?.currentlyActive ? "primary" : "neutral"}
-          loading={loading}
-          error={error}
-        />
       </div>
 
-      {/* Always rendered (even with no history yet, or if the usage lookup failed) so the emergency
-          Start now button is there when it is actually needed. */}
       <RecorderCapacityStrip servers={summary.servers} />
       <RecordingPipelinePanel pipeline={summary.recordingPipeline} />
       <CallQualityIncidentsPanel incidents={summary.callQualityIncidents} looksSystemic={summary.callQualityIncidentsLookSystemic} />
-
-      <BurstWorkerPanel usage={summary.burstWorkerUsage} canManage={canManage} onChanged={reload} />
 
       <Dialog open={failedRecordingsOpen} onOpenChange={setFailedRecordingsOpen}>
         <DialogContent>

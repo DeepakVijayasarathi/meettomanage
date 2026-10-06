@@ -209,11 +209,10 @@ export function buildReadinessChecks(summary: MonitoringSummary): ReadinessCheck
   const fleets = summary.servers.filter((s) => s.reachable && s.recorderStatus && s.recorderStatus.totalInstances > 0);
   const total = fleets.reduce((n, s) => n + (s.recorderStatus?.totalInstances ?? 0), 0);
   const busy = fleets.reduce((n, s) => n + (s.recorderStatus?.busyInstances ?? 0), 0);
-  const burstStandby = summary.servers.some((s) => s.isOnDemand && !s.reachable) && summary.burstWorkerUsage?.status.known === true;
   checks.push({
     label: "Recorders ready",
     state: total === 0 || total - busy === 0 ? "fail" : total - busy <= 2 ? "warn" : "ok",
-    detail: total === 0 ? "No recorders online" : `${total - busy} of ${total} free now${burstStandby ? ", burst server adds more automatically" : ""}`,
+    detail: total === 0 ? "No recorders online" : `${total - busy} of ${total} free now`,
   });
 
   const p = summary.recordingPipeline;
@@ -237,14 +236,6 @@ export function buildReadinessChecks(summary: MonitoringSummary): ReadinessCheck
     });
   }
 
-  const b = summary.burstWorkerUsage;
-  const known = !!b && b.status.known;
-  const runningHours = known && b.status.exists && b.status.createdAtUtc ? (Date.now() - new Date(b.status.createdAtUtc).getTime()) / 3600000 : 0;
-  checks.push({
-    label: "Burst capacity",
-    state: !known ? "unknown" : runningHours > 4 ? "warn" : "ok",
-    detail: !known ? "Status unavailable" : b.status.exists ? `Running for ${runningHours.toFixed(1)}h` : "Standby, starts by itself under load",
-  });
   const alerts = summary.activeAlerts ?? [];
   checks.push({
     label: "Active alerts",
