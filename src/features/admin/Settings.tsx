@@ -28,7 +28,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { cn, formatCurrency, hexToHslTriple, isValidEmail } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled, userMessage } from "@/lib/api";
-import { getStorageStatus, startStorageSync, type ApiStorageStatus } from "@/api/storage";
+import { getStorageStatus, setStorageProvider, startStorageSync, type ApiStorageStatus } from "@/api/storage";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { getSettings, toSettingsMap, updateSettings, type SettingCategory, type UpdateSettingItem } from "@/api/settings";
@@ -2261,9 +2261,9 @@ function formatBytes(bytes: number): string {
 }
 
 /**
- * Where uploaded resources and class presentations are kept (S3 or the server's own disk), and the
- * Sync buttons that copy every file across before switching Storage:Provider -- so moving storage
- * needs no command line. Copies only, never deletes; safe to press again.
+ * Where uploaded resources and class presentations are kept (S3 or the server's own disk) -- chosen
+ * per client here, saved in the database and applied at once -- and the Sync buttons that copy every
+ * file across. Copies only, never deletes; safe to press again.
  */
 function StorageSyncCard() {
   const { hasPermission } = useSession();
@@ -2271,6 +2271,7 @@ function StorageSyncCard() {
   const [status, setStatus] = useState<ApiStorageStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState<"local" | "s3" | null>(null);
+  const [switchTo, setSwitchTo] = useState<"S3" | "Local" | null>(null);
   const running = status?.sync?.running ?? false;
 
   useEffect(() => {
@@ -2305,6 +2306,17 @@ function StorageSyncCard() {
     }
   }
 
+  async function switchProvider(provider: "S3" | "Local") {
+    setError(null);
+    try {
+      setStatus(await setStorageProvider(provider));
+      setSwitchTo(null);
+    } catch (err) {
+      setError(userMessage(err, "Couldn't switch file storage."));
+      setSwitchTo(null);
+    }
+  }
+
   const s = status?.sync;
   const done = s ? s.copied + s.skipped + s.failed : 0;
   const percent = s && s.total > 0 ? Math.round((done / s.total) * 100) : 0;
@@ -2316,8 +2328,9 @@ function StorageSyncCard() {
         <CardDescription>
           Uploaded resources and class presentations are stored in{" "}
           <span className="font-semibold text-foreground">{status ? (status.provider === "Local" ? "this server's disk" : "S3 (object storage)") : "…"}</span>.
-          Before switching, use Sync to copy every file across. Sync only copies — nothing is ever deleted — and files
-          already copied are skipped, so it's safe to run again.
+          New uploads go there. Files already uploaded keep opening from wherever they are; use Sync to copy them
+          across. Sync only copies — nothing is ever deleted — and files already copied are skipped, so it's safe to run
+          again.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -2354,6 +2367,34 @@ function StorageSyncCard() {
             would be lost on the next deploy. Syncing to this server is blocked until it is mounted
             {status.provider === "Local" && " — and new uploads are at risk right now"}.
           </InlineAlert>
+        )}
+
+        {status && (
+          <div className="flex flex-col gap-2">
+            <Label>Store new files in</Label>
+            <div className="inline-flex w-fit rounded-lg border border-border p-1" role="radiogroup" aria-label="Store new files in">
+              {(["S3", "Local"] as const).map((option) => {
+                const active = status.provider === option;
+                const unavailable = option === "S3" ? !status.s3Configured : status.localFolderMounted === false;
+                return (
+                  <Button
+                    key={option}
+                    size="sm"
+                    variant={active ? "default" : "ghost"}
+                    role="radio"
+                    aria-checked={active}
+                    disabled={!canEdit || active || unavailable || running}
+                    onClick={() => setSwitchTo(option)}
+                  >
+                    {option === "S3" ? "S3 (object storage)" : "This server's disk"}
+                  </Button>
+                );
+              })}
+            </div>
+            {!status.s3Configured && (
+              <p className="text-xs text-muted-foreground">S3 isn't set up on this server, so files can only be kept on its disk.</p>
+            )}
+          </div>
         )}
 
         {canEdit && (
@@ -2404,6 +2445,20 @@ function StorageSyncCard() {
 
         {error && <p className="text-sm font-medium text-destructive">{error}</p>}
       </CardContent>
+      <ConfirmDialog
+        open={switchTo !== null}
+        onOpenChange={(open) => !open && setSwitchTo(null)}
+        title={switchTo === "Local" ? "Store new files on this server?" : "Store new files in S3?"}
+        description={
+          <>
+            New uploads will go to {switchTo === "Local" ? "this server's disk" : "S3"} straight away. Files already
+            uploaded stay where they are and keep opening — nothing is moved or deleted. To copy them across, press{" "}
+            {switchTo === "Local" ? "Sync S3 → this server" : "Sync this server → S3"} afterwards.
+          </>
+        }
+        confirmLabel="Switch"
+        onConfirm={() => (switchTo ? switchProvider(switchTo) : undefined)}
+      />
     </Card>
   );
 }
