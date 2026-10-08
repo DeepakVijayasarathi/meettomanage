@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, DoorOpen, GripVertical, Loader2, Maximize2, Minimize2, Pencil, PartyPopper, PhoneOff, PictureInPicture2, Pin, PinOff, Sparkles, UserPlus, Users, Video, Volume2, WifiOff, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, GripHorizontal, GripVertical, Loader2, Maximize2, Minimize2, Pencil, PartyPopper, PhoneOff, PictureInPicture2, Pin, PinOff, Sparkles, UserPlus, Users, Video, Volume2, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -189,9 +189,49 @@ export default function JitsiLive({
   // a blank board. While a share is on, a student's call takes the whole stage instead.
   const [someoneSharing, setSomeoneSharing] = useState(false);
   const shareTakesStage = boardMaximized && someoneSharing && mode !== "teacher";
+  // Client report (2026-10-08): with the board maximized and shared, the floating class video
+  // sat over the bottom-right of the lesson, so the teacher couldn't point or scroll there
+  // without hiding the video. Dragging it by its top bar moves it anywhere; null is the
+  // default bottom-right corner.
+  const [floatPos, setFloatPos] = useState<{ x: number; y: number } | null>(null);
+  const [floatDragging, setFloatDragging] = useState(false);
+  const floatRef = useRef<HTMLDivElement>(null);
+  const floatDragRef = useRef<{ dx: number; dy: number } | null>(null);
+  function startFloatDrag(e: ReactPointerEvent<HTMLDivElement>) {
+    if (e.button !== 0 || (e.target as HTMLElement).closest("button") || !floatRef.current) return;
+    const rect = floatRef.current.getBoundingClientRect();
+    floatDragRef.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setFloatDragging(true);
+  }
+  function moveFloatDrag(e: ReactPointerEvent<HTMLDivElement>) {
+    const drag = floatDragRef.current;
+    const el = floatRef.current;
+    if (!drag || !el) return;
+    const maxX = window.innerWidth - el.offsetWidth;
+    const maxY = window.innerHeight - el.offsetHeight;
+    setFloatPos({
+      x: Math.min(Math.max(0, e.clientX - drag.dx), Math.max(0, maxX)),
+      y: Math.min(Math.max(0, e.clientY - drag.dy), Math.max(0, maxY)),
+    });
+  }
+  function endFloatDrag() {
+    floatDragRef.current = null;
+    setFloatDragging(false);
+  }
   useEffect(() => {
-    if (!boardMaximized) setFloatHidden(false);
+    if (!boardMaximized) {
+      setFloatHidden(false);
+      setFloatPos(null);
+    }
   }, [boardMaximized]);
+  // A resize (or switching to the large size) can push a dragged tile off-screen; snap back.
+  useEffect(() => {
+    if (!floatPos) return;
+    const reset = () => setFloatPos(null);
+    window.addEventListener("resize", reset);
+    return () => window.removeEventListener("resize", reset);
+  }, [floatPos]);
   const navigate = useNavigate();
   // Every exit (Leave, End Class, Jitsi's own hang-up) goes through here. A ref, not the prop
   // directly, because the Jitsi init effect only re-runs on [room, mode] and would otherwise
@@ -1451,10 +1491,34 @@ export default function JitsiLive({
         shareLayout.filmstripVisible = !shareLayout.filmstripVisible;
         api?.executeCommand("toggleFilmStrip");
       };
+      // Client report (2026-10-08): "at the time of screen sharing the shared screen is small."
+      // Everyone joins in tile view (videoConferenceJoined), and an explicit setTileView(true)
+      // keeps Jitsi from staging a remote share on its own -- so for a student the teacher's
+      // share was just one more tile in the 3x3 grid. Viewers (students, parents, the recording
+      // observer) now spotlight a remote share on arrival and go back to the grid when it ends.
+      // The teacher's own view is left alone: her grid is what lets her see the class while she
+      // shares (the "PPT takes over, I can't see my students" feedback above). A pin someone
+      // already chose (locallyPinnedIdRef, e.g. the teacher's broadcast pin) is never overridden,
+      // and only a pin this code made itself is undone when the share stops.
+      let autoPinnedShareId: string | null = null;
       api.addListener("contentSharingParticipantsChanged", (payload) => {
         shareLayout.sharingIds = payload?.data ?? [];
         setSomeoneSharing(shareLayout.sharingIds.length > 0);
         syncFilmstripForShare();
+        if (mode === "teacher") return;
+        const sharer = shareLayout.sharingIds.find((id) => id !== media.selfId) ?? null;
+        if (sharer && !locallyPinnedIdRef.current) {
+          autoPinnedShareId = sharer;
+          api?.executeCommand("setTileView", false);
+          api?.executeCommand("pinParticipant", sharer, "desktop");
+        } else if (!sharer && autoPinnedShareId) {
+          const stillOurs = !locallyPinnedIdRef.current || locallyPinnedIdRef.current === autoPinnedShareId;
+          autoPinnedShareId = null;
+          if (stillOurs) {
+            api?.executeCommand("pinParticipant", null);
+            api?.executeCommand("setTileView", true);
+          }
+        }
       });
       api.addListener("tileViewChanged", (payload) => {
         shareLayout.tileView = Boolean(payload?.enabled);
@@ -2270,6 +2334,8 @@ export default function JitsiLive({
             </button>
           )}
           <div
+            ref={floatRef}
+            style={boardMaximized && !shareTakesStage && floatPos ? { left: floatPos.x, top: floatPos.y, right: "auto", bottom: "auto" } : undefined}
             className={cn(
               "relative min-h-[300px] min-w-0 flex-1 overflow-hidden rounded-2xl short:min-h-0 border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5",
               // Board full-screen covers the whole stage (fixed, z-40), hiding the call. Same
@@ -2294,18 +2360,35 @@ export default function JitsiLive({
                   // Cards/buttons that live inside the tile (celebrate, leaderboard, roster, hints)
                   // are laid out for the big view and would swamp a small tile.
                   "[&_[data-float-hide]]:hidden",
-                  floatHidden && "pointer-events-none invisible"
+                  floatHidden && "pointer-events-none invisible",
+                  floatDragging && "transition-none"
                 )
             )}
           >
             {/* isolate: Element Capture (the mini window, useMeetingPip) only accepts an
-                element that forms its own stacking context. */}
-            <div ref={containerRef} className="isolate h-full w-full" />
+                element that forms its own stacking context.
+                pointer-events-none while dragging: the cross-origin iframe would otherwise swallow
+                pointer moves that pass over it. */}
+            <div ref={containerRef} className={cn("isolate h-full w-full", floatDragging && "pointer-events-none")} />
             {boardMaximized && !floatHidden && (
-              <div className="absolute inset-x-0 top-0 z-40 flex items-center justify-end gap-1 bg-gradient-to-b from-black/70 to-transparent p-1.5">
+              <div
+                onPointerDown={shareTakesStage ? undefined : startFloatDrag}
+                onPointerMove={moveFloatDrag}
+                onPointerUp={endFloatDrag}
+                onPointerCancel={endFloatDrag}
+                title={shareTakesStage ? undefined : "Drag to move the video"}
+                className={cn(
+                  "absolute inset-x-0 top-0 z-40 flex touch-none items-center justify-end gap-1 bg-gradient-to-b from-black/70 to-transparent p-1.5",
+                  !shareTakesStage && (floatDragging ? "cursor-grabbing" : "cursor-grab")
+                )}
+              >
+                {!shareTakesStage && <GripHorizontal className="mr-auto h-4 w-4 text-white/70" aria-hidden="true" />}
                 <button
                   type="button"
-                  onClick={() => setFloatSize("normal")}
+                  onClick={() => {
+                    setFloatSize("normal");
+                    setFloatPos(null);
+                  }}
                   disabled={floatSize === "normal"}
                   title="Make the video smaller"
                   aria-label="Make the video smaller"
@@ -2315,7 +2398,10 @@ export default function JitsiLive({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFloatSize("large")}
+                  onClick={() => {
+                    setFloatSize("large");
+                    setFloatPos(null);
+                  }}
                   disabled={floatSize === "large"}
                   title="Make the video bigger"
                   aria-label="Make the video bigger"
