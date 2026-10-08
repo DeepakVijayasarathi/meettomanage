@@ -10,6 +10,8 @@ function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+const PLAYBACK_SPEEDS = [0.5, 1, 1.25, 1.5, 2, 3];
+
 export interface VideoPlayerProps {
   src: string;
   className?: string;
@@ -40,6 +42,7 @@ export function VideoPlayer({ src, className, autoPlay, downloadable = false, do
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
+  const [speed, setSpeed] = useState(1);
 
   useEffect(() => {
     function onFullscreenChange() {
@@ -77,6 +80,17 @@ export function VideoPlayer({ src, className, autoPlay, downloadable = false, do
     video.muted = next === 0;
     setVolume(next);
     setMuted(next === 0);
+  }
+
+  /** Cycles through PLAYBACK_SPEEDS — a single button works on touch without needing a popover.
+   *  defaultPlaybackRate is set too, since loading a new src resets playbackRate to it. */
+  function cycleSpeed() {
+    const video = videoRef.current;
+    if (!video) return;
+    const next = PLAYBACK_SPEEDS[(PLAYBACK_SPEEDS.indexOf(speed) + 1) % PLAYBACK_SPEEDS.length];
+    video.defaultPlaybackRate = next;
+    video.playbackRate = next;
+    setSpeed(next);
   }
 
   async function toggleFullscreen() {
@@ -177,6 +191,16 @@ export function VideoPlayer({ src, className, autoPlay, downloadable = false, do
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:hidden"
         >
           {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={cycleSpeed}
+          aria-label={`Playback speed ${speed}x, click to change`}
+          title="Playback speed"
+          className="flex h-8 min-w-10 shrink-0 items-center justify-center rounded-full px-2 font-mono text-xs tabular-nums text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+        >
+          {speed}x
         </button>
 
         {downloadable && (
