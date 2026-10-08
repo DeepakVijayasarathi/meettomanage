@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, downloadFile } from "@/lib/api";
 import type { LiveClassSession, MonitoringSummary, ScheduledTask, SessionHistoryEntry } from "@/types";
 
 export interface ApiMonitoredService {
@@ -278,6 +278,34 @@ export async function getServerLogs(serverName: string, container: string, lines
 export async function getScheduledTaskLog(serverName: string, task: string, lines = 300): Promise<ApiServerLogs> {
   const params = new URLSearchParams({ serverName, task, lines: String(lines) });
   return apiFetch<ApiServerLogs>(`/api/monitoring/servers/task-log?${params.toString()}`);
+}
+
+export interface ApiDatabaseBackup {
+  /** "hourly" | "nightly" | "manual" */
+  kind: string;
+  /** "" or "hourly" -- passed back as-is to downloadDatabaseBackup. */
+  folder: string;
+  fileName: string;
+  sizeBytes: number;
+  createdAtUtc: string;
+}
+
+export interface ApiDatabaseBackupList {
+  server: string;
+  backups: ApiDatabaseBackup[];
+  newestScheduledAtUtc: string | null;
+  fetchedAtUtc: string;
+}
+
+/** Database backup files on the app server, newest first (Admin only -- see MonitoringController.ListDatabaseBackups). */
+export async function getDatabaseBackups(): Promise<ApiDatabaseBackupList> {
+  return apiFetch<ApiDatabaseBackupList>("/api/monitoring/backups");
+}
+
+/** Downloads one backup file with the auth token; the server records it in the audit log. */
+export async function downloadDatabaseBackup(backup: Pick<ApiDatabaseBackup, "folder" | "fileName">): Promise<void> {
+  const params = new URLSearchParams({ folder: backup.folder, file: backup.fileName });
+  return downloadFile(`/api/monitoring/backups/download?${params.toString()}`, backup.fileName);
 }
 
 export interface ApiJibriControlResult {

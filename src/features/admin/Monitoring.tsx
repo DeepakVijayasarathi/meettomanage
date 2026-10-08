@@ -71,6 +71,7 @@ import {
 } from "./monitoringShared";
 import { RecordingPipelinePanel, RecorderCapacityStrip, ReadinessCard, CallQualityIncidentsPanel } from "./RecordingPipelinePanel";
 import { ScheduledTasksPanel } from "./ScheduledTasksPanel";
+import { DatabaseBackupsPanel } from "./DatabaseBackupsPanel";
 
 const REFRESH_INTERVAL_MS = 20_000;
 
@@ -802,9 +803,11 @@ function ServerCardSkeleton() {
 
 export default function AdminMonitoring() {
   const usingApi = apiEnabled();
-  const { hasPermission } = useSession();
+  const { hasPermission, role } = useSession();
   const canViewLiveUsers = hasPermission("SystemMonitoring", "View");
   const canManage = hasPermission("SystemMonitoring", "Edit");
+  // Backups hold every user's personal data: the API only serves them to Admins (see MonitoringController.ListDatabaseBackups).
+  const canDownloadBackups = usingApi && canManage && role === "admin";
   const { data: restSummary, loading, error, reload } = useApiData(
     () => getMonitoringSummary().then(toFrontendMonitoringSummary),
     MONITORING_SUMMARY,
@@ -974,6 +977,7 @@ export default function AdminMonitoring() {
       <RecordingPipelinePanel pipeline={summary.recordingPipeline} />
       <CallQualityIncidentsPanel incidents={summary.callQualityIncidents} looksSystemic={summary.callQualityIncidentsLookSystemic} />
       <ScheduledTasksPanel tasks={summary.scheduledTasks ?? []} />
+      {canDownloadBackups && <DatabaseBackupsPanel />}
 
       <Dialog open={failedRecordingsOpen} onOpenChange={setFailedRecordingsOpen}>
         <DialogContent>
