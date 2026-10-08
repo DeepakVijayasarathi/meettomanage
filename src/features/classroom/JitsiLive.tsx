@@ -389,6 +389,14 @@ export default function JitsiLive({
   const [selfParticipantId, setSelfParticipantId] = useState<string | null>(null);
   // Mirrors Jitsi's audioMuteStatusChanged for the header's "Mute me" button.
   const [selfMicMuted, setSelfMicMuted] = useState(mode === "student");
+  // Phone/tablet browsers can't share a screen (no getDisplayMedia, or a touch-first device
+  // where it isn't offered); screen-share prompts are pointless clutter there.
+  const [canShareScreen] = useState(
+    () =>
+      typeof navigator !== "undefined" &&
+      typeof navigator.mediaDevices?.getDisplayMedia === "function" &&
+      !window.matchMedia("(pointer: coarse)").matches
+  );
   const [pinnedParticipantId, setPinnedParticipantId] = useState<string | null>(null);
   // Explicit "declutter" flag for Focus Mode — deliberately its own state, not derived
   // from (pinnedParticipantId === selfParticipantId && !panelOpen) the way the button's
@@ -2241,15 +2249,23 @@ export default function JitsiLive({
           alongside the other inline nudge banners in this same list (recording-timing,
           annotate-fade, sound hint, ...), all one consistent "notice, not interruption"
           pattern, dismissed with a click instead of an OK-to-continue gate. */}
-      {mode === "teacher" && !isRecordingObserver && interactive && shareScreenPromptOpen && (
-        <div className="mx-3 mt-3 flex shrink-0 flex-col gap-2 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md sm:flex-row sm:items-start">
-          <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
+      {/* Only where screen sharing exists at all (2026-10-08 device pass): phone and tablet
+          browsers have no getDisplayMedia, and on a phone this banner took 40-50% of the
+          screen -- on a landscape phone it squeezed the class into a thin strip. The tips
+          now sit behind a "Tips" toggle so it's one line on a laptop too. */}
+      {mode === "teacher" && !isRecordingObserver && interactive && shareScreenPromptOpen && canShareScreen && (
+        <div className="mx-3 mt-3 flex shrink-0 flex-col gap-2 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-2.5 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md sm:flex-row sm:items-start">
+          <Sparkles className="hidden h-4 w-4 shrink-0 translate-y-0.5 sm:block" />
           <div className="flex-1 space-y-1.5">
             <p>
-              <span className="font-semibold">Share your screen?</span> Sharing this tab (choose{" "}
-              <span className="font-semibold">This Tab</span>) lets the recording capture your whiteboard and quiz, and gives
-              students a clearer view. Not required — the class can carry on without it.
+              <span className="font-semibold">Share your screen?</span> Choose{" "}
+              <span className="font-semibold">This Tab</span> so the recording captures your whiteboard and quiz. Optional.
             </p>
+            <details className="group">
+              <summary className="cursor-pointer select-none font-semibold underline decoration-brand-violet/40 underline-offset-2">
+                Tips: video sound & sharing slides
+              </summary>
+              <div className="mt-1.5 space-y-1.5">
             {/* Real parent complaint: a video played inside a shared PowerPoint/tab had no
                 sound for students. Root cause is a hard browser rule, not anything fixable
                 here -- Chrome only offers a "Share tab audio" checkbox for This Tab (and
@@ -2264,6 +2280,8 @@ export default function JitsiLive({
               that tab — click this classroom tab again to see your class (sharing carries on). To see both at once, choose{" "}
               <span className="font-semibold">Window</span> and keep your slides beside this window.
             </p>
+              </div>
+            </details>
             {showShareOsHint && (
               <p className="rounded-lg bg-brand-amber/10 px-2.5 py-1.5 text-[11px] text-brand-amber">
                 Nothing happening after you click Share? On a Mac, check System Settings → Privacy &amp; Security → Screen
@@ -2320,7 +2338,7 @@ export default function JitsiLive({
           </button>
         </div>
       )}
-      {mode === "teacher" && !isRecordingObserver && hasClassSession && recording && !screenShareActive && (
+      {mode === "teacher" && !isRecordingObserver && hasClassSession && recording && !screenShareActive && canShareScreen && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md">
           <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
           <p className="flex-1">
