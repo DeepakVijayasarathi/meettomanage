@@ -48,6 +48,7 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   activeAlerts: [],
   todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
   scheduledTasks: [],
+  burstWorkerUsage: null,
   recordingPipeline: null,
   callQualityIncidents: [],
   callQualityIncidentsLookSystemic: false,
@@ -450,7 +451,7 @@ export default function AdminServerDetail() {
             <EmptyState
               icon={Moon}
               title="Not currently running"
-              description={server.error ?? "This is an on-demand server that only runs when it is needed."}
+              description={server.error ?? "This is on-demand burst capacity, created automatically only during a scheduled peak."}
             />
             {usingApi && (
               <div className="mt-5">

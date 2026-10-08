@@ -11,7 +11,7 @@ describe("networkAlerts", () => {
     expect(isNetworkAlert(alert("PoorConnection"))).toBe(true);
     expect(isNetworkAlert(alert("VideoServerPacketLoss"))).toBe(true);
     expect(isNetworkAlert(alert("HighCpuLoad"))).toBe(false);
-    expect(isNetworkAlert(alert("HighMemoryUsage"))).toBe(false);
+    expect(isNetworkAlert(alert("BurstWorkerRunningLong"))).toBe(false);
   });
 
   it("splits people from system-wide alerts, oldest person first, and drops server alerts", () => {
