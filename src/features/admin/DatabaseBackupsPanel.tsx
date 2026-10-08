@@ -111,7 +111,7 @@ export function DatabaseBackupsPanel() {
               Database backups
             </CardTitle>
             <CardDescription>
-              Hourly and nightly copies of the live database on the App server, also copied off-site. Every backup is kept for 7 days.
+              Hourly copies of every database and nightly copies of the live database on the App server, also copied off-site. Every backup is kept for 7 days.
               Every download is recorded in the audit log.
             </CardDescription>
           </div>
