@@ -63,7 +63,14 @@ interface InteractivePanelProps {
   /** Fires when the backend authorizes an admin-team member to join this class (see
    *  SessionsController.GetJitsiJoin) — the host (JitsiLive) admits their lobby knock. */
   onStaffJoining?: (displayName: string) => void;
+  /** Student side: the teacher just started something the class should look at (a quiz, a
+   *  slide change, the board, or board access for this student). The host keeps the panel
+   *  closed by default, Meet/Zoom-style, and opens it on this. */
+  onTeacherActivity?: (what: "quiz" | "slides" | "board") => void;
 }
+
+// Board ops replayed right after (re)connecting are history, not something happening now.
+const BOARD_REPLAY_GRACE_MS = 5000;
 
 /**
  * Real-time interactive layer beside the Jitsi call: shared whiteboard, live
@@ -71,8 +78,17 @@ interface InteractivePanelProps {
  * board access — all synced through the classroom SignalR hub. If the hub is
  * unreachable everything still renders locally (the call itself is unaffected).
  */
-export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onBoardMaximizedChange, onPinChanged, onReloadRequested, onStaffJoining }: InteractivePanelProps) {
+export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onBoardMaximizedChange, onPinChanged, onReloadRequested, onStaffJoining, onTeacherActivity }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
+  const onTeacherActivityRef = useRef(onTeacherActivity);
+  onTeacherActivityRef.current = onTeacherActivity;
+  const connectedAtRef = useRef(0);
+  // Students follow the teacher to whatever she just started; the teacher picks her own tab.
+  const followTeacher = (what: "quiz" | "slides" | "board") => {
+    if (mode === "teacher") return;
+    setTab(what);
+    onTeacherActivityRef.current?.(what);
+  };
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [hubDetail, setHubDetail] = useState<string | null>(null);
   // Bumping this re-runs the connect effect below, standing up a brand new hub connection.
@@ -125,7 +141,10 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
             const op = JSON.parse(opJson) as BoardOp | SlideMarkOp;
             // Slide marks share the Board channel (and its late-join replay) with the whiteboard.
             if (isSlideMarkOp(op)) slideMarks.apply(op);
-            else boardHandlers.current.forEach((handler) => handler(op));
+            else {
+              boardHandlers.current.forEach((handler) => handler(op));
+              if (op.kind !== "reset" && Date.now() - connectedAtRef.current > BOARD_REPLAY_GRACE_MS) followTeacher("board");
+            }
           } catch {
             /* malformed op from a stale client — ignore */
           }
@@ -135,6 +154,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           setQuizActive(true);
           // Fresh tally for this question, even on a relaunch of the same index.
           setQuizTally((prev) => ({ ...prev, [questionIndex]: [] }));
+          followTeacher("quiz");
         },
         quizEnded: () => setQuizActive(false),
         quizAnswer: (_name, questionIndex, selectedIndex) => {
@@ -155,9 +175,15 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           onLeaderboard(mapped);
         },
         celebrate: (message) => onCelebrate(message ?? undefined),
-        boardAccess: (allowed) => setBoardAllowed(allowed),
+        boardAccess: (allowed) => {
+          setBoardAllowed(allowed);
+          if (allowed) followTeacher("board");
+        },
         annotation: (opJson) => onAnnotation?.(opJson),
-        slide: (pageIndex) => presentationRef.current?.applyRemoteSlide(pageIndex),
+        slide: (pageIndex) => {
+          presentationRef.current?.applyRemoteSlide(pageIndex);
+          followTeacher("slides");
+        },
         pinned: (participantId) => onPinChanged?.(participantId),
         reloadRequested: (message) => onReloadRequested?.(message),
         staffJoining: (name) => onStaffJoining?.(name),
@@ -178,6 +204,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
       })
       .then((ok) => {
         if (disposed) return;
+        connectedAtRef.current = Date.now();
         setHubState(ok ? "connected" : "disconnected");
         // Broadcast when connected (the hub echoes back to the sender); local-only otherwise.
         onReady?.({

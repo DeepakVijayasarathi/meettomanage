@@ -304,7 +304,12 @@ export default function JitsiLive({
   // live: the exact same room/token has gone from rejected to accepted within minutes,
   // with nothing on our side changing in between).
   const [reconnecting, setReconnecting] = useState<string | null>(null);
-  const [panelOpen, setPanelOpen] = useState(true);
+  // Client request (2026-10-08): open like Google Meet / Zoom -- just the call -- with the
+  // Interactive panel (board, slides, quiz, stars, people) one click away instead of taking
+  // half the screen from the start. It stays mounted while closed (only hidden, see the
+  // <aside> below), so the classroom hub keeps running; a student's opens by itself when the
+  // teacher starts a quiz, changes a slide, uses or maximizes the board (onTeacherActivity).
+  const [panelOpen, setPanelOpen] = useState(false);
   // Teacher-reported live (2026-09-17): "whiteboard itself is too small to be able to
   // annotate or write the whole thing" -- the docked Interactive panel had one fixed
   // width (380px) baked into the layout, with no way to make it bigger short of the
@@ -2632,10 +2637,15 @@ export default function JitsiLive({
                 // `&& !focusMode` -- see focusMode's own doc comment: Focus Mode closing the
                 // panel is a deliberate "give me maximum, decluttered video space" request,
                 // not a reason to pop these two cards up over that same corner.
-                showLeaderboardCard={mode === "teacher" && (!interactive || !panelOpen) && !focusMode}
+                //
+                // Only without an Interactive panel at all, now that it starts closed
+                // (Meet/Zoom-style, 2026-10-08): a closed panel used to mean "show these
+                // instead", which would put both cards over the video from the very start.
+                // The panel's Stars and People tabs carry the same information.
+                showLeaderboardCard={mode === "teacher" && !interactive && !focusMode}
                 stacked
               />
-              {mode === "teacher" && (!interactive || !panelOpen) && !focusMode && (
+              {mode === "teacher" && !interactive && !focusMode && (
                 <div className="w-64 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy/90 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-xl">
                   <div className="flex items-center justify-between px-3 py-2.5">
                     <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
@@ -2736,10 +2746,16 @@ export default function JitsiLive({
                 // Applies the teacher's pin choice to this viewer's own Jitsi connection —
                 // executeCommand("pinParticipant", null) is Jitsi's own documented way to
                 // clear a pin, so the teacher unpinning correctly un-spotlights here too.
-                onBoardMaximizedChange={setBoardMaximized}
+                onBoardMaximizedChange={(maximized) => {
+                  // A board maximized inside a closed (hidden) panel would leave only the
+                  // floating video tile on screen.
+                  if (maximized) setPanelOpen(true);
+                  setBoardMaximized(maximized);
+                }}
                 onPinChanged={(participantId) => jitsiApiRef.current?.executeCommand("pinParticipant", participantId)}
                 onReloadRequested={(message) => setReloadNotice(message)}
                 onStaffJoining={onStaffJoining}
+                onTeacherActivity={() => setPanelOpen(true)}
               />
             </aside>
           )}
