@@ -64,6 +64,9 @@ type JitsiExternalApi = {
    *  covers participants who joined before this listener was attached (e.g. before a
    *  reconnect). Excludes the local participant, same as participantJoined/Left. */
   getParticipantsInfo?: () => { participantId: string; displayName?: string }[];
+  /** Round-trips to the call iframe, so it only resolves while that page is alive and
+   *  responsive -- used as a heartbeat (see the self-heal check in the init effect). */
+  isVideoMuted?: () => Promise<boolean>;
 };
 
 declare global {
@@ -866,6 +869,9 @@ export default function JitsiLive({
     // navigate away and rejoin was an inconsistency, not a deliberate distinction.
     let connectionRetryCount = 0;
     const MAX_CONNECTION_RETRIES = 4;
+    // Budget for the unresponsive-call-area self-heal below (see the heartbeat in init()).
+    let frozenRecoveryCount = 0;
+    const MAX_FROZEN_RECOVERIES = 3;
 
     // Auto-record retry budget: ~12 minutes total before giving up and telling the
     // teacher. Widened from an earlier 48s budget after checking real production data on
@@ -1703,6 +1709,48 @@ export default function JitsiLive({
           recordingErrorReasonRef.current = payload.error;
         }
       });
+
+      // Self-heal for a call area that goes black or frozen for good (client report 2026-10-09:
+      // "child's screen goes black in the middle of the session"). When the video iframe hangs or
+      // its page is killed (typically a low-memory tablet/phone), nothing in this app noticed:
+      // Jitsi's own events stop with it, so there was no error, just a black box until the child
+      // reloaded by hand. isVideoMuted() round-trips to the iframe, so three unanswered checks in
+      // a row mean it is really gone, and the call is then re-created the same way a dropped
+      // connection already is. Skipped while the tab is hidden (the browser throttles timers and
+      // messages there, which would look like a hang), and capped so a genuinely failing device
+      // can't loop forever.
+      const thisApi = api;
+      let missedBeats = 0;
+      const heartbeat = setInterval(async () => {
+        if (cancelled || jitsiApiRef.current !== thisApi) {
+          clearInterval(heartbeat);
+          return;
+        }
+        if (document.visibilityState === "hidden" || !thisApi?.isVideoMuted) {
+          missedBeats = 0;
+          return;
+        }
+        try {
+          await Promise.race([
+            thisApi.isVideoMuted(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("no reply")), 6000)),
+          ]);
+          missedBeats = 0;
+        } catch {
+          missedBeats++;
+          if (missedBeats < 3 || cancelled || jitsiApiRef.current !== thisApi) return;
+          clearInterval(heartbeat);
+          if (frozenRecoveryCount >= MAX_FROZEN_RECOVERIES) return;
+          frozenRecoveryCount++;
+          setReconnecting("The video stopped responding — reconnecting…");
+          thisApi.dispose();
+          jitsiApiRef.current = null;
+          setJitsiReady(false);
+          setTimeout(() => {
+            if (!cancelled) init().catch((err: Error) => setError(userMessage(err)));
+          }, 1500);
+        }
+      }, 10000);
     }
 
     init().catch((err: Error) => setError(userMessage(err)));
