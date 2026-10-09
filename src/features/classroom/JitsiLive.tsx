@@ -389,6 +389,9 @@ export default function JitsiLive({
   const [selfParticipantId, setSelfParticipantId] = useState<string | null>(null);
   // Mirrors Jitsi's audioMuteStatusChanged for the header's "Mute me" button.
   const [selfMicMuted, setSelfMicMuted] = useState(mode === "student");
+  // Whether Jitsi has made this client the room's moderator -- muteEveryone is silently ignored
+  // otherwise, which read as a broken "Mute all kids" button.
+  const [selfIsModerator, setSelfIsModerator] = useState(false);
   // Phone/tablet browsers can't share a screen (no getDisplayMedia, or a touch-first device
   // where it isn't offered); screen-share prompts are pointless clutter there.
   const [canShareScreen] = useState(
@@ -1407,6 +1410,7 @@ export default function JitsiLive({
       // see the long comment on videoConferenceJoined above for why enabling the lobby waits
       // for this instead of firing the instant we believe we've joined.
       api.addListener("participantRoleChanged", (payload) => {
+        if (payload?.id === media.selfId) setSelfIsModerator(payload?.role === "moderator");
         if (payload?.id !== media.selfId || payload?.role !== "moderator") return;
         if (mode === "teacher" && defaultLobbyRef.current && !lobbyEnableAttemptedRef.current) {
           lobbyEnableAttemptedRef.current = true;
@@ -1544,6 +1548,11 @@ export default function JitsiLive({
       api.addListener("connectionInterrupted", () => setCallDegraded(true));
       api.addListener("connectionRestored", () => {
         setCallDegraded(false);
+        // After a drop, a viewer's layout can be left on a stage whose track is gone (a black
+        // screen). With no share running, put everyone back on the grid unless a pin was chosen.
+        if (!someoneSharingRef.current && !locallyPinnedIdRef.current) {
+          jitsiApiRef.current?.executeCommand("setTileView", true);
+        }
         // The screen-share track doesn't always survive a reconnect the way the main
         // call does — see shareMayHaveDroppedSince above. media.screenShareSince is
         // truthy only while a share was active going into the interruption.
@@ -1845,6 +1854,14 @@ export default function JitsiLive({
                   disabled={!jitsiReady || participants.length === 0}
                   className={headerToggleClass}
                   onClick={() => {
+                    if (!selfIsModerator) {
+                      toast({
+                        variant: "error",
+                        title: "Couldn't mute everyone",
+                        description: "The video server hasn't made you the host of this call yet. Rejoin the class, or ask an admin to check the host setup.",
+                      });
+                      return;
+                    }
                     jitsiApiRef.current?.executeCommand("muteEveryone", "audio");
                     toast({ variant: "success", title: "Everyone muted", description: "Students can unmute themselves when you ask them to speak." });
                   }}
