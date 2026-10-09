@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, DoorOpen, GripVertical, Loader2, Maximize2, Minimize2, Pencil, PartyPopper, PhoneOff, Pin, PinOff, Sparkles, UserPlus, Users, Video, Volume2, WifiOff, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DoorOpen, GripVertical, Loader2, Maximize2, Minimize2, Pencil, PartyPopper, PhoneOff, PictureInPicture2, Pin, PinOff, Sparkles, UserPlus, Users, Video, Volume2, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,6 +15,7 @@ import { ApiError, userMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { primeAudioUnlock } from "@/lib/sounds";
 import InteractivePanel from "./InteractivePanel";
+import { useMeetingPip } from "./useMeetingPip";
 import ClassroomBlocked from "./ClassroomBlocked";
 import { detectPlatform, getMediaHelp } from "@/lib/mediaPermissionHelp";
 import GamificationOverlay from "./GamificationOverlay";
@@ -435,6 +436,38 @@ export default function JitsiLive({
     if (annotateOn) setAnnotateFadeHintShown(true);
   }, [annotateOn]);
   const jitsiApiRef = useRef<{ executeCommand: (command: string, ...args: unknown[]) => void } | null>(null);
+  // Teacher feedback (repeated): switching to PowerPoint to change slides made the class vanish
+  // behind it. The mini window floats the call above every other app -- see useMeetingPip.
+  const {
+    state: miniWindowState,
+    toggle: toggleMiniWindowPip,
+    setMicMuted: setMiniWindowMicMuted,
+    setCameraMuted: setMiniWindowCameraMuted,
+  } = useMeetingPip({
+    getTarget: () => containerRef.current,
+    onToggleMic: () => jitsiApiRef.current?.executeCommand("toggleAudio"),
+    onToggleCamera: () => jitsiApiRef.current?.executeCommand("toggleVideo"),
+  });
+  async function toggleMiniWindow() {
+    const result = await toggleMiniWindowPip();
+    if (result === "ok") {
+      toast({
+        variant: "success",
+        title: "Mini window is on",
+        description: "Go to your slides — the class stays visible on top. Only you see this window; students see nothing different.",
+      });
+    } else if (result === "needs-click") {
+      toast({ title: "One more click", description: "Click “Mini window” again to float the class video." });
+    } else if (result === "unsupported") {
+      toast({
+        variant: "error",
+        title: "Mini window needs Chrome or Edge",
+        description: "Open this class in Google Chrome or Microsoft Edge on a computer to keep the video floating while you use your slides.",
+      });
+    } else if (result === "failed") {
+      toast({ variant: "error", title: "Couldn't open the mini window", description: "When the browser asks, choose Allow for this tab, then try again." });
+    }
+  }
   const [lobbyEnabled, setLobbyEnabled] = useState(false);
   // jitsiApiRef being populated doesn't itself trigger a re-render (it's a ref) — this
   // tracks the same fact as state so the Waiting Room button can disable itself until
@@ -1344,7 +1377,11 @@ export default function JitsiLive({
           media.talkSince = 0;
         }
       });
+      api.addListener("audioMuteStatusChanged", (payload) => {
+        if (typeof payload?.muted === "boolean") setMiniWindowMicMuted(payload.muted);
+      });
       api.addListener("videoMuteStatusChanged", (payload) => {
+        if (typeof payload?.muted === "boolean") setMiniWindowCameraMuted(payload.muted);
         const now = Date.now();
         if (payload?.muted && media.camSince) {
           media.camMs += now - media.camSince;
@@ -1723,6 +1760,25 @@ export default function JitsiLive({
                   {focusMode ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
                   <span className="hidden lg:inline">{focusMode ? "Exit Focus" : "Focus Mode"}</span>
                   <span className="sr-only lg:hidden">{focusMode ? "Exit focus mode" : "Focus mode"}</span>
+                </Button>
+              )}
+              {mode === "teacher" && !isRecordingObserver && (
+                <Button
+                  size="pill"
+                  variant="secondary"
+                  aria-pressed={miniWindowState === "open"}
+                  disabled={!jitsiReady || miniWindowState === "starting"}
+                  className={cn(headerToggleClass, miniWindowState === "ready" && "animate-pulse bg-brand-violet/40 text-white")}
+                  onClick={toggleMiniWindow}
+                  title={
+                    miniWindowState === "open"
+                      ? "Close the mini window"
+                      : "Keep the class in a small floating window on top of PowerPoint or any other app, so you can change slides and still see your students. Only you see it."
+                  }
+                >
+                  <PictureInPicture2 className="h-3.5 w-3.5" />
+                  <span className="hidden lg:inline">{miniWindowState === "open" ? "Close Mini Window" : "Mini Window"}</span>
+                  <span className="sr-only lg:hidden">{miniWindowState === "open" ? "Close mini window" : "Mini window"}</span>
                 </Button>
               )}
               {interactive && (
@@ -2189,10 +2245,10 @@ export default function JitsiLive({
         // window edge, instead of both stretching edge-to-edge with a flat divider —
         // reads as a deliberately designed workspace rather than a raw video embed.
         <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 short:flex-row short:gap-2 short:p-2 lg:flex-row">
-          {/* min-h-[300px]: a real floating desktop PiP was ruled out (the call runs in a
-              cross-origin iframe with no way to read out individual participant video and
-              float it above other windows — no safe workaround exists). This is the
-              in-app fallback instead: on narrow/stacked layouts (below md), this card sits
+          {/* min-h-[300px]: this app can't read individual participant video out of the
+              cross-origin call iframe (the desktop "Mini Window" works around that by capturing
+              this whole card instead — see useMeetingPip). This is the in-app layout side of
+              the same complaint: on narrow/stacked layouts (below md), this card sits
               above the Interactive panel in document order and would otherwise get
               squeezed toward zero height by the panel's own content below it. Started at
               220px for the "can't see students while sharing" complaint; raised to 300px
@@ -2242,7 +2298,9 @@ export default function JitsiLive({
                 )
             )}
           >
-            <div ref={containerRef} className="h-full w-full" />
+            {/* isolate: Element Capture (the mini window, useMeetingPip) only accepts an
+                element that forms its own stacking context. */}
+            <div ref={containerRef} className="isolate h-full w-full" />
             {boardMaximized && !floatHidden && (
               <div className="absolute inset-x-0 top-0 z-40 flex items-center justify-end gap-1 bg-gradient-to-b from-black/70 to-transparent p-1.5">
                 <button

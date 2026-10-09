@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ArrowUpRight,
   Circle as CircleIcon,
   Eraser,
   Hand,
+  Highlighter,
   Maximize2,
   Minimize2,
   Minus,
@@ -24,22 +26,9 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import WhiteboardActivity from "./WhiteboardActivity";
 import type { ApiWhiteboardActivity } from "@/api/whiteboardActivities";
+import { drawStroke, isFreehand, type Point, type Stroke, type ToolId } from "./drawing";
 
-type ToolId = "pen" | "eraser" | "rectangle" | "circle" | "line" | "text" | "sticky" | "pan";
-
-interface Point {
-  x: number;
-  y: number;
-}
-
-export interface Stroke {
-  id: string;
-  tool: ToolId;
-  points: Point[];
-  color: string;
-  width: number;
-  text?: string;
-}
+export type { Stroke } from "./drawing";
 
 /** One synced board operation, relayed verbatim through the classroom hub. */
 export type BoardOp =
@@ -99,86 +88,16 @@ const WIDTHS = [2, 4, 8];
 
 const TOOLS: { id: ToolId; label: string; icon: typeof PenTool }[] = [
   { id: "pen", label: "Pen", icon: PenTool },
+  { id: "highlighter", label: "Highlighter", icon: Highlighter },
   { id: "eraser", label: "Eraser", icon: Eraser },
   { id: "rectangle", label: "Rectangle", icon: Square },
   { id: "circle", label: "Circle", icon: CircleIcon },
   { id: "line", label: "Line", icon: Minus },
+  { id: "arrow", label: "Arrow", icon: ArrowUpRight },
   { id: "text", label: "Text", icon: Type },
   { id: "sticky", label: "Sticky note", icon: StickyNote },
   { id: "pan", label: "Pan the canvas", icon: Hand },
 ];
-
-function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.lineWidth = stroke.width;
-  ctx.strokeStyle = stroke.color;
-  ctx.fillStyle = stroke.color;
-  ctx.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
-
-  if (stroke.tool === "pen" || stroke.tool === "eraser") {
-    if (stroke.points.length < 2) {
-      const p = stroke.points[0];
-      if (!p) return;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, stroke.width / 2, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.beginPath();
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (const p of stroke.points.slice(1)) ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-    }
-  } else if (stroke.tool === "line") {
-    const [a, b] = stroke.points;
-    if (a && b) {
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    }
-  } else if (stroke.tool === "rectangle") {
-    const [a, b] = stroke.points;
-    if (a && b) ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
-  } else if (stroke.tool === "circle") {
-    const [a, b] = stroke.points;
-    if (a && b) {
-      const rx = Math.abs(b.x - a.x) / 2;
-      const ry = Math.abs(b.y - a.y) / 2;
-      const cx = (a.x + b.x) / 2;
-      const cy = (a.y + b.y) / 2;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-  } else if (stroke.tool === "text") {
-    const p = stroke.points[0];
-    if (!p) return;
-    ctx.font = `600 ${Math.max(16, stroke.width * 5)}px "Inter", sans-serif`;
-    ctx.textBaseline = "top";
-    ctx.fillText(stroke.text ?? "", p.x, p.y);
-  } else if (stroke.tool === "sticky") {
-    const p = stroke.points[0];
-    if (!p) return;
-    const lines = (stroke.text ?? "").split("\n");
-    const noteW = 168;
-    const noteH = Math.max(64, 26 + lines.length * 18);
-    ctx.save();
-    ctx.shadowColor = "rgba(15, 23, 42, 0.18)";
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 3;
-    ctx.fillStyle = stroke.color;
-    ctx.beginPath();
-    ctx.roundRect(p.x, p.y, noteW, noteH, 8);
-    ctx.fill();
-    ctx.restore();
-    ctx.font = '500 13px "Inter", sans-serif';
-    ctx.textBaseline = "top";
-    ctx.fillStyle = "#0F172A";
-    lines.forEach((line, i) => ctx.fillText(line, p.x + 10, p.y + 12 + i * 18, noteW - 20));
-  }
-  ctx.globalCompositeOperation = "source-over";
-}
 
 interface WhiteboardProps {
   canDraw: boolean;
@@ -435,6 +354,12 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
         ctx.globalCompositeOperation = "source-over";
         ctx.restore();
       }
+    } else if (isFreehand(tool)) {
+      // Highlighter: see-through ink can't be laid down segment by segment like the pen above
+      // (every joint would overlap and show as a darker dot), so the whole path is repainted
+      // as one shape over the cached committed strokes.
+      draftRef.current.points.push(pt);
+      redraw();
     } else {
       draftRef.current.points = [draftRef.current.points[0], pt];
       redraw();
@@ -682,7 +607,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
         // quiz) — only the canvas below stays a light "paper" surface, so this reads
         // as one dark product with a sheet of paper on it, not two stitched-together UIs.
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2 shadow-inner shadow-black/20 backdrop-blur-sm">
-          <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1">
+          <div className="flex flex-wrap items-center gap-1 rounded-xl bg-white/5 p-1">
             {TOOLS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}

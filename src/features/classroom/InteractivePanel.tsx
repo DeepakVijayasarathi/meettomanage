@@ -11,6 +11,7 @@ import { getQuizQuestionsForSession } from "@/api/quizQuestions";
 import { getWhiteboardActivitiesForSession, type ApiWhiteboardActivity } from "@/api/whiteboardActivities";
 import Whiteboard, { type BoardOp } from "./Whiteboard";
 import PresentationViewer, { type PresentationViewerHandle } from "./PresentationViewer";
+import { isSlideMarkOp, SlideMarksStore, type SlideMarkOp } from "./slideMarks";
 import QuizOverlay from "./QuizOverlay";
 import type { LeaderboardEntry, QuizQuestion } from "./classroomData";
 
@@ -105,6 +106,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
   const hubRef = useRef<ClassroomHubClient | null>(null);
   const boardHandlers = useRef(new Set<(op: BoardOp) => void>());
   const presentationRef = useRef<PresentationViewerHandle>(null);
+  // Marks on presented slides live here, not in the Slides tab (which unmounts when another tab
+  // is picked) -- see SlideMarksStore.
+  const slideMarksRef = useRef<SlideMarksStore | null>(null);
+  if (!slideMarksRef.current) slideMarksRef.current = new SlideMarksStore();
+  const slideMarks = slideMarksRef.current;
 
   useEffect(() => {
     const client = new ClassroomHubClient(sessionId, hubToken);
@@ -116,8 +122,10 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
         roster: (participants) => setRoster(participants),
         board: (opJson) => {
           try {
-            const op = JSON.parse(opJson) as BoardOp;
-            boardHandlers.current.forEach((handler) => handler(op));
+            const op = JSON.parse(opJson) as BoardOp | SlideMarkOp;
+            // Slide marks share the Board channel (and its late-join replay) with the whiteboard.
+            if (isSlideMarkOp(op)) slideMarks.apply(op);
+            else boardHandlers.current.forEach((handler) => handler(op));
           } catch {
             /* malformed op from a stale client — ignore */
           }
@@ -155,6 +163,8 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
         staffJoining: (name) => onStaffJoining?.(name),
         resync: () => {
           boardHandlers.current.forEach((handler) => handler({ kind: "reset" }));
+          // Rebuilt from the same Board history replay as the whiteboard.
+          slideMarks.reset();
           // The server revokes a board grant when the old connection drops (grants are per
           // connection id), so don't keep showing drawing tools it will now silently ignore —
           // the teacher re-grants from the People tab against the new connection.
@@ -284,6 +294,14 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
       boardHandlers.current.delete(handler);
     };
   }, []);
+
+  const sendSlideMark = useCallback(
+    (op: SlideMarkOp) => {
+      slideMarks.apply(op);
+      hubRef.current?.sendBoard(JSON.stringify(op));
+    },
+    [slideMarks]
+  );
 
   const broadcastBoardOp = useCallback((op: BoardOp) => {
     hubRef.current?.sendBoard(JSON.stringify(op));
@@ -466,6 +484,8 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
             sessionId={sessionId}
             canPresent={mode === "teacher"}
             onSlideChange={(pageIndex) => hubRef.current?.sendSlide(pageIndex)}
+            marks={slideMarks}
+            onMarkOp={sendSlideMark}
           />
         </TabsContent>
 
