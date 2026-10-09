@@ -445,6 +445,8 @@ export default function JitsiLive({
   // A ref, not state, since the init effect below only depends on [room, mode] and would
   // otherwise close over whatever this was at mount (same reason userNameRef exists).
   const locallyPinnedIdRef = useRef<string | null>(null);
+  // Mirrors someoneSharing for the Jitsi listeners (the init effect only re-runs on [room, mode]).
+  const someoneSharingRef = useRef(false);
   // Admin-team monitors (Admin, RM, Coordinator, Management, ...) must enter without the host
   // having to admit them. This Jitsi deployment's lobby lets nobody skip it on a moderator
   // token alone (only room owners/members, a whitelist or the room password do — verified live
@@ -1479,7 +1481,9 @@ export default function JitsiLive({
         // see that ref's own doc comment. The departed participant no longer having a track
         // to spotlight around is Jitsi's problem to resolve on its own pinned tile, not a
         // reason to blow away someone else's still-valid pin.
-        if (!locallyPinnedIdRef.current) {
+        // Not while a viewer is looking at someone's share on the stage: a kid leaving must not
+        // shrink the share back into the grid for that viewer only.
+        if (!locallyPinnedIdRef.current && !(mode !== "teacher" && someoneSharingRef.current)) {
           jitsiApiRef.current?.executeCommand("setTileView", true);
         }
       });
@@ -1507,19 +1511,23 @@ export default function JitsiLive({
       // the faces in its filmstrip), and when it ends everyone is put back on the grid. The
       // teacher's own view stays on the grid so she keeps seeing herself and the class.
       let viewerOnStage = false;
-      const restoreGrid = () => {
+      // `force` is for the sharer's own stop (she just cleared her pin; the pin event hasn't
+      // landed yet). A viewer keeps a pin somebody chose on purpose.
+      const restoreGrid = (force: boolean) => {
         if (jitsiApiRef.current !== api) return;
+        if (!force && locallyPinnedIdRef.current) return;
         api?.executeCommand("setTileView", true);
       };
       // Jitsi can drop the first command while it tears down a stopped share's tracks, so the
       // grid is re-asserted a few times (idempotent).
-      const restoreGridSoon = () => {
-        restoreGrid();
-        for (const delay of [400, 1200, 2800]) setTimeout(restoreGrid, delay);
+      const restoreGridSoon = (force: boolean) => {
+        restoreGrid(force);
+        for (const delay of [400, 1200, 2800]) setTimeout(() => restoreGrid(force), delay);
       };
       api.addListener("contentSharingParticipantsChanged", (payload) => {
         const ids = payload?.data ?? [];
         setSomeoneSharing(ids.length > 0);
+        someoneSharingRef.current = ids.length > 0;
         if (mode === "teacher") return;
         const sharer = ids.find((id) => id !== media.selfId) ?? null;
         if (sharer) {
@@ -1528,7 +1536,7 @@ export default function JitsiLive({
           if (!locallyPinnedIdRef.current) api?.executeCommand("setTileView", false);
         } else if (viewerOnStage) {
           viewerOnStage = false;
-          restoreGridSoon();
+          restoreGridSoon(false);
         }
       });
       // Jitsi's own signal for a dropped media/XMPP connection mid-call — the video
@@ -1581,9 +1589,10 @@ export default function JitsiLive({
           // spotlight broadcast to the class (pinnedEndpointChanged -> hub).
           if (locallyPinnedIdRef.current) jitsiApiRef.current?.executeCommand("pinParticipant", null);
           setFocusMode(false);
-          restoreGridSoon();
+          restoreGridSoon(true);
         } else if (!locallyPinnedIdRef.current) {
-          jitsiApiRef.current?.executeCommand("setTileView", true);
+          // Jitsi can stage the sharer's own share a moment after it starts; keep her on the grid.
+          restoreGridSoon(false);
         }
       });
       // Without these, a video server/room misconfiguration (e.g. the Jitsi deployment's
