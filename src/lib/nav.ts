@@ -373,6 +373,7 @@ export const EXECUTIVE_NAV: NavSection[] = [
       { label: "Enrollment Review", to: "/executive/enrollments", icon: ClipboardCheck },
       { label: "Store Inquiries", to: "/executive/store-inquiries", icon: ShoppingBag },
       { label: "Parent Feedback", to: "/executive/parent-feedback", icon: Star },
+      { label: "Parent Tickets", to: "/executive/support-tickets", icon: LifeBuoy },
       { label: "Leave Management", to: "/executive/leave", icon: CalendarOff },
       { label: "Staff Leave", to: "/executive/staff-leave", icon: CalendarOff },
       { label: "Teacher Availability", to: "/executive/availability", icon: CalendarRange },

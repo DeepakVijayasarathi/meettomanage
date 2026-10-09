@@ -44,6 +44,9 @@ export interface ApiDemoBooking {
   scheduledStartAtUtc: string | null;
   scheduledEndAtUtc: string | null;
   meetingRoomId: string | null;
+  /** The demo class's own status — TeacherNoShow/StudentNoShow means it was missed and waits
+   *  for the counselor to reschedule or cancel it (it is no longer re-booked automatically). */
+  sessionStatus?: string | null;
   /** Teacher conducting (or who conducted) the demo. */
   teacherProfileId: string | null;
   teacherName: string | null;

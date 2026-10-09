@@ -33,6 +33,7 @@ import { staffCanJoin } from "@/lib/staffJoin";
 import { parseCancellation } from "@/lib/cancelledBy";
 import { familyTimes } from "@/lib/familyTime";
 import { listBatches, listTeacherOptions } from "@/api/batches";
+import { listDemoBookings, updateConversionStatus } from "@/api/demoBookings";
 import { useSession } from "@/state/session";
 
 // Same monitor-only join affordance as admin/Sessions.tsx — "rescheduled" is the old record
@@ -65,6 +66,11 @@ export default function SubAdminSessions() {
   const { hasPermission } = useSession();
   const canSchedule = !usingApi || hasPermission("SessionCalendarManagement", "Create");
   const canManage = !usingApi || hasPermission("SessionCalendarManagement", "Edit");
+  // Admission counselors only have View on sessions, so Cancel never showed for their demos
+  // here (client report 2026-10-09). A demo is cancelled through its booking instead — the
+  // same "Cancel" as Demo Scheduling (lead -> Not Interested, class cancelled, slot freed),
+  // which PUT /api/demo-bookings/{id}/conversion-status gates on Admission:Edit.
+  const canCancelDemos = usingApi && hasPermission("Admission", "Edit");
   // GET /api/batches requires CourseBatchManagement:View server-side — a delegated-portal
   // account with only SessionCalendarManagement granted (e.g. Admission) 403's on it. Confirmed
   // live via a fresh AdmissionTeam test account. Same gate as subadmin/Dashboard.tsx's own
@@ -226,6 +232,16 @@ export default function SubAdminSessions() {
       return;
     }
     try {
+      if (cancelTarget.type === "demo" && canCancelDemos) {
+        const booking = (await listDemoBookings()).find((b) => b.classSessionId === cancelTarget.id);
+        if (booking) {
+          await updateConversionStatus(booking.id, "NotInterested");
+          notify(true, `"${cancelTarget.title}" cancelled. Parents and the teacher can see the change.`);
+          reload();
+          return;
+        }
+        if (!canManage) throw new Error("This demo has no booking to cancel. Please ask an admin to cancel it.");
+      }
       await cancelSession(cancelTarget.id, "Cancelled by relationship manager");
       notify(true, `"${cancelTarget.title}" cancelled. Parents and the teacher can see the change.`);
       reload();
@@ -383,6 +399,20 @@ export default function SubAdminSessions() {
                   </Button>
                 </>
               )}
+              {!canManage && canCancelDemos && row.type === "demo" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  disabled={row.status === "cancelled" || row.status === "rescheduled"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCancelTarget(row);
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
               {canManage && (
                 <>
                   <Button
@@ -420,7 +450,7 @@ export default function SubAdminSessions() {
           ),
       },
     ],
-    [enrolledByBatchId, joiningId, canManage, canGuestLink, joinSession]
+    [enrolledByBatchId, joiningId, canManage, canCancelDemos, canGuestLink, joinSession]
   );
 
   return (
