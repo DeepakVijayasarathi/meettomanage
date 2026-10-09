@@ -1152,7 +1152,7 @@ export default function JitsiLive({
           },
           // Stop uploading video layers nobody is receiving -- frees uplink for participants on a
           // weak connection.
-          enableLayerSuspension: true,
+          enableLayerSuspension: false,
           // Don't let the browser suggest/remember this room outside our own scheduling flow.
           doNotStoreRoom: true,
           // Without an explicit subject, Jitsi's own top bar falls back to displaying the
@@ -1172,6 +1172,9 @@ export default function JitsiLive({
           // per this embed's own `mode` means a parent/student session never renders the
           // controls at all, regardless of which side of that fallback it lands on.
           disableRemoteMute: mode !== "teacher",
+          // Everyone sees their own tile (the teacher reported not seeing herself).
+          disableSelfView: false,
+          filmstrip: { disableSelfView: false },
           // Meet/Zoom-style entry: a joiner who lands on a waiting room is placed in the queue
           // straight away ("waiting for the host to let you in") instead of first having to find
           // and press Jitsi's own "Ask to Join" button, and the lobby's "Enter meeting password"
@@ -1493,74 +1496,40 @@ export default function JitsiLive({
         setPinnedParticipantId(payload?.id ?? null);
         setPinnedRef.current?.(payload?.id ?? null);
       });
-      // Duplicate screen-share tile (client report: "2 tiles, one big and one small"): when a
-      // shared screen is on Jitsi's stage (i.e. not in tile view — spotlighted/pinned, or a
-      // viewer Jitsi auto-staged it for), the same share ALSO sits in the filmstrip as a small
-      // thumbnail. Jitsi has no config to drop just that thumbnail, so the filmstrip is hidden
-      // while a share is on stage and restored the moment sharing stops or tile view returns
-      // (tile view has no filmstrip/duplicate at all). toggleFilmStrip is a toggle, so the
-      // visibility is tracked locally — flipped optimistically on toggle and then confirmed by
-      // filmstripDisplayChanged — to never double-toggle while an event is still in flight.
-      //
-      // Client report (2026-10-08): kids' screens "went blank" mid-class, and the teacher
-      // "couldn't see herself or the students" while sharing and after stopping. The old version
-      // flipped its own idea of the filmstrip's visibility the moment it toggled, so a toggle
-      // Jitsi ignored (or a layout change racing it) left the two out of step -- and the
-      // filmstrip stayed hidden after the share ended: an empty stage with nobody visible.
-      // Now it only acts on what Jitsi last reported (filmstripDisplayChanged), sends one toggle
-      // at a time, and re-checks once that report lands (or after a short timeout if it never
-      // does). The teacher's filmstrip is never hidden: it holds her own tile and the class.
-      const shareLayout = { sharingIds: [] as string[], tileView: true, filmstripVisible: true, togglePending: false };
-      let toggleTimer: ReturnType<typeof setTimeout> | undefined;
-      const syncFilmstripForShare = () => {
-        const shouldHide = mode !== "teacher" && shareLayout.sharingIds.length > 0 && !shareLayout.tileView;
-        if (shareLayout.togglePending || shouldHide === !shareLayout.filmstripVisible) return;
-        shareLayout.togglePending = true;
-        api?.executeCommand("toggleFilmStrip");
-        clearTimeout(toggleTimer);
-        toggleTimer = setTimeout(() => {
-          shareLayout.togglePending = false;
-          if (jitsiApiRef.current === api) syncFilmstripForShare();
-        }, 1500);
+      // Share layout, kept deliberately simple (client reports 2026-10-09: share looks different
+      // for every viewer, teacher/kids missing from the screen while sharing, shared screen stuck
+      // after stopping, a child's screen going black). The earlier version hid/restored Jitsi's
+      // filmstrip with a toggle command and pinned the share per viewer; a toggle Jitsi ignored
+      // or a pin that never cleared left some viewers with a hidden filmstrip (teacher not
+      // visible), a stale pinned share, or an empty black stage -- different for each viewer.
+      // Now no filmstrip toggling and no per-viewer pinning at all: while someone else shares,
+      // viewers leave the grid so Jitsi puts the share on the main stage (same for everyone, with
+      // the faces in its filmstrip), and when it ends everyone is put back on the grid. The
+      // teacher's own view stays on the grid so she keeps seeing herself and the class.
+      let viewerOnStage = false;
+      const restoreGrid = () => {
+        if (jitsiApiRef.current !== api) return;
+        api?.executeCommand("setTileView", true);
       };
-      // Client report (2026-10-08): "at the time of screen sharing the shared screen is small."
-      // Everyone joins in tile view (videoConferenceJoined), and an explicit setTileView(true)
-      // keeps Jitsi from staging a remote share on its own -- so for a student the teacher's
-      // share was just one more tile in the 3x3 grid. Viewers (students, parents, the recording
-      // observer) now spotlight a remote share on arrival and go back to the grid when it ends.
-      // The teacher's own view is left alone: her grid is what lets her see the class while she
-      // shares (the "PPT takes over, I can't see my students" feedback above). A pin someone
-      // already chose (locallyPinnedIdRef, e.g. the teacher's broadcast pin) is never overridden,
-      // and only a pin this code made itself is undone when the share stops.
-      let autoPinnedShareId: string | null = null;
+      // Jitsi can drop the first command while it tears down a stopped share's tracks, so the
+      // grid is re-asserted a few times (idempotent).
+      const restoreGridSoon = () => {
+        restoreGrid();
+        for (const delay of [400, 1200, 2800]) setTimeout(restoreGrid, delay);
+      };
       api.addListener("contentSharingParticipantsChanged", (payload) => {
-        shareLayout.sharingIds = payload?.data ?? [];
-        setSomeoneSharing(shareLayout.sharingIds.length > 0);
-        syncFilmstripForShare();
+        const ids = payload?.data ?? [];
+        setSomeoneSharing(ids.length > 0);
         if (mode === "teacher") return;
-        const sharer = shareLayout.sharingIds.find((id) => id !== media.selfId) ?? null;
-        if (sharer && !locallyPinnedIdRef.current) {
-          autoPinnedShareId = sharer;
-          api?.executeCommand("setTileView", false);
-          api?.executeCommand("pinParticipant", sharer, "desktop");
-        } else if (!sharer && autoPinnedShareId) {
-          const stillOurs = !locallyPinnedIdRef.current || locallyPinnedIdRef.current === autoPinnedShareId;
-          autoPinnedShareId = null;
-          if (stillOurs) {
-            api?.executeCommand("pinParticipant", null);
-            api?.executeCommand("setTileView", true);
-          }
+        const sharer = ids.find((id) => id !== media.selfId) ?? null;
+        if (sharer) {
+          viewerOnStage = true;
+          // A pin someone chose on purpose (the teacher's broadcast spotlight) is left alone.
+          if (!locallyPinnedIdRef.current) api?.executeCommand("setTileView", false);
+        } else if (viewerOnStage) {
+          viewerOnStage = false;
+          restoreGridSoon();
         }
-      });
-      api.addListener("tileViewChanged", (payload) => {
-        shareLayout.tileView = Boolean(payload?.enabled);
-        syncFilmstripForShare();
-      });
-      api.addListener("filmstripDisplayChanged", (payload) => {
-        if (typeof payload?.visible === "boolean") shareLayout.filmstripVisible = payload.visible;
-        shareLayout.togglePending = false;
-        clearTimeout(toggleTimer);
-        syncFilmstripForShare();
       });
       // Jitsi's own signal for a dropped media/XMPP connection mid-call — the video
       // tiles freeze silently otherwise, with nothing in our own chrome saying why.
@@ -1604,19 +1573,17 @@ export default function JitsiLive({
         // started, this immediately shrank it back into the grid, undoing a pin in the same
         // breath it was set (or broadcast). A deliberate pin already means someone chose a
         // specific main view; screen-share starting isn't a reason to override that choice.
-        if (!locallyPinnedIdRef.current) {
+        if (!on) {
+          // Client report (2026-10-09): after the teacher stopped sharing, the shared screen
+          // stayed and she had to click the video window herself. Any pin left over from the
+          // share (Focus Mode, a spotlight on the share) is what kept it on the stage and
+          // blocked the grid restore below -- stopping a share clears it, which also clears the
+          // spotlight broadcast to the class (pinnedEndpointChanged -> hub).
+          if (locallyPinnedIdRef.current) jitsiApiRef.current?.executeCommand("pinParticipant", null);
+          setFocusMode(false);
+          restoreGridSoon();
+        } else if (!locallyPinnedIdRef.current) {
           jitsiApiRef.current?.executeCommand("setTileView", true);
-        }
-        // Reported live (2026-09-16): after the teacher stopped sharing, the shared screen
-        // "wouldn't go away" — this single setTileView call can land before Jitsi's own
-        // internal layout/track-teardown for the stopped share has actually settled, so the
-        // command has nothing to act on yet. A second, delayed re-assert costs nothing when
-        // the first one already worked (setTileView(true) is idempotent) and gives Jitsi a
-        // moment to finish tearing down the stopped share's track before this reissues it.
-        if (!on && !locallyPinnedIdRef.current) {
-          setTimeout(() => {
-            if (!locallyPinnedIdRef.current) jitsiApiRef.current?.executeCommand("setTileView", true);
-          }, 800);
         }
       });
       // Without these, a video server/room misconfiguration (e.g. the Jitsi deployment's
@@ -1868,12 +1835,15 @@ export default function JitsiLive({
                   variant="secondary"
                   disabled={!jitsiReady || participants.length === 0}
                   className={headerToggleClass}
-                  onClick={() => jitsiApiRef.current?.executeCommand("muteEveryone", "audio")}
+                  onClick={() => {
+                    jitsiApiRef.current?.executeCommand("muteEveryone", "audio");
+                    toast({ variant: "success", title: "Everyone muted", description: "Students can unmute themselves when you ask them to speak." });
+                  }}
                   title="Mute every student (they can unmute themselves)"
                 >
                   <MicOff className="h-3.5 w-3.5" />
-                  <span className="hidden lg:inline">Mute all kids</span>
-                  <span className="sr-only lg:hidden">Mute all students</span>
+                  <span className="hidden md:inline">Mute all kids</span>
+                  <span className="sr-only md:hidden">Mute all students</span>
                 </Button>
               )}
               {mode === "teacher" && (
