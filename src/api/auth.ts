@@ -1,4 +1,4 @@
-import { apiFetch, setAccessToken } from "@/lib/api";
+import { apiFetch, getAccessToken, setAccessToken } from "@/lib/api";
 import type { LoginResponse } from "./types";
 
 export async function login(email: string, pin: string): Promise<LoginResponse> {
@@ -13,8 +13,15 @@ export async function login(email: string, pin: string): Promise<LoginResponse> 
 /** Refreshes the signed-in user's permissions/route, and swaps in a freshly-minted token that
  *  carries those same up-to-date claims — so an access grant made mid-session (e.g. an Admin
  *  approving a Relationship Manager's request) takes effect without a full logout/login. */
-export async function getCurrentUser(): Promise<LoginResponse> {
+export async function getCurrentUser(): Promise<LoginResponse | null> {
+  const sentWith = getAccessToken();
   const response = await apiFetch<LoginResponse>("/api/auth/me");
+  // The tab's login can change while this is in flight -- a "View as parent" tab boots holding
+  // the opener's own login, then swaps to the parent's read-only one. Writing this (older)
+  // answer back would put the staff member's full login under the read-only banner (seen on
+  // UAT: the view-as tab intermittently loaded the admin menu and 403'd every parent screen).
+  // So only refresh the login the request was actually made with; otherwise report nothing.
+  if (getAccessToken() !== sentWith) return null;
   if (response.accessToken) setAccessToken(response.accessToken);
   return response;
 }

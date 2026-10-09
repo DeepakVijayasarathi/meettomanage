@@ -158,7 +158,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     function refresh() {
       getCurrentUser()
         .then((response) => {
-          if (cancelled) return;
+          // null: this tab's login changed mid-request (see getCurrentUser) -- nothing to apply.
+          if (cancelled || !response) return;
           setPermissions(response.permissions);
           if (response.defaultRoute) setHomePath(response.defaultRoute);
           if (response.user.timeZoneId) setTimeZoneId(response.user.timeZoneId);
