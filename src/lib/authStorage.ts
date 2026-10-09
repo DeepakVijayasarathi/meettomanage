@@ -31,15 +31,56 @@ export function setRemember(remember: boolean): void {
   AUTH_KEYS.forEach((k) => other.removeItem(k));
 }
 
+/**
+ * "View as parent" (Users → View): a Relationship Manager opens a parent's portal read-only
+ * in its own tab. That tab's whole session lives in its sessionStorage, marked by this key, so
+ * it never touches the RM's own login (kept in localStorage, shared by their other tabs).
+ */
+const VIEW_AS_KEY = "trn.viewAs";
+
+export interface ViewAsInfo {
+  parentName: string;
+  expiresAtUtc: string;
+}
+
+/** The read-only view-as session this tab is running, if any. */
+export function getViewAs(): ViewAsInfo | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(VIEW_AS_KEY);
+    return raw ? (JSON.parse(raw) as ViewAsInfo) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Turns this tab into a view-as session: wipes anything copied from the opener's sessionStorage first. */
+export function beginViewAsStorage(info: ViewAsInfo): void {
+  AUTH_KEYS.forEach((k) => sessionStorage.removeItem(k));
+  sessionStorage.setItem(VIEW_AS_KEY, JSON.stringify(info));
+}
+
 /** The Web Storage backing this login's auth/session state. */
 export function authStorage(): Storage {
   if (typeof window === "undefined") return localStorage;
+  if (getViewAs()) return sessionStorage;
   return getRemember() ? localStorage : sessionStorage;
 }
 
+/** Per-tab preferences (timezone, active child) — kept to this tab during a view-as session. */
+export function prefStorage(): Storage {
+  return getViewAs() ? sessionStorage : localStorage;
+}
+
 /** Clears every persisted auth key from BOTH stores — used on logout/expiry,
- *  where the session is ending regardless of which store it was living in. */
+ *  where the session is ending regardless of which store it was living in.
+ *  A view-as tab only clears its own sessionStorage: the RM's own login must survive. */
 export function clearAuthStorage(): void {
+  if (getViewAs()) {
+    AUTH_KEYS.forEach((k) => sessionStorage.removeItem(k));
+    sessionStorage.removeItem(VIEW_AS_KEY);
+    return;
+  }
   AUTH_KEYS.forEach((k) => {
     localStorage.removeItem(k);
     sessionStorage.removeItem(k);

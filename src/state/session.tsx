@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { Role } from "@/types";
 import { CHILDREN, getChildrenByParent } from "@/data/children";
 import { apiEnabled, getAccessToken } from "@/lib/api";
-import { authStorage, clearAuthStorage } from "@/lib/authStorage";
+import { authStorage, clearAuthStorage, prefStorage } from "@/lib/authStorage";
 import { getParentChildren } from "@/api/parentPortal";
 import { getCurrentUser } from "@/api/auth";
 import { checkPermission, type PermissionAction } from "@/lib/permissions";
@@ -88,11 +88,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   });
   const [activeChildId, setActiveChildIdState] = useState<string>(() => {
     if (typeof window === "undefined") return apiEnabled() ? "" : CHILDREN[0].id;
-    return localStorage.getItem(CHILD_KEY) ?? (apiEnabled() ? "" : CHILDREN[0].id);
+    return prefStorage().getItem(CHILD_KEY) ?? (apiEnabled() ? "" : CHILDREN[0].id);
   });
   const [enrolledChildIds, setEnrolledChildIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
-    const raw = localStorage.getItem(ENROLLED_KEY);
+    const raw = prefStorage().getItem(ENROLLED_KEY);
     if (raw) return JSON.parse(raw);
     return apiEnabled() ? [] : CHILDREN.filter((c) => c.enrollmentComplete).map((c) => c.id);
   });
@@ -202,11 +202,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [role]);
 
   useEffect(() => {
-    localStorage.setItem(CHILD_KEY, activeChildId);
+    prefStorage().setItem(CHILD_KEY, activeChildId);
   }, [activeChildId]);
 
   useEffect(() => {
-    localStorage.setItem(ENROLLED_KEY, JSON.stringify(enrolledChildIds));
+    prefStorage().setItem(ENROLLED_KEY, JSON.stringify(enrolledChildIds));
   }, [enrolledChildIds]);
 
   const setUserName = (name: string | null) => {

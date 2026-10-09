@@ -45,3 +45,8 @@ export async function changePin(currentPin: string, newPin: string): Promise<voi
     body: JSON.stringify({ currentPin, newPin }),
   });
 }
+
+/** Closes a read-only "view as parent" session (recorded in the audit log). Best effort. */
+export async function endViewAs(): Promise<void> {
+  await apiFetch<void>("/api/auth/view-as/end", { method: "POST" });
+}

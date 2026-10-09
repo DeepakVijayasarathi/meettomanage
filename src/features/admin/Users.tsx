@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChildSchedulePreferenceSummary } from "@/components/ChildSchedulePreferenceSummary";
 import { useSearchParams } from "react-router-dom";
-import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
+import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, MonitorSmartphone, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
 import { useBrand } from "@/lib/branding";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +60,7 @@ import {
 } from "@/api/users";
 import { BulkImportExportBar } from "@/components/BulkImportExportBar";
 import { UserPinCell } from "@/components/UserPinCell";
+import { openViewAsParent } from "@/lib/viewAs";
 import { getStudentAnalytics, type ApiStudentAnalytics } from "@/api/reports";
 import type { ApiRole } from "@/api/types";
 import { applyRoleToUser, listRoles, type ApiRole as ApiRolePreset } from "@/api/roles";
@@ -531,6 +532,19 @@ export default function AdminUsers() {
     }
   }
 
+  async function handleViewAsParent() {
+    if (!detailUser) return;
+    if (!apiEnabled()) {
+      toast({ title: "Not available in demo mode", description: "View as parent needs the live system." });
+      return;
+    }
+    try {
+      await openViewAsParent(detailUser.id);
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't open the parent view", description: userMessage(err, "Could not open the parent's portal.") });
+    }
+  }
+
   async function handleCopyPin(pin: string) {
     await navigator.clipboard?.writeText(pin).catch(() => undefined);
     setPinCopied(true);
@@ -771,9 +785,13 @@ export default function AdminUsers() {
       },
       userColumns[3],
       userColumns[4],
-      pinColumn as unknown as DataTableColumn<AppUser & { childrenNames: string }>,
+      {
+        key: "pin",
+        header: "PIN",
+        render: (row) => <UserPinCell userId={row.id} userName={row.name} viewable={row.pinViewable} viewAs />,
+      },
     ],
-    [userColumns, pinColumn]
+    [userColumns]
   );
 
   const studentColumns: DataTableColumn<StudentRow>[] = useMemo(
@@ -1102,6 +1120,13 @@ export default function AdminUsers() {
                     {resettingPin ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
                     Reset PIN
                   </Button>
+                  {/* Troubleshoot without the parent's PIN: their portal, read-only, 30 minutes. */}
+                  {detailUser.role === "parent" && (
+                    <Button size="sm" variant="outline" onClick={handleViewAsParent} title="Open this parent's portal read-only in a new tab, for 30 minutes">
+                      <MonitorSmartphone className="h-3.5 w-3.5" />
+                      View as parent
+                    </Button>
+                  )}
                 </div>
                 {!(channels.email || channels.whatsApp || channels.sms) && (
                   <p className="mt-2 text-xs text-muted-foreground">
