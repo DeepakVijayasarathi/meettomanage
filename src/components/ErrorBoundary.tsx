@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { isChunkLoadError, reloadFresh } from "@/lib/freshReload";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -16,23 +17,6 @@ interface ErrorBoundaryState {
 // full page reload is exactly what a stale-chunk recovery does — any component state
 // would be wiped along with it.
 export const RELOAD_GUARD_KEY = "trn.errorBoundaryReloaded";
-
-// Vite/webpack's own wording for "the JS chunk this route needs isn't at the URL the
-// currently-loaded index.html expects" — the single most common way a production SPA
-// crashes blank: a deploy replaced the hashed asset files while this tab still had the
-// previous index.html open, and the next lazy-loaded route reaches for a file that's
-// gone. A full reload fetches the new index.html (with the new, correct hashes) and
-// silently fixes it for the overwhelming majority of cases — no need to show an error
-// at all for something this routine.
-function isStaleChunkError(error: Error): boolean {
-  const message = error.message || "";
-  return (
-    message.includes("Failed to fetch dynamically imported module") ||
-    message.includes("error loading dynamically imported module") ||
-    message.includes("Importing a module script failed") ||
-    /Loading (chunk|CSS chunk) \S+ failed/.test(message)
-  );
-}
 
 /**
  * The app previously had no error boundary anywhere: an uncaught error during render —
@@ -50,7 +34,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Unhandled render error:", error, info.componentStack);
 
-    if (isStaleChunkError(error)) {
+    if (isChunkLoadError(error)) {
       let alreadyReloaded = false;
       try {
         alreadyReloaded = sessionStorage.getItem(RELOAD_GUARD_KEY) === "1";
@@ -63,7 +47,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         } catch {
           /* best-effort guard only */
         }
-        window.location.reload();
+        // A fresh address, not reload(): a plain reload can be answered from a stored copy of the
+        // old page (see lib/freshReload.ts).
+        reloadFresh();
         return;
       }
     }
@@ -82,7 +68,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             you were doing when it appeared.
           </p>
         </div>
-        <Button onClick={() => window.location.reload()}>Reload page</Button>
+        <Button onClick={reloadFresh}>Reload page</Button>
       </div>
     );
   }

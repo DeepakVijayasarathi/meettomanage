@@ -5,7 +5,15 @@ import { SessionProvider } from "@/state/session";
 import { ErrorBoundary, RELOAD_GUARD_KEY } from "@/components/ErrorBoundary";
 import { applyBranding, loadBrandingFromApi } from "@/lib/branding";
 import { applyInitialTheme } from "@/lib/theme";
+import { stripFreshReloadParam, tryAutoReloadFresh } from "@/lib/freshReload";
 import "@/index.css";
+
+// Vite fires this when a lazy route's JS or CSS can't be preloaded - i.e. this tab holds an older
+// build than the server now has. Fetch the current build before the route even tries to render.
+window.addEventListener("vite:preloadError", () => {
+  tryAutoReloadFresh();
+});
+stripFreshReloadParam();
 
 applyBranding();
 void loadBrandingFromApi();

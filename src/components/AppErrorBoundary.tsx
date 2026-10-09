@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { isChunkLoadError, reloadFresh, tryAutoReloadFresh } from "@/lib/freshReload";
 
 interface Props {
   children: ReactNode;
@@ -9,8 +10,6 @@ interface Props {
 interface State {
   error: Error | null;
 }
-
-const CHUNK_LOAD_PATTERN = /failed to fetch dynamically imported module|loading chunk|importing a module script failed/i;
 
 // The app has ~90 lazy-loaded route chunks and no CI/CD — a manual redeploy replaces every
 // chunk's content-hashed filename at once. Anyone with the app already open who then
@@ -30,13 +29,16 @@ export class AppErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Unhandled render error:", error, info.componentStack);
+    // An old build in this tab: fetch the current one straight away instead of asking the user.
+    // At most once a minute (see tryAutoReloadFresh) - after that the screen below stays up.
+    if (isChunkLoadError(error)) tryAutoReloadFresh();
   }
 
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
 
-    const isChunkError = CHUNK_LOAD_PATTERN.test(error.message);
+    const isChunkError = isChunkLoadError(error);
 
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-6">
@@ -50,7 +52,7 @@ export class AppErrorBoundary extends Component<Props, State> {
               ? "This page was updated since you opened it. Refresh to load the latest version."
               : "This page ran into an unexpected error. Refreshing usually fixes it."}
           </p>
-          <Button onClick={() => window.location.reload()}>Refresh</Button>
+          <Button onClick={reloadFresh}>Refresh</Button>
         </div>
       </div>
     );
