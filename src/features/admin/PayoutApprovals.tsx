@@ -202,6 +202,18 @@ export default function PayoutApprovals() {
                     </>
                   )}
                 </p>
+                {r.shortfallReason && (
+                  <p className="text-xs text-muted-foreground">
+                    Why: {r.shortfallReason}
+                    {r.lateJoinMinutes ? ` · ${r.lateJoinMinutes} min late` : ""}
+                    {r.earlyEndMinutes ? ` · ${r.earlyEndMinutes} min early` : ""}
+                  </p>
+                )}
+                {!!r.recordingCount && (
+                  <p className="text-xs text-muted-foreground">
+                    Recordings: {r.recordingCount} segment{r.recordingCount === 1 ? "" : "s"} · {r.recordedMinutes} min total
+                  </p>
+                )}
                 {r.decision && (
                   <p className="text-xs text-muted-foreground">
                     Paid {formatCurrency(r.amount)} of {formatCurrency(r.fullAmount)}
