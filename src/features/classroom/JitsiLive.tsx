@@ -376,6 +376,12 @@ export default function JitsiLive({
   // pinnedEndpointChanged listener below) — set once InteractivePanel's hub connection
   // is ready, same pattern as the other senders it hands back via onReady.
   const setPinnedRef = useRef<((participantId: string | null) => void) | null>(null);
+  // Teacher-only: asks every student's client to mute itself over the classroom hub (see
+  // ClassroomHub.MuteAll). Returns false when the hub isn't connected.
+  const muteAllRef = useRef<(() => boolean) | null>(null);
+  // Read inside the hub's MuteAll handler, which is created once and would otherwise close
+  // over the mic state at that moment.
+  const selfMicMutedRef = useRef(mode === "student");
   // Teacher-reported live: "only works if a parent manually pins the teacher from their
   // end" -- Jitsi's native pin UI has no "pin yourself" affordance on your own tile, only
   // on everyone else's, so becoming the spotlighted main view had no self-service path at
@@ -1458,7 +1464,10 @@ export default function JitsiLive({
         }
       });
       api.addListener("audioMuteStatusChanged", (payload) => {
-        if (typeof payload?.muted === "boolean") setSelfMicMuted(payload.muted);
+        if (typeof payload?.muted === "boolean") {
+          selfMicMutedRef.current = payload.muted;
+          setSelfMicMuted(payload.muted);
+        }
       });
       api.addListener("videoConferenceLeft", () => {
         flushMedia();
@@ -1854,16 +1863,21 @@ export default function JitsiLive({
                   disabled={!jitsiReady || participants.length === 0}
                   className={headerToggleClass}
                   onClick={() => {
-                    if (!selfIsModerator) {
+                    // Through the class hub, so it works whether or not Jitsi made this teacher the
+                    // room's host (on this server that is whoever joined first); Jitsi's own mute
+                    // is also sent when she is the host, which covers anyone not on the hub
+                    // (a guest-link joiner).
+                    const sentToClass = muteAllRef.current?.() ?? false;
+                    if (selfIsModerator) jitsiApiRef.current?.executeCommand("muteEveryone", "audio");
+                    if (sentToClass || selfIsModerator) {
+                      toast({ variant: "success", title: "Everyone muted", description: "Students can unmute themselves when you ask them to speak." });
+                    } else {
                       toast({
                         variant: "error",
                         title: "Couldn't mute everyone",
-                        description: "The video server hasn't made you the host of this call yet. Rejoin the class, or ask an admin to check the host setup.",
+                        description: "The class connection isn't ready yet. Wait a few seconds and try again.",
                       });
-                      return;
                     }
-                    jitsiApiRef.current?.executeCommand("muteEveryone", "audio");
-                    toast({ variant: "success", title: "Everyone muted", description: "Students can unmute themselves when you ask them to speak." });
                   }}
                   title="Mute every student (they can unmute themselves)"
                 >
@@ -2744,7 +2758,8 @@ export default function JitsiLive({
                 hubToken={hubToken}
                 onCelebrate={celebrate}
                 onLeaderboard={setLeaderboard}
-                onReady={({ celebrateAll, raiseHand, sendAnnotation, setPinned }) => {
+                onReady={({ celebrateAll, raiseHand, sendAnnotation, setPinned, muteAll }) => {
+                  muteAllRef.current = muteAll;
                   celebrateAllRef.current = celebrateAll;
                   raiseHandRef.current = raiseHand;
                   sendAnnotationRef.current = sendAnnotation;
@@ -2767,6 +2782,10 @@ export default function JitsiLive({
                   setBoardMaximized(maximized);
                 }}
                 onPinChanged={(participantId) => jitsiApiRef.current?.executeCommand("pinParticipant", participantId)}
+                onMuteAllRequested={() => {
+                  // Only mutes (never unmutes) -- a student who is already muted stays as is.
+                  if (mode !== "teacher" && !selfMicMutedRef.current) jitsiApiRef.current?.executeCommand("toggleAudio");
+                }}
                 onReloadRequested={(message) => setReloadNotice(message)}
                 onStaffJoining={onStaffJoining}
                 onTeacherActivity={() => setPanelOpen(true)}

@@ -35,6 +35,8 @@ export interface ClassroomHubEvents {
   /** Whichever participant the teacher has pinned/spotlighted in her own view (Jitsi endpoint
    *  id), or null when she unpins — see ClassroomHub.SetPinned's own doc comment. */
   pinned: (participantId: string | null) => void;
+  /** The teacher asked everyone to mute their microphone - see ClassroomHub.MuteAll. */
+  muteAll: () => void;
   /** Admin-triggered, app-wide (not scoped to this session) — see MonitoringController's
    *  BroadcastReload. Deliberately just a signal to show a dismissible prompt, not an
    *  automatic reload — see that endpoint's own comment on why an unannounced refresh
@@ -135,6 +137,7 @@ export class ClassroomHubClient {
     if (handlers.celebrate) connection.on("Celebrate", handlers.celebrate);
     if (handlers.boardAccess) connection.on("BoardAccess", handlers.boardAccess);
     if (handlers.pinned) connection.on("Pinned", handlers.pinned);
+    if (handlers.muteAll) connection.on("MuteAll", handlers.muteAll);
     if (handlers.reloadRequested) connection.on("ReloadRequested", handlers.reloadRequested);
     if (handlers.staffJoining) connection.on("StaffJoining", handlers.staffJoining);
 
@@ -262,6 +265,12 @@ export class ClassroomHubClient {
    *  unpin) so every student's own Jitsi view follows along — see ClassroomHub.SetPinned. */
   setPinned(participantId: string | null): void {
     this.send("SetPinned", participantId);
+  }
+
+  /** Teacher-only: asks every student's client to mute its own microphone (works without
+   *  Jitsi moderator rights) - see ClassroomHub.MuteAll. */
+  muteAll(): void {
+    this.send("MuteAll");
   }
 
   async disconnect(): Promise<void> {

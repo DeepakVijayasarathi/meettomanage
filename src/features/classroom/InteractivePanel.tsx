@@ -41,6 +41,9 @@ interface InteractivePanelProps {
     /** Teacher-only: broadcasts the participant she just pinned/spotlighted in her own
      *  Jitsi view (or null on unpin) so every student's view follows along. */
     setPinned: (participantId: string | null) => void;
+    /** Teacher-only: asks every student's client to mute its own microphone. Returns false
+     *  when the hub isn't connected, so the caller can fall back to Jitsi's own mute. */
+    muteAll: () => boolean;
   }) => void;
   /** Fires for every annotation op relayed from the teacher over the hub, so the host
    *  (JitsiLive, which owns the video-stage overlay this panel has no access to) can
@@ -55,6 +58,9 @@ interface InteractivePanelProps {
    *  owns the hub connection, so it's the only place that can actually receive "Pinned"
    *  broadcasts. */
   onPinChanged?: (participantId: string | null) => void;
+  /** Fires when the teacher asks everyone to mute - the host (JitsiLive) owns the Jitsi
+   *  iframe API this panel has no access to, so it mutes this viewer's own microphone. */
+  onMuteAllRequested?: () => void;
   /** Fires when an admin broadcasts a deploy notice over the hub (see
    *  MonitoringController.BroadcastReload) — the host (JitsiLive) owns the banner UI
    *  this panel has no space for. This panel owns the hub connection, so it's the only
@@ -78,7 +84,7 @@ const BOARD_REPLAY_GRACE_MS = 5000;
  * board access — all synced through the classroom SignalR hub. If the hub is
  * unreachable everything still renders locally (the call itself is unaffected).
  */
-export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onBoardMaximizedChange, onPinChanged, onReloadRequested, onStaffJoining, onTeacherActivity }: InteractivePanelProps) {
+export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onBoardMaximizedChange, onPinChanged, onMuteAllRequested, onReloadRequested, onStaffJoining, onTeacherActivity }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
   const onTeacherActivityRef = useRef(onTeacherActivity);
   onTeacherActivityRef.current = onTeacherActivity;
@@ -185,6 +191,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           followTeacher("slides");
         },
         pinned: (participantId) => onPinChanged?.(participantId),
+        muteAll: () => onMuteAllRequested?.(),
         reloadRequested: (message) => onReloadRequested?.(message),
         staffJoining: (name) => onStaffJoining?.(name),
         resync: () => {
@@ -222,6 +229,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           },
           setPinned: (participantId) => {
             if (client.connected) client.setPinned(participantId);
+          },
+          muteAll: () => {
+            if (!client.connected) return false;
+            client.muteAll();
+            return true;
           },
         });
       });
