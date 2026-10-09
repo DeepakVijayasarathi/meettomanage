@@ -304,6 +304,9 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
     }
     const pt = getPoint(e);
     if (tool === "text" || tool === "sticky") {
+      // Keep the browser's own mousedown focus change from landing right after the text box
+      // below mounts and focuses itself -- it blurred (and so closed) the box instantly.
+      e.preventDefault();
       // The input is positioned in screen space; converted back to world on commit
       setTextDraft({ x: pt.x - viewOffset.x, y: pt.y - viewOffset.y, value: "", sticky: tool === "sticky" });
       return;
@@ -374,7 +377,11 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
     if (onBoardOp && now - lastBoardSendRef.current >= 50) {
       lastBoardSendRef.current = now;
       const allPoints = draftRef.current.points;
-      if (!strokeEstablishedRef.current) {
+      // Shapes (line/arrow/rectangle/circle) are always just [start, current corner]: their
+      // points get replaced, not appended, so the append-only delta below never carried the
+      // new corner -- students saw every shape frozen at its size from the first ~50ms of the
+      // drag (found testing the arrow on UAT). Resend them whole; the receiver upserts by id.
+      if (!isFreehand(draftRef.current.tool) || !strokeEstablishedRef.current) {
         strokeEstablishedRef.current = true;
         sentPointCountRef.current = allPoints.length;
         onBoardOp({ kind: "stroke", pageIndex, stroke: { ...draftRef.current, points: [...allPoints] } });
@@ -399,7 +406,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
     // Same delta logic as the throttled sends above: if the stroke was never
     // established (a quick tap/short stroke that finished inside one throttle
     // window), send it whole; otherwise only the tail end no send has covered yet.
-    if (!strokeEstablishedRef.current) {
+    if (!strokeEstablishedRef.current || !isFreehand(finished.tool)) {
       onBoardOp?.({ kind: "stroke", pageIndex, stroke: finished });
     } else {
       const remaining = finished.points.slice(sentPointCountRef.current);

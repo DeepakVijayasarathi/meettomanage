@@ -97,6 +97,9 @@ export default function SlideAnnotationLayer({ slide, store, active, tool, color
     if (!active || size.w === 0) return;
     const pt = getPoint(e);
     if (tool === "text") {
+      // Same as the whiteboard's text tool: stop the mousedown focus change that otherwise
+      // blurs the just-mounted text box straight away (found on UAT: typed text never landed).
+      e.preventDefault();
       // A click while a text box is open just finishes it (the input's blur commits);
       // the next click places a new one.
       if (!textDraftRef.current) setTextDraft({ x: pt.x, y: pt.y, value: "" });

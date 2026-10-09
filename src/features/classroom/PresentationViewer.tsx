@@ -409,7 +409,9 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
           </Button>
         </div>
       )}
-      <div className="flex shrink-0 items-center gap-2 border-t border-white/10 p-2">
+      {/* flex-wrap: in the ~380px side panel, Draw pushed Update deck / Stop presenting off the
+          edge (seen on UAT) -- they now drop to a second row instead of disappearing. */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/10 p-2">
         {canPresent ? (
           <>
             <Button size="sm" variant="ghost" className="text-white/70 hover:bg-white/10 hover:text-white" disabled={pageIndex === 0} onClick={() => goTo(pageIndex - 1)}>
