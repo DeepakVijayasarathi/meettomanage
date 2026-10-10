@@ -19,6 +19,8 @@ const TASK_LABELS: Record<string, string> = {
   "turn-refresh": "TURN pass refresh",
   "recorder-overflow": "Backup recorders (when all busy)",
   "capacity-alert": "Recorder capacity alert",
+  "bridge-auto-drain": "Video bridge auto-drain (rests a bridge that is losing video)",
+  "burst-schedule": "Burst recording server scheduler",
   "recording-retry": "Retry saving recordings",
   "recording-reconcile": "Recording reconcile",
   "config-backup": "Config backup",
