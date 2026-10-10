@@ -409,9 +409,10 @@ export default function AdminBatches() {
       await updateFutureSchedule(detail.id, {
         slots,
         remainingSessionCount: adjRemainingCount.trim() ? Number(adjRemainingCount) : undefined,
+        teacherProfileId: teacherAssignment || undefined,
       });
       await reloadBatchSessions(detail.id);
-      setAdjResult("Schedule updated — every upcoming session now reflects the new plan; completed sessions were left untouched.");
+      setAdjResult("Teacher and schedule updated — every upcoming session now reflects the new plan; completed sessions were left untouched.");
       reload();
     } catch (err) {
       setAdjResult(userMessage(err, "Could not update the schedule."));
@@ -625,6 +626,20 @@ export default function AdminBatches() {
 
     setSavingDetail(true);
     try {
+      // Teacher and future timetable are edited in the same dialog. Apply them together before
+      // the ordinary batch fields so the backend validates the selected teacher against the new
+      // slots, rather than rejecting them against the schedule being replaced.
+      if (teacherAssignment !== raw.teacherProfileId && futureBatchSessions.length > 0 && Object.keys(adjTimeByDay).length > 0) {
+        const slots = Object.keys(adjTimeByDay).map(Number).map((day) => {
+          const { time: utcTime, dayShift } = istTimeToUtc(adjTimeByDay[day]);
+          return { dayOfWeek: (day + dayShift + 7) % 7, startTimeUtc: `${utcTime}:00` };
+        });
+        await updateFutureSchedule(detail.id, {
+          slots,
+          remainingSessionCount: adjRemainingCount.trim() ? Number(adjRemainingCount) : undefined,
+          teacherProfileId: teacherAssignment,
+        });
+      }
       await updateBatchFields(raw, {
         name: editName.trim() || undefined,
         teacherProfileId: teacherAssignment,

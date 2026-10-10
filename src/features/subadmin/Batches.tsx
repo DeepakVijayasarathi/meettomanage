@@ -393,9 +393,10 @@ export default function SubAdminBatches() {
       await updateFutureSchedule(detail.id, {
         slots,
         remainingSessionCount: adjRemainingCount.trim() ? Number(adjRemainingCount) : undefined,
+        teacherProfileId: editTeacher || undefined,
       });
       await reloadBatchSessions(detail.id);
-      setAdjResult("Schedule updated — every upcoming session now reflects the new plan; completed sessions were left untouched.");
+      setAdjResult("Teacher and schedule updated — every upcoming session now reflects the new plan; completed sessions were left untouched.");
       reload();
     } catch (err) {
       setAdjResult(userMessage(err, "Could not update the schedule."));
@@ -601,6 +602,20 @@ export default function SubAdminBatches() {
     setSaving(true);
     setSaveError(null);
     try {
+      // Save a reassignment against the replacement timetable shown in this dialog. Previously
+      // this button tried the teacher against the obsolete sessions first and failed before the
+      // schedule action could run.
+      if (editTeacher !== raw.teacherProfileId && futureBatchSessions.length > 0 && Object.keys(adjTimeByDay).length > 0) {
+        const slots = Object.keys(adjTimeByDay).map(Number).map((day) => {
+          const { time: utcTime, dayShift } = istTimeToUtc(adjTimeByDay[day]);
+          return { dayOfWeek: (day + dayShift + 7) % 7, startTimeUtc: `${utcTime}:00` };
+        });
+        await updateFutureSchedule(detail.id, {
+          slots,
+          remainingSessionCount: adjRemainingCount.trim() ? Number(adjRemainingCount) : undefined,
+          teacherProfileId: editTeacher,
+        });
+      }
       await updateBatchFields(raw, {
         name: editName.trim(),
         teacherProfileId: editTeacher,
