@@ -189,7 +189,7 @@ export async function listBatchSessions(batchId: string): Promise<ApiClassSessio
  */
 export async function updateFutureSchedule(
   batchId: string,
-  input: { slots: GenerateScheduleSlot[]; remainingSessionCount?: number }
+  input: { slots: GenerateScheduleSlot[]; remainingSessionCount?: number; teacherProfileId?: string }
 ): Promise<ApiClassSession[]> {
   return apiFetch<ApiClassSession[]>(`/api/batches/${batchId}/schedule`, {
     method: "PUT",
