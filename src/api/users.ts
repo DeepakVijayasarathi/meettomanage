@@ -1,7 +1,7 @@
 import { apiFetch, downloadFile } from "@/lib/api";
 import type { AppUser, Child } from "@/types";
 import type { ApiChildSchedulePreference } from "./parentPortal";
-import { toFrontendRole, toFrontendStatus, type ApiRole, type ApiUser, type BulkImportResult, type PagedResult } from "./types";
+import { toFrontendRole, toFrontendStatus, type ApiRole, type ApiUser, type BulkImportResult, type LoginResponse, type PagedResult } from "./types";
 
 /** A students-directory row: the mock Child shape plus resolved parent/course names from the API.
  *  `parentId` stays the child's ParentProfileId (the mock-data convention every other screen
@@ -193,6 +193,14 @@ export async function revealPin(userId: string): Promise<string> {
 export async function resetPin(userId: string): Promise<string> {
   const result = await apiFetch<{ temporaryPin: string }>(`/api/users/${userId}/reset-pin`, { method: "POST" });
   return result.temporaryPin;
+}
+
+/**
+ * Starts a read-only, 30-minute "view as parent" session (Relationship Managers / Admins with
+ * User Management edit): the parent's portal as they see it, without their PIN. Audit-logged.
+ */
+export async function startViewAsParent(userId: string): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>(`/api/users/${userId}/view-as`, { method: "POST" });
 }
 
 /** Soft-deletes the account; excluded from all lists afterwards and its email becomes reusable. */

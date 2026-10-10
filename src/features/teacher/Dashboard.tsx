@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { addDays, endOfWeek, isWithinInterval, parse, parseISO, startOfDay, startOfWeek } from "date-fns";
 import {
@@ -105,7 +105,7 @@ export default function TeacherDashboard() {
   // pattern as Attendance.tsx): there's no aggregate attendance endpoint, so the per-session
   // one is fetched once per completed session and aggregated client-side here, bounded by
   // how many completed sessions this teacher actually has.
-  const { data: apiSessionData, loading: sessionsLoading, error: sessionsError } = useApiData<{
+  const { data: apiSessionData, loading: sessionsLoading, error: sessionsError, reload: reloadSessions } = useApiData<{
     sessions: ClassSession[];
     attendanceBySession: Record<string, ApiSessionAttendance[]>;
   }>(
@@ -125,6 +125,24 @@ export default function TeacherDashboard() {
     { sessions: [], attendanceBySession: {} }
   );
   const apiSessions = apiSessionData.sessions;
+  // Client report (2026-10-08): a demo booked for the same day showed on the admin dashboard
+  // but not on the teacher's -- this list was fetched once when the page opened and never
+  // again, so anything scheduled after that stayed invisible until a manual reload. Refetch
+  // when the tab comes back into view and every few minutes while it stays open.
+  useEffect(() => {
+    if (!usingApi) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") reloadSessions();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") reloadSessions();
+    }, 5 * 60_000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(timer);
+    };
+  }, [usingApi, reloadSessions]);
   const { data: apiPayouts, loading: payoutsLoading, error: payoutsError } = useApiData<TeacherPayout[]>(
     () => listMyPayouts().then((p) => p.map(toFrontendPayout)),
     []

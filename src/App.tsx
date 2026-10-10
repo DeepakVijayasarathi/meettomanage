@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
+import { ViewAsBanner } from "@/components/ViewAsBanner";
 import { AppShell } from "@/components/AppShell";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Logo } from "@/components/Logo";
@@ -87,6 +88,7 @@ const StaffLiveClassroom = lazy(() => import("@/features/classroom/StaffLiveClas
 const PersonalMeetingRoom = lazy(() => import("@/features/classroom/PersonalMeetingRoom"));
 const RecordingObserver = lazy(() => import("@/features/classroom/RecordingObserver"));
 const GuestJoin = lazy(() => import("@/features/public/GuestJoin"));
+const ViewAsHandoff = lazy(() => import("@/features/public/ViewAsHandoff"));
 const PersonalRoomGuestJoin = lazy(() => import("@/features/public/PersonalRoomGuestJoin"));
 
 const SubAdminDashboard = lazy(() => import("@/features/subadmin/Dashboard"));
@@ -208,6 +210,9 @@ export default function App() {
                 outside RequireAuth the same way the Jibri route above does; see GuestJoin.tsx's
                 own doc comment for why it hands off to raw Jitsi rather than the in-app classroom. */}
             <Route path="/guest-join" element={<GuestJoin />} />
+            {/* The new tab a Relationship Manager's "View as parent" opens (lib/viewAs.ts) —
+                it receives its read-only session from the opener, so no login here either. */}
+            <Route path="/view-as" element={<ViewAsHandoff />} />
             {/* A Personal Meeting Room's invite link (UsersController.MyMeetingRoomShortLink) --
                 same reasoning as /guest-join just above: a caretaker/guest opening a shared link
                 never logs in, so this sits outside RequireAuth too. */}
@@ -602,6 +607,7 @@ export default function App() {
         </AppErrorBoundary>
       </BrowserRouter>
       <Toaster />
+      <ViewAsBanner />
     </TooltipProvider>
   );
 }

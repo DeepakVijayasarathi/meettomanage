@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { AlertTriangle, Check, Copy, Eye, KeyRound, Loader2, X } from "lucide-react";
+import { AlertTriangle, Check, Copy, Eye, KeyRound, Loader2, MonitorSmartphone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { resetPin, revealPin } from "@/api/users";
+import { openViewAsParent } from "@/lib/viewAs";
 
 type Phase = { kind: "idle" } | { kind: "confirm" } | { kind: "busy" } | { kind: "shown"; pin: string; copied: boolean };
 
@@ -17,10 +18,14 @@ type Phase = { kind: "idle" } | { kind: "confirm" } | { kind: "busy" } | { kind:
  *   before PINs were stored) -- after a confirm, issues a fresh PIN for that one user (their
  *   old one stops working) and shows it.
  *
+ * - "View" (parent rows only, `viewAs`): opens the parent's portal read-only in a new tab for
+ *   30 minutes -- how a Relationship Manager troubleshoots without needing the parent's PIN at
+ *   all (see lib/viewAs.ts). Audit-logged server-side.
+ *
  * Either way the PIN is held only in this component's state: hiding it or leaving the page
  * discards it.
  */
-export function UserPinCell({ userId, userName, viewable }: { userId: string; userName: string; viewable?: boolean }) {
+export function UserPinCell({ userId, userName, viewable, viewAs }: { userId: string; userName: string; viewable?: boolean; viewAs?: boolean }) {
   const { toast } = useToast();
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   // A reset stores a fresh PIN server-side, so from then on this row can offer "Show PIN" too.
@@ -54,6 +59,18 @@ export function UserPinCell({ userId, userName, viewable }: { userId: string; us
     }
   }
 
+  async function viewAsParent() {
+    if (!apiEnabled()) {
+      toast({ title: "Not available in demo mode", description: "View as parent needs the live system." });
+      return;
+    }
+    try {
+      await openViewAsParent(userId);
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't open the parent view", description: userMessage(err, "Could not open the parent's portal.") });
+    }
+  }
+
   async function copy(pin: string) {
     await navigator.clipboard?.writeText(pin).catch(() => undefined);
     setPhase({ kind: "shown", pin, copied: true });
@@ -66,7 +83,7 @@ export function UserPinCell({ userId, userName, viewable }: { userId: string; us
     "inline-flex h-full items-center gap-1.5 px-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45";
 
   return (
-    <div className="min-w-[13.5rem]" onClick={stop} onKeyDown={stop}>
+    <div className={viewAs ? "min-w-[18.5rem]" : "min-w-[13.5rem]"} onClick={stop} onKeyDown={stop}>
       {phase.kind === "idle" && (
         // Show PIN is only usable once the server holds a PIN it issued (chosen or older PINs are
         // hashed and can't be read back) -- until then it's disabled with the reason, and Reset PIN
@@ -91,6 +108,17 @@ export function UserPinCell({ userId, userName, viewable }: { userId: string; us
           >
             <KeyRound className="h-3.5 w-3.5" /> Reset
           </button>
+          {viewAs && (
+            <button
+              type="button"
+              onClick={viewAsParent}
+              aria-label={`View as ${userName} (read-only)`}
+              title="Open this parent's portal read-only in a new tab, for 30 minutes — no PIN needed"
+              className={cn(seg, "text-foreground hover:bg-primary/10 hover:text-primary")}
+            >
+              <MonitorSmartphone className="h-3.5 w-3.5" /> View
+            </button>
+          )}
         </div>
       )}
 

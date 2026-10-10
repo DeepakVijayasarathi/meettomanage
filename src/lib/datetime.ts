@@ -1,3 +1,5 @@
+import { prefStorage } from "@/lib/authStorage";
+
 /**
  * The signed-in user's own timezone (session.tsx keeps this in sync with their account
  * setting — see setTimeZoneId). Read directly from localStorage rather than via React
@@ -12,13 +14,13 @@ const DEFAULT_TIME_ZONE = "Asia/Kolkata";
 
 export function getUserTimeZone(): string {
   if (typeof window === "undefined") return DEFAULT_TIME_ZONE;
-  return localStorage.getItem(TIMEZONE_KEY) || DEFAULT_TIME_ZONE;
+  return prefStorage().getItem(TIMEZONE_KEY) || DEFAULT_TIME_ZONE;
 }
 
 export function setUserTimeZone(timeZoneId: string | null) {
   if (typeof window === "undefined") return;
-  if (timeZoneId) localStorage.setItem(TIMEZONE_KEY, timeZoneId);
-  else localStorage.removeItem(TIMEZONE_KEY);
+  if (timeZoneId) prefStorage().setItem(TIMEZONE_KEY, timeZoneId);
+  else prefStorage().removeItem(TIMEZONE_KEY);
 }
 
 function pad(n: number): string {

@@ -210,6 +210,16 @@ export interface ApiPayoutApproval {
   /** Null when no teacher attendance was recorded at all. */
   deliveredMinutes: number | null;
   shortfallMinutes: number | null;
+  /** Recording segments for the class (each disconnect/rejoin makes a new one). */
+  recordingCount?: number;
+  /** All segments added together (merged view), whole minutes. */
+  recordedMinutes?: number;
+  teacherJoinedAtUtc?: string | null;
+  teacherLeftAtUtc?: string | null;
+  lateJoinMinutes?: number;
+  earlyEndMinutes?: number;
+  /** Plain-language cause of the shortfall (late join / early end / ...). */
+  shortfallReason?: string | null;
   fullAmount: number;
   /** Full amount pro-rated to the delivered minutes — the suggested partial payout. */
   proRatedAmount: number;

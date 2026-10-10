@@ -16,6 +16,8 @@ import { NotificationPanel } from "@/components/NotificationPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSession } from "@/state/session";
 import { getInitials } from "@/lib/utils";
+import { getViewAs } from "@/lib/authStorage";
+import { exitViewAs } from "@/lib/viewAs";
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -72,6 +74,11 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => {
+                // A read-only "view as parent" tab closes instead of logging anyone out.
+                if (getViewAs()) {
+                  void exitViewAs();
+                  return;
+                }
                 logout();
                 navigate("/login");
               }}

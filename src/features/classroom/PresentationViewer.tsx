@@ -1,12 +1,29 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { ChevronLeft, ChevronRight, FileUp, Loader2, Maximize2, Minimize2, X } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, Circle as CircleIcon, Eraser, FileUp, Highlighter, Loader2, Maximize2, Minimize2, Minus, Pencil, PenTool, Square, Trash2, Type, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { fetchPresentationFile, getPresentation, uploadPresentation } from "@/api/sessions";
 import { userMessage } from "@/lib/api";
+import SlideAnnotationLayer from "./SlideAnnotationLayer";
+import type { ToolId } from "./drawing";
+import type { SlideMarkOp, SlideMarksStore } from "./slideMarks";
+
+const MARK_TOOLS: { id: ToolId; label: string; icon: typeof PenTool }[] = [
+  { id: "pen", label: "Pen", icon: PenTool },
+  { id: "highlighter", label: "Highlighter", icon: Highlighter },
+  { id: "eraser", label: "Eraser (rubs out your marks, never the slide)", icon: Eraser },
+  { id: "text", label: "Text", icon: Type },
+  { id: "line", label: "Line", icon: Minus },
+  { id: "arrow", label: "Arrow", icon: ArrowUpRight },
+  { id: "rectangle", label: "Rectangle", icon: Square },
+  { id: "circle", label: "Circle", icon: CircleIcon },
+];
+// Red first: the usual teacher's-pen colour, and readable on almost any slide.
+const MARK_COLORS = ["#EF4444", "#1F6FE0", "#16A34A", "#FACC15", "#0F172A", "#FFFFFF"];
+const MARK_WIDTHS = [2, 4, 8];
 
 /**
  * pdf.js's worker is an ES module (.mjs), which browsers refuse to run unless the server sends
@@ -42,6 +59,10 @@ interface PresentationViewerProps {
   canPresent: boolean;
   /** Fires once per local Next/Previous click so the panel can broadcast it over the hub. */
   onSlideChange?: (pageIndex: number) => void;
+  /** Everyone's view of the marks drawn on slides — owned by InteractivePanel, see slideMarks.ts. */
+  marks: SlideMarksStore;
+  /** Teacher's own mark ops: the panel applies them locally and broadcasts them. */
+  onMarkOp: (op: SlideMarkOp) => void;
 }
 
 /**
@@ -51,7 +72,7 @@ interface PresentationViewerProps {
  * instead of anyone re-uploading or re-rendering server-side per click.
  */
 const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationViewerProps>(function PresentationViewer(
-  { sessionId, canPresent, onSlideChange },
+  { sessionId, canPresent, onSlideChange, marks, onMarkOp },
   ref
 ) {
   const { toast } = useToast();
@@ -74,7 +95,22 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [maximized]);
 
+  // Drawing on the slide (teacher feedback: "annotate directly on PPT slides while presenting").
+  // Off by default so a click on the slide never leaves a stray dot.
+  const [drawOn, setDrawOn] = useState(false);
+  const [markTool, setMarkTool] = useState<ToolId>("pen");
+  const [markColor, setMarkColor] = useState(MARK_COLORS[0]);
+  const [markWidth, setMarkWidth] = useState(4);
+  function pickMarkTool(id: ToolId) {
+    setMarkTool(id);
+    // A red highlighter is rarely what anyone wants; switch to the classic yellow once.
+    if (id === "highlighter" && markColor === MARK_COLORS[0]) setMarkColor("#FACC15");
+  }
+  // Re-render the toolbar's Undo/Clear enabled state whenever marks change.
+  const marksOnSlide = useSyncExternalStore(marks.subscribe, () => marks.get(pageIndex));
+
   const docRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // A remote slide can arrive before the deck itself has finished loading (a late-joining
@@ -129,7 +165,9 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
       .then((page) => {
         if (cancelled) return;
         const viewport = page.getViewport({ scale: 1 });
-        const parent = canvas.parentElement!;
+        // The stage, not the canvas's direct parent: that wrapper shrink-wraps the canvas (so
+        // the mark layer can sit exactly on top of it) and would feed its own size back in here.
+        const parent = stageRef.current ?? canvas.parentElement!;
         const scale = Math.min(parent.clientWidth / viewport.width, parent.clientHeight / viewport.height) || 1;
         const scaledViewport = page.getViewport({ scale });
         canvas.width = scaledViewport.width;
@@ -169,7 +207,17 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
     e.target.value = "";
     if (!file) return;
     if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-      toast({ variant: "error", title: "PDF only", description: "Export your slides to PDF first, then upload that file." });
+      // Teachers' decks are almost always PowerPoint — the picker lets those through (see
+      // fileInput's accept) just so this can say exactly how to convert, instead of the file
+      // silently not appearing in the picker at all.
+      const isSlideDeck = /\.(pptx?|ppsx?|odp|key)$/i.test(file.name);
+      toast({
+        variant: "error",
+        title: isSlideDeck ? "Save your slides as PDF first" : "PDF only",
+        description: isSlideDeck
+          ? "In PowerPoint: File → Save As (or Export) → choose PDF. In Google Slides: File → Download → PDF. Then upload that PDF here."
+          : "Export your slides to PDF first, then upload that file.",
+      });
       return;
     }
     setUploading(true);
@@ -177,6 +225,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
       await uploadPresentation(sessionId, file);
       const bytes = await fetchPresentationFile(sessionId);
       await loadDeckBytes(bytes, file.name);
+      onMarkOp({ kind: "slideClearAll" });
       onSlideChange?.(0);
     } catch (err) {
       toast({ variant: "error", title: "Couldn't upload the deck", description: userMessage(err, "Try again.") });
@@ -186,6 +235,8 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
   }
 
   function stopPresenting() {
+    onMarkOp({ kind: "slideClearAll" });
+    setDrawOn(false);
     docRef.current = null;
     setFileName(null);
     setPageCount(0);
@@ -221,13 +272,17 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
   // feedback: PPT changes have to be made in the original file elsewhere, then brought into
   // class — this is what lets the *bringing in* half happen without ever leaving this panel,
   // let alone the call). handleFileSelected doesn't care which state triggered it.
-  const fileInput = <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileSelected} />;
+  const fileInput = <input ref={fileInputRef} type="file" accept="application/pdf,.pdf,.ppt,.pptx,.pps,.ppsx,.odp,.key" className="hidden" onChange={handleFileSelected} />;
 
   if (!fileName) {
     return canPresent ? (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <FileUp className="h-8 w-8 text-white/30" />
         <p className="text-sm text-white/50">No deck uploaded yet</p>
+        <p className="max-w-xs text-xs text-white/40">
+          Change slides right here without leaving the class — students see each slide as you click Next. Using PowerPoint?
+          Save it as PDF first (File → Save As → PDF).
+        </p>
         {fileInput}
         <Button size="sm" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileUp className="h-3.5 w-3.5" />}
@@ -255,8 +310,19 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
     >
       {fileInput}
       <div className="relative flex-1 overflow-hidden bg-white/[0.02] p-3">
-        <div className="flex h-full w-full items-center justify-center">
-          <canvas ref={canvasRef} className="max-h-full max-w-full rounded-md bg-white shadow-lg" />
+        <div ref={stageRef} className="flex h-full w-full items-center justify-center">
+          <div className="relative max-h-full max-w-full">
+            <canvas ref={canvasRef} className="block max-h-full max-w-full rounded-md bg-white shadow-lg" />
+            <SlideAnnotationLayer
+              slide={pageIndex}
+              store={marks}
+              active={canPresent && drawOn}
+              tool={markTool}
+              color={markColor}
+              width={markWidth}
+              onOp={onMarkOp}
+            />
+          </div>
         </div>
         {(rendering || uploading) && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/10">
@@ -264,7 +330,88 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
           </div>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-2 border-t border-white/10 p-2">
+      {canPresent && drawOn && (
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-t border-white/10 px-2 py-1.5">
+          <div className="flex flex-wrap items-center gap-0.5 rounded-xl bg-white/5 p-1">
+            {MARK_TOOLS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                title={label}
+                aria-label={label}
+                aria-pressed={markTool === id}
+                onClick={() => pickMarkTool(id)}
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  markTool === id ? "bg-brand-violet text-white shadow-soft" : "text-white/60 hover:bg-white/5 hover:text-white"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1.5">
+            {MARK_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                title="Colour"
+                aria-label={`Colour ${c}`}
+                aria-pressed={markColor === c}
+                onClick={() => setMarkColor(c)}
+                className={cn(
+                  "h-5 w-5 rounded-full ring-1 ring-white/20 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  markColor === c && "scale-110 ring-2 ring-white"
+                )}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-0.5 rounded-xl bg-white/5 p-1">
+            {MARK_WIDTHS.map((w) => (
+              <button
+                key={w}
+                type="button"
+                title={w === 2 ? "Thin" : w === 4 ? "Medium" : "Thick"}
+                aria-label={w === 2 ? "Thin" : w === 4 ? "Medium" : "Thick"}
+                aria-pressed={markWidth === w}
+                onClick={() => setMarkWidth(w)}
+                className={cn("flex h-7 w-7 items-center justify-center rounded-lg transition-colors", markWidth === w ? "bg-white/15" : "hover:bg-white/5")}
+              >
+                <span className="rounded-full bg-white" style={{ width: w + 3, height: w + 3 }} />
+              </button>
+            ))}
+          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 text-white/70 hover:bg-white/10 hover:text-white"
+            title="Undo your last mark on this slide"
+            aria-label="Undo"
+            disabled={marksOnSlide.length === 0}
+            onClick={() => {
+              const last = marksOnSlide[marksOnSlide.length - 1];
+              if (last) onMarkOp({ kind: "slideUndo", slide: pageIndex, strokeId: last.id });
+            }}
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 text-white/70 hover:bg-white/10 hover:text-white"
+            title="Clear all marks from this slide"
+            aria-label="Clear marks on this slide"
+            disabled={marksOnSlide.length === 0}
+            onClick={() => onMarkOp({ kind: "slideClear", slide: pageIndex })}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+      {/* flex-wrap: in the ~380px side panel, Draw pushed Update deck / Stop presenting off the
+          edge (seen on UAT) -- they now drop to a second row instead of disappearing. */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/10 p-2">
         {canPresent ? (
           <>
             <Button size="sm" variant="ghost" className="text-white/70 hover:bg-white/10 hover:text-white" disabled={pageIndex === 0} onClick={() => goTo(pageIndex - 1)}>
@@ -277,6 +424,17 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
               <ChevronRight className="h-4 w-4" />
             </Button>
             <div className="mx-1 h-5 w-px bg-white/10" aria-hidden="true" />
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-pressed={drawOn}
+              title={drawOn ? "Stop drawing — clicks go back to normal" : "Draw on this slide: pen, highlighter, shapes, text. Students see your marks live."}
+              className={cn("gap-1.5 text-white/70 hover:bg-white/10 hover:text-white", drawOn && "bg-brand-violet text-white hover:bg-brand-violet")}
+              onClick={() => setDrawOn((d) => !d)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{drawOn ? "Drawing" : "Draw"}</span>
+            </Button>
             {renderMaximizeButton()}
             <div className="flex-1" />
             {/* Re-export the edited deck to PDF, then bring it in right here — no "Stop

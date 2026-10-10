@@ -11,6 +11,7 @@ import { getQuizQuestionsForSession } from "@/api/quizQuestions";
 import { getWhiteboardActivitiesForSession, type ApiWhiteboardActivity } from "@/api/whiteboardActivities";
 import Whiteboard, { type BoardOp } from "./Whiteboard";
 import PresentationViewer, { type PresentationViewerHandle } from "./PresentationViewer";
+import { isSlideMarkOp, SlideMarksStore, type SlideMarkOp } from "./slideMarks";
 import QuizOverlay from "./QuizOverlay";
 import type { LeaderboardEntry, QuizQuestion } from "./classroomData";
 
@@ -40,6 +41,9 @@ interface InteractivePanelProps {
     /** Teacher-only: broadcasts the participant she just pinned/spotlighted in her own
      *  Jitsi view (or null on unpin) so every student's view follows along. */
     setPinned: (participantId: string | null) => void;
+    /** Teacher-only: asks every student's client to mute its own microphone. Returns false
+     *  when the hub isn't connected, so the caller can fall back to Jitsi's own mute. */
+    muteAll: () => boolean;
   }) => void;
   /** Fires for every annotation op relayed from the teacher over the hub, so the host
    *  (JitsiLive, which owns the video-stage overlay this panel has no access to) can
@@ -54,6 +58,9 @@ interface InteractivePanelProps {
    *  owns the hub connection, so it's the only place that can actually receive "Pinned"
    *  broadcasts. */
   onPinChanged?: (participantId: string | null) => void;
+  /** Fires when the teacher asks everyone to mute - the host (JitsiLive) owns the Jitsi
+   *  iframe API this panel has no access to, so it mutes this viewer's own microphone. */
+  onMuteAllRequested?: () => void;
   /** Fires when an admin broadcasts a deploy notice over the hub (see
    *  MonitoringController.BroadcastReload) — the host (JitsiLive) owns the banner UI
    *  this panel has no space for. This panel owns the hub connection, so it's the only
@@ -62,7 +69,14 @@ interface InteractivePanelProps {
   /** Fires when the backend authorizes an admin-team member to join this class (see
    *  SessionsController.GetJitsiJoin) — the host (JitsiLive) admits their lobby knock. */
   onStaffJoining?: (displayName: string) => void;
+  /** Student side: the teacher just started something the class should look at (a quiz, a
+   *  slide change, the board, or board access for this student). The host keeps the panel
+   *  closed by default, Meet/Zoom-style, and opens it on this. */
+  onTeacherActivity?: (what: "quiz" | "slides" | "board") => void;
 }
+
+// Board ops replayed right after (re)connecting are history, not something happening now.
+const BOARD_REPLAY_GRACE_MS = 5000;
 
 /**
  * Real-time interactive layer beside the Jitsi call: shared whiteboard, live
@@ -70,8 +84,17 @@ interface InteractivePanelProps {
  * board access — all synced through the classroom SignalR hub. If the hub is
  * unreachable everything still renders locally (the call itself is unaffected).
  */
-export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onBoardMaximizedChange, onPinChanged, onReloadRequested, onStaffJoining }: InteractivePanelProps) {
+export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onBoardMaximizedChange, onPinChanged, onMuteAllRequested, onReloadRequested, onStaffJoining, onTeacherActivity }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
+  const onTeacherActivityRef = useRef(onTeacherActivity);
+  onTeacherActivityRef.current = onTeacherActivity;
+  const connectedAtRef = useRef(0);
+  // Students follow the teacher to whatever she just started; the teacher picks her own tab.
+  const followTeacher = (what: "quiz" | "slides" | "board") => {
+    if (mode === "teacher") return;
+    setTab(what);
+    onTeacherActivityRef.current?.(what);
+  };
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [hubDetail, setHubDetail] = useState<string | null>(null);
   // Bumping this re-runs the connect effect below, standing up a brand new hub connection.
@@ -105,6 +128,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
   const hubRef = useRef<ClassroomHubClient | null>(null);
   const boardHandlers = useRef(new Set<(op: BoardOp) => void>());
   const presentationRef = useRef<PresentationViewerHandle>(null);
+  // Marks on presented slides live here, not in the Slides tab (which unmounts when another tab
+  // is picked) -- see SlideMarksStore.
+  const slideMarksRef = useRef<SlideMarksStore | null>(null);
+  if (!slideMarksRef.current) slideMarksRef.current = new SlideMarksStore();
+  const slideMarks = slideMarksRef.current;
 
   useEffect(() => {
     const client = new ClassroomHubClient(sessionId, hubToken);
@@ -116,8 +144,13 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
         roster: (participants) => setRoster(participants),
         board: (opJson) => {
           try {
-            const op = JSON.parse(opJson) as BoardOp;
-            boardHandlers.current.forEach((handler) => handler(op));
+            const op = JSON.parse(opJson) as BoardOp | SlideMarkOp;
+            // Slide marks share the Board channel (and its late-join replay) with the whiteboard.
+            if (isSlideMarkOp(op)) slideMarks.apply(op);
+            else {
+              boardHandlers.current.forEach((handler) => handler(op));
+              if (op.kind !== "reset" && Date.now() - connectedAtRef.current > BOARD_REPLAY_GRACE_MS) followTeacher("board");
+            }
           } catch {
             /* malformed op from a stale client — ignore */
           }
@@ -127,6 +160,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           setQuizActive(true);
           // Fresh tally for this question, even on a relaunch of the same index.
           setQuizTally((prev) => ({ ...prev, [questionIndex]: [] }));
+          followTeacher("quiz");
         },
         quizEnded: () => setQuizActive(false),
         quizAnswer: (_name, questionIndex, selectedIndex) => {
@@ -147,14 +181,23 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           onLeaderboard(mapped);
         },
         celebrate: (message) => onCelebrate(message ?? undefined),
-        boardAccess: (allowed) => setBoardAllowed(allowed),
+        boardAccess: (allowed) => {
+          setBoardAllowed(allowed);
+          if (allowed) followTeacher("board");
+        },
         annotation: (opJson) => onAnnotation?.(opJson),
-        slide: (pageIndex) => presentationRef.current?.applyRemoteSlide(pageIndex),
+        slide: (pageIndex) => {
+          presentationRef.current?.applyRemoteSlide(pageIndex);
+          followTeacher("slides");
+        },
         pinned: (participantId) => onPinChanged?.(participantId),
+        muteAll: () => onMuteAllRequested?.(),
         reloadRequested: (message) => onReloadRequested?.(message),
         staffJoining: (name) => onStaffJoining?.(name),
         resync: () => {
           boardHandlers.current.forEach((handler) => handler({ kind: "reset" }));
+          // Rebuilt from the same Board history replay as the whiteboard.
+          slideMarks.reset();
           // The server revokes a board grant when the old connection drops (grants are per
           // connection id), so don't keep showing drawing tools it will now silently ignore —
           // the teacher re-grants from the People tab against the new connection.
@@ -168,6 +211,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
       })
       .then((ok) => {
         if (disposed) return;
+        connectedAtRef.current = Date.now();
         setHubState(ok ? "connected" : "disconnected");
         // Broadcast when connected (the hub echoes back to the sender); local-only otherwise.
         onReady?.({
@@ -185,6 +229,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           },
           setPinned: (participantId) => {
             if (client.connected) client.setPinned(participantId);
+          },
+          muteAll: () => {
+            if (!client.connected) return false;
+            client.muteAll();
+            return true;
           },
         });
       });
@@ -284,6 +333,14 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
       boardHandlers.current.delete(handler);
     };
   }, []);
+
+  const sendSlideMark = useCallback(
+    (op: SlideMarkOp) => {
+      slideMarks.apply(op);
+      hubRef.current?.sendBoard(JSON.stringify(op));
+    },
+    [slideMarks]
+  );
 
   const broadcastBoardOp = useCallback((op: BoardOp) => {
     hubRef.current?.sendBoard(JSON.stringify(op));
@@ -466,6 +523,8 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
             sessionId={sessionId}
             canPresent={mode === "teacher"}
             onSlideChange={(pageIndex) => hubRef.current?.sendSlide(pageIndex)}
+            marks={slideMarks}
+            onMarkOp={sendSlideMark}
           />
         </TabsContent>
 

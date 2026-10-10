@@ -58,6 +58,8 @@ interface DemoRow {
   payableAmount: number;
   /** API stage of the lead (DemoScheduled, PaymentPending, Enrolled…); absent for demo-mode rows. */
   conversionStatus?: string;
+  /** Demo time passed without it being held — still open for Reschedule or Cancel. */
+  missed?: boolean;
   notes?: string;
   isNew?: boolean;
 }
@@ -94,8 +96,15 @@ function seedRows(): DemoRow[] {
 
 function bookingToRow(booking: ApiDemoBooking): DemoRow {
   const ist = booking.scheduledStartAtUtc ? utcIsoToLocalDateTime(booking.scheduledStartAtUtc) : null;
-  const status: SessionStatus =
-    booking.conversionStatus === "DemoScheduled" ? "demo" : booking.conversionStatus === "NotInterested" ? "cancelled" : "completed";
+  const missed =
+    booking.conversionStatus === "DemoScheduled" && (booking.sessionStatus === "TeacherNoShow" || booking.sessionStatus === "StudentNoShow");
+  const status: SessionStatus = missed
+    ? "noshow"
+    : booking.conversionStatus === "DemoScheduled"
+      ? "demo"
+      : booking.conversionStatus === "NotInterested"
+        ? "cancelled"
+        : "completed";
   const adults = booking.participants.filter((p) => !p.isChild);
   const kids = booking.participants.filter((p) => p.isChild);
   return {
@@ -124,6 +133,7 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
     payableAmount: booking.payableAmount,
     notes: booking.followUpNotes ?? undefined,
     conversionStatus: booking.conversionStatus,
+    missed,
   };
 }
 
@@ -464,6 +474,7 @@ export default function AdmissionDemoScheduling() {
         render: (row) => (
           <div className="flex items-center gap-2">
             <SessionStatusBadge status={row.status} />
+            {row.missed && <span className="text-xs font-medium text-destructive">Missed — reschedule or cancel</span>}
             {row.isNew && <span className="text-xs font-semibold text-primary">New</span>}
           </div>
         ),
@@ -528,7 +539,7 @@ export default function AdmissionDemoScheduling() {
             <Button
               variant="outline"
               size="sm"
-              disabled={row.status !== "demo"}
+              disabled={row.status !== "demo" && !row.missed}
               onClick={(e) => {
                 e.stopPropagation();
                 openReschedule(row);
@@ -551,7 +562,7 @@ export default function AdmissionDemoScheduling() {
               variant="outline"
               size="sm"
               className="text-destructive hover:text-destructive"
-              disabled={row.status !== "demo"}
+              disabled={row.status !== "demo" && !row.missed}
               onClick={(e) => {
                 e.stopPropagation();
                 setCancelTarget(row);

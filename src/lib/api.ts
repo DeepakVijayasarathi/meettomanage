@@ -2,7 +2,7 @@
  * Minimal typed API client. When VITE_API_BASE_URL is unset the app runs in
  * demo mode: screens keep their mock data and login skips the backend.
  */
-import { authStorage, clearAuthStorage } from "@/lib/authStorage";
+import { authStorage, clearAuthStorage, getViewAs } from "@/lib/authStorage";
 
 const BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -163,8 +163,10 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   // An expired/revoked token means the session is no longer authenticated: clear it
   // and land on login. Auth endpoints are exempt (a wrong PIN is also a 401).
   if (response.status === 401 && token && !path.startsWith("/api/auth/")) {
+    // A read-only "view as parent" tab has no login page to go back to: it just ends.
+    const viewAs = getViewAs() !== null;
     clearAuthStorage();
-    window.location.assign("/login");
+    window.location.assign(viewAs ? "/view-as?ended=1" : "/login");
   }
 
   if (!response.ok) {
