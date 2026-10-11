@@ -1916,9 +1916,19 @@ export default function JitsiLive({
                     // is also sent when she is the host, which covers anyone not on the hub
                     // (a guest-link joiner).
                     const sentToClass = muteAllRef.current?.() ?? false;
-                    if (selfIsModerator) jitsiApiRef.current?.executeCommand("muteEveryone", "audio");
+                    if (selfIsModerator) {
+                      // Keep the conference-wide command, then address every known endpoint as
+                      // well. On the deployed Jitsi build muteEveryone can be accepted without
+                      // changing an already-unmuted guest, while muteRemoteParticipant uses the
+                      // same moderator permission but reliably targets that endpoint. The
+                      // participant list is refreshed on join/reconnect and on join/leave events.
+                      jitsiApiRef.current?.executeCommand("muteEveryone", "audio");
+                      participants.forEach((participant) =>
+                        jitsiApiRef.current?.executeCommand("muteRemoteParticipant", participant.id, "audio")
+                      );
+                    }
                     if (sentToClass || selfIsModerator) {
-                      toast({ variant: "success", title: "Everyone muted", description: "Students can unmute themselves when you ask them to speak." });
+                      toast({ variant: "success", title: "Mute request sent", description: "Students can unmute themselves when you ask them to speak." });
                     } else {
                       toast({
                         variant: "error",
