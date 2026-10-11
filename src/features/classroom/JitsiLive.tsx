@@ -1204,17 +1204,15 @@ export default function JitsiLive({
           lobby: { autoKnock: true },
           // Meet/Zoom behaviour for the control bar: on a touch screen there is no hover to bring
           // it back, so Jitsi's default auto-hide leaves a child hunting for the mic/camera
-          // buttons -- keep it pinned there; on desktop it still tucks away after a few idle seconds.
+          // buttons. Keep the primary dock predictable for everyone, matching Meet/Zoom.
           // Not on a landscape phone, though (reported live): there the pinned bar sat across the
           // middle of the teacher's shared screen, covering the lesson -- it auto-hides there and
           // a tap brings it back.
           toolbarConfig: {
-            // The teacher's too, on any device (client report 2026-10-08: "no mute and unmute
-            // option" -- on a laptop the bar had already tucked away), except the same
-            // landscape-phone case.
+            // Except the landscape-phone case below, where a persistent overlay consumes too
+            // much of the short viewport and a tap remains the appropriate reveal gesture.
             alwaysVisible:
               typeof window !== "undefined" &&
-              (mode === "teacher" || window.matchMedia("(pointer: coarse)").matches) &&
               !window.matchMedia("(orientation: landscape) and (max-height: 520px)").matches,
             initialTimeout: 8000,
             timeout: 5000,
@@ -1261,8 +1259,16 @@ export default function JitsiLive({
             "desktop",
             "chat",
             "raisehand",
+            // Meet/Zoom parity: these belong in the call's own More menu so they stay
+            // reachable on phones without adding more buttons to our compact app header.
+            // participants-pane is also the only complete roster for personal/guest rooms,
+            // whose visitors do not always have an authenticated classroom-hub identity.
+            "participants-pane",
+            "reactions",
+            "closedcaptions",
             "tileview",
-            "videobackgroundblur",
+            "select-background",
+            "shortcuts",
             ...(mode === "teacher" && !isRecordingObserver ? (["mute-everyone"] as const) : []),
             // "recording" specifically also needs `hasClassSession` (not just `interactive` --
             // a Personal Meeting Room now has the Interactive panel too, see isPersonalRoom's own
