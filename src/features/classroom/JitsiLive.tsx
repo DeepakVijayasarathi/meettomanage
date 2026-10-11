@@ -1271,7 +1271,12 @@ export default function JitsiLive({
             "closedcaptions",
             "tileview",
             "select-background",
+            // Lets families reduce received/sent video quality on weak home Wi-Fi, and
+            // inspect the live connection instead of guessing why a tile is stuttering.
+            "videoquality",
+            "stats",
             "shortcuts",
+            "help",
             ...(mode === "teacher" && !isRecordingObserver ? (["mute-everyone"] as const) : []),
             // "recording" specifically also needs `hasClassSession` (not just `interactive` --
             // a Personal Meeting Room now has the Interactive panel too, see isPersonalRoom's own
@@ -1572,6 +1577,11 @@ export default function JitsiLive({
       api.addListener("connectionInterrupted", () => setCallDegraded(true));
       api.addListener("connectionRestored", () => {
         setCallDegraded(false);
+        toast({
+          variant: "success",
+          title: "Connection restored",
+          description: "Your classroom audio and video are live again.",
+        });
         // After a drop, a viewer's layout can be left on a stage whose track is gone (a black
         // screen). With no share running, put everyone back on the grid unless a pin was chosen.
         if (!someoneSharingRef.current && !locallyPinnedIdRef.current) {
@@ -1884,8 +1894,11 @@ export default function JitsiLive({
             </span>
           )}
           {callDegraded && (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-amber/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-brand-amber">
-              <WifiOff className="h-3 w-3" /> Reconnecting…
+            <span
+              className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-amber/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-brand-amber"
+              title="Poor connection — turn your camera off temporarily if audio starts breaking up"
+            >
+              <WifiOff className="h-3 w-3" /> Poor connection
             </span>
           )}
         </div>
