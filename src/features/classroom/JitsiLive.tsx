@@ -398,6 +398,9 @@ export default function JitsiLive({
   const [selfParticipantId, setSelfParticipantId] = useState<string | null>(null);
   // Mirrors Jitsi's audioMuteStatusChanged for the header's "Mute me" button.
   const [selfMicMuted, setSelfMicMuted] = useState(mode === "student");
+  // User-controlled RNNoise layer. Browser-native noise suppression remains enabled in
+  // constraints.audio; this stronger filter is intentionally opt-in for noisy rooms.
+  const [enhancedNoiseSuppression, setEnhancedNoiseSuppression] = useState(false);
   // Whether Jitsi has made this client the room's moderator -- muteEveryone is silently ignored
   // otherwise, which read as a broken "Mute all kids" button.
   const [selfIsModerator, setSelfIsModerator] = useState(false);
@@ -1908,6 +1911,30 @@ export default function JitsiLive({
                   {selfMicMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
                   <span className="hidden lg:inline">{selfMicMuted ? "Unmute me" : "Mute me"}</span>
                   <span className="sr-only lg:hidden">{selfMicMuted ? "Unmute your microphone" : "Mute your microphone"}</span>
+                </Button>
+              )}
+              {!isRecordingObserver && (
+                <Button
+                  size="pill"
+                  variant="secondary"
+                  aria-pressed={enhancedNoiseSuppression}
+                  disabled={!jitsiReady}
+                  className={cn(headerToggleClass, "aria-pressed:bg-emerald-600 aria-pressed:text-white aria-pressed:shadow-emerald-600/25")}
+                  onClick={() => {
+                    const enabled = !enhancedNoiseSuppression;
+                    jitsiApiRef.current?.executeCommand("setNoiseSuppressionEnabled", { enabled });
+                    setEnhancedNoiseSuppression(enabled);
+                    toast({
+                      variant: "success",
+                      title: enabled ? "Noise clear is on" : "Noise clear is off",
+                      description: enabled ? "Extra background-noise filtering is active." : "Using standard microphone processing.",
+                    });
+                  }}
+                  title={enhancedNoiseSuppression ? "Turn off extra background-noise filtering" : "Clear background noise"}
+                >
+                  <Volume2 className="h-3.5 w-3.5" />
+                  <span className="hidden xl:inline">Noise clear</span>
+                  <span className="sr-only xl:hidden">{enhancedNoiseSuppression ? "Turn off noise clear" : "Turn on noise clear"}</span>
                 </Button>
               )}
               {mode === "teacher" && !isRecordingObserver && (
