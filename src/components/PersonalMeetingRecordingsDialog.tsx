@@ -15,8 +15,9 @@ import { utcIsoToLocalDateTime } from "@/lib/datetime";
 
 /**
  * The member's own Personal Meeting Room recordings — the per-owner counterpart of
- * RecordingsDialog (which is per class session). Only the room's owner ever sees these;
- * deleting one unregisters the row, the underlying file is untouched.
+ * RecordingsDialog (which is per class session). Only the room's owner sees these here
+ * (Admin sees everyone's on the Recordings page); deleting one unregisters the row, the
+ * underlying file is untouched.
  */
 export function PersonalMeetingRecordingsDialog({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
@@ -59,7 +60,7 @@ export function PersonalMeetingRecordingsDialog({ onClose }: { onClose: () => vo
         <DialogHeader>
           <DialogTitle>My meeting recordings</DialogTitle>
           <DialogDescription>
-            Recordings you started in your personal meeting room. Only you can see these.
+            Recordings from your personal meeting room. Only you and the admin can see these.
           </DialogDescription>
         </DialogHeader>
 
