@@ -166,11 +166,13 @@ export default function JitsiLive({
   hubToken?: string;
   /** Set by PersonalMeetingRoom.tsx and PersonalRoomGuestJoin.tsx: this room's `sessionId` is
    *  the owner's own account id (ClassroomHub.JoinSession's isPersonalRoomOwner check), not a
-   *  real ClassSession -- there's nothing for "End the class" to complete, no attendance/
-   *  recording to register, and no Jibri-recording screen-share nudge worth showing (nothing
-   *  here is ever recorded). Only gates that session-completion/recording machinery; the
-   *  Interactive panel itself (whiteboard/quiz/roster/chat) still mounts normally off `sessionId`
-   *  alone, same as a real class. */
+   *  real ClassSession -- there's nothing for "End the class" to complete and no attendance
+   *  to capture. The owner's meeting is still auto-recorded like a class (and has the
+   *  toolbar's Recording button); the backend files that under the owner's own account (see
+   *  SessionService.FinalizeJibriRecordingAsync), not under a class. Only gates that
+   *  session-completion/recording-registration machinery; the Interactive panel itself
+   *  (whiteboard/quiz/roster/chat) still mounts normally off `sessionId` alone, same as a
+   *  real class. */
   isPersonalRoom?: boolean;
   /** Overrides the header's role badge (default "Teacher"/"Student") — e.g. "Monitor" for an
    *  admin-team member dropping into a class (StaffLiveClassroom.tsx). */
@@ -768,10 +770,14 @@ export default function JitsiLive({
   // The interactive layer needs a real session id for the hub group + engagement.
   const interactive = !!sessionId && GUID_RE.test(sessionId);
   // Same panel, but a Personal Meeting Room's `sessionId` is the owner's own account id, not a
-  // ClassSession -- session-completion, attendance and recording all need a REAL backing
+  // ClassSession -- session-completion, attendance and recording registration all need a REAL backing
   // session to act on, unlike the panel itself (see isPersonalRoom's own doc comment on the
   // props type above).
   const hasClassSession = interactive && !isPersonalRoom;
+  // Auto-recording covers every class AND the owner's own Personal Meeting Room (the owner is
+  // the only one who joins it in "teacher" mode; guests are "student"). A personal recording
+  // is filed under the owner's account by the backend, not registered against a class.
+  const autoRecordable = interactive;
 
   // "End Class" handler — the only place in the whole app that ever calls the complete-
   // session endpoint (nothing runs this on a timer or on plain Leave, which stays a
@@ -925,12 +931,13 @@ export default function JitsiLive({
               recordingRetryCountRef.current += 1;
               attemptStartRecording();
             } else {
+              const fallback = isPersonalRoom
+                ? 'This meeting is not being recorded automatically — try the "Recording" button in the meeting toolbar.'
+                : 'This class is not being recorded automatically — use the manual "Recording" button on My Classes if you need one.';
               setRecordingIssue(
                 recordingErrorReasonRef.current
-                  ? `Auto-recording failed to start (${recordingErrorReasonRef.current}). This class is not being recorded automatically — ` +
-                      'use the manual "Recording" button on My Classes if you need one.'
-                  : "Auto-recording didn't start (likely no recording capacity on the video server). " +
-                      "This class is not being recorded automatically — use the manual \"Recording\" button on My Classes if you need one."
+                  ? `Auto-recording failed to start (${recordingErrorReasonRef.current}). ${fallback}`
+                  : `Auto-recording didn't start (likely no recording capacity on the video server). ${fallback}`
               );
             }
           }
@@ -992,10 +999,9 @@ export default function JitsiLive({
       let joinRoom = room;
       let joinDomain = JITSI_DOMAIN_FALLBACK;
       let joinToken: string | undefined;
-      // The Personal Meeting Room is never auto-recorded: it never reaches the interactive
-      // branch below (it always has joinOverride, never a real sessionId). Demo classes ARE
-      // recorded now, like every other class -- the earlier "don't record demo" rule was
-      // reversed so Coordinators (and the admission team) can review demo recordings.
+      // Demo classes and the Personal Meeting Room ARE auto-recorded now, like every other
+      // class -- the earlier "don't record demo and personal link" rule was reversed (see
+      // autoRecordable above).
       if (joinOverride) {
         joinDomain = joinOverride.domain;
         joinToken = joinOverride.token ?? undefined;
@@ -1278,19 +1284,11 @@ export default function JitsiLive({
             "shortcuts",
             "help",
             ...(mode === "teacher" && !isRecordingObserver ? (["mute-everyone"] as const) : []),
-            // "recording" specifically also needs `hasClassSession` (not just `interactive` --
-            // a Personal Meeting Room now has the Interactive panel too, see isPersonalRoom's own
-            // doc comment) -- reported live: a Personal Meeting Room recording (manually started
-            // with this button, since auto-record is already scoped off it) "disappeared from the
-            // portal... couldn't find it anywhere." Not a display bug -- it was never findable in
-            // the first place. registerRecording (the only thing that ever creates a
-            // SessionRecording row) requires a real sessionId to attach to, and the Personal
-            // Meeting Room never has one (see recordingLinkAvailable's own `hasClassSession` check
-            // below) -- so a recording made there is a real file on the video server with no
-            // database row and no UI anywhere that could ever surface it. Removing the button
-            // here is what "don't record demo and personal link" already asked for; this closes
-            // the one remaining way to start one manually.
-            ...(mode === "teacher" && !isRecordingObserver && hasClassSession ? (["recording"] as const) : []),
+            // Shown in a Personal Meeting Room too (to stop/restart its auto-recording by
+            // hand). It used to be hidden there because such a recording had
+            // nowhere to be saved and "disappeared from the portal"; the backend now keeps it
+            // for the room's owner -- see SessionService.FinalizeJibriRecordingAsync.
+            ...(mode === "teacher" && !isRecordingObserver ? (["recording"] as const) : []),
             "fullscreen",
             "settings",
             // Deliberately no "hangup" here — our own Leave button (header, top-right)
@@ -1399,7 +1397,7 @@ export default function JitsiLive({
         // already in progress) — and with the retry loop below, that turned one harmless
         // reconnect into three doomed retries and a scary "recording failed" banner for a
         // class that was, the whole time, being recorded just fine.
-        if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver && hasClassSession) {
+        if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver && autoRecordable) {
           setRecording((alreadyRecording) => {
             if (!alreadyRecording) {
               recordingErrorReasonRef.current = null;
@@ -1703,7 +1701,7 @@ export default function JitsiLive({
         // error) — reported live as "the recording did not work". Nothing re-armed it
         // before, so the rest of the class went unrecorded; restart it through the same
         // bounded retry loop a failed initial start uses.
-        if (!isOn && wasOn && payload?.error && mode === "teacher" && autoRecordRef.current && !isRecordingObserver && hasClassSession) {
+        if (!isOn && wasOn && payload?.error && mode === "teacher" && autoRecordRef.current && !isRecordingObserver && autoRecordable) {
           recordingErrorReasonRef.current = payload.error;
           recordingRetryCountRef.current = 0;
           attemptStartRecording();
@@ -2470,7 +2468,11 @@ export default function JitsiLive({
       {mode === "teacher" && !isRecordingObserver && recordingTimingHintShown && !recordingTimingHintDismissed && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
           <CheckCircle2 className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
-          <p className="flex-1">Recording is on. It'll show up on the portal a few minutes after the class ends — not during the class itself.</p>
+          <p className="flex-1">
+            {isPersonalRoom
+              ? "Recording is on. You'll find it under Recordings, next to your meeting link, a few minutes after the meeting ends."
+              : "Recording is on. It'll show up on the portal a few minutes after the class ends — not during the class itself."}
+          </p>
           <button
             type="button"
             onClick={() => setRecordingTimingHintDismissed(true)}

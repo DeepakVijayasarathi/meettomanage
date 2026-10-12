@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import type { ApiPayoutChange } from "@/api/payouts";
 
 /** How a non-teacher staff member's pay is worked out — teachers have their own batch-wise/per-minute payout (see api/payouts.ts). */
 export type CompensationBasis = "FixedMonthly" | "PercentOfMonthlyCollection";
@@ -73,6 +74,16 @@ export async function getMyStaffEarnings(): Promise<ApiStaffEarnings> {
 /** Admin/Management oversight: any one staff member's earnings. */
 export async function getStaffEarningsForUser(userId: string): Promise<ApiStaffEarnings> {
   return apiFetch<ApiStaffEarnings>(`/api/staff-payouts/${userId}`);
+}
+
+/** Corrects a frozen (past-month) payout's payable amount, even after it was paid; kept in its history. */
+export async function adjustStaffPayout(id: string, input: { newAmount: number; reason: string }): Promise<ApiStaffPayout> {
+  return apiFetch<ApiStaffPayout>(`/api/staff-payouts/${id}/amount`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+/** Every correction made to a frozen staff payout, newest first. */
+export async function getStaffPayoutHistory(id: string): Promise<ApiPayoutChange[]> {
+  return apiFetch<ApiPayoutChange[]>(`/api/staff-payouts/${id}/history`);
 }
 
 export async function markStaffPayoutPaid(id: string): Promise<ApiStaffPayout> {

@@ -35,6 +35,7 @@ import { useApiData } from "@/api/hooks";
 import { adjustPayoutItem, finalizePayout, listPayouts, markPayoutPaid, toFrontendPayout } from "@/api/payouts";
 import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
 import { downloadReportCsv } from "@/api/reports";
+import { PayoutDetailDialog } from "./PayoutDetailDialog";
 import type { TeacherPayout, TeacherPayoutItem } from "@/types";
 import { formatCurrency, formatNumber, getInitials, toCsv } from "@/lib/utils";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
@@ -231,6 +232,11 @@ export default function AdminPayouts() {
       pendingCalculations: pendingCount,
     };
   }, [payouts, currentMonthLabel]);
+
+  // The month a teacher's row was opened on — held as an id so the dialog always shows the
+  // freshly reloaded payout after a correction, not the copy it was opened with.
+  const [detailPayoutId, setDetailPayoutId] = useState<string | null>(null);
+  const detailPayout = detailPayoutId ? payouts.find((p) => p.id === detailPayoutId) ?? null : null;
 
   const [teacherSearch, setTeacherSearch] = useState("");
   const [collapsedTeacherIds, setCollapsedTeacherIds] = useState<Set<string>>(new Set());
@@ -461,7 +467,16 @@ export default function AdminPayouts() {
                       <TableBody>
                         {group.rows.map((row) => (
                           <TableRow key={row.id}>
-                            <TableCell>{row.month}</TableCell>
+                            <TableCell>
+                              <button
+                                type="button"
+                                className="font-medium text-primary underline-offset-2 hover:underline"
+                                title="Open this month's full breakdown"
+                                onClick={() => setDetailPayoutId(row.id)}
+                              >
+                                {row.month}
+                              </button>
+                            </TableCell>
                             <TableCell>{row.sessionsCompleted}</TableCell>
                             <TableCell className="text-muted-foreground">{formatCurrency(row.baseAmount)}</TableCell>
                             <TableCell>
@@ -476,7 +491,14 @@ export default function AdminPayouts() {
                             </TableCell>
                             <TableCell className="font-bold text-foreground">{formatCurrency(row.finalAmount)}</TableCell>
                             <TableCell>{renderStatus(row)}</TableCell>
-                            <TableCell>{renderActions(row)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center justify-end gap-2">
+                                <Button size="sm" variant="outline" onClick={() => setDetailPayoutId(row.id)}>
+                                  View
+                                </Button>
+                                {renderActions(row)}
+                              </div>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -498,13 +520,22 @@ export default function AdminPayouts() {
         )}
       </div>
 
+      {detailPayout && (
+        <PayoutDetailDialog
+          payout={detailPayout}
+          onClose={() => setDetailPayoutId(null)}
+          onChanged={() => reloadPayouts()}
+          onFinalize={(payout) => setConfirmTarget({ payout, action: "finalize" })}
+        />
+      )}
+
       <ConfirmDialog
         open={confirmTarget !== null}
         onOpenChange={(open) => !open && setConfirmTarget(null)}
         title={confirmTarget?.action === "finalize" ? "Finalize this payout?" : "Mark this payout as paid?"}
         description={
           confirmTarget?.action === "finalize"
-            ? `Locks ${confirmTarget.payout.teacherName}'s ${confirmTarget.payout.month} amount (${formatCurrency(confirmTarget.payout.finalAmount)}) — no more sessions will be added to it.`
+            ? `Closes ${confirmTarget.payout.teacherName}'s ${confirmTarget.payout.month} payout at ${formatCurrency(confirmTarget.payout.finalAmount)} and emails their statement — no more sessions will be added to it. A line can still be corrected afterwards, with a reason.`
             : confirmTarget
               ? `Confirms ${confirmTarget.payout.teacherName}'s ${confirmTarget.payout.month} payout (${formatCurrency(confirmTarget.payout.finalAmount)}) was paid and emails their salary slip.`
               : undefined

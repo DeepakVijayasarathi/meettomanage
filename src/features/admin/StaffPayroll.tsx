@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, IndianRupee, Loader2, Settings2, Wallet } from "lucide-react";
+import { IndianRupee, Loader2, Settings2, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -25,6 +25,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
+import { StaffPayoutMonthRow } from "./StaffPayoutMonthRow";
 
 function todayIso(): string {
   const d = new Date();
@@ -241,12 +242,12 @@ export default function StaffPayroll() {
       </Dialog>
 
       <Dialog open={viewing !== null} onOpenChange={(open) => !open && setViewing(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           {viewing && (
             <>
               <DialogHeader>
                 <DialogTitle>{viewing.name}'s earnings</DialogTitle>
-                <DialogDescription>Current month is live; past months are locked once computed.</DialogDescription>
+                <DialogDescription>Current month is live. Past months are locked once computed, but an amount can still be corrected with a reason — every correction is kept in its history.</DialogDescription>
               </DialogHeader>
               {earningsLoading || !earnings ? (
                 <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
@@ -263,20 +264,17 @@ export default function StaffPayroll() {
                     <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">No past months on record yet.</p>
                   ) : (
                     earnings.history.map((p) => (
-                      <div key={`${p.periodYear}-${p.periodMonth}`} className="flex items-center justify-between rounded-lg border border-border p-3">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{formatStaffPayoutPeriod(p.periodYear, p.periodMonth)}</p>
-                          <Badge variant={p.status === "Paid" ? "success" : "warning"} className="mt-1">{p.status === "Paid" ? "Paid" : "Finalized"}</Badge>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-bold text-foreground">{formatCurrency(p.amount)}</span>
-                          {p.status === "Finalized" && p.id && (
-                            <Button size="sm" disabled={markingId === p.id} onClick={() => void markPaid(p.id!)}>
-                              {markingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />} Mark Paid
-                            </Button>
-                          )}
-                        </div>
-                      </div>
+                      <StaffPayoutMonthRow
+                        key={`${p.periodYear}-${p.periodMonth}`}
+                        payout={p}
+                        marking={markingId === p.id}
+                        onMarkPaid={(id) => void markPaid(id)}
+                        onAdjusted={(updated) =>
+                          setEarnings((prev) =>
+                            prev ? { ...prev, history: prev.history.map((h) => (h.id === updated.id ? updated : h)) } : prev
+                          )
+                        }
+                      />
                     ))
                   )}
                 </div>

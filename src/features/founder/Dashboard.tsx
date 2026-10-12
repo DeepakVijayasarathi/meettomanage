@@ -29,6 +29,7 @@ import {
 import { PageHeader } from "@/components/PageHeader";
 import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";
+import { MonthlyNumbersPanel } from "@/components/MonthlyNumbersPanel";
 import { ChartCard } from "@/components/ChartCard";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
@@ -276,6 +277,8 @@ export default function FounderDashboard() {
           error={error}
         />
       </div>
+
+      <MonthlyNumbersPanel />
 
       {/* Charts grid */}
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">

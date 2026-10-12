@@ -76,3 +76,18 @@ export async function getPersonalRoomGuestJoin(ownerId: string): Promise<Persona
   return apiFetch<PersonalRoomGuestJoin>(`/api/users/${ownerId}/meeting-room/guest-join`);
 }
 
+export interface PersonalRoomRecording {
+  id: string;
+  storageUrl: string;
+  durationSeconds: number | null;
+  createdAtUtc: string;
+}
+
+/** Recordings the signed-in member made in their own personal meeting room, newest first. */
+export async function listMyMeetingRoomRecordings(): Promise<PersonalRoomRecording[]> {
+  return apiFetch<PersonalRoomRecording[]>("/api/users/me/meeting-room/recordings");
+}
+
+export async function deleteMyMeetingRoomRecording(recordingId: string): Promise<void> {
+  await apiFetch<void>(`/api/users/me/meeting-room/recordings/${recordingId}`, { method: "DELETE" });
+}

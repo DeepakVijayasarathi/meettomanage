@@ -323,7 +323,9 @@ export async function guestJoin(token: string): Promise<ApiGuestJoin> {
 }
 
 export interface ApiRecordingObserverJoin {
+  /** A ClassSession id — or, when `isPersonalRoom`, the room owner's account id. */
   sessionId: string;
+  isPersonalRoom: boolean;
   room: string;
   domain: string;
   token: string | null;

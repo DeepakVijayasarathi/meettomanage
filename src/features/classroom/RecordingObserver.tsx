@@ -46,6 +46,7 @@ export default function RecordingObserver() {
         room={join.room}
         mode="teacher"
         sessionId={join.sessionId}
+        isPersonalRoom={join.isPersonalRoom}
         displayName="Recording"
         joinOverride={{ domain: join.domain, token: join.token }}
         isRecordingObserver
