@@ -25,6 +25,25 @@ export interface ApiPayoutItem {
   createdAtUtc: string;
   /** Teacher's captured attendance fell well short of the scheduled class -- needs a human look before this payout is finalized. */
   requiresReview: boolean;
+  scheduledMinutes?: number | null;
+  /** Minutes the teacher was actually in class; null when no attendance was recorded. */
+  deliveredMinutes?: number | null;
+  /** The amount as first calculated, when an approval decision or a correction has since changed it. */
+  originalAmount?: number | null;
+}
+
+/** One entry of a payout's correction history. */
+export interface ApiPayoutChange {
+  id: string;
+  payoutItemId: string | null;
+  description: string;
+  reason: string;
+  amountBefore: number;
+  amountAfter: number;
+  totalBefore: number;
+  totalAfter: number;
+  changedByName: string | null;
+  changedAtUtc: string;
 }
 
 export interface ApiPayout {
@@ -101,6 +120,9 @@ export function toFrontendPayout(payout: ApiPayout): TeacherPayout {
       note: i.note,
       createdAtUtc: i.createdAtUtc,
       requiresReview: i.requiresReview,
+      scheduledMinutes: i.scheduledMinutes ?? null,
+      deliveredMinutes: i.deliveredMinutes ?? null,
+      originalAmount: i.originalAmount ?? null,
     })),
   };
 }
@@ -160,7 +182,17 @@ export async function markPayoutPaid(id: string): Promise<ApiPayout> {
   return apiFetch<ApiPayout>(`/api/payouts/${id}/mark-paid`, { method: "POST" });
 }
 
-/** Corrects (or confirms as-is) one flagged line item — only while its payout is still Pending. Clears the review flag either way. */
+/** Adds a manual addition (positive amount) or deduction (negative) line to a payout, in any status. */
+export async function addPayoutItem(payoutId: string, input: { amount: number; reason: string }): Promise<ApiPayout> {
+  return apiFetch<ApiPayout>(`/api/payouts/${payoutId}/items`, { method: "POST", body: JSON.stringify(input) });
+}
+
+/** Every manual correction made to a payout, newest first. */
+export async function getPayoutHistory(payoutId: string): Promise<ApiPayoutChange[]> {
+  return apiFetch<ApiPayoutChange[]>(`/api/payouts/${payoutId}/history`);
+}
+
+/** Corrects (or confirms as-is) one line item — allowed after the payout was finalized or paid too; every correction is kept in its history. Clears the review flag either way. */
 export async function adjustPayoutItem(
   payoutId: string,
   itemId: string,

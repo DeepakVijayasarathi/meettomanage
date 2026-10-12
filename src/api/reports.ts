@@ -26,6 +26,32 @@ export interface ApiDashboardSummary {
   conversionRateTrend: { month: string; rate: number }[];
 }
 
+export interface ApiMonthlyFinanceSummary {
+  year: number;
+  month: number;
+  demosConducted: number;
+  /** Of this month's demos, how many have enrolled. */
+  demosConverted: number;
+  conversionRatePercent: number;
+  counselorCollected: number;
+  /** Later installments and any other collection that isn't a counselor's own. */
+  othersCollected: number;
+  totalCollected: number;
+  counselors: {
+    userId: string;
+    name: string;
+    demosConducted: number;
+    demosConverted: number;
+    conversionRatePercent: number;
+    amountCollected: number;
+  }[];
+}
+
+/** One IST calendar month's demos, conversions and collections, per counselor plus "Others". */
+export async function getMonthlyFinanceSummary(year: number, month: number): Promise<ApiMonthlyFinanceSummary> {
+  return apiFetch<ApiMonthlyFinanceSummary>(`/api/reports/monthly-finance?year=${year}&month=${month}`);
+}
+
 export async function getDashboardSummary(): Promise<ApiDashboardSummary> {
   return apiFetch<ApiDashboardSummary>("/api/reports/dashboard-summary");
 }

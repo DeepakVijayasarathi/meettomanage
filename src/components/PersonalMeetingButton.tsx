@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, Check, Video } from "lucide-react";
+import { AlertCircle, Check, PlayCircle, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiEnabled } from "@/lib/api";
 import { getMyMeetingRoomShortLink } from "@/api/account";
+import { PersonalMeetingRecordingsDialog } from "@/components/PersonalMeetingRecordingsDialog";
 
 /**
  * The member's permanent personal meeting room (Zoom-style): one stable room,
  * startable any time of day. "Start" opens it embedded in-app (same JitsiLive
  * experience a real class session uses); "copy" puts the standalone join URL
- * on the clipboard, for sharing with someone outside the app entirely.
+ * on the clipboard, for sharing with someone outside the app entirely. "Recordings"
+ * lists whatever the member recorded in that room.
  */
 export function PersonalMeetingButton() {
   const navigate = useNavigate();
@@ -22,6 +24,7 @@ export function PersonalMeetingButton() {
   // second, third click while still waiting. This only needs to survive the click-to-navigate
   // gap (starting() below), not the destination page's own loading state.
   const [starting, setStarting] = useState(false);
+  const [recordingsOpen, setRecordingsOpen] = useState(false);
 
   if (!apiEnabled()) return null;
 
@@ -81,6 +84,16 @@ export function PersonalMeetingButton() {
       >
         {starting ? "Starting…" : "Start"}
       </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        title="Recordings from your personal meeting room"
+        onClick={() => setRecordingsOpen(true)}
+      >
+        <PlayCircle className="h-3.5 w-3.5" />
+        Recordings
+      </Button>
+      {recordingsOpen && <PersonalMeetingRecordingsDialog onClose={() => setRecordingsOpen(false)} />}
     </div>
   );
 }

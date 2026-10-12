@@ -195,6 +195,10 @@ export interface TeacherPayoutItem {
   note: string | null;
   createdAtUtc: string;
   requiresReview: boolean;
+  scheduledMinutes?: number | null;
+  deliveredMinutes?: number | null;
+  /** The amount as first calculated, when a review decision or a correction has since changed it. */
+  originalAmount?: number | null;
 }
 
 export interface LeaveRequest {

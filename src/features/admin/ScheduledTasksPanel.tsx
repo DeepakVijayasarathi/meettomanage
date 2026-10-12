@@ -21,6 +21,7 @@ const TASK_LABELS: Record<string, string> = {
   "capacity-alert": "Recorder capacity alert",
   "bridge-auto-drain": "Video bridge auto-drain (rests a bridge that is losing video)",
   "burst-schedule": "Burst recording server scheduler",
+  "recorder-visibility": "Recorder visibility check (restarts room control if it loses the recorders)",
   "recording-retry": "Retry saving recordings",
   "recording-reconcile": "Recording reconcile",
   "config-backup": "Config backup",

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChildSchedulePreferenceSummary } from "@/components/ChildSchedulePreferenceSummary";
 import { useSearchParams } from "react-router-dom";
-import { GraduationCap, Loader2, Mic, Plus, Sparkles, Trash2, Users as UsersIcon, Video } from "lucide-react";
+import { GraduationCap, Loader2, Mic, MonitorSmartphone, Plus, Sparkles, Trash2, Users as UsersIcon, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,7 @@ import { useApiData } from "@/api/hooks";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { formatCurrency, formatDate, isValidEmail } from "@/lib/utils";
+import { openViewAsParent } from "@/lib/viewAs";
 import {
   createUser,
   deleteStudent,
@@ -105,6 +106,21 @@ export default function SubAdminUsers() {
   // time it opens a student's profile.
   const canSeeAnalytics = !apiEnabled() || hasPermission("ReportsAnalytics", "View");
   const canManage = canCreate || canEdit || canDelete;
+  // POST /api/users/{id}/view-as needs only UserManagement:View (every RM's baseline grant).
+  const canViewAs = !apiEnabled() || hasPermission("UserManagement", "View");
+
+  // "View as parent" (reported live: only the Admin's Users page had it, so RMs never saw it).
+  async function handleViewAsParent(parentId: string) {
+    if (!apiEnabled()) {
+      toast({ title: "Not available in demo mode", description: "View as parent needs the live system." });
+      return;
+    }
+    try {
+      await openViewAsParent(parentId);
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't open the parent view", description: userMessage(err, "Could not open the parent's portal.") });
+    }
+  }
 
   // Fetches every user of each role, not just the newest page — a single listUsers({ pageSize })
   // call silently made anyone outside the first (server-clamped-to-100) page permanently
@@ -569,8 +585,36 @@ export default function SubAdminUsers() {
         accessor: (row) => row.joinedOn,
         render: (row) => <span className="text-sm text-muted-foreground">{formatDate(row.joinedOn)}</span>,
       },
+      // Its own column rather than only a button in the detail dialog: with a View-only grant
+      // the rows aren't clickable, so the dialog never opens.
+      ...(canViewAs
+        ? [
+            {
+              key: "viewAs",
+              header: "Parent portal",
+              render: (row: AppUser) =>
+                row.role === "parent" ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleViewAsParent(row.id);
+                    }}
+                    title="Open this parent's portal read-only in a new tab, for 30 minutes — no PIN needed"
+                  >
+                    <MonitorSmartphone className="h-3.5 w-3.5" />
+                    View as parent
+                  </Button>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                ),
+            },
+          ]
+        : []),
     ],
-    []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [canViewAs]
   );
 
   const studentColumns: DataTableColumn<StudentRow>[] = useMemo(
@@ -792,6 +836,12 @@ export default function SubAdminUsers() {
                   <Button variant="outline" onClick={() => setDetailUser(null)}>
                     Close
                   </Button>
+                  {canViewAs && detailUser.role === "parent" && (
+                    <Button variant="outline" onClick={() => handleViewAsParent(detailUser.id)} title="Open this parent's portal read-only in a new tab, for 30 minutes">
+                      <MonitorSmartphone className="h-3.5 w-3.5" />
+                      View as parent
+                    </Button>
+                  )}
                   {canEdit && detailUser.role !== "admin" && (
                     <Button variant="outline" disabled={resettingPin} onClick={handleResetPin}>
                       {resettingPin && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Reset PIN
