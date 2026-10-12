@@ -3,6 +3,7 @@ import { holidayNameFromReason } from "@/lib/cancelledBy";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import type { ClassSession, SessionStatus } from "@/types";
 import type { PagedResult } from "@/api/types";
+import type { PersonalRoomRecording } from "@/api/account";
 
 export interface ApiClassSession {
   id: string;
@@ -199,6 +200,16 @@ export async function listMyRecordings(page: number, pageSize: number, date?: st
  * file in storage isn't touched, so this stops the recording from showing up anywhere in
  * the app rather than reclaiming storage space.
  */
+/** Admin only: every member's Personal Meeting Room recordings, newest first. */
+export async function listAllPersonalRoomRecordings(page: number, pageSize: number): Promise<PagedResult<PersonalRoomRecording>> {
+  return apiFetch<PagedResult<PersonalRoomRecording>>(`/api/sessions/recordings/personal?page=${page}&pageSize=${pageSize}`);
+}
+
+/** Admin only: removes any member's Personal Meeting Room recording. */
+export async function deletePersonalRoomRecording(recordingId: string): Promise<void> {
+  await apiFetch(`/api/sessions/recordings/personal/${recordingId}`, { method: "DELETE" });
+}
+
 export async function deleteRecording(sessionId: string, recordingId: string): Promise<void> {
   await apiFetch(`/api/sessions/${sessionId}/recordings/${recordingId}`, { method: "DELETE" });
 }

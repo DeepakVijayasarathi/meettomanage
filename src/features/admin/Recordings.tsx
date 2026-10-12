@@ -20,6 +20,7 @@ import { listResourceFolders, type ApiResourceFolder } from "@/api/resourceFolde
 import { SESSIONS } from "@/data/sessions";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
+import { PersonalMeetingRecordingsPanel } from "./PersonalMeetingRecordingsPanel";
 
 const PAGE_SIZE = 24;
 
@@ -69,6 +70,10 @@ export default function AdminRecordings() {
   const [folderId, setFolderId] = useState("");
   const [addingToResources, setAddingToResources] = useState(false);
   const [dateFilter, setDateFilter] = useState("");
+  // Personal Meeting Room recordings belong to their owner, not a class -- Admin alone can
+  // see everyone's, on a second tab here (server-side rule as well).
+  const canSeePersonal = usingApi && role === "admin";
+  const [tab, setTab] = useState<"classes" | "personal">("classes");
 
   const load = useCallback((targetPage: number, replace: boolean) => {
     if (!usingApi) {
@@ -175,12 +180,27 @@ export default function AdminRecordings() {
         description="Every registered recording across every teacher and class, newest first."
       />
 
-      {usingApi && error && (
+      {usingApi && error && tab === "classes" && (
         <InlineAlert variant="warning" className="mt-4">
           Could not load recordings ({error}).
         </InlineAlert>
       )}
 
+      {canSeePersonal && (
+        <div className="mt-4 flex gap-2">
+          <Button size="sm" variant={tab === "classes" ? "default" : "outline"} onClick={() => setTab("classes")}>
+            Classes
+          </Button>
+          <Button size="sm" variant={tab === "personal" ? "default" : "outline"} onClick={() => setTab("personal")}>
+            Personal meetings
+          </Button>
+        </div>
+      )}
+
+      {tab === "personal" ? (
+        <PersonalMeetingRecordingsPanel />
+      ) : (
+        <>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Input
           type="date"
@@ -274,6 +294,8 @@ export default function AdminRecordings() {
               </Button>
             </div>
           )}
+        </>
+      )}
         </>
       )}
 

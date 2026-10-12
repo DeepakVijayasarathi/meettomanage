@@ -78,6 +78,9 @@ export async function getPersonalRoomGuestJoin(ownerId: string): Promise<Persona
 
 export interface PersonalRoomRecording {
   id: string;
+  /** Whose personal meeting room it was recorded in. */
+  ownerId: string;
+  ownerName: string;
   storageUrl: string;
   durationSeconds: number | null;
   createdAtUtc: string;
