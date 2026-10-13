@@ -160,3 +160,44 @@ export async function cancelLeave(id: string): Promise<void> {
 export async function listAttendance(sessionId: string): Promise<ApiSessionAttendance[]> {
   return apiFetch<ApiSessionAttendance[]>(`/api/sessions/${sessionId}/attendance`);
 }
+
+export interface ApiLeaveCancellationClass {
+  batchName: string;
+  /** "Group" or "Individual" (a dash for a class with no batch). */
+  classType: string;
+  startTime: string;
+}
+
+export interface ApiLeaveCancellationDay {
+  /** IST calendar date, yyyy-MM-dd. */
+  date: string;
+  cancelledClasses: number;
+  classes: ApiLeaveCancellationClass[];
+}
+
+export interface ApiLeaveCancellationTeacher {
+  teacherProfileId: string;
+  teacherName: string;
+  totalCancelledClasses: number;
+  days: ApiLeaveCancellationDay[];
+}
+
+export interface ApiLeaveCancellationReport {
+  year: number;
+  month: number;
+  generatedAtUtc: string;
+  /** True for the frozen month-end snapshot; false for a live preview of a month not yet generated. */
+  isSnapshot: boolean;
+  totalCancelledClasses: number;
+  teachers: ApiLeaveCancellationTeacher[];
+}
+
+/** The month report: the stored month-end snapshot if it exists, else a live preview. */
+export async function getLeaveCancellationReport(year: number, month: number): Promise<ApiLeaveCancellationReport> {
+  return apiFetch<ApiLeaveCancellationReport>(`/api/leave-cancellation-reports/${year}/${month}`);
+}
+
+/** Recomputes the month and replaces its stored snapshot. */
+export async function regenerateLeaveCancellationReport(year: number, month: number): Promise<ApiLeaveCancellationReport> {
+  return apiFetch<ApiLeaveCancellationReport>(`/api/leave-cancellation-reports/${year}/${month}/generate`, { method: "POST" });
+}

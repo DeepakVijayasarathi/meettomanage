@@ -8,6 +8,8 @@ import { FilterBar } from "@/components/FilterBar";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LeaveCancellationReport } from "./LeaveCancellationReport";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { apiEnabled, userMessage } from "@/lib/api";
@@ -205,6 +207,17 @@ export default function AdminLeave() {
         description="Review and decide on every teacher's leave request across the academy."
       />
 
+      <Tabs defaultValue="requests">
+        <TabsList className="mb-4">
+          <TabsTrigger value="requests">Leave requests</TabsTrigger>
+          <TabsTrigger value="report">Month-end report</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="report">
+          <LeaveCancellationReport />
+        </TabsContent>
+
+        <TabsContent value="requests">
       {usingApi && error && (
         <InlineAlert variant="warning" className="mb-4">
           Could not load leave requests ({error}) — the list below may be incomplete.{" "}
@@ -246,6 +259,8 @@ export default function AdminLeave() {
           }
         />
       </div>
+        </TabsContent>
+      </Tabs>
 
       <ConfirmDialog
         open={!!approveTarget}
