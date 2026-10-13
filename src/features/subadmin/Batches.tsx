@@ -649,6 +649,14 @@ export default function SubAdminBatches() {
       setGenResult("Demo mode — schedule not persisted.");
       return;
     }
+    // Generation uses the teacher already SAVED on the batch, not the dropdown. Without this
+    // guard a reassignment that hadn't been saved yet checked the previous teacher's calendar
+    // and reported their sessions as the new teacher's phantom conflict.
+    const savedTeacherId = batchData.raw.find((b) => b.id === detail.id)?.teacherProfileId;
+    if (savedTeacherId && editTeacher && editTeacher !== savedTeacherId) {
+      setGenResult("The teacher was changed but not saved yet. Click Save Changes first, then generate sessions.");
+      return;
+    }
     setGenBusy(true);
     setGenResult(null);
     try {
