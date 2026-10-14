@@ -173,7 +173,7 @@ export default function GetStarted() {
       <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link to="/" aria-label="Meet to Manage home">
-            <Logo />
+            <Logo wordmarkClassName="mix-blend-multiply" />
           </Link>
           <div className="flex items-center gap-2">
             <LanguageToggle />
@@ -294,7 +294,7 @@ export default function GetStarted() {
 
       <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-start">
-          <Logo imgClassName="h-11 w-11" />
+          <Logo imgClassName="h-11 w-11" wordmarkClassName="mix-blend-multiply" />
           <p className="text-xs font-medium text-[#5B6472]">{t.rights(new Date().getFullYear())}</p>
         </div>
       </footer>

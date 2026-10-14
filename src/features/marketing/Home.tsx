@@ -1084,7 +1084,7 @@ export default function MarketingHome() {
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
-          <img src="/logo-full.png" alt={brand.name} className="h-14 w-auto shrink-0 object-contain sm:h-20" />
+          <img src="/logo-full.png" alt={brand.name} className="h-14 w-auto shrink-0 object-contain mix-blend-multiply sm:h-20" />
 
           {/* Section anchors — desktop only, and gated on xl (1280px) rather than Tailwind's
               usual lg (1024px): at 1024 the logo + all 7 links + language toggle + Sign In +
@@ -1202,8 +1202,10 @@ export default function MarketingHome() {
       </section>
 
       {/* Watch — a real screen-recorded walkthrough (landscape, product footage), lifted into
-          the hero above it. */}
-      <section className="relative bg-white">
+          the hero above it. No background on this section: the negative margin collapses
+          through to the section itself, so an opaque one would paint over the hero's bottom
+          edge and hide the very overlap it exists for. */}
+      <section className="relative">
         <div className="mx-auto max-w-[1100px] px-5">
           <div
             className="relative z-10 -mt-[clamp(100px,22vw,300px)] rounded-[22px] p-[2px] shadow-[0_40px_90px_-30px_rgba(13,16,36,0.55)]"
@@ -1292,7 +1294,7 @@ export default function MarketingHome() {
                     active ? "bg-[#111] text-white" : "bg-[#EAEEF4] text-[#333] hover:bg-[#D9E1F0]"
                   )}
                 >
-                  {CATEGORY_LABEL[lang][cat]} <span className={cn(active ? "text-white/60" : "text-[#6B7280]")}>{count}</span>
+                  {CATEGORY_LABEL[lang][cat]} <span className={cn(active ? "text-white/70" : "text-[#5B6472]")}>{count}</span>
                 </button>
               );
             })}
@@ -1338,7 +1340,16 @@ export default function MarketingHome() {
             </button>
           </div>
 
-          <Link to="/get-started" className={cn(CTA_DARK, "mt-12")}>
+          <div className="mt-5 flex justify-center gap-3 sm:hidden">
+            <button type="button" onClick={() => scrollFeatures(-1)} aria-label={t.previous} className={cn(ROUND_ARROW, "h-12 w-12")}>
+              <ChevronLeft className="h-[18px] w-[18px] rtl:-scale-x-100" />
+            </button>
+            <button type="button" onClick={() => scrollFeatures(1)} aria-label={t.next} className={cn(ROUND_ARROW, "h-12 w-12")}>
+              <ChevronRight className="h-[18px] w-[18px] rtl:-scale-x-100" />
+            </button>
+          </div>
+
+          <Link to="/get-started" className={cn(CTA_DARK, "mt-10 sm:mt-12")}>
             {t.requestDemo}
           </Link>
         </div>
@@ -1416,19 +1427,21 @@ export default function MarketingHome() {
                 <Reveal key={r} delayMs={(i % 4) * 80}>
                   <Link
                     to="/portal-select"
-                    className="group flex h-full flex-col gap-4 border border-[#D9E1F0] bg-white p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)] transition-all hover:-translate-y-1 hover:shadow-[0_24px_48px_-16px_rgba(13,16,36,0.25)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F97316]"
+                    className="group flex h-full gap-4 border border-[#D9E1F0] bg-white p-5 sm:flex-col sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)] transition-all hover:-translate-y-1 hover:shadow-[0_24px_48px_-16px_rgba(13,16,36,0.25)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F97316]"
                   >
                     {/* meta.hex ties each card to that role's own color identity across the
                         app (sidebar, PortalSelect, login role picker) instead of a flat
                         one-off navy, so a returning user recognizes "their" portal by color. */}
-                    <span className="flex h-12 w-12 items-center justify-center text-white" style={{ backgroundColor: meta.hex }}>
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center text-white" style={{ backgroundColor: meta.hex }}>
                       <meta.icon className="h-6 w-6" />
                     </span>
                     <div>
                       <h3 className="font-display text-lg font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{meta.label}</h3>
                       <p className="mt-1.5 text-sm leading-relaxed text-[#5B6472]">{meta.description}</p>
                     </div>
-                    <span className={cn(ARROW_LINK, "mt-auto")}>
+                    {/* The whole card is the link; below sm it's a compact row and this label
+                        is dropped so eight portals don't turn into eight screens of scroll. */}
+                    <span className={cn(ARROW_LINK, "mt-auto hidden sm:inline-flex")}>
                       {t.explore} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 rtl:-scale-x-100 rtl:group-hover:-translate-x-1" />
                     </span>
                   </Link>
@@ -1632,7 +1645,7 @@ export default function MarketingHome() {
             {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
           </Link>
           <div>
-            <Link to="/login" className="mt-6 inline-block text-xs font-semibold text-white/60 hover:text-white">
+            <Link to="/login" className="mt-3 inline-block py-3 text-xs font-semibold text-white/70 hover:text-white">
               {t.alreadyHaveAccount}
             </Link>
           </div>
@@ -1646,9 +1659,9 @@ export default function MarketingHome() {
       <footer className="border-t border-black/10 bg-[#F5F6F9] pb-8 pt-14">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-10 px-6 sm:grid-cols-4">
           <div className="col-span-2 sm:col-span-1">
-            <Logo imgClassName="h-12 w-12" />
+            <Logo imgClassName="h-12 w-12" wordmarkClassName="mix-blend-multiply" />
             <p className="mt-4 max-w-[22ch] text-sm leading-relaxed text-[#5B6472]">{t.footerTagline}</p>
-            <p className="mt-6 text-xs font-bold uppercase tracking-[0.06em] text-[#6B7280]">{t.contact}</p>
+            <p className="mt-6 text-xs font-bold uppercase tracking-[0.06em] text-[#5B6472]">{t.contact}</p>
             <ul className="mt-4 flex flex-col gap-3">
               <li>
                 <a
@@ -1689,7 +1702,7 @@ export default function MarketingHome() {
           </div>
 
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#6B7280]">{t.platform}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#5B6472]">{t.platform}</p>
             <ul className="mt-4 flex flex-col gap-3">
               {NAV_LINKS[lang].slice(0, 5).map((link) => (
                 <li key={link.href}>
@@ -1702,7 +1715,7 @@ export default function MarketingHome() {
           </div>
 
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#6B7280]">{t.getStarted}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#5B6472]">{t.getStarted}</p>
             <ul className="mt-4 flex flex-col gap-3">
               <li>
                 <Link to="/get-started" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
@@ -1723,7 +1736,7 @@ export default function MarketingHome() {
           </div>
 
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#6B7280]">{t.resources}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#5B6472]">{t.resources}</p>
             <ul className="mt-4 flex flex-col gap-3">
               <li>
                 <Link to="/blog" className="text-sm font-medium text-[#5B6472] hover:text-[#EA580C]">
@@ -1736,7 +1749,7 @@ export default function MarketingHome() {
 
         <div className="mx-auto mt-12 flex max-w-6xl flex-wrap items-center justify-between gap-3 border-t border-black/10 px-6 pt-6">
           <p className="text-xs font-medium text-[#5B6472]">{t.rights(new Date().getFullYear(), brand.name)}</p>
-          <Link to="/policy" className="text-xs font-medium text-[#5B6472] hover:text-[#EA580C]">
+          <Link to="/policy" className="py-3 text-xs font-medium text-[#5B6472] hover:text-[#EA580C]">
             {t.privacyPolicy}
           </Link>
         </div>

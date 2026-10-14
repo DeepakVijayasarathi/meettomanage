@@ -290,7 +290,7 @@ function PlanCard({ icon: Icon, eyebrow, name, price, priceNote, description, fe
         <Icon className="h-6 w-6" />
       </span>
       <p className="mt-5 text-xs font-bold uppercase tracking-[0.08em] text-[#C2410C]">{eyebrow}</p>
-      <h3 className="font-display mt-1.5 text-2xl font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{name}</h3>
+      <h2 className="font-display mt-1.5 text-2xl font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{name}</h2>
       <div className="mt-5 flex items-baseline gap-1.5">
         <span className="font-display text-[clamp(2.25rem,3.4vw,3rem)] font-extrabold leading-none tracking-[-0.03em] text-[#111] rtl:tracking-normal">{price}</span>
       </div>
@@ -340,7 +340,7 @@ export default function Pricing() {
       <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link to="/" aria-label={`${brand.name} home`}>
-            <Logo />
+            <Logo wordmarkClassName="mix-blend-multiply" />
           </Link>
           <div className="flex items-center gap-2">
             <LanguageToggle />
@@ -451,7 +451,7 @@ export default function Pricing() {
 
       <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-start">
-          <Logo imgClassName="h-11 w-11" />
+          <Logo imgClassName="h-11 w-11" wordmarkClassName="mix-blend-multiply" />
           <p className="text-xs font-medium text-[#5B6472]">{t.rightsReserved(new Date().getFullYear(), brand.name)}</p>
         </div>
       </footer>

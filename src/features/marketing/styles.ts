@@ -23,7 +23,7 @@ const CTA_BASE = `inline-flex min-w-[199px] items-center justify-center gap-2 px
 export const CTA_ORANGE = `${CTA_BASE} bg-[#F97316] text-[#171B22] hover:bg-[#FB8B3C]`;
 export const CTA_DARK = `${CTA_BASE} bg-[#111] text-white hover:bg-[#262D37]`;
 export const CTA_GHOST = `${CTA_BASE} border border-white/30 text-white hover:bg-white/10`;
-export const ARROW_LINK = `inline-flex items-center gap-1.5 text-[15px] font-bold uppercase text-[#C2410C] hover:text-[#9A3412] ${FOCUS_RING}`;
+export const ARROW_LINK = `inline-flex items-center gap-1.5 py-2.5 text-[15px] font-bold uppercase text-[#C2410C] hover:text-[#9A3412] ${FOCUS_RING}`;
 export const ROUND_ARROW = `flex h-[55px] w-[55px] shrink-0 items-center justify-center rounded-full border border-[#D9E1F0] bg-[#EAEEF4] text-[#111] transition-colors hover:bg-[#D9E1F0] ${FOCUS_RING}`;
 /** Square white card on a hairline border — the default surface for anything boxed. */
 export const CARD = "border border-[#D9E1F0] bg-white shadow-[0_8px_40px_0_rgba(0,0,0,0.08)]";
