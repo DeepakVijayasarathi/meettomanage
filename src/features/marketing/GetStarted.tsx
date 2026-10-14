@@ -162,7 +162,7 @@ export default function GetStarted() {
   }
 
   return (
-    <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
+    <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#171B22]">
       <Seo
         pageKey="getStarted"
         title={isCoach ? t.seoTitleCoach : t.seoTitleAcademy}

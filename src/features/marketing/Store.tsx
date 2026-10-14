@@ -102,7 +102,7 @@ export default function Store() {
   }
 
   return (
-    <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
+    <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#171B22]">
       <Seo
         pageKey="store"
         title="Course Catalogue — Meet to Manage"
@@ -169,7 +169,7 @@ export default function Store() {
           </div>
         ) : plans.length === 0 ? (
           <div className={cn(CARD, HERO_OVERLAP, "px-6 py-10")}>
-            <EmptyState icon={BookOpen} title="No courses open for enrollment right now" description="Check back soon, or sign in if you already have an account." />
+            <EmptyState className="rounded-none" icon={BookOpen} title="No courses open for enrollment right now" description="Check back soon, or sign in if you already have an account." />
           </div>
         ) : (
           <div className={cn(HERO_OVERLAP, "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3")}>

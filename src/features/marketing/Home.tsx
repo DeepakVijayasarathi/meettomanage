@@ -131,7 +131,7 @@ function HeroReel() {
   }
 
   return (
-    <div className="relative aspect-[9/16] overflow-hidden rounded-[24px] bg-[#12151C] shadow-pop ring-4 ring-white">
+    <div className="relative aspect-[9/16] overflow-hidden rounded-[20px] bg-[#12151C] shadow-pop ring-4 ring-white">
       <video
         ref={videoRef}
         src="/videos/reels.mp4"
@@ -229,7 +229,7 @@ function ChatWidget({ lang }: { lang: Lang }) {
   return (
     <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6 rtl:right-auto rtl:left-5 sm:rtl:left-6">
       {open && (
-        <div className="w-72 rounded-2xl border border-black/10 bg-white p-5 shadow-pop">
+        <div className="w-72 border border-[#D9E1F0] bg-white p-5 shadow-pop">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold text-[#171B22]">{t.heading}</p>
             <button
@@ -247,19 +247,19 @@ function ChatWidget({ lang }: { lang: Lang }) {
               href="https://wa.me/919344773231"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2.5 rounded-xl border border-black/10 px-3.5 py-2.5 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#F5F6F9]"
+              className="flex items-center gap-2.5 border border-[#D9E1F0] px-3.5 py-3 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#F5F6F9]"
             >
               <MessageSquare className="h-4 w-4 text-[#25D366]" /> {t.whatsapp}
             </a>
             <a
               href="mailto:info@infinityuniquers.com"
-              className="flex items-center gap-2.5 rounded-xl border border-black/10 px-3.5 py-2.5 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#F5F6F9]"
+              className="flex items-center gap-2.5 border border-[#D9E1F0] px-3.5 py-3 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#F5F6F9]"
             >
               <Mail className="h-4 w-4 text-[#EA580C]" /> {t.email}
             </a>
             <Link
               to="/get-started"
-              className="flex items-center gap-2.5 rounded-xl bg-[#F97316] px-3.5 py-2.5 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#EA580C]"
+              className="flex items-center gap-2.5 bg-[#F97316] px-3.5 py-3 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#FB8B3C]"
             >
               <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /> {t.demo}
             </Link>
@@ -356,7 +356,7 @@ function DemoPopup({ lang }: { lang: Lang }) {
       onClick={() => setOpen(false)}
     >
       <div
-        className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-pop"
+        className="relative w-full max-w-sm bg-white p-7 shadow-pop"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -367,7 +367,7 @@ function DemoPopup({ lang }: { lang: Lang }) {
         >
           <X className="h-4 w-4" />
         </button>
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF3EA] text-[#EA580C]">
+        <span className="flex h-12 w-12 items-center justify-center bg-[#0D1024] text-[#F97316]">
           <Sparkles className="h-5 w-5" />
         </span>
         <h2 className="font-display mt-4 text-xl font-extrabold tracking-tight text-[#171B22]">{t.heading}</h2>
@@ -1072,7 +1072,7 @@ export default function MarketingHome() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
-    <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
+    <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#171B22]">
       <Seo
         pageKey="home"
         title="Meet to Manage — LMS & Virtual Classroom"
@@ -1668,7 +1668,7 @@ export default function MarketingHome() {
                   href="mailto:info@infinityuniquers.com"
                   className="group flex items-center gap-2.5 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F97316]/10 text-[#EA580C] transition-colors group-hover:bg-[#F97316]/15">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#0D1024] text-[#F97316] transition-colors group-hover:bg-[#262D37]">
                     <Mail className="h-4 w-4" />
                   </span>
                   info@infinityuniquers.com
@@ -1679,7 +1679,7 @@ export default function MarketingHome() {
                   href="tel:+919344773231"
                   className="group flex items-center gap-2.5 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F97316]/10 text-[#EA580C] transition-colors group-hover:bg-[#F97316]/15">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#0D1024] text-[#F97316] transition-colors group-hover:bg-[#262D37]">
                     <Phone className="h-4 w-4" />
                   </span>
                   +91 93447 73231
@@ -1692,7 +1692,7 @@ export default function MarketingHome() {
                   rel="noopener noreferrer"
                   className="group flex items-center gap-2.5 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F97316]/10 text-[#EA580C] transition-colors group-hover:bg-[#F97316]/15">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#0D1024] text-[#F97316] transition-colors group-hover:bg-[#262D37]">
                     <MessageSquare className="h-4 w-4" />
                   </span>
                   {t.whatsappUs}

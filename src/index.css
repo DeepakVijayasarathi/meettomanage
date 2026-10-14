@@ -223,4 +223,19 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+  /* Marketing pages are square-cornered: buttons and form fields that come from the shared,
+     rounded app components (ui/button, ui/input, BookDemoForm…) are squared off wherever
+     they sit inside a marketing page, rather than giving each component a second variant.
+     Pills, round icon buttons and media frames keep their own radius. Dialogs render in a
+     portal outside the page root, so they keep the app's rounded look. */
+  .marketing-square :is(a, button).rounded-lg,
+  .marketing-square :is(input, textarea, [role="combobox"]) {
+    border-radius: 0;
+  }
+  .marketing-square [role="tablist"][aria-label="Language"] {
+    border-radius: 10px;
+  }
+  .marketing-square [role="tablist"][aria-label="Language"] > button {
+    border-radius: 8px;
+  }
 }

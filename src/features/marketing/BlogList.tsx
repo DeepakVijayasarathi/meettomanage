@@ -64,7 +64,7 @@ export default function BlogList() {
   const sorted = [...posts].sort((a, b) => b.publishedAtUtc.localeCompare(a.publishedAtUtc));
 
   return (
-    <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
+    <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#171B22]">
       <Seo
         pageKey="blog"
         title="Blog — Meet to Manage"
@@ -121,7 +121,7 @@ export default function BlogList() {
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         ) : sorted.length === 0 ? (
-          <EmptyState icon={BookOpen} title={t.emptyTitle} description={t.emptyDescription} />
+          <EmptyState className="rounded-none" icon={BookOpen} title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
           <div className="divide-y divide-[#D9E1F0]">
             {sorted.map((post) => (

@@ -329,7 +329,7 @@ export default function Pricing() {
   const saasPriceNote = t.payAsYouGrow.priceNote[cycle];
 
   return (
-    <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
+    <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#171B22]">
       <Seo
         pageKey="pricing"
         title="Pricing — Meet to Manage"

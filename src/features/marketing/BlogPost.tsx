@@ -103,7 +103,7 @@ export default function BlogPost() {
   const more = otherPosts.filter((p) => p.slug !== slug).slice(0, 2);
 
   return (
-    <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
+    <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#171B22]">
       {/* Always renders — previously only rendered once `post` loaded, so a crawler hitting
           this route directly (or the loading/not-found states) got no meta tags at all,
           just index.html's site-wide defaults for every /blog/:slug URL. */}
@@ -142,6 +142,7 @@ export default function BlogPost() {
           </div>
         ) : !post ? (
           <EmptyState
+            className="rounded-none"
             icon={AlertCircle}
             title={t.notFoundTitle}
             description={live && error ? t.notFoundLoadError(error) : t.notFoundMoved}
