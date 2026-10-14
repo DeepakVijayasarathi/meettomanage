@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Download, Eye, EyeOff, FileText, FolderOpen, Upload, Video } from "lucide-react";
+import { BookOpen, Download, Eye, EyeOff, FileText, FolderOpen, Loader2, Upload, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { FileDropzone } from "@/components/FileDropzone";
@@ -12,11 +12,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RESOURCES } from "@/data/resources";
 import { BATCHES, getBatchById } from "@/data/batches";
 import { CHART_PALETTE } from "@/lib/roles";
 import { cn, formatDate } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
   downloadMyResource,
@@ -34,7 +35,10 @@ const TEACHER_ID = "t-1";
 interface ViewResource {
   id: string;
   title: string;
-  type: Resource["type"];
+  // "other" only ever comes from reading the API's generic ResourceType.Other back —
+  // it doesn't mean "recording" (see TYPE_FROM_API below), so it's kept out of the
+  // shared Resource["type"] union rather than mislabeled as one of its real members.
+  type: Resource["type"] | "other";
   batchName: string;
   uploadedOn: string;
   downloadable: boolean;
@@ -48,10 +52,11 @@ interface BatchOption {
   name: string;
 }
 
-const TYPE_META: Record<Resource["type"], { label: string; icon: typeof BookOpen; hex: string }> = {
+const TYPE_META: Record<Resource["type"] | "other", { label: string; icon: typeof BookOpen; hex: string }> = {
   book: { label: "Book", icon: BookOpen, hex: CHART_PALETTE[0] },
   worksheet: { label: "Worksheet", icon: FileText, hex: CHART_PALETTE[3] },
   recording: { label: "Recording", icon: Video, hex: CHART_PALETTE[4] },
+  other: { label: "Document", icon: FileText, hex: CHART_PALETTE[2] },
 };
 
 // Frontend type -> API ResourceType (recordings live in SessionRecordings; upload generic as Other)
@@ -61,10 +66,14 @@ const API_TYPE: Record<Resource["type"], ApiResourceType> = {
   recording: "Other",
 };
 
-const TYPE_FROM_API: Record<ApiResourceType, Resource["type"]> = {
+// The backend's ResourceType enum has no dedicated "recording" value — uploads made here as
+// "recording" round-trip as generic "Other", same as any other non-book/worksheet upload. So
+// reading "Other" back can't assume it was a recording; it's shown as a neutral "Document"
+// instead of claiming a type the API never actually confirmed.
+const TYPE_FROM_API: Record<ApiResourceType, Resource["type"] | "other"> = {
   ReadingBook: "book",
   Worksheet: "worksheet",
-  Other: "recording",
+  Other: "other",
 };
 
 function formatSize(bytes: number | null): string | undefined {
@@ -125,6 +134,9 @@ export default function TeacherResources() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  // Set once the user has tried to upload with a required field missing -- gates the
+  // per-field error messages below so they don't show up before the user has interacted.
+  const [uploadAttempted, setUploadAttempted] = useState(false);
 
   const batchOptions: BatchOption[] = useMemo(() => {
     if (!usingApi) return demoBatches.map((b) => ({ id: b.id, name: b.name }));
@@ -159,9 +171,11 @@ export default function TeacherResources() {
     setSelectedBatchIds(batchOptions[0]?.id ? [batchOptions[0].id] : []);
     setFile(null);
     setUploadError(null);
+    setUploadAttempted(false);
   }
 
   async function handleUpload() {
+    setUploadAttempted(true);
     if (!title.trim() || selectedBatchIds.length === 0) return;
     const batchLabel = batchOptions
       .filter((b) => selectedBatchIds.includes(b.id))
@@ -188,7 +202,7 @@ export default function TeacherResources() {
         reload();
         toast({ variant: "success", title: "Resource uploaded", description: `Visible to ${batchLabel}.` });
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Upload failed. Please try again.";
+        const message = userMessage(e, "Upload failed. Please try again.");
         setUploadError(message);
         toast({ variant: "error", title: "Upload failed", description: message });
       } finally {
@@ -223,8 +237,12 @@ export default function TeacherResources() {
     setDownloadingId(resource.id);
     try {
       await downloadMyResource(resource.id, resource.title);
-    } catch {
-      setUploadError("Download failed.");
+    } catch (e) {
+      // The upload dialog is very likely closed at this point (downloads are triggered
+      // from the resource grid, not the dialog) — uploadError's paragraph only renders
+      // inside that dialog, so a failure here needs its own visible feedback: a toast.
+      const message = userMessage(e, "Download failed. Please try again.");
+      toast({ variant: "error", title: "Download failed", description: message });
     } finally {
       setDownloadingId(null);
     }
@@ -244,9 +262,22 @@ export default function TeacherResources() {
               if (!open) resetUploadForm();
             }}
           >
-            <Button onClick={() => setUploadOpen(true)} disabled={usingApi && batchOptions.length === 0}>
-              <Upload className="h-4 w-4" /> Upload resource
-            </Button>
+            {usingApi && batchOptions.length === 0 ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button disabled>
+                      <Upload className="h-4 w-4" /> Upload resource
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>You have no batches assigned yet.</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button onClick={() => setUploadOpen(true)}>
+                <Upload className="h-4 w-4" /> Upload resource
+              </Button>
+            )}
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Upload a resource</DialogTitle>
@@ -255,12 +286,24 @@ export default function TeacherResources() {
 
               <div className="flex flex-col gap-4">
                 <FileDropzone label="Drag & drop or click to upload" onFile={(f) => setFile(f)} />
+                {uploadAttempted && usingApi && !file && (
+                  <p role="alert" className="text-xs text-destructive">Please choose a file to upload.</p>
+                )}
 
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="resource-title">
                     Title <span className="text-destructive">*</span>
                   </Label>
-                  <Input id="resource-title" placeholder="e.g. Blending Sounds Worksheet — Week 4" value={title} onChange={(e) => setTitle(e.target.value)} />
+                  <Input
+                    id="resource-title"
+                    placeholder="e.g. Blending Sounds Worksheet — Week 4"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    aria-invalid={uploadAttempted && !title.trim()}
+                  />
+                  {uploadAttempted && !title.trim() && (
+                    <p role="alert" className="text-xs text-destructive">Title is required.</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -297,6 +340,9 @@ export default function TeacherResources() {
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground">Pick one or more batches — the material shows only to those batches.</p>
+                    {uploadAttempted && selectedBatchIds.length === 0 && (
+                      <p role="alert" className="text-xs text-destructive">Select at least one batch.</p>
+                    )}
                   </div>
                 </div>
 
@@ -311,7 +357,7 @@ export default function TeacherResources() {
                   Cancel
                 </Button>
                 <Button disabled={!title.trim() || selectedBatchIds.length === 0 || submitting} onClick={handleUpload}>
-                  {submitting ? "Uploading…" : "Upload"}
+                  {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {submitting ? "Uploading…" : "Upload"}
                 </Button>
               </DialogFooter>
             </DialogContent>

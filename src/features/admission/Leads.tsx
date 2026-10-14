@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Mail, MessageSquarePlus, Phone, Sparkles } from "lucide-react";
+import { Loader2, Mail, MessageSquarePlus, Phone, Sparkles, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -24,25 +24,35 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { CHART_PALETTE } from "@/lib/roles";
 import { formatDate, getInitials } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { displayEmail } from "@/lib/parentLogin";
+import { apiEnabled, userMessage } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import {
   listDemoBookings,
+  listDemoFollowUpNotes,
   listParentDemoHistory,
   toApiConversionStatus,
   toFrontendLead,
   updateConversionStatus,
+  type ApiDemoBooking,
+  type ApiIssuedParentLogin,
   type ApiParentDemoHistory,
 } from "@/api/demoBookings";
-import { LEADS as INITIAL_LEADS, type ConversionStage, type Lead } from "./data";
+import { IssuedLoginDialog } from "./IssuedLoginDialog";
+import { DirectAdmissionDialog } from "./DirectAdmissionDialog";
+import { AdmissionPaymentPanel } from "./AdmissionPaymentPanel";
+import { LEADS as INITIAL_LEADS, type ConversionStage, type FollowUpNote, type Lead } from "./data";
 
 const STAGE_OPTIONS: { value: ConversionStage | "all"; label: string }[] = [
   { value: "all", label: "All stages" },
   { value: "Demo Scheduled", label: "Demo Scheduled" },
   { value: "Demo Completed", label: "Demo Completed" },
+  { value: "Ready for Enrollment", label: "Ready for Enrollment" },
   { value: "Follow-up", label: "Follow-up" },
   { value: "Payment Pending", label: "Payment Pending" },
   { value: "Partially Paid", label: "Partially Paid" },
+  { value: "Payment Received", label: "Payment Received (verify)" },
   { value: "Enrolled", label: "Enrolled" },
   { value: "Not Interested", label: "Not Interested" },
 ];
@@ -50,23 +60,38 @@ const STAGE_OPTIONS: { value: ConversionStage | "all"; label: string }[] = [
 const STAGE_BADGE: Record<ConversionStage, BadgeProps["variant"]> = {
   "Demo Scheduled": "outline",
   "Demo Completed": "secondary",
+  "Ready for Enrollment": "default",
   "Follow-up": "warning",
   "Payment Pending": "warning",
   "Partially Paid": "secondary",
+  "Payment Received": "default",
   Enrolled: "success",
   "Not Interested": "destructive",
 };
 
 export default function AdmissionLeads() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // PUT /{id}/conversion-status (UpdateConversionStatus) requires Admission:Edit server-side.
+  const canLogFollowUp = !apiEnabled() || hasPermission("Admission", "Edit");
+  // POST /direct-admission needs Admission:Create (same as booking a demo).
+  const canCreateLead = apiEnabled() && hasPermission("Admission", "Create");
   const { data: apiLeads, error: leadsError, reload } = useApiData(
     () => listDemoBookings().then((bookings) => bookings.map(toFrontendLead)),
     INITIAL_LEADS
   );
   const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS);
   useEffect(() => setLeads(apiLeads), [apiLeads]);
+  // After a payment link is issued / a lead is enrolled the list reloads; keep the open dialog on
+  // the fresh row so its payment panel shows the new state instead of the stale snapshot.
+  useEffect(() => {
+    setActiveLead((current) => (current ? (apiLeads.find((l) => l.id === current.id) ?? current) : current));
+  }, [apiLeads]);
   const [stageFilter, setStageFilter] = useState<ConversionStage | "all">("all");
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  const [issuedLogin, setIssuedLogin] = useState<ApiIssuedParentLogin | null>(null);
+  // "New admission without a demo" (no sibling) or "Add another child" from the open lead.
+  const [directAdmission, setDirectAdmission] = useState<{ sibling: Lead | null; childName?: string } | null>(null);
   // Per-parent demo record (every demo this parent has ever taken) for the open lead.
   const [history, setHistory] = useState<ApiParentDemoHistory | null>(null);
   useEffect(() => {
@@ -82,6 +107,36 @@ export default function AdmissionLeads() {
       cancelled = true;
     };
   }, [activeLead]);
+  // Real per-note date/author history for the open lead (API mode only) — replaces the old
+  // approach of collapsing every note ever logged into one string and reconstructing a single
+  // fake entry on reload, which lost who said what and when.
+  const [apiNotes, setApiNotes] = useState<FollowUpNote[] | null>(null);
+  useEffect(() => {
+    setApiNotes(null);
+    if (!apiEnabled() || !activeLead) return;
+    let cancelled = false;
+    listDemoFollowUpNotes(activeLead.id)
+      .then((notes) => {
+        if (cancelled) return;
+        // The API returns newest-first; flip to oldest-first here so it matches the demo-mode
+        // notes array's own convention -- the render below reverses once, for either source,
+        // to show newest-first on screen.
+        setApiNotes(
+          [...notes].reverse().map((n) => ({
+            id: n.id,
+            date: n.atUtc.slice(0, 10),
+            note: n.note,
+            loggedBy: n.loggedByName ?? "Admission team",
+            nextFollowUpDate: n.nextFollowUpOn ?? undefined,
+          }))
+        );
+      })
+      .catch(() => setApiNotes([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [activeLead]);
+  const displayNotes = apiEnabled() ? (apiNotes ?? []) : (activeLead?.notes ?? []);
   const [noteText, setNoteText] = useState("");
   const [nextFollowUp, setNextFollowUp] = useState("");
   const [justLogged, setJustLogged] = useState<string | null>(null);
@@ -93,6 +148,23 @@ export default function AdmissionLeads() {
     () => (stageFilter === "all" ? leads : leads.filter((l) => l.conversionStage === stageFilter)),
     [leads, stageFilter]
   );
+
+  // Children who sat in on the open lead's demo but have no lead of their own yet -- each needs one
+  // to get their own payment link.
+  const siblingsWithoutLead = useMemo(() => {
+    if (!activeLead?.extraChildren?.length) return [];
+    const taken = new Set(
+      leads.filter((l) => l.email === activeLead.email).map((l) => l.childName.trim().toLowerCase())
+    );
+    return activeLead.extraChildren.filter((name) => !taken.has(name.trim().toLowerCase()));
+  }, [activeLead, leads]);
+
+  function handleDirectAdmissionCreated(booking: ApiDemoBooking) {
+    setDirectAdmission(null);
+    reload();
+    openFollowUp(toFrontendLead(booking));
+    toast({ variant: "success", title: "Lead created", description: "Pick the course below and generate the payment link." });
+  }
 
   function openFollowUp(lead: Lead) {
     setActiveLead(lead);
@@ -106,19 +178,18 @@ export default function AdmissionLeads() {
     if (!activeLead || !noteText.trim()) return;
 
     if (apiEnabled()) {
-      // The API keeps one running notes field per booking; append and persist
-      const combined = [...activeLead.notes.map((n) => n.note), noteText.trim()].join("\n");
       setLoggingFollowUp(true);
       setFollowUpError(null);
       try {
-        await updateConversionStatus(activeLead.id, toApiConversionStatus(newStage), combined);
+        const updated = await updateConversionStatus(activeLead.id, toApiConversionStatus(newStage), noteText.trim(), nextFollowUp || undefined);
         reload();
+        if (updated.issuedLogin) setIssuedLogin(updated.issuedLogin);
         setJustLogged(activeLead.childName);
         setTimeout(() => setJustLogged(null), 4000);
         setActiveLead(null);
         toast({ variant: "success", title: "Follow-up logged" });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Couldn't save this follow-up. Please try again.";
+        const message = userMessage(err, "Couldn't save this follow-up. Please try again.");
         setFollowUpError(message);
         toast({ variant: "error", title: "Couldn't log follow-up", description: message });
       } finally {
@@ -188,7 +259,7 @@ export default function AdmissionLeads() {
               <Phone className="h-3 w-3" /> {row.phone}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Mail className="h-3 w-3" /> {row.email}
+              <Mail className="h-3 w-3" /> {displayEmail(row.email)}
             </span>
           </div>
         ),
@@ -197,9 +268,13 @@ export default function AdmissionLeads() {
         key: "demoStatus",
         header: "Demo Status",
         render: (row) => (
-          <Badge variant={row.conversionStage === "Demo Scheduled" ? "outline" : "secondary"}>
-            {row.conversionStage === "Demo Scheduled" ? `Scheduled · ${formatDate(row.demoDate)}` : "Completed"}
-          </Badge>
+          !row.demoSessionId && apiEnabled() ? (
+            <Badge variant="outline">No demo</Badge>
+          ) : (
+            <Badge variant={row.conversionStage === "Demo Scheduled" ? "outline" : "secondary"}>
+              {row.conversionStage === "Demo Scheduled" ? `Scheduled · ${formatDate(row.demoDate)}` : "Completed"}
+            </Badge>
+          )
         ),
       },
       {
@@ -221,7 +296,7 @@ export default function AdmissionLeads() {
         accessor: (row) => row.lastContactedOn,
         render: (row) => (
           <div className="text-xs">
-            <p className="font-medium text-foreground">{formatDate(row.lastContactedOn)}</p>
+            <p className="font-medium text-foreground">{row.lastContactedOn ? formatDate(row.lastContactedOn) : "—"}</p>
             {row.nextFollowUpOn && <p className="text-muted-foreground">Next: {formatDate(row.nextFollowUpOn)}</p>}
           </div>
         ),
@@ -252,6 +327,13 @@ export default function AdmissionLeads() {
         eyebrow="CRM"
         title="Leads"
         description="Every parent enquiry, demo and follow-up in one pipeline — log a note any time you speak with a family."
+        actions={
+          canCreateLead && (
+            <Button onClick={() => setDirectAdmission({ sibling: null })}>
+              <UserPlus className="h-4 w-4" /> New admission (no demo)
+            </Button>
+          )
+        }
       />
 
       {justLogged && (
@@ -316,8 +398,8 @@ export default function AdmissionLeads() {
                     </div>
                     <div className="flex max-h-36 flex-col gap-1.5 overflow-y-auto">
                       {history.bookings.map((b) => (
-                        <div key={b.id} className="flex items-center justify-between gap-2 text-sm">
-                          <span className="truncate text-foreground">
+                        <div key={b.id} className="flex min-w-0 items-center justify-between gap-2 text-sm">
+                          <span className="min-w-0 flex-1 truncate text-foreground">
                             {b.childName}
                             <span className="text-xs text-muted-foreground">
                               {" "}
@@ -332,10 +414,10 @@ export default function AdmissionLeads() {
                 </Card>
               )}
 
-              {activeLead.notes.length > 0 && (
+              {displayNotes.length > 0 && (
                 <Card className="bg-muted/30">
                   <CardContent className="flex max-h-40 flex-col gap-3 overflow-y-auto p-4">
-                    {[...activeLead.notes].reverse().map((n) => (
+                    {[...displayNotes].reverse().map((n) => (
                       <div key={n.id} className="text-sm">
                         <p className="text-xs font-semibold text-muted-foreground">
                           {formatDate(n.date, "long")} · {n.loggedBy}
@@ -347,54 +429,97 @@ export default function AdmissionLeads() {
                 </Card>
               )}
 
+              <AdmissionPaymentPanel lead={activeLead} canEdit={canLogFollowUp} onChanged={reload} onIssuedLogin={setIssuedLogin} />
+
+              {/* Two kids in one demo: each child is its own lead, so each gets its own payment link. */}
+              {canCreateLead && (
+                <div className="flex flex-col gap-2 rounded-lg border border-dashed border-border p-3">
+                  <p className="text-xs text-muted-foreground">
+                    {siblingsWithoutLead.length > 0
+                      ? `${siblingsWithoutLead.join(", ")} also attended this demo. Create a lead for each child to send them their own payment link.`
+                      : "Enrolling a brother or sister too? Add them as another child to send a separate payment link."}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {siblingsWithoutLead.map((name) => (
+                      <Button key={name} variant="outline" size="sm" onClick={() => setDirectAdmission({ sibling: activeLead, childName: name })}>
+                        <UserPlus className="h-3.5 w-3.5" /> Payment link for {name}
+                      </Button>
+                    ))}
+                    <Button variant="ghost" size="sm" onClick={() => setDirectAdmission({ sibling: activeLead })}>
+                      <UserPlus className="h-3.5 w-3.5" /> Add another child
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <Separator />
 
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="followUpNote">Log a new follow-up note</Label>
-                <Textarea
-                  id="followUpNote"
-                  placeholder="What did you discuss with the parent?"
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                />
-              </div>
+              {canLogFollowUp ? (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="followUpNote">
+                      Log a new follow-up note <span className="text-destructive">*</span>
+                    </Label>
+                    <Textarea
+                      id="followUpNote"
+                      placeholder="What did you discuss with the parent?"
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                    />
+                  </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="nextFollowUp">Next follow-up date</Label>
-                  <Input id="nextFollowUp" type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="lead-move-stage-select">Move to stage</Label>
-                  <Select value={newStage} onValueChange={(v) => setNewStage(v as ConversionStage)}>
-                    <SelectTrigger id="lead-move-stage-select">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STAGE_OPTIONS.filter((o) => o.value !== "all").map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="nextFollowUp">Next follow-up date</Label>
+                      <Input id="nextFollowUp" type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="lead-move-stage-select">Move to stage</Label>
+                      <Select value={newStage} onValueChange={(v) => setNewStage(v as ConversionStage)}>
+                        <SelectTrigger id="lead-move-stage-select">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STAGE_OPTIONS.filter((o) => o.value !== "all").map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-              {followUpError && <p className="text-sm font-medium text-destructive">{followUpError}</p>}
+                  {followUpError && <p className="text-sm font-medium text-destructive">{followUpError}</p>}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  You don't have permission to log follow-ups or move this lead's stage. Ask your Admin for Edit access on Admission.
+                </p>
+              )}
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setActiveLead(null)} disabled={loggingFollowUp}>
                   Close
                 </Button>
-                <Button disabled={!noteText.trim() || loggingFollowUp} onClick={handleLogFollowUp}>
-                  <MessageSquarePlus className="h-4 w-4" /> {loggingFollowUp ? "Saving…" : "Save follow-up"}
-                </Button>
+                {canLogFollowUp && (
+                  <Button disabled={!noteText.trim() || loggingFollowUp} onClick={handleLogFollowUp}>
+                    {loggingFollowUp ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquarePlus className="h-4 w-4" />}{loggingFollowUp ? "Saving…" : "Save follow-up"}
+                  </Button>
+                )}
               </DialogFooter>
             </>
           )}
         </DialogContent>
       </Dialog>
+      <IssuedLoginDialog login={issuedLogin} onClose={() => setIssuedLogin(null)} />
+      <DirectAdmissionDialog
+        open={!!directAdmission}
+        sibling={directAdmission?.sibling}
+        suggestedChildName={directAdmission?.childName}
+        onClose={() => setDirectAdmission(null)}
+        onCreated={handleDirectAdmissionCreated}
+      />
     </div>
   );
 }

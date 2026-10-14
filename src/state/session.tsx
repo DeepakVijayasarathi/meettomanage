@@ -2,11 +2,11 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { Role } from "@/types";
 import { CHILDREN, getChildrenByParent } from "@/data/children";
 import { apiEnabled, getAccessToken } from "@/lib/api";
-import { authStorage, clearAuthStorage } from "@/lib/authStorage";
+import { authStorage, clearAuthStorage, prefStorage } from "@/lib/authStorage";
 import { getParentChildren } from "@/api/parentPortal";
 import { getCurrentUser } from "@/api/auth";
 import { checkPermission, type PermissionAction } from "@/lib/permissions";
-import { safeInternalPath } from "@/lib/utils";
+import { safeInternalPath, setVisibleInterval } from "@/lib/utils";
 import type { PermissionModuleName } from "@/api/permissions";
 import { getUserTimeZone, setUserTimeZone } from "@/lib/datetime";
 
@@ -77,6 +77,8 @@ const NAME_BY_ROLE: Record<Role, string> = {
   student: "Aarav Kapoor",
   coordinator: "Meera Nair",
   management: "Vikram Oberoi",
+  itadmin: "Sanjay Iyer",
+  executive: "Priya Menon",
 };
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -86,11 +88,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   });
   const [activeChildId, setActiveChildIdState] = useState<string>(() => {
     if (typeof window === "undefined") return apiEnabled() ? "" : CHILDREN[0].id;
-    return localStorage.getItem(CHILD_KEY) ?? (apiEnabled() ? "" : CHILDREN[0].id);
+    return prefStorage().getItem(CHILD_KEY) ?? (apiEnabled() ? "" : CHILDREN[0].id);
   });
   const [enrolledChildIds, setEnrolledChildIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
-    const raw = localStorage.getItem(ENROLLED_KEY);
+    const raw = prefStorage().getItem(ENROLLED_KEY);
     if (raw) return JSON.parse(raw);
     return apiEnabled() ? [] : CHILDREN.filter((c) => c.enrollmentComplete).map((c) => c.id);
   });
@@ -145,21 +147,33 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // change (or an already-open tab) doesn't leave a stale cached grant in effect. Also
   // keeps timezone in sync the same way — a change made in Account settings from another
   // tab/device shouldn't leave this one converting session times against a stale zone.
+  // getCurrentUser() also swaps in a freshly-minted token carrying these same claims (see
+  // its own comment), so this poll is what actually applies a just-approved access request
+  // without the user having to log out and back in — repeated every few minutes, not just
+  // once on mount, so it reaches an already-open tab too.
   useEffect(() => {
     if (!apiEnabled() || !role || !getAccessToken()) return;
     let cancelled = false;
-    getCurrentUser()
-      .then((response) => {
-        if (cancelled) return;
-        setPermissions(response.permissions);
-        if (response.defaultRoute) setHomePath(response.defaultRoute);
-        if (response.user.timeZoneId) setTimeZoneId(response.user.timeZoneId);
-      })
-      .catch(() => {
-        /* keep whatever was cached from login */
-      });
+
+    function refresh() {
+      getCurrentUser()
+        .then((response) => {
+          // null: this tab's login changed mid-request (see getCurrentUser) -- nothing to apply.
+          if (cancelled || !response) return;
+          setPermissions(response.permissions);
+          if (response.defaultRoute) setHomePath(response.defaultRoute);
+          if (response.user.timeZoneId) setTimeZoneId(response.user.timeZoneId);
+        })
+        .catch(() => {
+          /* keep whatever was cached from login */
+        });
+    }
+
+    refresh();
+    const intervalId = setVisibleInterval(refresh, 3 * 60_000);
     return () => {
       cancelled = true;
+      clearInterval(intervalId);
     };
   }, [role]);
 
@@ -189,11 +203,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [role]);
 
   useEffect(() => {
-    localStorage.setItem(CHILD_KEY, activeChildId);
+    prefStorage().setItem(CHILD_KEY, activeChildId);
   }, [activeChildId]);
 
   useEffect(() => {
-    localStorage.setItem(ENROLLED_KEY, JSON.stringify(enrolledChildIds));
+    prefStorage().setItem(ENROLLED_KEY, JSON.stringify(enrolledChildIds));
   }, [enrolledChildIds]);
 
   const setUserName = (name: string | null) => {

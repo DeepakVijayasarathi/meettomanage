@@ -138,7 +138,6 @@ export function DataTable<T>({
       el.removeEventListener("scroll", updateScrollShadow);
       observer.disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function toggleRow(key: string, checked: boolean) {
@@ -148,7 +147,7 @@ export function DataTable<T>({
     onSelectionChange?.(next);
   }
 
-  function toggleAllOnPage(rows: T[], checked: boolean) {
+  function toggleAllRows(rows: T[], checked: boolean) {
     const next = new Set(selection);
     for (const row of rows) {
       const key = rowKey(row);
@@ -214,7 +213,12 @@ export function DataTable<T>({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
+        {/* sm:max-w-md (not sm:max-w-sm/384px, nor the old max-w-xs/320px): the longest
+            real placeholder in use, "Search parents by name, email or their child's
+            name…", still overflowed max-w-sm by ~20px (measured: 354.9px of text in
+            333.8px of available padding-adjusted width) — same hard-clip-mid-word-on-
+            first-paint symptom the max-w-sm bump was meant to fix, just past its margin. */}
+        <div className="relative w-full sm:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
@@ -358,10 +362,23 @@ export function DataTable<T>({
                 <TableRow className="hover:bg-transparent">
                   {selectable && (
                     <TableHead className="w-10">
+                      {/* Selects every row matching the current search/sort — not just this
+                          page — so a bulk action (e.g. "Resend credentials") can target the
+                          whole filtered list without paging through it first. Indeterminate
+                          when some but not all matching rows are selected (e.g. after paging
+                          away with only this page's rows picked). */}
                       <Checkbox
-                        aria-label="Select all rows on this page"
-                        checked={pageRows.length > 0 && pageRows.every((row) => selection.has(rowKey(row)))}
-                        onCheckedChange={(checked) => toggleAllOnPage(pageRows, checked === true)}
+                        aria-label="Select all matching rows"
+                        checked={
+                          sorted.length === 0
+                            ? false
+                            : sorted.every((row) => selection.has(rowKey(row)))
+                              ? true
+                              : sorted.some((row) => selection.has(rowKey(row)))
+                                ? "indeterminate"
+                                : false
+                        }
+                        onCheckedChange={(checked) => toggleAllRows(sorted, checked === true)}
                       />
                     </TableHead>
                   )}

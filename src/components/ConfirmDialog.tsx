@@ -1,13 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { userMessage } from "@/lib/api";
 
 interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description?: string;
+  /** Plain text for a simple confirmation, or richer markup (e.g. a short list of what the
+   *  action affects — an assigned teacher, records that will be cancelled) for one that needs it. */
+  description?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
@@ -52,7 +55,7 @@ export function ConfirmDialog({
       await result;
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(userMessage(err, "Something went wrong. Please try again."));
     } finally {
       setBusy(false);
     }

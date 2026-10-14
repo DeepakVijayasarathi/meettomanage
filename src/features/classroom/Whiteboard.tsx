@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ArrowUpRight,
   Circle as CircleIcon,
   Eraser,
   Hand,
+  Highlighter,
   Maximize2,
   Minimize2,
   Minus,
@@ -23,22 +25,10 @@ import { CHART_PALETTE } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import WhiteboardActivity from "./WhiteboardActivity";
+import type { ApiWhiteboardActivity } from "@/api/whiteboardActivities";
+import { drawStroke, isFreehand, type Point, type Stroke, type ToolId } from "./drawing";
 
-type ToolId = "pen" | "eraser" | "rectangle" | "circle" | "line" | "text" | "sticky" | "pan";
-
-interface Point {
-  x: number;
-  y: number;
-}
-
-export interface Stroke {
-  id: string;
-  tool: ToolId;
-  points: Point[];
-  color: string;
-  width: number;
-  text?: string;
-}
+export type { Stroke } from "./drawing";
 
 /** One synced board operation, relayed verbatim through the classroom hub. */
 export type BoardOp =
@@ -62,7 +52,28 @@ export type BoardOp =
   // below) — keeps the whole class looking at the same page of a shared board, the same
   // way the strokes on it are already shared, instead of each viewer's "which page am I
   // on" being silent local-only state no one else's switch ever touched.
-  | { kind: "goToPage"; pageIndex: number };
+  | { kind: "goToPage"; pageIndex: number }
+  // Opens/closes the emoji matching activity (drag & drop / tag & match / hotspot) for
+  // the whole class, broadcast only by whoever holds board access — without this,
+  // showActivity was pure local component state, so a teacher launching the activity
+  // (and the emoji sound/visual its completion triggers) only ever saw it on their own
+  // screen; students never saw the activity appear at all.
+  | { kind: "activity"; open: boolean }
+  // Teacher-reported live (2026-09-17): "students also complain they can't see what I am
+  // writing on whiteboard and whiteboard itself is too small." Before this, `maximized`
+  // was pure local UI state — a teacher expanding the board to full-screen on her own
+  // device changed nothing about what students saw, since each participant's Whiteboard
+  // instance is independent. Broadcasting the TEACHER's own maximize toggle (only hers —
+  // see the mode==="teacher" guard where this is sent) makes "make the board bigger" an
+  // action that actually reaches the class, not just a personal drawing-comfort setting.
+  // Students can still shrink their own view back down afterward if it doesn't suit them;
+  // this only sets where they land when the teacher changes it.
+  | { kind: "maximize"; value: boolean }
+  // Local-only, never sent over the hub: wipes the board back to one empty page right
+  // before a reconnect re-joins, so ClassroomHub's full board-history replay rebuilds it
+  // from scratch instead of layering non-idempotent ops (strokeAppend, removePage) a
+  // second time on top of what was already drawn — see ClassroomHubEvents.resync.
+  | { kind: "reset" };
 
 interface Page {
   id: string;
@@ -77,89 +88,23 @@ const WIDTHS = [2, 4, 8];
 
 const TOOLS: { id: ToolId; label: string; icon: typeof PenTool }[] = [
   { id: "pen", label: "Pen", icon: PenTool },
+  { id: "highlighter", label: "Highlighter", icon: Highlighter },
   { id: "eraser", label: "Eraser", icon: Eraser },
   { id: "rectangle", label: "Rectangle", icon: Square },
   { id: "circle", label: "Circle", icon: CircleIcon },
   { id: "line", label: "Line", icon: Minus },
+  { id: "arrow", label: "Arrow", icon: ArrowUpRight },
   { id: "text", label: "Text", icon: Type },
   { id: "sticky", label: "Sticky note", icon: StickyNote },
   { id: "pan", label: "Pan the canvas", icon: Hand },
 ];
 
-function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.lineWidth = stroke.width;
-  ctx.strokeStyle = stroke.color;
-  ctx.fillStyle = stroke.color;
-  ctx.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
-
-  if (stroke.tool === "pen" || stroke.tool === "eraser") {
-    if (stroke.points.length < 2) {
-      const p = stroke.points[0];
-      if (!p) return;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, stroke.width / 2, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.beginPath();
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (const p of stroke.points.slice(1)) ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-    }
-  } else if (stroke.tool === "line") {
-    const [a, b] = stroke.points;
-    if (a && b) {
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    }
-  } else if (stroke.tool === "rectangle") {
-    const [a, b] = stroke.points;
-    if (a && b) ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
-  } else if (stroke.tool === "circle") {
-    const [a, b] = stroke.points;
-    if (a && b) {
-      const rx = Math.abs(b.x - a.x) / 2;
-      const ry = Math.abs(b.y - a.y) / 2;
-      const cx = (a.x + b.x) / 2;
-      const cy = (a.y + b.y) / 2;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-  } else if (stroke.tool === "text") {
-    const p = stroke.points[0];
-    if (!p) return;
-    ctx.font = `600 ${Math.max(16, stroke.width * 5)}px "Inter", sans-serif`;
-    ctx.textBaseline = "top";
-    ctx.fillText(stroke.text ?? "", p.x, p.y);
-  } else if (stroke.tool === "sticky") {
-    const p = stroke.points[0];
-    if (!p) return;
-    const lines = (stroke.text ?? "").split("\n");
-    const noteW = 168;
-    const noteH = Math.max(64, 26 + lines.length * 18);
-    ctx.save();
-    ctx.shadowColor = "rgba(15, 23, 42, 0.18)";
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 3;
-    ctx.fillStyle = stroke.color;
-    ctx.beginPath();
-    ctx.roundRect(p.x, p.y, noteW, noteH, 8);
-    ctx.fill();
-    ctx.restore();
-    ctx.font = '500 13px "Inter", sans-serif';
-    ctx.textBaseline = "top";
-    ctx.fillStyle = "#0F172A";
-    lines.forEach((line, i) => ctx.fillText(line, p.x + 10, p.y + 12 + i * 18, noteW - 20));
-  }
-  ctx.globalCompositeOperation = "source-over";
-}
-
 interface WhiteboardProps {
   canDraw: boolean;
+  mode: "teacher" | "student";
+  /** This class's resolved activity bank (Admin → Academics → Activity Bank), fetched once
+   *  by InteractivePanel — see WhiteboardActivity's own doc comment. */
+  activities: ApiWhiteboardActivity[];
   onActivityComplete?: () => void;
   /** Engagement tracking: fired for every committed stroke/text/sticky. */
   onInteraction?: () => void;
@@ -167,9 +112,11 @@ interface WhiteboardProps {
   onBoardOp?: (op: BoardOp) => void;
   /** Real-time sync: subscribe to remote board ops; returns an unsubscribe. */
   subscribeBoardOps?: (handler: (op: BoardOp) => void) => () => void;
+  /** Lets the host (JitsiLive) float the video above the full-screen board instead of leaving it hidden behind. */
+  onMaximizedChange?: (maximized: boolean) => void;
 }
 
-export default function Whiteboard({ canDraw, onActivityComplete, onInteraction, onBoardOp, subscribeBoardOps }: WhiteboardProps) {
+export default function Whiteboard({ canDraw, mode, activities, onActivityComplete, onInteraction, onBoardOp, subscribeBoardOps, onMaximizedChange }: WhiteboardProps) {
   const [pages, setPages] = useState<Page[]>([{ id: nextId(), strokes: [] }]);
   // Mirrors `pages` for the remote-ops subscription below, which deliberately only
   // subscribes once ([subscribeBoardOps], not [pages]) — its closure over `pages` would
@@ -189,14 +136,51 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   // (below) picks up the new, much larger container size automatically; nothing here touches
   // canvas pixels directly.
   const [maximized, setMaximized] = useState(false);
+  // The one button that actually changes what the WHOLE CLASS sees, not just the local
+  // drawer's own view — see the BoardOp "maximize" case's own doc comment above. Only the
+  // teacher's toggle broadcasts; a student expanding their own cramped view (e.g. on a
+  // phone) shouldn't force everyone else's layout to follow along.
+  function toggleMaximized() {
+    setMaximized((m) => {
+      const next = !m;
+      if (mode === "teacher") onBoardOp?.({ kind: "maximize", value: next });
+      return next;
+    });
+  }
   useEffect(() => {
     if (!maximized) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMaximized(false);
+      if (e.key === "Escape") {
+        setMaximized(false);
+        if (mode === "teacher") onBoardOp?.({ kind: "maximize", value: false });
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, [maximized, mode, onBoardOp]);
+  // Real teacher report: the maximize button existed but "kept happening" that nobody
+  // used it — undiscoverable in a corner of an already-busy toolbar. Shown once ever
+  // (localStorage, not component state — TabsContent unmounts the Board tab when you
+  // switch away, so component state alone would just re-show this every time the tab
+  // is revisited) to whoever can draw, until they either use the button or dismiss it.
+  const BOARD_EXPAND_HINT_KEY = "trn.classroomBoardExpandHintSeen";
+  const [expandHintDismissed, setExpandHintDismissed] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem(BOARD_EXPAND_HINT_KEY) === "1";
+  });
+  function dismissExpandHint() {
+    setExpandHintDismissed(true);
+    if (typeof window !== "undefined") window.localStorage.setItem(BOARD_EXPAND_HINT_KEY, "1");
+  }
+  useEffect(() => {
+    if (maximized) dismissExpandHint();
   }, [maximized]);
+  // Reports on every change, and resets on unmount (the tab unmounting while maximized
+  // would otherwise leave the video stuck floating).
+  useEffect(() => {
+    onMaximizedChange?.(maximized);
+    return () => onMaximizedChange?.(false);
+  }, [maximized, onMaximizedChange]);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [lastCleared, setLastCleared] = useState<{ pageIndex: number; strokes: Stroke[] } | null>(null);
   const [textDraft, setTextDraft] = useState<{ x: number; y: number; value: string; sticky?: boolean } | null>(null);
@@ -260,9 +244,29 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
   }, [viewOffset]);
 
   // Re-render whenever this page's committed strokes change (page switch, new stroke, pan).
+  // Reported live as "the eraser is slow": redrawBackground() is O(total strokes on the
+  // page) -- fine for the one time it fires per LOCAL stroke (commitDraft, below, only
+  // touches `pages` on pointer-up), but a *remote* viewer's `pages` changes once per
+  // "stroke"/"strokeAppend" op received from whoever's actually drawing -- i.e. once per
+  // throttled network message while their stroke is still in progress (see onBoardOp's own
+  // ~50ms throttle below), each one re-replaying every already-committed stroke on the page
+  // from scratch. A broad eraser sweep generates far more of those append messages over a
+  // given stretch of canvas than a precise pen stroke covering the same distance, which is
+  // why this reads specifically as "the eraser" rather than drawing in general. Coalescing
+  // to one redraw per animation frame -- not one per `pages` change -- caps the real cost at
+  // 60/sec regardless of how many network messages land in between, the same throttling
+  // principle the sender already applies, just on the receiving side instead.
+  const redrawRafRef = useRef<number | null>(null);
   useEffect(() => {
-    redrawBackground();
-    redraw();
+    if (redrawRafRef.current !== null) cancelAnimationFrame(redrawRafRef.current);
+    redrawRafRef.current = requestAnimationFrame(() => {
+      redrawRafRef.current = null;
+      redrawBackground();
+      redraw();
+    });
+    return () => {
+      if (redrawRafRef.current !== null) cancelAnimationFrame(redrawRafRef.current);
+    };
   }, [redrawBackground, redraw]);
 
   // Size the canvas to its container and redraw on resize.
@@ -300,6 +304,9 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     }
     const pt = getPoint(e);
     if (tool === "text" || tool === "sticky") {
+      // Keep the browser's own mousedown focus change from landing right after the text box
+      // below mounts and focuses itself -- it blurred (and so closed) the box instantly.
+      e.preventDefault();
       // The input is positioned in screen space; converted back to world on commit
       setTextDraft({ x: pt.x - viewOffset.x, y: pt.y - viewOffset.y, value: "", sticky: tool === "sticky" });
       return;
@@ -311,6 +318,16 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     canvasRef.current?.setPointerCapture(e.pointerId);
   }
 
+  // Bug fixed 2026-09-16 ("eraser works very slowly"): this used to push the new point and
+  // then call redraw(), which replayed drawStroke() over draft.points FROM SCRATCH on every
+  // single pointermove -- O(current-stroke-length) canvas work per move, i.e. O(n^2) over
+  // the life of one long stroke. Pen marks are usually short so this rarely showed, but
+  // erasing is exactly the case where it does: a real erase is a long, continuous
+  // back-and-forth drag, so the per-move cost kept growing the whole time the user was
+  // erasing. For pen/eraser, only the newest segment (last point -> new point) is now
+  // stroked directly onto the already-correct canvas each move -- O(1) per move regardless
+  // of how long the stroke has been going. Non-pen/eraser tools (rectangle/circle/line) only
+  // ever hold 1-2 points, so their existing full-redraw() path was never the bottleneck.
   function handlePointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
     if (panRef.current) {
       const { startX, startY, origin } = panRef.current;
@@ -320,11 +337,36 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     if (!drawingRef.current || !draftRef.current) return;
     const pt = getPoint(e);
     if (tool === "pen" || tool === "eraser") {
+      const points = draftRef.current.points;
+      const prev = points[points.length - 1];
+      points.push(pt);
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (canvas && ctx && prev) {
+        ctx.save();
+        ctx.translate(-viewOffset.x, -viewOffset.y);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.lineWidth = draftRef.current.width;
+        ctx.strokeStyle = draftRef.current.color;
+        ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
+        ctx.beginPath();
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(pt.x, pt.y);
+        ctx.stroke();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.restore();
+      }
+    } else if (isFreehand(tool)) {
+      // Highlighter: see-through ink can't be laid down segment by segment like the pen above
+      // (every joint would overlap and show as a darker dot), so the whole path is repainted
+      // as one shape over the cached committed strokes.
       draftRef.current.points.push(pt);
+      redraw();
     } else {
       draftRef.current.points = [draftRef.current.points[0], pt];
+      redraw();
     }
-    redraw();
 
     // Broadcast the in-progress stroke so remote viewers see it grow live instead of
     // only appearing once complete. The first send establishes the stroke (id, tool,
@@ -335,7 +377,11 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     if (onBoardOp && now - lastBoardSendRef.current >= 50) {
       lastBoardSendRef.current = now;
       const allPoints = draftRef.current.points;
-      if (!strokeEstablishedRef.current) {
+      // Shapes (line/arrow/rectangle/circle) are always just [start, current corner]: their
+      // points get replaced, not appended, so the append-only delta below never carried the
+      // new corner -- students saw every shape frozen at its size from the first ~50ms of the
+      // drag (found testing the arrow on UAT). Resend them whole; the receiver upserts by id.
+      if (!isFreehand(draftRef.current.tool) || !strokeEstablishedRef.current) {
         strokeEstablishedRef.current = true;
         sentPointCountRef.current = allPoints.length;
         onBoardOp({ kind: "stroke", pageIndex, stroke: { ...draftRef.current, points: [...allPoints] } });
@@ -360,7 +406,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     // Same delta logic as the throttled sends above: if the stroke was never
     // established (a quick tap/short stroke that finished inside one throttle
     // window), send it whole; otherwise only the tail end no send has covered yet.
-    if (!strokeEstablishedRef.current) {
+    if (!strokeEstablishedRef.current || !isFreehand(finished.tool)) {
       onBoardOp?.({ kind: "stroke", pageIndex, stroke: finished });
     } else {
       const remaining = finished.points.slice(sentPointCountRef.current);
@@ -430,6 +476,16 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
     if (canDraw) onBoardOp?.({ kind: "goToPage", pageIndex: newIndex });
   }
 
+  /** Opens/closes the activity locally, and — same gating as goToPage — broadcasts it
+   *  to the class only when the toggler actually holds board access, so a passive
+   *  viewer can't end the activity for everyone. This is what makes the activity (and
+   *  the emoji sound/visual its completion triggers) show up for students at all;
+   *  previously showActivity was local-only state the broadcast never touched. */
+  function toggleActivity(open: boolean) {
+    setShowActivity(open);
+    if (canDraw) onBoardOp?.({ kind: "activity", open });
+  }
+
   // Apply remote board ops from classmates (relayed through the classroom hub).
   useEffect(() => {
     if (!subscribeBoardOps) return;
@@ -495,32 +551,70 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
           // point past the end of what's rendered here yet.
           setPageIndex(Math.max(0, Math.min(op.pageIndex, pagesRef.current.length - 1)));
           break;
+        case "activity":
+          setShowActivity(op.open);
+          break;
+        case "maximize":
+          setMaximized(op.value);
+          break;
+        case "reset":
+          setPages([{ id: nextId(), strokes: [] }]);
+          setPageIndex(0);
+          break;
       }
     });
   }, [subscribeBoardOps]);
 
-  const maximizeButton = (
+  // `compact` shrinks the button to h-7 w-7 to match the smaller icon-button
+  // siblings in the view-only (no draw access) toolbar; the full canDraw
+  // toolbar keeps the default h-8 w-8 to match its own siblings.
+  const renderMaximizeButton = (compact = false) => (
     <Button
       size="icon"
       variant="ghost"
-      className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
-      title={maximized ? "Shrink the board back down" : "Make the board bigger"}
+      className={cn("text-white/70 hover:bg-white/10 hover:text-white", compact ? "h-7 w-7" : "h-8 w-8")}
+      title={
+        maximized
+          ? "Shrink the board back down"
+          : mode === "teacher"
+            ? "Make the board bigger for the whole class"
+            : "Make the board bigger (just for you)"
+      }
       aria-label={maximized ? "Shrink the board back down" : "Make the board bigger"}
       aria-pressed={maximized}
-      onClick={() => setMaximized((m) => !m)}
+      onClick={toggleMaximized}
     >
-      {maximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+      {maximized ? (
+        <Minimize2 className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+      ) : (
+        <Maximize2 className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+      )}
     </Button>
   );
 
   return (
-    <div className={cn("flex h-full flex-col gap-2 p-3", maximized && "fixed inset-0 z-40 h-screen bg-brand-navy p-4")}>
+    // h-dvh, not h-screen -- same fix, same reasoning as JitsiLive's own root wrapper
+    // (teacher-reported live: "screen size overall very small and when we zoom it, it
+    // automatically vanishes and minimizes on its own"). This maximize overlay is exactly
+    // the escape hatch a teacher would reach for to fight a too-small board, so it landing
+    // on the same viewport bug undermined the one workaround that should have fixed it.
+    <div
+      className={cn("flex h-full flex-col gap-2 p-3", maximized && "fixed inset-x-0 bottom-0 z-40 bg-brand-navy p-4")}
+      // Offset below the classroom header (a CSS var JitsiLive measures and exposes —
+      // falls back to a close-enough constant for the demo-mode classroom, which doesn't
+      // set it) instead of `inset-0`/`h-dvh` covering the whole viewport. The header holds
+      // Leave, Focus Mode and Waiting Room, plus the reconnecting/error banners render
+      // just below it — all of that used to be completely hidden behind the maximized
+      // board with no way back except Escape or hunting for the Shrink button, on a
+      // currently-live classroom where "get out of this view" should never be a puzzle.
+      style={maximized ? { top: "var(--classroom-header-h, 64px)" } : undefined}
+    >
       {canDraw ? (
         // Dark toolbar chrome matches the rest of the interactive panel (tabs, roster,
         // quiz) — only the canvas below stays a light "paper" surface, so this reads
         // as one dark product with a sheet of paper on it, not two stitched-together UIs.
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2 shadow-inner shadow-black/20 backdrop-blur-sm">
-          <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1">
+          <div className="flex flex-wrap items-center gap-1 rounded-xl bg-white/5 p-1">
             {TOOLS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -591,7 +685,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               showActivity ? "bg-brand-violet text-white hover:bg-brand-violet/90" : "text-white/70 hover:bg-white/10 hover:text-white"
             )}
             aria-pressed={showActivity}
-            onClick={() => setShowActivity((s) => !s)}
+            onClick={() => toggleActivity(!showActivity)}
           >
             <Puzzle className="h-3.5 w-3.5" /> Activity
           </Button>
@@ -636,7 +730,7 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               </Button>
             )}
             <div className="ml-1 h-6 w-px bg-white/10" aria-hidden="true" />
-            {maximizeButton}
+            {renderMaximizeButton()}
           </div>
         </div>
       ) : (
@@ -672,8 +766,32 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
             <div className="mx-1 h-5 w-px bg-white/10" aria-hidden="true" />
-            {maximizeButton}
+            {renderMaximizeButton(true)}
           </div>
+        </div>
+      )}
+
+      {/* Real teacher report: the board reads as "too small to annotate or write the
+          whole thing" and the maximize button existed the whole time but nobody found
+          it. One-time, dismissible — not a permanent fixture once someone's used it or
+          waved it off (see expandHintDismissed above). Teacher-only: for the teacher this
+          is a genuine class-wide fix now (see the BoardOp "maximize" broadcast above); a
+          student's own maximize only resizes their own view, a smaller win not worth
+          nagging every viewer about. */}
+      {canDraw && mode === "teacher" && !maximized && !expandHintDismissed && (
+        <div className="flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-3 py-2 text-xs text-brand-violet [@media(max-height:820px)]:hidden">
+          <Maximize2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <p className="flex-1">
+            Writing something the whole class needs to read clearly? Tap <span className="font-semibold">Expand</span>{" "}
+            (top-right of the board toolbar) to fill the screen — it makes the board bigger for everyone, not just you.
+          </p>
+          <button
+            type="button"
+            onClick={dismissExpandHint}
+            className="shrink-0 font-semibold underline decoration-brand-violet/40 underline-offset-2 hover:decoration-brand-violet"
+          >
+            Got it
+          </button>
         </div>
       )}
 
@@ -711,7 +829,9 @@ export default function Whiteboard({ canDraw, onActivityComplete, onInteraction,
 
         {showActivity && (
           <WhiteboardActivity
-            onClose={() => setShowActivity(false)}
+            activities={activities}
+            mode={mode}
+            onClose={() => toggleActivity(false)}
             onAllMatched={onActivityComplete}
           />
         )}

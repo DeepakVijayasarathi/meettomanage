@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApiData } from "@/api/hooks";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import {
   cancelSubscription,
   createPackagePlan,
@@ -48,6 +48,7 @@ const BILLING_TYPES: { value: ApiBillingType; label: string }[] = [
 ];
 
 const BILLING_CYCLES: { value: ApiBillingCycle; label: string }[] = [
+  { value: "Biweekly", label: "Every 2 weeks" },
   { value: "Monthly", label: "Monthly" },
   { value: "Quarterly", label: "Quarterly" },
   { value: "Yearly", label: "Yearly" },
@@ -180,7 +181,7 @@ export default function AdminPackages() {
       await reloadPlans();
       setPlanDialogOpen(false);
     } catch (e) {
-      setPlanError(e instanceof Error ? e.message : "Couldn't save the plan.");
+      setPlanError(userMessage(e, "Couldn't save the plan."));
     } finally {
       setSavingPlan(false);
     }
@@ -224,7 +225,7 @@ export default function AdminPackages() {
       await reloadSubscriptions();
       setSubDialogOpen(false);
     } catch (e) {
-      setSubError(e instanceof Error ? e.message : "Couldn't start the subscription.");
+      setSubError(userMessage(e, "Couldn't start the subscription."));
     } finally {
       setSavingSub(false);
     }
@@ -246,7 +247,7 @@ export default function AdminPackages() {
       await renewSubscription(sub.id);
       await reloadSubscriptions();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Couldn't renew the subscription.");
+      setActionError(userMessage(e, "Couldn't renew the subscription."));
     } finally {
       setBusyId(null);
     }
@@ -322,10 +323,12 @@ export default function AdminPackages() {
         key: "actions",
         header: "",
         render: (p) => (
-          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEditPlan(p); }}>
-            <Pencil className="h-3.5 w-3.5" />
-            Edit
-          </Button>
+          <div className="flex items-center justify-end gap-1">
+            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEditPlan(p); }}>
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          </div>
         ),
       },
     ],
@@ -383,28 +386,31 @@ export default function AdminPackages() {
       {
         key: "actions",
         header: "",
-        render: (s) =>
-          s.status === "Active" ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              onClick={(e) => { e.stopPropagation(); setConfirmCancel(s); }}
-            >
-              <XCircle className="h-3.5 w-3.5" />
-              Cancel
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={busyId === s.id}
-              onClick={(e) => { e.stopPropagation(); void handleRenew(s); }}
-            >
-              {busyId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              Renew
-            </Button>
-          ),
+        render: (s) => (
+          <div className="flex items-center justify-end gap-1">
+            {s.status === "Active" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={(e) => { e.stopPropagation(); setConfirmCancel(s); }}
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                Cancel
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busyId === s.id}
+                onClick={(e) => { e.stopPropagation(); void handleRenew(s); }}
+              >
+                {busyId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                Renew
+              </Button>
+            )}
+          </div>
+        ),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -514,7 +520,7 @@ export default function AdminPackages() {
 
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="plan-name">Plan name</Label>
+              <Label htmlFor="plan-name">Plan name <span className="text-destructive">*</span></Label>
               <Input
                 id="plan-name"
                 value={planForm.name}
@@ -584,7 +590,7 @@ export default function AdminPackages() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="plan-price">Price (₹)</Label>
+                <Label htmlFor="plan-price">Price (₹) <span className="text-destructive">*</span></Label>
                 <Input
                   id="plan-price"
                   type="number"
@@ -640,7 +646,7 @@ export default function AdminPackages() {
               Close
             </Button>
             <Button onClick={() => void savePlan()} disabled={savingPlan || !live}>
-              {savingPlan ? "Saving…" : editingPlan ? "Save changes" : "Create plan"}
+              {savingPlan && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {savingPlan ? "Saving…" : editingPlan ? "Save changes" : "Create plan"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -659,7 +665,7 @@ export default function AdminPackages() {
 
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="subscription-student-select">Student</Label>
+              <Label htmlFor="subscription-student-select">Student <span className="text-destructive">*</span></Label>
               <Select value={subChildId} onValueChange={setSubChildId}>
                 <SelectTrigger id="subscription-student-select">
                   <SelectValue placeholder="Pick a student" />
@@ -676,7 +682,7 @@ export default function AdminPackages() {
             </div>
 
             <div className="grid gap-1.5">
-              <Label htmlFor="subscription-plan-select">Plan</Label>
+              <Label htmlFor="subscription-plan-select">Plan <span className="text-destructive">*</span></Label>
               <Select value={subPlanId} onValueChange={setSubPlanId}>
                 <SelectTrigger id="subscription-plan-select">
                   <SelectValue placeholder="Pick a plan" />
@@ -716,7 +722,7 @@ export default function AdminPackages() {
               Close
             </Button>
             <Button onClick={() => void startSubscription()} disabled={savingSub || !live}>
-              {savingSub ? "Starting…" : "Start subscription"}
+              {savingSub && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {savingSub ? "Starting…" : "Start subscription"}
             </Button>
           </DialogFooter>
         </DialogContent>

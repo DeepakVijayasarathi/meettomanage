@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, History } from "lucide-react";
+import { Download, History, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { FilterBar } from "@/components/FilterBar";
@@ -222,7 +222,7 @@ export default function SubAdminAuditLog() {
               ]}
             >
               <Button variant="outline" size="sm" disabled={exporting} onClick={handleExport}>
-                <Download className="h-3.5 w-3.5" />
+                {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                 {exporting ? "Exporting…" : "Export CSV"}
               </Button>
             </FilterBar>

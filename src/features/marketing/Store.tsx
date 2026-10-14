@@ -22,7 +22,7 @@ import { BookDemoDialog } from "@/components/BookDemoDialog";
 import { Seo } from "@/components/Seo";
 import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listStorePlans, submitStoreInquiry, type ApiStorePlan } from "@/api/store";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -56,6 +56,14 @@ export default function Store() {
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
+  // Matched to the backend's own [Range(1, 25)] on CreateStoreInquiryRequest.ChildAge — the
+  // input's min/max are cosmetic, so without this the only feedback was a raw 400 after submit.
+  const childAgeError =
+    form.childAge.trim().length > 0 &&
+    (!Number.isInteger(Number(form.childAge)) || Number(form.childAge) < 1 || Number(form.childAge) > 25)
+      ? "Age must be a whole number between 1 and 25."
+      : null;
+
   // Book-a-demo dialog — separate from the per-plan enroll dialog above, since a demo
   // isn't tied to any specific paid plan.
   const [demoOpen, setDemoOpen] = useState(false);
@@ -73,6 +81,10 @@ export default function Store() {
     // Same whitespace-only gap as the demo form above.
     if (!form.parentName.trim() || !form.childName.trim()) {
       setError("Enter a parent name and child name.");
+      return;
+    }
+    if (childAgeError) {
+      setError(childAgeError);
       return;
     }
 
@@ -95,7 +107,7 @@ export default function Store() {
       });
       setSubmitted(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't submit your enquiry. Please try again.");
+      setError(userMessage(err, "Couldn't submit your enquiry. Please try again."));
     } finally {
       setSubmitting(false);
     }
@@ -278,7 +290,16 @@ export default function Store() {
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="childAge">Child's age</Label>
-                    <Input id="childAge" type="number" min={1} max={25} value={form.childAge} onChange={(e) => setForm((f) => ({ ...f, childAge: e.target.value }))} />
+                    <Input
+                      id="childAge"
+                      type="number"
+                      min={1}
+                      max={25}
+                      value={form.childAge}
+                      onChange={(e) => setForm((f) => ({ ...f, childAge: e.target.value }))}
+                      aria-invalid={!!childAgeError}
+                    />
+                    {childAgeError && <p className="text-xs font-medium text-destructive">{childAgeError}</p>}
                   </div>
                 </div>
                 <div className="grid gap-1.5">

@@ -1,28 +1,31 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CalendarClock, List, Users, Video } from "lucide-react";
+import { CalendarClock, FileText, List, Users, Video } from "lucide-react";
 import { useApiData } from "@/api/hooks";
-import { listMySessions, toFrontendSession } from "@/api/sessions";
+import { listMySessions, toFrontendSession, updateSessionSummary } from "@/api/sessions";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { FilterBar } from "@/components/FilterBar";
 import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { CalendarBoard } from "@/components/CalendarBoard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
-import { SessionStatusBadge } from "@/components/StatusBadge";
+import { SessionStatusBadge, sessionStatusLabel } from "@/components/StatusBadge";
+import { parseCancellation } from "@/lib/cancelledBy";
 import { RecordingsDialog } from "@/components/RecordingsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getCourseById } from "@/data/courses";
-import { listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
+import { listHolidays, listMyLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
-import { apiEnabled } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
-import { isJoinable, joinHint } from "@/features/parent/utils";
+import { apiEnabled, userMessage } from "@/lib/api";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
+import { isTeacherJoinable, joinHint } from "@/features/parent/utils";
 import type { ClassSession, SessionStatus } from "@/types";
 
 /** Status-eligible for live class, independent of whether the join window is open yet. */
@@ -44,12 +47,6 @@ const STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "leave", label: "Leave" },
 ];
 
-function formatTimeLabel(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 function sessionSubtitle(session: ClassSession) {
   if (session.batchId) return getBatchById(session.batchId)?.name ?? "General session";
@@ -60,6 +57,7 @@ function sessionSubtitle(session: ClassSession) {
 
 export default function TeacherMyClasses() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { data: mySessions, error: sessionsError, reload } = useApiData(
     () => listMySessions().then((sessions) => sessions.map(toFrontendSession)),
     getSessionsForTeacher(TEACHER_ID)
@@ -74,11 +72,32 @@ export default function TeacherMyClasses() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<ClassSession | null>(null);
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
+  // Teacher feedback: "the report-writing option is also not visible after the session if
+  // we do not complete the report immediately." completeSession refuses to run twice, so
+  // editing a completed session's notes needs its own separate path back in — see
+  // updateSessionSummary. notesDraft is seeded from the session's own current summary
+  // (including the auto-generated engagement-stats fallback, if that's all there ever was)
+  // so editing starts from what's already there, not a blank box.
+  const [notesFor, setNotesFor] = useState<ClassSession | null>(null);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  // "Start Class"/"Start Demo" navigates straight into JitsiLive, whose own init (external
+  // script load, join-token fetch, iframe init) takes a few real seconds with nothing on this
+  // page changing in the meantime — a click that visibly did nothing invites a second, third
+  // click while still waiting. Tracks which session was just clicked so only that one button
+  // disables itself and reads "Starting…" for the moment the navigation takes to land.
+  const [startingId, setStartingId] = useState<string | null>(null);
 
   // Calendar-only: holidays/leave aren't real classes, so they're kept out of allSessions
   // (the list/table view) and merged in just for the calendar's colour coding.
   const { data: holidays } = useApiData<ApiHoliday[]>(() => listHolidays(), []);
-  const { data: approvedLeave } = useApiData<ApiLeaveRequest[]>(() => listLeave("Approved"), []);
+  // /mine (not the admin-wide /api/leave-requests) — a teacher's own calendar must only ever
+  // show their own leave, never another teacher's. Confirmed live: this previously called the
+  // unscoped admin listing, so any teacher's "My Classes" calendar showed every teacher's
+  // approved leave (name, date and reason included) — a real data-exposure bug, not just a
+  // display quirk.
+  const { data: myLeave } = useApiData<ApiLeaveRequest[]>(() => listMyLeave(), []);
+  const approvedLeave = useMemo(() => myLeave.filter((l) => l.status === "Approved"), [myLeave]);
   const calendarEvents = useMemo(
     () =>
       apiEnabled()
@@ -90,12 +109,34 @@ export default function TeacherMyClasses() {
   // Real sessions launch straight into the Jitsi room; mock sessions open the demo classroom
   const startClass = useCallback(
     (session: ClassSession) => {
+      if (startingId === session.id) return;
+      setStartingId(session.id);
       navigate(`/teacher/live/${session.id}`, {
         state: session.meetingRoomId ? { room: session.meetingRoomId, title: session.title } : undefined,
       });
     },
-    [navigate]
+    [navigate, startingId]
   );
+
+  function openNotes(session: ClassSession) {
+    setNotesFor(session);
+    setNotesDraft(session.summary ?? "");
+  }
+
+  async function saveNotes() {
+    if (!notesFor) return;
+    setSavingNotes(true);
+    try {
+      await updateSessionSummary(notesFor.id, notesDraft.trim());
+      toast({ variant: "success", title: "Notes saved", description: "The updated notes were also emailed to the class's parents." });
+      setNotesFor(null);
+      reload();
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't save notes", description: userMessage(err, "Please try again.") });
+    } finally {
+      setSavingNotes(false);
+    }
+  }
 
   const filtered = statusFilter === "all" ? allSessions : allSessions.filter((s) => s.status === statusFilter);
 
@@ -141,7 +182,19 @@ export default function TeacherMyClasses() {
       header: "Status",
       accessor: (row) => row.status,
       sortable: true,
-      render: (row) => <SessionStatusBadge status={row.status} />,
+      render: (row) => {
+        const reason = row.status === "cancelled" ? parseCancellation(row.cancellationReason).details : "";
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <SessionStatusBadge status={row.status} label={sessionStatusLabel(row)} />
+            {reason && (
+              <span className="max-w-[14rem] truncate text-xs text-muted-foreground" title={reason}>
+                {reason}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "action",
@@ -152,14 +205,18 @@ export default function TeacherMyClasses() {
       // parent/Billing.tsx's action column).
       header: "",
       render: (row) =>
-        isJoinable(row) ? (
-          <Button size="sm" onClick={(e) => { e.stopPropagation(); startClass(row); }}>
-            {row.status === "demo" ? "Start Demo" : "Start Class"}
+        isTeacherJoinable(row) ? (
+          <Button size="sm" disabled={startingId === row.id} onClick={(e) => { e.stopPropagation(); startClass(row); }}>
+            {startingId === row.id ? "Starting…" : row.status === "demo" ? "Start Demo" : "Start Class"}
           </Button>
         ) : row.status === "completed" ? (
           <div className="flex items-center gap-2">
             <Button asChild size="sm" variant="outline">
               <Link to="/teacher/attendance">View record</Link>
+            </Button>
+            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openNotes(row); }}>
+              <FileText className="h-3.5 w-3.5" />
+              Notes
             </Button>
             <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setRecordingsFor(row); }}>
               <Video className="h-3.5 w-3.5" />
@@ -182,7 +239,7 @@ export default function TeacherMyClasses() {
         ),
     },
     ],
-    [startClass]
+    [startClass, startingId]
   );
 
   return (
@@ -232,7 +289,7 @@ export default function TeacherMyClasses() {
                     label: "Status",
                     value: statusFilter,
                     onChange: setStatusFilter,
-                    className: "w-[180px]",
+                    className: "w-48",
                     placeholder: "Filter status",
                     options: STATUS_FILTERS.map((f) => ({ value: f.value, label: f.label })),
                   },
@@ -264,8 +321,14 @@ export default function TeacherMyClasses() {
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                   <span className="text-muted-foreground">Status</span>
-                  <SessionStatusBadge status={selected.status} />
+                  <SessionStatusBadge status={selected.status} label={sessionStatusLabel(selected)} />
                 </div>
+                {selected.status === "cancelled" && parseCancellation(selected.cancellationReason).details && (
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <span className="text-muted-foreground">Reason</span>
+                    <p className="mt-1 font-medium text-foreground">{parseCancellation(selected.cancellationReason).details}</p>
+                  </div>
+                )}
                 <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                   <span className="text-muted-foreground">Roster</span>
                   <span className="flex items-center gap-1.5 font-medium text-foreground">
@@ -283,9 +346,9 @@ export default function TeacherMyClasses() {
                     Recording
                   </Button>
                 )}
-                {isJoinable(selected) ? (
-                  <Button onClick={() => startClass(selected)}>
-                    {selected.status === "demo" ? "Start Demo" : "Start Class"}
+                {isTeacherJoinable(selected) ? (
+                  <Button disabled={startingId === selected.id} onClick={() => startClass(selected)}>
+                    {startingId === selected.id ? "Starting…" : selected.status === "demo" ? "Start Demo" : "Start Class"}
                   </Button>
                 ) : (
                   isJoinableStatus(selected.status) && (
@@ -308,6 +371,35 @@ export default function TeacherMyClasses() {
       </Dialog>
 
       {recordingsFor && <RecordingsDialog session={recordingsFor} onClose={() => setRecordingsFor(null)} />}
+
+      <Dialog open={!!notesFor} onOpenChange={(open) => !open && setNotesFor(null)}>
+        <DialogContent>
+          {notesFor && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Class notes</DialogTitle>
+                <DialogDescription>
+                  {notesFor.title} · {formatDate(notesFor.date, "long")}. Saving emails the updated notes to the class's parents, same as when you first completed it.
+                </DialogDescription>
+              </DialogHeader>
+              <Textarea
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value)}
+                rows={6}
+                placeholder="What did the class cover? Any follow-up for parents to know about?"
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setNotesFor(null)}>
+                  Cancel
+                </Button>
+                <Button disabled={savingNotes || !notesDraft.trim()} onClick={saveNotes}>
+                  {savingNotes ? "Saving…" : "Save notes"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

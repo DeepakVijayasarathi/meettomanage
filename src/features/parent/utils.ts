@@ -11,6 +11,18 @@ import { localToUtcIso } from "@/lib/datetime";
  */
 export const MOCK_NOW = new Date("2026-07-09T16:25:00");
 
+/**
+ * Value -> friendly label for the enrollment form's "Preferred time slot" select
+ * (see Enrollment.tsx). Shared here so any other screen rendering a submitted
+ * enrollment's raw preferredTime value (e.g. Dashboard's PendingEnrollments) shows
+ * the same human-readable label instead of the raw stored key ("morning").
+ */
+export const PREFERRED_TIME_LABELS: Record<string, string> = {
+  morning: "Morning (8am–12pm)",
+  afternoon: "Afternoon (12pm–4pm)",
+  evening: "Evening (4pm–8pm)",
+};
+
 export const TODAY_ISO = format(MOCK_NOW, "yyyy-MM-dd");
 export const YESTERDAY_ISO = format(subDays(MOCK_NOW, 1), "yyyy-MM-dd");
 
@@ -32,21 +44,50 @@ export function minutesUntilStart(session: ClassSession): number {
   return differenceInMinutes(sessionStart(session), now());
 }
 
-const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo", "rescheduled"];
+// "rescheduled" marks the *old* session record a reschedule moved off of — the backend
+// leaves it in place (status Rescheduled) as a historical pointer and creates a brand new
+// Scheduled session for the new time. Treating "rescheduled" as joinable made that dead
+// record show up as a second "Join" button alongside the real, new session.
+const JOINABLE_STATUSES: ClassSession["status"][] = ["scheduled", "demo"];
 
-/** A class is joinable from 10 minutes before start until its scheduled duration has elapsed. */
+// This deployment's Jitsi has no duration cap and classes legitimately run past their
+// scheduled slot (JitsiLive.tsx's own "Continue Class" flow exists for exactly that) — so
+// this button can't cut off the instant `duration` elapses, or a teacher/parent who gets
+// disconnected from a class still genuinely running can never rejoin. The backend
+// (SessionService.GetJitsiJoinAsync) is the real, authoritative gate: it allows a rejoin at
+// any time once the session is actually InProgress, and only enforces this window for a
+// session that was never started at all. This button's cutoff just needs to not be *more*
+// restrictive than that — a generous multi-hour grace period, not the exact scheduled length.
+const JOIN_WINDOW_GRACE_HOURS = 3;
+
+/** A class is joinable from 10 minutes before start until a generous grace period past it —
+ *  the backend is the real gatekeeper for anything more precise than that (see comment above). */
 export function isJoinable(session: ClassSession): boolean {
   if (!JOINABLE_STATUSES.includes(session.status)) return false;
-  const minsUntil = minutesUntilStart(session);
-  return minsUntil <= 10 && minsUntil > -session.duration;
+  // Client: Join is open at all times -- no "opens 10 minutes before" wait any more (the backend
+  // allows it too); it only closes a few hours after the class ends.
+  return minutesUntilStart(session) > -(JOIN_WINDOW_GRACE_HOURS * 60);
+}
+
+/**
+ * The teacher's own "Start Class" — open "all the time" (client, reported live): any time before
+ * the class, and until 3 hours after its scheduled end even if the system already auto-marked it
+ * (No-Show, or Completed because nobody had joined yet). Only a cancelled/moved class is closed.
+ * Mirrors SessionService.GetJitsiJoinAsync's teacher rule.
+ */
+export function isTeacherJoinable(session: ClassSession): boolean {
+  if (session.status === "cancelled" || session.status === "rescheduled") return false;
+  const endPlusGrace = sessionStart(session).getTime() + (session.duration + JOIN_WINDOW_GRACE_HOURS * 60) * 60_000;
+  if (now().getTime() > endPlusGrace) return false;
+  if (JOINABLE_STATUSES.includes(session.status) || session.status === "noshow") return true;
+  // A class already taught and ended shows its record instead; an auto-"completed" one can still
+  // be joined while its scheduled time is running.
+  return session.status === "completed" && now().getTime() < sessionStart(session).getTime() + session.duration * 60_000;
 }
 
 export function joinHint(session: ClassSession): string {
   const minsUntil = minutesUntilStart(session);
-  if (minsUntil > 10) {
-    return `Join opens 10 min before start — ${format(sessionStart(session), "d MMM, h:mm a")}`;
-  }
-  if (minsUntil <= -session.duration) return "This class has ended";
+  if (minsUntil <= -(JOIN_WINDOW_GRACE_HOURS * 60)) return "This class has ended";
   return "Ready to join";
 }
 

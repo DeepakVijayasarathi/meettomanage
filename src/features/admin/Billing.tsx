@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, FileText, IndianRupee, TimerReset, Undo2 } from "lucide-react";
+import { AlertTriangle, FileText, IndianRupee, Loader2, TimerReset, Undo2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvoiceDetailDialog } from "@/components/InvoiceDetailDialog";
 import { INVOICES } from "@/data/invoices";
 import { useApiData } from "@/api/hooks";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import {
   downloadInvoicePdf,
   listInvoiceRows,
@@ -156,7 +156,7 @@ export default function AdminBilling() {
       setTransactions(items);
       toast({ variant: "success", title: "Refund requested", description: `${formatCurrency(amount)} awaiting approval.` });
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Couldn't request this refund.";
+      const message = userMessage(e, "Couldn't request this refund.");
       setRefundError(message);
       toast({ variant: "error", title: "Couldn't request refund", description: message });
     } finally {
@@ -171,7 +171,7 @@ export default function AdminBilling() {
     try {
       await downloadInvoicePdf(detail.apiId, detail.id);
     } catch (err) {
-      setPdfError(err instanceof Error ? err.message : "Couldn't download the invoice PDF.");
+      setPdfError(userMessage(err, "Couldn't download the invoice PDF."));
     } finally {
       setPdfDownloading(false);
     }
@@ -210,7 +210,7 @@ export default function AdminBilling() {
       setDetail(null);
       toast({ variant: "success", title: "Payment recorded", description: `${formatCurrency(amount)} recorded.` });
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Couldn't record the payment.";
+      const message = userMessage(e, "Couldn't record the payment.");
       setPayError(message);
       toast({ variant: "error", title: "Couldn't record payment", description: message });
     } finally {
@@ -378,14 +378,14 @@ export default function AdminBilling() {
                   "Receipt Downloaded" without downloading anything; this replaces that. */}
               {live && detail.apiId && (
                 <Button variant="outline" onClick={downloadPdf} disabled={pdfDownloading}>
-                  <FileText className="h-4 w-4" />
+                  {pdfDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
                   {pdfDownloading ? "Downloading…" : "Download PDF"}
                 </Button>
               )}
               {live && detail.apiId && detail.status !== "paid" && detail.status !== "cancelled" && (
                 recording ? (
                   <Button onClick={reviewPayment} disabled={saving}>
-                    {saving ? "Recording…" : "Confirm payment"}
+                    {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Recording…" : "Confirm payment"}
                   </Button>
                 ) : (
                   <Button onClick={() => setRecording(true)}>
@@ -465,7 +465,7 @@ export default function AdminBilling() {
                       {refundError && <p className="text-sm font-medium text-destructive">{refundError}</p>}
                       <div className="flex items-center gap-2">
                         <Button size="sm" disabled={refundSubmitting} onClick={submitRefund}>
-                          {refundSubmitting ? "Requesting…" : "Submit refund request"}
+                          {refundSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {refundSubmitting ? "Requesting…" : "Submit refund request"}
                         </Button>
                         <Button size="sm" variant="ghost" disabled={refundSubmitting} onClick={() => setRefundTargetId(null)}>
                           Cancel

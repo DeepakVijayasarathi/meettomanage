@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addDays,
   addMonths,
@@ -14,20 +14,29 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ClassSession, SessionStatus } from "@/types";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SESSION_STATUS_COLOR, SESSION_STATUS_LABEL } from "@/components/StatusBadge";
-import { cn } from "@/lib/utils";
+import { cn, formatTimeLabel } from "@/lib/utils";
+import { holidayNameFromReason } from "@/lib/cancelledBy";
 
 interface CalendarBoardProps {
   sessions: ClassSession[];
   initialMonth?: Date;
   onSessionClick?: (session: ClassSession) => void;
   legendStatuses?: SessionStatus[];
+  /** Called whenever the shown month changes, so the page can load just that month's classes. */
+  onMonthChange?: (month: Date) => void;
 }
 
 const DEFAULT_LEGEND: SessionStatus[] = ["scheduled", "completed", "cancelled", "noshow", "demo", "rescheduled", "holiday", "leave"];
 
-export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendStatuses = DEFAULT_LEGEND }: CalendarBoardProps) {
+export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendStatuses = DEFAULT_LEGEND, onMonthChange }: CalendarBoardProps) {
   const [cursor, setCursor] = useState(initialMonth ?? new Date());
+  const onMonthChangeRef = useRef(onMonthChange);
+  onMonthChangeRef.current = onMonthChange;
+  useEffect(() => {
+    onMonthChangeRef.current?.(cursor);
+  }, [cursor]);
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(cursor));
@@ -95,7 +104,17 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
         <div className="grid grid-cols-7">
           {days.map((day) => {
             const key = format(day, "yyyy-MM-dd");
-            const daySessions = sessionsByDay.get(key) ?? [];
+            const allDaySessions = sessionsByDay.get(key) ?? [];
+            // A holiday day: the holiday itself plus any classes cancelled because of it (those carry
+            // status "holiday" too). The whole day is greyed with a "Holiday" label and those
+            // not-held classes are collapsed to a count, so it never reads as a wall of cancellations.
+            // A class still Scheduled on a holiday (a data problem) stays visible.
+            const holidayEvents = allDaySessions.filter((s) => s.status === "holiday");
+            const isHoliday = holidayEvents.length > 0;
+            const holidayEvent = holidayEvents.find((s) => s.id.startsWith("holiday-")) ?? holidayEvents[0];
+            const holidayName = holidayEvent ? (holidayEvent.id.startsWith("holiday-") ? holidayEvent.title : holidayNameFromReason(holidayEvent.cancellationReason)) : null;
+            const notHeldCount = holidayEvents.filter((s) => !s.id.startsWith("holiday-")).length;
+            const daySessions = isHoliday ? allDaySessions.filter((s) => s.status !== "holiday") : allDaySessions;
             const inMonth = isSameMonth(day, cursor);
             return (
               <div
@@ -103,7 +122,8 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
                 className={cn(
                   "min-h-[104px] border-b border-r border-border p-1.5 last:border-r-0",
                   !inMonth && "bg-muted/20",
-                  isToday(day) && "bg-primary/5"
+                  isToday(day) && "bg-primary/5",
+                  isHoliday && "bg-muted/80 grayscale"
                 )}
               >
                 <div className="flex items-center justify-between px-0.5">
@@ -118,6 +138,21 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
                   </span>
                 </div>
                 <div className="mt-1 flex flex-col gap-1">
+                  {isHoliday && holidayEvent && (
+                    <button
+                      onClick={() => onSessionClick?.(holidayEvent)}
+                      title={holidayName ? `Holiday — ${holidayName}` : "Holiday"}
+                      className="flex flex-col items-start rounded-md border border-border bg-background/70 px-1.5 py-1 text-left"
+                    >
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Holiday</span>
+                      {holidayName && <span className="max-w-full truncate text-[10px] font-medium text-muted-foreground">{holidayName}</span>}
+                      {notHeldCount > 0 && (
+                        <span className="text-[10px] text-muted-foreground/80">
+                          {notHeldCount} {notHeldCount === 1 ? "class" : "classes"} not held
+                        </span>
+                      )}
+                    </button>
+                  )}
                   {daySessions.slice(0, 3).map((s) => (
                     <button
                       key={s.id}
@@ -129,12 +164,38 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
                       )}
                     >
                       <span className="min-w-0 flex-1 truncate">
-                        {s.startTime} {s.title}
+                        {formatTimeLabel(s.startTime)} {s.title}
                       </span>
                     </button>
                   ))}
                   {daySessions.length > 3 && (
-                    <span className="px-1.5 text-[10px] font-semibold text-muted-foreground">+{daySessions.length - 3} more</span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="px-1.5 text-left text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:underline">
+                          +{daySessions.length - 3} more
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-64 p-2">
+                        <p className="px-1 pb-1.5 text-xs font-bold text-foreground">{format(day, "EEEE, MMM d")}</p>
+                        <div className="flex max-h-64 flex-col gap-1 overflow-y-auto">
+                          {daySessions.map((s) => (
+                            <button
+                              key={s.id}
+                              onClick={() => onSessionClick?.(s)}
+                              title={s.title}
+                              className={cn(
+                                "flex items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs font-medium text-white transition-transform hover:scale-[1.02]",
+                                SESSION_STATUS_COLOR[s.status]
+                              )}
+                            >
+                              <span className="min-w-0 flex-1 truncate">
+                                {formatTimeLabel(s.startTime)} {s.title}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
               </div>

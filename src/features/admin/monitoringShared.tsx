@@ -1,9 +1,13 @@
 /** Shared display helpers/components between the Server Monitoring list (Monitoring.tsx) and its per-server drill-down (ServerDetail.tsx). */
+import { useState } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
-import { TrendingDown, TrendingUp, type Cpu } from "lucide-react";
+import { Loader2, Megaphone, Minus, Plus, RotateCcw, TrendingDown, TrendingUp, type Cpu } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { CapacityForecast, TimeSeriesPoint } from "@/types";
+import { broadcastReload, rescaleJibriNow, setJibriMinReplicas } from "@/api/monitoring";
+import type { CapacityForecast, RecorderStatus, TimeSeriesPoint } from "@/types";
+import { userMessage } from "@/lib/api";
 
 /** Guards every numeric field the API might not send yet on a backend that's a step behind this frontend's deploy. */
 export function num(value: number | undefined | null): number {
@@ -100,8 +104,110 @@ export function ResourceGauge({ icon: Icon, label, percent, detail }: { icon: ty
   );
 }
 
+/**
+ * Rescale-now + min-warm-instances controls for the Jibri fleet — only render this when the
+ * caller can manage monitoring and real recorder data exists. Demo mode fakes recorderStatus
+ * (see src/data/monitoring.ts) so this renders there too; clicking through still issues a real
+ * apiFetch call and surfaces its failure as inline feedback text, same as every other write
+ * action on this page (BroadcastReloadButton, service restart) — none of them special-case
+ * demo mode, they just fail visibly and harmlessly with no backend to reach.
+ */
+export function RecorderControls({ serverName, recorderStatus }: { serverName: string; recorderStatus: RecorderStatus }) {
+  const [busy, setBusy] = useState<"rescale" | "min" | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  async function handleRescale() {
+    setBusy("rescale");
+    setFeedback(null);
+    try {
+      await rescaleJibriNow(serverName);
+      setFeedback("Rescale triggered.");
+    } catch (err) {
+      setFeedback(userMessage(err, "Rescale failed."));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleMinChange(next: number) {
+    setBusy("min");
+    setFeedback(null);
+    try {
+      await setJibriMinReplicas(serverName, next);
+    } catch (err) {
+      setFeedback(userMessage(err, "Update failed."));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+      <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={handleRescale} disabled={busy !== null}>
+        {busy === "rescale" ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+        Rescale now
+      </Button>
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        Min warm
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6"
+          disabled={busy !== null || recorderStatus.minInstances <= 1}
+          onClick={() => handleMinChange(recorderStatus.minInstances - 1)}
+        >
+          <Minus className="h-3 w-3" />
+        </Button>
+        <span className="w-4 text-center font-semibold text-foreground">{recorderStatus.minInstances}</span>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6"
+          disabled={busy !== null || recorderStatus.minInstances >= recorderStatus.maxInstances}
+          onClick={() => handleMinChange(recorderStatus.minInstances + 1)}
+        >
+          <Plus className="h-3 w-3" />
+        </Button>
+        <span>/ {recorderStatus.maxInstances} max</span>
+      </div>
+      {feedback && <span className="text-muted-foreground">{feedback}</span>}
+    </div>
+  );
+}
+
+/** Tells every browser currently in a live class to show a dismissible "update available"
+ *  prompt — see MonitoringController.BroadcastReload. App-wide, not per-server, so this
+ *  renders once at the top of the monitoring page rather than inside a server card. */
+export function BroadcastReloadButton() {
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  async function handleBroadcast() {
+    setBusy(true);
+    setFeedback(null);
+    try {
+      await broadcastReload();
+      setFeedback("Sent — anyone in a live class will see a refresh prompt.");
+    } catch (err) {
+      setFeedback(userMessage(err, "Broadcast failed."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-xs">
+      <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={handleBroadcast} disabled={busy}>
+        {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Megaphone className="h-3 w-3" />}
+        Notify live classes of update
+      </Button>
+      {feedback && <span className="text-muted-foreground">{feedback}</span>}
+    </div>
+  );
+}
+
 export function formatSparklineTime(timestamp: string): string {
-  return new Date(timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return new Date(timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 /**

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { resetPin } from "@/api/auth";
 import { useLightBrandScope } from "@/lib/theme";
+import { userMessage } from "@/lib/api";
 
 const PIN_LENGTH = 4;
 // Same headline face as Login.tsx (scoped to this page only, not the global font-display).
@@ -109,7 +110,7 @@ export default function ResetPin() {
       setDone(true);
       setTimeout(() => navigate("/login"), 1800);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't reset your PIN. Please try again.");
+      setError(userMessage(err, "Couldn't reset your PIN. Please try again."));
     } finally {
       setSubmitting(false);
     }
@@ -132,7 +133,7 @@ export default function ResetPin() {
               Open the reset link exactly as it arrived in your email, or request a new one.
             </p>
             <Button asChild size="lg" className="mt-6 !bg-brand-green !text-white hover:!bg-brand-greenDark">
-              <Link to="/forgot-password">Request a new link</Link>
+              <Link to="/forgot-pin">Request a new link</Link>
             </Button>
           </>
         ) : done ? (
@@ -179,8 +180,13 @@ export default function ResetPin() {
                 disabled={submitting || !canSubmit}
                 className="mt-1 !bg-brand-green !text-white hover:!bg-brand-greenDark"
               >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {submitting ? "Saving…" : "Save new PIN"}
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  "Save new PIN"
+                )}
               </Button>
             </form>
           </>

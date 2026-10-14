@@ -1,22 +1,27 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { addDays, endOfWeek, isWithinInterval, parseISO, startOfDay, startOfWeek } from "date-fns";
+import { addDays, endOfWeek, isWithinInterval, parse, parseISO, startOfDay, startOfWeek } from "date-fns";
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowRight,
   CalendarClock,
   CalendarDays,
   CalendarOff,
+  Check,
   CheckCircle2,
   Clock,
+  Link2,
   PartyPopper,
   Sparkles,
   Users,
   Wallet,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
-import { SessionStatusBadge } from "@/components/StatusBadge";
+import { SessionStatusBadge, sessionStatusLabel } from "@/components/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,9 +38,12 @@ import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
 import { listMyDemoBookings, toAwaitingFeedback } from "@/api/demoBookings";
+import { getMyMeetingRoomShortLink } from "@/api/account";
+import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import { isJoinable, joinHint } from "@/features/parent/utils";
+import { formatCurrency, formatDate, formatTimeLabel } from "@/lib/utils";
+import { isTeacherJoinable, joinHint } from "@/features/parent/utils";
 import type { ClassSession, DemoFeedback, SessionStatus, TeacherPayout } from "@/types";
 
 const TEACHER_ID = "t-1";
@@ -44,12 +52,6 @@ const TEACHER_NAME = "Karan Mehta";
 const NOW = new Date("2026-07-09T12:00:00");
 const TODAY = "2026-07-09";
 
-function formatTimeLabel(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 function sessionSubtitle(session: ClassSession) {
   if (session.batchId) return getBatchById(session.batchId)?.name ?? "General session";
@@ -64,16 +66,83 @@ const STATUS_ICON: Partial<Record<SessionStatus, typeof PartyPopper>> = {
   demo: Sparkles,
 };
 
+function parseMonth(month: string) {
+  return parse(month, "MMMM yyyy", new Date());
+}
+
 export default function TeacherDashboard() {
   const { userName } = useSession();
   const firstName = userName.split(" ")[0] ?? userName;
   const usingApi = apiEnabled();
 
-  // Live teacher data; demo mode keeps the mock roster.
-  const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(
-    () => listMySessions().then((s) => s.map(toFrontendSession)),
-    []
+  // "Start Class"/"Start Demo" is a plain navigation link with nothing on screen changing
+  // until JitsiLive's own init (external script load, join-token fetch, iframe init — a few
+  // real seconds) finishes — a click that visibly did nothing invites a second, third click
+  // while still waiting. Tracks which session's button was just clicked so only that one
+  // shows "Starting…" and disables itself for the moment the navigation takes to land.
+  const [startingSessionId, setStartingSessionId] = useState<string | null>(null);
+
+  // Copy state for a demo row's "Copy Link" -- every demo uses this teacher's own fixed
+  // personal room, so the same short-link mint used by "My meeting link" works here too.
+  const [copyLinkState, setCopyLinkState] = useState<{ sessionId: string; status: "copying" | "copied" | "failed" } | null>(null);
+  function copyDemoLink(sessionId: string) {
+    setCopyLinkState({ sessionId, status: "copying" });
+    getMyMeetingRoomShortLink()
+      .then(async ({ url }) => {
+        if (!navigator.clipboard) {
+          throw new Error("Clipboard API unavailable");
+        }
+        await navigator.clipboard.writeText(url);
+        setCopyLinkState({ sessionId, status: "copied" });
+      })
+      .catch(() => setCopyLinkState({ sessionId, status: "failed" }))
+      .finally(() => {
+        setTimeout(() => setCopyLinkState((s) => (s?.sessionId === sessionId ? null : s)), 2500);
+      });
+  }
+
+  // Sessions plus every completed one's real per-child attendance, fetched together (same
+  // pattern as Attendance.tsx): there's no aggregate attendance endpoint, so the per-session
+  // one is fetched once per completed session and aggregated client-side here, bounded by
+  // how many completed sessions this teacher actually has.
+  const { data: apiSessionData, loading: sessionsLoading, error: sessionsError, reload: reloadSessions } = useApiData<{
+    sessions: ClassSession[];
+    attendanceBySession: Record<string, ApiSessionAttendance[]>;
+  }>(
+    async () => {
+      const sessions = await listMySessions().then((s) => s.map(toFrontendSession));
+      const completed = sessions.filter((s) => s.status === "completed");
+      const entries = await Promise.all(
+        completed.map((s) =>
+          listAttendance(s.id)
+            .then((records) => [s.id, records] as const)
+            .catch(() => [s.id, [] as ApiSessionAttendance[]] as const)
+        )
+      );
+      return { sessions, attendanceBySession: Object.fromEntries(entries) };
+    },
+    { sessions: [], attendanceBySession: {} },
+    { sessions: [], attendanceBySession: {} }
   );
+  const apiSessions = apiSessionData.sessions;
+  // Client report (2026-10-08): a demo booked for the same day showed on the admin dashboard
+  // but not on the teacher's -- this list was fetched once when the page opened and never
+  // again, so anything scheduled after that stayed invisible until a manual reload. Refetch
+  // when the tab comes back into view and every few minutes while it stays open.
+  useEffect(() => {
+    if (!usingApi) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") reloadSessions();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") reloadSessions();
+    }, 5 * 60_000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(timer);
+    };
+  }, [usingApi, reloadSessions]);
   const { data: apiPayouts, loading: payoutsLoading, error: payoutsError } = useApiData<TeacherPayout[]>(
     () => listMyPayouts().then((p) => p.map(toFrontendPayout)),
     []
@@ -85,12 +154,24 @@ export default function TeacherDashboard() {
 
   // Real "now" in API mode; the mock universe is pinned to a fixed date.
   const now = usingApi ? new Date() : NOW;
-  const today = usingApi ? now.toISOString().slice(0, 10) : TODAY;
+  // Teacher-reported: "sometimes the session for the current day does not appear
+  // immediately." toISOString() is always UTC, but session.date (below, via
+  // toFrontendSession -> utcIsoToLocalDateTime) is the *local* calendar date. For anyone
+  // in a timezone ahead of UTC -- IST included -- there's a real daily window (roughly
+  // midnight to sunrise local time) where the UTC date hasn't rolled over yet but the
+  // local one already has: a class genuinely scheduled for "today" locally compared
+  // against yesterday's UTC date, silently missing from Today's Classes until the UTC
+  // day catches up. Comparing like with like -- both local -- removes that window.
+  const today = usingApi ? utcIsoToLocalDateTime(now.toISOString()).date : TODAY;
 
   const teacherSessions = usingApi ? apiSessions : getSessionsForTeacher(TEACHER_ID);
 
   const todaysSessions = teacherSessions
-    .filter((s) => s.date === today)
+    // "rescheduled" is the old record a reschedule moved off of — the backend keeps it
+    // (still dated today) as a historical pointer and creates a new session for the new
+    // time, so leaving it in here showed up as a second, dead "Join" entry alongside
+    // the real one.
+    .filter((s) => s.date === today && s.status !== "rescheduled")
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   const weekStart = startOfWeek(now);
@@ -101,17 +182,26 @@ export default function TeacherDashboard() {
       (s.status === "scheduled" || s.status === "completed" || s.status === "demo")
   );
 
-  // Attendance average has no aggregate endpoint yet, so it's demo-only.
   const teacherBatchIds = BATCHES.filter((b) => b.teacherId === TEACHER_ID).map((b) => b.id);
   const teacherChildren = CHILDREN.filter((c) => teacherBatchIds.includes(c.batchId));
+  const apiStudentRecords = usingApi
+    ? Object.values(apiSessionData.attendanceBySession)
+        .flat()
+        .filter((r) => r.participantType === "Student")
+    : [];
   const avgAttendance = usingApi
-    ? 0
+    ? apiStudentRecords.length > 0
+      ? Math.round((apiStudentRecords.filter((r) => r.status === "Present").length / apiStudentRecords.length) * 100)
+      : 0
     : teacherChildren.length
-      ? Math.round(teacherChildren.reduce((sum, c) => sum + c.attendancePercent, 0) / teacherChildren.length)
+      ? Math.round(teacherChildren.reduce((sum, c) => sum + (c.attendancePercent ?? 0), 0) / teacherChildren.length)
       : 0;
 
   const payouts = usingApi ? apiPayouts : getPayoutsForTeacher(TEACHER_ID);
-  const latestPayout = payouts[payouts.length - 1];
+  // The API returns payouts newest-first; the mock array happens to be oldest-first. Sort
+  // explicitly by period rather than trusting either array's incoming order — same approach
+  // as Payout.tsx's own "latest" derivation.
+  const latestPayout = [...payouts].sort((a, b) => parseMonth(b.month).getTime() - parseMonth(a.month).getTime())[0];
 
   const pendingFeedback = usingApi ? apiPending : DEMO_FEEDBACKS.filter((f) => f.teacherName === TEACHER_NAME && !f.submitted);
 
@@ -134,11 +224,14 @@ export default function TeacherDashboard() {
         title={`Welcome back, ${firstName}`}
         description="Here's what's on your plate today — classes, payout status and anything waiting on you."
         actions={
-          <Button asChild>
-            <Link to="/teacher/classes">
-              View all classes <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <PersonalMeetingButton />
+            <Button asChild>
+              <Link to="/teacher/classes">
+                View all classes <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -148,9 +241,10 @@ export default function TeacherDashboard() {
         <KpiCard
           label="Student Attendance"
           value={avgAttendance ? `${avgAttendance}%` : "—"}
-          detail={usingApi && !avgAttendance ? "Not available yet" : undefined}
+          detail={usingApi && !avgAttendance ? "No completed sessions yet" : undefined}
           icon={Users}
           tone="success"
+          loading={usingApi ? sessionsLoading : undefined}
           trend={avgAttendance ? { value: avgAttendance - 90, label: "vs 90% target" } : undefined}
         />
         <KpiCard
@@ -202,7 +296,7 @@ export default function TeacherDashboard() {
               <div className="flex flex-col gap-3">
                 {todaysSessions.map((session, i) => {
                   const hex = CHART_PALETTE[i % CHART_PALETTE.length];
-                  const joinable = isJoinable(session);
+                  const joinable = isTeacherJoinable(session);
                   return (
                     <div
                       key={session.id}
@@ -223,14 +317,42 @@ export default function TeacherDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 sm:justify-end">
-                        <SessionStatusBadge status={session.status} />
+                        <SessionStatusBadge status={session.status} label={sessionStatusLabel(session)} />
+                        {session.type === "demo" && usingApi && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={copyLinkState?.sessionId === session.id}
+                            title="Copy this demo's join link to share manually"
+                            onClick={() => copyDemoLink(session.id)}
+                          >
+                            {copyLinkState?.sessionId === session.id ? (
+                              copyLinkState.status === "copying" ? (
+                                "Copying…"
+                              ) : copyLinkState.status === "copied" ? (
+                                <Check className="h-3.5 w-3.5" />
+                              ) : (
+                                <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                              )
+                            ) : (
+                              <Link2 className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        )}
                         {joinable ? (
-                          <Button asChild size="sm">
+                          <Button asChild size="sm" disabled={startingSessionId === session.id} aria-disabled={startingSessionId === session.id}>
                             <Link
                               to={`/teacher/live/${session.id}`}
                               state={session.meetingRoomId ? { room: session.meetingRoomId, title: session.title } : undefined}
+                              onClick={(e) => {
+                                if (startingSessionId === session.id) {
+                                  e.preventDefault();
+                                  return;
+                                }
+                                setStartingSessionId(session.id);
+                              }}
                             >
-                              {session.status === "demo" ? "Start Demo" : "Start Class"}
+                              {startingSessionId === session.id ? "Starting…" : session.status === "demo" ? "Start Demo" : "Start Class"}
                             </Link>
                           </Button>
                         ) : (

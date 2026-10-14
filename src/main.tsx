@@ -6,8 +6,17 @@ import { ErrorBoundary, RELOAD_GUARD_KEY } from "@/components/ErrorBoundary";
 import { applyBranding, loadBrandingFromApi } from "@/lib/branding";
 import { loadSeoSettingsFromApi } from "@/lib/seoSettings";
 import { applyInitialTheme } from "@/lib/theme";
+import { HelmetProvider } from "react-helmet-async";
 import { applyInitialLang } from "@/lib/i18n";
+import { stripFreshReloadParam, tryAutoReloadFresh } from "@/lib/freshReload";
 import "@/index.css";
+
+// Vite fires this when a lazy route's JS or CSS can't be preloaded - i.e. this tab holds an older
+// build than the server now has. Fetch the current build before the route even tries to render.
+window.addEventListener("vite:preloadError", () => {
+  tryAutoReloadFresh();
+});
+stripFreshReloadParam();
 
 applyBranding();
 void loadBrandingFromApi();
@@ -32,7 +41,9 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
       <SessionProvider>
-        <App />
+        <HelmetProvider>
+          <App />
+        </HelmetProvider>
       </SessionProvider>
     </ErrorBoundary>
   </StrictMode>

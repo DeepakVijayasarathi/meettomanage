@@ -1,49 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Activity,
-  AlertTriangle,
-  Clock,
-  Cpu,
-  FileText,
-  Gauge,
-  HardDrive,
-  MemoryStick,
-  RefreshCw,
-  Server,
-  TrendingUp,
-  Users,
-  Video,
-  Wifi,
-  WifiOff,
-  Zap,
-} from "lucide-react";
+import { Activity, AlertTriangle, Clock, Cpu, Disc, FileText, Gauge, HardDrive, Loader2, MemoryStick, Moon, PowerOff, RefreshCw, Router, Server, TrendingDown, TrendingUp, Users, Video, Wifi, WifiOff, Zap } from "lucide-react";
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Legend, ReferenceLine, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { ChartCard } from "@/components/ChartCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import { cn, setVisibleInterval } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { getMonitoringSummary, getServerLogs, toFrontendMonitoringSummary, type ApiServerLogs } from "@/api/monitoring";
+import { getMonitoringSummary, getServerHistory, getServerLogs, restartService, toFrontendMonitoringSummary, type ApiServerLogs, type HistoryRange } from "@/api/monitoring";
 import { MONITORING_SUMMARY } from "@/data/monitoring";
 import { MonitoringHubClient } from "@/lib/monitoringHub";
-import type { CallQuality, MonitoringSummary, TimeSeriesPoint } from "@/types";
+import { useSession } from "@/state/session";
+import type { CallQuality, MonitoringSummary, TimeSeriesPoint, TurnStatus } from "@/types";
 import {
   CapacityForecastLine,
   formatAgeShort,
   formatSparklineTime,
   formatUptime,
   num,
+  RecorderControls,
   serviceDisplayName,
   StatTile,
   usageTone,
@@ -60,6 +46,12 @@ const EMPTY_SUMMARY: MonitoringSummary = {
   concurrentClassroomUsers: 0,
   activeClassCount: 0,
   activeAlerts: [],
+  todayRecordings: { started: 0, succeeded: 0, failed: 0, stillProcessing: 0 },
+  scheduledTasks: [],
+  burstWorkerUsage: null,
+  recordingPipeline: null,
+  callQualityIncidents: [],
+  callQualityIncidentsLookSystemic: false,
   generatedAtUtc: "",
 };
 
@@ -94,6 +86,23 @@ function mergeHistories(cpu: TimeSeriesPoint[], memory: TimeSeriesPoint[]): Merg
   return Array.from(byTimestamp.values()).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
+interface MergedRecorderPoint {
+  timestamp: string;
+  busy?: number;
+  total?: number;
+}
+
+/** Same zip-by-timestamp idea as mergeHistories, for the recorder busy/total pair instead of cpu/memory. */
+function mergeRecorderHistory(busy: TimeSeriesPoint[], total: TimeSeriesPoint[]): MergedRecorderPoint[] {
+  const byTimestamp = new Map<string, MergedRecorderPoint>();
+  for (const p of busy) byTimestamp.set(p.timestamp, { timestamp: p.timestamp, busy: p.value });
+  for (const p of total) {
+    const existing = byTimestamp.get(p.timestamp);
+    byTimestamp.set(p.timestamp, { timestamp: p.timestamp, busy: existing?.busy, total: p.value });
+  }
+  return Array.from(byTimestamp.values()).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+}
+
 /** Min/avg/max over a trend series — the same legend a Zabbix graph shows beneath its plot, computed client-side from the hour of history the API already sends. */
 function summarize(data: TimeSeriesPoint[]): { min: number; avg: number; max: number } | null {
   if (data.length === 0) return null;
@@ -115,6 +124,23 @@ function callQualityScore(cq: CallQuality): { label: string; tone: "success" | "
     return { label: "Fair", tone: "warning" };
   }
   return { label: "Excellent", tone: "success" };
+}
+
+/** "5m"/"3h 20m" — TURN credential ages/TTLs span hours, unlike formatAgeShort's minute-only granularity. */
+function formatDurationShort(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const totalMinutes = Math.round(seconds / 60);
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+}
+
+/** Whether the Cloudflare TURN fallback is actually usable right now, from the credential freshness alone. */
+function turnHealthLabel(turn: TurnStatus): { label: string; tone: "success" | "warning" | "destructive" } {
+  if (!turn.credentialsHealthy) return { label: "Credentials expired", tone: "destructive" };
+  if (turn.secondsSinceRefresh > turn.credentialsTtlSeconds * 0.75) return { label: "Refresh due soon", tone: "warning" };
+  return { label: "Healthy", tone: "success" };
 }
 
 /** Item descriptions for the Latest Data table — a Zabbix "item description" tooltip, since the raw metric names alone don't say what they measure. */
@@ -181,7 +207,7 @@ function ContainerLogsPanel({ serverName, services }: { serverName: string; serv
     try {
       setLogs(await getServerLogs(serverName, container));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't fetch logs.");
+      setError(userMessage(err, "Couldn't fetch logs."));
       setLogs(null);
     } finally {
       setLoading(false);
@@ -209,11 +235,11 @@ function ContainerLogsPanel({ serverName, services }: { serverName: string; serv
         </Select>
         <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading}>
           <FileText className={cn("h-3.5 w-3.5", loading && "animate-pulse")} />
-          {loading ? "Fetching…" : "Fetch logs"}
+          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {loading ? "Fetching…" : "Fetch logs"}
         </Button>
         {logs && (
           <span className="text-xs text-muted-foreground">
-            {logs.lines.length} line{logs.lines.length === 1 ? "" : "s"} · {new Date(logs.fetchedAtUtc).toLocaleTimeString()}
+            {logs.lines.length} line{logs.lines.length === 1 ? "" : "s"} · {new Date(logs.fetchedAtUtc).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
           </span>
         )}
       </div>
@@ -241,6 +267,9 @@ export default function AdminServerDetail() {
   const { serverName } = useParams<{ serverName: string }>();
   const navigate = useNavigate();
   const usingApi = apiEnabled();
+  const { hasPermission } = useSession();
+  const canManage = hasPermission("SystemMonitoring", "Edit");
+  const [restartTarget, setRestartTarget] = useState<string | null>(null);
   const { data: restSummary, loading, error, reload } = useApiData(
     () => getMonitoringSummary().then(toFrontendMonitoringSummary),
     MONITORING_SUMMARY,
@@ -267,7 +296,7 @@ export default function AdminServerDetail() {
   // Fallback poll — only while the live push isn't connected.
   useEffect(() => {
     if (!usingApi || hubConnected) return;
-    const interval = setInterval(reload, REFRESH_INTERVAL_MS);
+    const interval = setVisibleInterval(reload, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [usingApi, hubConnected, reload]);
 
@@ -283,9 +312,55 @@ export default function AdminServerDetail() {
       .sort((a, b) => new Date(b.activeSince).getTime() - new Date(a.activeSince).getTime());
   }, [summary.activeAlerts, server]);
 
-  const historyData = useMemo(() => mergeHistories(server?.cpuHistory ?? [], server?.memoryHistory ?? []), [server]);
-  const cpuSummary = useMemo(() => summarize(server?.cpuHistory ?? []), [server]);
-  const memorySummary = useMemo(() => summarize(server?.memoryHistory ?? []), [server]);
+  const [historyRange, setHistoryRange] = useState<HistoryRange>("1h");
+  const [rangeHistory, setRangeHistory] = useState<{ cpuHistory: TimeSeriesPoint[]; memoryHistory: TimeSeriesPoint[] } | null>(null);
+  const [rangeLoading, setRangeLoading] = useState(false);
+  const [rangeError, setRangeError] = useState(false);
+
+  // The 1h view reuses the history the main summary payload already carries (no extra
+  // round trip); 24h/7d need their own fetch since the summary only ever ships 1h.
+  useEffect(() => {
+    if (!usingApi || !server || historyRange === "1h") {
+      setRangeHistory(null);
+      return;
+    }
+    let cancelled = false;
+    setRangeLoading(true);
+    setRangeError(false);
+    getServerHistory(server.name, historyRange)
+      .then((data) => {
+        if (!cancelled) setRangeHistory(data);
+      })
+      .catch(() => {
+        if (!cancelled) setRangeError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setRangeLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [usingApi, server, historyRange]);
+
+  const activeCpuHistory = useMemo(
+    () => (historyRange === "1h" ? server?.cpuHistory ?? [] : rangeHistory?.cpuHistory ?? []),
+    [historyRange, server, rangeHistory]
+  );
+  const activeMemoryHistory = useMemo(
+    () => (historyRange === "1h" ? server?.memoryHistory ?? [] : rangeHistory?.memoryHistory ?? []),
+    [historyRange, server, rangeHistory]
+  );
+  const historyData = useMemo(() => mergeHistories(activeCpuHistory, activeMemoryHistory), [activeCpuHistory, activeMemoryHistory]);
+  // Always the ~1h snapshot the main status payload already carries -- unlike CPU/memory
+  // above, recorder occupancy has no 24h/7d range picker yet (recordingAtCapacityPercent7d
+  // in the Capacity Trend section below covers the 7-day view instead).
+  const recorderHistoryData = useMemo(
+    () => mergeRecorderHistory(server?.recorderStatus?.busyHistory ?? [], server?.recorderStatus?.totalHistory ?? []),
+    [server?.recorderStatus?.busyHistory, server?.recorderStatus?.totalHistory]
+  );
+  const cpuSummary = useMemo(() => summarize(activeCpuHistory), [activeCpuHistory]);
+  const memorySummary = useMemo(() => summarize(activeMemoryHistory), [activeMemoryHistory]);
+  const RANGE_LABEL: Record<HistoryRange, string> = { "1h": "last hour", "24h": "last 24 hours", "7d": "last 7 days" };
 
   const backLink = (
     <Breadcrumb
@@ -347,6 +422,10 @@ export default function AdminServerDetail() {
                   <Wifi className="h-3 w-3" /> Online
                 </Badge>
               </>
+            ) : server.isOnDemand ? (
+              <Badge variant="secondary" className="gap-1">
+                <Moon className="h-3 w-3" /> Standby
+              </Badge>
             ) : (
               <Badge variant="destructive" className="gap-1">
                 <WifiOff className="h-3 w-3" /> Unreachable
@@ -367,11 +446,26 @@ export default function AdminServerDetail() {
       />
 
       {!server.reachable ? (
-        <EmptyState
-          icon={AlertTriangle}
-          title="Agent unreachable"
-          description={server.error ?? "Couldn't reach this server's status agent. It may be down or the network path is blocked."}
-        />
+        server.isOnDemand ? (
+          <>
+            <EmptyState
+              icon={Moon}
+              title="Not currently running"
+              description={server.error ?? "This is on-demand burst capacity, created automatically only during a scheduled peak."}
+            />
+            {usingApi && (
+              <div className="mt-5">
+                <ContainerLogsPanel serverName={server.name} services={server.configuredServices} />
+              </div>
+            )}
+          </>
+        ) : (
+          <EmptyState
+            icon={AlertTriangle}
+            title="Agent unreachable"
+            description={server.error ?? "Couldn't reach this server's status agent. It may be down or the network path is blocked."}
+          />
+        )
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -402,8 +496,22 @@ export default function AdminServerDetail() {
           <div className="mt-5">
             <ChartCard
               title="Resource Trends"
-              description={`CPU and memory utilization, last hour${historyData.length >= 2 ? ` · ${historyData.length} samples` : ""}`}
+              description={`CPU and memory utilization, ${RANGE_LABEL[historyRange]}${historyData.length >= 2 ? ` · ${historyData.length} samples` : ""}`}
               height={320}
+              loading={rangeLoading}
+              error={rangeError ? "Couldn't load this range." : null}
+              action={
+                <Select value={historyRange} onValueChange={(v) => setHistoryRange(v as HistoryRange)}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1h">Last hour</SelectItem>
+                    <SelectItem value="24h">Last 24h</SelectItem>
+                    <SelectItem value="7d">Last 7 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              }
             >
               {historyData.length < 2 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center text-sm text-muted-foreground">
@@ -460,7 +568,7 @@ export default function AdminServerDetail() {
             <div className="mt-5">
               <Card className="p-5">
                 <CardHeader className="p-0 pb-4">
-                  <CardTitle className="text-base">Last Hour Summary</CardTitle>
+                  <CardTitle className="text-base">Summary — {RANGE_LABEL[historyRange]}</CardTitle>
                   <CardDescription>Min / average / max over the plotted window.</CardDescription>
                 </CardHeader>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -503,6 +611,12 @@ export default function AdminServerDetail() {
                   <LatestDataRow metric="Load Average (1m)" value={num(server.loadAverage1m).toFixed(2)} />
                   <LatestDataRow metric="Memory Used" value={`${num(server.memoryUsedPercent).toFixed(1)}%`} tone={usageTone(num(server.memoryUsedPercent))} />
                   <LatestDataRow metric="Memory Total" value={`${(num(server.memoryTotalMb) / 1024).toFixed(1)} GB`} />
+                  {num(server.swapTotalMb) > 0 && (
+                    <>
+                      <LatestDataRow metric="Swap Used" value={`${num(server.swapUsedPercent).toFixed(1)}%`} tone={usageTone(num(server.swapUsedPercent))} />
+                      <LatestDataRow metric="Swap Total" value={`${(num(server.swapTotalMb) / 1024).toFixed(1)} GB`} />
+                    </>
+                  )}
                   <LatestDataRow metric="Disk Used" value={`${num(server.diskUsedPercent).toFixed(1)}%`} tone={usageTone(num(server.diskUsedPercent))} />
                   <LatestDataRow metric="Disk Total" value={`${num(server.diskTotalGb).toFixed(0)} GB`} />
                   <LatestDataRow metric="Network In" value={`${num(server.networkRxMbps).toFixed(2)} Mbps`} />
@@ -524,6 +638,73 @@ export default function AdminServerDetail() {
               <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Users className="h-4 w-4" /> {num(server.liveCalls.totalParticipants)} participant{num(server.liveCalls.totalParticipants) === 1 ? "" : "s"}
               </span>
+            </div>
+          )}
+
+          {server.recorderStatus && (
+            <div className="mt-5">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <Disc className="h-4 w-4" /> Recorder capacity
+                </span>
+                <Badge variant={server.recorderStatus.idleInstances === 0 ? "warning" : "success"}>
+                  {server.recorderStatus.idleInstances === 0 ? "At capacity" : `${server.recorderStatus.idleInstances} free`}
+                </Badge>
+              </div>
+              {/* One-line "X online · Y recording" answered "is it working," not "how much
+                  headroom is left" -- an admin asked for the actual total/occupied/free
+                  breakdown a recording-capacity incident needs at a glance, same StatTile
+                  pattern already used for CPU/memory/bridge stats on this page. */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <StatTile icon={Disc} label="Total recorders" value={`${num(server.recorderStatus.totalInstances)}`} />
+                <StatTile
+                  icon={Video}
+                  label="Currently recording"
+                  value={`${num(server.recorderStatus.busyInstances)}`}
+                  tone={server.recorderStatus.idleInstances === 0 ? "warning" : "neutral"}
+                />
+                <StatTile
+                  icon={Gauge}
+                  label="Free / idle"
+                  value={`${num(server.recorderStatus.idleInstances)}`}
+                  tone={server.recorderStatus.idleInstances === 0 ? "warning" : "success"}
+                />
+              </div>
+            </div>
+          )}
+          {server.recorderStatus && canManage && <RecorderControls serverName={server.name} recorderStatus={server.recorderStatus} />}
+
+          {server.recorderStatus && recorderHistoryData.length >= 2 && (
+            // Requested: "more advance and detail" beyond a single occupancy snapshot and
+            // the 7d-average % stat below -- this is the one view that actually shows *when*
+            // a capacity crunch happened (recording stopped midway, glitching, etc.), not
+            // just that it happens sometimes. Total is plotted too, not just busy, since the
+            // fleet autoscales -- 3 busy only means "full" against however many were online
+            // at that same moment, not a fixed ceiling.
+            <div className="mt-5">
+              <ChartCard title="Recorder Occupancy" description="Busy vs. total recorder instances, last hour" height={260}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={recorderHistoryData} margin={{ left: 8, right: 12, top: 8, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="detail-recorder-busy" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={CHART_PALETTE[2]} stopOpacity={0.35} />
+                        <stop offset="100%" stopColor={CHART_PALETTE[2]} stopOpacity={0.03} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="timestamp" tickFormatter={formatSparklineTime} tickLine={false} axisLine={false} fontSize={12} minTickGap={40} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} fontSize={12} width={32} />
+                    <RTooltip
+                      labelFormatter={(value: string) => formatSparklineTime(value)}
+                      formatter={(value: number, name: string) => [value, name === "busy" ? "Recording" : "Total online"]}
+                      contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }}
+                    />
+                    <Legend formatter={(value: string) => <span className="text-xs font-medium text-foreground">{value === "busy" ? "Recording" : "Total online"}</span>} />
+                    <Area type="stepAfter" dataKey="busy" name="busy" stroke={CHART_PALETTE[2]} strokeWidth={2} fill="url(#detail-recorder-busy)" connectNulls isAnimationActive={false} />
+                    <Area type="stepAfter" dataKey="total" name="total" stroke={CHART_PALETTE[3]} strokeWidth={2} fill="none" strokeDasharray="4 4" connectNulls isAnimationActive={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </ChartCard>
             </div>
           )}
 
@@ -564,6 +745,122 @@ export default function AdminServerDetail() {
             </div>
           )}
 
+          {server.turnStatus && (
+            <div className="mt-5">
+              <Card className="p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">TURN Relay (Cloudflare Calls)</CardTitle>
+                    <CardDescription>Fallback path for participants whose network blocks direct UDP to the bridge.</CardDescription>
+                  </div>
+                  <Badge variant={turnHealthLabel(server.turnStatus).tone}>{turnHealthLabel(server.turnStatus).label}</Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <StatTile
+                    icon={RefreshCw}
+                    label="Credentials Refreshed"
+                    value={`${formatDurationShort(server.turnStatus.secondsSinceRefresh)} ago`}
+                    tone={server.turnStatus.credentialsHealthy ? "success" : "destructive"}
+                  />
+                  <StatTile
+                    icon={Clock}
+                    label="Credential TTL"
+                    value={formatDurationShort(server.turnStatus.credentialsTtlSeconds)}
+                  />
+                  <StatTile
+                    icon={Router}
+                    label="Relayed Connections"
+                    value={`${num(server.turnStatus.relayedUsagePercent).toFixed(1)}%`}
+                    tone={server.turnStatus.relayedUsagePercent > 0 ? "warning" : "success"}
+                  />
+                  <StatTile
+                    icon={Activity}
+                    label="ICE Successes"
+                    value={`${num(server.turnStatus.iceSucceededTotal)} total`}
+                  />
+                  <StatTile
+                    icon={Wifi}
+                    label="Used TURN Relay"
+                    value={`${num(server.turnStatus.iceSucceededRelayedTotal)} of ${num(server.turnStatus.iceSucceededTotal)}`}
+                  />
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  "Relayed Connections" is the share of successful calls that needed the TURN fallback because a direct
+                  path to this server wasn't available — these are the participants who would likely have had no
+                  working audio/video before this fallback was added.
+                </p>
+              </Card>
+            </div>
+          )}
+
+          {server.capacityTrend && (
+            <div className="mt-5">
+              <Card className="p-5">
+                <CardHeader className="p-0 pb-4">
+                  <CardTitle className="text-base">Capacity Trend</CardTitle>
+                  <CardDescription>
+                    Week-over-week load direction, not a projected day-countdown — CPU and recording load are bursty, real-time
+                    signals that a linear forecast (like the disk one above) would misrepresent.
+                  </CardDescription>
+                </CardHeader>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <StatTile icon={Cpu} label="CPU Avg (7d)" value={`${server.capacityTrend.cpuAvg7dPercent.toFixed(1)}%`} tone={usageTone(server.capacityTrend.cpuAvg7dPercent)} />
+                  <StatTile icon={Zap} label="CPU Peak (7d)" value={`${server.capacityTrend.cpuPeak7dPercent.toFixed(1)}%`} tone={usageTone(server.capacityTrend.cpuPeak7dPercent)} />
+                  <StatTile
+                    icon={server.capacityTrend.cpuWeekOverWeekChangePercent >= 0 ? TrendingUp : TrendingDown}
+                    label="CPU vs Prior Week"
+                    value={`${server.capacityTrend.cpuWeekOverWeekChangePercent >= 0 ? "+" : ""}${server.capacityTrend.cpuWeekOverWeekChangePercent.toFixed(1)}%`}
+                    tone={server.capacityTrend.cpuWeekOverWeekChangePercent > 20 ? "warning" : "neutral"}
+                  />
+                  {server.capacityTrend.recordingAtCapacityPercent7d !== null && (
+                    <StatTile
+                      icon={Disc}
+                      label="Recording At Capacity (7d)"
+                      value={`${server.capacityTrend.recordingAtCapacityPercent7d.toFixed(1)}%`}
+                      detail="% of the last 7 days every Jibri instance was busy"
+                      tone={server.capacityTrend.recordingAtCapacityPercent7d > 10 ? "warning" : "neutral"}
+                    />
+                  )}
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {server.containerMetrics.length > 0 && (
+            <div className="mt-5">
+              <Card className="p-5">
+                <CardHeader className="p-0 pb-4">
+                  <CardTitle className="text-base">Per-Container Resources</CardTitle>
+                  <CardDescription>Live `docker stats` snapshot for every container on {server.hostname}, refreshed every minute.</CardDescription>
+                </CardHeader>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>Container</TableHead>
+                      <TableHead>CPU</TableHead>
+                      <TableHead>Memory</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {server.containerMetrics.map((c) => (
+                      <TableRow key={c.name}>
+                        <TableCell className="font-mono text-sm" title={c.name}>
+                          {serviceDisplayName(c.name)}
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn("text-sm font-medium", usageTone(c.cpuPercent) === "destructive" ? "text-destructive" : usageTone(c.cpuPercent) === "warning" ? "text-warning-foreground" : "text-foreground")}>
+                            {c.cpuPercent.toFixed(1)}%
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-sm text-foreground">{c.memoryMb >= 1024 ? `${(c.memoryMb / 1024).toFixed(2)} GB` : `${Math.round(c.memoryMb)} MB`}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+            </div>
+          )}
+
           <div className="mt-5">
             <Card className="p-5">
               <CardHeader className="p-0 pb-4">
@@ -575,6 +872,7 @@ export default function AdminServerDetail() {
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Service</TableHead>
                     <TableHead>Status</TableHead>
+                    {canManage && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -589,6 +887,19 @@ export default function AdminServerDetail() {
                           {service.active ? "Running" : "Down"}
                         </span>
                       </TableCell>
+                      {canManage && (
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+                            onClick={() => setRestartTarget(service.name)}
+                          >
+                            <PowerOff className="h-3.5 w-3.5" />
+                            Restart
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -596,9 +907,21 @@ export default function AdminServerDetail() {
             </Card>
           </div>
 
+          <ConfirmDialog
+            open={restartTarget !== null}
+            onOpenChange={(open) => !open && setRestartTarget(null)}
+            title={`Restart ${restartTarget ? serviceDisplayName(restartTarget) : ""}?`}
+            description="This interrupts any active calls or recordings currently using this service on this server. Only do this during a quiet window."
+            confirmLabel="Restart"
+            destructive
+            onConfirm={() => {
+              if (server && restartTarget) return restartService(server.name, restartTarget);
+            }}
+          />
+
           {usingApi && (
             <div className="mt-5">
-              <ContainerLogsPanel serverName={server.name} services={server.services.map((s) => s.name)} />
+              <ContainerLogsPanel serverName={server.name} services={server.configuredServices} />
             </div>
           )}
 
@@ -659,7 +982,7 @@ export default function AdminServerDetail() {
       )}
       {summary.generatedAtUtc && !error && (
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Last updated {new Date(summary.generatedAtUtc).toLocaleTimeString()}
+          Last updated {new Date(summary.generatedAtUtc).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
           {hubConnected ? " · live-updating" : ` · auto-refreshes every ${REFRESH_INTERVAL_MS / 1000}s`}
         </p>
       )}

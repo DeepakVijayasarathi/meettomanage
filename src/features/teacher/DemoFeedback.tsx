@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  CheckCircle2,
-  ClipboardCheck,
-  Clock,
-  GraduationCap,
-  Sparkles,
-} from "lucide-react";
+import { CheckCircle2, ClipboardCheck, Clock, GraduationCap, Loader2, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -20,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DEMO_FEEDBACKS } from "@/data/feedback";
 import { COURSES } from "@/data/courses";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listCourseOptions } from "@/api/courses";
 import {
@@ -62,7 +56,7 @@ const MOCK_COURSE_OPTIONS = COURSES.filter((c) => c.type !== "demo").map((c) => 
 
 export default function TeacherDemoFeedback() {
   const { toast } = useToast();
-  const { data: apiFeedbacks, reload } = useApiData(
+  const { data: apiFeedbacks, error: loadError, reload } = useApiData(
     () =>
       Promise.all([listMyDemoBookings(), listMyDemoFeedback()]).then(([bookings, submittedItems]) => [
         ...bookings.filter((b) => b.conversionStatus === "DemoScheduled").map(toAwaitingFeedback),
@@ -70,7 +64,7 @@ export default function TeacherDemoFeedback() {
       ]),
     MOCK_FEEDBACKS
   );
-  const { data: courseOptions } = useApiData(() => listCourseOptions(), MOCK_COURSE_OPTIONS);
+  const { data: courseOptions, error: courseOptionsError } = useApiData(() => listCourseOptions(), MOCK_COURSE_OPTIONS);
   const [feedbacks, setFeedbacks] = useState<DemoFeedback[]>(() => (apiEnabled() ? [] : MOCK_FEEDBACKS));
   useEffect(() => setFeedbacks(apiFeedbacks), [apiFeedbacks]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -130,7 +124,7 @@ export default function TeacherDemoFeedback() {
         setForm(EMPTY_FORM);
         toast({ variant: "success", title: "Feedback submitted", description: `Feedback for ${active.childName} was recorded.` });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Couldn't submit this feedback. Please try again.";
+        const message = userMessage(err, "Couldn't submit this feedback. Please try again.");
         setSubmitError(message);
         toast({ variant: "error", title: "Couldn't submit feedback", description: message });
       } finally {
@@ -152,6 +146,15 @@ export default function TeacherDemoFeedback() {
         description="Mandatory feedback after every demo class — helps the admission team place the child in the right batch."
         eyebrow="Teaching"
       />
+
+      {apiEnabled() && loadError && (
+        <InlineAlert variant="warning" className="mb-4">
+          Could not load demo feedback ({loadError}) — the lists below may be incomplete.{" "}
+          <button type="button" className="underline" onClick={() => reload()}>
+            Retry
+          </button>
+        </InlineAlert>
+      )}
 
       {justSubmitted && (
         <InlineAlert variant="success" bordered className="mb-5">
@@ -297,7 +300,11 @@ export default function TeacherDemoFeedback() {
                     <Label htmlFor="recommendedCourse">
                       Recommended Course <span className="text-destructive">*</span>
                     </Label>
-                    <Select value={form.recommendedCourse} onValueChange={(v) => setForm((p) => ({ ...p, recommendedCourse: v }))}>
+                    <Select
+                      value={form.recommendedCourse}
+                      onValueChange={(v) => setForm((p) => ({ ...p, recommendedCourse: v }))}
+                      disabled={apiEnabled() && !!courseOptionsError && courseOptions.length === 0}
+                    >
                       <SelectTrigger id="recommendedCourse">
                         <SelectValue placeholder="Select a course" />
                       </SelectTrigger>
@@ -309,6 +316,11 @@ export default function TeacherDemoFeedback() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {apiEnabled() && courseOptionsError && courseOptions.length === 0 && (
+                      <p className="text-xs font-medium text-destructive">
+                        Couldn't load course options ({courseOptionsError}). Refresh the page to try again.
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-1.5">
@@ -353,7 +365,7 @@ export default function TeacherDemoFeedback() {
                   Cancel
                 </Button>
                 <Button disabled={!isValid || submitting} onClick={handleSubmit}>
-                  {submitting ? "Submitting…" : "Submit Feedback"}
+                  {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {submitting ? "Submitting…" : "Submit Feedback"}
                 </Button>
               </DialogFooter>
             </>

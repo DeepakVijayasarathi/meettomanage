@@ -131,7 +131,7 @@ export function FloatingNotes({ role }: { role: Role }) {
   // date on a user card, a payout figures card, a "full module access" card) — padding tuning
   // can't fix that class of overlap, only detecting it at runtime and backing off can. Shared
   // with DoubtChatbot via useFixedButtonCollision.
-  const coversContent = useFixedButtonCollision(buttonRef, [enabled, open]);
+  const { coversContent, coversInteractive } = useFixedButtonCollision(buttonRef, [enabled, open]);
 
   function persistPos(next: { x: number; y: number }) {
     setPos(next);
@@ -227,14 +227,19 @@ export function FloatingNotes({ role }: { role: Role }) {
           likely to sit right at the visible bottom-right corner. Backs off toward transparent
           (never fully gone — still discoverable/tappable) instead of full opacity whenever the
           collision check above finds real content under it, since no static amount of page
-          padding can protect content that isn't at the very end of the page. */}
+          padding can protect content that isn't at the very end of the page. When what's
+          underneath is specifically interactive (a table's pagination arrow, a row's own
+          button) — not just plain text — pointer-events also drops so the click actually
+          reaches it; fading alone still left this button, at any opacity, permanently
+          swallowing clicks meant for whatever real control sat under it. */}
       <button
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg outline-none transition-all hover:scale-105 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:bottom-6 sm:right-6",
-          coversContent && !open && "opacity-30"
+          coversContent && !open && "opacity-30",
+          coversInteractive && !open && "pointer-events-none"
         )}
         aria-label={open ? "Close my notes" : "Open my notes"}
       >

@@ -9,7 +9,7 @@ import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
-import { apiEnabled, getAccessToken } from "@/lib/api";
+import { apiEnabled, getAccessToken, userMessage } from "@/lib/api";
 import { getRemember, setRemember } from "@/lib/authStorage";
 import { login } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
@@ -125,7 +125,11 @@ export default function Login() {
       setTimeZoneId(response.user.timeZoneId);
       navigate(from ?? homePath);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign in failed. Please try again.");
+      setError(userMessage(err, "Sign in failed. Please try again."));
+      // A wrong PIN otherwise just sat there — the visitor had to clear it themselves before
+      // retyping. Clear and refocus so retrying is just "type the PIN again."
+      setPin("");
+      document.getElementById("pin")?.focus();
     } finally {
       setSubmitting(false);
     }
@@ -225,15 +229,16 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
-                Email
+                Email or mobile number
               </Label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-ink/35" />
                 <Input
                   id="email"
-                  type="email"
+                  type="text"
+                  inputMode="email"
                   autoComplete="username"
-                  placeholder="you@meettomanage.cloud"
+                  placeholder="you@meettomanage.cloud or 98765 43210"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-11 pl-9"
@@ -347,7 +352,7 @@ export default function Login() {
                 <Checkbox checked={rememberMe} onCheckedChange={(v) => setRememberMe(v === true)} />
                 Remember me
               </label>
-              <Link to="/forgot-password" className="text-sm font-semibold text-brand-accent hover:underline">
+              <Link to="/forgot-pin" className="text-sm font-semibold text-brand-accent hover:underline">
                 Forgot your PIN?
               </Link>
             </div>
@@ -360,7 +365,7 @@ export default function Login() {
             >
               {submitting ? (
                 <>
-                  Signing in… <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" /> Signing in…
                 </>
               ) : apiEnabled() ? (
                 <>

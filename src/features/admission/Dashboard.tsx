@@ -20,20 +20,34 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatDate, formatNumber, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatDate, formatNumber, formatPercent, formatTimeLabel } from "@/lib/utils";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { SESSIONS } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listDemoBookings, toFrontendLead } from "@/api/demoBookings";
-import { listSessions, toFrontendSession } from "@/api/sessions";
-import { getDashboardSummary } from "@/api/reports";
+import { listSessions, sessionWindow, toFrontendSession } from "@/api/sessions";
+import { getMyCollections, type ApiMyCollections } from "@/api/reports";
 import { useSession } from "@/state/session";
+import { usePortalBase } from "@/lib/portalBase";
 import { LEADS, getConversionFunnel, getConversionRate, getRevenueThisMonth, type Lead, type ConversionStage } from "./data";
 import type { ClassSession } from "@/types";
 
-const TODAY = new Date().toISOString().slice(0, 10);
-const WEEK_START = new Date(Date.now() - 3 * 86400_000).toISOString().slice(0, 10);
-const WEEK_END = new Date(Date.now() + 4 * 86400_000).toISOString().slice(0, 10);
+// Demo mode's mock sessions are pinned to a fixed July 2026 week (see src/data/sessions.ts) —
+// comparing them against the real Date.now() (e.g. today) makes "Demos This Week" read as 0
+// beside a visibly non-empty pipeline snapshot below, once the real calendar has moved past
+// that week. Same fixed-"today" pattern as coordinator/Dashboard.tsx's MOCK_TODAY.
+const MOCK_TODAY = "2026-07-09";
+// demoSessions' own .date (from toFrontendSession) is already the account's local calendar
+// date, not UTC -- comparing it against a UTC "today"/week-range mismatches for hours near
+// local midnight. Same bug and fix as teacher/Dashboard.tsx's "today's classes" list.
+const TODAY = apiEnabled() ? utcIsoToLocalDateTime(new Date().toISOString()).date : MOCK_TODAY;
+const WEEK_START = apiEnabled()
+  ? utcIsoToLocalDateTime(new Date(Date.now() - 3 * 86400_000).toISOString()).date
+  : "2026-07-06";
+const WEEK_END = apiEnabled()
+  ? utcIsoToLocalDateTime(new Date(Date.now() + 4 * 86400_000).toISOString()).date
+  : "2026-07-13";
 const FUNNEL_STAGES: ConversionStage[] = ["Demo Scheduled", "Demo Completed", "Follow-up", "Enrolled", "Not Interested"];
 
 const FUNNEL_COLORS: Record<string, string> = {
@@ -47,16 +61,20 @@ const FUNNEL_COLORS: Record<string, string> = {
 export default function AdmissionDashboard() {
   const usingApi = apiEnabled();
   const { userName } = useSession();
+  const base = usePortalBase();
   const { data: leads, loading: leadsLoading, error: leadsError } = useApiData<Lead[]>(() => listDemoBookings().then((b) => b.map(toFrontendLead)), LEADS);
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError } = useApiData<ClassSession[]>(
-    () => listSessions().then((s) => s.map(toFrontendSession)),
+    () => listSessions(sessionWindow(7, 35)).then((s) => s.map(toFrontendSession)),
     SESSIONS
   );
-  const { data: collectedRevenue, loading: revenueLoading, error: revenueError } = useApiData<number>(
-    () => getDashboardSummary().then((s) => s.revenueCollected),
-    getRevenueThisMonth(),
-    0
+  // Each counselor's OWN collections (client: "we don't want all payments recorded together for
+  // all the counsellors") -- her demo leads' payments plus invoices she raised, this IST month.
+  const { data: myCollections, loading: revenueLoading, error: revenueError } = useApiData<ApiMyCollections>(
+    getMyCollections,
+    { thisMonth: getRevenueThisMonth(), thisMonthPayments: 0, lastMonth: 0, payments: [] },
+    { thisMonth: 0, thisMonthPayments: 0, lastMonth: 0, payments: [] }
   );
+  const collectedRevenue = myCollections.thisMonth;
   const kpiLoading = leadsLoading || sessionsLoading || revenueLoading;
   const kpiError = leadsError || sessionsError || revenueError;
 
@@ -87,7 +105,7 @@ export default function AdmissionDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <PersonalMeetingButton />
             <Button asChild>
-              <Link to="/admission/demo-scheduling">
+              <Link to={`${base}/demo-scheduling`}>
                 <CalendarClock className="h-4 w-4" />
                 Schedule a demo
               </Link>
@@ -103,7 +121,7 @@ export default function AdmissionDashboard() {
           value={formatNumber(demosThisWeek)}
           icon={CalendarClock}
           tone="primary"
-          trend={{ value: 18, label: "vs last week" }}
+          trend={usingApi ? undefined : { value: 18, label: "vs last week" }}
           loading={kpiLoading}
           error={kpiError}
         />
@@ -112,7 +130,7 @@ export default function AdmissionDashboard() {
           value={formatPercent(conversionRate)}
           icon={TrendingUp}
           tone="success"
-          trend={{ value: 4.5, label: "vs last month" }}
+          trend={usingApi ? undefined : { value: 4.5, label: "vs last month" }}
           loading={kpiLoading}
           error={kpiError}
         />
@@ -121,16 +139,17 @@ export default function AdmissionDashboard() {
           value={formatNumber(pendingFollowUps)}
           icon={PhoneCall}
           tone="destructive"
-          trend={{ value: -12, label: "vs last week" }}
+          trend={usingApi ? undefined : { value: -12, label: "vs last week" }}
           loading={kpiLoading}
           error={kpiError}
         />
         <KpiCard
-          label="Revenue From Conversions"
+          label="My Collections This Month"
           value={formatCurrency(revenueThisMonth)}
+          detail={`${myCollections.thisMonthPayments} payment${myCollections.thisMonthPayments === 1 ? "" : "s"} from your leads since 1 ${new Date().toLocaleString("en-IN", { month: "short", timeZone: "Asia/Kolkata" })} · last month ${formatCurrency(myCollections.lastMonth)}`}
           icon={IndianRupee}
           tone="warning"
-          trend={{ value: 9.2, label: "this month" }}
+          trend={usingApi ? undefined : { value: 9.2, label: "this month" }}
           loading={kpiLoading}
           error={kpiError}
         />
@@ -185,7 +204,7 @@ export default function AdmissionDashboard() {
             })}
           </div>
           <Button variant="soft" size="sm" className="mt-4 w-full" asChild>
-            <Link to="/admission/conversion">
+            <Link to={`${base}/conversion`}>
               Open Kanban board <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
@@ -205,7 +224,7 @@ export default function AdmissionDashboard() {
             </div>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/admission/demo-scheduling">
+            <Link to={`${base}/demo-scheduling`}>
               View all <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
@@ -239,7 +258,7 @@ export default function AdmissionDashboard() {
                   <div>
                     <p className="text-sm font-semibold text-foreground">{s.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {s.date === TODAY ? "Today" : formatDate(s.date, "long")} · {s.startTime} · {s.teacherName}
+                      {s.date === TODAY ? "Today" : formatDate(s.date, "long")} · {formatTimeLabel(s.startTime)} · {s.teacherName}
                     </p>
                   </div>
                 </div>

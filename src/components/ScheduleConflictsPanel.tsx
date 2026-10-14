@@ -5,15 +5,24 @@ import type { LucideIcon } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listSessions, toFrontendSession } from "@/api/sessions";
+import { listSessions, sessionWindow, toFrontendSession } from "@/api/sessions";
 import { listLeave, toFrontendLeave } from "@/api/academicOps";
 import { SESSIONS } from "@/data/sessions";
 import { LEAVE_REQUESTS } from "@/data/leaves";
 import { startOfWeek, endOfWeek, isWithinInterval, parseISO } from "date-fns";
 import type { ClassSession, LeaveRequest } from "@/types";
+
+/** l.date is only the leave's *start* — a multi-day leave clashing with a session on, say,
+ *  its second week used to go completely undetected since only day one was ever checked. */
+function sessionFallsInLeave(s: ClassSession, l: LeaveRequest): boolean {
+  if (l.startAtUtc && l.endAtUtc) {
+    return s.date >= l.startAtUtc.slice(0, 10) && s.date <= l.endAtUtc.slice(0, 10);
+  }
+  return s.date === l.date;
+}
 
 interface AttentionItem {
   id: string;
@@ -29,7 +38,7 @@ interface AttentionItem {
  * real sessions + leave (mock fallback in demo mode).
  */
 export function ScheduleConflictsPanel() {
-  const { data: sessions } = useApiData<ClassSession[]>(() => listSessions().then((s) => s.map(toFrontendSession)), SESSIONS);
+  const { data: sessions } = useApiData<ClassSession[]>(() => listSessions(sessionWindow(1, 60)).then((s) => s.map(toFrontendSession)), SESSIONS);
   const { data: leaves } = useApiData<LeaveRequest[]>(() => listLeave().then((l) => l.map(toFrontendLeave)), LEAVE_REQUESTS);
   const items = useMemo(() => {
     // Computed inside the memo (not as a render-scoped variable) so `new Date()`
@@ -41,27 +50,27 @@ export function ScheduleConflictsPanel() {
     const weekEnd = endOfWeek(now);
 
     leaves.filter((l) => l.status === "approved").forEach((l) => {
-      const clash = sessions.find((s) => s.teacherId === l.teacherId && s.date === l.date && s.status === "scheduled");
+      const clash = sessions.find((s) => s.teacherId === l.teacherId && s.status === "scheduled" && sessionFallsInLeave(s, l));
       if (clash) {
         out.push({
           id: `approved-${l.id}`,
           tone: "destructive",
           icon: AlertTriangle,
           title: `${l.teacherName} is on approved leave, but "${clash.title}" is still scheduled`,
-          description: `${formatDate(l.date, "long")} · ${clash.startTime} — update the calendar or assign a substitute.`,
+          description: `${formatDate(clash.date, "long")} · ${formatTimeLabel(clash.startTime)} — update the calendar or assign a substitute.`,
         });
       }
     });
 
     leaves.filter((l) => l.status === "pending").forEach((l) => {
-      const clash = sessions.find((s) => s.teacherId === l.teacherId && s.date === l.date && s.status === "scheduled");
+      const clash = sessions.find((s) => s.teacherId === l.teacherId && s.status === "scheduled" && sessionFallsInLeave(s, l));
       if (clash) {
         out.push({
           id: `pending-${l.id}`,
           tone: "warning",
           icon: Clock,
           title: `${l.teacherName}'s leave request is pending approval`,
-          description: `Requested for ${formatDate(l.date, "long")}, overlapping "${clash.title}" at ${clash.startTime}.`,
+          description: `Requested for ${formatDate(clash.date, "long")}, overlapping "${clash.title}" at ${formatTimeLabel(clash.startTime)}.`,
         });
       }
     });
@@ -84,7 +93,7 @@ export function ScheduleConflictsPanel() {
           tone: "destructive",
           icon: UserX,
           title: `"${s.title}" was marked No-Show`,
-          description: `${formatDate(s.date, "long")} · ${s.startTime} with ${s.teacherName} — needs a reschedule or parent follow-up.`,
+          description: `${formatDate(s.date, "long")} · ${formatTimeLabel(s.startTime)} with ${s.teacherName} — needs a reschedule or parent follow-up.`,
         });
       });
 

@@ -1,24 +1,26 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Mail, ShieldQuestion } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Mail, ShieldQuestion } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { requestPinReset } from "@/api/auth";
 import { useLightBrandScope } from "@/lib/theme";
 
 // Same headline face as Login.tsx (scoped to this page only, not the global font-display).
 const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
 
-export default function ForgotPassword() {
+export default function ForgotPin() {
   useLightBrandScope();
   const live = apiEnabled();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A mobile number (no "@") goes to the team for WhatsApp-only parents with no email.
+  const isPhone = !email.includes("@") && email.replace(/\D/g, "").length >= 7;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -27,11 +29,10 @@ export default function ForgotPassword() {
     setError(null);
     try {
       await requestPinReset(email.trim());
-      // Always the same message on success, regardless of whether the address
-      // actually has an account — the UI must never leak that distinction.
       setSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't send the reset link. Please try again.");
+      // A 404 here means no account matches — the backend's message says so plainly.
+      setError(userMessage(err, "Couldn't send the reset link. Please try again."));
     } finally {
       setSubmitting(false);
     }
@@ -60,11 +61,20 @@ export default function ForgotPassword() {
               <CheckCircle2 className="h-6 w-6" />
             </span>
             <h2 style={{ fontFamily: HEADLINE_FONT }} className="text-lg font-semibold tracking-tight text-brand-ink sm:text-xl">
-              Check your email
+              {isPhone ? "Request sent" : "Check your email"}
             </h2>
             <p className="mt-1.5 text-sm text-brand-ink/70">
-              If <strong className="text-brand-ink">{email.trim()}</strong> has an account with us, a reset link is on
-              its way — it expires in 30 minutes and works once.
+              {isPhone ? (
+                <>
+                  You'll get a new PIN for <strong className="text-brand-ink">{email.trim()}</strong>: by email if your
+                  account has one, otherwise our team will send it to you on WhatsApp shortly.
+                </>
+              ) : (
+                <>
+                  A reset link is on its way to <strong className="text-brand-ink">{email.trim()}</strong> — it expires in
+                  30 minutes and works once.
+                </>
+              )}
             </p>
           </>
         ) : (
@@ -76,22 +86,23 @@ export default function ForgotPassword() {
               Forgot your PIN?
             </h2>
             <p className="mt-1.5 text-sm text-brand-ink/70">
-              Enter the email on your account and we'll send you a link to set a new PIN.
+              Enter the email or mobile number you log in with and we'll help you set a new PIN.
             </p>
             <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3 text-left">
               <div className="grid gap-1.5">
                 <Label htmlFor="forgot-email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
-                  Email
+                  Email or mobile number
                 </Label>
                 <div className="relative">
                   <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-ink/35" />
                   <Input
                     id="forgot-email"
-                    type="email"
+                    type="text"
+                    inputMode="email"
                     required
                     autoFocus
                     className="h-11 pl-9"
-                    placeholder="you@example.com"
+                    placeholder="you@example.com or 98765 43210"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
@@ -108,7 +119,7 @@ export default function ForgotPassword() {
                 disabled={submitting || !email.trim()}
                 className="mt-1 !bg-brand-green !text-white hover:!bg-brand-greenDark"
               >
-                {submitting ? "Sending…" : "Send reset link"}
+                {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {submitting ? "Sending…" : "Send reset link"}
               </Button>
             </form>
             <p className="mt-4 text-xs text-brand-ink/70">

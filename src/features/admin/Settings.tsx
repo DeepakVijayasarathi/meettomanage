@@ -1,32 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  Bell,
-  Building2,
-  CheckCircle2,
-  CreditCard,
-  Eye,
-  EyeOff,
-  Globe2,
-  ListTree,
-  Mail,
-  MessageCircle,
-  Palette,
-  Pencil,
-  Plug,
-  Plus,
-  Puzzle,
-  Save,
-  Search,
-  Settings2,
-  ShieldAlert,
-  StickyNote,
-  Trash2,
-  Video,
-  Wallet,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { Bell, Building2, CalendarOff, CheckCircle2, CreditCard, Eye, EyeOff, Globe2, ListTree, Loader2, Mail, MessageCircle, Palette, Pencil, Plug, Plus, Puzzle, Save, Search, Settings2, ShieldAlert, StickyNote, Trash2, type LucideIcon, Video, Wallet, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -51,9 +25,11 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { cn, formatCurrency, hexToHslTriple } from "@/lib/utils";
+import { cn, formatCurrency, hexToHslTriple, isValidEmail } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
+import { getStorageStatus, setStorageProvider, startStorageSync, type ApiStorageStatus } from "@/api/storage";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { getSettings, toSettingsMap, updateSettings, type SettingCategory, type UpdateSettingItem } from "@/api/settings";
 import { getBrand, setBrand } from "@/lib/branding";
@@ -68,17 +44,20 @@ import {
   type ApiMenuItem,
   type SaveMenuItemRequest,
 } from "@/api/menus";
-import { PERMISSION_MODULES } from "@/api/permissions";
+import { DEMO_PERMISSION_MODULES } from "@/api/permissions";
+import { listPermissionModules } from "@/api/permissionModules";
 import {
   createIntegration,
   deleteIntegration,
   listIntegrations,
+  sendTestEmail,
   updateIntegration,
   type ApiIntegration,
   type IntegrationCategory as IntegrationCategoryName,
   type SaveIntegrationRequest,
 } from "@/api/integrations";
 import { listPayoutRates, savePayoutRate, type ApiPayoutRate } from "@/api/payouts";
+import { listLeaveAllowances, saveLeaveAllowance, type ApiLeaveAllowance } from "@/api/academicOps";
 import { listTeacherOptions } from "@/api/batches";
 
 const SWATCHES = CHART_PALETTE;
@@ -115,11 +94,17 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "brand.logoUrl": { category: "Branding", isPublic: true, fallback: "" },
   "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#1E3A5F" },
   "brand.accentColor": { category: "Branding", isPublic: true, fallback: "#E63329" },
-  // Attendance/no-show thresholds for the teacher payout pipeline -- were fixed constants in
-  // PayoutService and NoShowDetectionBackgroundService until now.
-  "payroll.minAttendancePercentForReview": { category: "General", fallback: "50" },
+  // No-show grace for the teacher payout pipeline -- was a fixed constant in
+  // NoShowDetectionBackgroundService until now.
   "payroll.noShowGraceMinutes": { category: "General", fallback: "20" },
   "notify.feeReminders": { category: "Notifications", fallback: "true" },
+  "billing.reminderDaysBeforeDue": { category: "Notifications", fallback: "3" },
+  "billing.suspensionGraceDays": { category: "Notifications", fallback: "0" },
+  // Admission & class policies. Public because the anonymous /pay page and the parent portal read
+  // them (see lib/policies.ts); the API enforces the cancellation cut-off regardless.
+  "admission.termsUrl": { category: "Notifications", isPublic: true, fallback: "" },
+  "admission.termsText": { category: "Notifications", isPublic: true, fallback: "" },
+  "parent.cancelCutoffMinutes": { category: "Notifications", isPublic: true, fallback: "60" },
   "notify.leaveRequests": { category: "Notifications", fallback: "true" },
   "notify.lowAttendance": { category: "Notifications", fallback: "false" },
   "notify.weeklyDigest": { category: "Notifications", fallback: "true" },
@@ -215,6 +200,7 @@ const SETTINGS_TABS = new Set([
   "seo",
   "menus",
   "payroll",
+  "leave",
   "integrations",
 ]);
 
@@ -275,7 +261,7 @@ export default function AdminSettings() {
         }));
         await updateSettings(items);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Could not save settings.";
+        const message = userMessage(err, "Could not save settings.");
         setError(message);
         setSaving(false);
         toast({ variant: "error", title: "Couldn't save settings", description: message });
@@ -307,11 +293,11 @@ export default function AdminSettings() {
       <PageHeader
         eyebrow="Configuration"
         title="Settings & Branding"
-        description="White-label branding, domain, notification preferences, sidebar menus, teacher payout rates and integrations — stored in the database."
+        description="White-label branding, domain, notification preferences, sidebar menus, teacher payout rates, leave policy and integrations — stored in the database."
         actions={
           HEADER_SAVE_TABS.has(activeTab) ? (
             <Button onClick={saveAll} disabled={saving}>
-              {saved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
               {saving ? "Saving…" : saved ? "Saved!" : "Save Changes"}
             </Button>
           ) : (
@@ -346,13 +332,16 @@ export default function AdminSettings() {
           <TabsTrigger value="payroll" className="gap-1.5">
             <Wallet className="h-4 w-4" /> Payroll
           </TabsTrigger>
+          <TabsTrigger value="leave" className="gap-1.5">
+            <CalendarOff className="h-4 w-4" /> Leave Policy
+          </TabsTrigger>
           <TabsTrigger value="integrations" className="gap-1.5">
             <Plug className="h-4 w-4" /> Integrations
           </TabsTrigger>
         </TabsList>
         <p className="mb-4 mt-2 text-xs text-muted-foreground">
           <ShieldAlert className="mr-1 inline h-3 w-3 align-[-1px] text-warning-foreground" />
-          Payroll and Integrations hold live payout rates and payment-gateway credentials — double-check before changing them.
+          Payroll and Integrations hold live payout rates and payment-gateway credentials — double-check before changing them. Leave Policy sets how many classes a teacher may self-cancel each month.
         </p>
 
         <TabsContent value="general">
@@ -645,6 +634,94 @@ export default function AdminSettings() {
               ))}
             </CardContent>
           </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Fee Collection Timing</CardTitle>
+              <CardDescription>
+                These used to be fixed in code. Controls when a payment reminder goes out and how
+                long an account can stay overdue before access is automatically suspended.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="billing-reminder-days">Payment reminder lead time (days)</Label>
+                <Input
+                  id="billing-reminder-days"
+                  type="number"
+                  min={0}
+                  value={values["billing.reminderDaysBeforeDue"]}
+                  onChange={(e) => setValue("billing.reminderDaysBeforeDue", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  A reminder email goes out once an invoice is within this many days of its due date (and daily while overdue).
+                </p>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="billing-suspension-grace">Suspension grace period (days)</Label>
+                <Input
+                  id="billing-suspension-grace"
+                  type="number"
+                  min={0}
+                  value={values["billing.suspensionGraceDays"]}
+                  onChange={(e) => setValue("billing.suspensionGraceDays", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  How many days an invoice can stay overdue before the parent's account is automatically suspended. 0 = suspend as soon as it's overdue.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Admission &amp; Class Policies</CardTitle>
+              <CardDescription>
+                The Terms &amp; Conditions parents must accept before every payment, and how close to a class parents can still
+                cancel it online.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="admission-terms-url">Terms &amp; Conditions link</Label>
+                <Input
+                  id="admission-terms-url"
+                  type="url"
+                  placeholder="https://…"
+                  value={values["admission.termsUrl"]}
+                  onChange={(e) => setValue("admission.termsUrl", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">Shown as a link next to the "I accept" checkbox on every payment screen.</p>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="admission-terms-text">Terms &amp; Conditions text (optional)</Label>
+                <Textarea
+                  id="admission-terms-text"
+                  rows={5}
+                  maxLength={2000}
+                  value={values["admission.termsText"]}
+                  onChange={(e) => setValue("admission.termsText", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Optional short summary shown on the payment screen (up to 2000 characters). The full Terms &amp; Conditions are always linked from the payment screen at /terms.
+                </p>
+              </div>
+              <div className="grid gap-1.5 sm:max-w-xs">
+                <Label htmlFor="parent-cancel-cutoff">Class cancellation cut-off (minutes before class)</Label>
+                <Input
+                  id="parent-cancel-cutoff"
+                  type="number"
+                  min={0}
+                  value={values["parent.cancelCutoffMinutes"]}
+                  onChange={(e) => setValue("parent.cancelCutoffMinutes", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Parents can cancel or apply for leave until this many minutes before the class starts (60 = a 4:00 PM class can be
+                  cancelled until 3:00 PM). After that the option is disabled.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="menus">
@@ -656,23 +733,11 @@ export default function AdminSettings() {
             <CardHeader>
               <CardTitle>Attendance &amp; No-Show Thresholds</CardTitle>
               <CardDescription>
-                These used to be fixed in code. A session is flagged for review before its payout can be
-                finalized when the teacher's captured attendance falls under this percentage of the
-                scheduled class.
+                Any class that runs shorter than its scheduled duration is sent to Payout Approvals for an
+                Admin / Management decision before its payout can be finalized.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label htmlFor="payroll-min-attendance">Minimum attendance for automatic payout (%)</Label>
-                <Input
-                  id="payroll-min-attendance"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={values["payroll.minAttendancePercentForReview"]}
-                  onChange={(e) => setValue("payroll.minAttendancePercentForReview", e.target.value)}
-                />
-              </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="payroll-noshow-grace">No-show detection grace period (minutes)</Label>
                 <Input
@@ -691,8 +756,14 @@ export default function AdminSettings() {
           <PayoutRatesManager />
         </TabsContent>
 
+        <TabsContent value="leave" className="flex flex-col gap-6">
+          <LeaveAllowanceManager />
+        </TabsContent>
+
         <TabsContent value="integrations" className="flex flex-col gap-6">
           <JitsiRecordingSettings />
+          <EmailDeliveryCheck />
+          <StorageSyncCard />
           <IntegrationsManager />
         </TabsContent>
 
@@ -778,6 +849,12 @@ function MenuManager() {
   const formRef = useRef<HTMLDivElement>(null);
 
   const iconNames = useMemo(() => Object.keys(MENU_ICONS).sort(), []);
+  // The real, current module catalog (built-in + any Admin-defined custom ones) — a menu
+  // item's gate isn't limited to the 12 built-ins any more.
+  const { data: modules } = useApiData(
+    () => listPermissionModules().then((list) => list.map((m) => ({ value: m.key, label: m.label }))),
+    [...DEMO_PERMISSION_MODULES]
+  );
 
   // Same reasoning as IntegrationsManager: the form renders above the (possibly long,
   // multi-section) item list, so editing an item further down opens a form the user
@@ -794,7 +871,7 @@ function MenuManager() {
       setItems(await listMenuItems(nextPortal));
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load menu items.");
+      setError(userMessage(err, "Could not load menu items."));
     }
   }
 
@@ -835,7 +912,7 @@ function MenuManager() {
       await reload();
       toast({ variant: "success", title: editingId ? "Menu item updated" : "Menu item created" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the menu item.";
+      const message = userMessage(err, "Could not save the menu item.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save menu item", description: message });
     } finally {
@@ -850,7 +927,7 @@ function MenuManager() {
       await reload();
       toast({ variant: "success", title: `"${item.label}" removed` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not delete the menu item.";
+      const message = userMessage(err, "Could not delete the menu item.");
       setError(message);
       toast({ variant: "error", title: "Couldn't delete menu item", description: message });
     } finally {
@@ -874,7 +951,7 @@ function MenuManager() {
       });
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update the menu item.");
+      setError(userMessage(err, "Could not update the menu item."));
     } finally {
       setBusy(false);
     }
@@ -950,7 +1027,7 @@ function MenuManager() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none">Unassigned — visible to everyone</SelectItem>
-                  {PERMISSION_MODULES.map((m) => (
+                  {modules.map((m) => (
                     <SelectItem key={m.value} value={m.value}>
                       {m.label}
                     </SelectItem>
@@ -1037,7 +1114,7 @@ function MenuManager() {
                     <TableCell>
                       {item.requiredModule ? (
                         <Badge variant="secondary">
-                          {PERMISSION_MODULES.find((m) => m.value === item.requiredModule)?.label ?? item.requiredModule}
+                          {modules.find((m) => m.value === item.requiredModule)?.label ?? item.requiredModule}
                         </Badge>
                       ) : (
                         <Badge variant="muted">Unassigned — everyone</Badge>
@@ -1136,7 +1213,7 @@ function PayoutRatesManager() {
       setAllRates(await listPayoutRates());
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load payout rate cards.");
+      setError(userMessage(err, "Could not load payout rate cards."));
     } finally {
       setLoaded(true);
     }
@@ -1194,7 +1271,7 @@ function PayoutRatesManager() {
       await reload();
       toast({ variant: "success", title: "Rate card saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the rate card.";
+      const message = userMessage(err, "Could not save the rate card.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save the rate card", description: message });
     } finally {
@@ -1327,8 +1404,232 @@ function PayoutRatesManager() {
                   Cancel
                 </Button>
                 <Button onClick={handleSave} disabled={saving || !!rateError}>
-                  {saved ? <CheckCircle2 className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle2 className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
                   {saving ? "Saving…" : saved ? "Saved!" : "Save Rate Card"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+/** Sentinel for the centre-wide default allowance card (a null TeacherProfileId in the API) —
+ *  same convention as PayoutRatesManager's DEFAULT_RATE_CARD above. */
+const DEFAULT_ALLOWANCE_CARD = "__default";
+
+type AllowanceCardRow = {
+  key: string;
+  label: string;
+  monthlyAllowance: number;
+};
+
+function buildAllowanceCardRows(allowances: ApiLeaveAllowance[]): AllowanceCardRow[] {
+  return allowances
+    .map((a) => ({ key: a.teacherProfileId ?? DEFAULT_ALLOWANCE_CARD, label: a.teacherName, monthlyAllowance: a.monthlyAllowance }))
+    .sort((a, b) => (a.key === DEFAULT_ALLOWANCE_CARD ? -1 : b.key === DEFAULT_ALLOWANCE_CARD ? 1 : a.label.localeCompare(b.label)));
+}
+
+/**
+ * Class-wise-cancellation monthly allowance (WBS Round 2 feedback #23: "teachers have a
+ * certain number of session cancellations allowed based on their total monthly sessions" —
+ * client chose admin-configurable per teacher/role over a fixed formula). Same
+ * default-plus-per-teacher-override shape as PayoutRatesManager above: a card with no
+ * teacher is the centre-wide default that applies to anyone without their own card.
+ */
+function LeaveAllowanceManager() {
+  const { toast } = useToast();
+  const [allAllowances, setAllAllowances] = useState<ApiLeaveAllowance[]>([]);
+  const [loaded, setLoaded] = useState(!apiEnabled());
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: teacherOptions } = useApiData(
+    () => listTeacherOptions().then((list) => list.map((t) => ({ id: t.teacherProfileId, name: t.fullName }))),
+    []
+  );
+
+  async function reload() {
+    if (!apiEnabled()) return;
+    try {
+      setAllAllowances(await listLeaveAllowances());
+      setError(null);
+    } catch (err) {
+      setError(userMessage(err, "Could not load leave allowances."));
+    } finally {
+      setLoaded(true);
+    }
+  }
+
+  useEffect(() => {
+    void reload();
+  }, []);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogTeacherId, setDialogTeacherId] = useState<string>(DEFAULT_ALLOWANCE_CARD);
+  const [monthlyAllowance, setMonthlyAllowance] = useState("0");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const cardRows = useMemo(() => buildAllowanceCardRows(allAllowances), [allAllowances]);
+
+  function openDialog(cardKey: string) {
+    setDialogTeacherId(cardKey);
+    setSaved(false);
+    setDialogOpen(true);
+  }
+
+  useEffect(() => {
+    if (!dialogOpen) return;
+    const existing = cardRows.find((r) => r.key === dialogTeacherId);
+    setMonthlyAllowance(existing ? String(existing.monthlyAllowance) : "0");
+  }, [dialogOpen, dialogTeacherId, cardRows]);
+
+  const allowanceError =
+    !Number.isFinite(Number(monthlyAllowance)) || Number(monthlyAllowance) < 0
+      ? "Allowance must be zero or a positive whole number."
+      : null;
+
+  async function handleSave() {
+    if (!apiEnabled()) {
+      setSaved(true);
+      return;
+    }
+    if (allowanceError) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await saveLeaveAllowance({
+        teacherProfileId: dialogTeacherId === DEFAULT_ALLOWANCE_CARD ? undefined : dialogTeacherId,
+        monthlyAllowance: Math.round(Number(monthlyAllowance)),
+      });
+      setSaved(true);
+      await reload();
+      toast({ variant: "success", title: "Leave allowance saved" });
+    } catch (err) {
+      const message = userMessage(err, "Could not save the leave allowance.");
+      setError(message);
+      toast({ variant: "error", title: "Couldn't save the leave allowance", description: message });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!apiEnabled()) {
+    return (
+      <EmptyState
+        icon={CalendarOff}
+        title="Demo mode"
+        description="Leave allowances are maintained in the database. Connect the API (VITE_API_BASE_URL) to manage them; demo mode has no leave-allowance data."
+      />
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+        <div>
+          <CardTitle>Class-Wise Cancellation Allowance</CardTitle>
+          <CardDescription>
+            How many individual classes a teacher may self-cancel per calendar month without a full leave review —
+            within this limit, picking specific classes to cancel is approved instantly. The default card covers any
+            teacher without an allowance of their own; a teacher's own card overrides it just for them.
+          </CardDescription>
+        </div>
+        <Button size="sm" onClick={() => openDialog(DEFAULT_ALLOWANCE_CARD)}>
+          <Plus className="h-3.5 w-3.5" /> Add Allowance
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {error && <InlineAlert variant="warning" className="mb-3">{error}</InlineAlert>}
+
+        {!loaded ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
+        ) : cardRows.length === 0 ? (
+          <EmptyState
+            icon={CalendarOff}
+            title="No allowances configured yet"
+            description="Set up the default allowance first — it applies to every teacher until they have one of their own. Until then, every class-wise request needs admin review."
+            action={
+              <Button size="sm" onClick={() => openDialog(DEFAULT_ALLOWANCE_CARD)}>
+                <Plus className="h-3.5 w-3.5" /> Configure Default Allowance
+              </Button>
+            }
+          />
+        ) : (
+          <div className="flex flex-col">
+            {cardRows.map((row, i) => (
+              <div key={row.key}>
+                {i > 0 && <Separator className="my-1" />}
+                <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {row.key === DEFAULT_ALLOWANCE_CARD ? "All teachers (default)" : row.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {row.monthlyAllowance} class{row.monthlyAllowance === 1 ? "" : "es"} per month
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => openDialog(row.key)}>
+                    <Pencil className="h-3.5 w-3.5" /> Edit
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          {dialogOpen && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Configure Cancellation Allowance</DialogTitle>
+                <DialogDescription>Set how many classes may be self-cancelled per calendar month.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="allowance-applies-to-select">Applies to</Label>
+                  <Select value={dialogTeacherId} onValueChange={setDialogTeacherId}>
+                    <SelectTrigger id="allowance-applies-to-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={DEFAULT_ALLOWANCE_CARD}>All teachers (default allowance)</SelectItem>
+                      {teacherOptions.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="monthly-allowance">Classes per month</Label>
+                  <Input
+                    id="monthly-allowance"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={monthlyAllowance}
+                    onChange={(e) => setMonthlyAllowance(e.target.value)}
+                  />
+                  {allowanceError && (
+                    <p role="alert" className="text-xs font-medium text-destructive">
+                      {allowanceError}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSave} disabled={saving || !!allowanceError}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle2 className="h-4 w-4" /> : <Settings2 className="h-4 w-4" />}
+                  {saving ? "Saving…" : saved ? "Saved!" : "Save Allowance"}
                 </Button>
               </DialogFooter>
             </>
@@ -1430,7 +1731,7 @@ const EMPTY_INTEGRATION_FORM: SaveIntegrationRequest = {
   config: {},
 };
 
-const EMPTY_JITSI_FORM = { domain: "", appId: "", appSecret: "", autoRecord: true };
+const EMPTY_JITSI_FORM = { domain: "", appId: "", appSecret: "", autoRecord: true, defaultLobby: true };
 
 /**
  * Purpose-built form for the one integration every class actually depends on, instead of
@@ -1461,10 +1762,11 @@ function JitsiRecordingSettings() {
         appId: jitsi?.config.appId ?? "",
         appSecret: jitsi?.config.appSecret ?? "",
         autoRecord: jitsi ? (jitsi.config.autoRecord ?? "true") !== "false" : true,
+        defaultLobby: jitsi ? (jitsi.config.defaultLobby ?? "true") !== "false" : true,
       });
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load Jitsi settings.");
+      setError(userMessage(err, "Could not load Jitsi settings."));
     } finally {
       setLoaded(true);
     }
@@ -1490,6 +1792,7 @@ function JitsiRecordingSettings() {
           appId: form.appId.trim(),
           appSecret: form.appSecret,
           autoRecord: form.autoRecord ? "true" : "false",
+          defaultLobby: form.defaultLobby ? "true" : "false",
         },
       };
       if (integration) await updateIntegration(integration.id, request);
@@ -1498,7 +1801,7 @@ function JitsiRecordingSettings() {
       setSaved(true);
       toast({ variant: "success", title: "Jitsi settings saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save Jitsi settings.";
+      const message = userMessage(err, "Could not save Jitsi settings.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save Jitsi settings", description: message });
     } finally {
@@ -1590,6 +1893,17 @@ function JitsiRecordingSettings() {
               </div>
               <Switch checked={form.autoRecord} onCheckedChange={(autoRecord) => setForm({ ...form, autoRecord })} />
             </div>
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 sm:col-span-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Start every class with the waiting room on</p>
+                <p className="text-xs text-muted-foreground">
+                  On: a student joining before the teacher waits to be let in, instead of landing in an unattended
+                  room. Off: anyone can join directly the moment class opens — the teacher can still turn the waiting
+                  room on mid-class from the call's own "Waiting Room" button either way.
+                </p>
+              </div>
+              <Switch checked={form.defaultLobby} onCheckedChange={(defaultLobby) => setForm({ ...form, defaultLobby })} />
+            </div>
           </div>
         )}
 
@@ -1611,6 +1925,11 @@ function JitsiRecordingSettings() {
  * rather than by which portal you're in.
  */
 export function IntegrationsManager() {
+  const { hasPermission } = useSession();
+  // Create/update/delete all require Settings:Edit server-side (IntegrationsController) --
+  // this component is shared by the Admin portal (implicit full access) and the Sub Admin
+  // Integrations page, which only gates the whole screen on Settings:View.
+  const canEdit = hasPermission("Settings", "Edit");
   const [integrations, setIntegrations] = useState<ApiIntegration[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1638,7 +1957,7 @@ export function IntegrationsManager() {
       setIntegrations(await listIntegrations());
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load integrations.");
+      setError(userMessage(err, "Could not load integrations."));
     } finally {
       setLoaded(true);
     }
@@ -1700,7 +2019,7 @@ export function IntegrationsManager() {
       });
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update the integration.");
+      setError(userMessage(err, "Could not update the integration."));
     } finally {
       setBusy(false);
     }
@@ -1716,7 +2035,7 @@ export function IntegrationsManager() {
       cancelEdit();
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the integration.");
+      setError(userMessage(err, "Could not save the integration."));
     } finally {
       setBusy(false);
     }
@@ -1728,7 +2047,7 @@ export function IntegrationsManager() {
       await deleteIntegration(integration.id);
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete the integration.");
+      setError(userMessage(err, "Could not delete the integration."));
     } finally {
       setBusy(false);
     }
@@ -1758,9 +2077,11 @@ export function IntegrationsManager() {
             Master list of third-party services — Email, WhatsApp, Razorpay, Cashfree, Zoom, Jitsi Meet and any custom ones you add.
           </CardDescription>
         </div>
-        <Button size="sm" onClick={startNew}>
-          <Plus className="h-3.5 w-3.5" /> Add Integration
-        </Button>
+        {canEdit && (
+          <Button size="sm" onClick={startNew}>
+            <Plus className="h-3.5 w-3.5" /> Add Integration
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         {error && <InlineAlert variant="warning">{error}</InlineAlert>}
@@ -1930,12 +2251,20 @@ export function IntegrationsManager() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Switch checked={integration.isEnabled} onCheckedChange={() => toggleEnabled(integration)} disabled={busy} />
-                        <Button variant="outline" size="sm" onClick={() => startEdit(integration)}>
-                          <Pencil className="h-3.5 w-3.5" /> Configure
-                        </Button>
-                        {!integration.isSystem && (
-                          <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(integration)} disabled={busy}>
+                        <Switch checked={integration.isEnabled} onCheckedChange={() => toggleEnabled(integration)} disabled={busy || !canEdit} />
+                        {canEdit && (
+                          <Button variant="outline" size="sm" onClick={() => startEdit(integration)}>
+                            <Pencil className="h-3.5 w-3.5" /> Configure
+                          </Button>
+                        )}
+                        {!integration.isSystem && canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeleteTarget(integration)}
+                            disabled={busy}
+                            aria-label={`Delete ${integration.name}`}
+                          >
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
                         )}
@@ -1960,6 +2289,264 @@ export function IntegrationsManager() {
         confirmLabel="Delete Integration"
         destructive
         onConfirm={() => (deleteTarget ? remove(deleteTarget) : undefined)}
+      />
+    </Card>
+  );
+}
+
+/**
+ * "Check email delivery" — reported live: parents never received their PIN-reset emails and
+ * nothing showed why (normal sending never reports a problem). Sends a real test email and shows
+ * the exact reason when it can't be delivered.
+ */
+function EmailDeliveryCheck() {
+  const { hasPermission } = useSession();
+  const [to, setTo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  if (!apiEnabled() || !hasPermission("Settings", "Edit")) return null;
+
+  async function run() {
+    if (!isValidEmail(to.trim()) || busy) return;
+    setBusy(true);
+    setResult(null);
+    try {
+      setResult(await sendTestEmail(to.trim()));
+    } catch (err) {
+      setResult({ ok: false, message: userMessage(err, "Couldn't run the email check.") });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Check email delivery</CardTitle>
+        <CardDescription>
+          Send a test email to any address (for example a Gmail you can open) to confirm that parents will receive
+          PIN-reset links, logins and other emails. If something is wrong, you'll see exactly what.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input type="email" placeholder="name@gmail.com" value={to} onChange={(e) => setTo(e.target.value)} className="sm:max-w-sm" />
+          <Button onClick={run} disabled={busy || !isValidEmail(to.trim())}>
+            {busy ? "Sending…" : "Send test email"}
+          </Button>
+        </div>
+        {result && (
+          <p className={result.ok ? "text-sm font-medium text-success" : "text-sm font-medium text-destructive"}>{result.message}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  return `${Math.round(bytes / 1024)} KB`;
+}
+
+/**
+ * Where uploaded resources and class presentations are kept (S3 or the server's own disk) -- chosen
+ * per client here, saved in the database and applied at once -- and the Sync buttons that copy every
+ * file across. Copies only, never deletes; safe to press again.
+ */
+function StorageSyncCard() {
+  const { hasPermission } = useSession();
+  const canEdit = hasPermission("Settings", "Edit");
+  const [status, setStatus] = useState<ApiStorageStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [starting, setStarting] = useState<"local" | "s3" | null>(null);
+  const [switchTo, setSwitchTo] = useState<"S3" | "Local" | null>(null);
+  const running = status?.sync?.running ?? false;
+
+  useEffect(() => {
+    if (!apiEnabled() || !hasPermission("Settings", "View")) return;
+    let cancelled = false;
+    const load = () =>
+      getStorageStatus()
+        .then((s) => !cancelled && (setStatus(s), setError(null)))
+        .catch((err) => !cancelled && setError(userMessage(err, "Couldn't load the storage status.")));
+    load();
+    // Poll while a sync runs so the progress moves on its own.
+    const id = running ? setInterval(load, 2000) : undefined;
+    return () => {
+      cancelled = true;
+      if (id) clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running]);
+
+  if (!apiEnabled() || !hasPermission("Settings", "View")) return null;
+
+  async function sync(to: "local" | "s3") {
+    setStarting(to);
+    setError(null);
+    try {
+      const started = await startStorageSync(to);
+      setStatus((s) => (s ? { ...s, sync: started } : s));
+    } catch (err) {
+      setError(userMessage(err, "Couldn't start the sync."));
+    } finally {
+      setStarting(null);
+    }
+  }
+
+  async function switchProvider(provider: "S3" | "Local") {
+    setError(null);
+    try {
+      setStatus(await setStorageProvider(provider));
+      setSwitchTo(null);
+    } catch (err) {
+      setError(userMessage(err, "Couldn't switch file storage."));
+      setSwitchTo(null);
+    }
+  }
+
+  const s = status?.sync;
+  const done = s ? s.copied + s.skipped + s.failed : 0;
+  const percent = s && s.total > 0 ? Math.round((done / s.total) * 100) : 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>File storage</CardTitle>
+        <CardDescription>
+          Uploaded resources and class presentations are stored in{" "}
+          <span className="font-semibold text-foreground">{status ? (status.provider === "Local" ? "this server's disk" : "S3 (object storage)") : "…"}</span>.
+          New uploads go there. Files already uploaded keep opening from wherever they are; use Sync to copy them
+          across. Sync only copies — nothing is ever deleted — and files already copied are skipped, so it's safe to run
+          again.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {status && (
+          <p className="text-sm text-muted-foreground">
+            On this server: {status.localFileCount} file{status.localFileCount === 1 ? "" : "s"} ({formatBytes(status.localBytes)})
+            {status.localFreeBytes != null && ` · ${formatBytes(status.localFreeBytes)} free on the disk`}
+            {!status.s3Configured && " · S3 isn't set up on this server, so there's nothing to sync with."}
+          </p>
+        )}
+        {status && status.portalFiles > 0 && (() => {
+          const missing = status.portalFiles - status.portalFilesOnServer;
+          if (missing === 0) {
+            return (
+              <p className="text-sm font-medium text-success">
+                Ready: all {status.portalFiles} files the portal uses are on this server.
+              </p>
+            );
+          }
+          return (
+            <p className={cn("text-sm font-medium", status.provider === "Local" && !status.s3Configured ? "text-destructive" : "text-warning-foreground")}>
+              {missing} of the {status.portalFiles} files the portal uses {missing === 1 ? "is" : "are"} not on this server yet
+              {status.provider === "Local"
+                ? status.s3Configured
+                  ? " — they're opened from S3 for now. Run Sync S3 → this server to bring them over."
+                  : " — and S3 isn't set up, so they can't be opened. Copy them to this server."
+                : " — run Sync S3 → this server before switching to local storage."}
+            </p>
+          );
+        })()}
+        {status?.localFolderMounted === false && (
+          <InlineAlert variant="error" bordered>
+            The storage folder on this server ({status.localPath}) isn't connected to the server's disk, so files kept there
+            would be lost on the next deploy. Syncing to this server is blocked until it is mounted
+            {status.provider === "Local" && " — and new uploads are at risk right now"}.
+          </InlineAlert>
+        )}
+
+        {status && (
+          <div className="flex flex-col gap-2">
+            <Label>Store new files in</Label>
+            <div className="inline-flex w-fit rounded-lg border border-border p-1" role="radiogroup" aria-label="Store new files in">
+              {(["S3", "Local"] as const).map((option) => {
+                const active = status.provider === option;
+                const unavailable = option === "S3" ? !status.s3Configured : status.localFolderMounted === false;
+                return (
+                  <Button
+                    key={option}
+                    size="sm"
+                    variant={active ? "default" : "ghost"}
+                    role="radio"
+                    aria-checked={active}
+                    disabled={!canEdit || active || unavailable || running}
+                    onClick={() => setSwitchTo(option)}
+                  >
+                    {option === "S3" ? "S3 (object storage)" : "This server's disk"}
+                  </Button>
+                );
+              })}
+            </div>
+            {!status.s3Configured && (
+              <p className="text-xs text-muted-foreground">S3 isn't set up on this server, so files can only be kept on its disk.</p>
+            )}
+          </div>
+        )}
+
+        {canEdit && (
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button onClick={() => sync("local")} disabled={running || starting !== null || !status?.s3Configured}>
+              {starting === "local" ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Sync S3 → this server
+            </Button>
+            <Button variant="outline" onClick={() => sync("s3")} disabled={running || starting !== null || !status?.s3Configured}>
+              {starting === "s3" ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Sync this server → S3
+            </Button>
+          </div>
+        )}
+
+        {s && (
+          <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+            <p className="font-medium text-foreground">
+              {s.running ? "Syncing" : "Last sync"}: {s.to === "local" ? "S3 → this server" : "this server → S3"}
+              {s.running && s.total > 0 && ` — ${done} of ${s.total} (${percent}%)`}
+            </p>
+            {s.running && (
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted" aria-label={`${percent}% done`}>
+                <div className="h-full bg-primary transition-all" style={{ width: `${percent}%` }} />
+              </div>
+            )}
+            {!s.running && !s.error && (
+              <p className={s.failed === 0 ? "font-medium text-success" : "font-medium text-destructive"}>
+                {s.copied} copied ({formatBytes(s.copiedBytes)}), {s.skipped} already there, {s.failed} failed
+                {s.failed === 0 ? " — all files are in place." : "."}
+              </p>
+            )}
+            {s.ignored > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {s.ignored} other item{s.ignored === 1 ? "" : "s"} in S3 {s.ignored === 1 ? "isn't" : "aren't"} used by this site
+                (such as class recordings, or the other site's uploads when UAT and live share a bucket) and{" "}
+                {s.ignored === 1 ? "was" : "were"} left where {s.ignored === 1 ? "it is" : "they are"}.
+              </p>
+            )}
+            {s.error && <p className="font-medium text-destructive">{s.error}</p>}
+            {s.failedFiles.length > 0 && (
+              <ul className="list-disc pl-5 text-xs text-muted-foreground">
+                {s.failedFiles.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+      </CardContent>
+      <ConfirmDialog
+        open={switchTo !== null}
+        onOpenChange={(open) => !open && setSwitchTo(null)}
+        title={switchTo === "Local" ? "Store new files on this server?" : "Store new files in S3?"}
+        description={
+          <>
+            New uploads will go to {switchTo === "Local" ? "this server's disk" : "S3"} straight away. Files already
+            uploaded stay where they are and keep opening — nothing is moved or deleted. To copy them across, press{" "}
+            {switchTo === "Local" ? "Sync S3 → this server" : "Sync this server → S3"} afterwards.
+          </>
+        }
+        confirmLabel="Switch"
+        onConfirm={() => (switchTo ? switchProvider(switchTo) : undefined)}
       />
     </Card>
   );

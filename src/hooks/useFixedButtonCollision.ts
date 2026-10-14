@@ -1,20 +1,40 @@
 import { useEffect, useState, type DependencyList, type RefObject } from "react";
 
+export interface FixedButtonCollision {
+  /** Text, or an interactive control, is currently rendering under the button. */
+  coversContent: boolean;
+  /**
+   * Specifically an interactive control (a table's pagination arrow, a row's own button,
+   * a link) — not just plain text. Fading the floating button doesn't help here: it's
+   * still `position: fixed` on top and still swallows the click meant for whatever's
+   * underneath, at any opacity. A pagination "next page" chevron (icon-only, no text)
+   * wasn't even detected as "covered" at all before this — collision checking only ever
+   * looked for text — so on any page whose table pagination lands at the bottom-right,
+   * this button sat there at full opacity, permanently blocking it. Callers should drop
+   * pointer-events while this is true so the click reaches the real control instead.
+   */
+  coversInteractive: boolean;
+}
+
+const INTERACTIVE_SELECTOR =
+  "button, a[href], input, select, textarea, [role='button'], [role='link'], [tabindex]:not([tabindex='-1'])";
+
 /**
  * Detects whether a fixed-position floating button (bottom-corner widget launcher) is
  * currently sitting on top of real page content, so the caller can back off toward
- * transparent instead of fully covering it. Shared by FloatingNotes and DoubtChatbot —
- * factored out after confirming live that no static amount of page padding can protect
- * content that isn't at the very end of the page (see FloatingNotes' original comment):
- * whatever a page's own layout happens to put there gets visually covered regardless,
- * at every scroll position, on every viewport size.
+ * transparent instead of fully covering it — and, when what's underneath is itself
+ * interactive, stop intercepting clicks entirely so that control stays usable. Shared by
+ * FloatingNotes and DoubtChatbot — factored out after confirming live that no static
+ * amount of page padding can protect content that isn't at the very end of the page (see
+ * FloatingNotes' original comment): whatever a page's own layout happens to put there
+ * gets visually covered regardless, at every scroll position, on every viewport size.
  *
  * `recheckDeps` mirrors the caller's own recompute triggers (e.g. `[enabled, open]`) —
  * whenever one changes, an immediate recheck runs instead of waiting for the next
  * scroll/resize.
  */
-export function useFixedButtonCollision(buttonRef: RefObject<HTMLElement | null>, recheckDeps: DependencyList): boolean {
-  const [coversContent, setCoversContent] = useState(false);
+export function useFixedButtonCollision(buttonRef: RefObject<HTMLElement | null>, recheckDeps: DependencyList): FixedButtonCollision {
+  const [result, setResult] = useState<FixedButtonCollision>({ coversContent: false, coversInteractive: false });
 
   useEffect(() => {
     let frame: number | null = null;
@@ -23,15 +43,38 @@ export function useFixedButtonCollision(buttonRef: RefObject<HTMLElement | null>
     // (a date, a figure, a label) without needing to know any given page's structure —
     // generic layout wrappers (main, page/card containers) never carry text directly, only
     // through further-nested children.
-    function hasCoveredText(x: number, y: number, button: HTMLElement): boolean {
+    function hasOwnText(el: Element): boolean {
+      for (const node of el.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) return true;
+      }
+      // A chart's axis/tick labels (recharts, and SVG text generally) nest their actual
+      // text a level deeper — <text><tspan>₹10k</tspan></text> — so the direct-child check
+      // above never sees it: elementsFromPoint only ever returns the outer <text>/<svg>
+      // node, never the inner <tspan>. Confirmed live: a dashboard's revenue chart sat
+      // under this button at full opacity because of exactly this gap.
+      if ((el.tagName === "text" || el.tagName === "tspan") && el.textContent?.trim()) return true;
+      // An icon badge (a KpiCard/StatCard's colored circular icon chip, a list row's leading
+      // icon) carries no text at all, so the checks above never flag it — confirmed live: the
+      // "Payout This Month" KPI card's wallet icon sat completely eclipsed behind this button
+      // at full opacity, because elementsFromPoint only ever saw the icon's own <svg>/<path>,
+      // none of which have text content. Visually it's still a designed, meaningful piece of
+      // the UI (not inert page background) — a second icon rendered directly on top of it
+      // reads as broken, not just "content-free padding underneath."
+      if (el.tagName.toLowerCase() === "svg" || el.closest("svg")) return true;
+      return false;
+    }
+
+    function pointCollision(x: number, y: number, button: HTMLElement): { text: boolean; interactive: boolean } {
       const stack = document.elementsFromPoint(x, y);
-      return stack.some((el) => {
-        if (el === button || button.contains(el)) return false;
-        for (const node of el.childNodes) {
-          if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) return true;
-        }
-        return false;
-      });
+      let text = false;
+      let interactive = false;
+      for (const el of stack) {
+        if (el === button || button.contains(el)) continue;
+        if (!text && hasOwnText(el)) text = true;
+        if (!interactive && el.closest(INTERACTIVE_SELECTOR)) interactive = true;
+        if (text && interactive) break;
+      }
+      return { text, interactive };
     }
 
     function checkCollision() {
@@ -48,7 +91,7 @@ export function useFixedButtonCollision(buttonRef: RefObject<HTMLElement | null>
       // bottom-left corner just clipping one letter of a badge, confirmed live on a
       // parent's "Recent Activity" list) can miss a purely interior 3x3-minus-edges grid
       // entirely — the true corners and edge midpoints below close that gap.
-      const covering = [
+      const points: Array<[number, number]> = [
         [0.5, 0.5],
         [0.25, 0.25],
         [0.75, 0.25],
@@ -62,8 +105,16 @@ export function useFixedButtonCollision(buttonRef: RefObject<HTMLElement | null>
         [0.5, 1],
         [0, 0.5],
         [1, 0.5],
-      ].some(([fx, fy]) => hasCoveredText(rect.left + rect.width * fx, rect.top + rect.height * fy, button));
-      setCoversContent(covering);
+      ];
+      let text = false;
+      let interactive = false;
+      for (const [fx, fy] of points) {
+        const hit = pointCollision(rect.left + rect.width * fx, rect.top + rect.height * fy, button);
+        if (hit.text) text = true;
+        if (hit.interactive) interactive = true;
+        if (text && interactive) break;
+      }
+      setResult({ coversContent: text || interactive, coversInteractive: interactive });
     }
 
     function scheduleCheck() {
@@ -100,5 +151,5 @@ export function useFixedButtonCollision(buttonRef: RefObject<HTMLElement | null>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, recheckDeps);
 
-  return coversContent;
+  return result;
 }

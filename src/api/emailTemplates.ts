@@ -45,10 +45,6 @@ export async function listEmailTemplates(): Promise<ApiEmailTemplate[]> {
   return apiFetch<ApiEmailTemplate[]>("/api/email-templates");
 }
 
-export async function getEmailTemplate(id: string): Promise<ApiEmailTemplate> {
-  return apiFetch<ApiEmailTemplate>(`/api/email-templates/${id}`);
-}
-
 export async function updateEmailTemplate(id: string, request: SaveEmailTemplateRequest): Promise<ApiEmailTemplate> {
   return apiFetch<ApiEmailTemplate>(`/api/email-templates/${id}`, { method: "PUT", body: JSON.stringify(request) });
 }

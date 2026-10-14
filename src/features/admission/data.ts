@@ -13,9 +13,11 @@
 export type ConversionStage =
   | "Demo Scheduled"
   | "Demo Completed"
+  | "Ready for Enrollment"
   | "Follow-up"
   | "Payment Pending"
   | "Partially Paid"
+  | "Payment Received"
   | "Enrolled"
   | "Not Interested";
 export type PaymentStatus = "Pending" | "Paid" | "Partially Paid";
@@ -43,6 +45,8 @@ export interface Lead {
   teacherName: string;
   demoDate: string;
   demoSessionId?: string;
+  /** Other children who sat in on this lead's demo (by name only; each needs its own lead to pay). */
+  extraChildren?: string[];
   recommendedCourse: string;
   conversionStage: ConversionStage;
   lastContactedOn: string;
@@ -50,6 +54,13 @@ export interface Lead {
   assignedTo: string;
   createdOn: string;
   notes: FollowUpNote[];
+  /** Portal admission flow (API mode only): the counsellor-issued payment page and its state. */
+  courseId?: string;
+  paymentLinkUrl?: string;
+  invoiceAmount?: number;
+  invoiceAmountPaid?: number;
+  termsAcceptedAtUtc?: string;
+  paymentVerifiedAtUtc?: string;
 }
 
 export interface PaymentLink {

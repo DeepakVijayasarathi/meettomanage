@@ -11,10 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NetworkStatus } from "@/components/NetworkStatus";
 import { NotificationPanel } from "@/components/NotificationPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSession } from "@/state/session";
 import { getInitials } from "@/lib/utils";
+import { getViewAs } from "@/lib/authStorage";
+import { exitViewAs } from "@/lib/viewAs";
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -45,6 +48,7 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
       {title && <h2 className="hidden text-sm font-semibold text-foreground/80 md:block">{title}</h2>}
 
       <div className="ml-auto flex items-center gap-2">
+        <NetworkStatus />
         <ThemeToggle />
         <NotificationPanel />
         <DropdownMenu>
@@ -70,6 +74,11 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => {
+                // A read-only "view as parent" tab closes instead of logging anyone out.
+                if (getViewAs()) {
+                  void exitViewAs();
+                  return;
+                }
                 logout();
                 navigate("/login");
               }}

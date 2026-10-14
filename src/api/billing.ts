@@ -4,7 +4,7 @@ import type { Invoice } from "@/types";
 
 export type ApiInvoiceStatus = "Pending" | "PartiallyPaid" | "Paid" | "Overdue" | "Cancelled";
 export type ApiBillingType = "Subscription" | "SessionBased" | "OneTime";
-export type ApiBillingCycle = "Monthly" | "Quarterly" | "Yearly" | "OneTime";
+export type ApiBillingCycle = "Biweekly" | "Monthly" | "Quarterly" | "Yearly" | "OneTime";
 export type ApiPaymentMethod = "Card" | "Upi" | "NetBanking" | "Wallet" | "Other" | "Cash";
 
 export interface ApiInvoice {
@@ -112,17 +112,6 @@ export async function listInvoiceRows<T>(
 ): Promise<InvoiceRows<T>> {
   const page = await listInvoices(filter);
   return { rows: page.items.map(map), totalCount: page.totalCount };
-}
-
-export async function createInvoice(input: {
-  parentProfileId: string;
-  childId?: string;
-  subscriptionId?: string;
-  departmentId: string;
-  amount: number;
-  dueDate: string;
-}): Promise<ApiInvoice> {
-  return apiFetch<ApiInvoice>("/api/invoices", { method: "POST", body: JSON.stringify(input) });
 }
 
 export async function recordPayment(

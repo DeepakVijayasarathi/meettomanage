@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bell, CheckCheck, AlertTriangle, Info, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -6,6 +7,7 @@ import { NOTIFICATIONS } from "@/data/notifications";
 import type { NotificationItem } from "@/types";
 import { cn } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 import {
   getMyNotifications,
   markAllNotificationsRead,
@@ -28,19 +30,22 @@ const COLOR_BY_TYPE: Record<NotificationItem["type"], string> = {
 };
 
 export function NotificationPanel() {
+  const navigate = useNavigate();
+  const { role } = useSession();
   // Demo mode (no API) keeps the mock feed; with the API configured the bell
   // shows the signed-in user's real notifications.
   const [items, setItems] = useState<NotificationItem[]>(apiEnabled() ? [] : NOTIFICATIONS);
+  const [open, setOpen] = useState(false);
   const unread = items.filter((i) => !i.read).length;
 
   const load = useCallback(() => {
     if (!apiEnabled()) return;
     getMyNotifications()
-      .then((feed) => setItems(feed.items.map(toNotificationItem)))
+      .then((feed) => setItems(feed.items.map((n) => toNotificationItem(n, role))))
       .catch(() => {
         /* leave the current list on a transient failure */
       });
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     load();
@@ -70,8 +75,24 @@ export function NotificationPanel() {
     }
   }
 
+  /** Marks it read same as before, and — when this notification has a known
+   *  destination — closes the popover and takes the viewer there. */
+  function handleClick(item: NotificationItem) {
+    markOneRead(item.id);
+    if (item.route) {
+      setOpen(false);
+      navigate(item.route);
+    }
+  }
+
   return (
-    <Popover onOpenChange={(open) => open && load()}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) load();
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -105,10 +126,11 @@ export function NotificationPanel() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => markOneRead(item.id)}
+                  onClick={() => handleClick(item)}
                   className={cn(
                     "flex w-full gap-3 border-b border-border/60 px-4 py-3 text-left last:border-0 hover:bg-muted/40",
-                    !item.read && "bg-primary/[0.03]"
+                    !item.read && "bg-primary/[0.03]",
+                    item.route && "cursor-pointer"
                   )}
                 >
                   <span className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full", COLOR_BY_TYPE[item.type])}>

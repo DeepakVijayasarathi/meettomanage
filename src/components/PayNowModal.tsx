@@ -1,14 +1,20 @@
 import { useEffect, useState, type ComponentType } from "react";
 import { Banknote, CheckCircle2, CreditCard, ExternalLink, Landmark, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { usePolicies } from "@/lib/policies";
+import { TERMS_ACCEPT_LABEL, TERMS_PAGE_PATH } from "@/content/terms";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InlineAlert } from "@/components/InlineAlert";
 import { formatCurrency, safeExternalUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
 import {
+  acceptTerms,
   getPaymentMethods,
+  getTermsStatus,
   payInvoice,
   refreshInvoicePayment,
   startInlineCheckout,
@@ -85,6 +91,12 @@ function iconForGateway(key: string): PayMethod["icon"] {
 
 export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceId, onInitiated }: PayNowModalProps) {
   const brand = useBrand();
+  const policies = usePolicies();
+  // Terms & Conditions are asked once, at the parent's first payment, and never again (client
+  // decision). Until the API says otherwise the checkbox is required, so a failed status lookup
+  // fails safe. Only enforced against a live payment: the demo checkout takes no real money.
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsRequired, setTermsRequired] = useState(true);
   const [methods, setMethods] = useState<PayMethod[]>(DEMO_METHODS);
   const [method, setMethod] = useState<string>(DEMO_METHODS[0].id);
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "redirect" | "cash" | "inline">("idle");
@@ -94,11 +106,30 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
   const [verifyNote, setVerifyNote] = useState<string | null>(null);
   const [blockedUrl, setBlockedUrl] = useState<string | null>(null);
   const liveFlow = apiEnabled() && !!invoiceId;
+  // Installment payers can pay any part of the balance. Blank / full balance = pay it all.
+  const [customAmount, setCustomAmount] = useState("");
+  const parsedCustom = customAmount.trim() === "" ? null : Number(customAmount);
+  const customInvalid = parsedCustom !== null && (!Number.isFinite(parsedCustom) || parsedCustom < 1 || parsedCustom > amount);
+  const payAmount = parsedCustom !== null && !customInvalid ? parsedCustom : amount;
+  // Only sent when it differs from the full balance, so a full payment behaves exactly as before.
+  const requestedAmount = payAmount < amount ? payAmount : undefined;
+  // Captured when Pay is pressed: the caller reloads its invoices once a payment starts, which
+  // changes `amount` (the balance) under us — the confirmation must describe THIS payment, and
+  // "did it go through?" must compare against the balance as it was before it.
+  const [paying, setPaying] = useState<{ amount: number; balanceBefore: number } | null>(null);
+  const paidAmount = paying?.amount ?? payAmount;
+  const remainingAfter = paying ? Math.max(0, paying.balanceBefore - paying.amount) : 0;
 
   // Load enabled payment gateways (+ Cash) each time the popup opens.
   useEffect(() => {
-    if (!open || !apiEnabled()) return;
+    if (!open) return;
+    setCustomAmount("");
+    setTermsAccepted(false);
+    if (!apiEnabled()) return;
     let cancelled = false;
+    getTermsStatus()
+      .then((s) => !cancelled && setTermsRequired(s.required))
+      .catch(() => !cancelled && setTermsRequired(true));
     getPaymentMethods()
       .then((gateways) => {
         if (cancelled) return;
@@ -116,8 +147,30 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
   }, [open]);
 
   async function handlePay() {
+    const needsTerms = liveFlow && termsRequired;
+    if (needsTerms && !termsAccepted) {
+      setError("Please accept the Terms & Conditions to continue.");
+      return;
+    }
+    if (customInvalid) {
+      setError(`Enter an amount between ${formatCurrency(1)} and ${formatCurrency(amount)}.`);
+      return;
+    }
     setError(null);
     setBlockedUrl(null);
+
+    // First payment: record the acceptance before any money moves, so it is never asked again.
+    if (needsTerms) {
+      try {
+        await acceptTerms();
+        setTermsRequired(false);
+      } catch (err) {
+        setError(userMessage(err, "Couldn't record your acceptance of the Terms & Conditions. Please try again."));
+        return;
+      }
+    }
+
+    setPaying({ amount: payAmount, balanceBefore: amount });
     setStatus("processing");
 
     if (!liveFlow) {
@@ -138,7 +191,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
 
   async function payViaLinkOrCash() {
     try {
-      const result = await payInvoice(invoiceId!, method);
+      const result = await payInvoice(invoiceId!, method, requestedAmount);
       // Chosen gateway can't start a checkout (turned off / missing keys) → keep the payer on
       // the form with the actionable reason so they can pick another method.
       if (result.mode === "unavailable") {
@@ -173,14 +226,14 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
       onInitiated?.();
     } catch (e) {
       setStatus("idle");
-      setError(e instanceof Error ? e.message : "Could not start the payment. Please try again.");
+      setError(userMessage(e, "Could not start the payment. Please try again."));
     }
   }
 
   /** In-page Razorpay popup: order → checkout.js → server-verified settlement, no redirect. */
   async function payInline() {
     try {
-      const checkout = await startInlineCheckout(invoiceId!, method);
+      const checkout = await startInlineCheckout(invoiceId!, method, requestedAmount);
       if (checkout.mode === "unavailable") {
         setStatus("idle");
         setError(checkout.message ?? "This payment method is not available right now.");
@@ -224,7 +277,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
       razorpay.open();
     } catch (e) {
       setStatus("idle");
-      setError(e instanceof Error ? e.message : "Could not start the payment. Please try again.");
+      setError(userMessage(e, "Could not start the payment. Please try again."));
     }
   }
 
@@ -245,7 +298,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
       const settled = await verifyPayment(true);
       if (!settled) {
         setStatus("idle");
-        setError(e instanceof Error ? e.message : "We couldn't verify the payment yet — it will reconcile automatically.");
+        setError(userMessage(e, "We couldn't verify the payment yet — it will reconcile automatically."));
       }
     }
   }
@@ -258,7 +311,11 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
     setVerifying(true);
     try {
       const invoice = await refreshInvoicePayment(invoiceId!);
-      if (invoice.status === "Paid") {
+      // An installment leaves the invoice PartiallyPaid, not Paid — it went through when the
+      // balance dropped below what it was before this payment started.
+      const balanceBefore = paying?.balanceBefore ?? amount;
+      const balanceNow = invoice.amount - invoice.amountPaid;
+      if (invoice.status === "Paid" || balanceNow < balanceBefore - 0.005) {
         setStatus("success");
         onInitiated?.();
         return true;
@@ -294,6 +351,7 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
         setResultMessage(null);
         setError(null);
         setVerifyNote(null);
+        setPaying(null);
       }, 200);
     }
   }
@@ -339,7 +397,9 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
             </span>
             <DialogTitle className="text-lg font-bold">Payment successful</DialogTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              {formatCurrency(amount)} received{invoiceLabel ? ` for ${invoiceLabel}` : ""}. A receipt has been sent to your email and access has been restored.
+              {remainingAfter > 0.005
+                ? `${formatCurrency(paidAmount)} received${invoiceLabel ? ` for ${invoiceLabel}` : ""}. Remaining balance: ${formatCurrency(remainingAfter)} — pay it any time with Pay Now. A receipt has been sent to your email.`
+                : `${formatCurrency(paidAmount)} received${invoiceLabel ? ` for ${invoiceLabel}` : ""}. A receipt has been sent to your email and access has been restored.`}
             </p>
             <Button className="mt-6 w-full" onClick={() => handleClose(false)}>
               Done
@@ -392,6 +452,36 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
               <p className="text-xs font-medium text-muted-foreground">Amount due</p>
               <p className="text-2xl font-bold tracking-tight">{formatCurrency(amount)}</p>
             </div>
+            {liveFlow && amount > 1 && (
+              <div>
+                <label htmlFor="pay-amount" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                  Amount to pay now (paying in installments? enter any amount up to the balance)
+                </label>
+                <Input
+                  id="pay-amount"
+                  type="number"
+                  inputMode="decimal"
+                  min={1}
+                  max={amount}
+                  step="any"
+                  placeholder={String(amount)}
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  aria-invalid={customInvalid}
+                />
+                {customInvalid ? (
+                  <p className="mt-1 text-xs font-medium text-destructive">
+                    Enter an amount between {formatCurrency(1)} and {formatCurrency(amount)}.
+                  </p>
+                ) : (
+                  requestedAmount !== undefined && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Remaining after this payment: {formatCurrency(amount - payAmount)}
+                    </p>
+                  )
+                )}
+              </div>
+            )}
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">Choose a payment method</p>
               {methods.length === 0 ? (
@@ -433,8 +523,40 @@ export function PayNowModal({ open, onOpenChange, amount, invoiceLabel, invoiceI
                 Open payment page →
               </a>
             )}
-            <Button className="w-full" onClick={handlePay} disabled={status === "processing" || !method}>
-              {status === "processing" ? "Processing…" : `Pay ${formatCurrency(amount)}`}
+            {liveFlow && termsRequired && (
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3 text-sm text-foreground">
+                <Checkbox
+                  checked={termsAccepted}
+                  onCheckedChange={(v) => setTermsAccepted(v === true)}
+                  aria-label={TERMS_ACCEPT_LABEL}
+                  className="mt-0.5"
+                />
+                <span>
+                  {TERMS_ACCEPT_LABEL}{" "}
+                  {/* The admin's own link if set, else the in-portal page with the full text. */}
+                  <a
+                    href={(policies.termsUrl && safeExternalUrl(policies.termsUrl)) || TERMS_PAGE_PATH}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-primary underline underline-offset-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Read them here
+                  </a>
+                </span>
+              </label>
+            )}
+            {liveFlow && termsRequired && policies.termsText && (
+              <div className="max-h-28 overflow-y-auto whitespace-pre-line rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
+                {policies.termsText}
+              </div>
+            )}
+            <Button
+              className="w-full"
+              onClick={handlePay}
+              disabled={status === "processing" || !method || customInvalid || (liveFlow && termsRequired && !termsAccepted)}
+            >
+              {status === "processing" ? "Processing…" : `Pay ${formatCurrency(payAmount)}`}
             </Button>
             <p className="text-center text-[11px] text-muted-foreground">
               {liveFlow ? "Secured, encrypted payment via the centre's payment gateway." : "Secured, encrypted payment · This is a demo checkout."}

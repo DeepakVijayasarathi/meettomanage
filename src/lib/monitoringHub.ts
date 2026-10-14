@@ -1,4 +1,5 @@
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from "@microsoft/signalr";
+import { hubTransportOptions } from "@/lib/hubTransport";
 import { apiEnabled, getAccessToken } from "@/lib/api";
 import type { ApiMonitoringSummary } from "@/api/monitoring";
 
@@ -22,7 +23,7 @@ export class MonitoringHubClient {
     const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
     const connection = new HubConnectionBuilder()
-      .withUrl(`${baseUrl}/hubs/monitoring`, { accessTokenFactory: () => getAccessToken() ?? "" })
+      .withUrl(`${baseUrl}/hubs/monitoring`, { accessTokenFactory: () => getAccessToken() ?? "", ...hubTransportOptions() })
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Warning)
       .build();

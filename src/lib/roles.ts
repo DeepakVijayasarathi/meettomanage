@@ -8,6 +8,8 @@ import {
   Sparkles,
   CalendarRange,
   LineChart,
+  Cpu,
+  Crown,
   type LucideIcon,
 } from "lucide-react";
 
@@ -120,6 +122,40 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     icon: LineChart,
     available: true,
     homePath: "/management",
+  },
+  // Not a separate backend role — a Sub Admin account whose assigned custom persona
+  // (RoleDefinition.DefaultRoute) routes here instead of the generic "/subadmin"
+  // console, same mechanism as coordinator/management above. Deliberately absent from
+  // PortalSelect/marketing's public 8-portal grid — this is an internal ops persona an
+  // Admin creates via Roles & Permissions, not a portal the public picks itself into.
+  itadmin: {
+    role: "itadmin",
+    label: "IT Admin",
+    shortLabel: "IT Admin",
+    description: "Technical/operational oversight with Admin-portal-grade breadth.",
+    colorVar: "role-itadmin",
+    // Kept in sync with role.itadmin in tailwind.config.ts.
+    hex: "#0891B2",
+    icon: Cpu,
+    available: true,
+    homePath: "/itadmin",
+  },
+  // Not a separate backend role either — the "admin-management" persona (RoleDefinition.DefaultRoute
+  // = "/executive"), renamed "Founder Dashboard" 2026-09-22: Management Dashboard + Admin Dashboard
+  // on one login, one merged landing page, no switching between two dashboards. /admin and
+  // /management stay separate for anyone still assigned those; which of this combined menu's
+  // items show is decided by this role's permission grants, not here.
+  executive: {
+    role: "executive",
+    label: "Founder Dashboard",
+    shortLabel: "Founder",
+    description: "Complete visibility and control — Management's business view plus every Admin permission, in one dashboard.",
+    colorVar: "role-executive",
+    // Kept in sync with role.executive in tailwind.config.ts.
+    hex: "#B45309",
+    icon: Crown,
+    available: true,
+    homePath: "/executive",
   },
 };
 

@@ -1,6 +1,6 @@
 import { cloneElement, isValidElement, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Loader2, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useToast } from "@/hooks/use-toast";
@@ -15,16 +15,27 @@ import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { COURSES } from "@/data/courses";
 import { cn } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
 import { listCourseOptions } from "@/api/courses";
 import { submitEnrollmentForm } from "@/api/parentPortal";
 import { getMyAccount } from "@/api/account";
+import { realEmail } from "@/lib/parentLogin";
+import {
+  DAYS_PER_WEEK_OPTIONS,
+  GROUP_SLOTS_PER_DAY,
+  SCHEDULE_DAYS,
+  classHoursLabel,
+  daySlotsComplete,
+  splitSlots,
+  timeBucket,
+  timeOptionsFor,
+} from "@/lib/schedulePreference";
+import { getUserTimeZone } from "@/lib/datetime";
+import { isAcademyClock, zoneCity } from "@/lib/familyTime";
 
 const STEPS = ["Student Details", "Parent & Contact", "Course & Consent"] as const;
-
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -59,8 +70,16 @@ interface EnrollmentForm {
   address: string;
   // Course & consent
   courseInterest: string;
+  batchType: "group" | "individual" | "";
+  /** How many days a week (1-7); the parent then picks exactly that many days and a time for each. */
+  daysPerWeek: number | null;
   preferredDays: string[];
+  /** Preferred start time per chosen day, e.g. { Mon: "16:00" }. */
+  dayTimes: Record<string, string>;
+  /** Coarse morning/afternoon/evening bucket of the earliest chosen day -- kept for older readers. */
   preferredTime: string;
+  /** Date the family would like classes to start (yyyy-MM-dd). */
+  startDate: string;
   allergies: string;
   notes: string;
   consent: boolean;
@@ -87,6 +106,14 @@ export default function ParentEnrollment() {
       ? { id: mockChild.id, name: mockChild.name, grade: mockChild.grade, courseId: mockChild.courseId }
       : undefined;
   const childFirstName = child?.name.split(" ")[0];
+  // Preferred times are picked on the family's own clock (class hours shown converted for families
+  // abroad) and the zone travels with the answers so staff can read them in India time.
+  const parentZone = getUserTimeZone();
+  // Opened from a child the admission counselor already created (dashboard "Share class
+  // preferences"): the form fills in that child's details instead of enrolling a new child.
+  const requestedChildId = params.get("childId");
+  const existingChildId =
+    usingApi && requestedChildId && sessionChildren.some((c) => c.id === requestedChildId) ? requestedChildId : null;
 
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -112,8 +139,12 @@ export default function ParentEnrollment() {
       emergencyContactPhone: prev?.emergencyContactPhone ?? "",
       address: prev?.address ?? "",
       courseInterest: child?.courseId ?? "",
+      batchType: "",
+      daysPerWeek: null,
       preferredDays: [],
+      dayTimes: {},
       preferredTime: "",
+      startDate: "",
       allergies: "",
       notes: "",
       consent: false,
@@ -157,7 +188,8 @@ export default function ParentEnrollment() {
           ...f,
           parentName: f.parentName || account.fullName,
           parentPhone: f.parentPhone || account.phone || "",
-          parentEmail: f.parentEmail || account.email,
+          // A parent who signs in with their mobile number has no real email to prefill.
+          parentEmail: f.parentEmail || realEmail(account.email),
         }));
       })
       .catch(() => {
@@ -168,17 +200,27 @@ export default function ParentEnrollment() {
     };
   }, [usingApi]);
 
-  // Real course catalogue in API mode; the mock list is demo-only.
+  // Real course catalogue in API mode; the mock list is demo-only. Each option also carries
+  // its own group/individual type (when known) so picking a course can default the new
+  // "Batch type" field below instead of leaving it for the parent to guess blind.
   const { data: apiCourseOptions } = useApiData(() => listCourseOptions(), []);
   const courseOptions = useMemo(
     () =>
       usingApi
-        ? apiCourseOptions.map((c) => ({ id: c.id, label: c.name }))
-        : COURSES.filter((c) => c.type !== "demo" && c.status === "active").map((c) => ({ id: c.id, label: `${c.name} · ${c.category}` })),
+        ? apiCourseOptions.map((c) => ({ id: c.id, label: c.name, type: c.type === "Individual" ? ("individual" as const) : ("group" as const) }))
+        : COURSES.filter((c) => c.type !== "demo" && c.status === "active").map((c) => ({
+            id: c.id,
+            label: `${c.name} · ${c.category}`,
+            type: c.type === "1:1" ? ("individual" as const) : ("group" as const),
+          })),
     [usingApi, apiCourseOptions]
   );
 
-  type FieldErrors = Partial<Record<keyof EnrollmentForm, string>>;
+  // A group batch asks for a first and a second slot on each chosen day, so the team has a
+  // fallback when the first isn't free; an individual batch keeps one.
+  const slotsPerDay = form.batchType === "group" ? GROUP_SLOTS_PER_DAY : 1;
+
+  type FieldErrors = Partial<Record<keyof EnrollmentForm | "schedule", string>>;
   const [errors, setErrors] = useState<FieldErrors>({});
 
   function update<K extends keyof EnrollmentForm>(key: K, value: EnrollmentForm[K]) {
@@ -207,7 +249,8 @@ export default function ParentEnrollment() {
       if (!form.relationship) next.relationship = "Select your relationship to the student.";
       const parentPhoneError = phoneError(form.parentPhone, "Contact number");
       if (parentPhoneError) next.parentPhone = parentPhoneError;
-      if (!EMAIL_RE.test(form.parentEmail.trim())) next.parentEmail = "Enter a valid email address.";
+      // Optional: WhatsApp-only parents have none (they sign in with their mobile number).
+      if (form.parentEmail.trim() && !EMAIL_RE.test(form.parentEmail.trim())) next.parentEmail = "Enter a valid email address.";
       if (form.emergencyContactName.trim().length < 2) next.emergencyContactName = "Emergency contact name is required.";
       const emergencyPhoneError = phoneError(form.emergencyContactPhone, "Emergency contact number");
       if (emergencyPhoneError) next.emergencyContactPhone = emergencyPhoneError;
@@ -217,9 +260,32 @@ export default function ParentEnrollment() {
         next.address = "Enter the full home address (street, city, PIN), or leave it blank.";
     } else {
       if (!form.courseInterest) next.courseInterest = "Select a course to continue.";
+      if (!form.batchType) next.batchType = "Select group or individual batch.";
+      if (!form.daysPerWeek) next.schedule = "Select how many days a week you'd like classes.";
+      else if (form.preferredDays.length !== form.daysPerWeek)
+        next.schedule = `Choose exactly ${form.daysPerWeek} preferred day${form.daysPerWeek === 1 ? "" : "s"} (${form.preferredDays.length} selected).`;
+      else if (form.preferredDays.some((d) => !daySlotsComplete(form.dayTimes[d], slotsPerDay)))
+        next.schedule =
+          slotsPerDay > 1
+            ? `Choose ${slotsPerDay} different preferred time slots for each selected day.`
+            : "Choose a preferred time for each selected day.";
+      if (!form.startDate) next.startDate = "Choose the date you'd like classes to start.";
       if (!form.consent) next.consent = "Please confirm the details and give consent to submit.";
     }
     return next;
+  }
+
+  // Defaults "Batch type" from the chosen course's own format the first time a course is
+  // picked, but never overwrites a choice the parent already made explicitly (e.g. going
+  // back and picking a different course after already answering this).
+  function pickCourse(courseId: string) {
+    const matched = courseOptions.find((c) => c.id === courseId);
+    setForm((f) => ({
+      ...f,
+      courseInterest: courseId,
+      batchType: f.batchType || matched?.type || f.batchType,
+    }));
+    setErrors((e) => (e.courseInterest ? { ...e, courseInterest: undefined } : e));
   }
 
   function handleNext() {
@@ -229,11 +295,54 @@ export default function ParentEnrollment() {
     setStep((s) => s + 1);
   }
 
+  function setDaysPerWeek(count: number) {
+    setForm((f) => {
+      // Lowering the count trims the surplus days (the latest picks first) and their times.
+      const days = f.preferredDays.slice(0, count);
+      const dayTimes = Object.fromEntries(Object.entries(f.dayTimes).filter(([d]) => days.includes(d)));
+      return { ...f, daysPerWeek: count, preferredDays: days, dayTimes };
+    });
+    setErrors((e) => (e.schedule ? { ...e, schedule: undefined } : e));
+  }
+
   function toggleDay(day: string) {
-    setForm((f) => ({
-      ...f,
-      preferredDays: f.preferredDays.includes(day) ? f.preferredDays.filter((d) => d !== day) : [...f.preferredDays, day],
-    }));
+    setForm((f) => {
+      if (f.preferredDays.includes(day)) {
+        const dayTimes = Object.fromEntries(Object.entries(f.dayTimes).filter(([d]) => d !== day));
+        return { ...f, preferredDays: f.preferredDays.filter((d) => d !== day), dayTimes };
+      }
+      if (f.daysPerWeek !== null && f.preferredDays.length >= f.daysPerWeek) return f;
+      return { ...f, preferredDays: [...f.preferredDays, day] };
+    });
+    setErrors((e) => (e.schedule ? { ...e, schedule: undefined } : e));
+  }
+
+  function setDayTime(day: string, slotIndex: number, time: string) {
+    setForm((f) => {
+      const slots = splitSlots(f.dayTimes[day]);
+      slots[slotIndex] = time;
+      // Fill any gap with "" so a second pick made first still lands in the second box.
+      const filled = Array.from({ length: Math.max(slots.length, slotIndex + 1) }, (_, i) => slots[i] ?? "");
+      return { ...f, dayTimes: { ...f.dayTimes, [day]: filled.join(",") } };
+    });
+    setErrors((e) => (e.schedule ? { ...e, schedule: undefined } : e));
+  }
+
+  // Group and individual batches offer different hours and a different number of slots per day,
+  // so switching keeps only the picks that are still valid (and at most the new slot count).
+  function setBatchType(type: "group" | "individual") {
+    setForm((f) => {
+      if (f.batchType === type) return f;
+      const allowed = new Set(timeOptionsFor(type, parentZone).map((t) => t.value));
+      const max = type === "group" ? GROUP_SLOTS_PER_DAY : 1;
+      const dayTimes = Object.fromEntries(
+        Object.entries(f.dayTimes)
+          .map(([d, v]) => [d, splitSlots(v).filter((t) => allowed.has(t)).slice(0, max).join(",")] as const)
+          .filter(([, v]) => v)
+      );
+      return { ...f, batchType: type, dayTimes };
+    });
+    setErrors((e) => (e.batchType || e.schedule ? { ...e, batchType: undefined, schedule: undefined } : e));
   }
 
   function handleSubmit(e: FormEvent) {
@@ -252,7 +361,9 @@ export default function ParentEnrollment() {
       setSubmitting(true);
       setError(null);
       // Answers travel as a JSON document keyed by field id (client-configurable schema).
-      submitEnrollmentForm({ ...form })
+      const orderedDays = SCHEDULE_DAYS.filter((d) => form.preferredDays.includes(d));
+      const earliest = orderedDays.flatMap((d) => splitSlots(form.dayTimes[d])).sort()[0] ?? "";
+      submitEnrollmentForm({ ...form, preferredDays: orderedDays, preferredTime: timeBucket(earliest), timeZoneId: parentZone }, existingChildId ?? undefined)
         .then(() => {
           markEnrollmentComplete(childId);
           setActiveChildId(childId);
@@ -260,7 +371,7 @@ export default function ParentEnrollment() {
           toast({ variant: "success", title: "Enrollment submitted" });
         })
         .catch((err: Error) => {
-          const message = err.message || "Could not submit the form. Please try again.";
+          const message = userMessage(err, "Could not submit the form. Please try again.");
           setError(message);
           toast({ variant: "error", title: "Couldn't submit enrollment", description: message });
         })
@@ -316,8 +427,8 @@ export default function ParentEnrollment() {
     <div>
       <PageHeader
         eyebrow="Mandatory before dashboard access"
-        title={childFirstName ? `Complete ${childFirstName}'s Enrollment` : "Complete Your Child's Enrollment"}
-        description="A few quick details unlock classes, attendance, resources and billing for this child."
+        title={existingChildId && childFirstName ? `Share ${childFirstName}'s Class Preferences` : childFirstName ? `Complete ${childFirstName}'s Enrollment` : "Complete Your Child's Enrollment"}
+        description={existingChildId ? "Your preferred class days and timings, start date and school details help us set up the class schedule." : "A few quick details unlock classes, attendance, resources and billing for this child."}
       />
 
       <Card className="mx-auto max-w-2xl">
@@ -472,11 +583,10 @@ export default function ParentEnrollment() {
                       placeholder="+91 98765 43210"
                     />
                   </Field>
-                  <Field label="Email" htmlFor="parentEmail" required error={errors.parentEmail}>
+                  <Field label="Email (optional)" htmlFor="parentEmail" error={errors.parentEmail}>
                     <Input
                       id="parentEmail"
                       type="email"
-                      required
                       value={form.parentEmail}
                       onChange={(e) => update("parentEmail", e.target.value)}
                       placeholder="you@email.com"
@@ -517,7 +627,7 @@ export default function ParentEnrollment() {
             {step === 2 && (
               <div className="flex flex-col gap-4">
                 <Field label="Course of interest" htmlFor="courseInterest" required error={errors.courseInterest}>
-                  <Select required value={form.courseInterest} onValueChange={(v) => update("courseInterest", v)}>
+                  <Select required value={form.courseInterest} onValueChange={pickCourse}>
                     <SelectTrigger id="courseInterest">
                       <SelectValue placeholder="Select a course" />
                     </SelectTrigger>
@@ -532,34 +642,140 @@ export default function ParentEnrollment() {
                 </Field>
 
                 <fieldset className="flex flex-col gap-1.5">
-                  <legend className="text-sm font-medium leading-none text-foreground/90">Preferred class days</legend>
+                  <legend className="mb-1.5 text-sm font-medium leading-none text-foreground/90">
+                    Batch type<span className="ml-0.5 text-destructive">*</span>
+                  </legend>
                   <div className="flex flex-wrap gap-1.5">
-                    {DAYS.map((d) => (
-                      <Button
-                        key={d}
-                        type="button"
-                        variant="pill"
-                        size="pill"
-                        aria-pressed={form.preferredDays.includes(d)}
-                        onClick={() => toggleDay(d)}
-                      >
-                        {d}
-                      </Button>
-                    ))}
+                    <Button
+                      type="button"
+                      variant="pill"
+                      size="pill"
+                      aria-pressed={form.batchType === "group"}
+                      onClick={() => setBatchType("group")}
+                    >
+                      Group Batch
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="pill"
+                      size="pill"
+                      aria-pressed={form.batchType === "individual"}
+                      onClick={() => setBatchType("individual")}
+                    >
+                      Individual Batch
+                    </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Group Batch learns alongside other students; Individual Batch is one-on-one with the teacher.
+                  </p>
+                  {errors.batchType && (
+                    <p role="alert" className="text-xs font-medium text-destructive">
+                      {errors.batchType}
+                    </p>
+                  )}
                 </fieldset>
 
-                <Field label="Preferred time slot" htmlFor="preferredTime">
-                  <Select value={form.preferredTime} onValueChange={(v) => update("preferredTime", v)}>
-                    <SelectTrigger id="preferredTime">
-                      <SelectValue placeholder="Select a time slot (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="morning">Morning (8am–12pm)</SelectItem>
-                      <SelectItem value="afternoon">Afternoon (12pm–4pm)</SelectItem>
-                      <SelectItem value="evening">Evening (4pm–8pm)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <fieldset className="flex flex-col gap-3 rounded-xl border border-border p-4">
+                  <legend className="px-1 text-sm font-semibold text-foreground">Schedule preference</legend>
+                  <p className="text-xs text-muted-foreground">
+                    Tell us when you'd like classes so our team can find a teacher and set up the schedule without calling you.
+                  </p>
+
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-sm font-medium leading-none text-foreground/90">
+                      How many days per week? <span className="text-destructive">*</span>
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DAYS_PER_WEEK_OPTIONS.map((n) => (
+                        <Button
+                          key={n}
+                          type="button"
+                          variant="pill"
+                          size="pill"
+                          aria-pressed={form.daysPerWeek === n}
+                          onClick={() => setDaysPerWeek(n)}
+                        >
+                          {n} day{n === 1 ? "" : "s"}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {form.daysPerWeek !== null && (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-sm font-medium leading-none text-foreground/90">
+                        Preferred days ({form.preferredDays.length} of {form.daysPerWeek} chosen)
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {SCHEDULE_DAYS.map((d) => (
+                          <Button
+                            key={d}
+                            type="button"
+                            variant="pill"
+                            size="pill"
+                            aria-pressed={form.preferredDays.includes(d)}
+                            disabled={!form.preferredDays.includes(d) && form.preferredDays.length >= form.daysPerWeek!}
+                            onClick={() => toggleDay(d)}
+                          >
+                            {d}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {form.preferredDays.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-medium leading-none text-foreground/90">
+                        {slotsPerDay > 1 ? `${slotsPerDay} preferred time slots for each day` : "Preferred time for each day"}
+                      </span>
+                      {!isAcademyClock(parentZone) && (
+                        <span className="text-xs text-muted-foreground">
+                          Times are in your local time ({zoneCity(parentZone)}). Classes run {classHoursLabel(form.batchType, "Asia/Kolkata")} India time, which is{" "}
+                          {classHoursLabel(form.batchType, parentZone)} for you.
+                        </span>
+                      )}
+                      {SCHEDULE_DAYS.filter((d) => form.preferredDays.includes(d)).map((d) => (
+                        <div key={d} className="flex flex-wrap items-center gap-3">
+                          <span className="w-12 text-sm font-semibold text-foreground">{d}</span>
+                          {Array.from({ length: slotsPerDay }, (_, i) => (
+                            <Select key={i} value={splitSlots(form.dayTimes[d])[i] ?? ""} onValueChange={(v) => setDayTime(d, i, v)}>
+                              <SelectTrigger
+                                aria-label={slotsPerDay > 1 ? `${i === 0 ? "First" : "Second"} preferred time on ${d}` : `Preferred time on ${d}`}
+                                className="max-w-[200px]"
+                              >
+                                <SelectValue placeholder={slotsPerDay > 1 ? `${i === 0 ? "1st" : "2nd"} choice` : "Select time"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timeOptionsFor(form.batchType, parentZone).map((t) => (
+                                  <SelectItem key={t.value} value={t.value} disabled={splitSlots(form.dayTimes[d]).some((s, j) => j !== i && s === t.value)}>
+                                    {t.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {errors.schedule && (
+                    <p role="alert" className="text-xs font-medium text-destructive">
+                      {errors.schedule}
+                    </p>
+                  )}
+                </fieldset>
+
+                <Field label="Preferred start date" htmlFor="startDate" required error={errors.startDate}>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    required
+                    min={new Date().toISOString().slice(0, 10)}
+                    value={form.startDate}
+                    onChange={(e) => update("startDate", e.target.value)}
+                  />
                 </Field>
 
                 <Field label="Allergies or medical notes (optional)" htmlFor="allergies">
@@ -616,7 +832,7 @@ export default function ParentEnrollment() {
                   disabled={submitting}
                   className="!bg-brand-green !text-white hover:!bg-brand-greenDark"
                 >
-                  <CheckCircle2 className="h-4 w-4" /> {submitting ? "Submitting…" : "Submit & Unlock Dashboard"}
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{submitting ? "Submitting…" : (<><span className="sm:hidden">Submit</span><span className="hidden sm:inline">Submit &amp; Unlock Dashboard</span></>)}
                 </Button>
               )}
             </div>

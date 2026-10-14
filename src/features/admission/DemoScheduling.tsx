@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarPlus, ChevronDown, ChevronUp, Trash2, UserPlus, Users2 } from "lucide-react";
+import { CalendarPlus, ChevronDown, ChevronUp, Loader2, Pencil, Trash2, UserCheck, UserPlus, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,13 +18,18 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SESSIONS } from "@/data/sessions";
 import { TEACHERS } from "@/data/users";
 import { LEADS } from "./data";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listTeacherOptions } from "@/api/batches";
-import { createDemoBooking, listDemoBookings, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
-import { formatDate, getInitials } from "@/lib/utils";
+import { createDemoBooking, deleteDemoBooking, getDemoJoinLink, listDemoBookings, rescheduleDemoBooking, resendDemoLink, updateConversionStatus, type ApiDemoBooking } from "@/api/demoBookings";
+import { formatDate, formatTimeLabel, getInitials, isValidEmail } from "@/lib/utils";
+import { displayEmail } from "@/lib/parentLogin";
 import { getUserTimeZoneAbbreviation, localToUtcIso, utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
+import { usePortalBase } from "@/lib/portalBase";
+import { EditDemoDialog } from "./EditDemoDialog";
+import { ManualAdmissionDialog } from "./ManualAdmissionDialog";
 import type { SessionStatus } from "@/types";
 
 interface DemoParentField {
@@ -42,11 +48,18 @@ interface DemoRow {
   parents: DemoParentField[];
   date: string;
   startTime: string;
+  /** Only present for a real API-backed booking (needs both UTC timestamps) — used to
+   *  prefill the reschedule dialog's duration field. */
+  durationMinutes?: number;
   teacherId: string;
   teacherName: string;
   status: SessionStatus;
   /** Auto-calculated demo fee: ₹50 per demo, ₹100 once the lead is Enrolled. */
   payableAmount: number;
+  /** API stage of the lead (DemoScheduled, PaymentPending, Enrolled…); absent for demo-mode rows. */
+  conversionStatus?: string;
+  /** Demo time passed without it being held — still open for Reschedule or Cancel. */
+  missed?: boolean;
   notes?: string;
   isNew?: boolean;
 }
@@ -83,8 +96,15 @@ function seedRows(): DemoRow[] {
 
 function bookingToRow(booking: ApiDemoBooking): DemoRow {
   const ist = booking.scheduledStartAtUtc ? utcIsoToLocalDateTime(booking.scheduledStartAtUtc) : null;
-  const status: SessionStatus =
-    booking.conversionStatus === "DemoScheduled" ? "demo" : booking.conversionStatus === "NotInterested" ? "cancelled" : "completed";
+  const missed =
+    booking.conversionStatus === "DemoScheduled" && (booking.sessionStatus === "TeacherNoShow" || booking.sessionStatus === "StudentNoShow");
+  const status: SessionStatus = missed
+    ? "noshow"
+    : booking.conversionStatus === "DemoScheduled"
+      ? "demo"
+      : booking.conversionStatus === "NotInterested"
+        ? "cancelled"
+        : "completed";
   const adults = booking.participants.filter((p) => !p.isChild);
   const kids = booking.participants.filter((p) => p.isChild);
   return {
@@ -93,7 +113,7 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
     childAge: booking.childAge ?? undefined,
     extraChildren: kids.map((k) => k.name),
     parents: [
-      { id: `${booking.id}-p1`, name: booking.parentName, phone: booking.parentPhone ?? "—", email: booking.parentEmail },
+      { id: `${booking.id}-p1`, name: booking.parentName, phone: booking.parentPhone ?? "—", email: displayEmail(booking.parentEmail) },
       ...adults.map((p, index) => ({
         id: `${booking.id}-x${index}`,
         name: p.name,
@@ -103,18 +123,36 @@ function bookingToRow(booking: ApiDemoBooking): DemoRow {
     ],
     date: ist ? ist.date : "",
     startTime: ist ? ist.time : "",
+    durationMinutes:
+      booking.scheduledStartAtUtc && booking.scheduledEndAtUtc
+        ? Math.round((new Date(booking.scheduledEndAtUtc).getTime() - new Date(booking.scheduledStartAtUtc).getTime()) / 60000)
+        : undefined,
     teacherId: booking.teacherProfileId ?? "",
     teacherName: booking.teacherName ?? "Auto-assigned",
     status,
     payableAmount: booking.payableAmount,
     notes: booking.followUpNotes ?? undefined,
+    conversionStatus: booking.conversionStatus,
+    missed,
   };
 }
 
 export default function AdmissionDemoScheduling() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // View-level access already gates the whole page (via the menu); this gates the
+  // "Schedule a Demo" form specifically against the account's Create grant -- POST
+  // /api/demo-bookings needs Admission:Create, not just Admission:View.
+  const canCreate = !apiEnabled() || hasPermission("Admission", "Create");
+  // Same idea for the row actions: PUT /api/demo-bookings/{id} needs Admission:Edit and DELETE
+  // needs Admission:Delete. Delete used to be shown to everyone and simply 403'd for any
+  // account without that grant, which read as "the delete option doesn't work".
+  const canEdit = apiEnabled() && hasPermission("Admission", "Edit");
+  const canDelete = !apiEnabled() || hasPermission("Admission", "Delete");
+  const base = usePortalBase();
   const { data: apiRows, error: rowsError, reload: reloadRows } = useApiData(
-    () => listDemoBookings().then((bookings) => bookings.map(bookingToRow)),
+    // Direct-admission leads have no demo class, so they belong on Leads, not here.
+    () => listDemoBookings().then((bookings) => bookings.filter((b) => b.classSessionId).map(bookingToRow)),
     seedRows()
   );
   const { data: teacherOptions } = useApiData(
@@ -128,7 +166,7 @@ export default function AdmissionDemoScheduling() {
   // A demo can host more than two kids — extra children join by name only.
   const [extraChildren, setExtraChildren] = useState<string[]>([]);
   const [parents, setParents] = useState<DemoParentField[]>([blankParent()]);
-  const [date, setDate] = useState("2026-07-14");
+  const [date, setDate] = useState(apiEnabled() ? new Date().toISOString().slice(0, 10) : "2026-07-14");
   const [time, setTime] = useState("16:00");
   const [teacherId, setTeacherId] = useState("");
   const [notes, setNotes] = useState("");
@@ -139,7 +177,68 @@ export default function AdmissionDemoScheduling() {
   // existing demos, so the demo list — not the creation form — should be what's in view.
   const [formOpen, setFormOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<DemoRow | null>(null);
+  // Tracks which row's "Resend Link" is in flight, so only that row's button shows busy --
+  // multiple demos in the list could each be resent independently.
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  // Tracks which row's "Copy Link" is in flight / just succeeded / just failed, per row.
+  const [copyState, setCopyState] = useState<{ id: string; status: "copying" | "copied" | "failed" } | null>(null);
   const [completeTarget, setCompleteTarget] = useState<DemoRow | null>(null);
+  // Distinct from cancelTarget/"Cancel" above -- that just marks the lead NotInterested and
+  // keeps it on the list (notifying invitees); this removes the row entirely and frees the
+  // teacher's slot, for a test entry or a mistaken double-booking rather than a real cancellation.
+  const [deleteTarget, setDeleteTarget] = useState<DemoRow | null>(null);
+  const [editTargetId, setEditTargetId] = useState<string | null>(null);
+  const [admitTargetId, setAdmitTargetId] = useState<string | null>(null);
+  // Set once the user has tried to submit an invalid form -- gates the per-field error
+  // messages below so they don't show up before the user has even touched the form.
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+
+  // Reschedule dialog — was previously the one thing missing here: Cancel kills the lead,
+  // Delete loses the record, and neither actually just moves a wrongly-booked demo to a
+  // different date/time the way regular sessions' own Reschedule already can.
+  const [rescheduleTarget, setRescheduleTarget] = useState<DemoRow | null>(null);
+  const [reschedDate, setReschedDate] = useState("");
+  const [reschedTime, setReschedTime] = useState("10:00");
+  const [reschedDuration, setReschedDuration] = useState("30");
+  const [reschedBusy, setReschedBusy] = useState(false);
+  const [reschedError, setReschedError] = useState<string | null>(null);
+  const reschedDurationMinutes = Number(reschedDuration);
+  const reschedDurationValid = Number.isFinite(reschedDurationMinutes) && reschedDurationMinutes > 0;
+
+  function openReschedule(row: DemoRow) {
+    setReschedError(null);
+    setReschedDate(row.date);
+    setReschedTime(row.startTime);
+    setReschedDuration(String(row.durationMinutes ?? 30));
+    setRescheduleTarget(row);
+  }
+
+  async function handleReschedule() {
+    if (!rescheduleTarget || !reschedDate || !reschedDurationValid) return;
+    if (!apiEnabled()) {
+      toast({ variant: "success", title: "Done", description: "Demo mode — nothing actually rescheduled." });
+      setRescheduleTarget(null);
+      return;
+    }
+    setReschedBusy(true);
+    setReschedError(null);
+    try {
+      const start = localToUtcIso(reschedDate, reschedTime);
+      const end = new Date(new Date(start).getTime() + reschedDurationMinutes * 60000).toISOString();
+      await rescheduleDemoBooking(rescheduleTarget.id, start, end);
+      toast({
+        variant: "success",
+        title: "Rescheduled",
+        description: `${rescheduleTarget.childName}'s demo moved to ${formatDate(reschedDate)} ${formatTimeLabel(reschedTime)} — the parent and teacher have been emailed the new time.`,
+      });
+      setRescheduleTarget(null);
+      reloadRows();
+    } catch (err) {
+      setReschedError(userMessage(err, "Could not reschedule this demo."));
+    } finally {
+      setReschedBusy(false);
+    }
+  }
 
   const activeTeachers = teacherOptions;
 
@@ -155,27 +254,48 @@ export default function AdmissionDemoScheduling() {
     setParents((prev) => (prev.length > 1 ? prev.filter((p) => p.id !== id) : prev));
   }
 
+  // Optional, but if given must match the backend's own [Range(1, 18)] — the input's
+  // min/max attributes are cosmetic (they don't stop someone typing or pasting "60"),
+  // so without this the only feedback was a 400 from the server after submitting.
+  const childAgeError =
+    childAge.trim().length > 0 && (!Number.isInteger(Number(childAge)) || Number(childAge) < 1 || Number(childAge) > 18)
+      ? "Age must be a whole number between 1 and 18."
+      : null;
+
   const isValid =
     childName.trim().length > 0 &&
+    !childAgeError &&
     date.length > 0 &&
     time.length > 0 &&
-    // API mode auto-assigns a teacher when none is picked, but needs the parent's email
-    (apiEnabled() ? parents[0].email.trim().length > 0 : teacherId.length > 0) &&
-    parents.every((p) => p.name.trim().length > 0 && p.phone.trim().length > 0);
+    // API mode auto-assigns a teacher when none is picked. The main parent's email is optional
+    // (client decision): a parent without one logs in with their mobile number and gets their PIN
+    // on WhatsApp. When given it must be well-formed.
+    (apiEnabled() ? parents[0].email.trim().length === 0 || isValidEmail(parents[0].email) : teacherId.length > 0) &&
+    parents.every((p) => p.name.trim().length > 0 && p.phone.trim().length > 0) &&
+    // Every parent past the first is only ever added to be invited as a participant, and the
+    // API requires an email for any adult invitee (it has no other way to send a confirmation/
+    // join link) -- requiring it here too means the success toast's "all invited parents will
+    // receive an invite" is actually true, instead of quietly dropping anyone left blank.
+    // A well-formed check, not just non-empty -- a typo'd address doesn't error here, it just
+    // silently never reaches anyone, so it needs to be caught before submit, same reasoning
+    // as admin/subadmin Users.tsx's own Add User form.
+    (!apiEnabled() || parents.slice(1).every((p) => isValidEmail(p.email)));
 
   function resetForm() {
     setChildName("");
     setChildAge("");
     setExtraChildren([]);
     setParents([blankParent()]);
-    setDate("2026-07-14");
+    setDate(apiEnabled() ? new Date().toISOString().slice(0, 10) : "2026-07-14");
     setTime("16:00");
     setTeacherId("");
     setNotes("");
     setFormOpen(false);
+    setAttemptedSubmit(false);
   }
 
   function handleSchedule() {
+    setAttemptedSubmit(true);
     if (!isValid || scheduling) return;
 
     if (apiEnabled()) {
@@ -185,18 +305,15 @@ export default function AdmissionDemoScheduling() {
       const endUtc = new Date(new Date(startUtc).getTime() + 30 * 60_000).toISOString();
       createDemoBooking({
         parentName: primary.name.trim(),
-        parentEmail: primary.email.trim(),
-        parentPhone: primary.phone.trim() || undefined,
+        parentEmail: primary.email.trim() || undefined,
+        parentPhone: primary.phone.trim(),
         childName: childName.trim(),
         childAge: childAge ? Number(childAge) : undefined,
         teacherProfileId: teacherId || undefined,
         scheduledStartAtUtc: startUtc,
         scheduledEndAtUtc: endUtc,
         participants: [
-          ...parents
-            .slice(1)
-            .filter((p) => p.email.trim().length > 0)
-            .map((p) => ({ name: p.name.trim(), email: p.email.trim(), phone: p.phone.trim() || null })),
+          ...parents.slice(1).map((p) => ({ name: p.name.trim(), email: p.email.trim(), phone: p.phone.trim() || null })),
           ...extraChildren
             .filter((name) => name.trim().length > 0)
             .map((name) => ({ name: name.trim(), email: null, phone: null, isChild: true })),
@@ -210,8 +327,8 @@ export default function AdmissionDemoScheduling() {
           toast({ variant: "success", title: "Demo scheduled" });
         })
         .catch((err: Error) => {
-          setActionError(err.message);
-          toast({ variant: "error", title: "Couldn't schedule demo", description: err.message });
+          setActionError(userMessage(err));
+          toast({ variant: "error", title: "Couldn't schedule demo", description: userMessage(err) });
         })
         .finally(() => setScheduling(false));
       return;
@@ -238,6 +355,53 @@ export default function AdmissionDemoScheduling() {
     setJustScheduled(childName.trim());
     resetForm();
   }
+
+  // Re-sends the demo's join link to the parent, every extra invitee, and the assigned
+  // teacher — for when a parent reports never getting (or losing) the original email. Always
+  // the teacher's fixed meeting link, so it's identical to what they already have.
+  // useCallback keeps this identity stable across renders (it only ever reads the row
+  // passed in at call time, plus the module-level `toast` and stable setState setters) so
+  // it can be safely included in the columns useMemo's deps below without defeating it.
+  const handleResendLink = useCallback((row: DemoRow) => {
+    if (!apiEnabled()) {
+      toast({ variant: "success", title: "Link resent", description: "(Demo mode — no real email is sent.)" });
+      return;
+    }
+    setResendingId(row.id);
+    resendDemoLink(row.id)
+      .then(() => {
+        toast({ variant: "success", title: "Link resent", description: `${row.childName}'s demo link was re-sent to the parent and teacher.` });
+      })
+      .catch((err: Error) => {
+        toast({ variant: "error", title: "Couldn't resend link", description: userMessage(err) });
+      })
+      .finally(() => setResendingId(null));
+  }, [toast]);
+
+  // Copies the parent's join link to the clipboard for manual sharing (WhatsApp, SMS) --
+  // demo mode has no real link to copy, so this is API-only.
+  const handleCopyLink = useCallback((row: DemoRow) => {
+    if (!apiEnabled()) {
+      toast({ variant: "error", title: "Not available in demo mode" });
+      return;
+    }
+    setCopyState({ id: row.id, status: "copying" });
+    getDemoJoinLink(row.id)
+      .then(async ({ shortUrl }) => {
+        if (!navigator.clipboard) {
+          throw new Error("Clipboard API unavailable");
+        }
+        await navigator.clipboard.writeText(shortUrl);
+        setCopyState({ id: row.id, status: "copied" });
+      })
+      .catch((err: Error) => {
+        setCopyState({ id: row.id, status: "failed" });
+        toast({ variant: "error", title: "Couldn't copy link", description: userMessage(err) });
+      })
+      .finally(() => {
+        setTimeout(() => setCopyState((s) => (s?.id === row.id ? null : s)), 2500);
+      });
+  }, [toast]);
 
   const columns: DataTableColumn<DemoRow>[] = useMemo(
     () => [
@@ -291,7 +455,7 @@ export default function AdmissionDemoScheduling() {
         accessor: (row) => `${row.date} ${row.startTime}`,
         render: (row) => (
           <span className="text-sm text-muted-foreground">
-            {formatDate(row.date)} · {row.startTime}
+            {row.date ? `${formatDate(row.date)} · ${formatTimeLabel(row.startTime)}` : "—"}
           </span>
         ),
       },
@@ -310,6 +474,7 @@ export default function AdmissionDemoScheduling() {
         render: (row) => (
           <div className="flex items-center gap-2">
             <SessionStatusBadge status={row.status} />
+            {row.missed && <span className="text-xs font-medium text-destructive">Missed — reschedule or cancel</span>}
             {row.isNew && <span className="text-xs font-semibold text-primary">New</span>}
           </div>
         ),
@@ -328,17 +493,60 @@ export default function AdmissionDemoScheduling() {
       {
         key: "actions",
         header: "Actions",
+        // min-w-max: without it, the browser's table auto-layout mis-measures this
+        // wrapping flex row's min-content width and can shrink the column below what
+        // even a single button needs, clipping button labels at the table's right edge
+        // instead of wrapping them onto their own line as intended.
         render: (row) => (
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap sm:min-w-max items-center gap-1.5">
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                title="Fix parent or child details (e.g. a wrong email) without rebooking"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditTargetId(row.id);
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" /> Edit
+              </Button>
+            )}
+            {canEdit && row.conversionStatus && !["PaymentPending", "Enrolled", "NotInterested"].includes(row.conversionStatus) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                title="Parent has no email / wants WhatsApp: enter their details and get a payment link to send"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAdmitTargetId(row.id);
+                }}
+              >
+                <UserCheck className="h-3.5 w-3.5" /> Admit manually
+              </Button>
+            )}
             {row.status === "demo" ? (
               <Button asChild variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
-                <Link to={`/admission/demo-teacher-assignment/${row.id}`}>Reassign</Link>
+                <Link to={`${base}/demo-teacher-assignment/${row.id}`}>Reassign</Link>
               </Button>
             ) : (
               <Button variant="outline" size="sm" disabled>
                 Reassign
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={row.status !== "demo" && !row.missed}
+              onClick={(e) => {
+                e.stopPropagation();
+                openReschedule(row);
+              }}
+            >
+              Reschedule
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -354,7 +562,7 @@ export default function AdmissionDemoScheduling() {
               variant="outline"
               size="sm"
               className="text-destructive hover:text-destructive"
-              disabled={row.status !== "demo"}
+              disabled={row.status !== "demo" && !row.missed}
               onClick={(e) => {
                 e.stopPropagation();
                 setCancelTarget(row);
@@ -362,11 +570,55 @@ export default function AdmissionDemoScheduling() {
             >
               Cancel
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={row.status !== "demo" || resendingId === row.id}
+              title="Re-send the join link to the parent and teacher"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleResendLink(row);
+              }}
+            >
+              {resendingId === row.id ? "Resending…" : "Resend Link"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={row.status !== "demo" || copyState?.id === row.id}
+              title="Copy the parent's join link to share manually"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopyLink(row);
+              }}
+            >
+              {copyState?.id === row.id
+                ? copyState.status === "copying"
+                  ? "Copying…"
+                  : copyState.status === "copied"
+                    ? "Copied"
+                    : "Failed"
+                : "Copy Link"}
+            </Button>
+            {canDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1 text-destructive hover:text-destructive"
+                title="Permanently remove this demo booking and free the teacher's slot"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteTarget(row);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </Button>
+            )}
           </div>
         ),
       },
     ],
-    []
+    [base, resendingId, copyState, handleResendLink, handleCopyLink, canEdit, canDelete]
   );
 
   return (
@@ -394,6 +646,7 @@ export default function AdmissionDemoScheduling() {
         </InlineAlert>
       )}
 
+      {canCreate && (
       <Card className="mb-6">
         <CardHeader
           role="button"
@@ -431,10 +684,23 @@ export default function AdmissionDemoScheduling() {
                 Child Name <span className="text-destructive">*</span>
               </Label>
               <Input id="childName" placeholder="e.g. Aanya Verma" value={childName} onChange={(e) => setChildName(e.target.value)} />
+              {attemptedSubmit && childName.trim().length === 0 && (
+                <p role="alert" className="text-xs text-destructive">Child name is required.</p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="childAge">Child Age</Label>
-              <Input id="childAge" type="number" min={2} max={16} placeholder="e.g. 6" value={childAge} onChange={(e) => setChildAge(e.target.value)} />
+              <Input
+                id="childAge"
+                type="number"
+                min={1}
+                max={18}
+                placeholder="e.g. 6"
+                value={childAge}
+                onChange={(e) => setChildAge(e.target.value)}
+                aria-invalid={!!childAgeError}
+              />
+              {childAgeError && <p className="text-xs font-medium text-destructive">{childAgeError}</p>}
             </div>
           </div>
 
@@ -466,7 +732,7 @@ export default function AdmissionDemoScheduling() {
                       onClick={() => setExtraChildren((prev) => prev.filter((_, i) => i !== idx))}
                       aria-label="Remove this child"
                     >
-                      ×
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
@@ -483,12 +749,41 @@ export default function AdmissionDemoScheduling() {
                 <UserPlus className="h-3.5 w-3.5" /> Add another parent
               </Button>
             </div>
+            <div className="hidden gap-3 px-3 sm:grid sm:grid-cols-[1fr_1fr_1fr_auto]">
+              <Label className="text-xs text-muted-foreground">Name</Label>
+              <Label className="text-xs text-muted-foreground">Phone</Label>
+              <Label className="text-xs text-muted-foreground">
+                Email {apiEnabled() ? "(optional for the main parent)" : "(required to invite)"}
+              </Label>
+              <span />
+            </div>
             <div className="flex flex-col gap-3">
-              {parents.map((p, idx) => (
+              {parents.map((p, idx) => {
+                const nameMissing = attemptedSubmit && p.name.trim().length === 0;
+                const phoneMissing = attemptedSubmit && p.phone.trim().length === 0;
+                const emailMissing = attemptedSubmit && apiEnabled() && idx > 0 && p.email.trim().length === 0;
+                const emailInvalid = attemptedSubmit && apiEnabled() && p.email.trim().length > 0 && !isValidEmail(p.email);
+                return (
                 <div key={p.id} className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
-                  <Input placeholder={`Parent/guardian ${idx + 1} name`} aria-label={`Parent/guardian ${idx + 1} name`} value={p.name} onChange={(e) => updateParent(p.id, "name", e.target.value)} />
-                  <Input placeholder="Phone number" aria-label={`Parent/guardian ${idx + 1} phone number`} value={p.phone} onChange={(e) => updateParent(p.id, "phone", e.target.value)} />
-                  <Input placeholder="Email address" aria-label={`Parent/guardian ${idx + 1} email address`} value={p.email} onChange={(e) => updateParent(p.id, "email", e.target.value)} />
+                  <div className="flex flex-col gap-1">
+                    <Input placeholder={`Parent/guardian ${idx + 1} name`} aria-label={`Parent/guardian ${idx + 1} name`} value={p.name} onChange={(e) => updateParent(p.id, "name", e.target.value)} aria-invalid={nameMissing} />
+                    {nameMissing && <p role="alert" className="text-xs text-destructive">Name is required.</p>}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Input placeholder="Phone number" aria-label={`Parent/guardian ${idx + 1} phone number`} value={p.phone} onChange={(e) => updateParent(p.id, "phone", e.target.value)} aria-invalid={phoneMissing} />
+                    {phoneMissing && <p role="alert" className="text-xs text-destructive">Phone number is required.</p>}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Input
+                      placeholder={apiEnabled() ? (idx === 0 ? "Email (optional - login by mobile if blank)" : "Email address (required)") : "Email address"}
+                      aria-label={`Parent/guardian ${idx + 1} email address${apiEnabled() && idx > 0 ? " (required)" : ""}`}
+                      value={p.email}
+                      onChange={(e) => updateParent(p.id, "email", e.target.value)}
+                      aria-invalid={emailMissing || emailInvalid}
+                    />
+                    {emailMissing && <p role="alert" className="text-xs text-destructive">Email is required to send an invite.</p>}
+                    {emailInvalid && <p role="alert" className="text-xs text-destructive">Enter a valid email address.</p>}
+                  </div>
                   <Button
                     type="button"
                     variant="ghost"
@@ -502,7 +797,8 @@ export default function AdmissionDemoScheduling() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -511,20 +807,26 @@ export default function AdmissionDemoScheduling() {
               <Label htmlFor="demoDate">
                 Date <span className="text-destructive">*</span>
               </Label>
-              <Input id="demoDate" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input id="demoDate" type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-invalid={attemptedSubmit && date.length === 0} />
+              {attemptedSubmit && date.length === 0 && (
+                <p role="alert" className="text-xs text-destructive">Date is required.</p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="demoTime">
                 Time ({getUserTimeZoneAbbreviation()}) <span className="text-destructive">*</span>
               </Label>
-              <Input id="demoTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+              <Input id="demoTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-invalid={attemptedSubmit && time.length === 0} />
+              {attemptedSubmit && time.length === 0 && (
+                <p role="alert" className="text-xs text-destructive">Time is required.</p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="demo-teacher-select">
-                Teacher <span className="text-destructive">*</span>
+                Teacher {!apiEnabled() && <span className="text-destructive">*</span>}
               </Label>
               <Select value={teacherId} onValueChange={setTeacherId}>
-                <SelectTrigger id="demo-teacher-select">
+                <SelectTrigger id="demo-teacher-select" aria-invalid={attemptedSubmit && !apiEnabled() && teacherId.length === 0}>
                   <SelectValue placeholder="Select a teacher" />
                 </SelectTrigger>
                 <SelectContent>
@@ -535,6 +837,9 @@ export default function AdmissionDemoScheduling() {
                   ))}
                 </SelectContent>
               </Select>
+              {attemptedSubmit && !apiEnabled() && teacherId.length === 0 && (
+                <p role="alert" className="text-xs text-destructive">Teacher is required.</p>
+              )}
             </div>
           </div>
 
@@ -553,12 +858,13 @@ export default function AdmissionDemoScheduling() {
               Clear
             </Button>
             <Button disabled={!isValid || scheduling} onClick={handleSchedule}>
-              <CalendarPlus className="h-4 w-4" /> {scheduling ? "Scheduling…" : "Schedule Demo"}
+              {scheduling ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarPlus className="h-4 w-4" />}{scheduling ? "Scheduling…" : "Schedule Demo"}
             </Button>
           </div>
         </CardContent>
         )}
       </Card>
+      )}
 
       <DataTable
         data={rows}
@@ -570,6 +876,53 @@ export default function AdmissionDemoScheduling() {
         error={apiEnabled() ? rowsError : null}
         onRetry={reloadRows}
       />
+
+      <Dialog open={!!rescheduleTarget} onOpenChange={(open) => !open && setRescheduleTarget(null)}>
+        <DialogContent className="max-w-sm">
+          {rescheduleTarget && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Reschedule demo</DialogTitle>
+                <DialogDescription>
+                  "{rescheduleTarget.childName}" — pick the new slot. The parent and teacher are emailed the change immediately.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="demo-rs-date">New date</Label>
+                  <Input id="demo-rs-date" type="date" value={reschedDate} onChange={(e) => setReschedDate(e.target.value)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="demo-rs-time">New time ({getUserTimeZoneAbbreviation()})</Label>
+                  <Input id="demo-rs-time" type="time" value={reschedTime} onChange={(e) => setReschedTime(e.target.value)} />
+                </div>
+                <div className="grid gap-1.5 sm:col-span-2">
+                  <Label htmlFor="demo-rs-duration">Duration (min)</Label>
+                  <Input
+                    id="demo-rs-duration"
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={reschedDuration}
+                    onChange={(e) => setReschedDuration(e.target.value)}
+                    aria-invalid={!reschedDurationValid}
+                  />
+                  {!reschedDurationValid && <p className="text-xs font-medium text-destructive">Enter a duration greater than 0.</p>}
+                </div>
+              </div>
+              {reschedError && <p className="text-sm font-medium text-destructive">{reschedError}</p>}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setRescheduleTarget(null)}>
+                  Close
+                </Button>
+                <Button disabled={reschedBusy || !reschedDate || !reschedDurationValid} onClick={handleReschedule}>
+                  {reschedBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {reschedBusy ? "Rescheduling…" : "Reschedule"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={!!completeTarget}
@@ -597,7 +950,11 @@ export default function AdmissionDemoScheduling() {
         open={!!cancelTarget}
         onOpenChange={(open) => !open && setCancelTarget(null)}
         title="Cancel this demo?"
-        description={cancelTarget ? `"${cancelTarget.childName}"'s demo will be cancelled. All invited parents/guardians will be notified.` : undefined}
+        description={
+          cancelTarget
+            ? `"${cancelTarget.childName}"'s demo will be cancelled and the teacher's slot freed. All invited parents/guardians will be notified.`
+            : undefined
+        }
         confirmLabel="Cancel Demo"
         destructive
         onConfirm={() => {
@@ -613,6 +970,52 @@ export default function AdmissionDemoScheduling() {
             });
           }
           setRows((prev) => prev.map((r) => (r.id === cancelTarget.id ? { ...r, status: "cancelled" } : r)));
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete this demo booking?"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.childName}"'s demo booking will be permanently removed and the teacher's slot freed. This can't be undone.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          if (apiEnabled()) {
+            // Returned (not caught) so ConfirmDialog shows the backend's refusal inline (e.g.
+            // "already invoiced or enrolled") instead of closing before the request settles.
+            return deleteDemoBooking(deleteTarget.id).then(() => {
+              setActionError(null);
+              reloadRows();
+              toast({ variant: "success", title: "Demo booking deleted" });
+            });
+          }
+          setRows((prev) => prev.filter((r) => r.id !== deleteTarget.id));
+        }}
+      />
+
+      <EditDemoDialog
+        bookingId={editTargetId}
+        onClose={() => setEditTargetId(null)}
+        onSaved={() => {
+          setEditTargetId(null);
+          setActionError(null);
+          reloadRows();
+          toast({ variant: "success", title: "Demo details updated" });
+        }}
+      />
+
+      <ManualAdmissionDialog
+        bookingId={admitTargetId}
+        onClose={() => setAdmitTargetId(null)}
+        onAdmitted={() => {
+          setActionError(null);
+          reloadRows();
         }}
       />
     </div>

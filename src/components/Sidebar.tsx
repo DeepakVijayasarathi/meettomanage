@@ -93,7 +93,7 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
                         to={item.to}
                         end={item.end}
                         onClick={onClose}
-                        title={collapsed ? item.label : undefined}
+                        title={collapsed ? (item.badge ? `${item.label} (${item.badge})` : item.label) : undefined}
                         className={({ isActive }) =>
                           cn(
                             "group relative flex items-center rounded-lg text-sm font-medium transition-colors",

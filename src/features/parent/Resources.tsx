@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, BookOpen, Download, FileText, type LucideIcon, PlayCircle, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -6,6 +6,7 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,11 +14,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { getResourcesForBatch } from "@/data/resources";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
 import { useApiData } from "@/api/hooks";
 import { toFrontendResource } from "@/api/resources";
-import { downloadParentResource, getParentResources } from "@/api/parentPortal";
+import { downloadParentResource, getParentResources, getResourcePlayUrl } from "@/api/parentPortal";
 import { cn, formatDate } from "@/lib/utils";
 import type { Resource } from "@/types";
 import { findRecordingSession, recordingExpiryFromUpload, recordingExpiryLabel } from "./utils";
@@ -46,11 +47,26 @@ export default function ParentResources() {
       : undefined;
   const isEnrolled = usingApi ? (sessionChild?.enrollmentComplete ?? false) : mockChild ? enrolledChildIds.includes(mockChild.id) : false;
   const [preview, setPreview] = useState<Resource | null>(null);
+  // Live mode: a recording plays from a short-lived, view-only link fetched when it's opened.
+  const [playUrl, setPlayUrl] = useState<string | null>(null);
+  const [playError, setPlayError] = useState<string | null>(null);
+  useEffect(() => {
+    setPlayUrl(null);
+    setPlayError(null);
+    if (!preview || preview.type !== "recording" || !apiEnabled()) return;
+    let cancelled = false;
+    getResourcePlayUrl(preview.id)
+      .then((p) => !cancelled && setPlayUrl(p.url))
+      .catch((err) => !cancelled && setPlayError(userMessage(err, "Could not load this recording.")));
+    return () => {
+      cancelled = true;
+    };
+  }, [preview]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Admin-granted resources; the endpoint itself blocks access while fee-suspended
-  const { data: apiResources, error: resourcesError, reload: reloadResources } = useApiData<Resource[]>(
+  const { data: apiResources, loading: resourcesLoading, error: resourcesError, reload: reloadResources } = useApiData<Resource[]>(
     () => getParentResources().then((items) => items.map(toFrontendResource)),
     []
   );
@@ -67,6 +83,11 @@ export default function ParentResources() {
   const books = resources.filter((r) => r.type === "book");
   const worksheets = resources.filter((r) => r.type === "worksheet");
   const recordings = resources.filter((r) => r.type === "recording");
+
+  // Open on the first tab that actually has something (a folder-shared worksheet used to hide behind an
+  // empty "Reading Books" tab), until the parent picks one themselves.
+  const [pickedTab, setPickedTab] = useState<string | null>(null);
+  const activeTab = pickedTab ?? (books.length ? "books" : worksheets.length ? "worksheets" : recordings.length ? "recordings" : "books");
 
   async function handleDownload(resource: Resource) {
     if (apiEnabled()) {
@@ -128,7 +149,7 @@ export default function ParentResources() {
       {!child ? (
         <EmptyState icon={BookOpen} title="No child selected" className="mt-6" />
       ) : (
-        <Tabs defaultValue="books" className="mt-6">
+        <Tabs value={activeTab} onValueChange={setPickedTab} className="mt-6">
           <TabsList>
             <TabsTrigger value="books">Reading Books ({books.length})</TabsTrigger>
             <TabsTrigger value="worksheets">Worksheets ({worksheets.length})</TabsTrigger>
@@ -136,7 +157,9 @@ export default function ParentResources() {
           </TabsList>
 
           <TabsContent value="books">
-            {books.length === 0 ? (
+            {usingApi && resourcesLoading ? (
+              <ResourceSkeletonGrid />
+            ) : books.length === 0 ? (
               <EmptyState icon={BookOpen} title="No reading books yet" description="Your teacher hasn't shared any books for this batch." />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -158,7 +181,9 @@ export default function ParentResources() {
           </TabsContent>
 
           <TabsContent value="worksheets">
-            {worksheets.length === 0 ? (
+            {usingApi && resourcesLoading ? (
+              <ResourceSkeletonGrid />
+            ) : worksheets.length === 0 ? (
               <EmptyState icon={FileText} title="No worksheets yet" description="Worksheets shared by your teacher will appear here." />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -180,7 +205,9 @@ export default function ParentResources() {
           </TabsContent>
 
           <TabsContent value="recordings">
-            {recordings.length === 0 ? (
+            {usingApi && resourcesLoading ? (
+              <ResourceSkeletonGrid />
+            ) : recordings.length === 0 ? (
               <EmptyState icon={Video} title="No shared videos yet" description="Videos your teacher shares directly (not your regular class recordings — see Recordings in the sidebar for those) appear here." />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -224,13 +251,26 @@ export default function ParentResources() {
                   {preview.type === "recording" ? "Session recording" : "Reading resource"} · Shared {formatDate(preview.uploadedOn, "long")}
                 </DialogDescription>
               </DialogHeader>
-              <div className="flex aspect-video items-center justify-center rounded-xl bg-muted/60">
-                {preview.type === "recording" ? (
+              <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-muted/60">
+                {preview.type === "recording" && usingApi && playUrl ? (
+                  // View-only: no download control, no context menu. The link expires shortly after opening.
+                  <video
+                    src={playUrl}
+                    controls
+                    controlsList="nodownload"
+                    disablePictureInPicture
+                    onContextMenu={(e) => e.preventDefault()}
+                    className="h-full w-full bg-black"
+                  />
+                ) : preview.type === "recording" && usingApi && !playError ? (
+                  <span className="text-sm text-muted-foreground">Loading recording…</span>
+                ) : preview.type === "recording" ? (
                   <PlayCircle className="h-12 w-12 text-muted-foreground/60" />
                 ) : (
                   <BookOpen className="h-12 w-12 text-muted-foreground/60" />
                 )}
               </div>
+              {playError && <p className="text-sm font-medium text-destructive">{playError}</p>}
               <p className="text-xs text-muted-foreground">
                 {usingApi
                   ? `This is a view-only preview — ${preview.type === "recording" ? "recordings" : "reading books"} aren't available for download here.`
@@ -240,6 +280,22 @@ export default function ParentResources() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** Sized like the eventual ResourceCard grid, shown while the real list is still loading. */
+function ResourceSkeletonGrid() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {[0, 1, 2].map((i) => (
+        <Card key={i} className="flex flex-col p-4">
+          <Skeleton className="h-10 w-10 rounded-xl" />
+          <Skeleton className="mt-3 h-4 w-3/4" />
+          <Skeleton className="mt-2 h-3 w-1/2" />
+          <Skeleton className="mt-4 h-8 w-full rounded-md" />
+        </Card>
+      ))}
     </div>
   );
 }

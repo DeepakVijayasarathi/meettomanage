@@ -12,10 +12,48 @@
  * that person.
  */
 export function buildJitsiJoinUrl(domain: string, room: string, token?: string | null, displayName?: string): string {
+  // The token MUST go in the query string: Jitsi's web client only reads `jwt` from
+  // `?jwt=`, never from the `#` fragment. Carried in the fragment it was silently ignored,
+  // so a staff member's moderator token never applied — verified live on UAT: a
+  // Coordinator opening Join Class landed on the lobby's "Ask to Join / Enter meeting
+  // password" screen (the password option is only offered to non-moderators), while the
+  // same token as `?jwt=` joined straight in as a moderator.
+  const query = token ? `?jwt=${encodeURIComponent(token)}` : "";
   const hashParts = [
-    token ? `jwt=${token}` : null,
     displayName ? "config.prejoinConfig.enabled=false" : null,
+    // When the class's waiting room is on, knock straight away instead of stopping on Jitsi's
+    // "Ask to Join" button — the host's classroom then admits an authorized staff member
+    // automatically (JitsiLive's staff auto-admit), so they walk in with no clicks at all.
+    // Verified live on UAT: without it the staff tab just sat on "Ask to Join", never knocking.
+    displayName ? "config.lobby.autoKnock=true" : null,
     displayName ? `userInfo.displayName=${encodeURIComponent(JSON.stringify(displayName))}` : null,
   ].filter((part): part is string => part !== null);
-  return `https://${domain}/${room}${hashParts.length ? `#${hashParts.join("&")}` : ""}`;
+  return `https://${domain}/${room}${query}${hashParts.length ? `#${hashParts.join("&")}` : ""}`;
+}
+
+// Repeated live report: a parent granted the site's own camera/mic permission (visibly
+// "Allow" in the browser) and it still didn't work, unlike Zoom/Meet. The one class of
+// browser this is a known, well-documented dead end for is an in-app "mini browser" --
+// WhatsApp, Instagram, Facebook, Line and similar apps open links in their own stripped-
+// down WebView instead of the phone's real browser, and that WebView is well known to
+// silently break getUserMedia (camera/mic) for video calls even when the page-level
+// permission looks granted -- there's no code-level fix for this, since it's the host
+// app's own WebView implementation making the call, not anything a website can detect and
+// route around. The one thing a website *can* do reliably is detect it and tell the user
+// to open the link in their actual browser instead. User-agent sniffing is normally to be
+// avoided, but this is the one legitimate, narrow use for it: there's no feature-detection
+// substitute for "which app's WebView is this."
+const IN_APP_BROWSER_UA_MARKERS = [
+  "WhatsApp",
+  "FBAN", // Facebook app (iOS)
+  "FBAV", // Facebook app (Android)
+  "Instagram",
+  "Line/", // LINE messenger
+  "MicroMessenger", // WeChat
+];
+
+export function isLikelyInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return IN_APP_BROWSER_UA_MARKERS.some((marker) => ua.includes(marker));
 }

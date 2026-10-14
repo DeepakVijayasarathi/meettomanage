@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CloudOff, Hand, Loader2, PencilRuler, Sparkles, Star, Trophy, Users } from "lucide-react";
+import { CloudOff, Hand, Loader2, PencilRuler, Presentation, Sparkles, Star, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -8,16 +8,23 @@ import { ClassroomHubClient, type ClassroomHubState, type HubParticipant } from 
 import { postEngagement } from "@/api/engagement";
 import { getLeaderboard, postAward } from "@/api/gamification";
 import { getQuizQuestionsForSession } from "@/api/quizQuestions";
+import { getWhiteboardActivitiesForSession, type ApiWhiteboardActivity } from "@/api/whiteboardActivities";
 import Whiteboard, { type BoardOp } from "./Whiteboard";
+import PresentationViewer, { type PresentationViewerHandle } from "./PresentationViewer";
+import { isSlideMarkOp, SlideMarksStore, type SlideMarkOp } from "./slideMarks";
 import QuizOverlay from "./QuizOverlay";
 import type { LeaderboardEntry, QuizQuestion } from "./classroomData";
 
-type PanelTab = "board" | "quiz" | "stars" | "people";
+type PanelTab = "board" | "slides" | "quiz" | "stars" | "people";
 
 interface InteractivePanelProps {
   sessionId: string;
   mode: "teacher" | "student";
   displayName: string;
+  /** Set only by the Jibri recording-observer page (RecordingObserver.tsx via JitsiLive.tsx),
+   *  whose anonymous session has no real access token — authenticates the hub connection with
+   *  this short-lived CreateRecordingObserverHubToken instead. */
+  hubToken?: string;
   /** Bubble a celebration up so it overlays the video, not just the panel. */
   onCelebrate: (message?: string) => void;
   /** Live leaderboard for the celebration overlay. */
@@ -26,8 +33,50 @@ interface InteractivePanelProps {
    *  raise-hand sender the host can forward its own hand-raise UI (e.g. Jitsi's native
    *  toolbar button) into — this panel owns the hub connection, so it's the only place
    *  that can actually send "RaiseHand" and reach the rest of the class. */
-  onReady?: (senders: { celebrateAll: (message?: string) => void; raiseHand: (raised: boolean) => void }) => void;
+  onReady?: (senders: {
+    celebrateAll: (message?: string) => void;
+    raiseHand: (raised: boolean) => void;
+    /** Teacher-only: broadcasts one annotation op drawn over the video stage. */
+    sendAnnotation: (opJson: string) => void;
+    /** Teacher-only: broadcasts the participant she just pinned/spotlighted in her own
+     *  Jitsi view (or null on unpin) so every student's view follows along. */
+    setPinned: (participantId: string | null) => void;
+    /** Teacher-only: asks every student's client to mute its own microphone. Returns false
+     *  when the hub isn't connected, so the caller can fall back to Jitsi's own mute. */
+    muteAll: () => boolean;
+  }) => void;
+  /** Fires for every annotation op relayed from the teacher over the hub, so the host
+   *  (JitsiLive, which owns the video-stage overlay this panel has no access to) can
+   *  paint it. This panel owns the hub connection, so it's the only place that can
+   *  actually receive "Annotation" broadcasts. */
+  onAnnotation?: (opJson: string) => void;
+  /** Whiteboard full-screen state, so the host can float the video above the board. */
+  onBoardMaximizedChange?: (maximized: boolean) => void;
+  /** Fires whenever the teacher's pinned/spotlighted participant changes (or clears), so
+   *  the host (JitsiLive, which owns the actual Jitsi iframe API this panel has no access
+   *  to) can call `pinParticipant` on this viewer's own connection to match. This panel
+   *  owns the hub connection, so it's the only place that can actually receive "Pinned"
+   *  broadcasts. */
+  onPinChanged?: (participantId: string | null) => void;
+  /** Fires when the teacher asks everyone to mute - the host (JitsiLive) owns the Jitsi
+   *  iframe API this panel has no access to, so it mutes this viewer's own microphone. */
+  onMuteAllRequested?: () => void;
+  /** Fires when an admin broadcasts a deploy notice over the hub (see
+   *  MonitoringController.BroadcastReload) — the host (JitsiLive) owns the banner UI
+   *  this panel has no space for. This panel owns the hub connection, so it's the only
+   *  place that can actually receive "ReloadRequested" broadcasts. */
+  onReloadRequested?: (message: string) => void;
+  /** Fires when the backend authorizes an admin-team member to join this class (see
+   *  SessionsController.GetJitsiJoin) — the host (JitsiLive) admits their lobby knock. */
+  onStaffJoining?: (displayName: string) => void;
+  /** Student side: the teacher just started something the class should look at (a quiz, a
+   *  slide change, the board, or board access for this student). The host keeps the panel
+   *  closed by default, Meet/Zoom-style, and opens it on this. */
+  onTeacherActivity?: (what: "quiz" | "slides" | "board") => void;
 }
+
+// Board ops replayed right after (re)connecting are history, not something happening now.
+const BOARD_REPLAY_GRACE_MS = 5000;
 
 /**
  * Real-time interactive layer beside the Jitsi call: shared whiteboard, live
@@ -35,10 +84,24 @@ interface InteractivePanelProps {
  * board access — all synced through the classroom SignalR hub. If the hub is
  * unreachable everything still renders locally (the call itself is unaffected).
  */
-export default function InteractivePanel({ sessionId, mode, displayName, onCelebrate, onLeaderboard, onReady }: InteractivePanelProps) {
+export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onBoardMaximizedChange, onPinChanged, onMuteAllRequested, onReloadRequested, onStaffJoining, onTeacherActivity }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
+  const onTeacherActivityRef = useRef(onTeacherActivity);
+  onTeacherActivityRef.current = onTeacherActivity;
+  const connectedAtRef = useRef(0);
+  // Students follow the teacher to whatever she just started; the teacher picks her own tab.
+  const followTeacher = (what: "quiz" | "slides" | "board") => {
+    if (mode === "teacher") return;
+    setTab(what);
+    onTeacherActivityRef.current?.(what);
+  };
   const [hubState, setHubState] = useState<ClassroomHubState>("disconnected");
   const [hubDetail, setHubDetail] = useState<string | null>(null);
+  // Bumping this re-runs the connect effect below, standing up a brand new hub connection.
+  // Needed because an initial connect that fails (start() throwing) is never retried by
+  // SignalR itself — only drops after a successful start are. Bumped by the Retry button in
+  // the disconnected banner below, and automatically by the auto-retry effect further down.
+  const [retryToken, setRetryToken] = useState(0);
   const [roster, setRoster] = useState<HubParticipant[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [quizActive, setQuizActive] = useState(false);
@@ -47,6 +110,10 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
   // department's shared ones) — replaces what used to be one hardcoded set every class
   // shared regardless of subject. Empty until it loads, or if nothing's configured yet.
   const [questionBank, setQuestionBank] = useState<QuizQuestion[]>([]);
+  // This class's resolved whiteboard activity bank, same course-then-department fallback as
+  // the quiz bank above — replaces what used to be one hardcoded fruit/letter/hotspot set
+  // every class shared regardless of subject.
+  const [activityBank, setActivityBank] = useState<ApiWhiteboardActivity[]>([]);
   // Real per-option answer counts for the current question, built from the hub's own
   // QuizAnswer broadcasts — replaces a formula that fabricated plausible-looking numbers.
   const [quizTally, setQuizTally] = useState<Record<number, number[]>>({});
@@ -60,9 +127,15 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
 
   const hubRef = useRef<ClassroomHubClient | null>(null);
   const boardHandlers = useRef(new Set<(op: BoardOp) => void>());
+  const presentationRef = useRef<PresentationViewerHandle>(null);
+  // Marks on presented slides live here, not in the Slides tab (which unmounts when another tab
+  // is picked) -- see SlideMarksStore.
+  const slideMarksRef = useRef<SlideMarksStore | null>(null);
+  if (!slideMarksRef.current) slideMarksRef.current = new SlideMarksStore();
+  const slideMarks = slideMarksRef.current;
 
   useEffect(() => {
-    const client = new ClassroomHubClient(sessionId);
+    const client = new ClassroomHubClient(sessionId, hubToken);
     hubRef.current = client;
     let disposed = false;
 
@@ -71,8 +144,13 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         roster: (participants) => setRoster(participants),
         board: (opJson) => {
           try {
-            const op = JSON.parse(opJson) as BoardOp;
-            boardHandlers.current.forEach((handler) => handler(op));
+            const op = JSON.parse(opJson) as BoardOp | SlideMarkOp;
+            // Slide marks share the Board channel (and its late-join replay) with the whiteboard.
+            if (isSlideMarkOp(op)) slideMarks.apply(op);
+            else {
+              boardHandlers.current.forEach((handler) => handler(op));
+              if (op.kind !== "reset" && Date.now() - connectedAtRef.current > BOARD_REPLAY_GRACE_MS) followTeacher("board");
+            }
           } catch {
             /* malformed op from a stale client — ignore */
           }
@@ -82,6 +160,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
           setQuizActive(true);
           // Fresh tally for this question, even on a relaunch of the same index.
           setQuizTally((prev) => ({ ...prev, [questionIndex]: [] }));
+          followTeacher("quiz");
         },
         quizEnded: () => setQuizActive(false),
         quizAnswer: (_name, questionIndex, selectedIndex) => {
@@ -102,7 +181,28 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
           onLeaderboard(mapped);
         },
         celebrate: (message) => onCelebrate(message ?? undefined),
-        boardAccess: (allowed) => setBoardAllowed(allowed),
+        boardAccess: (allowed) => {
+          setBoardAllowed(allowed);
+          if (allowed) followTeacher("board");
+        },
+        annotation: (opJson) => onAnnotation?.(opJson),
+        slide: (pageIndex) => {
+          presentationRef.current?.applyRemoteSlide(pageIndex);
+          followTeacher("slides");
+        },
+        pinned: (participantId) => onPinChanged?.(participantId),
+        muteAll: () => onMuteAllRequested?.(),
+        reloadRequested: (message) => onReloadRequested?.(message),
+        staffJoining: (name) => onStaffJoining?.(name),
+        resync: () => {
+          boardHandlers.current.forEach((handler) => handler({ kind: "reset" }));
+          // Rebuilt from the same Board history replay as the whiteboard.
+          slideMarks.reset();
+          // The server revokes a board grant when the old connection drops (grants are per
+          // connection id), so don't keep showing drawing tools it will now silently ignore —
+          // the teacher re-grants from the People tab against the new connection.
+          setBoardAllowed(false);
+        },
       }, (state, detail) => {
         if (!disposed) {
           setHubState(state);
@@ -111,6 +211,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
       })
       .then((ok) => {
         if (disposed) return;
+        connectedAtRef.current = Date.now();
         setHubState(ok ? "connected" : "disconnected");
         // Broadcast when connected (the hub echoes back to the sender); local-only otherwise.
         onReady?.({
@@ -123,6 +224,17 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
           raiseHand: (raised) => {
             if (client.connected) client.raiseHand(raised);
           },
+          sendAnnotation: (opJson) => {
+            if (client.connected) client.sendAnnotation(opJson);
+          },
+          setPinned: (participantId) => {
+            if (client.connected) client.setPinned(participantId);
+          },
+          muteAll: () => {
+            if (!client.connected) return false;
+            client.muteAll();
+            return true;
+          },
         });
       });
 
@@ -132,7 +244,24 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
       client.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
+  }, [sessionId, retryToken]);
+
+  // Keep retrying a failed connect in the background instead of waiting on the Retry button:
+  // a child on a tablet won't press it and the Jibri recording observer can't, so a hub that
+  // was briefly unreachable at join time otherwise left the board and annotations missing for
+  // them (and from the recording) for the whole class. hubDetail is only set once a connect
+  // attempt has actually failed, so this never fires during the very first attempt; the two
+  // failures a retry can't fix (no access, bad session id) are left to the banner.
+  useEffect(() => {
+    if (hubState !== "disconnected" || !hubDetail) return;
+    if (hubDetail.includes("don't have access") || hubDetail.includes("id looks wrong")) return;
+    const timer = setTimeout(() => {
+      setHubState("reconnecting");
+      setHubDetail(null);
+      setRetryToken((t) => t + 1);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [hubState, hubDetail]);
 
   // Seed the leaderboard from persisted awards (covers rejoin/reconnect); the hub
   // stream overwrites it as new answers come in.
@@ -183,12 +312,35 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
     };
   }, [sessionId]);
 
+  // Same resolution rule as the quiz bank above (or empty if nothing's configured yet —
+  // WhiteboardActivity shows an honest "no activities yet" state rather than falling back
+  // to hardcoded content).
+  useEffect(() => {
+    let cancelled = false;
+    getWhiteboardActivitiesForSession(sessionId)
+      .then((activities) => {
+        if (!cancelled) setActivityBank(activities);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
   const subscribeBoardOps = useCallback((handler: (op: BoardOp) => void) => {
     boardHandlers.current.add(handler);
     return () => {
       boardHandlers.current.delete(handler);
     };
   }, []);
+
+  const sendSlideMark = useCallback(
+    (op: SlideMarkOp) => {
+      slideMarks.apply(op);
+      hubRef.current?.sendBoard(JSON.stringify(op));
+    },
+    [slideMarks]
+  );
 
   const broadcastBoardOp = useCallback((op: BoardOp) => {
     hubRef.current?.sendBoard(JSON.stringify(op));
@@ -280,25 +432,31 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
           <TabsList className="w-full gap-1 rounded-full bg-white/5 p-1">
             <TabsTrigger
               value="board"
-              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
             >
               <PencilRuler className="h-3.5 w-3.5" /> Board
             </TabsTrigger>
             <TabsTrigger
+              value="slides"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+            >
+              <Presentation className="h-3.5 w-3.5" /> Slides
+            </TabsTrigger>
+            <TabsTrigger
               value="quiz"
-              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
             >
               <Sparkles className="h-3.5 w-3.5" /> Quiz
             </TabsTrigger>
             <TabsTrigger
               value="stars"
-              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
             >
               <Trophy className="h-3.5 w-3.5" /> Stars
             </TabsTrigger>
             <TabsTrigger
               value="people"
-              className="flex-1 gap-1 rounded-full text-white/60 data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
             >
               <Users className="h-3.5 w-3.5" /> People
               {roster.length > 0 && (
@@ -315,9 +473,22 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
             </p>
           )}
           {hubState === "disconnected" && (
-            <p role="status" className="mt-1.5 px-1 text-[10px] text-white/40">
-              {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
-            </p>
+            <div className="mt-1.5 flex items-center justify-between gap-2 px-1">
+              <p role="status" className="text-[10px] text-white/40">
+                {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setHubState("reconnecting");
+                  setHubDetail(null);
+                  setRetryToken((t) => t + 1);
+                }}
+                className="shrink-0 text-[10px] font-semibold text-brand-violet underline decoration-brand-violet/50 underline-offset-2 hover:decoration-brand-violet"
+              >
+                Retry
+              </button>
+            </div>
           )}
         </div>
 
@@ -327,8 +498,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
         <TabsContent value="board" className="mt-0 min-h-0 flex-1 overflow-hidden bg-brand-navy">
           <Whiteboard
             canDraw={canDraw}
+            mode={mode}
+            activities={activityBank}
             onBoardOp={broadcastBoardOp}
             subscribeBoardOps={subscribeBoardOps}
+            onMaximizedChange={onBoardMaximizedChange}
             onInteraction={() => postEngagement(sessionId, displayName, "WhiteboardInteraction")}
             onActivityComplete={() => {
               onCelebrate();
@@ -340,6 +514,17 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
               postAward(sessionId, displayName, "Star");
               hubRef.current?.awardStar();
             }}
+          />
+        </TabsContent>
+
+        <TabsContent value="slides" className="mt-0 min-h-0 flex-1 overflow-hidden bg-brand-navy">
+          <PresentationViewer
+            ref={presentationRef}
+            sessionId={sessionId}
+            canPresent={mode === "teacher"}
+            onSlideChange={(pageIndex) => hubRef.current?.sendSlide(pageIndex)}
+            marks={slideMarks}
+            onMarkOp={sendSlideMark}
           />
         </TabsContent>
 
@@ -462,7 +647,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                       onClick={() => giveStar(participant)}
                       title={`Give ${participant.name} a star`}
                     >
-                      <Star className={cn("mr-1 h-3 w-3", justAwardedId === participant.connectionId && "fill-brand-amber")} />
+                      <Star className={cn("h-3 w-3", justAwardedId === participant.connectionId && "fill-brand-amber")} />
                       {justAwardedId === participant.connectionId ? "Given!" : "Give star"}
                     </Button>
                   )}
@@ -478,7 +663,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, onCeleb
                       )}
                       onClick={() => toggleBoardAccess(participant)}
                     >
-                      <PencilRuler className="mr-1 h-3 w-3" />
+                      <PencilRuler className="h-3 w-3" />
                       {grantedIds.has(participant.connectionId) ? "Board on" : "Allow board"}
                     </Button>
                   )}

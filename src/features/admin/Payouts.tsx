@@ -1,12 +1,24 @@
 import { useMemo, useState } from "react";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { Link } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, Download, IndianRupee, Loader2, Settings2, UsersRound, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Download,
+  IndianRupee,
+  Loader2,
+  Settings2,
+  UsersRound,
+  Wallet,
+} from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { KpiCard } from "@/components/KpiCard";
-import { DataTable, type DataTableColumn } from "@/components/DataTable";
+import { EmptyState } from "@/components/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,14 +27,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PAYOUTS } from "@/data/payouts";
 import { getTeacherById } from "@/data/users";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { adjustPayoutItem, finalizePayout, listPayouts, markPayoutPaid, toFrontendPayout } from "@/api/payouts";
+import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
 import { downloadReportCsv } from "@/api/reports";
+import { PayoutDetailDialog } from "./PayoutDetailDialog";
 import type { TeacherPayout, TeacherPayoutItem } from "@/types";
 import { formatCurrency, formatNumber, getInitials, toCsv } from "@/lib/utils";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
+
+function formatClockTime(isoUtc: string) {
+  const { time } = utcIsoToLocalDateTime(isoUtc);
+  const [h, m] = time.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}
 
 function downloadCsv(filename: string, csv: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -61,13 +85,30 @@ export default function AdminPayouts() {
   const [reviewReasons, setReviewReasons] = useState<Record<string, string>>({});
   const [reviewSavingId, setReviewSavingId] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  // The item's own note already says *how many* minutes were attended, but not *when* —
+  // this pulls the teacher's actual join/leave timestamps for the review dialog so the
+  // reason isn't just a generated sentence, it's the real clock times an admin can check
+  // against the scheduled slot themselves. Best-effort per item: a lookup failure just
+  // leaves that item without a timing line rather than blocking the review dialog.
+  const [reviewTiming, setReviewTiming] = useState<Record<string, ApiSessionAttendance | null>>({});
 
   function openReview(payout: TeacherPayout) {
     setReviewError(null);
     const flagged = payout.items.filter((i) => i.requiresReview);
     setReviewAmounts(Object.fromEntries(flagged.map((i) => [i.id, String(i.amount)])));
     setReviewReasons(Object.fromEntries(flagged.map((i) => [i.id, ""])));
+    setReviewTiming({});
     setReviewPayout(payout);
+
+    for (const item of flagged) {
+      if (!item.classSessionId) continue;
+      listAttendance(item.classSessionId)
+        .then((records) => {
+          const teacherRecord = records.find((r) => r.participantType === "Teacher") ?? null;
+          setReviewTiming((prev) => ({ ...prev, [item.id]: teacherRecord }));
+        })
+        .catch(() => undefined);
+    }
   }
 
   async function saveReviewItem(item: TeacherPayoutItem) {
@@ -97,7 +138,7 @@ export default function AdminPayouts() {
       }
       toast({ variant: "success", title: "Adjustment saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save this adjustment.";
+      const message = userMessage(err, "Could not save this adjustment.");
       setReviewError(message);
       toast({ variant: "error", title: "Couldn't save adjustment", description: message });
     } finally {
@@ -121,7 +162,7 @@ export default function AdminPayouts() {
       await reloadPayouts();
       toast({ variant: "success", title: action === "finalize" ? "Payout finalized" : "Payout marked paid" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : `Could not ${action === "finalize" ? "finalize" : "mark paid"} this payout.`;
+      const message = userMessage(err, `Could not ${action === "finalize" ? "finalize" : "mark paid"} this payout.`);
       setActionError(message);
       toast({ variant: "error", title: "Couldn't update payout", description: message });
     } finally {
@@ -159,166 +200,146 @@ export default function AdminPayouts() {
     );
   }
 
-  const currentMonthLabel = format(new Date(), "MMMM yyyy");
+  // Demo mock data is authored around a fixed set of months (e.g. June/July 2026) that fall
+  // further into the past every day relative to the real calendar -- comparing it against
+  // `new Date()` made the headline "Total Payout" KPI read as ₹0/0/0 forever once today rolled
+  // past the mock data's last month, right next to teacher cards showing real paid amounts for
+  // those "past" months. In demo mode, treat the most recent month actually present in the
+  // mock data as "this month" so the KPI always reflects the data visible below it; API mode
+  // keeps using the real current month since live data is genuinely dated to it.
+  const currentMonthLabel = apiEnabled()
+    ? format(new Date(), "MMMM yyyy")
+    : payouts.reduce<string | null>((latest, p) => {
+        if (!latest) return p.month;
+        return parse(p.month, "MMMM yyyy", new Date()) > parse(latest, "MMMM yyyy", new Date()) ? p.month : latest;
+      }, null) ?? format(new Date(), "MMMM yyyy");
 
   const totals = useMemo(() => {
+    // Both counts below used to run over ALL of `payouts` regardless of month -- while
+    // sitting right next to a KPI card explicitly labeled "Total Payout — <this month>".
+    // A teacher paid in a past month counted toward "Teachers Paid" forever, and a
+    // long-since-resolved pending payout from months ago kept inflating "Pending
+    // Calculations" — three cards that read as one snapshot of the same period, two of
+    // which were secretly all-time. Scoped to the same `thisMonth` set now.
     const thisMonth = payouts.filter((p) => p.month === currentMonthLabel);
-    const paidCount = payouts.filter((p) => p.status === "paid").length;
-    const pendingCount = payouts.filter((p) => p.status === "pending").length;
+    // Distinct teachers, not payout rows -- one teacher with three paid months
+    // (one row each) was counting as 3 toward a card literally titled "Teachers Paid".
+    const paidTeacherIds = new Set(thisMonth.filter((p) => p.status === "paid").map((p) => p.teacherId));
+    const pendingCount = thisMonth.filter((p) => p.status === "pending").length;
     return {
       totalThisMonth: thisMonth.reduce((sum, p) => sum + p.finalAmount, 0),
-      teachersPaid: paidCount,
+      teachersPaid: paidTeacherIds.size,
       pendingCalculations: pendingCount,
     };
   }, [payouts, currentMonthLabel]);
 
-  const columns: DataTableColumn<TeacherPayout>[] = useMemo(
-    () => [
-      {
-        key: "teacherName",
-        header: "Teacher",
-        sortable: true,
-        accessor: (row) => row.teacherName,
-        render: (row) => {
-          const teacher = getTeacherById(row.teacherId);
-          return (
-            <div className="flex items-center gap-3">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback style={{ backgroundColor: `${teacher?.avatarColor ?? "#999"}22`, color: teacher?.avatarColor ?? "#999" }}>
-                  {getInitials(row.teacherName)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-semibold text-foreground">{row.teacherName}</p>
-                <p className="text-xs text-muted-foreground">{teacher?.department ?? "—"}</p>
-              </div>
-            </div>
-          );
-        },
-      },
-      { key: "month", header: "Month", sortable: true, accessor: (row) => row.month, render: (row) => <span className="text-sm">{row.month}</span> },
-      {
-        key: "sessionsCompleted",
-        header: "Sessions",
-        sortable: true,
-        accessor: (row) => row.sessionsCompleted,
-        render: (row) => <span className="text-sm">{row.sessionsCompleted}</span>,
-      },
-      {
-        key: "baseAmount",
-        header: "Base Amount",
-        sortable: true,
-        accessor: (row) => row.baseAmount,
-        render: (row) => <span className="text-sm text-muted-foreground">{formatCurrency(row.baseAmount)}</span>,
-      },
-      {
-        key: "deductions",
-        header: "Deductions",
-        sortable: true,
-        accessor: (row) => row.deductions,
-        render: (row) => (
-          <span className={row.deductions > 0 ? "text-sm font-medium text-destructive" : "text-sm text-muted-foreground"}>
-            {row.deductions > 0 ? `-${formatCurrency(row.deductions)}` : "—"}
-          </span>
-        ),
-      },
-      {
-        key: "waitingAmountAdded",
-        header: "Waiting Added",
-        sortable: true,
-        accessor: (row) => row.waitingAmountAdded,
-        render: (row) => (
-          <span className={row.waitingAmountAdded > 0 ? "text-sm font-medium text-success" : "text-sm text-muted-foreground"}>
-            {row.waitingAmountAdded > 0 ? `+${formatCurrency(row.waitingAmountAdded)}` : "—"}
-          </span>
-        ),
-      },
-      {
-        key: "finalAmount",
-        header: "Final Amount",
-        sortable: true,
-        accessor: (row) => row.finalAmount,
-        render: (row) => <span className="text-sm font-bold text-foreground">{formatCurrency(row.finalAmount)}</span>,
-      },
-      {
-        key: "status",
-        header: "Status",
-        sortable: true,
-        accessor: (row) => row.status,
-        render: (row) => (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Badge
-              variant={row.status === "paid" ? "success" : row.status === "finalized" ? "default" : "warning"}
-              className="capitalize"
-            >
-              {row.status}
-            </Badge>
-            {row.requiresReview && (
-              <Badge variant="warning" className="gap-1">
-                <AlertTriangle className="h-3 w-3" /> Needs review
-              </Badge>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: "actions",
-        header: "",
-        render: (row) => {
-          if (row.status === "pending" && row.requiresReview) {
-            return (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-warning-foreground"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openReview(row);
-                }}
-              >
-                <AlertTriangle className="h-3.5 w-3.5" /> Review
-              </Button>
-            );
-          }
-          if (row.status === "pending") {
-            return (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busyId === row.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setConfirmTarget({ payout: row, action: "finalize" });
-                }}
-              >
-                {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
-              </Button>
-            );
-          }
-          if (row.status === "finalized") {
-            return (
-              <Button
-                size="sm"
-                disabled={busyId === row.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setConfirmTarget({ payout: row, action: "mark-paid" });
-                }}
-              >
-                {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Mark Paid"}
-              </Button>
-            );
-          }
-          return (
-            <span className="inline-flex items-center gap-1 text-xs text-success">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Paid
-            </span>
-          );
-        },
-      },
-    ],
-    [busyId]
-  );
+  // The month a teacher's row was opened on — held as an id so the dialog always shows the
+  // freshly reloaded payout after a correction, not the copy it was opened with.
+  const [detailPayoutId, setDetailPayoutId] = useState<string | null>(null);
+  const detailPayout = detailPayoutId ? payouts.find((p) => p.id === detailPayoutId) ?? null : null;
+
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [collapsedTeacherIds, setCollapsedTeacherIds] = useState<Set<string>>(new Set());
+
+  function toggleTeacherGroup(teacherId: string) {
+    setCollapsedTeacherIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(teacherId)) next.delete(teacherId);
+      else next.add(teacherId);
+      return next;
+    });
+  }
+
+  /** One card per teacher instead of a flat month-by-month list -- the same teacher
+   *  repeating once per month (see the screenshot this grouping was built from: "UAT Test
+   *  Teacher" three times in a row) made it hard to see a teacher's overall standing at a
+   *  glance, or to tell how many distinct teachers were even being paid at all. */
+  const teacherGroups = useMemo(() => {
+    const byTeacher = new Map<string, TeacherPayout[]>();
+    for (const payout of payouts) {
+      const list = byTeacher.get(payout.teacherId) ?? [];
+      list.push(payout);
+      byTeacher.set(payout.teacherId, list);
+    }
+
+    const query = teacherSearch.trim().toLowerCase();
+    const groups = [...byTeacher.entries()]
+      .map(([teacherId, rows]) => {
+        const sorted = [...rows].sort((a, b) => b.month.localeCompare(a.month));
+        return {
+          teacherId,
+          teacherName: rows[0].teacherName,
+          rows: sorted,
+          // Split instead of one combined figure -- "how much has actually gone out" and
+          // "how much is still owed" are different questions an admin asks, and a single
+          // lump total answered neither of them clearly. Pending here covers both
+          // not-yet-finalized and finalized-but-unpaid amounts -- either way, money the
+          // teacher hasn't actually received yet.
+          paidTotal: rows.filter((p) => p.status === "paid").reduce((sum, p) => sum + p.finalAmount, 0),
+          pendingTotal: rows.filter((p) => p.status !== "paid").reduce((sum, p) => sum + p.finalAmount, 0),
+          pendingCount: rows.filter((p) => p.status === "pending" && !p.requiresReview).length,
+          needsReviewCount: rows.filter((p) => p.requiresReview).length,
+        };
+      })
+      .filter((g) => !query || g.teacherName.toLowerCase().includes(query));
+
+    // Whoever needs the admin's attention floats to the top; the rest settle alphabetically.
+    return groups.sort((a, b) => {
+      const aUrgent = a.needsReviewCount > 0 ? 2 : a.pendingCount > 0 ? 1 : 0;
+      const bUrgent = b.needsReviewCount > 0 ? 2 : b.pendingCount > 0 ? 1 : 0;
+      if (aUrgent !== bUrgent) return bUrgent - aUrgent;
+      return a.teacherName.localeCompare(b.teacherName);
+    });
+  }, [payouts, teacherSearch]);
+
+  function renderStatus(row: TeacherPayout) {
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge variant={row.status === "paid" ? "success" : row.status === "finalized" ? "default" : "warning"} className="capitalize">
+          {row.status}
+        </Badge>
+        {row.requiresReview && (
+          <Badge variant="warning" className="gap-1">
+            <AlertTriangle className="h-3 w-3" /> Needs review
+          </Badge>
+        )}
+      </div>
+    );
+  }
+
+  function renderActions(row: TeacherPayout) {
+    if (row.status === "pending" && row.requiresReview) {
+      return (
+        <Button size="sm" variant="outline" className="text-warning-foreground" onClick={() => openReview(row)}>
+          <AlertTriangle className="h-3.5 w-3.5" /> Review
+        </Button>
+      );
+    }
+    if (row.status === "pending") {
+      return (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busyId === row.id}
+          onClick={() => setConfirmTarget({ payout: row, action: "finalize" })}
+        >
+          {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
+        </Button>
+      );
+    }
+    if (row.status === "finalized") {
+      return (
+        <Button size="sm" disabled={busyId === row.id} onClick={() => setConfirmTarget({ payout: row, action: "mark-paid" })}>
+          {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Mark Paid"}
+        </Button>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-success">
+        <CheckCircle2 className="h-3.5 w-3.5" /> Paid
+      </span>
+    );
+  }
 
   return (
     <div>
@@ -361,18 +382,152 @@ export default function AdminPayouts() {
         <KpiCard label="Pending Calculations" value={formatNumber(totals.pendingCalculations)} icon={Wallet} tone="warning" loading={payoutsLoading} />
       </div>
 
-      <div className="mt-6">
-        <DataTable
-          data={payouts}
-          columns={columns}
-          rowKey={(row) => row.id}
-          searchPlaceholder="Search by teacher name…"
-          emptyTitle="No payouts yet"
-          emptyDescription="Teacher payouts will appear here once sessions are delivered and calculated for a pay period."
-          error={apiEnabled() ? payoutsError : null}
-          onRetry={reloadPayouts}
+      <div className="mt-6 flex flex-col gap-3">
+        <Input
+          value={teacherSearch}
+          onChange={(e) => setTeacherSearch(e.target.value)}
+          placeholder="Search by teacher name…"
+          className="max-w-sm"
         />
+
+        {apiEnabled() && payoutsError ? null : payouts.length === 0 ? (
+          <EmptyState
+            icon={Wallet}
+            title="No payouts yet"
+            description="Teacher payouts will appear here once sessions are delivered and calculated for a pay period."
+          />
+        ) : teacherGroups.length === 0 ? (
+          <EmptyState icon={Wallet} title="No teacher matches that search" description="Try a different name." />
+        ) : (
+          teacherGroups.map((group) => {
+            const teacher = getTeacherById(group.teacherId);
+            const expanded = !collapsedTeacherIds.has(group.teacherId);
+            return (
+              <div key={group.teacherId} className="overflow-hidden rounded-xl border border-border bg-card">
+                <button
+                  type="button"
+                  onClick={() => toggleTeacherGroup(group.teacherId)}
+                  className="flex w-full flex-col items-start gap-3 px-4 py-3 text-left hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
+                  aria-expanded={expanded}
+                >
+                  <div className="flex min-w-0 w-full items-center gap-3 sm:w-auto">
+                    {expanded ? (
+                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarFallback style={{ backgroundColor: `${teacher?.avatarColor ?? "#999"}22`, color: teacher?.avatarColor ?? "#999" }}>
+                        {getInitials(group.teacherName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-foreground">{group.teacherName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {teacher?.department ?? "—"} · {group.rows.length} month{group.rows.length === 1 ? "" : "s"} on record
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex w-full shrink-0 flex-wrap items-center gap-2 pl-7 sm:w-auto sm:pl-0">
+                    {group.needsReviewCount > 0 && (
+                      <Badge variant="warning" className="gap-1">
+                        <AlertTriangle className="h-3 w-3" /> {group.needsReviewCount} needs review
+                      </Badge>
+                    )}
+                    {group.pendingCount > 0 && <Badge variant="warning">{group.pendingCount} pending</Badge>}
+                    <div className="flex flex-col items-end leading-tight">
+                      <span className="text-sm font-bold text-success">Paid {formatCurrency(group.paidTotal)}</span>
+                      <span className="text-xs font-medium text-warning-foreground">Pending {formatCurrency(group.pendingTotal)}</span>
+                    </div>
+                  </div>
+                </button>
+
+                {expanded && (
+                  <div className="relative border-t border-border">
+                    {/* This breakdown table has 8 columns and is genuinely wider than a phone
+                        screen — Table already makes it horizontally scrollable, but with no
+                        visible cue a user has no reason to think there's more to the right.
+                        A static edge fade (unlike DataTable's scroll-position-aware version)
+                        is enough here since this is a small, per-row nested table rather than
+                        a primary page table. */}
+                    <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-card to-transparent sm:hidden" />
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                          <TableHead>Month</TableHead>
+                          <TableHead>Sessions</TableHead>
+                          <TableHead>Base Amount</TableHead>
+                          <TableHead>Deductions</TableHead>
+                          <TableHead>Waiting Added</TableHead>
+                          <TableHead>Final Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {group.rows.map((row) => (
+                          <TableRow key={row.id}>
+                            <TableCell>
+                              <button
+                                type="button"
+                                className="font-medium text-primary underline-offset-2 hover:underline"
+                                title="Open this month's full breakdown"
+                                onClick={() => setDetailPayoutId(row.id)}
+                              >
+                                {row.month}
+                              </button>
+                            </TableCell>
+                            <TableCell>{row.sessionsCompleted}</TableCell>
+                            <TableCell className="text-muted-foreground">{formatCurrency(row.baseAmount)}</TableCell>
+                            <TableCell>
+                              <span className={row.deductions > 0 ? "font-medium text-destructive" : "text-muted-foreground"}>
+                                {row.deductions > 0 ? `-${formatCurrency(row.deductions)}` : "—"}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <span className={row.waitingAmountAdded > 0 ? "font-medium text-success" : "text-muted-foreground"}>
+                                {row.waitingAmountAdded > 0 ? `+${formatCurrency(row.waitingAmountAdded)}` : "—"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="font-bold text-foreground">{formatCurrency(row.finalAmount)}</TableCell>
+                            <TableCell>{renderStatus(row)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center justify-end gap-2">
+                                <Button size="sm" variant="outline" onClick={() => setDetailPayoutId(row.id)}>
+                                  View
+                                </Button>
+                                {renderActions(row)}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+
+        {apiEnabled() && payoutsError && (
+          <InlineAlert variant="warning">
+            Could not load payouts ({payoutsError}).{" "}
+            <button type="button" className="underline" onClick={() => reloadPayouts()}>
+              Retry
+            </button>
+          </InlineAlert>
+        )}
       </div>
+
+      {detailPayout && (
+        <PayoutDetailDialog
+          payout={detailPayout}
+          onClose={() => setDetailPayoutId(null)}
+          onChanged={() => reloadPayouts()}
+          onFinalize={(payout) => setConfirmTarget({ payout, action: "finalize" })}
+        />
+      )}
 
       <ConfirmDialog
         open={confirmTarget !== null}
@@ -380,7 +535,7 @@ export default function AdminPayouts() {
         title={confirmTarget?.action === "finalize" ? "Finalize this payout?" : "Mark this payout as paid?"}
         description={
           confirmTarget?.action === "finalize"
-            ? `Locks ${confirmTarget.payout.teacherName}'s ${confirmTarget.payout.month} amount (${formatCurrency(confirmTarget.payout.finalAmount)}) — no more sessions will be added to it.`
+            ? `Closes ${confirmTarget.payout.teacherName}'s ${confirmTarget.payout.month} payout at ${formatCurrency(confirmTarget.payout.finalAmount)} and emails their statement — no more sessions will be added to it. A line can still be corrected afterwards, with a reason.`
             : confirmTarget
               ? `Confirms ${confirmTarget.payout.teacherName}'s ${confirmTarget.payout.month} payout (${formatCurrency(confirmTarget.payout.finalAmount)}) was paid and emails their salary slip.`
               : undefined
@@ -395,17 +550,37 @@ export default function AdminPayouts() {
           {reviewPayout && (
             <>
               <DialogHeader>
-                <DialogTitle>Review {reviewPayout.teacherName}'s {reviewPayout.month} payout</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning-foreground">
+                    <AlertTriangle className="h-4 w-4" />
+                  </span>
+                  {reviewPayout.teacherName}'s {reviewPayout.month} payout
+                </DialogTitle>
                 <DialogDescription>
-                  Captured attendance for these session(s) fell well short of the scheduled class. Confirm the amount
-                  as-is or correct it — either way, a reason is logged and the flag clears once saved.
+                  Captured attendance for the session(s) below fell well short of the scheduled class. Confirm the
+                  amount as-is or correct it — either way, a reason is logged and the flag clears once saved.
                 </DialogDescription>
               </DialogHeader>
-              <div className="flex flex-col gap-4">
-                {reviewPayout.items.filter((i) => i.requiresReview).map((item) => (
-                  <div key={item.id} className="rounded-lg border border-border p-3">
-                    <p className="text-sm text-muted-foreground">{item.note}</p>
-                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-3">
+                {reviewPayout.items.filter((i) => i.requiresReview).map((item) => {
+                  const timing = reviewTiming[item.id];
+                  return (
+                  <div key={item.id} className="rounded-xl border border-warning/30 bg-warning/5 p-3.5">
+                    <p className="text-sm font-medium text-foreground">{item.note}</p>
+                    {timing && (
+                      <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3 shrink-0" />
+                        {timing.joinedAtUtc ? (
+                          <>
+                            Joined {formatClockTime(timing.joinedAtUtc)}
+                            {timing.leftAtUtc ? ` · Left ${formatClockTime(timing.leftAtUtc)}` : " · never left before the class was marked complete"}
+                          </>
+                        ) : (
+                          "Never joined — no join time recorded at all"
+                        )}
+                      </p>
+                    )}
+                    <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg bg-card p-3 sm:grid-cols-2">
                       <div className="grid gap-1.5">
                         <Label htmlFor={`review-amount-${item.id}`}>Amount (₹)</Label>
                         <Input
@@ -432,8 +607,13 @@ export default function AdminPayouts() {
                       </Button>
                     </div>
                   </div>
-                ))}
-                {reviewError && <p className="text-sm font-medium text-destructive">{reviewError}</p>}
+                  );
+                })}
+                {reviewError && (
+                  <InlineAlert variant="error" className="text-sm">
+                    {reviewError}
+                  </InlineAlert>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setReviewPayout(null)}>

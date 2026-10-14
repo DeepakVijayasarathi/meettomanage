@@ -1,4 +1,5 @@
-import { apiFetch, getAccessToken } from "@/lib/api";
+import { ApiError, apiFetch, getAccessToken, readProblemMessage } from "@/lib/api";
+import { fileNameFor } from "@/lib/fileName";
 import type { ApiInvoice } from "@/api/billing";
 import type { ApiClassSession, ApiSessionRecording } from "@/api/sessions";
 import type { ApiResource } from "@/api/resources";
@@ -9,14 +10,26 @@ export interface ApiParentChildSummary {
   academicLevel: string | null;
   classesCompleted: number;
   classesRemaining: number;
-  attendancePercent: number;
+  /** Null when this child has no attendance-marked sessions yet — distinct from a real 0%. */
+  attendancePercent: number | null;
+  /** Genuinely this child's own status — a sibling's unrelated overdue invoice never marks another child suspended. */
   feeStatus: "paid" | "due" | "overdue" | "suspended";
+  /** This specific child's access is blocked (their own suspension, or an account-wide one). */
+  isSuspended: boolean;
+  /** The invoice that unlocks this child specifically. Null when not suspended, or when
+   *  blocked only by an account-wide suspension with no single invoice to point at. */
+  suspendedInvoiceId: string | null;
 }
 
 export interface ApiParentDashboard {
   parentProfileId: string;
   enrollmentFormCompleted: boolean;
+  /** True when at least one child is suspended — see each child's own isSuspended for which. */
   isSuspended: boolean;
+  /** True only when EVERY child is currently suspended — nothing on the account is reachable. */
+  allChildrenSuspended: boolean;
+  /** Set only when allChildrenSuspended is true and one invoice fixes everything; with
+   *  multiple children, resolve each one's own suspendedInvoiceId instead. */
   suspendedInvoiceId: string | null;
   children: ApiParentChildSummary[];
 }
@@ -41,6 +54,23 @@ export async function getParentSchedule(fromUtc: string, toUtc: string): Promise
   return apiFetch<ApiClassSession[]>(`/api/parent-portal/schedule?fromUtc=${fromUtc}&toUtc=${toUtc}`);
 }
 
+// A child's whole batch schedule is generated up front (see GenerateScheduleAsync on the
+// backend), however far out it runs — a 36-session weekly course spans ~252 days. A ±60-day
+// fetch window (this default's old shape) silently clipped most of a just-created schedule,
+// same bug confirmed live on the teacher's own My Classes (see listMySessions/listSessions
+// in api/sessions.ts, fixed the same way). Shared here so Schedule.tsx and Dashboard.tsx,
+// which each used to hardcode their own copy of the same ±60-day window, can't drift again.
+const SCHEDULE_LOOKBACK_DAYS = 60;
+const SCHEDULE_LOOKAHEAD_DAYS = 400;
+
+/** Default [fromUtc, toUtc] window for getParentSchedule -- recent history plus the child's
+ *  whole realistic upcoming batch schedule, not just the next couple of months. */
+export function defaultParentScheduleWindow(): [string, string] {
+  const from = new Date(Date.now() - SCHEDULE_LOOKBACK_DAYS * 86400_000).toISOString();
+  const to = new Date(Date.now() + SCHEDULE_LOOKAHEAD_DAYS * 86400_000).toISOString();
+  return [from, to];
+}
+
 export async function getParentResources(): Promise<ApiResource[]> {
   return apiFetch<ApiResource[]>("/api/parent-portal/resources");
 }
@@ -52,6 +82,27 @@ export async function getParentResources(): Promise<ApiResource[]> {
  */
 export async function getSessionRecordings(sessionId: string): Promise<ApiSessionRecording[]> {
   return apiFetch<ApiSessionRecording[]>(`/api/parent-portal/sessions/${sessionId}/recordings`);
+}
+
+export interface ApiParentRecording {
+  id: string;
+  classSessionId: string;
+  storageUrl: string;
+  durationSeconds: number | null;
+  expiresAtUtc: string | null;
+  createdAtUtc: string;
+  batchName: string | null;
+  scheduledStartAtUtc: string;
+  /** This parent's own children placed in the recording's batch — lets the page filter to
+   *  whichever child is currently selected without a per-session lookup. */
+  childIds: string[];
+}
+
+/** Every non-expired recording across every one of the caller's children's batches, in one
+ *  call — replaces fetching the schedule then calling getSessionRecordings once per completed
+ *  session (the N+1 pattern already fixed on the admin and teacher Recordings pages). */
+export async function listMyRecordings(): Promise<ApiParentRecording[]> {
+  return apiFetch<ApiParentRecording[]>("/api/parent-portal/recordings");
 }
 
 /**
@@ -66,13 +117,13 @@ export async function downloadParentResource(id: string, fallbackName: string): 
   const response = await fetch(`${baseUrl}/api/parent-portal/resources/${id}/download`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
-  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+  if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
 
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = fallbackName;
+  anchor.download = fileNameFor(fallbackName, blob.type);
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -105,10 +156,11 @@ export async function getPaymentMethods(): Promise<ApiPaymentMethod[]> {
 }
 
 /** Mandatory first-login enrollment form (answers as a JSON document). */
-export async function submitEnrollmentForm(formData: Record<string, unknown>): Promise<ApiEnrollmentForm> {
+/** childId: filling in details for a child who already exists (no new child is created on approval). */
+export async function submitEnrollmentForm(formData: Record<string, unknown>, childId?: string): Promise<ApiEnrollmentForm> {
   return apiFetch<ApiEnrollmentForm>("/api/enrollment-forms", {
     method: "POST",
-    body: JSON.stringify({ formDataJson: JSON.stringify(formData) }),
+    body: JSON.stringify({ formDataJson: JSON.stringify(formData), childId }),
   });
 }
 
@@ -121,19 +173,23 @@ export async function listEnrollmentForms(status?: ApiEnrollmentForm["status"]):
   return apiFetch<ApiEnrollmentForm[]>(`/api/enrollment-forms${status ? `?status=${status}` : ""}`);
 }
 
-/** Downloads the print-ready invoice document with the bearer token and saves it. */
+/**
+ * Downloads the invoice with the bearer token and saves it — the same "Bill of Supply" PDF
+ * the admin side generates (this endpoint used to return its own separate, unbranded HTML
+ * document instead).
+ */
 export async function downloadParentInvoice(invoiceId: string, invoiceNumber: string): Promise<void> {
   const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
   const token = getAccessToken();
   const response = await fetch(`${baseUrl}/api/parent-portal/invoices/${invoiceId}/download`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
-  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+  if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `invoice-${invoiceNumber}.html`;
+  anchor.download = `${invoiceNumber}.pdf`;
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -147,10 +203,10 @@ export interface ParentPaymentResult {
 }
 
 /** Pay Now: cash records a pending intent; a gateway key returns a checkout URL. */
-export async function payInvoice(invoiceId: string, methodKey: string): Promise<ParentPaymentResult> {
+export async function payInvoice(invoiceId: string, methodKey: string, amount?: number): Promise<ParentPaymentResult> {
   return apiFetch<ParentPaymentResult>(`/api/parent-portal/invoices/${invoiceId}/pay`, {
     method: "POST",
-    body: JSON.stringify({ methodKey }),
+    body: JSON.stringify({ methodKey, amount }),
   });
 }
 
@@ -175,10 +231,10 @@ export interface ApiInlineCheckout {
 }
 
 /** Creates the gateway order for an in-page checkout popup — the payer never leaves the page. */
-export async function startInlineCheckout(invoiceId: string, methodKey: string): Promise<ApiInlineCheckout> {
+export async function startInlineCheckout(invoiceId: string, methodKey: string, amount?: number): Promise<ApiInlineCheckout> {
   return apiFetch<ApiInlineCheckout>(`/api/parent-portal/invoices/${invoiceId}/checkout`, {
     method: "POST",
-    body: JSON.stringify({ methodKey }),
+    body: JSON.stringify({ methodKey, amount }),
   });
 }
 
@@ -196,6 +252,61 @@ export async function verifyInlineCheckout(
 export async function refreshInvoicePayment(invoiceId: string): Promise<ApiInvoice> {
   return apiFetch<ApiInvoice>(`/api/parent-portal/invoices/${invoiceId}/refresh-payment`, {
     method: "POST",
+  });
+}
+
+/** A child's details + preferred class schedule as entered by the parent (basics pre-filled when nothing is saved yet). */
+export interface ApiChildSchedulePreference {
+  childId: string;
+  childName: string;
+  dateOfBirth: string | null;
+  gender: "Male" | "Female" | "Other" | null;
+  grade: string | null;
+  courseId: string | null;
+  courseName: string | null;
+  preferredStartDate: string | null;
+  daysPerWeek: number | null;
+  preferredDays: string[];
+  dayTimes: Record<string, string>;
+  /** IANA zone the day times are in (the parent's own); null = India time. */
+  timeZoneId: string | null;
+  schoolName: string | null;
+  priorExperience: string | null;
+  allergies: string | null;
+  notes: string | null;
+  hasSubmitted: boolean;
+  submittedAtUtc: string | null;
+}
+
+export interface SaveChildSchedulePreferenceInput {
+  courseId: string | null;
+  preferredStartDate: string | null;
+  daysPerWeek: number;
+  preferredDays: string[];
+  dayTimes: Record<string, string>;
+  /** IANA zone the parent picked the times in (their own). */
+  timeZoneId?: string;
+  schoolName: string | null;
+  grade: string | null;
+  dateOfBirth: string | null;
+  gender: string | null;
+  priorExperience: string | null;
+  allergies: string | null;
+  notes: string | null;
+}
+
+export async function getChildSchedulePreference(childId: string): Promise<ApiChildSchedulePreference> {
+  return apiFetch<ApiChildSchedulePreference>(`/api/parent-portal/children/${childId}/schedule-preference`);
+}
+
+/** Saves the details onto the EXISTING child (no second child record is created). */
+export async function saveChildSchedulePreference(
+  childId: string,
+  input: SaveChildSchedulePreferenceInput,
+): Promise<ApiChildSchedulePreference> {
+  return apiFetch<ApiChildSchedulePreference>(`/api/parent-portal/children/${childId}/schedule-preference`, {
+    method: "PUT",
+    body: JSON.stringify(input),
   });
 }
 
@@ -224,4 +335,25 @@ export async function reviewEnrollmentForm(
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export interface ApiResourcePlayback {
+  url: string;
+  mimeType: string | null;
+  expiresAtUtc: string;
+}
+
+/** A short-lived, view-only link to play a resource shared with this parent (e.g. a recording). */
+export async function getResourcePlayUrl(id: string): Promise<ApiResourcePlayback> {
+  return apiFetch<ApiResourcePlayback>(`/api/parent-portal/resources/${id}/play`);
+}
+
+/** Whether the Terms & Conditions still need accepting -- only before this parent's first payment. */
+export async function getTermsStatus(): Promise<{ required: boolean }> {
+  return apiFetch<{ required: boolean }>("/api/parent-portal/terms-status");
+}
+
+/** Records the parent's Terms & Conditions acceptance (asked once, at their first payment). */
+export async function acceptTerms(): Promise<void> {
+  await apiFetch<void>("/api/parent-portal/terms/accept", { method: "POST" });
 }

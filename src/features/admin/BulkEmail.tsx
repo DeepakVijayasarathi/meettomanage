@@ -13,10 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CHILDREN } from "@/data/children";
 import { BATCHES } from "@/data/batches";
 import { CHART_PALETTE } from "@/lib/roles";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listBatches } from "@/api/batches";
-import { getBulkEmailRecipientCount, sendBulkEmail } from "@/api/reports";
+import { getBulkEmailRecipientCount, sendBulkEmail, waitForBulkEmailDelivery } from "@/api/reports";
 
 type Scope = "all" | "batch";
 
@@ -38,6 +38,7 @@ export default function AdminBulkEmail() {
   const [sent, setSent] = useState(false);
   const [sentCount, setSentCount] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
+  const [sendProgress, setSendProgress] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   // The largest blast radius on the portal ("All Active Students") deserves a
   // confirm step before it fires, even though it's not a Tier-1 financial action.
@@ -80,16 +81,25 @@ export default function AdminBulkEmail() {
     setSending(true);
     setSendError(null);
     try {
+      const startedAt = Date.now();
       const result = await sendBulkEmail({ subject, body, batchId: scope === "batch" ? batchId : undefined });
+      setSendProgress(`0 of ${result.recipientCount}`);
+      // Delivery runs in the background on the server; keep the spinner up until it's done.
+      const outcome = await waitForBulkEmailDelivery(subject, startedAt, (done, total) => setSendProgress(`${done} of ${total}`));
       setSentCount(result.recipientCount);
       setSent(true);
-      toast({ variant: "success", title: "Email sent", description: `Delivered to ${result.recipientCount} recipient(s).` });
+      if (outcome && outcome.failed > 0) {
+        toast({ variant: "error", title: "Email sent with some failures", description: `Delivered to ${outcome.success} of ${result.recipientCount} recipient(s); ${outcome.failed} failed. See Bulk Email History.` });
+      } else {
+        toast({ variant: "success", title: "Email sent", description: `Delivered to ${result.recipientCount} recipient(s).` });
+      }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't send the email. Please try again.";
+      const message = userMessage(err, "Couldn't send the email. Please try again.");
       setSendError(message);
       toast({ variant: "error", title: "Couldn't send email", description: message });
     } finally {
       setSending(false);
+      setSendProgress(null);
     }
   }
 
@@ -161,12 +171,12 @@ export default function AdminBulkEmail() {
             )}
 
             <div className="grid gap-1.5">
-              <Label htmlFor="email-subject">Subject</Label>
+              <Label htmlFor="email-subject">Subject <span className="text-destructive">*</span></Label>
               <Input id="email-subject" placeholder="e.g. Upcoming holiday schedule" value={subject} onChange={(e) => setSubject(e.target.value)} />
             </div>
 
             <div className="grid gap-1.5">
-              <Label htmlFor="email-body">Message</Label>
+              <Label htmlFor="email-body">Message <span className="text-destructive">*</span></Label>
               <Textarea
                 id="email-body"
                 placeholder="Write your announcement here…"
@@ -189,7 +199,7 @@ export default function AdminBulkEmail() {
               </p>
               <Button disabled={!subject.trim() || !body.trim() || sending} onClick={() => setSendConfirmOpen(true)}>
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {sending ? "Sending…" : "Send"}
+                {sending ? `Sending${sendProgress ? ` ${sendProgress}` : ""}…` : "Send"}
               </Button>
             </div>
             {sendError && <p className="text-sm font-medium text-destructive">{sendError}</p>}

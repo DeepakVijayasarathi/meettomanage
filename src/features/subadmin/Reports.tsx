@@ -97,21 +97,28 @@ export default function SubAdminReports() {
   const usingApi = apiEnabled();
   const { hasPermission } = useSession();
   const reportDate = usingApi ? new Date().toISOString().slice(0, 10) : "2026-07-09";
+  // GET /api/batches requires CourseBatchManagement:View — a separate grant from
+  // ReportsAnalytics (this page's own gate below). A Sub Admin account whose module grants
+  // exclude CourseBatchManagement would otherwise 403 on this call before the page-level
+  // ReportsAnalytics check even has a chance to short-circuit it.
+  const canSeeBatches = !usingApi || hasPermission("CourseBatchManagement", "View");
 
   // Live roster from the batches API; the demo roster only renders without a backend.
   const { data: batchRows, error: batchRowsError, reload: reloadBatchRows } = useApiData<BatchRow[]>(
     () =>
-      listBatches().then((items) =>
-        items.map((b) => {
-          const mapped = toFrontendBatch(b);
-          return {
-            ...mapped,
-            courseName: mapped.courseName ?? "—",
-            teacherName: mapped.teacherName ?? "—",
-            occupancy: mapped.capacity > 0 ? Math.round((mapped.enrolled / mapped.capacity) * 100) : 0,
-          };
-        })
-      ),
+      !canSeeBatches
+        ? Promise.resolve([])
+        : listBatches().then((items) =>
+            items.map((b) => {
+              const mapped = toFrontendBatch(b);
+              return {
+                ...mapped,
+                courseName: mapped.courseName ?? "—",
+                teacherName: mapped.teacherName ?? "—",
+                occupancy: mapped.capacity > 0 ? Math.round((mapped.enrolled / mapped.capacity) * 100) : 0,
+              };
+            })
+          ),
     MOCK_BATCH_ROWS
   );
 

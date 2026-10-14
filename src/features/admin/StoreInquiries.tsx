@@ -8,7 +8,7 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listStoreInquiries, updateStoreInquiryStatus, type ApiStoreInquiry, type ApiStoreInquiryStatus } from "@/api/store";
 import { formatDate } from "@/lib/utils";
@@ -69,7 +69,7 @@ export default function AdminStoreInquiries() {
       await reload();
       toast({ variant: "success", title: "Inquiry updated", description: `Marked as ${status}.` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't update this inquiry.";
+      const message = userMessage(err, "Couldn't update this inquiry.");
       setActionError(message);
       toast({ variant: "error", title: "Couldn't update inquiry", description: message });
     } finally {
@@ -122,7 +122,7 @@ export default function AdminStoreInquiries() {
         key: "actions",
         header: "",
         render: (row) => (
-          <div onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" disabled={busyId === row.id}>

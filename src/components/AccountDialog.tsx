@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
-import { buildPersonalMeetingUrl, getMyAccount, getMyMeetingRoom, updateMyAccount } from "@/api/account";
+import { getMyAccount, getMyMeetingRoomShortLink, updateMyAccount } from "@/api/account";
+import { changePin } from "@/api/auth";
 import { getCalendarFeedUrl } from "@/api/sessions";
+import { displayEmail } from "@/lib/parentLogin";
 
 const TIMEZONES = ["Asia/Kolkata", "Asia/Dubai", "Europe/London", "America/New_York", "America/Los_Angeles", "Australia/Sydney"];
 
@@ -25,7 +27,7 @@ export function AccountDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialTab?: "profile" | "preferences";
+  initialTab?: "profile" | "preferences" | "pin";
 }) {
   const { userName, setUserName, setTimeZoneId: setSessionTimeZoneId } = useSession();
   const live = apiEnabled();
@@ -40,6 +42,34 @@ export function AccountDialog({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // Change PIN (client: the Admin account had no way to change its own PIN; available to everyone).
+  const [currentPin, setCurrentPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [pinBusy, setPinBusy] = useState(false);
+  const [pinMessage, setPinMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const pinValid = /^\d{4}$/.test(currentPin) && /^\d{4}$/.test(newPin) && newPin === confirmPin;
+
+  async function submitPinChange() {
+    if (!pinValid || pinBusy) return;
+    if (!live) {
+      setPinMessage({ ok: true, text: "Demo mode — PIN not changed." });
+      return;
+    }
+    setPinBusy(true);
+    setPinMessage(null);
+    try {
+      await changePin(currentPin, newPin);
+      setCurrentPin("");
+      setNewPin("");
+      setConfirmPin("");
+      setPinMessage({ ok: true, text: "Your PIN has been changed. Use the new PIN next time you sign in." });
+    } catch (err) {
+      setPinMessage({ ok: false, text: userMessage(err, "Couldn't change your PIN.") });
+    } finally {
+      setPinBusy(false);
+    }
+  }
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -64,7 +94,7 @@ export function AccountDialog({
       .then((a) => {
         setFirstName(a.firstName);
         setLastName(a.lastName);
-        setEmail(a.email);
+        setEmail(displayEmail(a.email));
         setRole(a.role);
         setPhone(a.phone ?? "");
         setTimeZoneId(a.timeZoneId || "Asia/Kolkata");
@@ -99,7 +129,7 @@ export function AccountDialog({
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save your changes.");
+      setError(userMessage(e, "Couldn't save your changes."));
     } finally {
       setSaving(false);
     }
@@ -107,7 +137,9 @@ export function AccountDialog({
 
   async function copy(kind: "meeting" | "calendar") {
     try {
-      const url = kind === "meeting" ? buildPersonalMeetingUrl(await getMyMeetingRoom()) : await getCalendarFeedUrl();
+      // The short /m/<slug> redirect, not the raw long Jitsi URL (a full signed JWT in its
+      // fragment) -- that reads as broken/suspicious pasted into WhatsApp or email.
+      const url = kind === "meeting" ? (await getMyMeetingRoomShortLink()).url : await getCalendarFeedUrl();
       await navigator.clipboard.writeText(url);
       setCopied(kind);
       setTimeout(() => setCopied(null), 2500);
@@ -124,10 +156,11 @@ export function AccountDialog({
           <DialogDescription>Manage your profile details and preferences.</DialogDescription>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "profile" | "preferences")}>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "profile" | "preferences" | "pin")}>
           <TabsList className="w-full">
             <TabsTrigger value="profile" className="flex-1">Profile</TabsTrigger>
             <TabsTrigger value="preferences" className="flex-1">Preferences</TabsTrigger>
+            <TabsTrigger value="pin" className="flex-1">Change PIN</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="mt-4 flex flex-col gap-4">
@@ -184,6 +217,39 @@ export function AccountDialog({
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="pin" className="mt-4 flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">Enter your current 4-digit PIN, then choose a new one.</p>
+            {(
+              [
+                ["acc-current-pin", "Current PIN", currentPin, setCurrentPin],
+                ["acc-new-pin", "New PIN", newPin, setNewPin],
+                ["acc-confirm-pin", "Confirm new PIN", confirmPin, setConfirmPin],
+              ] as const
+            ).map(([id, label, value, set]) => (
+              <div key={id} className="grid gap-1.5">
+                <Label htmlFor={id}>{label}</Label>
+                <Input
+                  id={id}
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete={id === "acc-current-pin" ? "current-password" : "new-password"}
+                  maxLength={4}
+                  value={value}
+                  onChange={(e) => set(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                />
+              </div>
+            ))}
+            {newPin.length === 4 && confirmPin.length === 4 && newPin !== confirmPin && (
+              <p className="text-xs font-medium text-destructive">The new PINs don't match.</p>
+            )}
+            {pinMessage && (
+              <p className={pinMessage.ok ? "text-sm font-medium text-success" : "text-sm font-medium text-destructive"}>{pinMessage.text}</p>
+            )}
+            <Button onClick={submitPinChange} disabled={!pinValid || pinBusy} className="self-start">
+              {pinBusy ? "Changing…" : "Change PIN"}
+            </Button>
+          </TabsContent>
         </Tabs>
 
         {error && <p className="text-sm font-medium text-destructive">{error}</p>}
@@ -192,9 +258,11 @@ export function AccountDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
+          {tab !== "pin" && (
           <Button onClick={save} disabled={saving || loading}>
             {saving ? "Saving…" : saved ? "Saved!" : "Save changes"}
           </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { getUserTimeZoneAbbreviation } from "@/lib/datetime";
+import { sessionBelongsToChild } from "@/lib/sessionForChild";
 import { Link } from "react-router-dom";
 import { AlertTriangle, CalendarDays, ListChecks, PlayCircle, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -6,9 +8,12 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { CalendarSyncButton } from "@/components/CalendarSyncButton";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { CalendarBoard } from "@/components/CalendarBoard";
-import { SessionStatusBadge } from "@/components/StatusBadge";
+import { SessionStatusBadge, sessionStatusLabel } from "@/components/StatusBadge";
+import { parseCancellation } from "@/lib/cancelledBy";
 import { EmptyState } from "@/components/EmptyState";
+import { ParentCancelClassButton } from "@/components/ParentCancelClassButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -20,19 +25,14 @@ import { getBatchById } from "@/data/batches";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { toFrontendSession } from "@/api/sessions";
-import { getParentSchedule } from "@/api/parentPortal";
-import { cn, formatDate } from "@/lib/utils";
+import { listHolidays, type ApiHoliday } from "@/api/academicOps";
+import { holidaysToCalendarEvents } from "@/lib/calendarEvents";
+import { defaultParentScheduleWindow, getParentSchedule } from "@/api/parentPortal";
+import { cn, formatDate, formatTimeLabel } from "@/lib/utils";
 import type { ClassSession } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart, recordingExpiryLabel } from "./utils";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function formatTimeLabel(time: string) {
-  const [h, m] = time.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 /**
  * API mode has no separate "batch" entity on the client — but the recurring pattern
@@ -53,7 +53,7 @@ function recurringPatternLabel(sessions: ClassSession[]): string | undefined {
   }
   const mostCommonTime = [...timeCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
   const dayLabels = [...weekdays].sort((a, b) => a - b).map((d) => WEEKDAY_LABELS[d]);
-  return `${dayLabels.join(", ")} · ${formatTimeLabel(mostCommonTime)}`;
+  return `${dayLabels.join(", ")} · ${formatTimeLabel(mostCommonTime)} ${getUserTimeZoneAbbreviation()}`;
 }
 
 export default function ParentSchedule() {
@@ -61,37 +61,47 @@ export default function ParentSchedule() {
   const usingApi = apiEnabled();
   const mockChild = getChildById(activeChildId);
   const sessionChild = sessionChildren.find((c) => c.id === activeChildId) ?? sessionChildren[0];
-  // Normalized active child (real in API mode, mock otherwise) — just id + name.
-  const child = usingApi
-    ? sessionChild
-      ? { id: sessionChild.id, name: sessionChild.name }
-      : undefined
-    : mockChild
-      ? { id: mockChild.id, name: mockChild.name }
-      : undefined;
+  // Normalized active child (real in API mode, mock otherwise) — just id + name. Memoized
+  // so its identity stays stable across renders when the underlying id/name haven't
+  // changed, since it's used as a dependency of the `sessions` useMemo below.
+  const child = useMemo(
+    () =>
+      usingApi
+        ? sessionChild
+          ? { id: sessionChild.id, name: sessionChild.name }
+          : undefined
+        : mockChild
+          ? { id: mockChild.id, name: mockChild.name }
+          : undefined,
+    [usingApi, sessionChild, mockChild]
+  );
   const [selected, setSelected] = useState<ClassSession | null>(null);
 
-  const { data: apiSessions, error: sessionsError, reload: reloadSessions } = useApiData<ClassSession[]>(
+  const { data: apiSessions, loading: sessionsLoading, error: sessionsError, reload: reloadSessions } = useApiData<ClassSession[]>(
     () => {
-      const from = new Date(Date.now() - 60 * 86400_000).toISOString();
-      const to = new Date(Date.now() + 60 * 86400_000).toISOString();
+      const [from, to] = defaultParentScheduleWindow();
       return getParentSchedule(from, to).then((items) => items.map(toFrontendSession));
     },
     []
   );
+  // Holiday dates for the calendar, so a holiday shows as a greyed "Holiday" day even when no class was due.
+  const { data: holidays } = useApiData<ApiHoliday[]>(() => listHolidays(), [], undefined, { cacheKey: "holidays" });
   const sessions = useMemo(() => {
     if (!usingApi) return mockChild ? getSessionsForChild(mockChild.id) : [];
     if (!child) return [];
     // Demo sessions aren't tied to a specific enrolled child yet (childIds is empty for
     // them) and stay visible regardless of which child is selected; regular batch
     // sessions are scoped to whichever of the parent's children are in that batch.
-    return apiSessions.filter((s) => s.childIds.length === 0 || s.childIds.includes(child.id));
-  }, [usingApi, apiSessions, mockChild, child]);
+    // Demos: only under the child named on the booking (sessionBelongsToChild).
+    return apiSessions.filter((s) => sessionBelongsToChild(s, child.id, sessionChildren));
+  }, [usingApi, apiSessions, mockChild, child, sessionChildren]);
 
   const upcoming = useMemo(
     () =>
       sessions
-        .filter((s) => ["scheduled", "demo", "rescheduled"].includes(s.status))
+        // "rescheduled" is the old, superseded record left behind by a reschedule — the
+        // new session (status "scheduled") is the one that should actually show as upcoming.
+        .filter((s) => ["scheduled", "demo"].includes(s.status))
         // A session's status doesn't flip to "completed" the instant it ends — without this,
         // one that already ran earlier today (still "scheduled") outranks the real next class
         // in this ascending sort, since it's chronologically first. Matches the parent
@@ -101,8 +111,13 @@ export default function ParentSchedule() {
     [sessions]
   );
 
+  const calendarEvents = useMemo(
+    () => (usingApi ? [...sessions, ...holidaysToCalendarEvents(holidays)] : sessions),
+    [usingApi, sessions, holidays]
+  );
+
   const past = useMemo(
-    () => sessions.filter((s) => ["completed", "cancelled", "noshow"].includes(s.status)).sort(compareSessionDesc),
+    () => sessions.filter((s) => ["completed", "cancelled", "noshow", "holiday"].includes(s.status)).sort(compareSessionDesc),
     [sessions]
   );
 
@@ -165,12 +180,28 @@ export default function ParentSchedule() {
               <TabsTrigger value="calendar">Calendar</TabsTrigger>
             </TabsList>
             <TabsContent value="upcoming">
-              {upcoming.length === 0 ? (
-                <EmptyState icon={ListChecks} title="No upcoming sessions" description="New classes will appear here once scheduled." />
+              {usingApi && sessionsLoading ? (
+                <div className="flex flex-col gap-3">
+                  {[0, 1, 2].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : upcoming.length === 0 ? (
+                <EmptyState
+                  icon={ListChecks}
+                  title="No upcoming sessions"
+                  description={
+                    !usingApi
+                      ? "New classes will appear here once scheduled."
+                      : sessions.length === 0
+                        ? `${child?.name ?? "Your child"}'s class timetable hasn't been set up yet. The academy team adds it once the batch is ready, and you'll be notified here as soon as classes are scheduled. If you're expecting classes to have started, please contact your coordinator.`
+                        : "All scheduled classes so far are done. If the course isn't finished, the next classes will appear here as soon as they're scheduled — or contact your coordinator to check."
+                  }
+                />
               ) : (
                 <div className="flex flex-col gap-3">
                   {upcoming.map((s) => (
-                    <ScheduleRow key={s.id} session={s} />
+                    <ScheduleRow key={s.id} session={s} onCancelled={reloadSessions} />
                   ))}
                 </div>
               )}
@@ -178,7 +209,7 @@ export default function ParentSchedule() {
             <TabsContent value="calendar">
               <Card>
                 <CardContent className="pt-5">
-                  <CalendarBoard sessions={sessions} onSessionClick={setSelected} />
+                  <CalendarBoard sessions={calendarEvents} onSessionClick={(s) => !s.id.startsWith("holiday-") && setSelected(s)} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -190,7 +221,9 @@ export default function ParentSchedule() {
               <CardDescription>Attendance history and recording availability</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              {past.length === 0 ? (
+              {usingApi && sessionsLoading ? (
+                [0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
+              ) : past.length === 0 ? (
                 <EmptyState icon={CalendarDays} title="No past sessions yet" />
               ) : (
                 past.map((s) => <PastRow key={s.id} session={s} />)
@@ -207,11 +240,21 @@ export default function ParentSchedule() {
               <DialogHeader>
                 <DialogTitle>{selected.title}</DialogTitle>
                 <DialogDescription>
-                  {formatDate(selected.date, "long")} · {selected.startTime} · {selected.teacherName}
+                  {formatDate(selected.date, "long")} · {formatTimeLabel(selected.startTime)} {getUserTimeZoneAbbreviation()} · {selected.teacherName}
                 </DialogDescription>
               </DialogHeader>
+              {selected.status === "holiday" && (
+                <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                  This day is a holiday, so there is no class — it isn't a cancellation. Your regular schedule continues on the next scheduled day.
+                </p>
+              )}
+              {selected.status === "cancelled" && selected.cancellationReason && (
+                <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                  {parseCancellation(selected.cancellationReason).details || parseCancellation(selected.cancellationReason).who}
+                </p>
+              )}
               <div className="flex items-center justify-between">
-                <SessionStatusBadge status={selected.status} />
+                <SessionStatusBadge status={selected.status} label={sessionStatusLabel(selected)} />
                 {isJoinable(selected) ? (
                   <Button asChild size="sm">
                     <Link
@@ -225,6 +268,15 @@ export default function ParentSchedule() {
                   <span className="text-xs text-muted-foreground">{joinHint(selected)}</span>
                 )}
               </div>
+              <div className="flex justify-end">
+                <ParentCancelClassButton
+                  session={selected}
+                  onCancelled={() => {
+                    setSelected(null);
+                    reloadSessions();
+                  }}
+                />
+              </div>
             </>
           )}
         </DialogContent>
@@ -233,18 +285,19 @@ export default function ParentSchedule() {
   );
 }
 
-function ScheduleRow({ session }: { session: ClassSession }) {
+function ScheduleRow({ session, onCancelled }: { session: ClassSession; onCancelled?: () => void }) {
   const joinable = isJoinable(session);
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-foreground">{session.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatDate(session.date, "long")} · {session.startTime} · {session.teacherName}
+          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} {getUserTimeZoneAbbreviation()} · {session.teacherName}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <SessionStatusBadge status={session.status} />
+        <SessionStatusBadge status={session.status} label={sessionStatusLabel(session)} />
+        <ParentCancelClassButton session={session} onCancelled={onCancelled} />
         {joinable ? (
           <Button size="sm" asChild>
             <Link
@@ -281,14 +334,16 @@ function PastRow({ session }: { session: ClassSession }) {
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-foreground">{session.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatDate(session.date, "long")} · {session.startTime} · {session.teacherName}
+          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} {getUserTimeZoneAbbreviation()} · {session.teacherName}
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <SessionStatusBadge status={session.status} />
+        <SessionStatusBadge status={session.status} label={sessionStatusLabel(session)} />
         {recInfo ? (
+          // Same fix as parent/Dashboard.tsx's RecentRow: recordings live on their own
+          // dedicated page, not Resources (teacher-uploaded worksheets/books/videos).
           <Link
-            to="/parent/resources"
+            to="/parent/recordings"
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors",
               recInfo.expired ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary hover:bg-primary/15"

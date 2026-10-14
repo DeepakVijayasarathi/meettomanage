@@ -1,7 +1,11 @@
 import { apiFetch } from "@/lib/api";
 
-/** Backend PermissionModule enum names with display labels. */
-export const PERMISSION_MODULES = [
+/**
+ * Demo-mode-only fallback (no backend to fetch the real catalog from). In API mode the
+ * module list is entirely DB-driven — see api/permissionModules.ts's listPermissionModules()
+ * — since an Admin can define custom modules beyond these 12 built-ins from the UI.
+ */
+export const DEMO_PERMISSION_MODULES = [
   { value: "UserManagement", label: "User Management" },
   { value: "CourseBatchManagement", label: "Courses & Batches" },
   { value: "SessionCalendarManagement", label: "Sessions & Calendar" },
@@ -15,9 +19,18 @@ export const PERMISSION_MODULES = [
   { value: "Settings", label: "Settings" },
   { value: "SystemMonitoring", label: "Server Monitoring" },
   { value: "Marketing", label: "Marketing" },
+  { value: "ClassSessionLogs", label: "Class Session Logs" },
+  { value: "SupportTickets", label: "Support Tickets" },
 ] as const;
 
-export type PermissionModuleName = (typeof PERMISSION_MODULES)[number]["value"];
+/** A module's key — a built-in enum name or an Admin-defined custom module's Key. Not a
+ *  fixed union: the real catalog is fetched at runtime (see listPermissionModules()). */
+export type PermissionModuleName = string;
+
+export interface PermissionModuleOption {
+  value: PermissionModuleName;
+  label: string;
+}
 
 /** Backend PermissionAction enum names, in claim-string form ("Module:Action"). */
 export const PERMISSION_ACTIONS_LABELS = ["View", "Create", "Edit", "Delete", "Approve"] as const;
@@ -42,9 +55,9 @@ export async function setPermissions(userId: string, permissions: ApiPermission[
   });
 }
 
-/** All 11 modules, every action false — a fresh, no-grant starting point. */
-export function emptyPermissions(): ApiPermission[] {
-  return PERMISSION_MODULES.map((m) => ({
+/** Every module, every action false — a fresh, no-grant starting point. */
+export function emptyPermissions(modules: readonly PermissionModuleOption[]): ApiPermission[] {
+  return modules.map((m) => ({
     module: m.value,
     canView: false,
     canCreate: false,
@@ -55,8 +68,8 @@ export function emptyPermissions(): ApiPermission[] {
 }
 
 /** Aligns a role/user's sparse permission rows onto the full module list for editing. */
-export function expandPermissions(permissions: ApiPermission[]): ApiPermission[] {
-  return PERMISSION_MODULES.map((m) => {
+export function expandPermissions(permissions: ApiPermission[], modules: readonly PermissionModuleOption[]): ApiPermission[] {
+  return modules.map((m) => {
     const grant = permissions.find((p) => p.module === m.value);
     return grant ? { ...grant } : { module: m.value, canView: false, canCreate: false, canEdit: false, canDelete: false, canApprove: false };
   });

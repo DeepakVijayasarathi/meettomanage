@@ -1,24 +1,16 @@
 import { useMemo, useState } from "react";
+import { getUserTimeZoneAbbreviation } from "@/lib/datetime";
+import { sessionBelongsToChild } from "@/lib/sessionForChild";
 import { Link } from "react-router-dom";
-import {
-  AlertTriangle,
-  ArrowRight,
-  CalendarClock,
-  CheckCircle2,
-  Clock3,
-  PlayCircle,
-  Sparkles,
-  TrendingUp,
-  Video,
-  Wallet,
-  XCircle,
-} from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, Clock3, Loader2, PlayCircle, Sparkles, TrendingUp, Video, Wallet, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
-import { FeeStatusBadge, SessionStatusBadge } from "@/components/StatusBadge";
+import { ChildDetailsPrompt } from "@/components/ChildDetailsPrompt";
+import { FeeStatusBadge, SessionStatusBadge, sessionStatusLabel } from "@/components/StatusBadge";
 import { PayNowModal } from "@/components/PayNowModal";
 import { EmptyState } from "@/components/EmptyState";
+import { ParentCancelClassButton } from "@/components/ParentCancelClassButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +25,7 @@ import { useApiData } from "@/api/hooks";
 import { toFrontendSession } from "@/api/sessions";
 import { listCourseOptions } from "@/api/courses";
 import {
+  defaultParentScheduleWindow,
   getParentDashboard,
   getParentInvoices,
   getParentSchedule,
@@ -42,10 +35,11 @@ import {
   type ApiParentDashboard,
 } from "@/api/parentPortal";
 import { toFrontendInvoice } from "@/api/billing";
-import { cn, formatCurrency, formatDate, invoiceBalance } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, formatTimeLabel, invoiceBalance } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import type { Child, ClassSession, Invoice } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart } from "./utils";
+import { formatSchedulePreference, readSchedulePreference } from "@/lib/schedulePreference";
 
 const PARENT_ID = "p-1";
 
@@ -62,23 +56,22 @@ function apiChildToChild(summary: ApiParentChildSummary, enrolled: boolean, inde
     batchId: "",
     classesCompleted: summary.classesCompleted,
     classesRemaining: summary.classesRemaining,
-    attendancePercent: summary.attendancePercent,
+    attendancePercent: summary.attendancePercent ?? undefined,
     feeStatus: summary.feeStatus,
     enrollmentComplete: enrolled,
   };
 }
 
 export default function ParentDashboard() {
-  const { activeChildId, enrolledChildIds, userName } = useSession();
+  const { activeChildId, enrolledChildIds, userName, children: familyChildren } = useSession();
   const mockChild = getChildById(activeChildId);
   const [payOpen, setPayOpen] = useState(false);
 
   // Live overlay: the API's per-child summary and real schedule replace the mock numbers
   const { data: apiDash, loading: dashLoading, error: dashError } = useApiData<ApiParentDashboard | null>(() => getParentDashboard(), null, null);
-  const { data: apiSessions } = useApiData<ClassSession[]>(
+  const { data: apiSessions, reload: reloadSchedule } = useApiData<ClassSession[]>(
     () => {
-      const from = new Date(Date.now() - 60 * 86400_000).toISOString();
-      const to = new Date(Date.now() + 60 * 86400_000).toISOString();
+      const [from, to] = defaultParentScheduleWindow();
       return getParentSchedule(from, to).then((items) => items.map(toFrontendSession));
     },
     []
@@ -113,13 +106,16 @@ export default function ParentDashboard() {
     // Demo sessions aren't tied to a specific enrolled child yet (childIds is empty for
     // them) and stay visible regardless of which child is selected; regular batch
     // sessions are scoped to whichever of the parent's children are in that batch.
-    return apiSessions.filter((s) => s.childIds.length === 0 || s.childIds.includes(child.id));
-  }, [apiSessions, child]);
+    // Demos: only under the child named on the booking (sessionBelongsToChild).
+    return apiSessions.filter((s) => sessionBelongsToChild(s, child.id, familyChildren));
+  }, [apiSessions, child, familyChildren]);
 
   const upcoming = useMemo(
     () =>
       sessions
-        .filter((s) => ["scheduled", "demo", "rescheduled"].includes(s.status))
+        // "rescheduled" is the old, superseded record left behind by a reschedule — the
+        // new session (status "scheduled") is the one that should actually show as upcoming.
+        .filter((s) => ["scheduled", "demo"].includes(s.status))
         .filter((s) => minutesUntilStart(s) > -s.duration)
         .sort(compareSessionAsc)
         .slice(0, 4),
@@ -204,6 +200,8 @@ export default function ParentDashboard() {
 
       <MultiChildSwitcher />
 
+      {usingApi && isEnrolled && <ChildDetailsPrompt childId={child.id} childName={child.name} />}
+
       {awaitingForms.length > 0 && (
         <div className="mt-6">
           <PendingEnrollments forms={awaitingForms} courseOptions={courseOptions} />
@@ -230,9 +228,17 @@ export default function ParentDashboard() {
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   {upcoming.length === 0 ? (
-                    <EmptyState icon={CalendarClock} title="No upcoming classes" description="New sessions will appear here once scheduled." />
+                    <EmptyState
+                      icon={CalendarClock}
+                      title="No upcoming classes"
+                      description={
+                        apiEnabled() && sessions.length === 0
+                          ? "The class timetable hasn't been set up yet. You'll be notified as soon as classes are scheduled."
+                          : "New sessions will appear here once scheduled."
+                      }
+                    />
                   ) : (
-                    upcoming.map((s) => <UpcomingRow key={s.id} session={s} />)
+                    upcoming.map((s) => <UpcomingRow key={s.id} session={s} onCancelled={reloadSchedule} />)
                   )}
                 </CardContent>
               </Card>
@@ -269,10 +275,34 @@ export default function ParentDashboard() {
   );
 }
 
-function AttendanceCard({ percent, color }: { percent: number; color: string }) {
+function AttendanceCard({ percent, color }: { percent?: number; color: string }) {
+  // Undefined = no completed, attendance-marked sessions yet — distinct from a real 0%.
+  // Shown as a neutral "no data" state instead of guessing a tone/bar for a number that
+  // doesn't exist yet (see ParentPortalService.GetDashboardAsync's own doc comment).
+  if (percent === undefined) {
+    return (
+      <Card className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Attendance</p>
+            <p className="mt-1.5 text-2xl font-bold tracking-tight text-foreground">—</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">No classes completed yet</p>
+          </div>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <TrendingUp className="h-5 w-5" />
+          </span>
+        </div>
+      </Card>
+    );
+  }
   const tone = percent >= 90 ? "success" : percent >= 75 ? "warning" : "destructive";
   const toneClass =
     tone === "success" ? "bg-success/15 text-success" : tone === "warning" ? "bg-warning/20 text-warning-foreground" : "bg-destructive/10 text-destructive";
+  // The bar only gets to use the child's own avatarColor when attendance is healthy
+  // (matches the icon badge's "success" threshold) — once it dips into warning/destructive
+  // territory, the fill should carry the same semantic tone as the badge instead of a
+  // decorative color that hides the problem.
+  const barColor = tone === "success" ? color : tone === "warning" ? "hsl(var(--warning))" : "hsl(var(--destructive))";
   return (
     <Card className="p-5">
       <div className="flex items-start justify-between gap-3">
@@ -287,7 +317,7 @@ function AttendanceCard({ percent, color }: { percent: number; color: string }) 
       <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
           className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${Math.min(100, percent)}%`, backgroundColor: color }}
+          style={{ width: `${Math.min(100, percent)}%`, backgroundColor: barColor }}
         />
       </div>
     </Card>
@@ -361,7 +391,7 @@ function FeeCard({
             onClick={onPay}
             disabled={payDisabled}
           >
-            {invoiceLoading ? "Loading…" : invoice ? `Pay ${formatCurrency(invoiceBalance(invoice))}` : "Pay Now"}
+            {invoiceLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {invoiceLoading ? "Checking…" : invoice ? `Pay ${formatCurrency(invoiceBalance(invoice))}` : "Unavailable"}
           </Button>
           {invoiceMissing && (
             <p className="mt-2 text-[11px] font-medium text-muted-foreground">
@@ -376,18 +406,19 @@ function FeeCard({
   );
 }
 
-function UpcomingRow({ session }: { session: ClassSession }) {
+function UpcomingRow({ session, onCancelled }: { session: ClassSession; onCancelled?: () => void }) {
   const joinable = isJoinable(session);
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
-      <div className="min-w-0">
+    <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 w-full sm:w-auto">
         <p className="truncate text-sm font-semibold text-foreground">{session.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {formatDate(session.date, "long")} · {session.startTime} · {session.teacherName}
+          {formatDate(session.date, "long")} · {formatTimeLabel(session.startTime)} {getUserTimeZoneAbbreviation()} · {session.teacherName}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <SessionStatusBadge status={session.status} />
+      <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+        <SessionStatusBadge status={session.status} label={sessionStatusLabel(session)} />
+        <ParentCancelClassButton session={session} onCancelled={onCancelled} />
         {joinable ? (
           <Button size="sm" asChild>
             <Link
@@ -436,7 +467,13 @@ function RecentRow({ session }: { session: ClassSession }) {
           {formatDate(session.date, "long")} · {session.teacherName}
         </p>
         {session.recordingAvailable && (
-          <Link to="/parent/resources" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+          // Class recordings live on their own dedicated page (Resources is for
+          // teacher-uploaded worksheets/books/videos, a separate thing — Resources.tsx's own
+          // description points here too). This used to send a parent who clicked straight from
+          // the dashboard to Resources instead, which never has recordings on it — reading
+          // "No reading books yet" there, a parent had every reason to conclude the recording
+          // didn't exist at all rather than that this link just went to the wrong page.
+          <Link to="/parent/recordings" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
             <PlayCircle className="h-3 w-3" /> Recording available
           </Link>
         )}
@@ -467,7 +504,7 @@ function PendingEnrollments({
         const childName = text("childName") === "—" ? "(name pending)" : text("childName");
         const rejected = form.status === "Rejected";
         const courseName = courseOptions.find((c) => c.id === answers.courseInterest)?.name ?? "—";
-        const days = Array.isArray(answers.preferredDays) && answers.preferredDays.length > 0 ? (answers.preferredDays as string[]).join(", ") : "—";
+        const schedulePreference = formatSchedulePreference(readSchedulePreference(answers));
 
         return (
           <Card key={form.id} className={cn("p-5", rejected ? "border-destructive/40 bg-destructive/5" : "border-warning/40 bg-warning/5")}>
@@ -496,18 +533,20 @@ function PendingEnrollments({
               <PendingValue label="Grade" value={text("grade")} />
               <PendingValue label="School" value={text("schoolName")} />
               <PendingValue label="Course" value={courseName} />
-              <PendingValue label="Preferred days" value={days} />
-              <PendingValue label="Preferred time" value={text("preferredTime")} />
+              <PendingValue label="Preferred schedule" value={schedulePreference} />
+              <PendingValue label="Start date" value={text("startDate") === "—" ? "—" : formatDate(text("startDate"))} />
             </div>
 
             <p className="mt-4 text-xs text-muted-foreground">
               {rejected
                 ? "The centre asked for corrections — please review and resubmit the enrollment form."
-                : "The centre is reviewing this enrollment. Classes, schedule and billing unlock automatically once it's approved."}
+                : form.childId
+                  ? "Thank you! The team will set up the class schedule using these preferences."
+                  : "The centre is reviewing this enrollment. Classes, schedule and billing unlock automatically once it's approved."}
             </p>
             {rejected && (
               <Button size="sm" asChild className="mt-3">
-                <Link to="/parent/enrollment">
+                <Link to={form.childId ? `/parent/enrollment?childId=${form.childId}` : "/parent/enrollment"}>
                   Edit &amp; resubmit <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </Button>

@@ -13,12 +13,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TEACHERS } from "@/data/users";
 import { SESSIONS } from "@/data/sessions";
 import { LEAVE_REQUESTS } from "@/data/leaves";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listHolidays, listLeave, reviewLeave, type ApiLeaveRequest } from "@/api/academicOps";
 import { listTeacherOptions } from "@/api/batches";
 import { CHART_PALETTE } from "@/lib/roles";
-import { cn, formatDate, getInitials } from "@/lib/utils";
+import { cn, formatDate, formatDateRange, getInitials } from "@/lib/utils";
 import type { LeaveRequest } from "@/types";
 
 function toFrontendLeave(leave: ApiLeaveRequest): LeaveRequest {
@@ -35,7 +36,28 @@ function toFrontendLeave(leave: ApiLeaveRequest): LeaveRequest {
     reason: leave.reason,
     hoursBeforeSession: hoursBefore,
     status: leave.status.toLowerCase() as LeaveRequest["status"],
+    // Kept alongside `date` (only ever the start) — the whole point of this screen is a
+    // day-by-day availability grid, and a multi-day leave has to mark every one of its
+    // days, not just the first, for that grid to mean anything.
+    startAtUtc: leave.startAtUtc,
+    endAtUtc: leave.endAtUtc,
   };
+}
+
+/** row.date is only ever the leave's *start* — this is the real span, when it's known. */
+function leaveDateLabel(row: LeaveRequest): string {
+  return row.startAtUtc && row.endAtUtc ? formatDateRange(row.startAtUtc, row.endAtUtc) : formatDate(row.date, "long");
+}
+
+/** Whether `dateKey` (a local "yyyy-MM-dd") falls anywhere within the leave's own span —
+ *  inclusive of its last day, matching how "1 Sep – 30 Sep" reads to a person. Exact
+ *  equality against `date` (the start only) used to mark just the first day of a multi-day
+ *  leave as covered, leaving the rest of a week- or month-long leave showing "Available". */
+function leaveCoversDate(leave: LeaveRequest, dateKey: string): boolean {
+  if (leave.startAtUtc && leave.endAtUtc) {
+    return dateKey >= leave.startAtUtc.slice(0, 10) && dateKey <= leave.endAtUtc.slice(0, 10);
+  }
+  return leave.date === dateKey;
 }
 
 // Deterministic reference clock for the mock universe; API mode uses the real clock.
@@ -47,6 +69,7 @@ const LEAVE_STATUS_STYLE: Record<LeaveRequest["status"], string> = {
   approved: "bg-success/15 text-success",
   rejected: "bg-destructive/10 text-destructive",
   blocked: "bg-destructive/15 text-destructive",
+  cancelled: "bg-muted text-muted-foreground",
 };
 
 const LEAVE_STATUS_LABEL: Record<LeaveRequest["status"], string> = {
@@ -54,6 +77,7 @@ const LEAVE_STATUS_LABEL: Record<LeaveRequest["status"], string> = {
   approved: "Approved",
   rejected: "Rejected",
   blocked: "Blocked (Late Request)",
+  cancelled: "Cancelled by teacher",
 };
 
 function LeaveStatusPill({ status }: { status: LeaveRequest["status"] }) {
@@ -81,15 +105,22 @@ const DAY_STATE_LABEL: Record<DayState, string> = {
 
 export default function CoordinatorAvailability() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
   const usingApi = apiEnabled();
+  // Reachable from any Sub Admin-type portal now (see App.tsx's shared page pool) --
+  // SessionCalendarManagement is guaranteed by the menu gate that got someone here, but
+  // LeaveManagement isn't, and GET /api/leave-requests requires it server-side.
+  const canSeeLeave = !usingApi || hasPermission("LeaveManagement", "View");
+  // PUT /api/leave-requests/{id}/review (Review) requires LeaveManagement:Approve server-side.
+  const canApproveLeave = !usingApi || hasPermission("LeaveManagement", "Approve");
   // Real clock in API mode; the mock universe stays pinned for reproducible demos.
   const [now] = useState(() => (usingApi ? new Date() : NOW));
   const today = format(now, "yyyy-MM-dd");
   const { data: apiLeaves, loading: leavesLoading, error: leavesError, reload } = useApiData<LeaveRequest[]>(
-    () => listLeave().then((items) => items.map(toFrontendLeave)),
+    () => (canSeeLeave ? listLeave().then((items) => items.map(toFrontendLeave)) : Promise.resolve([])),
     LEAVE_REQUESTS
   );
-  const { data: apiTeachers, loading: teachersLoading, error: teachersError } = useApiData(() => listTeacherOptions(), []);
+  const { data: apiTeachers, loading: teachersLoading, error: teachersError } = useApiData(() => listTeacherOptions(), [], undefined, { cacheKey: "teacherOptions" });
   const { data: apiHolidays, loading: holidaysLoading, error: holidaysError } = useApiData(() => listHolidays(), []);
   const kpiLoading = leavesLoading || teachersLoading || holidaysLoading;
   const loadError = leavesError || teachersError || holidaysError;
@@ -110,7 +141,7 @@ export default function CoordinatorAvailability() {
           });
         })
         .catch((err: unknown) => {
-          const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+          const message = userMessage(err, "Something went wrong. Please try again.");
           toast({ variant: "error", title: `Couldn't ${approve ? "approve" : "reject"} leave`, description: message });
           throw err;
         });
@@ -136,7 +167,11 @@ export default function CoordinatorAvailability() {
   const holidayDates = useMemo(() => new Set(apiHolidays.map((h) => h.date.slice(0, 10))), [apiHolidays]);
 
   const pendingCount = leaves.filter((l) => l.status === "pending").length;
-  const approvedUpcomingCount = leaves.filter((l) => l.status === "approved" && l.date >= today).length;
+  // l.date is only the start -- a currently-ongoing multi-day leave (started before today,
+  // still running) needs its *end* checked, or it undercounts as already-over.
+  const approvedUpcomingCount = leaves.filter(
+    (l) => l.status === "approved" && (l.endAtUtc ? l.endAtUtc.slice(0, 10) : l.date) >= today
+  ).length;
   const holidaysThisMonth = useMemo(
     () =>
       usingApi
@@ -146,11 +181,11 @@ export default function CoordinatorAvailability() {
   );
   const teachersOnLeaveToday = useMemo(() => {
     const ids = new Set<string>();
-    leaves.filter((l) => l.status === "approved" && l.date === today).forEach((l) => ids.add(l.teacherId));
+    leaves.filter((l) => l.status === "approved" && leaveCoversDate(l, today)).forEach((l) => ids.add(l.teacherId));
     if (!usingApi) SESSIONS.filter((s) => s.date === today && s.status === "leave").forEach((s) => ids.add(s.teacherId));
     return ids.size;
   }, [leaves, usingApi, today]);
-  const activeTeachersToday = activeTeachers.length - teachersOnLeaveToday;
+  const activeTeachersToday = Math.max(0, activeTeachers.length - teachersOnLeaveToday);
 
   const weekDays = useMemo(() => Array.from({ length: WEEK_LENGTH }, (_, i) => addDays(now, i)), [now]);
 
@@ -160,7 +195,7 @@ export default function CoordinatorAvailability() {
       : SESSIONS.some((s) => s.date === dateKey && s.status === "holiday");
     if (isHoliday) return "holiday";
     const isOnLeave =
-      leaves.some((l) => l.teacherId === teacherId && l.date === dateKey && l.status === "approved") ||
+      leaves.some((l) => l.teacherId === teacherId && l.status === "approved" && leaveCoversDate(l, dateKey)) ||
       (!usingApi && SESSIONS.some((s) => s.teacherId === teacherId && s.date === dateKey && s.status === "leave"));
     if (isOnLeave) return "leave";
     return "available";
@@ -182,6 +217,13 @@ export default function CoordinatorAvailability() {
           <button type="button" className="underline" onClick={() => reload()}>
             Retry
           </button>
+        </InlineAlert>
+      )}
+
+      {!canSeeLeave && (
+        <InlineAlert variant="info" className="mb-4">
+          Leave data isn&apos;t visible with this account&apos;s current permissions — the leave-related figures, approval
+          queue and leave overview below appear empty rather than reflecting real leave records.
         </InlineAlert>
       )}
 
@@ -212,7 +254,7 @@ export default function CoordinatorAvailability() {
           {/* Desktop: the full week-by-teacher grid. A 7-day-wide table has no honest
               mobile form, so narrow viewports get a genuinely different layout below
               rather than the same table squeezed into a horizontal-scroll strip. */}
-          <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
+          <div className="hidden overflow-x-auto rounded-xl border border-border lg:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -259,7 +301,7 @@ export default function CoordinatorAvailability() {
           </div>
 
           {/* Mobile: one card per teacher, day tiles wrap instead of scrolling sideways. */}
-          <div className="flex flex-col gap-3 md:hidden">
+          <div className="flex flex-col gap-3 lg:hidden">
             {activeTeachers.map((teacher) => (
               <div key={teacher.id} className="rounded-xl border border-border p-3">
                 <div className="mb-2.5 flex min-w-0 items-center gap-2.5">
@@ -324,19 +366,25 @@ export default function CoordinatorAvailability() {
                     <div>
                       <p className="text-sm font-semibold text-foreground">{leave.teacherName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {leave.session} · {formatDate(leave.date, "long")} · {leave.reason}
+                        {leave.session} · {leaveDateLabel(leave)} · {leave.reason}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">Requested {leave.hoursBeforeSession}h before the session</p>
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <LeaveStatusPill status={leave.status} />
-                    <Button variant="outline" size="sm" onClick={() => setApproveTarget(leave)}>
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Approve
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setRejectTarget(leave)}>
-                      <XCircle className="h-3.5 w-3.5" /> Reject
-                    </Button>
+                    {canApproveLeave ? (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => setApproveTarget(leave)}>
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setRejectTarget(leave)}>
+                          <XCircle className="h-3.5 w-3.5" /> Reject
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">You don&apos;t have permission to approve leave requests.</span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -350,7 +398,12 @@ export default function CoordinatorAvailability() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teacherRoster.map((teacher) => {
             const upcomingApproved = leaves
-              .filter((l) => l.teacherId === teacher.id && l.status === "approved" && l.date >= today)
+              .filter(
+                (l) =>
+                  l.teacherId === teacher.id &&
+                  l.status === "approved" &&
+                  (l.endAtUtc ? l.endAtUtc.slice(0, 10) : l.date) >= today
+              )
               .sort((a, b) => a.date.localeCompare(b.date));
             return (
               <Card key={teacher.id}>
@@ -378,7 +431,7 @@ export default function CoordinatorAvailability() {
                     <div className="flex flex-col gap-1.5">
                       {upcomingApproved.map((l) => (
                         <div key={l.id} className="flex items-center justify-between gap-2 rounded-lg bg-status-leave/10 px-3 py-2 text-xs">
-                          <span className="font-medium text-foreground">{formatDate(l.date, "long")}</span>
+                          <span className="font-medium text-foreground">{leaveDateLabel(l)}</span>
                           <span className="text-muted-foreground">{l.session}</span>
                         </div>
                       ))}
@@ -395,7 +448,7 @@ export default function CoordinatorAvailability() {
         open={!!approveTarget}
         onOpenChange={(open) => !open && setApproveTarget(null)}
         title="Approve this leave request?"
-        description={approveTarget ? `${approveTarget.teacherName}'s leave for "${approveTarget.session}" on ${formatDate(approveTarget.date, "long")} will be approved. Remember to update the calendar for that slot.` : undefined}
+        description={approveTarget ? `${approveTarget.teacherName}'s leave for "${approveTarget.session}" on ${leaveDateLabel(approveTarget)} will be approved. Remember to update the calendar for that slot.` : undefined}
         confirmLabel="Approve"
         onConfirm={() => {
           if (!approveTarget) return;
@@ -407,7 +460,7 @@ export default function CoordinatorAvailability() {
         open={!!rejectTarget}
         onOpenChange={(open) => !open && setRejectTarget(null)}
         title="Reject this leave request?"
-        description={rejectTarget ? `${rejectTarget.teacherName}'s leave request for "${rejectTarget.session}" on ${formatDate(rejectTarget.date, "long")} will be rejected. The session remains scheduled as-is.` : undefined}
+        description={rejectTarget ? `${rejectTarget.teacherName}'s leave request for "${rejectTarget.session}" on ${leaveDateLabel(rejectTarget)} will be rejected. The session remains scheduled as-is.` : undefined}
         confirmLabel="Reject"
         destructive
         onConfirm={() => {

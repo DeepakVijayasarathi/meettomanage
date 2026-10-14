@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { getUserTimeZone } from "@/lib/datetime";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -34,18 +35,83 @@ export function formatCurrencyAxisTick(value: number) {
   return `₹${label}k`;
 }
 
-export function formatDate(value: string | Date, pattern: "short" | "long" | "time" | "datetime" = "short") {
-  const date = typeof value === "string" ? new Date(value) : value;
+function formatDateWithZone(date: Date, pattern: "short" | "long" | "time" | "datetime", timeZone: string) {
   switch (pattern) {
     case "long":
-      return date.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+      return date.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone });
     case "time":
-      return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+      // hour12 explicit, not left to en-IN's default -- Intl's locale defaults are an
+      // implementation detail, not a guarantee; this is a platform-wide 12-hour convention.
+      return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true, timeZone });
     case "datetime":
-      return `${date.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}, ${date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}`;
+      return `${date.toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone })}, ${date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true, timeZone })}`;
     default:
-      return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+      return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone });
   }
+}
+
+/**
+ * `value` is either a plain "YYYY-MM-DD" calendar date (already resolved to the right day by
+ * whoever built it -- typically utcIsoToLocalDateTime/utcIsoToZonedDateTime, which convert a UTC
+ * instant into a *specific* timezone) or a real UTC instant (Date / full ISO string) still
+ * needing that conversion.
+ *
+ * Client-reported bug: a "YYYY-MM-DD" string has no timezone of its own left to apply, but this
+ * used to get re-parsed with `new Date(value)` (interpreted as UTC midnight) and rendered with no
+ * `timeZone` option, silently falling back to the *browser's* own ambient zone -- a third,
+ * uncontrolled timezone with no relation to the account's chosen one. For India-based accounts
+ * whose browser also happens to be set to IST this never shows up; for anyone further from UTC
+ * (reported: Canadian parents) it silently shifted the calendar day by one. Fixed by never letting
+ * a resolved calendar date pass through a timezone conversion again (rendered as a fixed UTC
+ * instant, so no zone can shift it), and by converting a genuine instant using the signed-in
+ * account's own timezone (getUserTimeZone(), same as utcIsoToLocalDateTime) instead of the
+ * browser's.
+ */
+export function formatDate(value: string | Date, pattern: "short" | "long" | "time" | "datetime" = "short") {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return formatDateWithZone(new Date(Date.UTC(year, month - 1, day)), pattern, "UTC");
+  }
+
+  const date = typeof value === "string" ? new Date(value) : value;
+  return formatDateWithZone(date, pattern, getUserTimeZone());
+}
+
+/**
+ * "HH:mm" (24-hour, e.g. ClassSession.startTime, or any other raw time-of-day string coming
+ * straight off the API) -> 12-hour display, e.g. "14:05" -> "2:05 PM". Session/leave/holiday
+ * times are stored and round-tripped through native <input type="time"> as 24-hour "HH:mm" —
+ * that representation must stay as-is for those inputs and for API payloads — but everywhere
+ * a time is only ever *read*, this is what renders it. Previously duplicated verbatim across
+ * six different feature files (formatDate's own "time"/"datetime" patterns were already
+ * 12-hour via en-IN's locale default, but raw `session.startTime` text skipped that path
+ * entirely) — this is the one copy every call site should import instead.
+ */
+export function formatTimeLabel(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return time;
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+/**
+ * "1 Sep 2026" for a single-day span, "1 Sep 2026 – 30 Sep 2026" for a multi-day one — the
+ * calendar-day comparison is on each date's own local rendering (`formatDate`'s "short"),
+ * not a raw millisecond diff, so a same-day leave that merely spans midnight in UTC still
+ * reads as one date rather than a misleading "day 1 – day 2" range.
+ *
+ * `endIso` is every caller's leave-request `endAtUtc`, which is stored as an *exclusive*
+ * boundary — midnight of the day AFTER the last day of leave (see Leave.tsx's own
+ * `addDays(toDate, 1)` on submit), so the overlap check against a session's start time
+ * works correctly right up through the last day. Displaying that raw timestamp showed every
+ * leave as ending one day later than the teacher actually requested; subtracting a day back
+ * off here converts it to the inclusive last day for display, matching what was submitted.
+ */
+export function formatDateRange(startIso: string, endIso: string): string {
+  const start = formatDate(startIso, "short");
+  const end = formatDate(new Date(new Date(endIso).getTime() - 86_400_000), "short");
+  return start === end ? start : `${start} – ${end}`;
 }
 
 /** Amount still owed on an invoice; partial payments reduce it (mock rows have no amountPaid). */
@@ -93,6 +159,14 @@ export function initials(name: string) {
 
 export function getInitials(name: string) {
   return initials(name);
+}
+
+// Same shape already used in parent/Enrollment.tsx's own local copy — shared here so every
+// email field validates consistently instead of each form re-deciding what "valid" means.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+export function isValidEmail(value: string): boolean {
+  return EMAIL_RE.test(value.trim());
 }
 
 /** Converts a #rrggbb hex color into an "H S% L%" triple for CSS var use. */
@@ -178,4 +252,14 @@ export function escapeCsvCell(value: string | number): string {
 export function toCsv(columns: string[], rows: (string | number)[][]): string {
   const lines = [columns.map(escapeCsvCell).join(","), ...rows.map((r) => r.map(escapeCsvCell).join(","))];
   return lines.join("\n");
+}
+
+/**
+ * Like setInterval (clear it with clearInterval) but skips ticks while the browser tab is hidden,
+ * so a background tab left open all day doesn't keep polling the API.
+ */
+export function setVisibleInterval(callback: () => void, ms: number): ReturnType<typeof setInterval> {
+  return setInterval(() => {
+    if (typeof document === "undefined" || document.visibilityState === "visible") callback();
+  }, ms);
 }

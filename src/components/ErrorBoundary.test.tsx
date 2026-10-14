@@ -34,10 +34,10 @@ describe("ErrorBoundary", () => {
     expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
   });
 
-  it("auto-reloads once for a stale-chunk error, without showing the fallback UI", () => {
-    const reload = vi.fn();
+  it("auto-reloads once (to a fresh address) for a stale-chunk error, without showing the fallback UI", () => {
+    const replace = vi.fn();
     Object.defineProperty(window, "location", {
-      value: { ...window.location, reload },
+      value: { ...window.location, href: "https://thereadernest.in/parent/billing", replace },
       writable: true,
     });
 
@@ -51,15 +51,17 @@ describe("ErrorBoundary", () => {
     // runs, so the fallback legitimately renders for an instant here too — in a real
     // browser that's an imperceptible flash before reload() tears the page down for
     // navigation. The guarantee this test cares about is that the reload actually fires.
-    expect(reload).toHaveBeenCalledTimes(1);
+    // A fresh address rather than reload(), so a stored copy of the old page can't answer it.
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace.mock.calls[0][0]).toMatch(/^https:\/\/thereadernest\.in\/parent\/billing\?_fresh=\d+$/);
     expect(sessionStorage.getItem(RELOAD_GUARD_KEY)).toBe("1");
   });
 
   it("falls back to the normal error UI instead of reloading again if the guard is already set", () => {
     sessionStorage.setItem(RELOAD_GUARD_KEY, "1");
-    const reload = vi.fn();
+    const replace = vi.fn();
     Object.defineProperty(window, "location", {
-      value: { ...window.location, reload },
+      value: { ...window.location, href: "https://thereadernest.in/parent/billing", replace },
       writable: true,
     });
 
@@ -69,7 +71,7 @@ describe("ErrorBoundary", () => {
       </ErrorBoundary>
     );
 
-    expect(reload).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
   });
 });

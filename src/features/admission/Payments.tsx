@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { CheckCircle2, IndianRupee, Link2, ListChecks, Loader2, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
@@ -9,7 +9,8 @@ import { KpiCard } from "@/components/KpiCard";
 import { FeeStatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { CashConfirmationsPanel } from "@/components/CashConfirmationsPanel";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
+import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { listInvoiceRows, toFrontendInvoice, createPaymentLink } from "@/api/billing";
 import type { Invoice } from "@/types";
@@ -79,6 +80,9 @@ function fromInvoice(invoice: Invoice): PaymentRow {
 
 export default function AdmissionPayments() {
   const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // POST /invoices/{id}/payment-link (CreatePaymentLink) requires BillingFinance:Edit server-side.
+  const canGenerateLink = !apiEnabled() || hasPermission("BillingFinance", "Edit");
   // One page of the (forever-growing) invoice table; the status filter, totals and
   // DataTable's paging all run client-side over it. totalCount is the whole matching
   // set server-side, which is what the "Invoices" KPI should actually count.
@@ -113,9 +117,12 @@ export default function AdmissionPayments() {
     return { paid, outstanding, partial, total: invoiceData.totalCount };
   }, [rows, invoiceData.totalCount]);
 
-  async function handleGenerateLink(row: PaymentRow) {
+  // useCallback (deps: canGenerateLink, toast — the only reactive values it closes over;
+  // row is passed in at call time) keeps this stable so it can join the columns useMemo's
+  // deps below without forcing a recompute on every unrelated render.
+  const handleGenerateLink = useCallback(async (row: PaymentRow) => {
     setError(null);
-    if (!apiEnabled() || !row.apiId) {
+    if (!apiEnabled() || !row.apiId || !canGenerateLink) {
       // Demo mode: nothing real to generate — there's no gateway to call.
       return;
     }
@@ -127,13 +134,13 @@ export default function AdmissionPayments() {
       setTimeout(() => setCopiedId((id) => (id === row.id ? null : id)), 2500);
       toast({ variant: "success", title: "Payment link copied", description: "The link is on your clipboard." });
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Could not generate a payment link for this invoice.";
+      const message = userMessage(e, "Could not generate a payment link for this invoice.");
       setError(message);
       toast({ variant: "error", title: "Couldn't generate link", description: message });
     } finally {
       setLinkBusyId(null);
     }
-  }
+  }, [canGenerateLink, toast]);
 
   const columns: DataTableColumn<PaymentRow>[] = useMemo(
     () => [
@@ -204,25 +211,32 @@ export default function AdmissionPayments() {
         key: "actions",
         header: "Actions",
         render: (row) => (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={row.status === "paid" || row.status === "cancelled" || linkBusyId === row.id || (!apiEnabled())}
-            onClick={() => handleGenerateLink(row)}
-          >
-            {linkBusyId === row.id ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : copiedId === row.id ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+          <div className="flex items-center justify-end gap-1.5">
+            {canGenerateLink ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={row.status === "paid" || row.status === "cancelled" || linkBusyId === row.id || (!apiEnabled())}
+                onClick={() => handleGenerateLink(row)}
+                title="Generate a payment link and copy it to share with the parent"
+              >
+                {linkBusyId === row.id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : copiedId === row.id ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                ) : (
+                  <Link2 className="h-3.5 w-3.5" />
+                )}
+                {linkBusyId === row.id ? "Generating…" : copiedId === row.id ? "Link copied" : "Payment link"}
+              </Button>
             ) : (
-              <Link2 className="h-3.5 w-3.5" />
+              <span className="text-xs text-muted-foreground">—</span>
             )}
-            {linkBusyId === row.id ? "Generating…" : copiedId === row.id ? "Link copied" : "Generate & copy link"}
-          </Button>
+          </div>
         ),
       },
     ],
-    [linkBusyId, copiedId]
+    [linkBusyId, copiedId, canGenerateLink, handleGenerateLink]
   );
 
   return (
@@ -262,7 +276,7 @@ export default function AdmissionPayments() {
         </p>
       )}
 
-      <div className="mt-8">
+      <div className="mt-6">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Pending Cash Confirmations
         </h2>
@@ -272,7 +286,7 @@ export default function AdmissionPayments() {
         <CashConfirmationsPanel />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         {error && <p role="alert" className="mb-3 text-sm font-medium text-destructive">{error}</p>}
         <DataTable
           data={filtered}

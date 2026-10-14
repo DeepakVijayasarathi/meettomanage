@@ -24,8 +24,9 @@ import { TEACHERS } from "@/data/users";
 import { getPayoutsForTeacher } from "@/data/payouts";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { getDashboardSummary, getTeacherPerformance } from "@/api/reports";
-import type { AppUser, TeacherPayout } from "@/types";
+import { getDashboardSummary, getTeacherPerformance, type ApiTeacherPerformance } from "@/api/reports";
+import { formatPayoutPeriod } from "@/api/payouts";
+import type { AppUser, TeacherPayout, TeacherPayoutSummary } from "@/types";
 
 /** TEACHER_UTILIZATION keys teachers by an abbreviated "First L." form — map back to full names. */
 function abbreviate(name: string): string {
@@ -48,9 +49,18 @@ function latestPayoutFor(teacherId: string): TeacherPayout | undefined {
 interface TeacherRow {
   teacher: AppUser;
   utilization?: number;
-  payout?: TeacherPayout;
+  // Demo mode has the full mock TeacherPayout; API mode only ever gets the status+total
+  // summary (see TeacherPayoutSummary's own doc comment on why) — the Latest Payout column
+  // below only reads .month/.status/.finalAmount, present on both.
+  payout?: TeacherPayout | TeacherPayoutSummary;
   sessions?: number;
 }
+
+const PAYOUT_STATUS_MAP: Record<NonNullable<ApiTeacherPerformance["latestPayoutStatus"]>, TeacherPayoutSummary["status"]> = {
+  Pending: "pending",
+  Finalized: "finalized",
+  Paid: "paid",
+};
 
 const AVATAR_FALLBACKS = CHART_PALETTE;
 
@@ -81,8 +91,19 @@ export default function ManagementPerformance() {
             joinedOn: "",
             department: (t.department ?? undefined) as AppUser["department"],
           },
-          utilization: Math.round(t.studentAttendancePercent),
+          // null (not a vacuous 100%) when the teacher has no completed, attendance-marked
+          // sessions yet — undefined here already renders "No data" below rather than a
+          // misleading full bar for a teacher who hasn't delivered anything.
+          utilization: t.studentAttendancePercent === null ? undefined : Math.round(t.studentAttendancePercent),
           sessions: t.sessionsCompleted,
+          payout:
+            t.latestPayoutStatus && t.latestPayoutAmount !== null
+              ? {
+                  month: formatPayoutPeriod(t.latestPayoutPeriodYear!, t.latestPayoutPeriodMonth!),
+                  status: PAYOUT_STATUS_MAP[t.latestPayoutStatus],
+                  finalAmount: t.latestPayoutAmount,
+                }
+              : undefined,
         }))
       ),
     mockRows
@@ -161,10 +182,13 @@ export default function ManagementPerformance() {
     {
       key: "sessions",
       header: "Sessions (latest month)",
-      accessor: (r) => r.sessions ?? r.payout?.sessionsCompleted ?? -1,
+      // r.sessions is always set in API mode (straight from the report's own sessionsCompleted,
+      // independent of payout) — this fallback only ever fires in demo mode, where only the
+      // full mock TeacherPayout (never the API's status-only TeacherPayoutSummary) is set.
+      accessor: (r) => r.sessions ?? (r.payout as TeacherPayout | undefined)?.sessionsCompleted ?? -1,
       sortable: true,
       render: (r) =>
-        r.sessions ?? r.payout?.sessionsCompleted ?? <span className="text-xs text-muted-foreground">—</span>,
+        r.sessions ?? (r.payout as TeacherPayout | undefined)?.sessionsCompleted ?? <span className="text-xs text-muted-foreground">—</span>,
     },
     {
       key: "payout",
@@ -240,9 +264,18 @@ export default function ManagementPerformance() {
           error={usingApi ? rowsError : null}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={utilizationChart} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+            <BarChart data={utilizationChart} margin={{ left: -12, right: 12, top: 8, bottom: 24 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-              <XAxis dataKey="teacher" tickLine={false} axisLine={false} fontSize={11} interval={0} angle={-12} textAnchor="end" height={44} />
+              <XAxis
+                dataKey="teacher"
+                tickLine={false}
+                axisLine={false}
+                fontSize={10}
+                interval={utilizationChart.length > 12 ? Math.ceil(utilizationChart.length / 12) - 1 : 0}
+                angle={-90}
+                textAnchor="end"
+                height={70}
+              />
               <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={54} />
               <RTooltip formatter={(value: number) => [`${value}%`, "Utilization"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="utilization" radius={[8, 8, 0, 0]} maxBarSize={40}>
@@ -262,9 +295,18 @@ export default function ManagementPerformance() {
           error={usingApi ? summaryError : null}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={occupancyChart} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+            <BarChart data={occupancyChart} margin={{ left: -12, right: 12, top: 8, bottom: 24 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-              <XAxis dataKey="course" tickLine={false} axisLine={false} fontSize={12} />
+              <XAxis
+                dataKey="course"
+                tickLine={false}
+                axisLine={false}
+                fontSize={10}
+                interval={occupancyChart.length > 12 ? Math.ceil(occupancyChart.length / 12) - 1 : 0}
+                angle={-90}
+                textAnchor="end"
+                height={70}
+              />
               <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={54} />
               <RTooltip formatter={(value: number) => [`${value}%`, "Occupancy"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="occupancy" radius={[8, 8, 0, 0]} maxBarSize={44}>

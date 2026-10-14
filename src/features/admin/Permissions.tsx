@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, CheckCircle2, Mail, Plus, RotateCcw, Save, ShieldCheck, Trash2, UserCog, Wand2, XCircle } from "lucide-react";
+import { Check, CheckCircle2, Loader2, Mail, Plus, RotateCcw, Save, ShieldCheck, Trash2, UserCog, Wand2, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PermissionMatrix, PERMISSION_ACTIONS, type PermissionActionKey } from "@/components/PermissionMatrix";
 import { SUB_ADMINS } from "@/data/users";
 import { getInitials, cn, formatDate } from "@/lib/utils";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listUsers, toAppUser } from "@/api/users";
 import {
@@ -23,19 +24,24 @@ import {
   setPermissions,
   emptyPermissions,
   expandPermissions,
-  PERMISSION_MODULES,
+  DEMO_PERMISSION_MODULES,
   type ApiPermission,
   type PermissionModuleName,
+  type PermissionModuleOption,
 } from "@/api/permissions";
+import {
+  listPermissionModules,
+  createPermissionModule,
+  deletePermissionModule,
+  type ApiPermissionModule,
+} from "@/api/permissionModules";
 import { applyRoleToUser, createRole, deleteRole, listRoles, updateRole, type ApiRole } from "@/api/roles";
 import { listMenuItems, groupMenusByModule, type ApiMenuItem } from "@/api/menus";
 import { listAccessRequests, reviewAccessRequest, type ApiAccessRequest } from "@/api/accessRequests";
 
-const TOTAL_GRANTS = PERMISSION_MODULES.length * PERMISSION_ACTIONS.length;
-
 /** Plausible demo defaults: View mostly on, Delete/Approve sparse, varies per profile. */
-function defaultPermissions(seed: number): ApiPermission[] {
-  return PERMISSION_MODULES.map((mod, mi) => {
+function defaultPermissions(seed: number, modules: readonly PermissionModuleOption[]): ApiPermission[] {
+  return modules.map((mod, mi) => {
     const base = (mi + seed) % 3 !== 0;
     return {
       module: mod.value,
@@ -60,6 +66,14 @@ export default function AdminPermissions() {
   const [menusByModule, setMenusByModule] = useState<Partial<Record<PermissionModuleName, string[]>>>({});
   const { data: accessRequests, reload: reloadAccessRequests } = useApiData(() => listAccessRequests(), []);
   const pendingRequestCount = accessRequests.filter((r) => r.status === "Pending").length;
+  // The real, current module catalog — built-in modules plus anything an Admin has defined
+  // from the UI. Fetched once here (not per-tab) so every place a matrix is edited — a
+  // Sub Admin's own grants, a Role Preset, or an access-request grant — shows the identical
+  // set. Demo mode has no backend to fetch from, so it keeps the fixed 12-module fallback.
+  const { data: modules, reload: reloadModules } = useApiData<PermissionModuleOption[]>(
+    () => listPermissionModules().then((list) => list.map((m) => ({ value: m.key, label: m.label }))),
+    [...DEMO_PERMISSION_MODULES]
+  );
 
   useEffect(() => {
     if (!apiEnabled()) return;
@@ -97,13 +111,13 @@ export default function AdminPermissions() {
         </TabsList>
 
         <TabsContent value="subadmins">
-          <SubAdminMatrix menusByModule={menusByModule} />
+          <SubAdminMatrix menusByModule={menusByModule} modules={modules} />
         </TabsContent>
         <TabsContent value="roles">
-          <RolePresets menusByModule={menusByModule} />
+          <RolePresets menusByModule={menusByModule} modules={modules} reloadModules={reloadModules} />
         </TabsContent>
         <TabsContent value="access-requests">
-          <AccessRequestsPanel requests={accessRequests} reload={reloadAccessRequests} />
+          <AccessRequestsPanel requests={accessRequests} reload={reloadAccessRequests} menusByModule={menusByModule} modules={modules} />
         </TabsContent>
       </Tabs>
     </div>
@@ -112,9 +126,10 @@ export default function AdminPermissions() {
 
 interface MenusByModuleProp {
   menusByModule: Partial<Record<PermissionModuleName, string[]>>;
+  modules: readonly PermissionModuleOption[];
 }
 
-function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
+function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
   const { toast } = useToast();
   const { data: subAdmins, loading: loadingSubAdmins } = useApiData(
     () => listUsers({ role: "SubAdmin" }).then((r) => r.items.map(toAppUser)),
@@ -123,7 +138,7 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
 
   const [activeId, setActiveId] = useState(subAdmins[0]?.id ?? "");
   const [matrices, setMatrices] = useState<Record<string, ApiPermission[]>>(() =>
-    Object.fromEntries(subAdmins.map((s, i) => [s.id, defaultPermissions(i)]))
+    Object.fromEntries(subAdmins.map((s, i) => [s.id, defaultPermissions(i, modules)]))
   );
   const [savedTick, setSavedTick] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -143,12 +158,12 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
     setMatrices((prev) => {
       const next = { ...prev };
       subAdmins.forEach((s, i) => {
-        if (!next[s.id]) next[s.id] = defaultPermissions(i);
+        if (!next[s.id]) next[s.id] = defaultPermissions(i, modules);
       });
       return next;
     });
     setActiveId((prev) => (subAdmins.some((s) => s.id === prev) ? prev : subAdmins[0].id));
-  }, [subAdmins]);
+  }, [subAdmins, modules]);
 
   useEffect(() => {
     if (!apiEnabled() || !activeId) return;
@@ -161,19 +176,19 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
     getPermissions(activeId)
       .then((permissions) => {
         if (!cancelled) {
-          const expanded = expandPermissions(permissions);
+          const expanded = expandPermissions(permissions, modules);
           setMatrices((prev) => ({ ...prev, [activeId]: expanded }));
           setServerMatrices((prev) => ({ ...prev, [activeId]: expanded }));
         }
         setLoadError(null);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Could not load permissions.");
+        if (!cancelled) setLoadError(userMessage(err, "Could not load permissions."));
       });
     return () => {
       cancelled = true;
     };
-  }, [activeId, loadingSubAdmins, subAdmins]);
+  }, [activeId, loadingSubAdmins, subAdmins, modules]);
 
   useEffect(() => {
     if (!apiEnabled()) return;
@@ -185,6 +200,7 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
   }, []);
 
   const matrix = matrices[activeId];
+  const totalGrants = modules.length * PERMISSION_ACTIONS.length;
 
   const grantedCount = useMemo(() => {
     if (!matrix) return 0;
@@ -228,7 +244,7 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
       return;
     }
     const idx = subAdmins.findIndex((s) => s.id === activeId);
-    setMatrices((prev) => ({ ...prev, [activeId]: defaultPermissions(idx) }));
+    setMatrices((prev) => ({ ...prev, [activeId]: defaultPermissions(idx, modules) }));
   }
 
   async function applyPreset(roleName: string) {
@@ -238,16 +254,16 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
     if (apiEnabled()) {
       try {
         await applyRoleToUser(activeId, roleName);
-        setMatrices((prev) => ({ ...prev, [activeId]: expandPermissions(preset.permissions) }));
+        setMatrices((prev) => ({ ...prev, [activeId]: expandPermissions(preset.permissions, modules) }));
         setLoadError(null);
         toast({ variant: "success", title: "Preset applied", description: `"${roleName}" permissions applied.` });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Could not apply the preset.";
+        const message = userMessage(err, "Could not apply the preset.");
         setLoadError(message);
         toast({ variant: "error", title: "Couldn't apply preset", description: message });
       }
     } else {
-      setMatrices((prev) => ({ ...prev, [activeId]: expandPermissions(preset.permissions) }));
+      setMatrices((prev) => ({ ...prev, [activeId]: expandPermissions(preset.permissions, modules) }));
     }
   }
 
@@ -266,7 +282,7 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
       setTimeout(() => setSavedTick(null), 2200);
       toast({ variant: "success", title: "Permissions saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save permissions.";
+      const message = userMessage(err, "Could not save permissions.");
       setLoadError(message);
       toast({ variant: "error", title: "Couldn't save permissions", description: message });
     } finally {
@@ -278,7 +294,7 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
     return (
       <Card>
         <CardContent className="py-10 text-center text-sm text-muted-foreground">
-          {loadingSubAdmins ? "Loading relationship managers…" : "No relationship manager accounts yet. Create one from the Users page first."}
+          {loadingSubAdmins && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {loadingSubAdmins ? "Loading relationship managers…" : "No relationship manager accounts yet. Create one from the Users page first."}
         </CardContent>
       </Card>
     );
@@ -304,7 +320,7 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
       {subAdmins.map((s) => (
         <TabsContent key={s.id} value={s.id}>
           <Card>
-            <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+            <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
               <div className="flex items-center gap-3">
                 <span
                   className="flex h-10 w-10 items-center justify-center rounded-xl"
@@ -317,9 +333,9 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
                   <CardDescription>{s.email}</CardDescription>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                  {grantedCount} / {TOTAL_GRANTS} granted
+                  {grantedCount} / {totalGrants} granted
                 </span>
                 {presets.length > 0 && (
                   <Select value="" onValueChange={applyPreset}>
@@ -347,13 +363,14 @@ function SubAdminMatrix({ menusByModule }: MenusByModuleProp) {
                   Reset
                 </Button>
                 <Button size="sm" onClick={saveProfile} disabled={saving}>
-                  {savedTick ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedTick ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
                   {saving ? "Saving…" : savedTick ? "Saved" : "Save Changes"}
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
               <PermissionMatrix
+                modules={modules}
                 permissions={matrix}
                 menusByModule={menusByModule}
                 onToggle={toggle}
@@ -387,7 +404,7 @@ type RoleDraft = { name: string; displayName: string; description: string; defau
  * the "teacher"/"parent"/"admission" preset changes real access for every account
  * of that type immediately, the same way it does for a Sub Admin preset.
  */
-function RolePresets({ menusByModule }: MenusByModuleProp) {
+function RolePresets({ menusByModule, modules, reloadModules }: MenusByModuleProp & { reloadModules: () => void }) {
   const { toast } = useToast();
   const [roles, setRoles] = useState<ApiRole[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -397,6 +414,12 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
   const [error, setError] = useState<string | null>(null);
   const [savedTick, setSavedTick] = useState<number | null>(null);
   const [subadminRoutes, setSubadminRoutes] = useState<ApiMenuItem[]>([]);
+  // IT Admin's own dedicated portal (a distinct DefaultRoute from any /subadmin sub-page,
+  // same mechanism Coordinator/Management use) — just the index item, offered as a single
+  // portal-level choice rather than every one of its ~28 reused Admin screens.
+  const [itAdminHome, setItAdminHome] = useState<ApiMenuItem | null>(null);
+  // Admin & Management ("executive") portal home — same single portal-level choice as IT Admin.
+  const [executiveHome, setExecutiveHome] = useState<ApiMenuItem | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   async function reload(selectId?: string | null) {
@@ -413,14 +436,14 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
               displayName: role.displayName,
               description: role.description ?? "",
               defaultRoute: role.defaultRoute ?? "",
-              permissions: expandPermissions(role.permissions),
+              permissions: expandPermissions(role.permissions, modules),
             }
           : null
       );
       setIsNew(false);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load roles.");
+      setError(userMessage(err, "Could not load roles."));
     }
   }
 
@@ -431,6 +454,16 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
       .then(setSubadminRoutes)
       .catch(() => {
         /* default-route dropdown just stays empty */
+      });
+    listMenuItems("itadmin")
+      .then((items) => setItAdminHome(items.find((i) => i.path === "/itadmin") ?? null))
+      .catch(() => {
+        /* IT Admin option just stays out of the dropdown */
+      });
+    listMenuItems("executive")
+      .then((items) => setExecutiveHome(items.find((i) => i.path === "/executive") ?? null))
+      .catch(() => {
+        /* Admin & Management option just stays out of the dropdown */
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -445,14 +478,14 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
       displayName: role.displayName,
       description: role.description ?? "",
       defaultRoute: role.defaultRoute ?? "",
-      permissions: expandPermissions(role.permissions),
+      permissions: expandPermissions(role.permissions, modules),
     });
   }
 
   function startNew() {
     setSelectedId(null);
     setIsNew(true);
-    setDraft({ name: "", displayName: "", description: "", defaultRoute: "", permissions: emptyPermissions() });
+    setDraft({ name: "", displayName: "", description: "", defaultRoute: "", permissions: emptyPermissions(modules) });
   }
 
   function togglePermission(module: PermissionModuleName, action: PermissionActionKey) {
@@ -519,7 +552,7 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
       setTimeout(() => setSavedTick(null), 2200);
       toast({ variant: "success", title: isNew ? "Role created" : "Role saved" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not save the role.";
+      const message = userMessage(err, "Could not save the role.");
       setError(message);
       toast({ variant: "error", title: "Couldn't save role", description: message });
     } finally {
@@ -536,7 +569,7 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
       await reload(null);
       toast({ variant: "success", title: "Role deleted" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not delete the role.";
+      const message = userMessage(err, "Could not delete the role.");
       setError(message);
       toast({ variant: "error", title: "Couldn't delete role", description: message });
     } finally {
@@ -555,7 +588,9 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
   }
 
   return (
-    <Card>
+    <div className="flex flex-col gap-6">
+      <ModuleCatalogCard modules={modules} reloadModules={reloadModules} />
+      <Card>
       <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
         <div>
           <CardTitle>Role Presets</CardTitle>
@@ -637,6 +672,12 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none">Relationship Manager dashboard (default)</SelectItem>
+                    {itAdminHome && (
+                      <SelectItem value={itAdminHome.path}>IT Admin — Overall Dashboard (own portal)</SelectItem>
+                    )}
+                    {executiveHome && (
+                      <SelectItem value={executiveHome.path}>Admin &amp; Management — Overall Dashboard (own portal)</SelectItem>
+                    )}
                     {subadminRoutes.map((item) => (
                       <SelectItem key={item.id} value={item.path}>
                         {item.label}
@@ -653,6 +694,7 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
             </p>
 
             <PermissionMatrix
+              modules={modules}
               permissions={draft.permissions}
               menusByModule={menusByModule}
               onToggle={togglePermission}
@@ -673,7 +715,7 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
                 )}
               </div>
               <Button size="sm" onClick={save} disabled={busy || !draft.name || !draft.displayName}>
-                {savedTick ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : savedTick ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
                 {busy ? "Saving…" : savedTick ? "Saved" : isNew ? "Create Role" : "Save Role"}
               </Button>
             </div>
@@ -693,16 +735,150 @@ function RolePresets({ menusByModule }: MenusByModuleProp) {
         destructive
         onConfirm={remove}
       />
+      </Card>
+    </div>
+  );
+}
+
+/**
+ * Lets an Admin define a module beyond the 12 built-ins — usable anywhere a role/user
+ * matrix or a MenuItem's gate needs one, without any code change. Sits above the Role
+ * Presets editor since a freshly-created module needs to exist before it can be granted.
+ */
+function ModuleCatalogCard({
+  modules,
+  reloadModules,
+}: {
+  modules: readonly PermissionModuleOption[];
+  reloadModules: () => void;
+}) {
+  const { toast } = useToast();
+  const [catalog, setCatalog] = useState<ApiPermissionModule[]>([]);
+  const [key, setKey] = useState("");
+  const [label, setLabel] = useState("");
+  const [description, setDescription] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ApiPermissionModule | null>(null);
+
+  async function reload() {
+    try {
+      setCatalog(await listPermissionModules());
+      setError(null);
+    } catch (err) {
+      setError(userMessage(err, "Could not load permission modules."));
+    }
+  }
+
+  useEffect(() => {
+    void reload();
+  }, []);
+
+  async function handleCreate() {
+    setCreating(true);
+    setError(null);
+    try {
+      await createPermissionModule({ key: key.trim(), label: label.trim(), description: description.trim() || null });
+      setKey("");
+      setLabel("");
+      setDescription("");
+      await reload();
+      reloadModules();
+      toast({ variant: "success", title: "Module created", description: `"${label.trim()}" is now available to grant.` });
+    } catch (err) {
+      const message = userMessage(err, "Could not create the module.");
+      setError(message);
+      toast({ variant: "error", title: "Couldn't create module", description: message });
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    try {
+      await deletePermissionModule(deleteTarget.id);
+      await reload();
+      reloadModules();
+      toast({ variant: "success", title: "Module deleted" });
+    } catch (err) {
+      // Re-thrown so ConfirmDialog shows it inline and keeps the dialog open, matching
+      // this file's other destructive-action dialogs (e.g. RolePresets' own delete).
+      throw err instanceof Error ? err : new Error("Could not delete the module.");
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Permission Modules</CardTitle>
+        <CardDescription>
+          The full grantable catalog — {modules.length} module{modules.length === 1 ? "" : "s"} total. The 12 built-in ones
+          gate real screens and actions across the app; a custom one you add here can gate a menu item you create in
+          Settings → Menus, so a brand-new area of the app can have its own access control with no code change.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {error && <InlineAlert variant="warning" className="mb-3">{error}</InlineAlert>}
+        <div className="flex flex-wrap gap-2">
+          {catalog.map((m) => (
+            <span
+              key={m.id}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold",
+                m.isSystem ? "border-border text-muted-foreground" : "border-primary/40 bg-primary/5 text-primary"
+              )}
+            >
+              {m.label}
+              {m.isSystem && <span className="text-[10px] uppercase opacity-60">built-in</span>}
+              {!m.isSystem && (
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(m)}
+                  aria-label={`Delete ${m.label}`}
+                  className="rounded-full p-0.5 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 items-end gap-3 border-t border-border pt-4 sm:grid-cols-[1fr_1fr_1.5fr_auto]">
+          <div className="grid gap-1.5">
+            <Label htmlFor="module-key">Key</Label>
+            <Input id="module-key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="e.g. MarketingContent" className="font-mono text-sm" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="module-label">Label</Label>
+            <Input id="module-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Marketing Content" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="module-description">Description (optional)</Label>
+            <Input id="module-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What this module is for" />
+          </div>
+          <Button size="sm" onClick={handleCreate} disabled={creating || !key.trim() || !label.trim()}>
+            {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}{creating ? "Adding…" : "Add module"}
+          </Button>
+        </div>
+      </CardContent>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title={`Delete "${deleteTarget?.label}"?`}
+        description="This can't be undone. The server blocks the delete if any role, Sub Admin, or menu item still references this module."
+        confirmLabel="Delete Module"
+        destructive
+        onConfirm={handleDelete}
+      />
     </Card>
   );
 }
 
-const MODULE_LABEL_BY_VALUE: Partial<Record<PermissionModuleName, string>> = Object.fromEntries(
-  PERMISSION_MODULES.map((m) => [m.value, m.label])
-);
-
-function moduleLabels(modules: PermissionModuleName[]): string {
-  return modules.map((m) => MODULE_LABEL_BY_VALUE[m] ?? m).join(", ");
+function moduleLabels(moduleKeys: PermissionModuleName[], catalog: readonly PermissionModuleOption[]): string {
+  const labelByValue = Object.fromEntries(catalog.map((m) => [m.value, m.label]));
+  return moduleKeys.map((m) => labelByValue[m] ?? m).join(", ");
 }
 
 const ACCESS_REQUEST_STATUS_STYLE: Record<ApiAccessRequest["status"], string> = {
@@ -716,7 +892,17 @@ const ACCESS_REQUEST_STATUS_STYLE: Record<ApiAccessRequest["status"], string> = 
  * here only records the decision and notifies them — the actual module grant still happens
  * from the "Relationship Managers" tab, same as any other permission change.
  */
-function AccessRequestsPanel({ requests, reload }: { requests: ApiAccessRequest[]; reload: () => void }) {
+function AccessRequestsPanel({
+  requests,
+  reload,
+  menusByModule,
+  modules,
+}: {
+  requests: ApiAccessRequest[];
+  reload: () => void;
+  menusByModule: Partial<Record<PermissionModuleName, string[]>>;
+  modules: readonly PermissionModuleOption[];
+}) {
   const { toast } = useToast();
   const [approveTarget, setApproveTarget] = useState<ApiAccessRequest | null>(null);
   const [rejectTarget, setRejectTarget] = useState<ApiAccessRequest | null>(null);
@@ -757,7 +943,7 @@ function AccessRequestsPanel({ requests, reload }: { requests: ApiAccessRequest[
                   <div>
                     <p className="text-sm font-semibold text-foreground">{request.requestedByName}</p>
                     <p className="text-xs text-muted-foreground">{request.requestedByEmail}</p>
-                    <p className="mt-1 text-xs font-medium text-foreground">Wants: {moduleLabels(request.requestedModules)}</p>
+                    <p className="mt-1 text-xs font-medium text-foreground">Wants: {moduleLabels(request.requestedModules, modules)}</p>
                     <p className="mt-1 text-xs text-muted-foreground">Requested {formatDate(request.createdAtUtc.slice(0, 10), "long")}</p>
                   </div>
                 </div>
@@ -782,7 +968,7 @@ function AccessRequestsPanel({ requests, reload }: { requests: ApiAccessRequest[
                 <div key={request.id} className="flex flex-col gap-1 rounded-lg border border-border/60 px-3 py-2.5 text-xs sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <span className="font-medium text-foreground">{request.requestedByName}</span>
-                    <span className="text-muted-foreground"> wanted {moduleLabels(request.requestedModules)}</span>
+                    <span className="text-muted-foreground"> wanted {moduleLabels(request.requestedModules, modules)}</span>
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 font-semibold", ACCESS_REQUEST_STATUS_STYLE[request.status])}>
@@ -798,19 +984,14 @@ function AccessRequestsPanel({ requests, reload }: { requests: ApiAccessRequest[
         )}
       </CardContent>
 
-      <ConfirmDialog
-        open={!!approveTarget}
-        onOpenChange={(open) => !open && setApproveTarget(null)}
-        title="Approve this access request?"
-        description={
-          approveTarget
-            ? `${approveTarget.requestedByName} will be notified that access to ${moduleLabels(approveTarget.requestedModules)} was approved. This records the decision only — grant the modules from the Relationship Managers tab.`
-            : undefined
-        }
-        confirmLabel="Approve"
-        onConfirm={() => {
-          if (!approveTarget) return;
-          return decide(approveTarget, true);
+      <GrantAccessDialog
+        request={approveTarget}
+        menusByModule={menusByModule}
+        modules={modules}
+        onClose={() => setApproveTarget(null)}
+        onGranted={() => {
+          reload();
+          toast({ variant: "success", title: "Request approved", description: "The chosen menus and rights are now live for this account." });
         }}
       />
 
@@ -820,7 +1001,7 @@ function AccessRequestsPanel({ requests, reload }: { requests: ApiAccessRequest[
         title="Reject this access request?"
         description={
           rejectTarget
-            ? `${rejectTarget.requestedByName} will be notified that access to ${moduleLabels(rejectTarget.requestedModules)} was rejected.`
+            ? `${rejectTarget.requestedByName} will be notified that access to ${moduleLabels(rejectTarget.requestedModules, modules)} was rejected.`
             : undefined
         }
         confirmLabel="Reject"
@@ -831,5 +1012,159 @@ function AccessRequestsPanel({ requests, reload }: { requests: ApiAccessRequest[
         }}
       />
     </Card>
+  );
+}
+
+/**
+ * Approving an access request opens this instead of a plain confirm — the admin picks
+ * exactly which menus (by module) and which rights (View/Create/Edit/Delete/Approve) the
+ * requester gets, using the same matrix as the Relationship Managers tab. Starts from the
+ * requester's *current* grants (not a blank slate) with every requested module pre-checked
+ * for View, since PUT /api/users/{id}/permissions replaces the whole set — starting from
+ * anything less would silently revoke access this person already had.
+ */
+function GrantAccessDialog({
+  request,
+  menusByModule,
+  modules,
+  onClose,
+  onGranted,
+}: {
+  request: ApiAccessRequest | null;
+  menusByModule: Partial<Record<PermissionModuleName, string[]>>;
+  modules: readonly PermissionModuleOption[];
+  onClose: () => void;
+  onGranted: () => void;
+}) {
+  const [matrix, setMatrix] = useState<ApiPermission[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!request) {
+      setMatrix(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    setSaveError(null);
+    getPermissions(request.requestedByUserId)
+      .then((permissions) => {
+        if (cancelled) return;
+        const expanded = expandPermissions(permissions, modules);
+        for (const module of request.requestedModules) {
+          const grant = expanded.find((p) => p.module === module);
+          if (grant && !grant.canView) grant.canView = true;
+        }
+        setMatrix(expanded);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setLoadError(userMessage(err, "Could not load this account's current permissions."));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [request, modules]);
+
+  function updateMatrix(updater: (rows: ApiPermission[]) => ApiPermission[]) {
+    setMatrix((prev) => (prev ? updater(prev) : prev));
+  }
+
+  function toggle(module: PermissionModuleName, action: PermissionActionKey) {
+    updateMatrix((rows) => rows.map((p) => (p.module === module ? { ...p, [action]: !p[action] } : p)));
+  }
+
+  function toggleRow(module: PermissionModuleName) {
+    updateMatrix((rows) => {
+      const grant = rows.find((p) => p.module === module)!;
+      const allOn = PERMISSION_ACTIONS.every((a) => grant[a.key]);
+      return rows.map((p) => (p.module === module ? { ...p, ...Object.fromEntries(PERMISSION_ACTIONS.map((a) => [a.key, !allOn])) } : p));
+    });
+  }
+
+  function toggleColumn(action: PermissionActionKey) {
+    updateMatrix((rows) => {
+      const allOn = rows.every((p) => p[action]);
+      return rows.map((p) => ({ ...p, [action]: !allOn }));
+    });
+  }
+
+  function toggleAll() {
+    updateMatrix((rows) => {
+      const allOn = rows.every((p) => PERMISSION_ACTIONS.every((a) => p[a.key]));
+      return rows.map((p) => ({ ...p, ...Object.fromEntries(PERMISSION_ACTIONS.map((a) => [a.key, !allOn])) }));
+    });
+  }
+
+  async function grantAndApprove() {
+    if (!request || !matrix) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await setPermissions(request.requestedByUserId, toSparsePermissions(matrix));
+      await reviewAccessRequest(request.id, true);
+      onGranted();
+      onClose();
+    } catch (err) {
+      setSaveError(userMessage(err, "Could not grant access. Please try again."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!request} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-4xl">
+        {request && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Grant access to {request.requestedByName}</DialogTitle>
+              <DialogDescription>
+                Requested: {moduleLabels(request.requestedModules, modules)}. Pick exactly which menus and rights this account should have —
+                this replaces their entire permission set, so everything they already hold is shown below too.
+              </DialogDescription>
+            </DialogHeader>
+
+            {loading ? (
+              <div className="flex justify-center py-8 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : loadError ? (
+              <InlineAlert variant="warning">{loadError}</InlineAlert>
+            ) : matrix ? (
+              <div className="max-h-[60vh] overflow-y-auto">
+                <PermissionMatrix
+                  modules={modules}
+                  permissions={matrix}
+                  menusByModule={menusByModule}
+                  onToggle={toggle}
+                  onToggleRow={toggleRow}
+                  onToggleColumn={toggleColumn}
+                  onToggleAll={toggleAll}
+                />
+              </div>
+            ) : null}
+
+            {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={onClose} disabled={saving}>
+                Cancel
+              </Button>
+              <Button onClick={grantAndApprove} disabled={!matrix || loading || saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                {saving ? "Granting…" : "Grant & Approve"}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

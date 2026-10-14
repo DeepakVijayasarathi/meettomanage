@@ -1,5 +1,6 @@
-import { apiFetch, getAccessToken } from "@/lib/api";
+import { ApiError, apiFetch, getAccessToken, readProblemMessage } from "@/lib/api";
 import type { Resource } from "@/types";
+import { fileNameFor, isInlineViewable } from "@/lib/fileName";
 
 export type ApiResourceType = "ReadingBook" | "Worksheet" | "Other";
 
@@ -12,6 +13,7 @@ export interface ApiResource {
   courseId: string | null;
   batchId: string | null;
   batchName: string | null;
+  folderId: string | null;
   isDownloadable: boolean;
   description: string | null;
   createdAtUtc: string;
@@ -38,6 +40,8 @@ export function toFrontendResource(resource: ApiResource): Resource {
     // No per-resource category in the live API — batchName (below) is what's actually
     // real and displayed instead; courseCategory stays undefined here rather than a lie.
     batchId: resource.batchId ?? undefined,
+    courseId: resource.courseId ?? undefined,
+    folderId: resource.folderId ?? undefined,
     batchName: resource.batchName ?? undefined,
     uploadedOn: resource.createdAtUtc.slice(0, 10),
     downloadable: resource.isDownloadable,
@@ -46,6 +50,19 @@ export function toFrontendResource(resource: ApiResource): Resource {
     visibleToParents: undefined,
     sizeLabel: formatSize(resource.fileSizeBytes),
   };
+}
+
+/** Removes a file from Content and Resources (and every parent/batch grant on it). */
+export async function deleteResource(id: string): Promise<void> {
+  await apiFetch<void>(`/api/resources/${id}`, { method: "DELETE" });
+}
+
+/** Files a registered class recording into a Content and Resources folder by reference (no copy). */
+export async function addRecordingToResources(recordingId: string, folderId: string | null, title?: string): Promise<ApiResource> {
+  return apiFetch<ApiResource>("/api/resources/from-recording", {
+    method: "POST",
+    body: JSON.stringify({ recordingId, folderId, title: title?.trim() || null }),
+  });
 }
 
 export async function listResources(type?: ApiResourceType): Promise<ApiResource[]> {
@@ -76,6 +93,76 @@ export async function uploadMyResource(
   return apiFetch<ApiResource>("/api/resources/mine", { method: "POST", body: form });
 }
 
+/**
+ * Staff (Admin / Sub Admin / Admission with Content Access): opens a resource in a new browser tab so
+ * it can be looked at without being saved first. The tab is opened synchronously (a popup blocker
+ * only allows that inside the click) and filled once the file has been fetched. A PDF, image, video,
+ * audio or text file is shown in a page titled with the resource's own name — a bare blob URL would
+ * title the tab with a random id. Anything else (Word, PowerPoint, ...) is saved under its proper
+ * name instead, as is everything when the browser refused the new tab.
+ */
+export async function openResourceInNewTab(id: string, title: string): Promise<void> {
+  const tab = window.open("", "_blank");
+  try {
+    // Preferred: a short-lived direct link, so the browser streams the file itself instead of
+    // this page first downloading all of it (a big PDF left the new tab blank for minutes).
+    try {
+      const view = await apiFetch<{ url: string | null }>(`/api/resources/${id}/view-url`);
+      if (view.url && /^https?:\/\//i.test(view.url)) {
+        if (tab) tab.location.href = view.url;
+        else window.open(view.url, "_blank", "noopener");
+        return;
+      }
+    } catch {
+      // fall through to the download-and-show path below
+    }
+
+    const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+    const token = getAccessToken();
+    const response = await fetch(`${baseUrl}/api/resources/${id}/download`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
+
+    // A class recording filed into Resources by reference answers with its own https URL
+    // instead of file bytes — just point the tab at it.
+    if (response.headers.get("content-type")?.includes("application/json")) {
+      const body = (await response.clone().json().catch(() => null)) as { externalUrl?: string } | null;
+      if (body?.externalUrl && /^https?:\/\//i.test(body.externalUrl)) {
+        if (tab) tab.location.href = body.externalUrl;
+        else window.open(body.externalUrl, "_blank", "noopener");
+        return;
+      }
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    // Long enough for the new tab to load the blob before it is released.
+    window.setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+
+    if (tab && isInlineViewable(blob.type)) {
+      const doc = tab.document;
+      doc.title = title;
+      doc.body.style.margin = "0";
+      const frame = doc.createElement("iframe");
+      frame.src = url;
+      frame.title = title;
+      frame.style.cssText = "border:0;display:block;width:100vw;height:100vh";
+      doc.body.replaceChildren(frame);
+      return;
+    }
+
+    tab?.close();
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileNameFor(title, blob.type);
+    anchor.click();
+  } catch (err) {
+    tab?.close();
+    throw err;
+  }
+}
+
 /** Teacher portal: download a resource the teacher owns. */
 export async function downloadMyResource(id: string, fallbackName: string): Promise<void> {
   const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
@@ -83,13 +170,13 @@ export async function downloadMyResource(id: string, fallbackName: string): Prom
   const response = await fetch(`${baseUrl}/api/resources/${id}/mine/download`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
-  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+  if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
 
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = fallbackName;
+  anchor.download = fileNameFor(fallbackName, blob.type);
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -101,6 +188,7 @@ export async function uploadResource(
     type: ApiResourceType;
     courseId?: string;
     batchId?: string;
+    folderId?: string;
     isDownloadable?: boolean;
     description?: string;
   }
@@ -109,6 +197,7 @@ export async function uploadResource(
   form.set("file", file);
   form.set("Title", metadata.title);
   form.set("Type", metadata.type);
+  if (metadata.folderId) form.set("FolderId", metadata.folderId);
   if (metadata.courseId) form.set("CourseId", metadata.courseId);
   if (metadata.batchId) form.set("BatchId", metadata.batchId);
   form.set("IsDownloadable", String(metadata.isDownloadable ?? false));
@@ -116,22 +205,131 @@ export async function uploadResource(
   return apiFetch<ApiResource>("/api/resources", { method: "POST", body: form });
 }
 
-/** Fetches the file with the bearer token (a plain <a href> cannot carry it) and saves it. */
-export async function downloadResource(id: string, fallbackName: string): Promise<void> {
-  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-  const token = getAccessToken();
-  const response = await fetch(`${baseUrl}/api/resources/${id}/download`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
-  if (!response.ok) throw new Error(`Download failed (${response.status})`);
+/** Files above this go straight from the browser to storage in parts instead of through the API (which caps uploads at 100 MB). */
+export const LARGE_UPLOAD_THRESHOLD_BYTES = 90 * 1024 * 1024;
 
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = fallbackName;
-  anchor.click();
-  URL.revokeObjectURL(url);
+export const needsLargeUpload = (file: File) => file.size > LARGE_UPLOAD_THRESHOLD_BYTES;
+
+interface StartedLargeUpload {
+  key: string;
+  uploadId: string;
+  partSizeBytes: number;
+  totalParts: number;
+}
+
+const PART_URL_BATCH = 20;
+const PARALLEL_PARTS = 3;
+const PART_ATTEMPTS = 3;
+
+/** PUTs one part to its presigned URL (XHR, not fetch, for upload progress) and returns the ETag storage assigns it. */
+function putPart(url: string, blob: Blob, onLoaded: (loadedBytes: number) => void): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    xhr.upload.onprogress = (e) => onLoaded(e.loaded);
+    xhr.onerror = () => reject(new Error("The upload connection failed."));
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(`Storage rejected part of the upload (HTTP ${xhr.status}).`));
+        return;
+      }
+      const eTag = xhr.getResponseHeader("ETag");
+      if (!eTag) {
+        // Uploaded fine, but the browser isn't allowed to read the ETag back -- a bucket CORS setting.
+        reject(new Error("Storage isn't set up to accept uploads from this site yet (CORS must expose the ETag header)."));
+        return;
+      }
+      resolve(eTag);
+    };
+    xhr.send(blob);
+  });
+}
+
+/**
+ * Multi-GB upload: the file is cut into 64 MB parts and each is PUT directly to object storage via a
+ * short-lived presigned URL (three at a time, each retried), so nothing large passes through the API.
+ * Then the server stitches the parts together and creates the resource. `onProgress` gets 0..1.
+ */
+export async function uploadLargeResource(
+  file: File,
+  metadata: {
+    title: string;
+    type: ApiResourceType;
+    courseId?: string;
+    batchId?: string;
+    folderId?: string;
+    isDownloadable?: boolean;
+    description?: string;
+  },
+  onProgress?: (fraction: number) => void
+): Promise<ApiResource> {
+  const started = await apiFetch<StartedLargeUpload>("/api/resources/uploads", {
+    method: "POST",
+    body: JSON.stringify({ fileName: file.name, contentType: file.type || null, sizeBytes: file.size }),
+  });
+
+  const loadedByPart = new Map<number, number>();
+  const report = () => {
+    let total = 0;
+    loadedByPart.forEach((v) => (total += v));
+    onProgress?.(Math.min(1, total / file.size));
+  };
+  const parts: { partNumber: number; eTag: string }[] = [];
+
+  try {
+    for (let first = 1; first <= started.totalParts; first += PART_URL_BATCH) {
+      const numbers = Array.from({ length: Math.min(PART_URL_BATCH, started.totalParts - first + 1) }, (_, i) => first + i);
+      const urls = await apiFetch<{ partNumber: number; url: string }[]>("/api/resources/uploads/parts", {
+        method: "POST",
+        body: JSON.stringify({ key: started.key, uploadId: started.uploadId, partNumbers: numbers }),
+      });
+
+      const queue = [...urls];
+      const worker = async () => {
+        for (let next = queue.shift(); next; next = queue.shift()) {
+          const begin = (next.partNumber - 1) * started.partSizeBytes;
+          const blob = file.slice(begin, Math.min(begin + started.partSizeBytes, file.size));
+          let lastError: unknown;
+          for (let attempt = 1; attempt <= PART_ATTEMPTS; attempt++) {
+            try {
+              const eTag = await putPart(next.url, blob, (loaded) => {
+                loadedByPart.set(next!.partNumber, loaded);
+                report();
+              });
+              loadedByPart.set(next.partNumber, blob.size);
+              report();
+              parts.push({ partNumber: next.partNumber, eTag });
+              lastError = undefined;
+              break;
+            } catch (err) {
+              lastError = err;
+              loadedByPart.set(next.partNumber, 0);
+            }
+          }
+          if (lastError) throw lastError;
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(PARALLEL_PARTS, urls.length) }, worker));
+    }
+
+    return await apiFetch<ApiResource>("/api/resources/uploads/complete", {
+      method: "POST",
+      body: JSON.stringify({
+        ...metadata,
+        contentType: file.type || null,
+        key: started.key,
+        uploadId: started.uploadId,
+        parts,
+      }),
+    });
+  } catch (err) {
+    // Leave no orphaned parts (which storage would keep billing for).
+    await apiFetch<void>("/api/resources/uploads/abort", {
+      method: "POST",
+      body: JSON.stringify({ key: started.key, uploadId: started.uploadId }),
+    }).catch(() => undefined);
+    throw err;
+  }
 }
 
 /** Admin console: toggle whether a resource is downloadable (books stay view-only server-side regardless). */
@@ -139,16 +337,5 @@ export async function updateResource(id: string, isDownloadable: boolean): Promi
   return apiFetch<ApiResource>(`/api/resources/${id}`, {
     method: "PUT",
     body: JSON.stringify({ isDownloadable }),
-  });
-}
-
-export async function grantResourceAccess(
-  id: string,
-  parentProfileIds: string[],
-  visibleOnDashboard = true
-): Promise<void> {
-  await apiFetch<void>(`/api/resources/${id}/grants`, {
-    method: "POST",
-    body: JSON.stringify({ parentProfileIds, visibleOnDashboard }),
   });
 }

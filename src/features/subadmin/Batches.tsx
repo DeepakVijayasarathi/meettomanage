@@ -1,0 +1,1431 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Archive, CalendarDays, CalendarPlus, Clock, Layers, Loader2, Moon, Plus, Rocket, Search, Trash2, Wrench, X } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { InlineAlert } from "@/components/InlineAlert";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { istSlotInZone } from "@/lib/familyTime";
+import { BatchPaymentPlanFields, DEFAULT_PAYMENT_PLAN, isPaymentPlanValid, type BatchPaymentPlanState } from "@/components/BatchPaymentPlanFields";
+import { useToast } from "@/hooks/use-toast";
+import { EmptyState } from "@/components/EmptyState";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { BATCHES } from "@/data/batches";
+import { getCourseById, COURSES } from "@/data/courses";
+import { getTeacherById, TEACHERS } from "@/data/users";
+import type { BatchStatus } from "@/types";
+import { CHART_PALETTE } from "@/lib/roles";
+import { formatDate } from "@/lib/utils";
+import { apiEnabled, userMessage } from "@/lib/api";
+import { usePortalBase } from "@/lib/portalBase";
+import { useSession } from "@/state/session";
+import { useApiData } from "@/api/hooks";
+import {
+  assignStudentToBatch,
+  createBatch,
+  deleteBatch,
+  generateSchedule,
+  listBatchEnrollments,
+  listBatches,
+  listBatchSessions,
+  listTeacherOptions,
+  listUnassignedStudents,
+  reconcileStaleSessionDurations,
+  reconcileStaleSessionTeachers,
+  removeStudentFromBatch,
+  setBatchStatus,
+  toFrontendBatch,
+  updateBatchFields,
+  updateFutureSchedule,
+  cancelUpcomingSessions,
+  type ApiBatch,
+  type ApiBatchStudent,
+  type ApiUnassignedChild,
+  type DisplayBatch,
+} from "@/api/batches";
+import type { ApiClassSession } from "@/api/sessions";
+import { listCourseOptions, type ApiCourseOption } from "@/api/courses";
+
+const IST_OFFSET_MINUTES = 5 * 60 + 30; // India Standard Time is UTC+5:30, no DST
+
+/** RMs think in IST; the API stores/schedules in UTC. Converts a wall-clock
+ * "HH:mm" typed as IST into the equivalent UTC time-of-day, plus whether that
+ * shifted the calendar date back a day (only for classes between 12:00–05:29 AM IST). */
+function istTimeToUtc(hhmm: string): { time: string; dayShift: -1 | 0 } {
+  const [h, m] = hhmm.split(":").map(Number);
+  let totalMin = h * 60 + m - IST_OFFSET_MINUTES;
+  let dayShift: -1 | 0 = 0;
+  if (totalMin < 0) {
+    totalMin += 24 * 60;
+    dayShift = -1;
+  }
+  const uh = String(Math.floor(totalMin / 60)).padStart(2, "0");
+  const um = String(totalMin % 60).padStart(2, "0");
+  return { time: `${uh}:${um}`, dayShift };
+}
+
+/** Inverse of istTimeToUtc — a UTC "HH:mm" back into the IST wall-clock time an RM would
+ * recognize, plus whether that pushed the calendar date forward a day (a class between
+ * 18:30–23:59 UTC lands after midnight the next day in IST). Used to pre-fill the "Adjust
+ * remaining schedule" panel from a batch's real, already-generated sessions. */
+function utcTimeToIst(hhmm: string): { time: string; dayShift: 0 | 1 } {
+  const [h, m] = hhmm.split(":").map(Number);
+  let totalMin = h * 60 + m + IST_OFFSET_MINUTES;
+  let dayShift: 0 | 1 = 0;
+  if (totalMin >= 24 * 60) {
+    totalMin -= 24 * 60;
+    dayShift = 1;
+  }
+  const ih = String(Math.floor(totalMin / 60)).padStart(2, "0");
+  const im = String(totalMin % 60).padStart(2, "0");
+  return { time: `${ih}:${im}`, dayShift };
+}
+
+const WEEKDAYS = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 0, label: "Sun" },
+];
+
+const STATUS_META: Record<BatchStatus, { label: string; icon: typeof Layers; empty: string }> = {
+  active: { label: "Active", icon: Layers, empty: "No active batches at the moment." },
+  dormant: { label: "Dormant", icon: Moon, empty: "No dormant batches right now." },
+  upcoming: { label: "Upcoming", icon: Rocket, empty: "No upcoming batches scheduled." },
+};
+
+function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: number; onOpen: (b: DisplayBatch) => void }) {
+  const courseName = apiEnabled() ? batch.courseName : getCourseById(batch.courseId)?.name;
+  const teacherName = apiEnabled() ? batch.teacherName : getTeacherById(batch.teacherId)?.name;
+  const color = CHART_PALETTE[index % CHART_PALETTE.length];
+  const pct = Math.round((batch.enrolled / Math.max(batch.capacity, 1)) * 100);
+
+  return (
+    <Card className="flex flex-col p-5 transition-shadow hover:shadow-pop">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${color}1A`, color }}>
+            <Layers className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-foreground">{batch.name}</p>
+            <p className="text-xs text-muted-foreground">{courseName ?? "—"}</p>
+          </div>
+        </div>
+        <Badge variant="outline" className="uppercase">{batch.type}</Badge>
+      </div>
+
+      <div className="mt-4 space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Capacity</span>
+          <span className="font-semibold text-foreground">
+            {batch.enrolled} / {batch.capacity}
+          </span>
+        </div>
+        <Progress value={pct} className="h-2" indicatorClassName={pct >= 90 ? "bg-success" : pct >= 70 ? "bg-warning" : "bg-destructive"} />
+      </div>
+
+      <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+        <CalendarDays className="h-4 w-4" />
+        {batch.schedule}
+      </div>
+      <div className="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
+        Teacher: <span className="font-medium text-foreground">{teacherName ?? "Unassigned"}</span>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+        <span className="text-xs text-muted-foreground">
+          {batch.startDate ? `Started ${formatDate(batch.startDate)}` : "No sessions scheduled"}
+        </span>
+        <Button variant="outline" size="sm" onClick={() => onOpen(batch)}>
+          Manage
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+export default function SubAdminBatches() {
+  const { toast } = useToast();
+  const { hasPermission } = useSession();
+  // This page is mounted at 4 different portal prefixes (subadmin/admission/coordinator/
+  // management — see App.tsx), so a link to "Users" can't be hardcoded to /subadmin/users;
+  // it has to resolve against whichever portal is actually showing this page.
+  const base = usePortalBase();
+  // View-level access already gates the whole page (via the menu); these gate the actual
+  // CRUD actions within it against the account's specific Create/Edit grant, matching what
+  // the backend itself enforces (POST needs Create, PUT/status needs Edit) — a View-only
+  // grant used to still show working-looking "New Batch"/"Save Changes"/"Archive" controls
+  // that would just 403 on click instead of never being offered.
+  const canCreate = !apiEnabled() || hasPermission("CourseBatchManagement", "Create");
+  const canEdit = !apiEnabled() || hasPermission("CourseBatchManagement", "Edit");
+  // Deleting a batch (DELETE /batches/{id}) is gated on its own CourseBatchManagement:Delete
+  // grant — separate from Edit/Archive, since it's a stronger, harder-to-reverse action a Sub
+  // Admin/RM preset might not want to hand out even to someone who can otherwise edit batches.
+  const canDelete = !apiEnabled() || hasPermission("CourseBatchManagement", "Delete");
+  // Generating a batch's class schedule calls POST /batches/{id}/generate-schedule, which the
+  // backend gates on SessionCalendarManagement:Create (not CourseBatchManagement) — a role can
+  // hold one without the other, so this needs its own check.
+  const canScheduleClasses = !apiEnabled() || hasPermission("SessionCalendarManagement", "Create");
+  // Adjusting a batch's already-generated schedule calls PUT /batches/{id}/schedule, gated on
+  // SessionCalendarManagement:Edit (not :Create like generating one from scratch above) — a
+  // role can hold one without the other.
+  const canAdjustSchedule = !apiEnabled() || hasPermission("SessionCalendarManagement", "Edit");
+  // Moving students between batches calls POST/DELETE /batches/{id}/enrollments, which the
+  // backend gates on CourseBatchManagement:Edit — same module as the batch's own fields, so
+  // it rides on canEdit rather than needing a separate flag.
+  const { data: batchData, error: batchError, reload } = useApiData<{ raw: ApiBatch[]; mapped: DisplayBatch[] }>(
+    async () => {
+      const raw = await listBatches();
+      return { raw, mapped: raw.map(toFrontendBatch) };
+    },
+    { raw: [], mapped: BATCHES },
+    { raw: [], mapped: [] }
+  );
+  const { data: teacherOptions } = useApiData(() => listTeacherOptions(), [], undefined, { cacheKey: "teacherOptions" });
+  // loading/error/reload used by the New Batch dialog: a failed or slow first load used to leave
+  // the Course dropdown silently empty (it opened nothing) with no retry -- reported live.
+  const { data: courseOptions, loading: coursesLoading, error: coursesError, reload: reloadCourses } = useApiData<ApiCourseOption[]>(
+    () => listCourseOptions(),
+    COURSES.map((c) => ({ id: c.id, name: c.name, type: c.type === "group" ? ("Group" as const) : ("Individual" as const) }))
+  );
+
+  const [query, setQuery] = useState("");
+  const [detail, setDetail] = useState<DisplayBatch | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editTeacher, setEditTeacher] = useState("");
+  const [editCapacity, setEditCapacity] = useState("");
+  // Mirrors features/admin/Batches.tsx — the batch's real start date and a per-batch class
+  // duration override (both gated the same CourseBatchManagement:Edit as name/teacher/capacity
+  // above), for correcting a batch that's continuing from another system.
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editDuration, setEditDuration] = useState("");
+  const [editPaymentPlan, setEditPaymentPlan] = useState<BatchPaymentPlanState>(DEFAULT_PAYMENT_PLAN);
+  // Per-batch teacher payout (client requirement) — mirrors features/admin/Batches.tsx. Blank
+  // keeps/reverts to the centre's per-minute rate card.
+  const [editPayoutPerClass, setEditPayoutPerClass] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [archiving, setArchiving] = useState(false);
+  // Delete (soft-delete — removes the batch from every list; rejected while it still has an
+  // active student). A separate confirm-target from `detail` so the ConfirmDialog can be shown
+  // on top of the Manage dialog without closing it first.
+  const [deleteTarget, setDeleteTarget] = useState<DisplayBatch | null>(null);
+  const [deletingBatch, setDeletingBatch] = useState(false);
+
+  // One-time repair for batches reassigned before the teacher-reassignment cascade fix existed —
+  // their already-generated sessions were left pointing at the old teacher (see BatchService's
+  // ReconcileStaleSessionTeachersAsync). Gated behind canEdit, same as reassigning a teacher in
+  // the first place. Safe to click more than once; a clean batch is a no-op.
+  const [reconciling, setReconciling] = useState(false);
+
+  async function handleReconcile() {
+    setReconciling(true);
+    try {
+      const result = await reconcileStaleSessionTeachers();
+      if (result.sessionsMoved === 0 && result.conflicts.length === 0) {
+        toast({ variant: "success", title: "Nothing to repair", description: "Every batch's sessions already match their current teacher." });
+      } else {
+        const parts = [
+          result.sessionsMoved > 0
+            ? `Moved ${result.sessionsMoved} session(s) across ${result.batchesFixed} batch(es) onto their current teacher.`
+            : undefined,
+          result.conflicts.length > 0
+            ? `${result.conflicts.length} batch(es) skipped — new teacher already booked: ${result.conflicts.map((c) => c.batchName).join(", ")}.`
+            : undefined,
+        ].filter(Boolean);
+        toast({ variant: result.conflicts.length > 0 ? "default" : "success", title: "Repair complete", description: parts.join(" ") });
+      }
+      reload();
+    } catch (err) {
+      const message = userMessage(err, "Could not run the repair.");
+      toast({ variant: "error", title: "Repair failed", description: message });
+    } finally {
+      setReconciling(false);
+    }
+  }
+
+  // Same class of bug, for duration: a batch edited to a shorter/longer class length after its
+  // schedule was already generated kept every already-scheduled session at its old length (see
+  // BatchService's ReconcileStaleSessionDurationsAsync). Gated behind canEdit, same as above.
+  const [reconcilingDurations, setReconcilingDurations] = useState(false);
+
+  async function handleReconcileDurations() {
+    setReconcilingDurations(true);
+    try {
+      const result = await reconcileStaleSessionDurations();
+      if (result.sessionsFixed === 0 && result.conflicts.length === 0) {
+        toast({ variant: "success", title: "Nothing to repair", description: "Every batch's sessions already match their current duration." });
+      } else {
+        const parts = [
+          result.sessionsFixed > 0
+            ? `Corrected ${result.sessionsFixed} session(s) across ${result.batchesFixed} batch(es) to their current duration.`
+            : undefined,
+          result.conflicts.length > 0
+            ? `${result.conflicts.length} batch(es) skipped — would double-book the teacher: ${result.conflicts.map((c) => c.batchName).join(", ")}.`
+            : undefined,
+        ].filter(Boolean);
+        toast({ variant: result.conflicts.length > 0 ? "default" : "success", title: "Repair complete", description: parts.join(" ") });
+      }
+      reload();
+    } catch (err) {
+      const message = userMessage(err, "Could not run the repair.");
+      toast({ variant: "error", title: "Repair failed", description: message });
+    } finally {
+      setReconcilingDurations(false);
+    }
+  }
+
+  // Keyed by weekday, since a batch doesn't have to meet at the same time every day it runs —
+  // e.g. Monday/Wednesday at 5 PM but Friday at noon — a day's presence as a key is what
+  // selects it, and its value is that day's own time.
+  const [genTimeByDay, setGenTimeByDay] = useState<Record<number, string>>({ 1: "10:00", 3: "10:00" });
+  const [genStart, setGenStart] = useState("");
+  // Blank means "the course's own total session count" (the only behaviour before this
+  // existed) — set explicitly for a batch continuing mid-course under this portal (e.g.
+  // migrated from another system with some sessions already delivered there), so only the
+  // sessions actually still owed get scheduled instead of the course's full count. Mirrors
+  // features/admin/Batches.tsx.
+  const [genSessionCount, setGenSessionCount] = useState("");
+  const [genBusy, setGenBusy] = useState(false);
+  const [genResult, setGenResult] = useState<string | null>(null);
+
+  function toggleGenDay(day: number) {
+    setGenTimeByDay((prev) => {
+      if (day in prev) {
+        const next = { ...prev };
+        delete next[day];
+        return next;
+      }
+      const times = Object.values(prev);
+      return { ...prev, [day]: times[times.length - 1] ?? "10:00" };
+    });
+  }
+
+  // Adjust remaining schedule (inside Manage dialog) — once a batch already has sessions,
+  // "Generate class schedule" above refuses to run at all; this edits only what's still
+  // upcoming (e.g. just the time) instead of re-entering the whole plan or cancelling and
+  // re-booking every remaining session one at a time. Mirrors features/admin/Batches.tsx.
+  const [batchSessions, setBatchSessions] = useState<ApiClassSession[]>([]);
+  const [adjTimeByDay, setAdjTimeByDay] = useState<Record<number, string>>({});
+  const [adjRemainingCount, setAdjRemainingCount] = useState("");
+  const [adjBusy, setAdjBusy] = useState(false);
+  const [adjResult, setAdjResult] = useState<string | null>(null);
+  // "Cancel all upcoming classes" (client: rather than deleting a batch to change its schedule).
+  const [cancelUpcomingOpen, setCancelUpcomingOpen] = useState(false);
+
+  function toggleAdjDay(day: number) {
+    setAdjTimeByDay((prev) => {
+      if (day in prev) {
+        const next = { ...prev };
+        delete next[day];
+        return next;
+      }
+      const times = Object.values(prev);
+      return { ...prev, [day]: times[times.length - 1] ?? "10:00" };
+    });
+  }
+
+  const futureBatchSessions = useMemo(
+    () =>
+      batchSessions
+        .filter((s) => (s.status === "Scheduled" || s.status === "CarriedForward") && new Date(s.scheduledStartAtUtc).getTime() > Date.now())
+        .sort((a, b) => a.scheduledStartAtUtc.localeCompare(b.scheduledStartAtUtc)),
+    [batchSessions]
+  );
+
+  async function reloadBatchSessions(batchId: string) {
+    if (!apiEnabled()) return;
+    try {
+      const sessions = await listBatchSessions(batchId);
+      setBatchSessions(sessions);
+      const future = sessions
+        .filter((s) => (s.status === "Scheduled" || s.status === "CarriedForward") && new Date(s.scheduledStartAtUtc).getTime() > Date.now())
+        .sort((a, b) => a.scheduledStartAtUtc.localeCompare(b.scheduledStartAtUtc));
+      const pattern: Record<number, string> = {};
+      for (const s of future) {
+        const d = new Date(s.scheduledStartAtUtc);
+        const utcHH = String(d.getUTCHours()).padStart(2, "0");
+        const utcMM = String(d.getUTCMinutes()).padStart(2, "0");
+        const { time: istTime, dayShift } = utcTimeToIst(`${utcHH}:${utcMM}`);
+        pattern[(d.getUTCDay() + dayShift) % 7] = istTime;
+      }
+      setAdjTimeByDay(pattern);
+      setAdjRemainingCount(future.length ? String(future.length) : "");
+    } catch {
+      setBatchSessions([]);
+      setAdjTimeByDay({});
+      setAdjRemainingCount("");
+    }
+  }
+
+  async function handleUpdateFutureSchedule() {
+    const adjDays = Object.keys(adjTimeByDay).map(Number);
+    if (!detail || adjDays.length === 0) return;
+    if (!apiEnabled()) {
+      setAdjResult("Demo mode — schedule not persisted.");
+      return;
+    }
+    setAdjBusy(true);
+    setAdjResult(null);
+    try {
+      const slots = adjDays.map((day) => {
+        const { time: utcTime, dayShift } = istTimeToUtc(adjTimeByDay[day]);
+        return { dayOfWeek: (day + dayShift + 7) % 7, startTimeUtc: `${utcTime}:00` };
+      });
+      await updateFutureSchedule(detail.id, {
+        slots,
+        remainingSessionCount: adjRemainingCount.trim() ? Number(adjRemainingCount) : undefined,
+        teacherProfileId: editTeacher || undefined,
+      });
+      await reloadBatchSessions(detail.id);
+      setAdjResult("Teacher and schedule updated — every upcoming session now reflects the new plan; completed sessions were left untouched.");
+      reload();
+    } catch (err) {
+      setAdjResult(userMessage(err, "Could not update the schedule."));
+    } finally {
+      setAdjBusy(false);
+    }
+  }
+
+  // Assign students (inside Manage dialog) — ported from admin/Batches.tsx, WBS "Course &
+  // Batch Management Flow" step 6. Previously only the Admin-only page could move a student
+  // in or out of a batch even though POST/DELETE /enrollments is CourseBatchManagement:Edit,
+  // a module RMs can already hold.
+  const [roster, setRoster] = useState<ApiBatchStudent[]>([]);
+  // Families abroad: their own time zones, so the schedule editors show the family's local day/time
+  // next to the IST slot (3:30 AM IST Tue is 6 PM Mon in the US -- reported live).
+  const familyZones = useMemo(
+    () => Array.from(new Set(roster.map((s) => s.parentTimeZoneId).filter((z): z is string => !!z && z !== "Asia/Kolkata" && z !== "Asia/Calcutta"))),
+    [roster]
+  );
+  const [unassigned, setUnassigned] = useState<ApiUnassignedChild[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
+  const [rosterError, setRosterError] = useState<string | null>(null);
+  const [assigning, setAssigning] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  async function reloadRoster(batchId: string) {
+    if (!apiEnabled()) return;
+    setRosterLoading(true);
+    try {
+      const [students, candidates] = await Promise.all([listBatchEnrollments(batchId), listUnassignedStudents(batchId)]);
+      setRoster(students);
+      setUnassigned(candidates);
+      setRosterError(null);
+    } catch (err) {
+      setRosterError(userMessage(err, "Could not load the student roster."));
+    } finally {
+      setRosterLoading(false);
+    }
+  }
+
+  async function handleAssignStudent(childId: string) {
+    if (!detail || !childId) return;
+    setAssigning(true);
+    setRosterError(null);
+    try {
+      await assignStudentToBatch(detail.id, childId);
+      await reloadRoster(detail.id);
+      reload();
+    } catch (err) {
+      setRosterError(userMessage(err, "Could not assign this student."));
+    } finally {
+      setAssigning(false);
+    }
+  }
+
+  async function handleRemoveStudent(childId: string) {
+    if (!detail) return;
+    setRemovingId(childId);
+    setRosterError(null);
+    try {
+      await removeStudentFromBatch(detail.id, childId);
+      await reloadRoster(detail.id);
+      reload();
+    } catch (err) {
+      setRosterError(userMessage(err, "Could not remove this student."));
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newCourse, setNewCourse] = useState("");
+  const [newTeacher, setNewTeacher] = useState("");
+  const [newCapacity, setNewCapacity] = useState("8");
+  const [newStart, setNewStart] = useState("");
+  // Per-batch teacher payout (client requirement) — mirrors features/admin/Batches.tsx. Blank
+  // keeps the centre's per-minute rate card.
+  const [newPayoutPerClass, setNewPayoutPerClass] = useState("");
+  const [newPaymentPlan, setNewPaymentPlan] = useState<BatchPaymentPlanState>(DEFAULT_PAYMENT_PLAN);
+  const [creating, setCreating] = useState(false);
+  const newCourseIsIndividual = courseOptions.find((c) => c.id === newCourse)?.type === "Individual";
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [banner, setBanner] = useState<string | null>(null);
+
+  function handleNewCourseChange(courseId: string) {
+    setNewCourse(courseId);
+    const isIndividual = courseOptions.find((c) => c.id === courseId)?.type === "Individual";
+    if (isIndividual) {
+      setNewCapacity("1");
+    } else if (newCapacity === "1") {
+      setNewCapacity("8");
+    }
+  }
+
+  async function handleCreate() {
+    if (!newName.trim() || !newCourse || !newTeacher) return;
+    if (!apiEnabled()) {
+      setBanner(`"${newName.trim()}" created. (Demo only — not persisted.)`);
+      setCreateOpen(false);
+      return;
+    }
+    setCreating(true);
+    setCreateError(null);
+    try {
+      await createBatch({
+        courseId: newCourse,
+        teacherProfileId: newTeacher,
+        name: newName.trim(),
+        capacity: Math.max(1, Number(newCapacity) || 1),
+        startDate: newStart || undefined,
+        paymentPlanType: newPaymentPlan.paymentPlanType,
+        paymentAfterSessionsCount:
+          newPaymentPlan.paymentPlanType === "AfterSessions" && newPaymentPlan.paymentAfterSessionsCount.trim()
+            ? Number(newPaymentPlan.paymentAfterSessionsCount)
+            : null,
+        paymentDueDate: newPaymentPlan.paymentPlanType === "DueOnDate" && newPaymentPlan.paymentDueDate.trim() ? newPaymentPlan.paymentDueDate : null,
+        teacherPayoutPerClass: newPayoutPerClass.trim() ? Number(newPayoutPerClass) : null,
+      });
+      setBanner(`Batch "${newName.trim()}" created.`);
+      setCreateOpen(false);
+      // Full reset, not just name/start — the Teacher and Course selects previously stayed on
+      // whatever was picked for the last batch, so creating several batches back-to-back (the
+      // common case) could silently carry the wrong teacher over to the next one unless someone
+      // noticed and reselected it every time.
+      setNewName("");
+      setNewCourse("");
+      setNewTeacher("");
+      setNewCapacity("8");
+      setNewStart("");
+      setNewPayoutPerClass("");
+      setNewPaymentPlan(DEFAULT_PAYMENT_PLAN);
+      reload();
+    } catch (err) {
+      setCreateError(userMessage(err, "Could not create the batch."));
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return batchData.mapped;
+    return batchData.mapped.filter((b) => {
+      const courseName = (apiEnabled() ? b.courseName : getCourseById(b.courseId)?.name) ?? "";
+      const teacherName = (apiEnabled() ? b.teacherName : getTeacherById(b.teacherId)?.name) ?? "";
+      return `${b.name} ${courseName} ${teacherName}`.toLowerCase().includes(q);
+    });
+  }, [batchData, query]);
+
+  const grouped = useMemo(() => {
+    const map: Record<BatchStatus, DisplayBatch[]> = { active: [], dormant: [], upcoming: [] };
+    filtered.forEach((b) => map[b.status].push(b));
+    return map;
+  }, [filtered]);
+
+  // Unpaginated, this rendered every batch as one unbroken card grid — with hundreds of
+  // real batches that's an enormous page (and a growing one). Paginate per status tab,
+  // independently of the others, and reset back to page 1 whenever the search/data changes
+  // out from under the current page.
+  const BATCHES_PAGE_SIZE = 12;
+  const [pageByStatus, setPageByStatus] = useState<Record<BatchStatus, number>>({ active: 1, dormant: 1, upcoming: 1 });
+  useEffect(() => {
+    setPageByStatus({ active: 1, dormant: 1, upcoming: 1 });
+  }, [filtered]);
+
+  function openDetail(b: DisplayBatch) {
+    setDetail(b);
+    setEditName(b.name);
+    setEditTeacher(b.teacherId);
+    setEditCapacity(String(b.capacity));
+    setEditStartDate(b.startDate || "");
+    setEditDuration(b.durationOverride != null ? String(b.durationOverride) : "");
+    setEditPaymentPlan({
+      paymentPlanType: b.paymentPlanType ?? "FullPaymentDone",
+      paymentAfterSessionsCount: b.paymentAfterSessionsCount != null ? String(b.paymentAfterSessionsCount) : "",
+      paymentDueDate: b.paymentDueDate ?? "",
+    });
+    setEditPayoutPerClass(b.teacherPayoutPerClass != null ? String(b.teacherPayoutPerClass) : "");
+    setSaveError(null);
+    setGenSessionCount("");
+    setRoster([]);
+    setUnassigned([]);
+    setRosterError(null);
+    setBatchSessions([]);
+    setAdjTimeByDay({});
+    setAdjRemainingCount("");
+    setAdjResult(null);
+    void reloadRoster(b.id);
+    void reloadBatchSessions(b.id);
+  }
+
+  async function saveDetail() {
+    if (!detail) return;
+    if (!apiEnabled()) {
+      toast({ variant: "success", title: "Batch updated" });
+      setDetail(null);
+      return;
+    }
+    const raw = batchData.raw.find((b) => b.id === detail.id);
+    if (!raw) return;
+
+    setSaving(true);
+    setSaveError(null);
+    try {
+      // Save a reassignment against the replacement timetable shown in this dialog. Previously
+      // this button tried the teacher against the obsolete sessions first and failed before the
+      // schedule action could run.
+      if (editTeacher !== raw.teacherProfileId && futureBatchSessions.length > 0 && Object.keys(adjTimeByDay).length > 0) {
+        const slots = Object.keys(adjTimeByDay).map(Number).map((day) => {
+          const { time: utcTime, dayShift } = istTimeToUtc(adjTimeByDay[day]);
+          return { dayOfWeek: (day + dayShift + 7) % 7, startTimeUtc: `${utcTime}:00` };
+        });
+        await updateFutureSchedule(detail.id, {
+          slots,
+          remainingSessionCount: adjRemainingCount.trim() ? Number(adjRemainingCount) : undefined,
+          teacherProfileId: editTeacher,
+        });
+      }
+      await updateBatchFields(raw, {
+        name: editName.trim(),
+        teacherProfileId: editTeacher,
+        capacity: Math.max(1, Number(editCapacity) || 1),
+        startDate: editStartDate.trim() || null,
+        durationMinutesOverride: editDuration.trim() ? Number(editDuration) : null,
+        paymentPlanType: editPaymentPlan.paymentPlanType,
+        paymentAfterSessionsCount:
+          editPaymentPlan.paymentPlanType === "AfterSessions" && editPaymentPlan.paymentAfterSessionsCount.trim()
+            ? Number(editPaymentPlan.paymentAfterSessionsCount)
+            : null,
+        paymentDueDate: editPaymentPlan.paymentPlanType === "DueOnDate" && editPaymentPlan.paymentDueDate.trim() ? editPaymentPlan.paymentDueDate : null,
+        teacherPayoutPerClass: editPayoutPerClass.trim() ? Number(editPayoutPerClass) : null,
+      });
+      toast({ variant: "success", title: "Batch updated" });
+      reload();
+      setDetail(null);
+    } catch (err) {
+      const message = userMessage(err, "Could not save the batch.");
+      setSaveError(message);
+      toast({ variant: "error", title: "Couldn't save batch", description: message });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleGenerateSchedule() {
+    const genDays = Object.keys(genTimeByDay).map(Number);
+    if (!detail || !genStart || genDays.length === 0) return;
+    if (!apiEnabled()) {
+      setGenResult("Demo mode — schedule not persisted.");
+      return;
+    }
+    // Generation uses the teacher already SAVED on the batch, not the dropdown. Without this
+    // guard a reassignment that hadn't been saved yet checked the previous teacher's calendar
+    // and reported their sessions as the new teacher's phantom conflict.
+    const savedTeacherId = batchData.raw.find((b) => b.id === detail.id)?.teacherProfileId;
+    if (savedTeacherId && editTeacher && editTeacher !== savedTeacherId) {
+      setGenResult("The teacher was changed but not saved yet. Click Save Changes first, then generate sessions.");
+      return;
+    }
+    setGenBusy(true);
+    setGenResult(null);
+    try {
+      // Computed per weekday, since different days can run at different times — that's the
+      // whole point of this field — so one day needing the 12:00–05:29 AM IST shift doesn't
+      // affect another that doesn't.
+      const slots = genDays.map((day) => {
+        const { time: utcTime, dayShift } = istTimeToUtc(genTimeByDay[day]);
+        return { dayOfWeek: (day + dayShift + 7) % 7, startTimeUtc: `${utcTime}:00` };
+      });
+      const created = await generateSchedule(detail.id, {
+        startDate: genStart,
+        slots,
+        sessionCount: genSessionCount.trim() ? Number(genSessionCount) : undefined,
+      });
+      setGenResult(`${created.length} sessions created — they now appear on the teacher's and parents' schedules.`);
+      reload();
+    } catch (err) {
+      setGenResult(userMessage(err, "Could not generate the schedule."));
+    } finally {
+      setGenBusy(false);
+    }
+  }
+
+  async function archiveCurrentBatch() {
+    if (!detail) return;
+    if (!apiEnabled()) {
+      toast({ variant: "success", title: "Batch archived" });
+      setDetail(null);
+      return;
+    }
+    setArchiving(true);
+    try {
+      await setBatchStatus(detail.id, "Archived");
+      toast({ variant: "success", title: "Batch archived" });
+      reload();
+      setDetail(null);
+    } catch (err) {
+      const message = userMessage(err, "Could not archive the batch.");
+      setSaveError(message);
+      toast({ variant: "error", title: "Couldn't archive batch", description: message });
+    } finally {
+      setArchiving(false);
+    }
+  }
+
+  async function confirmDeleteBatch() {
+    if (!deleteTarget) return;
+    if (!apiEnabled()) {
+      toast({ variant: "success", title: "Batch deleted (demo only — not persisted)" });
+      setDetail(null);
+      return;
+    }
+    setDeletingBatch(true);
+    try {
+      await deleteBatch(deleteTarget.id);
+      toast({ variant: "success", title: "Batch deleted" });
+      reload();
+      setDetail(null);
+    } catch (err) {
+      const message = userMessage(err, "Could not delete this batch.");
+      setSaveError(message);
+      toast({ variant: "error", title: "Couldn't delete batch", description: message });
+    } finally {
+      setDeletingBatch(false);
+    }
+  }
+
+  const detailRaw = detail ? batchData.raw.find((b) => b.id === detail.id) : undefined;
+  const isArchived = detailRaw?.status === "Archived";
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow="Delegated Work"
+        title="Batches"
+        description="Create, edit and archive the batches assigned to you — capacity, schedule and teacher assignment."
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {canEdit && (
+              <Button
+                variant="outline"
+                onClick={handleReconcile}
+                disabled={reconciling}
+                title="Fix any batch whose already-scheduled sessions still show a previous teacher after a reassignment"
+              >
+                {reconciling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+                Repair stale teacher assignments
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                variant="outline"
+                onClick={handleReconcileDurations}
+                disabled={reconcilingDurations}
+                title="Fix any batch whose already-scheduled sessions still show a previous class duration after it was changed"
+              >
+                {reconcilingDurations ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
+                Repair stale session durations
+              </Button>
+            )}
+            {canCreate && (
+              <Button onClick={() => { setCreateOpen(true); setCreateError(null); reloadCourses(); }}>
+                <Plus className="h-4 w-4" /> New Batch
+              </Button>
+            )}
+          </div>
+        }
+      />
+
+      {banner && <InlineAlert variant="success" bordered className="mb-5">{banner}</InlineAlert>}
+
+      {apiEnabled() && batchError && (
+        <InlineAlert variant="error" bordered className="mb-5 items-center justify-between">
+          <span className="flex-1">Couldn't load batches: {batchError}. The list below may be incomplete.</span>
+          <Button variant="outline" size="sm" onClick={reload}>
+            Retry
+          </Button>
+        </InlineAlert>
+      )}
+
+      <div className="relative mb-5 max-w-sm">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search batches by name, course or teacher…"
+          className="pl-9"
+        />
+      </div>
+
+      <Tabs defaultValue="active">
+        <TabsList>
+          {(Object.keys(STATUS_META) as BatchStatus[]).map((status) => (
+            <TabsTrigger key={status} value={status} className="gap-1.5">
+              {STATUS_META[status].label}
+              <span className="rounded-full bg-background/60 px-1.5 text-[10px] font-bold">{grouped[status].length}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {(Object.keys(STATUS_META) as BatchStatus[]).map((status) => {
+          const list = grouped[status];
+          const totalPages = Math.max(1, Math.ceil(list.length / BATCHES_PAGE_SIZE));
+          const page = Math.min(pageByStatus[status], totalPages);
+          const pageRows = list.slice((page - 1) * BATCHES_PAGE_SIZE, page * BATCHES_PAGE_SIZE);
+          return (
+            <TabsContent key={status} value={status}>
+              {list.length === 0 ? (
+                <EmptyState icon={STATUS_META[status].icon} title={`No ${STATUS_META[status].label.toLowerCase()} batches`} description={STATUS_META[status].empty} />
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {pageRows.map((b, i) => (
+                      <BatchCard key={b.id} batch={b} index={i} onOpen={openDetail} />
+                    ))}
+                  </div>
+                  {list.length > BATCHES_PAGE_SIZE && (
+                    <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm text-muted-foreground">
+                      <span>
+                        Showing {(page - 1) * BATCHES_PAGE_SIZE + 1}–{Math.min(page * BATCHES_PAGE_SIZE, list.length)} of {list.length}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page <= 1}
+                          onClick={() => setPageByStatus((p) => ({ ...p, [status]: page - 1 }))}
+                        >
+                          Previous
+                        </Button>
+                        <span className="font-medium text-foreground">
+                          Page {page} / {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page >= totalPages}
+                          onClick={() => setPageByStatus((p) => ({ ...p, [status]: page + 1 }))}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </TabsContent>
+          );
+        })}
+      </Tabs>
+
+      <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>
+        <DialogContent className="max-w-lg">
+          {detail && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{detail.name}</DialogTitle>
+                <DialogDescription>{(apiEnabled() ? detail.courseName : getCourseById(detail.courseId)?.name) ?? "—"} · {detail.schedule}</DialogDescription>
+              </DialogHeader>
+
+              <Card className="bg-muted/30 p-4">
+                <CardContent className="grid grid-cols-2 gap-4 p-0 text-sm">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Enrolled</p>
+                    <p className="mt-1 font-semibold text-foreground">{detail.enrolled} / {detail.capacity}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Duration</p>
+                    <p className="mt-1 font-semibold text-foreground">{detail.duration} min</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Start Date</p>
+                    <p className="mt-1 font-semibold text-foreground">{detail.startDate ? formatDate(detail.startDate, "long") : "Not scheduled yet"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
+                    <p className="mt-1 font-semibold capitalize text-foreground">{detail.status}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="grid min-w-0 gap-4">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="edit-batch-name">Batch name <span className="text-destructive">*</span></Label>
+                  <Input id="edit-batch-name" value={editName} onChange={(e) => setEditName(e.target.value)} disabled={!canEdit} />
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="edit-batch-teacher-select">Teacher <span className="text-destructive">*</span></Label>
+                    <Select value={editTeacher} onValueChange={setEditTeacher} disabled={!canEdit}>
+                      <SelectTrigger id="edit-batch-teacher-select">
+                        <SelectValue placeholder="Select teacher" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {apiEnabled() && teacherOptions.length > 0
+                          ? teacherOptions.map((t) => (
+                              <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
+                                {t.fullName} {t.departmentName ? `· ${t.departmentName}` : ""}
+                              </SelectItem>
+                            ))
+                          : TEACHERS.map((t) => (
+                              <SelectItem key={t.id} value={t.id}>
+                                {t.name} · {t.department}
+                              </SelectItem>
+                            ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="edit-batch-capacity">Capacity <span className="text-destructive">*</span></Label>
+                    <Input id="edit-batch-capacity" type="number" min={1} max={500} value={editCapacity} onChange={(e) => setEditCapacity(e.target.value)} disabled={!canEdit} />
+                  </div>
+                </div>
+
+                {apiEnabled() && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="edit-batch-start-date">Start date</Label>
+                      <Input
+                        id="edit-batch-start-date"
+                        type="date"
+                        value={editStartDate}
+                        onChange={(e) => setEditStartDate(e.target.value)}
+                        disabled={!canEdit}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        The batch's real start — correct this if it's continuing from another system.
+                      </p>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="edit-batch-duration">Class duration (min)</Label>
+                      <Input
+                        id="edit-batch-duration"
+                        type="number"
+                        min={1}
+                        max={500}
+                        placeholder={`Course default: ${detail.courseDuration ?? "—"}`}
+                        value={editDuration}
+                        onChange={(e) => setEditDuration(e.target.value)}
+                        disabled={!canEdit}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Leave blank to follow the course's own {detail.courseDuration ?? "—"}-minute default.
+                      </p>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="edit-batch-payout-per-class">Teacher payout per class</Label>
+                      <Input
+                        id="edit-batch-payout-per-class"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        placeholder="Leave blank to use the teacher's rate card"
+                        value={editPayoutPerClass}
+                        onChange={(e) => setEditPayoutPerClass(e.target.value)}
+                        disabled={!canEdit}
+                      />
+                      <p className="text-xs text-muted-foreground">Flat amount paid per completed class in this batch. Leave blank only if the teacher has a per-minute rate card — with neither, completed classes earn ₹0 for the teacher.</p>
+                    </div>
+                  </div>
+                )}
+
+                {apiEnabled() && (
+                  <BatchPaymentPlanFields idPrefix="edit-batch" value={editPaymentPlan} onChange={setEditPaymentPlan} disabled={!canEdit} />
+                )}
+
+                {apiEnabled() && (
+                  <div className="grid gap-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                      <Label htmlFor="batch-assign-student-select">Assign students</Label>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
+                    </div>
+                    {canEdit ? (
+                      <Select value="" onValueChange={handleAssignStudent} disabled={assigning || roster.length >= detail.capacity}>
+                        <SelectTrigger id="batch-assign-student-select">
+                          <SelectValue
+                            placeholder={
+                              roster.length >= detail.capacity
+                                ? "Batch is at capacity"
+                                : assigning
+                                  ? "Assigning…"
+                                  : "Search and add a student…"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {unassigned.length === 0 ? (
+                            <SelectItem value="__none" disabled>
+                              No unassigned students available
+                            </SelectItem>
+                          ) : (
+                            unassigned.map((c) => (
+                              <SelectItem key={c.childId} value={c.childId}>
+                                {c.childName} — {c.parentName}
+                                {c.parentEmail ? ` (${c.parentEmail})` : ""}
+                                {c.academicLevel ? ` · ${c.academicLevel}` : ""}
+                                {c.currentCourses ? ` · already in: ${c.currentCourses}` : ""}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    ) : null}
+                    <p className="text-xs text-muted-foreground">
+                      {roster.length} of {detail.capacity} seats filled.{" "}
+                      {Math.max(0, detail.capacity - roster.length)} seat
+                      {Math.max(0, detail.capacity - roster.length) === 1 ? "" : "s"} remaining.
+                    </p>
+                    {rosterError && <p className="text-xs font-medium text-destructive">{rosterError}</p>}
+
+                    {rosterLoading ? (
+                      <p className="text-xs text-muted-foreground">Loading roster…</p>
+                    ) : roster.length > 0 ? (
+                      <ul className="mt-1 flex min-w-0 flex-col gap-1.5">
+                        {roster.map((s) => (
+                          <li
+                            key={s.enrollmentId}
+                            className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-1.5 text-sm"
+                          >
+                            {/* Deep links to the same rich student-detail dialog Users already has
+                                (email, parent details, login/credentials, RM notes, engagement) —
+                                mirrors admin/Batches.tsx; this row used to be plain unclickable
+                                text, leaving RM/Coordinator/Admission/Management with no way to
+                                see a batch student's details from here at all. */}
+                            <Link
+                              to={`${base}/users?studentId=${s.childId}`}
+                              className="min-w-0 flex-1 truncate text-left hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              title={`View ${s.childName}'s details`}
+                            >
+                              {s.childName}
+                              {s.academicLevel && <span className="text-xs text-muted-foreground"> · {s.academicLevel}</span>}
+                            </Link>
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveStudent(s.childId)}
+                                disabled={removingId === s.childId}
+                                title="Remove from batch"
+                                aria-label={`Remove ${s.childName} from batch`}
+                                className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
+              {futureBatchSessions.length > 0 && canAdjustSchedule ? (
+                <div className="rounded-xl border border-border bg-muted/30 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                      <CalendarPlus className="h-4 w-4" /> Adjust remaining schedule
+                    </p>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Edits only the {futureBatchSessions.length} session{futureBatchSessions.length === 1 ? "" : "s"} still
+                    upcoming (next on {formatDate(futureBatchSessions[0].scheduledStartAtUtc, "long")}) — completed
+                    sessions are never touched. Change just the field(s) you need; leave the rest as pre-filled.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {WEEKDAYS.map((d) => (
+                      <Button
+                        key={d.value}
+                        type="button"
+                        variant="pill"
+                        size="pill"
+                        aria-pressed={d.value in adjTimeByDay}
+                        onClick={() => toggleAdjDay(d.value)}
+                      >
+                        {d.label}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {Object.keys(adjTimeByDay).length > 0 && (
+                    <div className="mt-3 flex flex-col gap-1.5">
+                      {WEEKDAYS.filter((d) => d.value in adjTimeByDay).map((d) => (
+                        <div key={d.value} className="flex items-center gap-2">
+                          <span className="w-9 shrink-0 text-xs font-semibold text-muted-foreground">{d.label}</span>
+                          <Input
+                            type="time"
+                            aria-label={`${d.label} class time (IST)`}
+                            value={adjTimeByDay[d.value]}
+                            onChange={(e) => setAdjTimeByDay((prev) => ({ ...prev, [d.value]: e.target.value }))}
+                            className="h-8 max-w-[140px] text-sm"
+                          />
+                          <span className="text-xs text-muted-foreground">IST</span>
+                          {familyZones.map((z) => istSlotInZone(d.value, adjTimeByDay[d.value], z)).filter(Boolean).map((t) => (
+                            <span key={t} className="text-xs font-medium text-amber-600 dark:text-amber-400">→ family: {t}</span>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-3 grid max-w-[220px] gap-1.5">
+                    <Label htmlFor="adj-remaining">Remaining sessions</Label>
+                    <Input
+                      id="adj-remaining"
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={adjRemainingCount}
+                      onChange={(e) => setAdjRemainingCount(e.target.value)}
+                    />
+                  </div>
+
+                  <Button
+                    size="sm"
+                    className="mt-3"
+                    disabled={adjBusy || Object.keys(adjTimeByDay).length === 0}
+                    onClick={handleUpdateFutureSchedule}
+                  >
+                    {adjBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {adjBusy ? "Updating…" : "Update remaining sessions"}
+                  </Button>
+                  {adjResult && <p className="mt-2 text-xs font-medium text-foreground">{adjResult}</p>}
+                  <div className="mt-4 border-t border-border pt-3">
+                    <p className="text-xs text-muted-foreground">
+                      Need to start over (new timing or days)? Cancel all {futureBatchSessions.length} upcoming class
+                      {futureBatchSessions.length === 1 ? "" : "es"} in one go, then create the new schedule here. The batch, its
+                      students and completed classes are kept.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 text-destructive hover:text-destructive"
+                      onClick={() => setCancelUpcomingOpen(true)}
+                    >
+                      Cancel all upcoming classes
+                    </Button>
+                  </div>
+                </div>
+              ) : futureBatchSessions.length === 0 && canScheduleClasses ? (
+                <div className="rounded-xl border border-border bg-muted/30 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                      <CalendarPlus className="h-4 w-4" /> Generate class schedule
+                    </p>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">Saved immediately</span>
+                  </div>
+                  {batchSessions.length > 0 && (
+                    <p className="mt-0.5 text-xs font-medium text-foreground">
+                      All {batchSessions.length} existing session{batchSessions.length === 1 ? " is" : "s are"} completed or
+                      cancelled. Set a start date after the last one and the number of new sessions to add (e.g. after the
+                      payment for the next block is received).
+                    </p>
+                  )}
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Creates sessions from a start date on the selected weekdays (holidays skipped), each at its own
+                    time — e.g. Monday/Wednesday at 5 PM but Friday at noon. By default, every session of the course;
+                    set a number below for a batch continuing mid-course elsewhere.
+                  </p>
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gen-start">Start date <span className="text-destructive">*</span></Label>
+                      <Input id="gen-start" type="date" value={genStart} onChange={(e) => setGenStart(e.target.value)} />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gen-session-count">Number of sessions</Label>
+                      <Input
+                        id="gen-session-count"
+                        type="number"
+                        min={1}
+                        max={500}
+                        placeholder="Default: the course's full session count"
+                        value={genSessionCount}
+                        onChange={(e) => setGenSessionCount(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Session count: only what's actually still owed — e.g. 14, for a batch with 14 left of a 48-session course.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {WEEKDAYS.map((d) => (
+                      <Button
+                        key={d.value}
+                        type="button"
+                        variant="pill"
+                        size="pill"
+                        aria-pressed={d.value in genTimeByDay}
+                        onClick={() => toggleGenDay(d.value)}
+                      >
+                        {d.label}
+                      </Button>
+                    ))}
+                  </div>
+                  {Object.keys(genTimeByDay).length > 0 && (
+                    <div className="mt-3 flex flex-col gap-1.5">
+                      {WEEKDAYS.filter((d) => d.value in genTimeByDay).map((d) => (
+                        <div key={d.value} className="flex items-center gap-2">
+                          <span className="w-9 shrink-0 text-xs font-semibold text-muted-foreground">{d.label}</span>
+                          <Input
+                            type="time"
+                            aria-label={`${d.label} class time (IST)`}
+                            value={genTimeByDay[d.value]}
+                            onChange={(e) => setGenTimeByDay((prev) => ({ ...prev, [d.value]: e.target.value }))}
+                            className="h-8 max-w-[140px] text-sm"
+                          />
+                          <span className="text-xs text-muted-foreground">IST</span>
+                          {familyZones.map((z) => istSlotInZone(d.value, genTimeByDay[d.value], z)).filter(Boolean).map((t) => (
+                            <span key={t} className="text-xs font-medium text-amber-600 dark:text-amber-400">→ family: {t}</span>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Button
+                    size="sm"
+                    className="mt-3"
+                    disabled={genBusy || !genStart || Object.keys(genTimeByDay).length === 0}
+                    onClick={handleGenerateSchedule}
+                  >
+                    {genBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {genBusy ? "Generating…" : "Generate sessions"}
+                  </Button>
+                  {genResult && <p className="mt-2 text-xs font-medium text-foreground">{genResult}</p>}
+                </div>
+              ) : null}
+
+              {saveError && <p className="text-sm font-medium text-destructive">{saveError}</p>}
+              <DialogFooter className="items-center gap-3 sm:justify-between">
+                {canEdit || canDelete ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canEdit && (
+                      <Button
+                        variant="outline"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={archiving || isArchived}
+                        onClick={archiveCurrentBatch}
+                      >
+                        <Archive className="h-4 w-4" /> {isArchived ? "Archived" : archiving ? "Archiving…" : "Archive batch"}
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button
+                        variant="outline"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setDeleteTarget(detail)}
+                      >
+                        <Trash2 className="h-4 w-4" /> Delete batch
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <span />
+                )}
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => setDetail(null)}>
+                    Close
+                  </Button>
+                  {canEdit && (
+                    <Button onClick={saveDetail} disabled={saving || !editName.trim() || !editTeacher || !isPaymentPlanValid(editPaymentPlan)}>
+                      {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {saving ? "Saving…" : "Save Changes"}
+                    </Button>
+                  )}
+                </div>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={cancelUpcomingOpen}
+        onOpenChange={setCancelUpcomingOpen}
+        title="Cancel all upcoming classes?"
+        description={`All ${futureBatchSessions.length} upcoming class${futureBatchSessions.length === 1 ? "" : "es"} of this batch will be cancelled (recorded as cancelled by you). The batch, its students and its completed classes stay. You can then create the new schedule from this same screen.`}
+        confirmLabel="Cancel upcoming classes"
+        destructive
+        onConfirm={async () => {
+          if (!detail) return;
+          const { cancelled } = await cancelUpcomingSessions(detail.id);
+          await reloadBatchSessions(detail.id);
+          reload();
+          setAdjResult(null);
+          toast({ variant: "success", title: `${cancelled} upcoming class${cancelled === 1 ? "" : "es"} cancelled`, description: "Now set the new schedule for this batch." });
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete this batch?"
+        description={
+          deleteTarget ? (
+            <div className="space-y-2 text-left">
+              <p>
+                <span className="font-medium text-foreground">"{deleteTarget.name}"</span> will be removed from
+                every list. This can't be undone from here.
+              </p>
+              <ul className="list-disc space-y-0.5 pl-4">
+                <li>
+                  Teacher assigned:{" "}
+                  <span className="font-medium text-foreground">{deleteTarget.teacherName ?? "Unassigned"}</span>
+                </li>
+                <li>
+                  Course: <span className="font-medium text-foreground">{deleteTarget.courseName ?? "—"}</span>
+                </li>
+                <li>Any of its still-scheduled upcoming sessions will be cancelled, not deleted.</li>
+              </ul>
+              <p>Refused while it still has an active student — withdraw them (or move them to another batch) first.</p>
+            </div>
+          ) : undefined
+        }
+        confirmLabel={deletingBatch ? "Deleting…" : "Delete"}
+        destructive
+        onConfirm={confirmDeleteBatch}
+      />
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create a batch</DialogTitle>
+            <DialogDescription>Pick the course and teacher, then set capacity (1 = individual batch).</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="nb-name">Batch name <span className="text-destructive">*</span></Label>
+              <Input id="nb-name" placeholder="e.g. Phonics Level 1 — Evening B" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="new-batch-course-select">Course <span className="text-destructive">*</span></Label>
+                <Select value={newCourse} onValueChange={handleNewCourseChange}>
+                  <SelectTrigger id="new-batch-course-select">
+                    <SelectValue placeholder="Select course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courseOptions.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} {c.type === "Individual" ? "(1:1)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {courseOptions.length === 0 && (
+                  <p className="text-xs text-destructive">
+                    {coursesLoading
+                      ? "Loading courses…"
+                      : coursesError
+                        ? "Couldn't load the course list."
+                        : "No active courses yet — add one under Courses first."}{" "}
+                    {!coursesLoading && (
+                      <button type="button" className="font-semibold underline" onClick={reloadCourses}>
+                        Retry
+                      </button>
+                    )}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="new-batch-teacher-select">Teacher <span className="text-destructive">*</span></Label>
+                <Select value={newTeacher} onValueChange={setNewTeacher}>
+                  <SelectTrigger id="new-batch-teacher-select">
+                    <SelectValue placeholder="Select teacher" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {apiEnabled() && teacherOptions.length > 0
+                      ? teacherOptions.map((t) => (
+                          <SelectItem key={t.teacherProfileId} value={t.teacherProfileId}>
+                            {t.fullName} {t.departmentName ? `· ${t.departmentName}` : ""}
+                          </SelectItem>
+                        ))
+                      : TEACHERS.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name} · {t.department}
+                          </SelectItem>
+                        ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="nb-payout-per-class">Teacher payout per class (optional)</Label>
+              <Input
+                id="nb-payout-per-class"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="e.g. 125 — leave blank to use the teacher's rate card"
+                value={newPayoutPerClass}
+                onChange={(e) => setNewPayoutPerClass(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Flat amount paid to this batch's teacher per completed class. Leave blank only if the teacher has a per-minute rate card — with neither, completed classes earn ₹0 for the teacher.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="nb-capacity">Capacity <span className="text-destructive">*</span></Label>
+                <Input
+                  id="nb-capacity"
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={newCapacity}
+                  disabled={newCourseIsIndividual}
+                  onChange={(e) => setNewCapacity(e.target.value)}
+                  placeholder="e.g. 12"
+                />
+                {newCourseIsIndividual && (
+                  <p className="text-xs text-muted-foreground">This is a 1:1 course — its batches always run with a single seat.</p>
+                )}
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="nb-start">Start date (optional)</Label>
+                <Input id="nb-start" type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
+              </div>
+            </div>
+            <BatchPaymentPlanFields idPrefix="new-batch" value={newPaymentPlan} onChange={setNewPaymentPlan} />
+            {createError && <p className="text-sm font-medium text-destructive">{createError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={creating || !newName.trim() || !newCourse || !newTeacher || !isPaymentPlanValid(newPaymentPlan)} onClick={handleCreate}>
+              {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {creating ? "Creating…" : "Create Batch"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

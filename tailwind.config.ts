@@ -12,6 +12,10 @@ export default {
       screens: { "2xl": "1400px" },
     },
     extend: {
+      screens: {
+        // A phone held sideways: wide enough for two columns but too short to stack them.
+        short: { raw: "(orientation: landscape) and (max-height: 520px)" },
+      },
       fontFamily: {
         sans: ["DM Sans", "system-ui", "sans-serif"],
         display: ["Plus Jakarta Sans", "system-ui", "sans-serif"],
@@ -115,6 +119,10 @@ export default {
           // hue. Shifted into the empty ~40° gap between the blue cluster (admin/student)
           // and the purple cluster (admission) — a distinct indigo, not "another purple."
           management: "#4F46E5",
+          // Kept in sync with ROLE_META.itadmin.hex in src/lib/roles.ts.
+          itadmin: "#0891B2",
+          // Kept in sync with ROLE_META.executive.hex in src/lib/roles.ts.
+          executive: "#B45309",
         },
         status: {
           scheduled: "#EAB308",

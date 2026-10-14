@@ -6,23 +6,27 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { MultiChildSwitcher } from "@/components/MultiChildSwitcher";
 import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { useSession } from "@/state/session";
 import { getChildById } from "@/data/children";
 import { SESSIONS } from "@/data/sessions";
-import { apiEnabled } from "@/lib/api";
-import { getParentSchedule, getSessionRecordings } from "@/api/parentPortal";
-import { toFrontendSession, type ApiSessionRecording } from "@/api/sessions";
+import { apiEnabled, userMessage } from "@/lib/api";
+import { listMyRecordings, type ApiParentRecording } from "@/api/parentPortal";
+import type { ApiSessionRecording } from "@/api/sessions";
 import { formatDate } from "@/lib/utils";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { expiryLabelFor } from "./utils";
-import type { ClassSession } from "@/types";
 
-/** One recording paired with the session it belongs to — the unit this page renders as a card. */
+/** One recording paired with the (title, date) of the session it belongs to — the unit this
+ *  page renders as a card. Deliberately not a full ClassSession: listMyRecordings' bulk
+ *  endpoint doesn't carry (and this page doesn't need) anything beyond these two fields. */
 interface RecordingEntry {
   recording: ApiSessionRecording;
-  session: ClassSession;
+  session: { title: string; date: string };
 }
 
 export default function ParentRecordings() {
@@ -30,13 +34,21 @@ export default function ParentRecordings() {
   const usingApi = apiEnabled();
   const mockChild = getChildById(activeChildId);
   const sessionChild = sessionChildren.find((c) => c.id === activeChildId) ?? sessionChildren[0];
-  const child = usingApi
-    ? sessionChild
-      ? { id: sessionChild.id, name: sessionChild.name }
-      : undefined
-    : mockChild
-      ? { id: mockChild.id, name: mockChild.name }
-      : undefined;
+  // Memoized so `child` keeps a stable identity across renders when the underlying id/name
+  // haven't actually changed — otherwise this object-literal-per-render would make every
+  // downstream hook that depends on `child` (the useEffect and useMemo below) recompute on
+  // every unrelated render if `child` were added to their deps.
+  const child = useMemo(
+    () =>
+      usingApi
+        ? sessionChild
+          ? { id: sessionChild.id, name: sessionChild.name }
+          : undefined
+        : mockChild
+          ? { id: mockChild.id, name: mockChild.name }
+          : undefined,
+    [usingApi, sessionChild, mockChild]
+  );
   const isEnrolled = usingApi ? (sessionChild?.enrollmentComplete ?? false) : mockChild ? enrolledChildIds.includes(mockChild.id) : false;
 
   const [entries, setEntries] = useState<RecordingEntry[]>([]);
@@ -53,42 +65,34 @@ export default function ParentRecordings() {
     setLoading(true);
     setError(null);
 
-    // Recordings expire 15 days after class — a 45-day lookback comfortably covers every
-    // session that could still have a live (non-expired) recording, with slack for delayed
-    // Jibri uploads, without pulling in months of already-expired history.
-    const fromUtc = new Date(Date.now() - 45 * 86400_000).toISOString();
-    const toUtc = new Date().toISOString();
-
-    getParentSchedule(fromUtc, toUtc)
-      .then(async (apiSessions) => {
-        const completed = apiSessions
-          .map(toFrontendSession)
-          .filter((s) => s.status === "completed" && s.childIds.includes(child.id));
-
-        // One recordings lookup per completed session — the backend already scopes each
-        // call to this parent's own child and filters out expired rows, so whatever comes
-        // back here is exactly what's watchable right now.
-        const results = await Promise.all(
-          completed.map(async (session) => {
-            try {
-              const recs = await getSessionRecordings(session.id);
-              return recs.map((recording) => ({ recording, session }));
-            } catch {
-              // No recordings shared for this session (or it 404s the enrollment check) —
-              // not an error worth surfacing per-session, just contributes nothing.
-              return [];
-            }
-          })
-        );
-
+    // One paged, server-filtered call for every recording across every batch this parent's
+    // children are in — replaces fetching the schedule then calling getSessionRecordings once
+    // per completed session (each doing its own enrollment + suspension check), the same N+1
+    // shape already found and fixed on the admin and teacher Recordings pages.
+    listMyRecordings()
+      .then((recs: ApiParentRecording[]) => {
         if (cancelled) return;
-        const flat = results
-          .flat()
+        const flat = recs
+          .filter((r) => r.childIds.includes(child.id))
+          .map((r) => ({
+            recording: {
+              id: r.id,
+              classSessionId: r.classSessionId,
+              storageUrl: r.storageUrl,
+              durationSeconds: r.durationSeconds,
+              expiresAtUtc: r.expiresAtUtc,
+              createdAtUtc: r.createdAtUtc,
+            },
+            session: {
+              title: r.batchName ?? "Class session",
+              date: utcIsoToLocalDateTime(r.scheduledStartAtUtc).date,
+            },
+          }))
           .sort((a, b) => new Date(b.recording.createdAtUtc).getTime() - new Date(a.recording.createdAtUtc).getTime());
         setEntries(flat);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load recordings.");
+        if (!cancelled) setError(userMessage(err, "Could not load recordings."));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -97,7 +101,7 @@ export default function ParentRecordings() {
     return () => {
       cancelled = true;
     };
-  }, [usingApi, child?.id]);
+  }, [usingApi, child]);
 
   const demoEntries = useMemo<RecordingEntry[]>(() => {
     if (usingApi || !child) return [];
@@ -144,12 +148,21 @@ export default function ParentRecordings() {
       {!child ? (
         <EmptyState icon={Video} title="No child selected" className="mt-6" />
       ) : loading ? (
-        <p className="mt-6 text-sm text-muted-foreground">Loading recordings…</p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <Card key={i} className="flex flex-col p-4">
+              <Skeleton className="h-10 w-10 rounded-xl" />
+              <Skeleton className="mt-3 h-4 w-3/4" />
+              <Skeleton className="mt-2 h-3 w-1/2" />
+              <Skeleton className="mt-4 h-8 w-full rounded-md" />
+            </Card>
+          ))}
+        </div>
       ) : rows.length === 0 ? (
         <EmptyState
           icon={Video}
           title="No recordings yet"
-          description="Recordings appear here once a class finishes and stay available for 15 days."
+          description="Recordings appear here a few minutes after a class finishes, not during it, and stay available for 15 days."
           className="mt-6"
         />
       ) : (
@@ -198,7 +211,7 @@ export default function ParentRecordings() {
                 </DialogDescription>
               </DialogHeader>
               {preview.recording.storageUrl ? (
-                <video controls className="aspect-video w-full rounded-xl bg-black" src={preview.recording.storageUrl} />
+                <VideoPlayer src={preview.recording.storageUrl} />
               ) : (
                 <div className="flex aspect-video items-center justify-center rounded-xl bg-muted/60">
                   <PlayCircle className="h-12 w-12 text-muted-foreground/60" />

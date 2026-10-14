@@ -75,7 +75,7 @@ export function FileDropzone({ label = "Drag & drop or click to upload", hint = 
       <span className={cn("flex h-11 w-11 items-center justify-center rounded-full", fileName ? "bg-success/15 text-success" : "bg-primary/10 text-primary")}>
         {fileName ? <FileCheck2 className="h-5 w-5" /> : <UploadCloud className="h-5 w-5" />}
       </span>
-      <p className="text-sm font-semibold text-foreground">{fileName ?? label}</p>
+      <p className="w-full truncate text-sm font-semibold text-foreground">{fileName ?? label}</p>
       {!fileName && <p className="text-xs text-muted-foreground">{hint}</p>}
       {fileName && <p className="text-xs text-success">Ready to upload</p>}
     </div>

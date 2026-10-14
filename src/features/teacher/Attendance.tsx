@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { CheckCircle2, ClipboardList, Users, Video, XCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, CheckCircle2, ClipboardList, IndianRupee, Users, Video, XCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
@@ -12,12 +13,15 @@ import { Badge } from "@/components/ui/badge";
 import { getSessionsForTeacher } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getChildById } from "@/data/children";
+import { getPayoutsForTeacher } from "@/data/payouts";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
-import { formatDate, getInitials } from "@/lib/utils";
-import type { ClassSession } from "@/types";
+import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
+import { utcIsoToLocalDateTime } from "@/lib/datetime";
+import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
+import type { ClassSession, TeacherPayout } from "@/types";
 
 const TEACHER_ID = "t-1";
 
@@ -44,6 +48,32 @@ const SESSION_NOTES: Record<string, string> = {
   "s-8": "Covered blending of 'sh' and 'ch' sounds using flashcards. Both students engaged well — assigned the Week 3 worksheet for home practice.",
   "s-22": "Recap session on short vowel sounds. Sara was attentive throughout; Aarav needs a quick catch-up on sequencing before the next class.",
 };
+
+const PAYOUT_ITEM_TYPE_LABEL: Record<string, string> = {
+  SessionEarning: "Class earning",
+  StudentNoShowWaiting: "Student no-show (waiting pay)",
+  TeacherNoShowDeduction: "Teacher no-show deduction",
+  Penalty: "Penalty",
+  Bonus: "Bonus",
+  Adjustment: "Adjustment",
+};
+
+/** One session can carry more than one payout line item (e.g. an earning plus a later
+ * adjustment) — netted here into a single figure per session, keyed off whichever
+ * payout period the item landed in so the status badge reflects that period's state. */
+interface SessionPayment {
+  amount: number;
+  status: TeacherPayout["status"];
+  items: TeacherPayout["items"];
+}
+
+function formatClockTime(isoUtc: string) {
+  const { time } = utcIsoToLocalDateTime(isoUtc);
+  const [h, m] = time.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}
 
 function sessionSubtitle(session: ClassSession) {
   if (session.batchId) return getBatchById(session.batchId)?.name ?? "General session";
@@ -78,6 +108,30 @@ export default function TeacherAttendance() {
     { sessions: [], attendanceBySession: {} }
   );
   const apiCompleted = apiData.sessions;
+
+  // Payout history is the source of truth for what a given class actually paid — session
+  // earnings are computed there, not on the session itself. Fetched once per teacher (not
+  // per row) and netted client-side into a per-session lookup for the table/dialog below.
+  const { data: payouts } = useApiData(
+    () => listMyPayouts().then((items) => items.map(toFrontendPayout)),
+    getPayoutsForTeacher(TEACHER_ID)
+  );
+  const paymentBySession = useMemo(() => {
+    const map: Record<string, SessionPayment> = {};
+    for (const payout of payouts) {
+      for (const item of payout.items) {
+        if (!item.classSessionId) continue;
+        const existing = map[item.classSessionId];
+        if (existing) {
+          existing.amount += item.amount;
+          existing.items.push(item);
+        } else {
+          map[item.classSessionId] = { amount: item.amount, status: payout.status, items: [item] };
+        }
+      }
+    }
+    return map;
+  }, [payouts]);
   const completed = apiEnabled()
     ? [...apiCompleted].sort((a, b) => b.date.localeCompare(a.date))
     : getSessionsForTeacher(TEACHER_ID)
@@ -182,6 +236,35 @@ export default function TeacherAttendance() {
       },
     },
     {
+      key: "payment",
+      header: "Payment",
+      accessor: (row) => paymentBySession[row.id]?.amount ?? 0,
+      sortable: true,
+      render: (row) => {
+        const payment = paymentBySession[row.id];
+        if (!payment) return <span className="text-sm text-muted-foreground">—</span>;
+        const flagged = payment.items.find((i) => i.requiresReview);
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-medium text-foreground">{formatCurrency(payment.amount)}</span>
+            <Badge variant={payment.status === "paid" ? "success" : payment.status === "finalized" ? "default" : "warning"}>
+              {payment.status === "paid" ? "Paid" : payment.status === "finalized" ? "Finalized" : "Pending"}
+            </Badge>
+            {flagged && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex text-warning">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{flagged.note ?? "Flagged for admin review before this payout is finalized."}</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       key: "recording",
       header: "Recording",
       render: (row) =>
@@ -235,14 +318,16 @@ export default function TeacherAttendance() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Sessions Delivered" value={String(completed.length)} icon={ClipboardList} tone="primary" loading={apiLoading} />
-        <KpiCard label="Average Attendance" value={avgAttendance ? `${avgAttendance}%` : "—"} icon={CheckCircle2} tone="success" loading={apiLoading} />
-        <KpiCard label="Students Taught" value={String(uniqueStudents)} icon={Users} tone="primary" loading={apiLoading} />
-        <KpiCard label="Recordings Available" value={`${recordingsAvailable}/${completed.length}`} icon={Video} tone="neutral" loading={apiLoading} />
+        <KpiCard label="Sessions Delivered" value={String(completed.length)} icon={ClipboardList} tone="primary" loading={apiLoading} error={apiError} />
+        <KpiCard label="Average Attendance" value={avgAttendance ? `${avgAttendance}%` : "—"} icon={CheckCircle2} tone="success" loading={apiLoading} error={apiError} />
+        <KpiCard label="Students Taught" value={String(uniqueStudents)} icon={Users} tone="primary" loading={apiLoading} error={apiError} />
+        <KpiCard label="Recordings Available" value={`${recordingsAvailable}/${completed.length}`} icon={Video} tone="neutral" loading={apiLoading} error={apiError} />
       </div>
 
       <div className="mt-6">
-        {completed.length === 0 && !apiError ? (
+        {apiLoading ? (
+          <p className="text-sm text-muted-foreground">Loading your attendance records…</p>
+        ) : completed.length === 0 && !apiError ? (
           <EmptyState icon={ClipboardList} title="No completed sessions yet" description="Once you deliver a class, its attendance record will show up here." />
         ) : (
           <DataTable
@@ -274,15 +359,15 @@ export default function TeacherAttendance() {
                   const child = getChildById(record.childId);
                   return (
                     <div key={record.childId} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar className="h-8 w-8">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <Avatar className="h-8 w-8 shrink-0">
                           <AvatarFallback style={{ backgroundColor: `${child?.avatarColor ?? "hsl(var(--muted-foreground))"}26`, color: child?.avatarColor ?? "hsl(var(--muted-foreground))" }}>
                             {child ? getInitials(child.name) : "?"}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{child?.name ?? record.childId ?? "Unknown student"}</p>
-                          {record.note && <p className="text-xs text-muted-foreground">{record.note}</p>}
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{child?.name ?? record.childId ?? "Unknown student"}</p>
+                          {record.note && <p className="truncate text-xs text-muted-foreground">{record.note}</p>}
                         </div>
                       </div>
                       <Badge variant={record.present ? "success" : "destructive"}>
@@ -299,6 +384,74 @@ export default function TeacherAttendance() {
                 <p className="rounded-lg bg-muted/50 p-3 text-sm text-foreground">
                   {(apiEnabled() ? selected.summary : SESSION_NOTES[selected.id]) ?? "No notes were recorded for this session."}
                 </p>
+              </div>
+
+              <div>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment detail</p>
+                {(() => {
+                  const payment = paymentBySession[selected.id];
+                  if (!payment) {
+                    return (
+                      <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                        Not on a payout yet — this class hasn't been included in a payout calculation.
+                      </p>
+                    );
+                  }
+                  const flagged = payment.items.find((i) => i.requiresReview);
+                  return (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                        <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <IndianRupee className="h-3.5 w-3.5" /> Net for this class
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-foreground">{formatCurrency(payment.amount)}</span>
+                          <Badge variant={payment.status === "paid" ? "success" : payment.status === "finalized" ? "default" : "warning"}>
+                            {payment.status === "paid" ? "Paid" : payment.status === "finalized" ? "Finalized" : "Pending"}
+                          </Badge>
+                        </div>
+                      </div>
+                      {flagged &&
+                        (() => {
+                          // Same data the admin's own review dialog uses — already fetched
+                          // alongside the session list above, not a new request.
+                          const teacherRecord = apiEnabled()
+                            ? (apiData.attendanceBySession[selected.id] ?? []).find((r) => r.participantType === "Teacher")
+                            : undefined;
+                          return (
+                            // The amount above is never auto-reduced for short attendance — it's
+                            // priced off the scheduled duration and always will be — but this
+                            // specific class was flagged for a human to check before the payout
+                            // is finalized, which the amount alone gives no hint of.
+                            <div className="flex flex-col gap-1 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning-foreground">
+                              <div className="flex items-start gap-2">
+                                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                <span>{flagged.note ?? "Flagged for admin review before this payout is finalized."}</span>
+                              </div>
+                              {teacherRecord?.joinedAtUtc && (
+                                <p className="pl-5 text-foreground/80">
+                                  You joined {formatClockTime(teacherRecord.joinedAtUtc)}
+                                  {teacherRecord.leftAtUtc
+                                    ? ` · left ${formatClockTime(teacherRecord.leftAtUtc)}`
+                                    : " · were still connected when the class was marked complete"}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      {payment.items.length > 1 &&
+                        payment.items.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between gap-3 pl-3 text-xs text-muted-foreground">
+                            <span>{PAYOUT_ITEM_TYPE_LABEL[item.type] ?? item.type}{item.note ? ` — ${item.note}` : ""}</span>
+                            <span className={item.amount < 0 ? "text-destructive" : "text-success"}>
+                              {item.amount < 0 ? "-" : "+"}
+                              {formatCurrency(Math.abs(item.amount))}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  );
+                })()}
               </div>
 
               <DialogFooter>

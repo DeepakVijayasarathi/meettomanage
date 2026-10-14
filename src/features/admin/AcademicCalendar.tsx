@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarClock, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Loader2, Plus, RefreshCcw, Trash2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarBoard } from "@/components/CalendarBoard";
@@ -21,19 +21,23 @@ import {
 import { SESSIONS } from "@/data/sessions";
 import { getBatchById } from "@/data/batches";
 import { getChildById } from "@/data/children";
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, userMessage } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
-import { listSessions, toFrontendSession } from "@/api/sessions";
-import { createHoliday, deleteHoliday, listHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
+import { getJitsiJoin, listSessions, monthWindow, toFrontendSession } from "@/api/sessions";
+import { parseCancellation } from "@/lib/cancelledBy";
+import { familyTimes } from "@/lib/familyTime";
+import { createHoliday, deleteHoliday, listHolidays, reconcileHolidays, listLeave, type ApiHoliday, type ApiLeaveRequest } from "@/api/academicOps";
 import { approvedLeaveToCalendarEvents, holidaysToCalendarEvents } from "@/lib/calendarEvents";
 import type { ClassSession } from "@/types";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTimeLabel } from "@/lib/utils";
 
 export default function AdminAcademicCalendar() {
   const { toast } = useToast();
   const [selected, setSelected] = useState<ClassSession | null>(null);
-  const { data: sessions } = useApiData<ClassSession[]>(
-    () => listSessions().then((items) => items.map(toFrontendSession)),
+  // Only the month on screen (+ a week each side) -- it used to load 15 months of every class.
+  const [viewMonth, setViewMonth] = useState(() => new Date());
+  const { data: sessions, reload: reloadMonth } = useApiData<ClassSession[]>(
+    () => listSessions(monthWindow(viewMonth)).then((items) => items.map(toFrontendSession)),
     SESSIONS
   );
   const { data: holidays, reload: reloadHolidays } = useApiData<ApiHoliday[]>(() => listHolidays(), []);
@@ -57,8 +61,30 @@ export default function AdminAcademicCalendar() {
   const [holidayName, setHolidayName] = useState("");
   const [savingHoliday, setSavingHoliday] = useState(false);
   const [holidayError, setHolidayError] = useState<string | null>(null);
+  const [reconciling, setReconciling] = useState(false);
   const [deletingHolidayId, setDeletingHolidayId] = useState<string | null>(null);
   const [holidayDeleteTarget, setHolidayDeleteTarget] = useState<ApiHoliday | null>(null);
+  const [joining, setJoining] = useState(false);
+
+  // Admin-team monitor join: available for any upcoming or ongoing class at any time (not
+  // just the 10-minute pre-start window families get) and lands straight in the room as a
+  // moderator, so there's no lobby approval to wait for.
+  async function handleJoin(session: ClassSession) {
+    if (!apiEnabled()) {
+      toast({ variant: "success", title: "Demo mode", description: "Joining a live class needs the API connected." });
+      return;
+    }
+    setJoining(true);
+    try {
+      const join = await getJitsiJoin(session.id);
+      // The in-app monitor view (StaffLiveClassroom), not a raw Jitsi tab — see its doc comment.
+      window.open(`/staff/live/${join.sessionId}`, "_blank", "noopener");
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't join this class", description: userMessage(err, "Please try again.") });
+    } finally {
+      setJoining(false);
+    }
+  }
 
   async function handleAddHoliday() {
     if (!holidayDate || !holidayName.trim()) return;
@@ -81,11 +107,35 @@ export default function AdminAcademicCalendar() {
       reloadHolidays();
       toast({ variant: "success", title: "Holiday added" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not add the holiday.";
+      const message = userMessage(err, "Could not add the holiday.");
       setHolidayError(message);
       toast({ variant: "error", title: "Couldn't add holiday", description: message });
     } finally {
       setSavingHoliday(false);
+    }
+  }
+
+  async function handleReconcileHolidays() {
+    setReconciling(true);
+    setHolidayError(null);
+    try {
+      const { cancelledSessions, removedShiftedSessions } = await reconcileHolidays();
+      reloadMonth();
+      const parts = [
+        removedShiftedSessions > 0 ? `${removedShiftedSessions} shifted class${removedShiftedSessions === 1 ? "" : "es"} removed — schedule restored` : null,
+        cancelledSessions > 0 ? `${cancelledSessions} class${cancelledSessions === 1 ? "" : "es"} on holidays cancelled` : null,
+      ].filter(Boolean);
+      toast({
+        variant: "success",
+        title: parts.length > 0 ? "Holiday schedule fixed" : "Nothing to fix",
+        description: parts.length > 0 ? parts.join("; ") + "." : "No shifted or holiday classes were found.",
+      });
+    } catch (err) {
+      const message = userMessage(err, "Could not fix the holiday schedule.");
+      setHolidayError(message);
+      toast({ variant: "error", title: "Couldn't update sessions", description: message });
+    } finally {
+      setReconciling(false);
     }
   }
 
@@ -101,7 +151,7 @@ export default function AdminAcademicCalendar() {
       reloadHolidays();
       toast({ variant: "success", title: "Holiday removed" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not remove the holiday.";
+      const message = userMessage(err, "Could not remove the holiday.");
       setHolidayError(message);
       toast({ variant: "error", title: "Couldn't remove holiday", description: message });
     } finally {
@@ -121,6 +171,11 @@ export default function AdminAcademicCalendar() {
         <CalendarBoard
           sessions={calendarEvents}
           initialMonth={apiEnabled() ? new Date() : new Date(2026, 6, 1)}
+          onMonthChange={(m) => {
+            if (m.getFullYear() === viewMonth.getFullYear() && m.getMonth() === viewMonth.getMonth()) return;
+            setViewMonth(m);
+            reloadMonth();
+          }}
           onSessionClick={setSelected}
         />
       </Card>
@@ -145,10 +200,15 @@ export default function AdminAcademicCalendar() {
               <Input id="holiday-name" value={holidayName} onChange={(e) => setHolidayName(e.target.value)} placeholder="e.g. Diwali" className="w-56" />
             </div>
             <Button onClick={handleAddHoliday} disabled={savingHoliday || !holidayDate || !holidayName.trim()}>
-              <Plus className="h-4 w-4" /> {savingHoliday ? "Adding…" : "Add Holiday"}
+              {savingHoliday ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}{savingHoliday ? "Adding…" : "Add Holiday"}
             </Button>
           </div>
           {holidayError && <p className="text-sm font-medium text-destructive">{holidayError}</p>}
+          <div>
+            <Button variant="outline" size="sm" onClick={handleReconcileHolidays} disabled={reconciling}>
+              {reconciling ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}{reconciling ? "Updating…" : "Fix holiday schedule"}
+            </Button>
+          </div>
           {visibleHolidays.length > 0 && (
             <ul className="flex flex-col divide-y divide-border">
               {visibleHolidays.map((h) => (
@@ -183,8 +243,13 @@ export default function AdminAcademicCalendar() {
                 </span>
                 <DialogTitle>{selected.title}</DialogTitle>
                 <DialogDescription>
-                  {formatDate(selected.date, "long")} · {selected.startTime} · {selected.duration} min
+                  {formatDate(selected.date, "long")} · {formatTimeLabel(selected.startTime)} · {selected.duration} min
                 </DialogDescription>
+                {familyTimes(selected.date, selected.startTime, selected.parentTimeZones).map((t) => (
+                  <p key={t} className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                    Family's local time: {t}
+                  </p>
+                ))}
               </DialogHeader>
 
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -206,17 +271,28 @@ export default function AdminAcademicCalendar() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Batch</p>
                   {/* API sessions carry the batch name as the title; the mock lookup is demo-only */}
                   <p className="mt-1 font-medium text-foreground">
-                    {selected.batchId ? (apiEnabled() ? selected.title : getBatchById(selected.batchId)?.name ?? "—") : "—"}
+                    {selected.batchName ?? (selected.batchId ? getBatchById(selected.batchId)?.name ?? "—" : "—")}
                   </p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Students</p>
                   <p className="mt-1 font-medium text-foreground">
-                    {selected.childIds.length === 0
-                      ? "No students assigned"
-                      : selected.childIds.map((id) => getChildById(id)?.name ?? id).join(", ")}
+                    {selected.studentNames && selected.studentNames.length > 0
+                      ? selected.studentNames.join(", ")
+                      : selected.childIds.length === 0
+                        ? "No students assigned"
+                        : selected.childIds.map((id) => getChildById(id)?.name ?? id).join(", ")}
                   </p>
                 </div>
+                {selected.status === "cancelled" && selected.cancellationReason && (
+                  <div className="col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cancelled by</p>
+                    <p className="mt-1 font-medium text-foreground">{parseCancellation(selected.cancellationReason).who ?? "Not recorded"}</p>
+                    {parseCancellation(selected.cancellationReason).details && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{parseCancellation(selected.cancellationReason).details}</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <DialogFooter>
@@ -226,6 +302,11 @@ export default function AdminAcademicCalendar() {
                 {selected.status !== "holiday" && selected.status !== "leave" && (
                   <Button variant="outline" asChild>
                     <Link to="/admin/sessions">Manage in Sessions</Link>
+                  </Button>
+                )}
+                {(selected.status === "scheduled" || selected.status === "demo") && selected.meetingRoomId && (
+                  <Button disabled={joining} onClick={() => void handleJoin(selected)}>
+                    {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />} Join Class
                   </Button>
                 )}
               </DialogFooter>

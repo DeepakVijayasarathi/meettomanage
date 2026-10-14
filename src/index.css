@@ -72,6 +72,9 @@
   }
 
   .dark {
+    /* Tells the browser to draw its own controls (date-picker calendar icon, scrollbars, select
+       arrows) for a dark surface; without it the date fields' icon is dark-on-dark and invisible. */
+    color-scheme: dark;
     --background: 222 30% 8%;
     --foreground: 210 25% 96%;
 
@@ -110,7 +113,7 @@
     --ring: 214 65% 58%;
   }
 
-  /* Login/ForgotPassword/ResetPin and the public marketing pages (Home, Store) render a
+  /* Login/ForgotPin/ResetPin and the public marketing pages (Home, Store) render a
      fixed light cream/white brand identity, independent of the app's dark-mode toggle —
      that control lives inside the authenticated AppShell and these pages keep their own
      brand-*-token look regardless of it. They still embed shared shadcn primitives

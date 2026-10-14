@@ -10,7 +10,9 @@ import { getInitials, formatDate, cn } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { SUB_ADMINS } from "@/data/users";
 import { CHART_PALETTE } from "@/lib/roles";
-import { PERMISSION_MODULES, PERMISSION_ACTIONS_LABELS, type PermissionModuleName } from "@/api/permissions";
+import { DEMO_PERMISSION_MODULES, PERMISSION_ACTIONS_LABELS, type PermissionModuleName } from "@/api/permissions";
+import { listPermissionModules } from "@/api/permissionModules";
+import { useApiData } from "@/api/hooks";
 import { listMenuItems, groupMenusByModule } from "@/api/menus";
 import {
   ACTIONS,
@@ -22,6 +24,8 @@ import {
   VIEW_ONLY_MODULES,
   NO_ACCESS_MODULES,
 } from "./data";
+import { summarizeMenus } from "@/lib/permissionMenus";
+import { usePortalBase } from "@/lib/portalBase";
 
 const ADMIN_CONTACT = "Ananya Rao";
 
@@ -33,23 +37,30 @@ function isGranted(permissions: string[], role: string | null, module: Permissio
 
 export default function SubAdminPermissions() {
   const { userName, role, permissions } = useSession();
+  const portal = usePortalBase().replace(/^\//, "") || "subadmin";
   const [menusByModule, setMenusByModule] = useState<Partial<Record<PermissionModuleName, string[]>>>({});
+  const { data: modules } = useApiData(
+    () => listPermissionModules().then((list) => list.map((m) => ({ value: m.key, label: m.label }))),
+    [...DEMO_PERMISSION_MODULES]
+  );
 
   useEffect(() => {
     if (!apiEnabled()) return;
     listMenuItems()
-      .then((items) => setMenusByModule(groupMenusByModule(items)))
+      // Only this account's own portal: the unfiltered list also names Admin/IT Admin pages an RM
+      // never gets, so a granted module looked like it unlocked menus that were never in the sidebar.
+      .then((items) => setMenusByModule(groupMenusByModule(items.filter((i) => i.portal === portal))))
       .catch(() => {
         /* captions just stay empty */
       });
   }, []);
 
   if (apiEnabled()) {
-    const fullCount = PERMISSION_MODULES.filter((m) => PERMISSION_ACTIONS_LABELS.some((a) => a !== "View" && isGranted(permissions, role, m.value, a))).length;
-    const viewOnlyCount = PERMISSION_MODULES.filter(
+    const fullCount = modules.filter((m) => PERMISSION_ACTIONS_LABELS.some((a) => a !== "View" && isGranted(permissions, role, m.value, a))).length;
+    const viewOnlyCount = modules.filter(
       (m) => isGranted(permissions, role, m.value, "View") && !PERMISSION_ACTIONS_LABELS.some((a) => a !== "View" && isGranted(permissions, role, m.value, a))
     ).length;
-    const noAccessCount = PERMISSION_MODULES.length - fullCount - viewOnlyCount;
+    const noAccessCount = modules.length - fullCount - viewOnlyCount;
 
     return (
       <div>
@@ -94,7 +105,7 @@ export default function SubAdminPermissions() {
                 editable PermissionMatrix component already fixed with a card fallback below
                 sm; this read-only view is a separate hand-rolled table, so it needs its own. */}
             <div className="flex flex-col gap-3 sm:hidden">
-              {PERMISSION_MODULES.map((mod, mi) => {
+              {modules.map((mod, mi) => {
                 const menus = menusByModule[mod.value] ?? [];
                 const locked = !isGranted(permissions, role, mod.value, "View");
                 return (
@@ -111,8 +122,8 @@ export default function SubAdminPermissions() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className={cn("font-semibold", locked ? "text-muted-foreground" : "text-foreground")}>{mod.label}</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {menus.length > 0 ? `Menus: ${menus.join(", ")}` : "No menu currently depends on this module"}
+                        <p className="text-[11px] text-muted-foreground" title={menus.length > 0 ? summarizeMenus(menus).full : undefined}>
+                          {menus.length > 0 ? summarizeMenus(menus).text : "No menu currently depends on this module"}
                         </p>
                       </div>
                     </div>
@@ -156,7 +167,7 @@ export default function SubAdminPermissions() {
                   </tr>
                 </thead>
                 <tbody>
-                  {PERMISSION_MODULES.map((mod, mi) => {
+                  {modules.map((mod, mi) => {
                     const menus = menusByModule[mod.value] ?? [];
                     const locked = !isGranted(permissions, role, mod.value, "View");
                     return (
@@ -175,7 +186,7 @@ export default function SubAdminPermissions() {
                             <div>
                               <p className={cn("font-semibold", locked ? "text-muted-foreground" : "text-foreground")}>{mod.label}</p>
                               <p className="text-[11px] text-muted-foreground">
-                                {menus.length > 0 ? `Menus: ${menus.join(", ")}` : "No menu currently depends on this module"}
+                                {menus.length > 0 ? summarizeMenus(menus).text : "No menu currently depends on this module"}
                               </p>
                             </div>
                           </div>

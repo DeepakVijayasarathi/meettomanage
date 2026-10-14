@@ -33,8 +33,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
+import { PayoutApprovalsBanner } from "@/components/PayoutApprovalsBanner";
 import { PersonalMeetingButton } from "@/components/PersonalMeetingButton";
 import { KpiCard } from "@/components/KpiCard";
+import { MonthlyNumbersPanel } from "@/components/MonthlyNumbersPanel";
 import { ChartCard } from "@/components/ChartCard";
 import { SessionStatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
@@ -42,7 +44,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent, formatTimeLabel } from "@/lib/utils";
 import {
   ADMIN_KPIS,
   ATTENDANCE_TREND,
@@ -56,9 +58,10 @@ import {
 import { SESSIONS } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
+import { useMemo } from "react";
 import { useApiData } from "@/api/hooks";
 import { getDashboardSummary } from "@/api/reports";
-import { listSessions, toFrontendSession } from "@/api/sessions";
+import { listSessions, todayWindow, toFrontendSession } from "@/api/sessions";
 import type { ClassSession } from "@/types";
 
 const TODAY = "2026-07-09";
@@ -89,6 +92,32 @@ interface DashboardKpi {
   icon: LucideIcon;
   tone: "primary" | "success" | "warning" | "destructive" | "neutral";
   trend?: { value: number; label?: string };
+  /** Supporting line under the value; falls back to the first-run "No activity yet". */
+  detail?: string;
+}
+
+/** Category-axis tick that stays on one line: long names are cut with an ellipsis (full name on hover). */
+function TruncatedCategoryTick({
+  x,
+  y,
+  payload,
+  maxChars = 24,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+  maxChars?: number;
+}) {
+  const full = String(payload?.value ?? "");
+  // "(Individual)" -> "(1:1)" buys ~8 characters, so the level/number that tells two courses apart survives
+  const short = full.replace(/\(Individual\)/i, "(1:1)");
+  const text = short.length > maxChars ? `${short.slice(0, maxChars - 1).trimEnd()}…` : short;
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" fontSize={11} fill="hsl(var(--muted-foreground))">
+      <title>{full}</title>
+      {text}
+    </text>
+  );
 }
 
 export default function AdminDashboard() {
@@ -96,12 +125,16 @@ export default function AdminDashboard() {
   const usingApi = apiEnabled();
   const todayKey = usingApi ? localDateKey(new Date()) : TODAY;
   const { data: apiSessions, loading: sessionsLoading } = useApiData<ClassSession[]>(
-    () => listSessions().then((items) => items.map(toFrontendSession)),
+    () => listSessions(todayWindow()).then((items) => items.map(toFrontendSession)),
     []
   );
-  const todaySessions = (usingApi ? apiSessions : SESSIONS)
-    .filter((s) => s.date === todayKey)
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const todaySessions = useMemo(
+    () =>
+      (usingApi ? apiSessions : SESSIONS)
+        .filter((s) => s.date === todayKey)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    [usingApi, apiSessions, todayKey]
+  );
   // Live aggregates replace the mock KPI block and charts when the API is configured
   const { data: dashboard, loading: dashboardLoading, error: dashboardError } = useApiData(
     () =>
@@ -109,7 +142,8 @@ export default function AdminDashboard() {
         kpis: {
           totalStudents: s.totalStudents,
           activeStudents: s.activeStudents,
-          revenueThisMonth: s.revenueCollected,
+          // revenueCollected is every rupee ever paid (all-time); the trend's last point is this calendar month.
+          revenueThisMonth: s.revenueTrend.at(-1)?.revenue ?? 0,
           revenueGrowth: 0,
           enrollments: s.totalEnrollments,
           conversionRate: s.conversionRatePercent,
@@ -143,6 +177,8 @@ export default function AdminDashboard() {
     { kpis: ZERO_KPIS, revenueTrend: [], departmentRevenue: [], courseRevenue: [], enrollmentFunnel: [], attendanceTrend: [], batchOccupancyByCourse: [] }
   );
   const { kpis, revenueTrend, departmentRevenue, courseRevenue, enrollmentFunnel, attendanceTrend, batchOccupancyByCourse } = dashboard;
+  // Course names are long; on phones the label column has to stay narrow so the bars keep some room.
+  const narrow = typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
   // No per-teacher breakdown endpoint yet (only the aggregate sessions-per-teacher
   // KPI above) — empty chart in API mode.
   const teacherUtilization = usingApi ? [] : TEACHER_UTILIZATION;
@@ -159,17 +195,20 @@ export default function AdminDashboard() {
     { label: "Total Students", value: formatNumber(kpis.totalStudents), icon: Users, tone: "primary", trend: usingApi ? undefined : { value: 6.2, label: "vs last month" } },
     { label: "Active Students", value: formatNumber(kpis.activeStudents), icon: UserCheck, tone: "success", trend: usingApi ? undefined : { value: 3.8, label: "vs last month" } },
     { label: "Revenue This Month", value: formatCurrency(kpis.revenueThisMonth), icon: IndianRupee, tone: "primary", trend: usingApi ? undefined : { value: kpis.revenueGrowth, label: "vs last month" } },
-    { label: "New Enrollments", value: formatNumber(kpis.enrollments), icon: GraduationCap, tone: "primary", trend: usingApi ? undefined : { value: 4.1, label: "vs last month" } },
+    // totalEnrollments is the count of currently ACTIVE enrollments, not ones started recently.
+    { label: "Active Enrollments", value: formatNumber(kpis.enrollments), icon: GraduationCap, tone: "primary", trend: usingApi ? undefined : { value: 4.1, label: "vs last month" } },
   ];
 
   // Rates and quality signals — grouped by what they mean: green for healthy performance
   // trends, gray for operational capacity, red for the one true risk metric (refunds).
   const secondaryKpis: DashboardKpi[] = [
     { label: "Conversion Rate", value: formatPercent(kpis.conversionRate), icon: TrendingUp, tone: "success", trend: usingApi ? undefined : { value: 2.4, label: "vs last month" } },
-    { label: "Attendance Rate", value: formatPercent(kpis.attendanceRate), icon: CalendarCheck2, tone: "success", trend: usingApi ? undefined : { value: 1.5, label: "vs last month" } },
+    // No attendance aggregate in the dashboard API yet (placeholder 0) -- "0%" would read as "nobody attends".
+    { label: "Attendance Rate", value: usingApi ? "—" : formatPercent(kpis.attendanceRate), detail: usingApi ? "not available yet" : undefined, icon: CalendarCheck2, tone: "success", trend: usingApi ? undefined : { value: 1.5, label: "vs last month" } },
     { label: "Renewal Rate", value: formatPercent(kpis.renewalRate), icon: RefreshCw, tone: "success", trend: usingApi ? undefined : { value: -0.8, label: "vs last month" } },
     { label: "Refund Rate", value: formatPercent(kpis.refundRate, 1), icon: Undo2, tone: "destructive", trend: usingApi ? undefined : { value: 0.4, label: "vs last month" } },
-    { label: "Teacher Utilization", value: formatPercent(kpis.teacherUtilization), icon: ClipboardCheck, tone: "neutral", trend: usingApi ? undefined : { value: -1.2, label: "vs last month" } },
+    // With the API this is completed sessions per active teacher over the last 30 days (a count), not a percentage.
+    { label: usingApi ? "Sessions per Teacher" : "Teacher Utilization", value: usingApi ? formatNumber(kpis.teacherUtilization) : formatPercent(kpis.teacherUtilization), detail: usingApi ? "completed, last 30 days" : undefined, icon: ClipboardCheck, tone: "neutral", trend: usingApi ? undefined : { value: -1.2, label: "vs last month" } },
     { label: "Batch Occupancy", value: formatPercent(kpis.batchOccupancy), icon: LayoutGrid, tone: "neutral", trend: usingApi ? undefined : { value: 2.9, label: "vs last month" } },
   ];
 
@@ -181,6 +220,7 @@ export default function AdminDashboard() {
         description={`A real-time snapshot of enrollment, revenue and academic operations across ${brand.name}.`}
         actions={<PersonalMeetingButton />}
       />
+      <PayoutApprovalsBanner />
 
       {isFreshAccount && (
         <div className="mb-6 flex flex-col gap-4 rounded-xl border border-primary/20 bg-primary/5 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -217,7 +257,7 @@ export default function AdminDashboard() {
               size="lg"
               label={kpi.label}
               value={kpi.value}
-              detail={emptyDetail}
+              detail={kpi.detail ?? emptyDetail}
               icon={kpi.icon}
               tone={kpi.tone}
               trend={kpi.trend}
@@ -237,7 +277,7 @@ export default function AdminDashboard() {
               key={kpi.label}
               label={kpi.label}
               value={kpi.value}
-              detail={emptyDetail}
+              detail={kpi.detail ?? emptyDetail}
               icon={kpi.icon}
               tone={kpi.tone}
               trend={kpi.trend}
@@ -247,6 +287,8 @@ export default function AdminDashboard() {
           ))}
         </div>
       </section>
+
+      <MonthlyNumbersPanel />
 
       {/* Charts grid */}
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -325,12 +367,13 @@ export default function AdminDashboard() {
           error={dashboardError}
           empty={courseRevenue.length === 0}
           emptyMessage="Course revenue will appear here once enrollments are recorded."
+          height={Math.max(280, courseRevenue.length * 30 + 40)}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={courseRevenue} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
+            <BarChart data={courseRevenue} layout="vertical" margin={{ left: 0, right: 24, top: 8, bottom: 0 }} barCategoryGap={6}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
               <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} tickFormatter={formatCurrencyAxisTick} />
-              <YAxis type="category" dataKey="course" tickLine={false} axisLine={false} fontSize={11} width={120} />
+              <YAxis type="category" dataKey="course" tickLine={false} axisLine={false} width={narrow ? 150 : 224} interval={0} tick={<TruncatedCategoryTick maxChars={narrow ? 21 : 33} />} />
               <RTooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="revenue" radius={[0, 6, 6, 0]} maxBarSize={22}>
                 {courseRevenue.map((_, i) => (
@@ -346,15 +389,15 @@ export default function AdminDashboard() {
           description="Demo to enrollment conversion, this quarter"
           loading={dashboardLoading}
           error={dashboardError}
-          empty={enrollmentFunnel.length === 0}
-          emptyMessage="Funnel data will appear once demos are logged."
+          empty={enrollmentFunnel.every((stage) => !stage.value)}
+          emptyMessage="No demos booked this quarter yet."
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={enrollmentFunnel} layout="vertical" margin={{ left: 8, right: 24, top: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
               <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} />
               <YAxis type="category" dataKey="stage" tickLine={false} axisLine={false} fontSize={12} width={104} />
-              <RTooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
+              <RTooltip formatter={(value: number) => [formatNumber(value), "Count"]} cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={22}>
                 {enrollmentFunnel.map((_, i) => (
                   <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
@@ -371,9 +414,18 @@ export default function AdminDashboard() {
           emptyMessage={usingApi ? "Per-teacher utilization isn't available yet." : "No data yet."}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={teacherUtilization} margin={{ left: -12, right: 12, top: 8, bottom: 0 }}>
+            <BarChart data={teacherUtilization} margin={{ left: -12, right: 12, top: 8, bottom: 24 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-              <XAxis dataKey="teacher" tickLine={false} axisLine={false} fontSize={11} interval={0} angle={-12} textAnchor="end" height={44} />
+              <XAxis
+                dataKey="teacher"
+                tickLine={false}
+                axisLine={false}
+                fontSize={10}
+                interval={teacherUtilization.length > 12 ? Math.ceil(teacherUtilization.length / 12) - 1 : 0}
+                angle={-90}
+                textAnchor="end"
+                height={70}
+              />
               {/* width bumped 40->48: at 40 the chart's -12 left margin pushed "100%"/"75%" tick
                   labels partly past x=0, clipping their leading digit (e.g. "100%" rendered as "0%"). */}
               <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={(v) => `${v}%`} width={54} />
@@ -406,6 +458,7 @@ export default function AdminDashboard() {
         <ChartCard
           title="Batch Occupancy by Course"
           description="Fill rate across active batches"
+          className="lg:col-span-2"
           empty={batchOccupancyByCourse.length === 0}
         >
           <ResponsiveContainer width="100%" height="100%">
@@ -432,8 +485,8 @@ export default function AdminDashboard() {
               <Clock className="h-[18px] w-[18px]" />
             </span>
             <div>
-              <h3 className="text-base font-semibold text-foreground">Today&apos;s Sessions</h3>
-              <p className="text-sm text-muted-foreground">{formatDate(todayKey, "long")}</p>
+              <p className="text-sm font-semibold text-foreground">Today&apos;s Sessions</p>
+              <p className="text-xs text-muted-foreground">{formatDate(todayKey, "long")}</p>
             </div>
           </div>
           <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
@@ -464,12 +517,12 @@ export default function AdminDashboard() {
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
                     style={{ backgroundColor: `${CHART_PALETTE[i % CHART_PALETTE.length]}1A`, color: CHART_PALETTE[i % CHART_PALETTE.length] }}
                   >
-                    {s.startTime.slice(0, 2)}
+                    {formatTimeLabel(s.startTime).split(":")[0]}
                   </span>
                   <div>
                     <p className="text-sm font-semibold text-foreground">{s.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {s.startTime} · {s.duration} min · {s.teacherName} · {s.childIds.length} student{s.childIds.length === 1 ? "" : "s"}
+                      {formatTimeLabel(s.startTime)} · {s.duration} min · {s.teacherName} · {s.childIds.length} student{s.childIds.length === 1 ? "" : "s"}
                     </p>
                   </div>
                 </div>
