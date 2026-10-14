@@ -7,12 +7,16 @@ import { Seo } from "@/components/Seo";
 import { BookDemoForm } from "@/components/BookDemoForm";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
+import { MarketingHero } from "./MarketingHero";
+import { CARD, EYEBROW, HERO_OVERLAP } from "./styles";
 
 const T = {
   en: {
     backHome: "Back home",
     eyebrow: "Free demo class",
     heading: "See a class before you commit to one.",
+    includedHeading: "What you get",
     sub: "Pick a time and we'll match you with a teacher — the same live classroom, scheduling and billing every enrolled family uses.",
     included: [
       "A real class with one of our teachers, on your child's actual subject",
@@ -25,6 +29,7 @@ const T = {
     backHome: "العودة للرئيسية",
     eyebrow: "حصة تجريبية مجانية",
     heading: "شاهد حصة قبل أن تلتزم بها.",
+    includedHeading: "ما الذي ستحصل عليه",
     sub: "اختر موعدًا وسنُطابقك مع معلّم — نفس الفصل الدراسي المباشر والجدولة والفوترة التي تستخدمها كل عائلة مسجَّلة.",
     included: [
       "حصة حقيقية مع أحد معلمينا، في مادة طفلك الفعلية",
@@ -65,28 +70,25 @@ export default function Demo() {
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-5xl grid-cols-1 gap-12 px-6 py-14 lg:grid-cols-2 lg:py-20">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">{t.eyebrow}</p>
-          <h1 className="font-display mt-3 text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl">
-            {t.heading}
-          </h1>
-          <p className="mt-5 max-w-md text-base leading-relaxed text-[#5B6472]">{t.sub}</p>
+      <MarketingHero eyebrow={t.eyebrow} title={t.heading} sub={t.sub} overlap />
 
-          <ul className="mt-8 flex flex-col gap-4">
+      <section className="mx-auto max-w-[1160px] px-5 pb-[clamp(72px,8vw,120px)]">
+        <div className={cn(CARD, HERO_OVERLAP, "grid grid-cols-1 lg:grid-cols-2")}>
+        <div className="p-8 sm:p-12">
+          <p className={EYEBROW}>{t.includedHeading}</p>
+          <ul className="mt-6 flex flex-col gap-5">
             {t.included.map((item) => (
-              <li key={item} className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FFF3EA] text-[#EA580C]">
-                  <CheckCircle2 className="h-4 w-4" />
-                </span>
-                <span className="text-sm leading-relaxed text-[#171B22]">{item}</span>
+              <li key={item} className="flex items-start gap-3 border-b border-[#D9E1F0] pb-5 last:border-b-0 last:pb-0">
+                <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-[#EA580C]" />
+                <span className="text-base leading-relaxed text-[#111]">{item}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="rounded-2xl border border-black/10 bg-[#F5F6F9] p-6 shadow-pop sm:p-8">
+        <div className="border-t border-[#D9E1F0] bg-[#F8F9FB] p-8 sm:p-12 lg:border-s lg:border-t-0">
           <BookDemoForm />
+        </div>
         </div>
       </section>
 

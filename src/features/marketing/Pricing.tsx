@@ -9,6 +9,8 @@ import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { MarketingHero } from "./MarketingHero";
+import { ACCENT_GRADIENT, CARD, CTA_DARK, CTA_ORANGE, H2_SM, HERO_OVERLAP, LEAD } from "./styles";
 
 type Currency = "INR" | "USD" | "AED";
 type Cycle = "monthly" | "annual";
@@ -233,11 +235,11 @@ const T = {
   },
 };
 
-/** Toggle-pill group — same visual pattern as the Features section's category filter on the
- *  homepage, reused here for currency and billing cycle instead of introducing a new control style. */
+/** Toggle-pill group for currency and billing cycle — sits inside the dark hero, so it's the
+ *  glass-on-navy version of the homepage's category filter rather than a new control style. */
 function ToggleGroup<V extends string>({ options, value, onChange }: { options: { value: V; label: string }[]; value: V; onChange: (v: V) => void }) {
   return (
-    <div role="tablist" className="inline-flex gap-1 rounded-full border border-black/10 bg-[#F5F6F9] p-1">
+    <div role="tablist" className="inline-flex gap-1 rounded-[10px] bg-white/[0.08] p-1">
       {options.map((opt) => {
         const active = opt.value === value;
         return (
@@ -248,8 +250,8 @@ function ToggleGroup<V extends string>({ options, value, onChange }: { options: 
             aria-selected={active}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
-              active ? "bg-[#F97316] text-[#171B22]" : "text-[#5B6472] hover:text-[#171B22]"
+              "rounded-[8px] px-4 py-2 text-xs font-semibold transition-colors",
+              active ? "bg-white text-[#111]" : "text-white/70 hover:text-white"
             )}
           >
             {opt.label}
@@ -277,55 +279,39 @@ interface PlanCardProps {
 
 function PlanCard({ icon: Icon, eyebrow, name, price, priceNote, description, features, ctaLabel, ctaTo, mostFlexibleLabel, highlighted, banner }: PlanCardProps) {
   return (
-    <div
-      className={
-        highlighted
-          ? "relative flex flex-col rounded-2xl border-2 border-[#F97316] bg-white p-7 shadow-pop sm:p-8"
-          : "relative flex flex-col rounded-2xl border border-black/10 bg-white p-7 sm:p-8"
-      }
-    >
+    <div className={cn(CARD, "relative flex flex-col p-8 sm:p-9", highlighted && "lg:-mt-4 lg:pb-12")}>
+      {highlighted && <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ background: ACCENT_GRADIENT }} />}
       {highlighted && (
-        <span className="absolute -top-3 left-7 rounded-full bg-[#F97316] px-3 py-1 text-[11px] font-bold tracking-wide text-[#171B22] rtl:left-auto rtl:right-7">
+        <span className="absolute end-8 top-0 bg-[#111] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-white rtl:tracking-normal">
           {mostFlexibleLabel}
         </span>
       )}
-      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF3EA] text-[#EA580C]">
-        <Icon className="h-5 w-5" />
+      <span className="flex h-12 w-12 items-center justify-center bg-[#0D1024] text-[#F97316]">
+        <Icon className="h-6 w-6" />
       </span>
-      <p className="mt-4 text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">{eyebrow}</p>
-      <h3 className="font-display mt-1.5 text-2xl font-extrabold tracking-tight text-[#171B22]">{name}</h3>
-      <div className="mt-4 flex items-baseline gap-1.5">
-        <span className="font-display text-4xl font-extrabold tracking-tight text-[#171B22]">{price}</span>
+      <p className="mt-5 text-xs font-bold uppercase tracking-[0.08em] text-[#C2410C]">{eyebrow}</p>
+      <h3 className="font-display mt-1.5 text-2xl font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{name}</h3>
+      <div className="mt-5 flex items-baseline gap-1.5">
+        <span className="font-display text-[clamp(2.25rem,3.4vw,3rem)] font-extrabold leading-none tracking-[-0.03em] text-[#111] rtl:tracking-normal">{price}</span>
       </div>
-      <p className="mt-1 text-sm font-semibold text-[#5B6472]">{priceNote}</p>
+      <p className="mt-2 text-sm font-semibold text-[#5B6472]">{priceNote}</p>
       {banner && (
-        <p className="mt-3 inline-flex w-fit items-center rounded-full bg-[#FFF3EA] px-3 py-1 text-xs font-semibold text-[#C2410C]">{banner}</p>
+        <p className="mt-3 inline-flex w-fit items-center rounded-[10px] bg-[#FFF3EA] px-3 py-1.5 text-xs font-semibold text-[#C2410C]">{banner}</p>
       )}
-      <p className="mt-4 text-sm leading-relaxed text-[#5B6472]">{description}</p>
+      <p className="mt-4 text-sm leading-relaxed text-[#333]">{description}</p>
 
-      <ul className="mt-6 flex flex-col gap-3">
+      <ul className="mt-6 flex flex-1 flex-col gap-3 border-t border-[#D9E1F0] pt-6">
         {features.map((f) => (
           <li key={f} className="flex items-start gap-2.5">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#EA580C]" />
-            <span className="text-sm leading-relaxed text-[#171B22]">{f}</span>
+            <span className="text-sm leading-relaxed text-[#111]">{f}</span>
           </li>
         ))}
       </ul>
 
-      <Button
-        asChild
-        size="lg"
-        className={
-          highlighted
-            ? "mt-8 !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]"
-            : "mt-8 border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5"
-        }
-        variant={highlighted ? undefined : "outline"}
-      >
-        <Link to={ctaTo}>
-          {ctaLabel} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
-        </Link>
-      </Button>
+      <Link to={ctaTo} className={cn(highlighted ? CTA_ORANGE : CTA_DARK, "mt-8 w-full")}>
+        {ctaLabel} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+      </Link>
     </div>
   );
 }
@@ -367,19 +353,15 @@ export default function Pricing() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-5xl px-6 py-14 sm:py-20">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">{t.eyebrow}</p>
-          <h1 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">{t.heading}</h1>
-          <p className="mt-3 text-sm text-[#5B6472]">{t.subheading(brand.name)}</p>
-        </div>
-
+      <MarketingHero eyebrow={t.eyebrow} title={t.heading} sub={t.subheading(brand.name)} overlap>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <ToggleGroup value={currency} onChange={setCurrency} options={t.currencyOptions} />
           <ToggleGroup value={cycle} onChange={setCycle} options={t.cycleOptions} />
         </div>
+      </MarketingHero>
 
-        <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <section className="mx-auto max-w-[1160px] px-5 pb-[clamp(72px,8vw,120px)]">
+        <div className={cn(HERO_OVERLAP, "grid grid-cols-1 gap-2 lg:grid-cols-3 lg:items-stretch")}>
           <PlanCard
             icon={Sparkles}
             eyebrow={t.solo.eyebrow}
@@ -422,22 +404,22 @@ export default function Pricing() {
 
         {/* Volume pricing — how the per-student rate steps down at scale, for institutes
             weighing Pay As You Grow against a custom ownership quote. */}
-        <div className="mt-16">
-          <h2 className="font-display text-center text-xl font-extrabold tracking-tight">{t.volumeTitle}</h2>
-          <p className="mx-auto mt-2 max-w-xl text-center text-sm text-[#5B6472]">{t.volumeSubtitle}</p>
-          <div className="mx-auto mt-6 max-w-2xl overflow-x-auto rounded-2xl border border-black/10">
+        <div className="mt-[clamp(72px,8vw,120px)]">
+          <h2 className={cn(H2_SM, "text-center")}>{t.volumeTitle}</h2>
+          <p className={cn(LEAD, "mx-auto mt-3 max-w-xl text-center")}>{t.volumeSubtitle}</p>
+          <div className="mx-auto mt-8 max-w-2xl overflow-x-auto border border-[#D9E1F0]">
             <table className="w-full min-w-[420px] border-collapse text-sm">
               <thead>
-                <tr className="bg-[#F5F6F9] text-start text-xs font-bold uppercase tracking-[0.06em] text-[#5B6472]">
-                  <th className="px-5 py-3 text-start">{t.volumeColStudents}</th>
-                  <th className="px-5 py-3 text-end">{t.volumeColRate}</th>
+                <tr className="bg-[#0D1024] text-start text-xs font-bold uppercase tracking-[0.06em] text-white/80">
+                  <th className="px-6 py-4 text-start">{t.volumeColStudents}</th>
+                  <th className="px-6 py-4 text-end">{t.volumeColRate}</th>
                 </tr>
               </thead>
               <tbody>
                 {VOLUME_TIER_RATES.map((tier, i) => (
-                  <tr key={t.volumeRanges[i]} className="border-t border-black/10">
-                    <td className="px-5 py-3 text-start text-[#171B22]">{t.volumeRanges[i]}</td>
-                    <td className="px-5 py-3 text-end font-semibold tabular-nums text-[#171B22]">
+                  <tr key={t.volumeRanges[i]} className="border-t border-[#D9E1F0]">
+                    <td className="px-6 py-4 text-start text-[#111]">{t.volumeRanges[i]}</td>
+                    <td className="px-6 py-4 text-end font-bold tabular-nums text-[#111]">
                       {formatAmount(tier[currency], currency, t.free)}
                     </td>
                   </tr>
@@ -449,22 +431,22 @@ export default function Pricing() {
 
         {/* Add-ons — kept separate from the base rate so the headline price stays low; only
             billed to accounts that actually use them. */}
-        <div className="mt-14">
-          <h2 className="font-display text-center text-xl font-extrabold tracking-tight">{t.addonsTitle}</h2>
-          <div className="mx-auto mt-6 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mt-[clamp(56px,6vw,88px)]">
+          <h2 className={cn(H2_SM, "text-center")}>{t.addonsTitle}</h2>
+          <div className="mx-auto mt-8 grid max-w-2xl grid-cols-1 border-s border-t border-[#D9E1F0] sm:grid-cols-2">
             {t.addons.map((addon, i) => (
-              <div key={addon.name} className="flex flex-col gap-1 rounded-2xl border border-black/10 bg-[#F5F6F9] p-5">
+              <div key={addon.name} className="flex flex-col gap-1.5 border-b border-e border-[#D9E1F0] p-6">
                 <span className="text-sm font-semibold leading-snug text-[#171B22]">{addon.name}</span>
-                <span className="text-sm font-bold tabular-nums text-[#EA580C]">
+                <span className="font-display text-lg font-extrabold tabular-nums text-[#C2410C]">
                   {formatAmount(ADDON_RATES[i][currency], currency, t.free)}
-                  <span className="font-medium text-[#5B6472]"> {addon.unit}</span>
+                  <span className="font-sans text-sm font-medium text-[#5B6472]"> {addon.unit}</span>
                 </span>
               </div>
             ))}
           </div>
         </div>
 
-        <p className="mx-auto mt-14 max-w-2xl text-center text-xs text-[#5B6472]">{t.notSure}</p>
+        <p className="mx-auto mt-14 max-w-2xl text-center text-sm text-[#5B6472]">{t.notSure}</p>
       </section>
 
       <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">

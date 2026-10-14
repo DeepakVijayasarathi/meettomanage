@@ -8,6 +8,8 @@ import { Seo } from "@/components/Seo";
 import { EmptyState } from "@/components/EmptyState";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
+import { MarketingHero } from "./MarketingHero";
+import { CTA_ORANGE, DARK_BAND_BG, EYEBROW } from "./styles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getBlogPost, listBlogPosts, type ApiBlogPostDetail, type ApiBlogPostSummary } from "@/api/marketing";
@@ -131,7 +133,9 @@ export default function BlogPost() {
         </div>
       </header>
 
-      <article className="mx-auto max-w-3xl px-6 py-14">
+      {post && <MarketingHero eyebrow={`${formatDate(post.publishedAtUtc)} · ${t.readMinutes(post.readMinutes)}`} title={post.title} />}
+
+      <article className="mx-auto max-w-[760px] px-5 py-[clamp(48px,6vw,88px)]">
         {loading ? (
           <div className="flex justify-center py-16 text-[#5B6472]">
             <Loader2 className="h-6 w-6 animate-spin" />
@@ -144,43 +148,38 @@ export default function BlogPost() {
           />
         ) : (
           <>
-            <p className="text-xs font-medium text-[#5B6472]">
-              {formatDate(post.publishedAtUtc)} · {t.readMinutes(post.readMinutes)}
-            </p>
-            <h1 className="font-display mt-3 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">{post.title}</h1>
-
-            <div className="mt-10 flex flex-col gap-4">
+            <div className="flex flex-col gap-5">
               {parseMarkdownLite(post.content).map((block, i) =>
                 block.heading ? (
-                  <h2 key={i} className="font-display mt-4 text-xl font-bold tracking-tight text-[#171B22] first:mt-0">
+                  <h2 key={i} className="font-display mt-6 text-[clamp(1.375rem,2vw,1.75rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#111] first:mt-0 rtl:tracking-normal">
                     {block.heading}
                   </h2>
                 ) : (
-                  <p key={i} className="text-base leading-relaxed text-[#5B6472]">
+                  <p key={i} className="text-[clamp(1rem,1.3vw,1.125rem)] leading-[1.75] text-[#333]">
                     {block.text}
                   </p>
                 )
               )}
             </div>
 
-            <div className="mt-14 rounded-2xl border border-black/10 bg-[#F5F6F9] px-6 py-8 text-center">
-              <h3 className="font-display text-lg font-bold text-[#171B22]">{t.ctaHeading}</h3>
-              <p className="mx-auto mt-2 max-w-md text-sm text-[#5B6472]">{t.ctaSub}</p>
-              <Button asChild size="lg" className="mt-5 !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
-                <Link to="/get-started">{t.requestDemo}</Link>
-              </Button>
+            <div className="mt-16 px-6 py-12 text-center sm:px-12" style={{ background: DARK_BAND_BG }}>
+              <h3 className="font-display text-[clamp(1.5rem,2.4vw,2.125rem)] font-extrabold leading-tight tracking-[-0.02em] text-white rtl:tracking-normal">{t.ctaHeading}</h3>
+              <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-white/75">{t.ctaSub}</p>
+              <Link to="/get-started" className={`${CTA_ORANGE} mt-7`}>
+                {t.requestDemo}
+              </Link>
             </div>
           </>
         )}
 
         {more.length > 0 && (
-          <div className="mt-16 border-t border-black/10 pt-10">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">{t.moreFromBlog}</p>
-            <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div className="mt-16 border-t border-[#D9E1F0] pt-10">
+            <p className={EYEBROW}>{t.moreFromBlog}</p>
+            <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-2">
               {more.map((p) => (
                 <Link key={p.slug} to={`/blog/${p.slug}`} className="group">
-                  <h4 className="font-display text-base font-bold text-[#171B22] group-hover:text-[#EA580C]">{p.title}</h4>
-                  <p className="mt-1.5 text-sm leading-relaxed text-[#5B6472]">{p.excerpt}</p>
+                  <h4 className="font-display text-xl font-extrabold leading-snug tracking-[-0.02em] text-[#111] group-hover:text-[#C2410C] rtl:tracking-normal">{p.title}</h4>
+                  <p className="mt-2 text-sm leading-relaxed text-[#5B6472]">{p.excerpt}</p>
                 </Link>
               ))}
             </div>

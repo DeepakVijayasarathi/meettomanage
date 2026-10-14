@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { Seo } from "@/components/Seo";
 import { useLightBrandScope } from "@/lib/theme";
+import { MarketingHero } from "./MarketingHero";
 
 /**
  * Legal text, supplied verbatim by the business (not editorial copy this codebase authors,
@@ -25,7 +26,7 @@ type Block =
 function Section({ h2, blocks }: { h2: string; blocks: Block[] }) {
   return (
     <section>
-      <h2 className="font-display mt-8 text-xl font-bold tracking-tight text-[#171B22] first:mt-0">{h2}</h2>
+      <h2 className="font-display mt-8 text-[clamp(1.375rem,2vw,1.75rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#111] first:mt-0">{h2}</h2>
       <div className="mt-3 flex flex-col gap-3">
         {blocks.map((block, i) =>
           "h3" in block ? (
@@ -35,14 +36,14 @@ function Section({ h2, blocks }: { h2: string; blocks: Block[] }) {
           ) : "ul" in block ? (
             <ul key={i} className="flex flex-col gap-1.5 ps-1">
               {block.ul.map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-base leading-relaxed text-[#5B6472]">
+                <li key={item} className="flex items-start gap-2.5 text-base leading-relaxed text-[#333]">
                   <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#F97316]" />
                   {item}
                 </li>
               ))}
             </ul>
           ) : (
-            <p key={i} className="text-base leading-relaxed text-[#5B6472]">
+            <p key={i} className="text-base leading-relaxed text-[#333]">
               {block.p}
             </p>
           )
@@ -263,11 +264,10 @@ export default function PrivacyPolicy() {
         </div>
       </header>
 
-      <article className="mx-auto max-w-3xl px-6 py-14">
-        <h1 className="font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">Privacy Policy</h1>
-        <p className="mt-3 text-sm font-semibold text-[#5B6472]">Last Updated: September 4, 2026</p>
+      <MarketingHero eyebrow="Last Updated: September 4, 2026" title="Privacy Policy" />
 
-        <div className="mt-8 flex flex-col gap-4 text-base leading-relaxed text-[#5B6472]">
+      <article className="mx-auto max-w-[760px] px-5 py-[clamp(48px,6vw,88px)]">
+        <div className="flex flex-col gap-4 text-base leading-relaxed text-[#333]">
           <p>
             Infinity Uniquers (&#8220;Infinity Uniquers&#8221;, &#8220;we&#8221;, &#8220;us&#8221;, or &#8220;our&#8221;) operates{" "}
             <strong className="font-semibold text-[#171B22]">Infinity Client Finder</strong>, a business lead discovery and sales
@@ -288,13 +288,13 @@ export default function PrivacyPolicy() {
           {/* Section 8 — Data Deletion. Kept out of the arrays above since it's the only
               section (besides 15) with inline mailto links rather than plain bullet text. */}
           <section>
-            <h2 className="font-display mt-8 text-xl font-bold tracking-tight text-[#171B22]">8. Data Deletion</h2>
-            <div className="mt-3 flex flex-col gap-3 text-base leading-relaxed text-[#5B6472]">
+            <h2 className="font-display mt-8 text-[clamp(1.375rem,2vw,1.75rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#111]">8. Data Deletion</h2>
+            <div className="mt-3 flex flex-col gap-3 text-base leading-relaxed text-[#333]">
               <p>Users may request deletion of their account and eligible personal information.</p>
               <p>To request deletion of your information, contact us at:</p>
               <p>
                 <strong className="font-semibold text-[#171B22]">Email:</strong>{" "}
-                <a href="mailto:info@infinityuniquers.com" className="font-medium text-[#EA580C] hover:underline">
+                <a href="mailto:info@infinityuniquers.com" className="font-semibold text-[#C2410C] hover:underline">
                   info@infinityuniquers.com
                 </a>
               </p>
@@ -314,25 +314,25 @@ export default function PrivacyPolicy() {
           {/* Section 15 — Contact Us. Also kept separate for the same reason (labeled contact
               details with links, not bullet text). */}
           <section>
-            <h2 className="font-display mt-8 text-xl font-bold tracking-tight text-[#171B22]">15. Contact Us</h2>
-            <div className="mt-3 flex flex-col gap-2 text-base leading-relaxed text-[#5B6472]">
+            <h2 className="font-display mt-8 text-[clamp(1.375rem,2vw,1.75rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#111]">15. Contact Us</h2>
+            <div className="mt-3 flex flex-col gap-2 text-base leading-relaxed text-[#333]">
               <p>If you have questions, concerns, or requests regarding this Privacy Policy or your personal information, please contact us:</p>
               <p className="mt-2 font-semibold text-[#171B22]">Infinity Uniquers</p>
               <p>
                 <strong className="font-semibold text-[#171B22]">Email:</strong>{" "}
-                <a href="mailto:info@infinityuniquers.com" className="font-medium text-[#EA580C] hover:underline">
+                <a href="mailto:info@infinityuniquers.com" className="font-semibold text-[#C2410C] hover:underline">
                   info@infinityuniquers.com
                 </a>
               </p>
               <p>
                 <strong className="font-semibold text-[#171B22]">Website:</strong>{" "}
-                <a href="https://meettomanage.cloud/" className="font-medium text-[#EA580C] hover:underline">
+                <a href="https://meettomanage.cloud/" className="font-semibold text-[#C2410C] hover:underline">
                   https://meettomanage.cloud/
                 </a>
               </p>
               <p>
                 <strong className="font-semibold text-[#171B22]">Privacy Policy:</strong>{" "}
-                <a href="https://meettomanage.cloud/policy" className="font-medium text-[#EA580C] hover:underline">
+                <a href="https://meettomanage.cloud/policy" className="font-semibold text-[#C2410C] hover:underline">
                   https://meettomanage.cloud/policy
                 </a>
               </p>
@@ -340,7 +340,7 @@ export default function PrivacyPolicy() {
           </section>
         </div>
 
-        <div className="mt-14 border-t border-black/10 pt-8 text-center text-sm text-[#5B6472]">
+        <div className="mt-14 border-t border-[#D9E1F0] pt-8 text-center text-sm text-[#5B6472]">
           <strong className="font-semibold text-[#171B22]">Infinity Client Finder</strong> is operated by{" "}
           <strong className="font-semibold text-[#171B22]">Infinity Uniquers</strong>.
         </div>

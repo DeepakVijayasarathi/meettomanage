@@ -8,6 +8,9 @@ import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
+import { MarketingHero } from "./MarketingHero";
+import { ARROW_LINK } from "./styles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listBlogPosts, type ApiBlogPostSummary } from "@/api/marketing";
@@ -101,13 +104,11 @@ export default function BlogList() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-4xl px-6 py-14">
-        <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">{t.eyebrow}</p>
-        <h1 className="font-display mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">{t.heading}</h1>
-        <p className="mt-4 max-w-xl text-base leading-relaxed text-[#5B6472]">{t.sub}</p>
+      <MarketingHero eyebrow={t.eyebrow} title={t.heading} sub={t.sub} />
 
+      <section className="mx-auto max-w-[870px] px-5 py-[clamp(48px,6vw,88px)]">
         {live && error && (
-          <InlineAlert variant="warning" className="mt-8">
+          <InlineAlert variant="warning" className="mb-8">
             {t.loadError(error)}{" "}
             <button type="button" className="underline" onClick={() => reload()}>
               {t.retry}
@@ -120,20 +121,20 @@ export default function BlogList() {
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         ) : sorted.length === 0 ? (
-          <EmptyState className="mt-12" icon={BookOpen} title={t.emptyTitle} description={t.emptyDescription} />
+          <EmptyState icon={BookOpen} title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
-          <div className="mt-12 divide-y divide-black/10 border-t border-black/10">
+          <div className="divide-y divide-[#D9E1F0]">
             {sorted.map((post) => (
-              <Link key={post.slug} to={`/blog/${post.slug}`} className="group block py-8">
-                <p className="text-xs font-medium text-[#5B6472]">
+              <Link key={post.slug} to={`/blog/${post.slug}`} className="group block py-9 first:pt-0">
+                <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#6B7280] rtl:tracking-normal">
                   {formatDate(post.publishedAtUtc)} · {t.readMinutes(post.readMinutes)}
                 </p>
-                <h2 className="font-display mt-2 text-xl font-bold tracking-tight text-[#171B22] group-hover:text-[#EA580C] sm:text-2xl">
+                <h2 className="font-display mt-3 text-[clamp(1.5rem,2.4vw,2.125rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#111] group-hover:text-[#C2410C] rtl:tracking-normal">
                   {post.title}
                 </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#5B6472]">{post.excerpt}</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#EA580C]">
-                  {t.readMore} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
+                <p className="mt-3 max-w-2xl text-base leading-relaxed text-[#333]">{post.excerpt}</p>
+                <span className={cn(ARROW_LINK, "mt-5")}>
+                  {t.readMore} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 rtl:-scale-x-100 rtl:group-hover:-translate-x-1" />
                 </span>
               </Link>
             ))}

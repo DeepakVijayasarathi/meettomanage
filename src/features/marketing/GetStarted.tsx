@@ -10,6 +10,9 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { Seo } from "@/components/Seo";
 import { apiEnabled } from "@/lib/api";
 import { requestPlatformDemo } from "@/api/marketing";
+import { cn } from "@/lib/utils";
+import { MarketingHero } from "./MarketingHero";
+import { CARD, CTA_DARK, CTA_ORANGE, EYEBROW, HERO_OVERLAP } from "./styles";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
 
@@ -18,6 +21,7 @@ const T = {
     backHome: "Back home",
     badgeCoach: "For coaches & personal brands",
     badgeAcademy: "For academy owners",
+    includedHeading: "What you get",
     headingCoach: "See Meet to Manage running your master class.",
     headingAcademy: "See Meet to Manage running your academy.",
     introCoach: "This is a walkthrough of the platform itself — for coaches deciding whether to run their online master class and client bookings on it.",
@@ -64,6 +68,7 @@ const T = {
     backHome: "العودة للرئيسية",
     badgeCoach: "للمدربين والعلامات الشخصية",
     badgeAcademy: "لأصحاب الأكاديميات",
+    includedHeading: "ما الذي ستحصل عليه",
     headingCoach: "شاهد Meet to Manage وهي تُدير الكلاس ماستر الخاص بك.",
     headingAcademy: "شاهد Meet to Manage وهي تُدير أكاديميتك.",
     introCoach: "هذه جولة على المنصة نفسها — للمدربين الذين يقرّرون ما إذا كانوا سيشغّلون الكلاس ماستر الإلكتروني وحجوزات عملائهم عليها.",
@@ -181,49 +186,45 @@ export default function GetStarted() {
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-5xl grid-cols-1 gap-12 px-6 py-14 lg:grid-cols-2 lg:py-20">
-        <div>
-          {isCoach ? (
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
-              <Megaphone className="h-3.5 w-3.5" /> {t.badgeCoach}
-            </div>
-          ) : (
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
-              <Building2 className="h-3.5 w-3.5" /> {t.badgeAcademy}
-            </div>
-          )}
-          <h1 className="font-display mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl">
-            {isCoach ? t.headingCoach : t.headingAcademy}
-          </h1>
-          <p className="mt-5 max-w-md text-base leading-relaxed text-[#5B6472]">
-            {isCoach ? t.introCoach : t.introAcademy}
-          </p>
+      <MarketingHero
+        eyebrow={
+          <>
+            {isCoach ? <Megaphone className="h-3.5 w-3.5 text-[#F97316]" /> : <Building2 className="h-3.5 w-3.5 text-[#F97316]" />}
+            {isCoach ? t.badgeCoach : t.badgeAcademy}
+          </>
+        }
+        title={isCoach ? t.headingCoach : t.headingAcademy}
+        sub={isCoach ? t.introCoach : t.introAcademy}
+        overlap
+      />
 
-          <ul className="mt-8 flex flex-col gap-4">
+      <section className="mx-auto max-w-[1160px] px-5 pb-[clamp(72px,8vw,120px)]">
+        <div className={cn(CARD, HERO_OVERLAP, "grid grid-cols-1 lg:grid-cols-2")}>
+        <div className="p-8 sm:p-12">
+          <p className={EYEBROW}>{t.includedHeading}</p>
+          <ul className="mt-6 flex flex-col gap-5">
             {(isCoach ? t.includedCoach : t.includedAcademy).map((item) => (
-              <li key={item} className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FFF3EA] text-[#EA580C]">
-                  <CheckCircle2 className="h-4 w-4" />
-                </span>
-                <span className="text-sm leading-relaxed text-[#171B22]">{item}</span>
+              <li key={item} className="flex items-start gap-3 border-b border-[#D9E1F0] pb-5 last:border-b-0 last:pb-0">
+                <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-[#EA580C]" />
+                <span className="text-base leading-relaxed text-[#111]">{item}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="rounded-2xl border border-black/10 bg-[#F5F6F9] p-6 shadow-pop sm:p-8">
+        <div className="border-t border-[#D9E1F0] bg-[#F8F9FB] p-8 sm:p-12 lg:border-s lg:border-t-0">
           {submitted ? (
             <div className="flex flex-col items-center py-6 text-center">
-              <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#FFF3EA] text-[#EA580C]">
+              <span className="mb-4 flex h-12 w-12 items-center justify-center bg-[#0D1024] text-[#F97316]">
                 <CheckCircle2 className="h-6 w-6" />
               </span>
-              <h2 className="text-lg font-bold">{t.thanksHeading}</h2>
+              <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{t.thanksHeading}</h2>
               <p className="mt-1.5 text-sm text-[#5B6472]">
                 {live ? (isCoach ? t.thanksCoach : t.thanksAcademy) : t.demoModeNote}
               </p>
-              <Button asChild variant="outline" className="mt-6 border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5">
-                <Link to="/">{t.backToHome}</Link>
-              </Button>
+              <Link to="/" className={cn(CTA_DARK, "mt-7")}>
+                {t.backToHome}
+              </Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
@@ -282,11 +283,12 @@ export default function GetStarted() {
                 />
               </div>
               {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
-              <Button type="submit" disabled={submitting} className="mt-1 w-full !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
+              <button type="submit" disabled={submitting} className={cn(CTA_ORANGE, "mt-2 w-full")}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : t.requestDemo}
-              </Button>
+              </button>
             </form>
           )}
+        </div>
         </div>
       </section>
 

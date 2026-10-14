@@ -5,7 +5,8 @@ import {
   BarChart3,
   Building2,
   CalendarCheck2,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Clock,
   Compass,
@@ -41,6 +42,22 @@ import { useLang, type Lang } from "@/lib/i18n";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useInView } from "@/hooks/useInView";
 import { cn } from "@/lib/utils";
+import {
+  ACCENT_GRADIENT,
+  ARROW_LINK,
+  CTA_DARK,
+  CTA_GHOST,
+  CTA_ORANGE,
+  DARK_BAND_BG,
+  EYEBROW,
+  FAQ_BG,
+  GRADIENT_TEXT,
+  H2,
+  HERO_BG,
+  LEAD,
+  READY_BG,
+  ROUND_ARROW,
+} from "./styles";
 
 /** Cycles one word in place on a timer — used in a couple of hero spots so the same line of
  *  copy speaks to both the institute and personal-coach audiences instead of a second badge
@@ -154,7 +171,7 @@ function ExplainerVideo() {
   }
 
   return (
-    <div className="relative aspect-video overflow-hidden rounded-[24px] bg-[#12151C] shadow-pop ring-4 ring-white">
+    <div className="relative aspect-video overflow-hidden rounded-[20px] bg-[#12151C]">
       <video
         ref={videoRef}
         src="/videos/demovedio.mp4"
@@ -447,7 +464,7 @@ function LaunchBanner({ lang }: { lang: Lang }) {
     shell, since the screenshot already contains the app's own real header and nav. */
 function Screenshot({ src, alt }: { src: string; alt: string }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-black/10 shadow-pop">
+    <div className="overflow-hidden rounded-[20px] border border-[#D9E1F0] shadow-[0_40px_80px_-32px_rgba(13,16,36,0.35)]">
       <img src={src} alt={alt} loading="lazy" className="h-auto w-full" />
     </div>
   );
@@ -516,6 +533,77 @@ const PAIN_POINTS: Record<Lang, PainPoint[]> = {
     { icon: Layers, label: "الأنظمة", pain: "يتم التدريس على تطبيق، والفوترة على آخر، والقبول على ثالث.", fix: "تسجيل دخول واحد. نظام واحد قائم على الأدوار. كل جزء متصل بالفعل." },
   ],
 };
+
+/** The pain → fix pairs as a zig-zag tree: cards alternate either side of a central spine,
+ *  and a glowing marker rides down the spine as the visitor scrolls, filling it behind
+ *  itself. The spine is centered, and the alternation is plain flex justification, so the
+ *  whole thing mirrors under RTL with no overrides. Below lg it collapses to a single
+ *  stacked column with no spine. */
+function PainTree({ items }: { items: PainPoint[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    function update() {
+      const el = ref.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const p = (window.innerHeight * 0.55 - rect.top) / rect.height;
+      setProgress(Math.min(1, Math.max(0, p)));
+    }
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  return (
+    <div ref={ref} className="relative mx-auto mt-[clamp(48px,6vw,88px)] max-w-[1117px]">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-px -translate-x-1/2 bg-[#D9E1F0] lg:block">
+        <div
+          className="absolute inset-x-0 top-0"
+          style={{ height: `${progress * 100}%`, background: "linear-gradient(180deg, #7C5CFC, #F53BA6 55%, #F97316)" }}
+        />
+        <div
+          className="absolute left-1/2 flex h-[95px] w-[95px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#F97316]/10"
+          style={{ top: `${progress * 100}%` }}
+        >
+          <span className="flex h-[67px] w-[67px] items-center justify-center rounded-full bg-[#F97316]/20">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-soft">
+              <img src="/logo-icon.png" alt="" className="h-7 w-7 object-contain" />
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-5 lg:gap-14">
+        {items.map((p, i) => (
+          <div key={p.pain} className={cn("flex", i % 2 === 0 ? "lg:justify-end" : "lg:justify-start")}>
+            <Reveal delayMs={80} className="w-full lg:w-[43%]">
+              <div className="bg-white p-8 shadow-[0_64px_104px_0_rgba(0,0,0,0.05)] sm:p-10">
+                <div className="flex items-center gap-2.5">
+                  <p.icon className="h-5 w-5 text-[#EA580C]" />
+                  <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#6B7280]">{p.label}</span>
+                </div>
+                <div className="mt-5 flex items-start gap-3">
+                  <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#B8BEC9]" />
+                  <p className="text-base leading-snug text-[#5B6472]">{p.pain}</p>
+                </div>
+                <div className="mt-5 flex items-start gap-3 border-t border-[#D9E1F0] pt-5">
+                  <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-[#EA580C]" />
+                  <h3 className="font-display text-xl font-extrabold leading-snug tracking-[-0.02em] text-[#111] rtl:tracking-normal">{p.fix}</h3>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface ClientLogo {
   name: string;
@@ -871,6 +959,13 @@ const T = {
     ctaHeading: "Your next class, your next invoice, your next admission — one login away.",
     ctaSub: (brand: string) => `See ${brand} running an academy before you decide anything — no payment details required.`,
     alreadyHaveAccount: "Already have an account? Sign in",
+    readyHeadingLead: "Ready to run your academy from",
+    readyHeadingAccent: "one login?",
+    readyDemoTitle: "See it running an academy",
+    readyPortalsTitle: "Walk through all 8 portals",
+    readyTalkTitle: "Talk to our team",
+    previous: "Previous",
+    next: "Next",
     footerTagline: "Live teaching, scheduling, admissions and billing — one role-based system for your whole academy.",
     contact: "Contact",
     whatsappUs: "WhatsApp us",
@@ -930,6 +1025,13 @@ const T = {
     ctaHeading: "حصتك القادمة، وفاتورتك القادمة، وقبولك القادم — على بُعد تسجيل دخول واحد.",
     ctaSub: (brand: string) => `شاهد ${brand} وهي تُدير أكاديمية قبل أن تقرر أي شيء — دون الحاجة لبيانات دفع.`,
     alreadyHaveAccount: "لديك حساب بالفعل؟ سجّل الدخول",
+    readyHeadingLead: "هل أنت مستعد لإدارة أكاديميتك من",
+    readyHeadingAccent: "تسجيل دخول واحد؟",
+    readyDemoTitle: "شاهدها وهي تُدير أكاديمية",
+    readyPortalsTitle: "تجوّل في البوابات الثماني",
+    readyTalkTitle: "تحدّث مع فريقنا",
+    previous: "السابق",
+    next: "التالي",
     footerTagline: "تدريس مباشر، وجدولة، وقبول، وفوترة — نظام واحد قائم على الأدوار لأكاديميتك بأكملها.",
     contact: "التواصل",
     whatsappUs: "راسلنا على واتساب",
@@ -952,6 +1054,22 @@ export default function MarketingHome() {
 
   const features = FEATURES[lang];
   const visibleFeatures = activeCategory === "All" ? features : features.filter((f) => f.category === activeCategory);
+
+  const featureTrackRef = useRef<HTMLDivElement>(null);
+  /** Pages the feature carousel by roughly one viewport of cards. Under RTL the scroll axis
+   *  runs the other way, so "next" has to scroll negatively to keep moving forward. */
+  function scrollFeatures(direction: 1 | -1) {
+    const track = featureTrackRef.current;
+    if (!track) return;
+    const rtl = getComputedStyle(track).direction === "rtl";
+    track.scrollBy({ left: direction * (rtl ? -1 : 1) * track.clientWidth * 0.8, behavior: "smooth" });
+  }
+
+  const solutions = SOLUTIONS[lang];
+  const [solutionIndex, setSolutionIndex] = useState(0);
+  const solution = solutions[solutionIndex];
+
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
     <div className="theme-light-scope min-h-screen bg-white text-[#171B22]">
@@ -1010,207 +1128,259 @@ export default function MarketingHome() {
         </div>
       </header>
 
-      {/* Hero — the faint top-right glow echoes the dark CTA banner's radial glow lower down,
-          a quiet visual bookend rather than a one-off decoration. */}
-      <section className="relative overflow-hidden">
-        <div
-          className="pointer-events-none absolute -right-24 -top-32 h-[28rem] w-[28rem] rounded-full rtl:-left-24 rtl:right-auto"
-          style={{ background: "radial-gradient(circle, rgba(249,115,22,0.10), rgba(249,115,22,0) 70%)" }}
-        />
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-6 py-14 lg:grid-cols-[1.15fr_380px] lg:gap-16 lg:py-24">
-          <div>
-          <div className="motion-safe:animate-slide-up inline-flex items-center gap-1.5 rounded-full border border-[#FFE1C7] bg-[#FFF3EA] px-3.5 py-1.5 text-xs font-semibold text-[#C2410C]">
-            <Sparkles className="h-3.5 w-3.5" />
+      {/* Hero — dark, centered and oversized. The bottom padding is deliberately huge: the
+          walkthrough video in the next section pulls itself up into it with a matching
+          negative margin, so the frame straddles the dark/white seam. Both values are the same
+          clamp() family, so the overlap holds at every width. */}
+      <section className="relative overflow-hidden text-white" style={{ background: HERO_BG }}>
+        <div className="relative mx-auto max-w-[1280px] px-5 pb-[clamp(160px,25vw,350px)] pt-[clamp(56px,8vw,112px)] text-center">
+          <div className="motion-safe:animate-slide-up inline-flex items-center gap-1.5 rounded-[10px] bg-white/[0.08] px-3.5 py-2 text-xs font-semibold text-white/80">
+            <Sparkles className="h-3.5 w-3.5 text-[#F97316]" />
             <span>
               {t.heroEyebrowPrefix} <CyclingWord words={t.heroEyebrowWords} /> {t.heroEyebrowSuffix}
             </span>
           </div>
           <h1
-            className="motion-safe:animate-slide-up font-display mt-5 text-4xl font-extrabold leading-[1.14] tracking-tight sm:text-5xl"
+            className="motion-safe:animate-slide-up font-display mx-auto mt-6 max-w-[15ch] text-[clamp(2.5rem,5.3vw,5rem)] font-extrabold leading-[1.08] tracking-[-0.03em] rtl:tracking-normal"
             style={{ animationDelay: "80ms", animationFillMode: "backwards" }}
           >
-            {t.heroHeadingLead} <CyclingWord words={t.heroWords} colors={t.heroWordColors} /> {t.heroMid}
-            <span className="text-[#EA580C]"> {t.heroHeadingManage}</span> {t.heroHeadingTail}
+            {t.heroHeadingLead} <CyclingWord words={t.heroWords} colors={t.heroWordColors} /> {t.heroMid}{" "}
+            <span className={GRADIENT_TEXT}>{t.heroHeadingManage}</span> {t.heroHeadingTail}
           </h1>
           <p
-            className="motion-safe:animate-slide-up mt-5 max-w-lg text-base leading-relaxed text-[#5B6472]"
+            className="motion-safe:animate-slide-up mx-auto mt-5 max-w-2xl text-[clamp(1rem,1.6vw,1.25rem)] leading-relaxed text-white/75"
             style={{ animationDelay: "160ms", animationFillMode: "backwards" }}
           >
             {t.heroSub(brand.name)}
           </p>
           <div
-            className="motion-safe:animate-slide-up mt-8 flex flex-wrap items-center gap-3"
+            className="motion-safe:animate-slide-up mx-auto mt-9 flex max-w-xs flex-col items-stretch gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center sm:justify-center"
             style={{ animationDelay: "240ms", animationFillMode: "backwards" }}
           >
-            <Button asChild size="lg" className="!bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
-              <Link to="/get-started">
-                {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="border-[#171B22]/15 text-[#171B22] hover:bg-[#171B22]/5">
-              <Link to="/portal-select">{t.explorePortals}</Link>
-            </Button>
+            <Link to="/get-started" className={CTA_ORANGE}>
+              {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+            </Link>
+            <Link to="/portal-select" className={CTA_GHOST}>
+              {t.explorePortals}
+            </Link>
           </div>
 
           {/* Real, verifiable trust indicators only — every phrase here restates language
               already used on the dedicated /demo and /get-started flows, not a generic
-              "no credit card" line this product's signup doesn't actually have.
-              Stacked (not flex-wrap) at every width: at the hero column's ~500px desktop
-              width, wrapping left three items of uneven length two-then-one, creating a
-              lopsided row instead of a clean list. */}
+              "no credit card" line this product's signup doesn't actually have. */}
           <div
-            className="motion-safe:animate-slide-up mt-7 flex flex-col gap-2"
+            className="motion-safe:animate-slide-up mt-7 flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-6"
             style={{ animationDelay: "280ms", animationFillMode: "backwards" }}
           >
             {t.heroTrust.map((item) => (
-              <span key={item} className="flex items-center gap-1.5 text-xs font-semibold text-[#5B6472]">
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#EA580C]" /> {item}
+              <span key={item} className="flex items-center gap-1.5 text-xs font-semibold text-white/60">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#F97316]" /> {item}
               </span>
             ))}
           </div>
-        </div>
 
-        {/* Hero visual: autoplaying 60-second reel, replacing the earlier static mockup. */}
-        <div
-          className="motion-safe:animate-slide-up relative mx-auto w-full sm:max-w-[300px]"
-          style={{ animationDelay: "160ms", animationFillMode: "backwards" }}
-        >
-          {/* Inset (not overlapping above/left of the card via a negative offset) so it's
-              structurally clamped inside the card's own bounds — it can never render behind
-              the sticky header, regardless of any transient layout shift (web-font swap,
-              browser zoom, etc.) that might otherwise nudge a negatively-offset badge upward. */}
-          <div className="motion-safe:animate-float absolute left-2 top-2 z-10 flex h-11 w-11 -rotate-6 items-center justify-center rounded-full bg-white p-2 shadow-pop ring-1 ring-black/10 rtl:left-auto rtl:right-2 rtl:rotate-6">
-            <img src="/logo-icon.png" alt="" className="h-full w-full object-contain" />
-          </div>
-          <HeroReel />
-        </div>
-        </div>
-      </section>
-
-      {/* Clients — real academies already teaching on the platform. Grows as more come on
-          board; each logo is circle-cropped onto a white background for a consistent look
-          regardless of the source file's own canvas. */}
-      <section className="border-t border-black/10 bg-white py-10 sm:py-12">
-        <div className="mx-auto max-w-6xl px-6">
-          <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#6B7280]">
-            {t.clientsHeading(brand.name)}
-          </p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
-            {CLIENTS.map((c) => (
-              <div key={c.name} className="flex items-center gap-3">
-                <img
-                  src={c.logo}
-                  alt={`${c.name} logo`}
-                  loading="lazy"
-                  className="h-14 w-14 rounded-full bg-white object-cover ring-1 ring-black/10"
-                />
-                <span className="text-sm font-bold text-[#171B22]">{c.name}</span>
-              </div>
+          {/* Suggestion pills — the page's own FAQ questions, not invented prompts: each one
+              jumps to that answer and opens it, so the pill always delivers what it asks. */}
+          <div className="mt-9 flex flex-wrap justify-center gap-2.5">
+            {FAQS[lang].slice(0, 4).map((item, i) => (
+              <a
+                key={item.q}
+                href={`#faq-${i}`}
+                onClick={() => setOpenFaq(i)}
+                className="rounded-[10px] bg-white/[0.08] px-4 py-3 text-xs text-white/70 transition-colors hover:bg-white/15 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F97316]"
+              >
+                {item.q}
+              </a>
             ))}
           </div>
+
+          <h2 className="font-display mx-auto mt-[clamp(40px,5vw,80px)] max-w-3xl text-[clamp(1.75rem,3vw,2.5rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#FDFDFD] rtl:tracking-normal">
+            {t.watchHeading}
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-sm text-white/60">{t.watchSub(brand.name)}</p>
         </div>
       </section>
 
-      {/* Social proof strip — no fabricated customer counts exist for this product beyond the
-          real clients above, so this states verifiable platform facts rather than an invented
-          "Trusted by 1,000+ academies" claim. */}
-      <section className="border-y border-black/10 bg-[#F5F6F9] py-10 sm:py-12">
-        <div className="mx-auto max-w-6xl px-6">
-          <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#6B7280]">{t.statsHeading}</p>
-          <div className="mt-7 grid grid-cols-2 gap-6 sm:grid-cols-4">
-            {STATS[lang].map((s) => (
-              <div key={s.label} className="flex flex-col items-center text-center sm:items-start sm:text-start">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#EA580C] shadow-soft">
-                  <s.icon className="h-4 w-4" />
-                </span>
-                <p className="font-display mt-3 text-2xl font-extrabold text-[#171B22]">{s.value}</p>
-                <p className="mt-0.5 text-xs font-medium leading-snug text-[#5B6472]">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Watch — a real screen-recorded walkthrough (landscape, product footage), distinct
-          from the hero's portrait talking-head reel. */}
-      <section className="border-t border-black/10 bg-white py-16 sm:py-20">
-        <div className="mx-auto max-w-4xl px-6">
-          <Reveal>
-            <div className="mx-auto max-w-xl text-center">
-              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">{t.watchEyebrow}</p>
-              <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">{t.watchHeading}</h2>
-              <p className="mt-3 text-sm text-[#5B6472]">{t.watchSub(brand.name)}</p>
-            </div>
-          </Reveal>
-
-          <Reveal delayMs={100} className="mt-10">
+      {/* Watch — a real screen-recorded walkthrough (landscape, product footage), lifted into
+          the hero above it. */}
+      <section className="relative bg-white">
+        <div className="mx-auto max-w-[1100px] px-5">
+          <div
+            className="relative z-10 -mt-[clamp(100px,22vw,300px)] rounded-[22px] p-[2px] shadow-[0_40px_90px_-30px_rgba(13,16,36,0.55)]"
+            style={{ background: ACCENT_GRADIENT }}
+          >
             <ExplainerVideo />
+          </div>
+        </div>
+      </section>
+
+      {/* Built-in facts + clients — no fabricated customer counts exist for this product
+          beyond the real clients listed, so this states verifiable platform facts rather than
+          an invented "Trusted by 1,000+ academies" claim. The portrait reel that used to be
+          the hero visual lives here now, beside the numbers it illustrates. */}
+      <section className="bg-white py-[clamp(72px,8vw,120px)]">
+        <div className="mx-auto grid max-w-[1160px] grid-cols-1 items-center gap-14 px-5 lg:grid-cols-[1fr_300px] lg:gap-20">
+          <div>
+            <Reveal>
+              <h2 className={cn(H2, "text-start")}>{t.statsHeading}</h2>
+            </Reveal>
+            <div className="mt-10 grid grid-cols-2 border-s border-t border-[#D9E1F0]">
+              {STATS[lang].map((s, i) => (
+                <Reveal key={s.label} delayMs={i * 80} className="border-b border-e border-[#D9E1F0] p-6 sm:p-8">
+                  <s.icon className="h-5 w-5 text-[#EA580C]" />
+                  <p className="font-display mt-4 text-[clamp(2rem,3.4vw,3rem)] font-extrabold leading-none tracking-[-0.03em] text-[#111] rtl:tracking-normal">
+                    {s.value}
+                  </p>
+                  <p className="mt-2 text-sm leading-snug text-[#5B6472]">{s.label}</p>
+                </Reveal>
+              ))}
+            </div>
+
+            {/* Grows as more academies come on board; each logo is circle-cropped onto a white
+                background for a consistent look regardless of the source file's own canvas. */}
+            <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4">
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#6B7280]">{t.clientsHeading(brand.name)}</p>
+              {CLIENTS.map((c) => (
+                <div key={c.name} className="flex items-center gap-3">
+                  <img
+                    src={c.logo}
+                    alt={`${c.name} logo`}
+                    loading="lazy"
+                    className="h-12 w-12 rounded-full bg-white object-cover ring-1 ring-black/10"
+                  />
+                  <span className="text-sm font-bold text-[#111]">{c.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Reveal className="relative mx-auto w-full max-w-[300px]">
+            {/* Inset (not overlapping above/left of the card via a negative offset) so it's
+                structurally clamped inside the card's own bounds, regardless of any transient
+                layout shift that might otherwise nudge a negatively-offset badge out of it. */}
+            <div className="motion-safe:animate-float absolute left-2 top-2 z-10 flex h-11 w-11 -rotate-6 items-center justify-center rounded-full bg-white p-2 shadow-pop ring-1 ring-black/10 rtl:left-auto rtl:right-2 rtl:rotate-6">
+              <img src="/logo-icon.png" alt="" className="h-full w-full object-contain" />
+            </div>
+            <HeroReel />
           </Reveal>
         </div>
       </section>
 
-      {/* Pain points → solutions */}
-      <section className="border-t border-black/10 bg-[#FBFBFC] py-16 sm:py-20">
-        <div className="mx-auto max-w-4xl px-6">
-          <Reveal className="max-w-2xl">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">{t.painEyebrow(brand.name)}</p>
-            <h2 className="font-display mt-3 text-3xl font-extrabold leading-[1.15] tracking-tight sm:text-4xl md:text-5xl">
-              {t.painHeading}
-            </h2>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-[#5B6472] sm:text-lg">{t.painSub(brand.name)}</p>
+      {/* Features — a carousel of the same 8 features, still filterable by customer outcome
+          (Create / Manage / Teach / Measure) rather than by technical module. */}
+      <section id="features" className="scroll-mt-20 bg-white text-center">
+        <div className="mx-auto max-w-[1280px] border-y border-[#D9E1F0] px-5 py-[clamp(80px,8vw,120px)]">
+          <Reveal className="mx-auto max-w-[835px]">
+            <p className={EYEBROW}>{t.platformEyebrow}</p>
+            <h2 className={cn(H2, "mt-4")}>{t.featuresHeading}</h2>
+            <p className={cn(LEAD, "mt-5")}>{t.featuresSub(brand.name)}</p>
           </Reveal>
 
-          <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {PAIN_POINTS[lang].map((p, i) => (
-              <Reveal key={p.pain} delayMs={i * 80} className="h-full">
-                <div className="flex h-full flex-col rounded-2xl border border-black/10 bg-white p-6 sm:p-7">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F5F6F9] text-[#5B6472]">
-                      <p.icon className="h-4 w-4" />
+          <div role="tablist" aria-label="Filter features by outcome" className="mt-9 flex flex-wrap justify-center gap-2">
+            {CATEGORY_KEYS.map((cat) => {
+              const count = cat === "All" ? features.length : features.filter((f) => f.category === cat).length;
+              const active = activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveCategory(cat)}
+                  className={cn(
+                    "rounded-[10px] px-4 py-2.5 text-xs font-semibold transition-colors",
+                    active ? "bg-[#111] text-white" : "bg-[#EAEEF4] text-[#333] hover:bg-[#D9E1F0]"
+                  )}
+                >
+                  {CATEGORY_LABEL[lang][cat]} <span className={cn(active ? "text-white/60" : "text-[#6B7280]")}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-12 flex items-center justify-center gap-4 sm:gap-6">
+            <button type="button" onClick={() => scrollFeatures(-1)} aria-label={t.previous} className={cn(ROUND_ARROW, "hidden sm:flex")}>
+              <ChevronLeft className="h-[18px] w-[18px] rtl:-scale-x-100" />
+            </button>
+            <div
+              ref={featureTrackRef}
+              className="flex min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto py-2.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {visibleFeatures.map((f, i) => (
+                <div
+                  key={f.title}
+                  className="flex w-[264px] shrink-0 snap-start flex-col border border-[#D9E1F0] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.05)]"
+                >
+                  <div className="relative flex h-44 items-center justify-center overflow-hidden bg-[#0D1024]">
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-x-0 -bottom-24 h-48"
+                      style={{
+                        background: `radial-gradient(closest-side, ${i % 2 === 0 ? "rgba(249,115,22,0.55)" : "rgba(124,92,252,0.6)"}, transparent)`,
+                      }}
+                    />
+                    <span className="absolute start-4 top-4 text-[10px] font-bold uppercase tracking-[0.08em] text-white/50">
+                      {CATEGORY_LABEL[lang][f.category]}
                     </span>
-                    <span className="text-xs font-bold uppercase tracking-wide text-[#6B7280]">{p.label}</span>
+                    <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20">
+                      <f.icon className="h-9 w-9" strokeWidth={1.6} />
+                    </span>
                   </div>
-                  <div className="mt-4 flex items-start gap-3">
-                    <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#B8BEC9]" />
-                    <p className="text-base leading-snug text-[#5B6472] sm:text-lg">{p.pain}</p>
-                  </div>
-                  <div className="mt-4 flex items-start gap-3 border-t border-dashed border-black/10 pt-4">
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#EA580C]" />
-                    <p className="text-base font-bold leading-snug text-[#171B22] sm:text-lg">{p.fix}</p>
+                  <div className="flex flex-1 flex-col px-5 py-6">
+                    <h3 className="font-display text-lg font-extrabold leading-snug tracking-[-0.02em] text-[#111] rtl:tracking-normal">{f.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-[#5B6472]">{f.description}</p>
                   </div>
                 </div>
-              </Reveal>
-            ))}
+              ))}
+            </div>
+            <button type="button" onClick={() => scrollFeatures(1)} aria-label={t.next} className={cn(ROUND_ARROW, "hidden sm:flex")}>
+              <ChevronRight className="h-[18px] w-[18px] rtl:-scale-x-100" />
+            </button>
           </div>
+
+          <Link to="/get-started" className={cn(CTA_DARK, "mt-12")}>
+            {t.requestDemo}
+          </Link>
         </div>
       </section>
 
-      {/* Product showcase — the interfaces below are illustrative product views built for
-          this page (the same visual language as the hero mockup), not literal screenshots
-          or real customer data. That's stated plainly beneath them rather than left ambiguous.
-          Row rhythm (text/mockup alternating sides) is driven by `mockupFirst` via `order-*`;
-          under RTL, CSS Grid's own auto-placement already mirrors normal-flow rows, so only
-          the explicitly-ordered row needs a look once this can be visually checked in Arabic —
-          noted, not fixed blind. */}
-      <section id="product" className="scroll-mt-20 border-t border-black/10 bg-white py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">{t.productEyebrow}</p>
-            <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">{t.productHeading}</h2>
-            <p className="mt-3 text-sm text-[#5B6472]">{t.productSub(brand.name)}</p>
-          </div>
+      {/* Pain points → solutions, as a zig-zag tree down a central spine. */}
+      <section className="bg-[#F8F9FB] py-[clamp(80px,8vw,120px)]">
+        <div className="mx-auto max-w-[1280px] px-5">
+          <Reveal className="mx-auto max-w-[760px] text-center">
+            <p className={EYEBROW}>{t.painEyebrow(brand.name)}</p>
+            <h2 className={cn(H2, "mt-4")}>{t.painHeading}</h2>
+            <p className={cn(LEAD, "mt-5")}>{t.painSub(brand.name)}</p>
+          </Reveal>
+          <PainTree items={PAIN_POINTS[lang]} />
+        </div>
+      </section>
 
-          <div className="mt-16 flex flex-col gap-16 sm:gap-20">
+      {/* Product showcase — real screens from the admin portal in demo mode (seed data, not a
+          real customer's), stated plainly beneath them rather than left ambiguous. Row rhythm
+          (text/screenshot alternating sides) is driven by `mockupFirst` via `order-*`; under
+          RTL, CSS Grid's own auto-placement already mirrors normal-flow rows. */}
+      <section id="product" className="scroll-mt-20 bg-white py-[clamp(80px,8vw,120px)]">
+        <div className="mx-auto max-w-[1160px] px-5">
+          <Reveal className="mx-auto max-w-[760px] text-center">
+            <p className={EYEBROW}>{t.productEyebrow}</p>
+            <h2 className={cn(H2, "mt-4")}>{t.productHeading}</h2>
+            <p className={cn(LEAD, "mt-5")}>{t.productSub(brand.name)}</p>
+          </Reveal>
+
+          <div className="mt-[clamp(48px,6vw,88px)] flex flex-col gap-[clamp(56px,7vw,104px)]">
             {PRODUCT_ROWS[lang].map((row) => (
               <Reveal key={row.heading}>
-                <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-14">
+                <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[5fr_6fr] lg:gap-16">
                   <div className={row.mockupFirst ? "lg:order-2" : undefined}>
-                    <h3 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">{row.heading}</h3>
-                    <p className="mt-3 text-base leading-relaxed text-[#5B6472]">{row.body}</p>
-                    <ul className="mt-5 flex flex-col gap-3">
+                    <h3 className="font-display text-[clamp(1.5rem,2.4vw,2.125rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#111] rtl:tracking-normal">
+                      {row.heading}
+                    </h3>
+                    <p className="mt-4 text-base leading-relaxed text-[#333] sm:text-lg">{row.body}</p>
+                    <ul className="mt-6 flex flex-col gap-3 border-t border-[#D9E1F0] pt-6">
                       {row.bullets.map((item) => (
-                        <li key={item} className="flex items-start gap-2.5 text-sm text-[#171B22]">
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#EA580C]" /> {item}
+                        <li key={item} className="flex items-start gap-2.5 text-sm text-[#111] sm:text-base">
+                          <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-[#EA580C]" /> {item}
                         </li>
                       ))}
                     </ul>
@@ -1227,97 +1397,39 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* Feature grid — organized by customer outcome (Create / Manage / Teach / Measure)
-          rather than by technical module, with the filter reusing the same 8 features
-          instead of duplicating them into a second, redundant section. */}
-      <section id="features" className="scroll-mt-20 border-t border-black/10 bg-[#F5F6F9] py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">{t.platformEyebrow}</p>
-            <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">{t.featuresHeading}</h2>
-            <p className="mt-3 text-sm text-[#5B6472]">{t.featuresSub(brand.name)}</p>
-          </div>
-
-          <div role="tablist" aria-label="Filter features by outcome" className="mt-8 flex flex-wrap justify-center gap-2">
-            {CATEGORY_KEYS.map((cat) => {
-              const count = cat === "All" ? features.length : features.filter((f) => f.category === cat).length;
-              const active = activeCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setActiveCategory(cat)}
-                  className={cn(
-                    "rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors",
-                    active
-                      ? "border-[#F97316] bg-[#F97316] text-[#171B22]"
-                      : "border-black/10 bg-white text-[#5B6472] hover:border-[#F97316]/40 hover:text-[#171B22]"
-                  )}
-                >
-                  {CATEGORY_LABEL[lang][cat]} <span className={cn(active ? "text-white/70" : "text-[#B8BEC9]")}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {visibleFeatures.map((f, i) => (
-              <Reveal key={f.title} delayMs={(i % 4) * 80}>
-                <div className="group h-full rounded-2xl border border-black/10 bg-white p-5 transition-all hover:-translate-y-1 hover:shadow-pop">
-                  <span
-                    className="flex h-11 w-11 items-center justify-center rounded-xl"
-                    style={{ backgroundColor: `${f.hex}1A`, color: f.hex }}
-                  >
-                    <f.icon className="h-[22px] w-[22px]" />
-                  </span>
-                  <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-[#B8BEC9]">{CATEGORY_LABEL[lang][f.category]}</p>
-                  <h3 className="mt-1 text-sm font-bold text-[#171B22]">{f.title}</h3>
-                  <p className="mt-1.5 text-xs leading-relaxed text-[#5B6472]">{f.description}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Portals — role names/descriptions come from lib/roles.ts's ROLE_META (shared app-wide),
           left in English by design; only this section's own header/badge/link text translates. */}
-      <section id="portals" className="scroll-mt-20 bg-white py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EDEFF3] px-3.5 py-1.5 text-xs font-semibold text-[#262D37]">
+      <section id="portals" className="scroll-mt-20 bg-[#F8F9FB] py-[clamp(80px,8vw,120px)]">
+        <div className="mx-auto max-w-[1160px] px-5">
+          <Reveal className="mx-auto max-w-[760px] text-center">
+            <p className={cn(EYEBROW, "inline-flex items-center gap-1.5")}>
               <ShieldCheck className="h-3.5 w-3.5" /> {t.portalsBadge}
-            </div>
-            <h2 className="font-display mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">{t.portalsHeading}</h2>
-            <p className="mt-3 text-sm text-[#5B6472]">{t.portalsSub}</p>
-          </div>
+            </p>
+            <h2 className={cn(H2, "mt-4")}>{t.portalsHeading}</h2>
+            <p className={cn(LEAD, "mt-5")}>{t.portalsSub}</p>
+          </Reveal>
 
-          <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-14 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {ROLE_ORDER.map((r, i) => {
               const meta = ROLE_META[r];
               return (
                 <Reveal key={r} delayMs={(i % 4) * 80}>
                   <Link
                     to="/portal-select"
-                    className="group flex h-full flex-col gap-3 rounded-2xl border border-black/10 bg-[#F5F6F9] p-5 transition-all hover:-translate-y-1 hover:shadow-pop focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="group flex h-full flex-col gap-4 border border-[#D9E1F0] bg-white p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)] transition-all hover:-translate-y-1 hover:shadow-[0_24px_48px_-16px_rgba(13,16,36,0.25)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F97316]"
                   >
                     {/* meta.hex ties each card to that role's own color identity across the
                         app (sidebar, PortalSelect, login role picker) instead of a flat
                         one-off navy, so a returning user recognizes "their" portal by color. */}
-                    <span
-                      className="flex h-11 w-11 items-center justify-center rounded-xl text-white"
-                      style={{ backgroundColor: meta.hex }}
-                    >
-                      <meta.icon className="h-[22px] w-[22px]" />
+                    <span className="flex h-12 w-12 items-center justify-center text-white" style={{ backgroundColor: meta.hex }}>
+                      <meta.icon className="h-6 w-6" />
                     </span>
                     <div>
-                      <h3 className="text-sm font-bold text-[#171B22]">{meta.label}</h3>
-                      <p className="mt-1 text-xs leading-relaxed text-[#5B6472]">{meta.description}</p>
+                      <h3 className="font-display text-lg font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{meta.label}</h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-[#5B6472]">{meta.description}</p>
                     </div>
-                    <span className="mt-auto flex items-center gap-1 text-xs font-semibold text-[#EA580C] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                      {t.explore} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
+                    <span className={cn(ARROW_LINK, "mt-auto")}>
+                      {t.explore} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 rtl:-scale-x-100 rtl:group-hover:-translate-x-1" />
                     </span>
                   </Link>
                 </Reveal>
@@ -1329,77 +1441,91 @@ export default function MarketingHome() {
 
       {/* Solutions — real, evidenced sub-segments of the product's actual audience (tutoring
           and coaching academies), not generic corporate-L&D or MOOC-creator verticals with no
-          evidence in this codebase. */}
-      <section id="solutions" className="scroll-mt-20 border-t border-black/10 bg-[#F5F6F9] py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">{t.solutionsEyebrow}</p>
-            <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">{t.solutionsHeading}</h2>
-            <p className="mt-3 text-sm text-[#5B6472]">{t.solutionsSub}</p>
-          </div>
+          evidence in this codebase. Presented one at a time in a white card on a dark band. */}
+      <section id="solutions" className="scroll-mt-20 py-[clamp(60px,8vw,120px)]" style={{ background: DARK_BAND_BG }}>
+        <div className="mx-auto max-w-[1200px] px-5">
+          <div className="mx-auto flex max-w-[1160px] flex-wrap gap-x-16 gap-y-10 bg-white px-[clamp(20px,5.3vw,80px)] py-[clamp(40px,4.4vw,60px)]">
+            <div className="w-full lg:max-w-[400px]">
+              <p className={EYEBROW}>{t.solutionsEyebrow}</p>
+              <h2 className="font-display mt-4 text-[clamp(1.75rem,3vw,2.5rem)] font-extrabold leading-[1.12] tracking-[-0.03em] text-[#111] rtl:tracking-normal">
+                {t.solutionsHeading}
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-[#5B6472]">{t.solutionsSub}</p>
+              <div className="mt-8 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSolutionIndex((i) => (i - 1 + solutions.length) % solutions.length)}
+                  aria-label={t.previous}
+                  className={cn(ROUND_ARROW, "h-12 w-12 border-0")}
+                >
+                  <ChevronLeft className="h-5 w-5 rtl:-scale-x-100" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSolutionIndex((i) => (i + 1) % solutions.length)}
+                  aria-label={t.next}
+                  className={cn(ROUND_ARROW, "h-12 w-12 border-0")}
+                >
+                  <ChevronRight className="h-5 w-5 rtl:-scale-x-100" />
+                </button>
+                <span className="ms-2 text-sm font-semibold tabular-nums text-[#6B7280]">
+                  {solutionIndex + 1} / {solutions.length}
+                </span>
+              </div>
+            </div>
 
-          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {SOLUTIONS[lang].map((s, i) => (
-              <Reveal key={s.title} delayMs={i * 100}>
-                <div className="flex h-full flex-col rounded-2xl border border-black/10 bg-white p-6">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF3EA] text-[#EA580C]">
-                    <s.icon className="h-5 w-5" />
+            <div key={solution.title} aria-live="polite" className="motion-safe:animate-fade-in min-w-0 flex-1 basis-[300px]">
+              <span className="flex h-12 w-12 items-center justify-center bg-[#111] text-white">
+                <solution.icon className="h-6 w-6" />
+              </span>
+              <h3 className="font-display mt-6 text-[clamp(1.25rem,2vw,1.6875rem)] font-extrabold leading-snug tracking-[-0.02em] text-[#111] rtl:tracking-normal">
+                {solution.title}
+              </h3>
+              <p className="mt-4 text-base leading-relaxed text-[#333] sm:text-lg">{solution.description}</p>
+              <div className="mt-6 flex flex-wrap gap-2">
+                {solution.chips.map((chip) => (
+                  <span key={chip} className="rounded-[10px] bg-[#EAEEF4] px-3 py-2 text-xs font-semibold text-[#333]">
+                    {chip}
                   </span>
-                  <h3 className="mt-4 text-base font-bold text-[#171B22]">{s.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-[#5B6472]">{s.description}</p>
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {s.chips.map((chip) => (
-                      <span key={chip} className="rounded-full bg-[#F5F6F9] px-2.5 py-1 text-[11px] font-semibold text-[#262D37]">
-                        {chip}
-                      </span>
-                    ))}
-                  </div>
-                  {s.external ? (
-                    <a
-                      href={s.ctaTo}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-5 flex items-center gap-1 text-sm font-semibold text-[#EA580C] hover:text-[#C2410C]"
-                    >
-                      {s.ctaLabel} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
-                    </a>
-                  ) : (
-                    <Link
-                      to={s.ctaTo}
-                      className="mt-5 flex items-center gap-1 text-sm font-semibold text-[#EA580C] hover:text-[#C2410C]"
-                    >
-                      {s.ctaLabel} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
-                    </Link>
-                  )}
-                </div>
-              </Reveal>
-            ))}
+                ))}
+              </div>
+              {solution.external ? (
+                <a href={solution.ctaTo} target="_blank" rel="noopener noreferrer" className={cn(ARROW_LINK, "mt-8")}>
+                  {solution.ctaLabel} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+                </a>
+              ) : (
+                <Link to={solution.ctaTo} className={cn(ARROW_LINK, "mt-8")}>
+                  {solution.ctaLabel} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Security & integrations, merged into one section (was two) — both are short,
-          compact-card sections and neither needed its own full section's worth of padding.
-          Verified architectural facts only for security (no ISO/SOC2/GDPR claims, said
-          plainly below rather than left ambiguous); the real, fixed set of channels this
-          product ships with today for integrations, not an open marketplace. */}
-      <section id="integrations" className="scroll-mt-20 border-t border-black/10 bg-white py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">{t.securityEyebrow}</p>
-            <h2 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">{t.securityHeading}</h2>
-            <p className="mt-3 text-sm text-[#5B6472]">{t.securitySub}</p>
-          </div>
+      {/* Security & integrations in one section — verified architectural facts only for
+          security (no ISO/SOC2/GDPR claims, said plainly below rather than left ambiguous);
+          the real, fixed set of channels this product ships with today for integrations, not
+          an open marketplace. */}
+      <section id="integrations" className="scroll-mt-20 bg-white py-[clamp(80px,8vw,120px)]">
+        <div className="mx-auto max-w-[1160px] px-5">
+          <Reveal className="mx-auto max-w-[760px] text-center">
+            <p className={EYEBROW}>{t.securityEyebrow}</p>
+            <h2 className={cn(H2, "mt-4")}>{t.securityHeading}</h2>
+            <p className={cn(LEAD, "mt-5")}>{t.securitySub}</p>
+          </Reveal>
 
-          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-14 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {SECURITY_ITEMS[lang].map((item, i) => (
-              <Reveal key={item.title} delayMs={(i % 4) * 80}>
-                <div className="h-full rounded-2xl border border-black/10 bg-[#F5F6F9] p-5">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-[#EA580C] shadow-soft">
-                    <item.icon className="h-5 w-5" />
+              <Reveal key={item.title} delayMs={(i % 2) * 80}>
+                <div className="flex h-full gap-5 border border-[#D9E1F0] bg-white p-7 shadow-[0_4px_20px_rgba(0,0,0,0.05)] sm:p-9">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center bg-[#0D1024] text-[#F97316]">
+                    <item.icon className="h-6 w-6" />
                   </span>
-                  <h3 className="mt-4 text-sm font-bold text-[#171B22]">{item.title}</h3>
-                  <p className="mt-1.5 text-xs leading-relaxed text-[#5B6472]">{item.description}</p>
+                  <div>
+                    <h3 className="font-display text-xl font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-[#5B6472] sm:text-base">{item.description}</p>
+                  </div>
                 </div>
               </Reveal>
             ))}
@@ -1407,79 +1533,108 @@ export default function MarketingHome() {
 
           <p className="mx-auto mt-6 max-w-xl text-center text-xs text-[#6B7280]">{t.securityNote}</p>
 
-          <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {INTEGRATIONS[lang].map((integration, i) => (
-              <Reveal key={integration.name} delayMs={(i % 6) * 60}>
-                <div className="flex h-full flex-col items-center gap-2.5 rounded-2xl border border-black/10 bg-[#F5F6F9] p-5 text-center">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF3EA] text-[#EA580C]">
-                    <integration.icon className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-bold text-[#171B22]">{integration.name}</p>
-                    <p className="mt-0.5 text-[11px] leading-snug text-[#5B6472]">{integration.description}</p>
-                  </div>
+          <div className="mt-12 grid grid-cols-2 border-s border-t border-[#D9E1F0] sm:grid-cols-3 lg:grid-cols-6">
+            {INTEGRATIONS[lang].map((integration) => (
+              <div key={integration.name} className="flex flex-col items-center gap-3 border-b border-e border-[#D9E1F0] px-4 py-7 text-center">
+                <integration.icon className="h-6 w-6 text-[#EA580C]" />
+                <div>
+                  <p className="text-sm font-bold text-[#111]">{integration.name}</p>
+                  <p className="mt-0.5 text-xs leading-snug text-[#5B6472]">{integration.description}</p>
                 </div>
-              </Reveal>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="scroll-mt-20 bg-white py-16 sm:py-20">
-        <div className="mx-auto max-w-3xl px-6">
-          <Reveal>
-            <p className="text-center text-xs font-bold uppercase tracking-[0.08em] text-[#EA580C]">{t.faqEyebrow}</p>
-            <h2 className="font-display mt-3 text-center text-3xl font-extrabold tracking-tight sm:text-4xl">{t.faqHeading}</h2>
+      {/* FAQ — one answer open at a time; the hero's suggestion pills open theirs directly. */}
+      <section id="faq" className="scroll-mt-20 py-[clamp(80px,9.3vw,140px)]" style={{ background: FAQ_BG }}>
+        <div className="mx-auto max-w-[870px] px-5">
+          <Reveal className="text-center">
+            <p className={EYEBROW}>{t.faqEyebrow}</p>
+            <h2 className={cn(H2, "mx-auto mt-4 max-w-[650px]")}>{t.faqHeading}</h2>
           </Reveal>
 
-          <div className="mt-10 flex flex-col gap-3">
+          <div className="mt-[clamp(40px,4.8vw,72px)] flex flex-col gap-3">
             {FAQS[lang].map((item, i) => (
-              <Reveal key={item.q} delayMs={i * 60}>
-                <details className="group rounded-2xl border border-black/10 bg-[#F5F6F9] open:shadow-soft">
-                  <summary className="flex cursor-pointer list-none items-center gap-4 px-5 py-4 text-sm font-bold text-[#171B22] marker:content-none [&::-webkit-details-marker]:hidden">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#EA580C] shadow-soft">
-                      <item.icon className="h-4 w-4" />
-                    </span>
-                    <span className="flex-1">{item.q}</span>
-                    <ChevronDown className="h-4 w-4 shrink-0 text-[#5B6472] transition-transform duration-200 group-open:rotate-180" />
-                  </summary>
-                  <p className="pb-5 pl-[4.25rem] pr-5 text-sm leading-relaxed text-[#5B6472] rtl:pl-5 rtl:pr-[4.25rem]">{item.a}</p>
-                </details>
-              </Reveal>
+              <details
+                key={item.q}
+                id={`faq-${i}`}
+                open={openFaq === i}
+                onToggle={(e) => {
+                  const isOpen = e.currentTarget.open;
+                  setOpenFaq((prev) => (isOpen ? i : prev === i ? null : prev));
+                }}
+                className="group scroll-mt-28 rounded-[15px] border border-white bg-white/30 transition-colors open:outline open:outline-2 open:outline-offset-2 open:outline-[#F97316] hover:bg-white/50"
+              >
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-5 px-[clamp(20px,2.5vw,32px)] py-[clamp(16px,2vw,25px)] text-[clamp(1rem,1.4vw,1.25rem)] font-semibold leading-snug text-black marker:content-none [&::-webkit-details-marker]:hidden">
+                  <span>{item.q}</span>
+                  <span aria-hidden="true" className="relative mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#111]">
+                    <span className="absolute h-0.5 w-3 bg-white" />
+                    <span className="absolute h-3 w-0.5 bg-white transition-transform duration-300 group-open:rotate-90 group-open:opacity-0" />
+                  </span>
+                </summary>
+                <p className="px-[clamp(20px,2.5vw,32px)] pb-[clamp(16px,2vw,25px)] pe-[clamp(40px,6vw,72px)] text-[clamp(0.9375rem,1.2vw,1.125rem)] leading-relaxed text-[#333]">
+                  {item.a}
+                </p>
+              </details>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA banner — the page's two real conversion paths, not a hero repeat: an academy
-          owner requesting a platform demo, or a parent booking a class demo. Sign-in stays
-          reachable as a quiet text link for returning users, without competing for weight
-          against the two lead-gen actions. */}
-      <section className="border-t border-black/10 bg-[#F5F6F9] py-16 sm:py-20">
-        <Reveal className="mx-auto max-w-4xl px-6">
-          <div className="relative overflow-hidden rounded-[28px] bg-[#1A1F27] px-8 py-12 text-center shadow-pop sm:px-14">
-            <div
-              className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full rtl:-left-16 rtl:right-auto"
-              style={{ background: "radial-gradient(circle, rgba(249,115,22,0.35), rgba(249,115,22,0) 70%)" }}
-            />
-            <div className="relative">
-              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-soft">
-                <img src="/logo-icon.png" alt="" className="h-7 w-7 object-contain" />
-              </span>
-              <h2 className="font-display mt-5 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">{t.ctaHeading}</h2>
-              <p className="mx-auto mt-3 max-w-md text-sm text-white/60">{t.ctaSub(brand.name)}</p>
-              <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-                <Button asChild size="lg" className="!bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
-                  <Link to="/get-started">
-                    {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
-                  </Link>
-                </Button>
+      {/* Next steps — the page's real conversion paths side by side: an academy owner
+          requesting a platform demo, a look around the portals, or a direct line to the team. */}
+      <section className="overflow-hidden pb-5 pt-[clamp(80px,8.8vw,120px)]" style={{ background: READY_BG }}>
+        <div className="mx-auto max-w-[1280px] px-5 text-center">
+          <Reveal>
+            <h2 className={cn(H2, "mx-auto max-w-[650px]")}>
+              {t.readyHeadingLead} <span className={GRADIENT_TEXT}>{t.readyHeadingAccent}</span>
+            </h2>
+          </Reveal>
+          <Reveal delayMs={100}>
+            <div className="mx-auto mt-[clamp(50px,5.3vw,80px)] flex max-w-[1160px] flex-col items-stretch border border-[#D9E1F0] bg-white px-[clamp(15px,2vw,25px)] py-[clamp(40px,4vw,60px)] shadow-[0_8px_40px_0_rgba(0,0,0,0.08)] md:flex-row">
+              <div className="flex-1 px-[clamp(20px,2vw,30px)]">
+                <CalendarCheck2 className="mx-auto h-9 w-9 text-[#EA580C]" strokeWidth={1.6} />
+                <h3 className="font-display my-5 text-[clamp(1.25rem,1.6vw,1.5rem)] font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{t.readyDemoTitle}</h3>
+                <Link to="/get-started" className={ARROW_LINK}>
+                  {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+                </Link>
               </div>
-              <Link to="/login" className="mt-6 inline-block text-xs font-semibold text-white/50 hover:text-white/80">
-                {t.alreadyHaveAccount}
-              </Link>
+              <span aria-hidden="true" className="my-9 h-px bg-[#D9E1F0] md:my-0 md:h-auto md:w-px" />
+              <div className="flex-1 px-[clamp(20px,2vw,30px)]">
+                <Layers className="mx-auto h-9 w-9 text-[#EA580C]" strokeWidth={1.6} />
+                <h3 className="font-display my-5 text-[clamp(1.25rem,1.6vw,1.5rem)] font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{t.readyPortalsTitle}</h3>
+                <Link to="/portal-select" className={ARROW_LINK}>
+                  {t.explorePortals} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+                </Link>
+              </div>
+              <span aria-hidden="true" className="my-9 h-px bg-[#D9E1F0] md:my-0 md:h-auto md:w-px" />
+              <div className="flex-1 px-[clamp(20px,2vw,30px)]">
+                <Mail className="mx-auto h-9 w-9 text-[#EA580C]" strokeWidth={1.6} />
+                <h3 className="font-display my-5 text-[clamp(1.25rem,1.6vw,1.5rem)] font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{t.readyTalkTitle}</h3>
+                <a href="mailto:info@infinityuniquers.com" className={cn(ARROW_LINK, "normal-case")}>
+                  info@infinityuniquers.com
+                </a>
+              </div>
             </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Closing band. Sign-in stays reachable as a quiet text link for returning users,
+          without competing for weight against the lead-gen action. */}
+      <section className="mt-[clamp(60px,6vw,100px)]" style={{ background: DARK_BAND_BG }}>
+        <Reveal className="mx-auto max-w-[1160px] px-5 py-[clamp(60px,8vw,120px)] text-center">
+          <h2 className={cn(H2, "mx-auto max-w-[900px] !text-white")}>{t.ctaHeading}</h2>
+          <p className="mx-auto mt-4 max-w-[801px] text-lg leading-[1.8] text-white/80">{t.ctaSub(brand.name)}</p>
+          <Link to="/get-started" className={cn(CTA_ORANGE, "mt-[clamp(30px,3.3vw,50px)]")}>
+            {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+          </Link>
+          <div>
+            <Link to="/login" className="mt-6 inline-block text-xs font-semibold text-white/60 hover:text-white">
+              {t.alreadyHaveAccount}
+            </Link>
           </div>
         </Reveal>
       </section>
