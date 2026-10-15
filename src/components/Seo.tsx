@@ -1,11 +1,13 @@
+import { useEffect, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { useSeoOverride } from "@/lib/seoSettings";
+import { trackMarketingPageView } from "@/lib/analytics";
 
 const SITE_URL = "https://meettomanage.cloud";
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 
 interface SeoProps {
-  /** Admin Settings → SEO key this page reads overrides from (e.g. "home", "blog"). Omit for a page with no admin override — blog posts, which already have their own admin-editable title/excerpt. */
+  /** Marketing console → SEO key this page reads overrides from (e.g. "home", "blog"). Omit for a page with no admin override — blog posts, which already have their own admin-editable title/excerpt. */
   pageKey?: string;
   title: string;
   description: string;
@@ -23,6 +25,16 @@ export function Seo({ pageKey, title: titleFallback, description: descriptionFal
   const title = useSeoOverride(pageKey ?? "", "title", titleFallback);
   const description = useSeoOverride(pageKey ?? "", "description", descriptionFallback);
   const url = `${SITE_URL}${path}`;
+
+  // One analytics page view per marketing page (only public marketing pages render <Seo>).
+  // Keyed on path alone: the title can update a moment later once SEO overrides load, and
+  // that mustn't count as a second view. Skipped for the 404 page.
+  const titleRef = useRef(title);
+  titleRef.current = title;
+  useEffect(() => {
+    if (!noindex) void trackMarketingPageView(path, titleRef.current);
+  }, [path, noindex]);
+
   return (
     <Helmet>
       <title>{title}</title>

@@ -79,6 +79,7 @@ const NAME_BY_ROLE: Record<Role, string> = {
   management: "Vikram Oberoi",
   itadmin: "Sanjay Iyer",
   executive: "Priya Menon",
+  marketing: "Marketing Team",
 };
 
 export function SessionProvider({ children }: { children: ReactNode }) {

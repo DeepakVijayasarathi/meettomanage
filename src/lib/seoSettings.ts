@@ -1,5 +1,5 @@
 /**
- * Per-page SEO title/description, admin-editable (Settings & Branding → SEO) instead of
+ * Per-page SEO title/description, editable from the marketing console (/marketing/seo) instead of
  * hardcoded — the same "public settings" key-value store branding.ts reads from, filtered
  * to the "seo.*" keys. Falls back to whatever default each page's <Seo> call passes when
  * no override is set (or the API isn't configured — demo mode keeps the hardcoded copy).

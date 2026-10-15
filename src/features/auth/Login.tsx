@@ -9,7 +9,7 @@ import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
-import { apiEnabled, getAccessToken, userMessage } from "@/lib/api";
+import { apiEnabled, getAccessToken, setAccessToken, userMessage } from "@/lib/api";
 import { getRemember, setRemember } from "@/lib/authStorage";
 import { login } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
@@ -117,6 +117,12 @@ export default function Login() {
     try {
       const response = await login(loginEmail, loginPin);
       const frontendRole = toFrontendRole(response.user.role);
+      // The marketing team signs in only through its own console login, never this
+      // academy-facing one — drop the token it was just issued instead of letting it in.
+      if (frontendRole === "marketing") {
+        setAccessToken(null);
+        throw new Error("Sign in failed. Please check your email and PIN.");
+      }
       const homePath = homeOverride ?? safeInternalPath(response.defaultRoute) ?? ROLE_META[frontendRole].homePath;
       setSessionRole(frontendRole);
       setUserName(response.user.fullName);

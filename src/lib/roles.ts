@@ -10,6 +10,7 @@ import {
   LineChart,
   Cpu,
   Crown,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 
@@ -156,6 +157,21 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     icon: Crown,
     available: true,
     homePath: "/executive",
+  },
+  // A real backend role (UserRole.Marketing), unlike itadmin/executive: the platform owner's
+  // marketing-site team. Own login (/marketing/login) and console (/marketing); deliberately
+  // absent from ROLE_ORDER/PortalSelect and every academy screen.
+  marketing: {
+    role: "marketing",
+    label: "Marketing Console",
+    shortLabel: "Marketing",
+    description: "Demo requests, blog, SEO and website analytics for the public marketing site.",
+    colorVar: "role-marketing",
+    // Kept in sync with role.marketing in tailwind.config.ts.
+    hex: "#EA580C",
+    icon: Megaphone,
+    available: true,
+    homePath: "/marketing",
   },
 };
 

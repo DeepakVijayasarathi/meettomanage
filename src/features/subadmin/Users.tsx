@@ -74,6 +74,7 @@ const ROLE_LABELS: Record<AppUser["role"], string> = {
   management: "Management",
   itadmin: "IT Admin",
   executive: "Founder Dashboard",
+  marketing: "Marketing",
 };
 
 const DEMO_USERS: AppUser[] = [...PARENTS, ...TEACHERS, ...ADMISSION_TEAM, ...SUB_ADMINS];

@@ -1,7 +1,7 @@
 import type { Role, UserStatus } from "@/types";
 
 /** Backend role names (UserRole enum serialized as strings). */
-export type ApiRole = "Admin" | "SubAdmin" | "AdmissionTeam" | "Teacher" | "Parent";
+export type ApiRole = "Admin" | "SubAdmin" | "AdmissionTeam" | "Teacher" | "Parent" | "Marketing";
 
 export type ApiUserStatus = "Active" | "Suspended" | "Inactive";
 
@@ -61,6 +61,7 @@ const ROLE_FROM_API: Record<ApiRole, Role> = {
   AdmissionTeam: "admission",
   Teacher: "teacher",
   Parent: "parent",
+  Marketing: "marketing",
 };
 
 export function toFrontendRole(role: ApiRole): Role {

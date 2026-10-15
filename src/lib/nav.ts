@@ -43,6 +43,7 @@ import {
   Activity,
   MessageCircleQuestion,
   Handshake,
+  Search,
   Newspaper,
   LifeBuoy,
   Radar,
@@ -125,11 +126,23 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Server Monitoring", to: "/admin/monitoring", icon: Activity },
     ],
   },
+];
+
+// The marketing console's fixed sidebar (/marketing, Marketing role only). Not DB-driven like
+// the academy portals' menus: this console is the platform owner's, not something an academy
+// Admin edits in Menu Manager.
+const MARKETING_NAV: NavSection[] = [
   {
-    title: "Marketing",
     items: [
-      { label: "Demo Requests", to: "/admin/demo-requests", icon: Handshake },
-      { label: "Blog Posts", to: "/admin/blog-posts", icon: Newspaper },
+      { label: "Demo Requests", to: "/marketing", icon: Handshake, end: true },
+      { label: "Blog Posts", to: "/marketing/blog-posts", icon: Newspaper },
+    ],
+  },
+  {
+    title: "Website",
+    items: [
+      { label: "SEO", to: "/marketing/seo", icon: Search },
+      { label: "Analytics", to: "/marketing/analytics", icon: BarChart3 },
     ],
   },
 ];
@@ -435,4 +448,5 @@ export const NAV_BY_ROLE: Record<Role, NavSection[]> = {
   student: STUDENT_NAV,
   itadmin: ITADMIN_NAV,
   executive: EXECUTIVE_NAV,
+  marketing: MARKETING_NAV,
 };

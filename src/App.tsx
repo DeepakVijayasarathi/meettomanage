@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { ViewAsBanner } from "@/components/ViewAsBanner";
 import { AppShell } from "@/components/AppShell";
+import { MarketingShell } from "@/features/marketingConsole/MarketingShell";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Logo } from "@/components/Logo";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
@@ -19,6 +20,13 @@ const PrivacyPolicy = lazy(() => import("@/features/marketing/PrivacyPolicy"));
 const Login = lazy(() => import("@/features/auth/Login"));
 const PortalSelect = lazy(() => import("@/features/auth/PortalSelect"));
 const ForgotPin = lazy(() => import("@/features/auth/ForgotPin"));
+// Marketing console (Marketing role only, own login) — the platform owner's marketing-site admin,
+// kept out of every academy portal.
+const MarketingLogin = lazy(() => import("@/features/marketingConsole/MarketingLogin"));
+const MarketingSeo = lazy(() => import("@/features/marketingConsole/MarketingSeo"));
+const MarketingAnalytics = lazy(() => import("@/features/marketingConsole/MarketingAnalytics"));
+const MarketingDemoRequests = lazy(() => import("@/features/admin/DemoRequests"));
+const MarketingBlogPosts = lazy(() => import("@/features/admin/BlogPosts"));
 const ResetPin = lazy(() => import("@/features/auth/ResetPin"));
 const NotFound = lazy(() => import("@/features/auth/NotFound"));
 const AdmissionPayment = lazy(() => import("@/features/public/AdmissionPayment"));
@@ -59,8 +67,6 @@ const AdminChatbot = lazy(() => import("@/features/admin/ChatbotAdmin"));
 const AdminEnrollments = lazy(() => import("@/features/admin/Enrollments"));
 const AdminSearchUsers = lazy(() => import("@/features/admin/SearchUsers"));
 const AdminStoreInquiries = lazy(() => import("@/features/admin/StoreInquiries"));
-const AdminDemoRequests = lazy(() => import("@/features/admin/DemoRequests"));
-const AdminBlogPosts = lazy(() => import("@/features/admin/BlogPosts"));
 const AdminLeave = lazy(() => import("@/features/admin/Leave"));
 const AdminAvailability = lazy(() => import("@/features/admin/Availability"));
 const AdminSettings = lazy(() => import("@/features/admin/Settings"));
@@ -274,8 +280,6 @@ export default function App() {
               <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />
               <Route path="search-users" element={<AdminSearchUsers />} />
               <Route path="store-inquiries" element={<AdminStoreInquiries />} />
-              <Route path="demo-requests" element={<AdminDemoRequests />} />
-              <Route path="blog-posts" element={<AdminBlogPosts />} />
               <Route path="parent-feedback" element={<ParentFeedbackReport />} />
               <Route path="support-tickets" element={<SupportTicketsQueue />} />
               <Route path="leave" element={<AdminLeave />} />
@@ -334,6 +338,14 @@ export default function App() {
               <Route path="monitoring/network-alerts" element={<AdminNetworkAlerts />} />
               <Route path="monitoring/:serverName" element={<AdminServerDetail />} />
               <Route path="class-logs" element={<AdminClassSessionLogs />} />
+            </Route>
+
+            <Route path="/marketing/login" element={<MarketingLogin />} />
+            <Route path="/marketing" element={<RequireAuth role="marketing"><MarketingShell><Outlet /></MarketingShell></RequireAuth>}>
+              <Route index element={<MarketingDemoRequests />} />
+              <Route path="blog-posts" element={<MarketingBlogPosts />} />
+              <Route path="seo" element={<MarketingSeo />} />
+              <Route path="analytics" element={<MarketingAnalytics />} />
             </Route>
 
             {/* Founder Dashboard ("executive"): a Sub Admin persona (RoleDefinition

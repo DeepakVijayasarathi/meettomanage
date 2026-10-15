@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Bell, Building2, CalendarOff, CheckCircle2, CreditCard, Eye, EyeOff, Globe2, ListTree, Loader2, Mail, MessageCircle, Palette, Pencil, Plug, Plus, Puzzle, Save, Search, Settings2, ShieldAlert, StickyNote, Trash2, type LucideIcon, Video, Wallet, X } from "lucide-react";
+import { Bell, Building2, CalendarOff, CheckCircle2, CreditCard, Eye, EyeOff, Globe2, ListTree, Loader2, Mail, MessageCircle, Palette, Pencil, Plug, Plus, Puzzle, Save, Settings2, ShieldAlert, StickyNote, Trash2, type LucideIcon, Video, Wallet, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -33,7 +33,6 @@ import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
 import { getSettings, toSettingsMap, updateSettings, type SettingCategory, type UpdateSettingItem } from "@/api/settings";
 import { getBrand, setBrand } from "@/lib/branding";
-import { applySeoOverrides } from "@/lib/seoSettings";
 import {
   createMenuItem,
   deleteMenuItem,
@@ -110,42 +109,7 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "notify.weeklyDigest": { category: "Notifications", fallback: "true" },
   [WIDGET_NOTES_KEY]: { category: "Widgets", isPublic: true, fallback: JSON.stringify(PORTALS) },
   [WIDGET_CHATBOT_KEY]: { category: "Widgets", isPublic: true, fallback: JSON.stringify(PORTALS) },
-  "seo.home.title": { category: "Seo", isPublic: true, fallback: "Meet to Manage — LMS & Virtual Classroom" },
-  "seo.home.description": {
-    category: "Seo",
-    isPublic: true,
-    fallback: "Meet to Manage brings live teaching, scheduling, admissions, billing and reporting into one role-based platform for schools and academies.",
-  },
-  "seo.store.title": { category: "Seo", isPublic: true, fallback: "Course Catalogue — Meet to Manage" },
-  "seo.store.description": { category: "Seo", isPublic: true, fallback: "Browse current courses and book a free demo class — no account needed." },
-  "seo.demo.title": { category: "Seo", isPublic: true, fallback: "Book a Free Demo — Meet to Manage" },
-  "seo.demo.description": {
-    category: "Seo",
-    isPublic: true,
-    fallback: "Book a free demo class and see how Meet to Manage's live classroom, scheduling and billing work together.",
-  },
-  "seo.getStarted.title": { category: "Seo", isPublic: true, fallback: "Request a Demo — Meet to Manage" },
-  "seo.getStarted.description": {
-    category: "Seo",
-    isPublic: true,
-    fallback: "Running an academy? See how Meet to Manage's live classroom, scheduling, admissions and billing work together — request a platform demo.",
-  },
-  "seo.blog.title": { category: "Seo", isPublic: true, fallback: "Blog — Meet to Manage" },
-  "seo.blog.description": {
-    category: "Seo",
-    isPublic: true,
-    fallback: "Practical notes on running a modern academy: admissions, billing automation, scheduling and more.",
-  },
 };
-
-/** One row per public page the Seo tab edits — key prefix, display label, and a live link. */
-const SEO_PAGES = [
-  { key: "home", label: "Landing Page", path: "/" },
-  { key: "store", label: "Course Catalogue", path: "/store" },
-  { key: "demo", label: "Class Demo Page", path: "/demo" },
-  { key: "getStarted", label: "Platform Demo Request", path: "/get-started" },
-  { key: "blog", label: "Blog", path: "/blog" },
-] as const;
 
 /** Parses the JSON portal-key array stored under WIDGET_NOTES_KEY; malformed/missing → none enabled. */
 function parsePortalList(value: string | undefined): string[] {
@@ -189,7 +153,7 @@ const EMPTY_MENU_FORM: SaveMenuItemRequest = {
  * was just changed. Gating it to only the tabs it actually affects keeps there
  * from ever being two different, contradictory ideas of "saved" on screen.
  */
-const HEADER_SAVE_TABS = new Set(["general", "branding", "notifications", "widgets", "seo"]);
+const HEADER_SAVE_TABS = new Set(["general", "branding", "notifications", "widgets"]);
 
 /** Every tab this screen renders — used to reject an unknown ?tab= deep link. */
 const SETTINGS_TABS = new Set([
@@ -197,7 +161,6 @@ const SETTINGS_TABS = new Set([
   "branding",
   "notifications",
   "widgets",
-  "seo",
   "menus",
   "payroll",
   "leave",
@@ -278,7 +241,6 @@ export default function AdminSettings() {
       primaryHsl: hexToHslTriple(values["brand.primaryColor"] || "#1E3A5F"),
       accentHsl: hexToHslTriple(values["brand.accentColor"] || "#E63329"),
     });
-    applySeoOverrides(values);
 
     setSaved(true);
     setTimeout(() => setSaved(false), 2200);
@@ -321,9 +283,6 @@ export default function AdminSettings() {
           </TabsTrigger>
           <TabsTrigger value="widgets" className="gap-1.5">
             <StickyNote className="h-4 w-4" /> Widgets
-          </TabsTrigger>
-          <TabsTrigger value="seo" className="gap-1.5">
-            <Search className="h-4 w-4" /> SEO
           </TabsTrigger>
           <span className="mx-1 h-6 w-px shrink-0 self-center bg-border" aria-hidden />
           <TabsTrigger value="menus" className="gap-1.5">
@@ -559,53 +518,6 @@ export default function AdminSettings() {
                   </span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="seo">
-          <Card>
-            <CardHeader>
-              <CardTitle>Page Titles & Descriptions</CardTitle>
-              <CardDescription>
-                What search engines and shared links show for each public page — the browser tab title, the
-                snippet under a Google result, and the preview when a link is shared on WhatsApp or social media.
-                Blog posts have their own titles, set per-post on the Blog Posts screen.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col divide-y divide-border">
-              {SEO_PAGES.map(({ key, label, path }) => (
-                <div key={key} className="grid grid-cols-1 gap-4 py-5 first:pt-0 last:pb-0 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <p className="text-sm font-semibold text-foreground">{label}</p>
-                    <a
-                      href={path}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                    >
-                      {path}
-                    </a>
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor={`seo-${key}-title`}>Page title</Label>
-                    <Input
-                      id={`seo-${key}-title`}
-                      value={values[`seo.${key}.title`]}
-                      onChange={(e) => setValue(`seo.${key}.title`, e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor={`seo-${key}-description`}>Description</Label>
-                    <Textarea
-                      id={`seo-${key}-description`}
-                      rows={2}
-                      value={values[`seo.${key}.description`]}
-                      onChange={(e) => setValue(`seo.${key}.description`, e.target.value)}
-                    />
-                  </div>
-                </div>
-              ))}
             </CardContent>
           </Card>
         </TabsContent>

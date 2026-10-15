@@ -21,7 +21,8 @@ export function RequireAuth({ role, also, children }: { role: Role; also?: Role[
   const location = useLocation();
 
   if (!sessionRole || (apiEnabled() && !getAccessToken())) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    // The marketing console has its own sign-in; never point its visitors at the academy login.
+    return <Navigate to={role === "marketing" ? "/marketing/login" : "/login"} replace state={{ from: location }} />;
   }
 
   const home = homePath ?? ROLE_META[sessionRole].homePath;
