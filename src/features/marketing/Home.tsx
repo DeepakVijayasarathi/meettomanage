@@ -251,6 +251,8 @@ const CHAT_T = {
     nextCost: "What would it cost me?",
     nextHuman: "Chat with a person on WhatsApp",
     leadCta: "Book my free demo",
+    bookPrompt: "I'd like to book a free demo.",
+    quickForm: "Or use a quick form",
     leadTitle: "Want to see it with your own classes?",
     leadBody: "Leave your details — our team will WhatsApp you within a day to set up a free demo.",
     leadName: "Your name",
@@ -308,6 +310,8 @@ const CHAT_T = {
     nextCost: "كم ستكون تكلفتي؟",
     nextHuman: "تحدّث مع شخص عبر واتساب",
     leadCta: "احجز عرضي التوضيحي المجاني",
+    bookPrompt: "أرغب في حجز عرض توضيحي مجاني.",
+    quickForm: "أو استخدم نموذجًا سريعًا",
     leadTitle: "هل تريد رؤيتها مع حصصك الخاصة؟",
     leadBody: "اترك بياناتك — سيتواصل معك فريقنا عبر واتساب خلال يوم لترتيب عرض توضيحي مجاني.",
     leadName: "اسمك",
@@ -427,9 +431,10 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
   const [everOpened, setEverOpened] = useState(false);
   const [messages, setMessages] = useState<SalesChatTurn[]>(() => readSession<SalesChatTurn[]>(CHAT_MESSAGES_KEY, []));
   const [draft, setDraft] = useState("");
-  // In-chat demo booking: offered after the second answer (by then the visitor is engaged),
-  // or straight away from the "Book my free demo" buttons. Posts to the same platform-demo
-  // queue as /get-started, with the visitor's chat questions attached for the sales follow-up.
+  // Demo booking. While the AI is answering, it books the demo itself: "Book my free demo" asks
+  // it to, and it collects name/phone/email in the conversation (book_demo on the backend). The
+  // form below is the fallback — shown when the AI is offline or failed, or on request — and
+  // posts to the same platform-demo queue as /get-started with the chat questions attached.
   const [leadOpen, setLeadOpen] = useState(false);
   const [leadDismissed, setLeadDismissed] = useState(false);
   const [lead, setLead] = useState(EMPTY_LEAD);
@@ -497,12 +502,24 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
   }, [messages, pending, listening, leadOpen, leadSentName]);
 
   const answered = messages.filter((m) => m.role === "assistant" && !m.failed).length;
-  const offerLead = !leadSentName && !leadDismissed && (leadOpen || answered >= 2);
+  const lastMessage = messages[messages.length - 1];
+  const aiAvailable = apiEnabled() && !lastMessage?.failed;
+  const offerLead = !leadSentName && !leadDismissed && (leadOpen || (!aiAvailable && answered >= 2));
 
   function openLead() {
     setLeadDismissed(false);
     setLeadOpen(true);
     setLeadStatus("idle");
+  }
+
+  function bookDemo() {
+    if (aiAvailable) void send(t.bookPrompt);
+    else openLead();
+  }
+
+  function recordBooking(name: string) {
+    setLeadSentName(name);
+    writeSession(CHAT_LEAD_SENT_KEY, name);
   }
 
   async function submitLead(e: React.FormEvent) {
@@ -525,8 +542,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
           message: questions.length ? message : undefined,
         });
       }
-      setLeadSentName(name);
-      writeSession(CHAT_LEAD_SENT_KEY, name);
+      recordBooking(name);
       setLeadOpen(false);
       setLead(EMPTY_LEAD);
       setLeadStatus("idle");
@@ -588,8 +604,12 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
 
     setPending(true);
     try {
-      const reply = await askSalesAssistant(next);
+      const { reply, bookedName } = await askSalesAssistant(next);
       setMessages((m) => [...m, { role: "assistant", text: reply }]);
+      if (bookedName) {
+        recordBooking(bookedName);
+        setLeadOpen(false);
+      }
       if (readAloud) speak(reply, lang);
     } catch {
       // The API's own error text is generic and English-only; the chat's offline line is
@@ -757,13 +777,14 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
               </div>
             )}
 
-            {/* Next steps after an answer: price it for me, book a demo, or talk to a person. */}
-            {!pending && answered > 0 && messages[messages.length - 1]?.role === "assistant" && (
-              <div className="flex flex-wrap gap-2">
+            {/* Next steps after an answer: book a demo (the AI takes it from there), price it for
+                me, or talk to a person. */}
+            {!pending && lastMessage?.role === "assistant" && (
+              <div className="flex flex-wrap items-center gap-2">
                 {!leadSentName && !offerLead && (
                   <button
                     type="button"
-                    onClick={openLead}
+                    onClick={bookDemo}
                     className="flex items-center gap-1.5 bg-[#F97316] px-3 py-2 text-xs font-bold text-[#171B22] transition-colors hover:bg-[#FB8B3C]"
                   >
                     <CalendarCheck2 className="h-3.5 w-3.5" /> {t.leadCta}
@@ -784,6 +805,11 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
                 >
                   <MessageSquare className="h-3.5 w-3.5 text-[#25D366]" /> {t.nextHuman}
                 </a>
+                {aiAvailable && !leadSentName && !offerLead && (
+                  <button type="button" onClick={openLead} className="px-1 py-2 text-xs font-semibold text-[#5B6472] underline underline-offset-2 hover:text-[#111]">
+                    {t.quickForm}
+                  </button>
+                )}
               </div>
             )}
 
@@ -930,7 +956,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
                 {t.demo} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
               </Link>
             ) : (
-              <button type="button" onClick={openLead} className="ms-auto flex items-center gap-1 py-1 text-[#C2410C] hover:text-[#9A3412]">
+              <button type="button" onClick={bookDemo} disabled={pending} className="ms-auto flex items-center gap-1 py-1 text-[#C2410C] hover:text-[#9A3412] disabled:opacity-50">
                 {t.leadCta} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
               </button>
             )}

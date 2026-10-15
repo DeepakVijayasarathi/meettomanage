@@ -60,8 +60,9 @@ export interface SalesChatTurn {
  * Public — no login required. The homepage chat assistant (Gemini, called server-side so the
  * key never reaches the browser). Sends the conversation so far; the backend accepts at most
  * 20 turns and must start with the visitor, so older turns are trimmed from the front.
+ * `bookedName` is set when the assistant booked a platform demo during this turn.
  */
-export async function askSalesAssistant(conversation: SalesChatTurn[]): Promise<string> {
+export async function askSalesAssistant(conversation: SalesChatTurn[]): Promise<{ reply: string; bookedName: string | null }> {
   // A failed turn leaves two visitor messages back to back; merge same-role runs so the
   // conversation still alternates visitor/assistant the way the model expects.
   const merged: { role: SalesChatTurn["role"]; text: string }[] = [];
@@ -73,11 +74,11 @@ ${text}`.slice(-1000);
   }
   let messages = merged.slice(-20);
   while (messages.length > 0 && messages[0].role !== "user") messages = messages.slice(1);
-  const res = await apiFetch<{ reply: string }>("/api/marketing/chat", {
+  const res = await apiFetch<{ reply: string; bookedName?: string | null }>("/api/marketing/chat", {
     method: "POST",
     body: JSON.stringify({ messages }),
   });
-  return res.reply;
+  return { reply: res.reply, bookedName: res.bookedName ?? null };
 }
 
 // --- Blog ---
