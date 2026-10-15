@@ -54,7 +54,7 @@ export default function Demo() {
         path="/demo"
       />
 
-      <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link to="/" aria-label="Meet to Manage home">
             <Logo wordmarkClassName="mix-blend-multiply" />

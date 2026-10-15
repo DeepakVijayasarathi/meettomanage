@@ -1082,7 +1082,7 @@ export default function MarketingHome() {
       <LaunchBanner lang={lang} />
 
       {/* Nav */}
-      <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
           <img src="/logo-full.png" alt={brand.name} className="h-14 w-auto shrink-0 object-contain mix-blend-multiply sm:h-20" />
 
