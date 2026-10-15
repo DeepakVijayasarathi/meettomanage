@@ -47,6 +47,39 @@ export async function updatePlatformDemoRequestStatus(
   });
 }
 
+// --- Sales chat ---
+
+/** One message in the homepage chat. `failed` marks a locally shown error, never sent. */
+export interface SalesChatTurn {
+  role: "user" | "assistant";
+  text: string;
+  failed?: boolean;
+}
+
+/**
+ * Public — no login required. The homepage chat assistant (Gemini, called server-side so the
+ * key never reaches the browser). Sends the conversation so far; the backend accepts at most
+ * 20 turns and must start with the visitor, so older turns are trimmed from the front.
+ */
+export async function askSalesAssistant(conversation: SalesChatTurn[]): Promise<string> {
+  // A failed turn leaves two visitor messages back to back; merge same-role runs so the
+  // conversation still alternates visitor/assistant the way the model expects.
+  const merged: { role: SalesChatTurn["role"]; text: string }[] = [];
+  for (const { role, text } of conversation.filter((m) => !m.failed)) {
+    const last = merged[merged.length - 1];
+    if (last?.role === role) last.text = `${last.text}
+${text}`.slice(-1000);
+    else merged.push({ role, text });
+  }
+  let messages = merged.slice(-20);
+  while (messages.length > 0 && messages[0].role !== "user") messages = messages.slice(1);
+  const res = await apiFetch<{ reply: string }>("/api/marketing/chat", {
+    method: "POST",
+    body: JSON.stringify({ messages }),
+  });
+  return res.reply;
+}
+
 // --- Blog ---
 
 export interface ApiBlogPostSummary {

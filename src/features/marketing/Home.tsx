@@ -13,6 +13,7 @@ import {
   CreditCard,
   HeartHandshake,
   Layers,
+  Loader2,
   Lock,
   Mail,
   Megaphone,
@@ -22,6 +23,7 @@ import {
   Phone,
   Play,
   RefreshCw,
+  Send,
   ShieldCheck,
   Sparkles,
   Target,
@@ -41,6 +43,8 @@ import { useLightBrandScope } from "@/lib/theme";
 import { useLang, type Lang } from "@/lib/i18n";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useInView } from "@/hooks/useInView";
+import { askSalesAssistant, type SalesChatTurn } from "@/api/marketing";
+import { apiEnabled } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
   ACCENT_GRADIENT,
@@ -200,76 +204,266 @@ function ExplainerVideo() {
 
 const CHAT_T = {
   en: {
-    heading: "Chat with us",
+    heading: "Meet to Manage assistant",
+    sub: "Ask about features, pricing or a demo",
     closeAria: "Close chat",
-    sub: "Reach us directly, or request a platform demo.",
-    whatsapp: "WhatsApp us",
-    email: "Email us",
+    greeting:
+      "Hi! I can answer questions about running your academy on Meet to Manage — features, pricing, or how a demo works. What would you like to know?",
+    suggestions: ["How much does it cost?", "What's included?", "Can I see a demo?"],
+    placeholder: "Type your question…",
+    sendAria: "Send",
+    thinking: "Typing…",
+    offline: "The assistant isn't available here right now — message us on WhatsApp or email and the team will answer directly.",
+    teaser: "Questions about pricing or features? Ask me.",
+    teaserDismissAria: "Dismiss",
+    whatsapp: "WhatsApp",
+    email: "Email",
     demo: "Request a demo",
+    disclaimer: "AI answers can be wrong — the team confirms details on your demo.",
     toggleAria: (open: boolean) => (open ? "Close chat" : "Chat with us"),
   },
   ar: {
-    heading: "تحدث معنا",
+    heading: "مساعد Meet to Manage",
+    sub: "اسأل عن الميزات أو الأسعار أو العرض التوضيحي",
     closeAria: "إغلاق الدردشة",
-    sub: "تواصل معنا مباشرة، أو اطلب عرضًا توضيحيًا للمنصة.",
-    whatsapp: "راسلنا على واتساب",
-    email: "راسلنا بالبريد الإلكتروني",
+    greeting:
+      "مرحبًا! يمكنني الإجابة عن أسئلتك حول إدارة أكاديميتك على Meet to Manage — الميزات أو الأسعار أو كيفية العرض التوضيحي. بماذا يمكنني مساعدتك؟",
+    suggestions: ["كم التكلفة؟", "ما الذي تتضمنه المنصة؟", "هل يمكنني مشاهدة عرض توضيحي؟"],
+    placeholder: "اكتب سؤالك…",
+    sendAria: "إرسال",
+    thinking: "يكتب…",
+    offline: "المساعد غير متاح هنا حاليًا — راسلنا على واتساب أو البريد الإلكتروني وسيجيبك الفريق مباشرة.",
+    teaser: "لديك أسئلة عن الأسعار أو الميزات؟ اسألني.",
+    teaserDismissAria: "إغلاق",
+    whatsapp: "واتساب",
+    email: "البريد",
     demo: "اطلب عرضًا توضيحيًا",
+    disclaimer: "قد تخطئ إجابات الذكاء الاصطناعي — يؤكد الفريق التفاصيل خلال العرض التوضيحي.",
     toggleAria: (open: boolean) => (open ? "إغلاق الدردشة" : "تحدث معنا"),
   },
 };
 
-/** Floating contact widget — links out (WhatsApp/email/Request a Demo) rather than answering
-    questions itself, unlike the FAQ-matching "Ask a Doubt" bot used inside the logged-in
-    portals (DoubtChatbot.tsx). This page has no other fixed-position widget to collide with. */
+/** Session key so the "ask me" teaser nudges a visitor at most once per browser session. */
+const CHAT_TEASER_SEEN_KEY = "trn.chatTeaser.seen";
+
+/** Renders an assistant reply as plain text with its URLs made clickable — React elements
+ *  only, never injected HTML, since the text comes from a model. */
+function ChatText({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s)]+)/g);
+  return (
+    <>
+      {parts.map((part, i) =>
+        /^https?:\/\//.test(part) ? (
+          <a key={i} href={part.replace(/[.,]+$/, "")} target="_blank" rel="noopener noreferrer" className="break-words font-semibold text-[#C2410C] underline underline-offset-2">
+            {part.replace(/^https?:\/\/(www\.)?/, "").replace(/[.,]+$/, "")}
+          </a>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
+/** Floating chat on the homepage: answers a prospective academy's questions through the
+    backend's Gemini assistant (POST /api/marketing/chat — the API key never reaches the
+    browser) and keeps WhatsApp/email/Request a Demo one tap away underneath. The greeting is
+    local and never sent, so the conversation the model sees always opens with the visitor.
+    Separate from the FAQ-matching "Ask a Doubt" bot inside the logged-in portals
+    (DoubtChatbot.tsx). */
 function ChatWidget({ lang }: { lang: Lang }) {
-  const [open, setOpen] = useState(false);
   const t = CHAT_T[lang];
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<SalesChatTurn[]>([]);
+  const [draft, setDraft] = useState("");
+  const [pending, setPending] = useState(false);
+  const [teaser, setTeaser] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // One gentle nudge per session, a few seconds in, unless the visitor already opened the chat.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(CHAT_TEASER_SEEN_KEY) === "1") return;
+    } catch {
+      /* no storage — still show it once for this page view */
+    }
+    const id = setTimeout(() => setTeaser(true), 8000);
+    return () => clearTimeout(id);
+  }, []);
+
+  function dismissTeaser() {
+    setTeaser(false);
+    try {
+      sessionStorage.setItem(CHAT_TEASER_SEEN_KEY, "1");
+    } catch {
+      /* nothing to persist to */
+    }
+  }
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, pending]);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  function toggle() {
+    dismissTeaser();
+    setOpen((o) => !o);
+  }
+
+  async function send(text: string) {
+    const question = text.trim().slice(0, 1000);
+    if (!question || pending) return;
+    const next: SalesChatTurn[] = [...messages, { role: "user", text: question }];
+    setMessages(next);
+    setDraft("");
+
+    if (!apiEnabled()) {
+      setMessages([...next, { role: "assistant", text: t.offline }]);
+      return;
+    }
+
+    setPending(true);
+    try {
+      const reply = await askSalesAssistant(next);
+      setMessages((m) => [...m, { role: "assistant", text: reply }]);
+    } catch {
+      // The API's own error text is generic and English-only; the chat's offline line is
+      // localized and points at the contact links right below it.
+      setMessages((m) => [...m, { role: "assistant", text: t.offline, failed: true }]);
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6 rtl:right-auto rtl:left-5 sm:rtl:left-6">
+    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6 rtl:right-auto rtl:left-5 rtl:items-start sm:rtl:left-6">
       {open && (
-        <div className="w-72 border border-[#D9E1F0] bg-white p-5 shadow-pop">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-bold text-[#171B22]">{t.heading}</p>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label={t.closeAria}
-              className="text-[#6B7280] transition-colors hover:text-[#171B22]"
-            >
+        <div
+          role="dialog"
+          aria-label={t.heading}
+          className="flex h-[min(560px,calc(100dvh-7rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col border border-[#D9E1F0] bg-white shadow-pop"
+        >
+          <div className="flex items-center gap-3 bg-[#0D1024] px-4 py-3.5 text-white">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white">
+              <img src="/logo-icon.png" alt="" className="h-6 w-6 object-contain" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold">{t.heading}</p>
+              <p className="truncate text-xs text-white/60">{t.sub}</p>
+            </div>
+            <button type="button" onClick={() => setOpen(false)} aria-label={t.closeAria} className="p-1.5 text-white/60 transition-colors hover:text-white">
               <X className="h-4 w-4" />
             </button>
           </div>
-          <p className="mt-1.5 text-xs leading-relaxed text-[#5B6472]">{t.sub}</p>
-          <div className="mt-4 flex flex-col gap-2">
-            <a
-              href="https://wa.me/919344773231"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2.5 border border-[#D9E1F0] px-3.5 py-3 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#F5F6F9]"
+
+          <div ref={scrollRef} aria-live="polite" className="flex flex-1 flex-col gap-3 overflow-y-auto bg-[#F8F9FB] px-4 py-4">
+            <div className="max-w-[85%] self-start whitespace-pre-line border border-[#D9E1F0] bg-white px-3.5 py-2.5 text-sm leading-relaxed text-[#111]">
+              {t.greeting}
+            </div>
+            {messages.length === 0 && (
+              <div className="flex flex-wrap gap-2">
+                {t.suggestions.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => send(s)}
+                    className="rounded-[10px] border border-[#F97316]/40 bg-white px-3 py-2 text-xs font-semibold text-[#C2410C] transition-colors hover:bg-[#FFF3EA]"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+            {messages.map((m, i) =>
+              m.role === "user" ? (
+                <div key={i} className="max-w-[85%] self-end whitespace-pre-line bg-[#0D1024] px-3.5 py-2.5 text-sm leading-relaxed text-white">
+                  {m.text}
+                </div>
+              ) : (
+                <div
+                  key={i}
+                  className={cn(
+                    "max-w-[85%] self-start whitespace-pre-line border bg-white px-3.5 py-2.5 text-sm leading-relaxed",
+                    m.failed ? "border-[#F97316]/40 text-[#5B6472]" : "border-[#D9E1F0] text-[#111]"
+                  )}
+                >
+                  <ChatText text={m.text} />
+                </div>
+              )
+            )}
+            {pending && (
+              <div className="flex items-center gap-2 self-start text-xs font-semibold text-[#5B6472]">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#EA580C]" /> {t.thinking}
+              </div>
+            )}
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              send(draft);
+            }}
+            className="flex items-center gap-2 border-t border-[#D9E1F0] p-3"
+          >
+            <input
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              maxLength={1000}
+              placeholder={t.placeholder}
+              aria-label={t.placeholder}
+              className="h-11 min-w-0 flex-1 border border-[#D9E1F0] px-3 text-sm text-[#111] outline-none placeholder:text-[#6B7280] focus:border-[#F97316]"
+            />
+            <button
+              type="submit"
+              disabled={pending || !draft.trim()}
+              aria-label={t.sendAria}
+              className="flex h-11 w-11 shrink-0 items-center justify-center bg-[#F97316] text-[#171B22] transition-colors hover:bg-[#FB8B3C] disabled:opacity-50"
             >
-              <MessageSquare className="h-4 w-4 text-[#25D366]" /> {t.whatsapp}
+              <Send className="h-4 w-4 rtl:-scale-x-100" />
+            </button>
+          </form>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[#D9E1F0] px-3 py-2 text-xs font-semibold">
+            <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 py-1 text-[#111] hover:text-[#C2410C]">
+              <MessageSquare className="h-3.5 w-3.5 text-[#25D366]" /> {t.whatsapp}
             </a>
-            <a
-              href="mailto:info@infinityuniquers.com"
-              className="flex items-center gap-2.5 border border-[#D9E1F0] px-3.5 py-3 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#F5F6F9]"
-            >
-              <Mail className="h-4 w-4 text-[#EA580C]" /> {t.email}
+            <a href="mailto:info@infinityuniquers.com" className="flex items-center gap-1.5 py-1 text-[#111] hover:text-[#C2410C]">
+              <Mail className="h-3.5 w-3.5 text-[#EA580C]" /> {t.email}
             </a>
-            <Link
-              to="/get-started"
-              className="flex items-center gap-2.5 bg-[#F97316] px-3.5 py-3 text-sm font-semibold text-[#171B22] transition-colors hover:bg-[#FB8B3C]"
-            >
-              <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /> {t.demo}
+            <Link to="/get-started" className="ms-auto flex items-center gap-1 py-1 text-[#C2410C] hover:text-[#9A3412]">
+              {t.demo} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
             </Link>
+            <p className="w-full pb-0.5 text-[10px] font-medium text-[#6B7280]">{t.disclaimer}</p>
           </div>
         </div>
       )}
+
+      {teaser && !open && (
+        <div className="motion-safe:animate-slide-up relative max-w-[240px] border border-[#D9E1F0] bg-white py-3 pe-8 ps-3.5 text-sm font-semibold leading-snug text-[#111] shadow-pop">
+          <button type="button" onClick={toggle} className="text-start">
+            {t.teaser}
+          </button>
+          <button
+            type="button"
+            onClick={dismissTeaser}
+            aria-label={t.teaserDismissAria}
+            className="absolute end-1.5 top-1.5 p-1 text-[#6B7280] hover:text-[#111]"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         aria-label={t.toggleAria(open)}
+        aria-expanded={open}
         className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F97316] text-[#171B22] shadow-pop transition-transform hover:scale-105"
       >
         {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-6 w-6" />}
