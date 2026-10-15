@@ -271,7 +271,7 @@ function ChatText({ text }: { text: string }) {
     local and never sent, so the conversation the model sees always opens with the visitor.
     Separate from the FAQ-matching "Ask a Doubt" bot inside the logged-in portals
     (DoubtChatbot.tsx). */
-function ChatWidget({ lang }: { lang: Lang }) {
+function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
   const t = CHAT_T[lang];
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<SalesChatTurn[]>([]);
@@ -311,6 +311,7 @@ function ChatWidget({ lang }: { lang: Lang }) {
 
   function toggle() {
     dismissTeaser();
+    if (!open) onOpen?.();
     setOpen((o) => !o);
   }
 
@@ -497,13 +498,19 @@ const DEMO_POPUP_T = {
  * the top of the viewport, the classic signal a visitor is about to close the tab or switch
  * away). Mobile has no mouse to read exit-intent from, so it falls back to a 25s on-page
  * timer instead. Either way it fires once per session (sessionStorage, not localStorage —
- * a genuinely new visit gets one shot at this again).
+ * a genuinely new visit gets one shot at this again). Never fires once the visitor has opened
+ * the chat assistant: they're already engaged, and the modal was landing on top of an
+ * in-progress conversation.
  */
-function DemoPopup({ lang }: { lang: Lang }) {
+function DemoPopup({ lang, suppressed }: { lang: Lang; suppressed: boolean }) {
   const [open, setOpen] = useState(false);
   const t = DEMO_POPUP_T[lang];
 
   useEffect(() => {
+    if (suppressed) {
+      setOpen(false);
+      return;
+    }
     let seen = false;
     try {
       seen = sessionStorage.getItem(DEMO_POPUP_SEEN_KEY) === "1";
@@ -531,13 +538,15 @@ function DemoPopup({ lang }: { lang: Lang }) {
     const armTimer = window.setTimeout(() => {
       document.addEventListener("mouseleave", handleMouseLeave);
     }, 5_000);
-    const fallbackTimer = window.setTimeout(trigger, 25_000);
+    // Touch-only: on desktop, exit-intent above is the signal; a timer there just
+    // interrupted visitors who were still reading (or chatting).
+    const fallbackTimer = window.matchMedia("(hover: none)").matches ? window.setTimeout(trigger, 25_000) : undefined;
     return () => {
       window.clearTimeout(armTimer);
       document.removeEventListener("mouseleave", handleMouseLeave);
       window.clearTimeout(fallbackTimer);
     };
-  }, []);
+  }, [suppressed]);
 
   if (!open) return null;
 
@@ -1244,6 +1253,7 @@ export default function MarketingHome() {
   const brand = useBrand();
   const [lang] = useLang();
   const t = T[lang];
+  const [chatEngaged, setChatEngaged] = useState(false);
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("All");
 
   const features = FEATURES[lang];
@@ -1949,8 +1959,8 @@ export default function MarketingHome() {
         </div>
       </footer>
 
-      <ChatWidget lang={lang} />
-      <DemoPopup lang={lang} />
+      <ChatWidget lang={lang} onOpen={() => setChatEngaged(true)} />
+      <DemoPopup lang={lang} suppressed={chatEngaged} />
     </div>
   );
 }
