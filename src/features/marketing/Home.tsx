@@ -11,24 +11,30 @@ import {
   Clock,
   Compass,
   CreditCard,
+  GraduationCap,
   HeartHandshake,
   Layers,
   Loader2,
   Lock,
   Mail,
   Megaphone,
-  MessageCircle,
   MessageSquare,
+  Mic,
   PenTool,
   Phone,
   Play,
   RefreshCw,
   Send,
+  School,
   ShieldCheck,
   Sparkles,
+  Square,
   Target,
+  UserRound,
   Users,
   Video,
+  Volume2,
+  VolumeX,
   Wallet,
   X,
   XCircle,
@@ -205,46 +211,130 @@ function ExplainerVideo() {
 const CHAT_T = {
   en: {
     heading: "Meet to Manage assistant",
-    sub: "Ask about features, pricing or a demo",
+    sub: "Type or speak — features, pricing or a demo",
     closeAria: "Close chat",
     greeting:
-      "Hi! I can answer questions about running your academy on Meet to Manage — features, pricing, or how a demo works. What would you like to know?",
+      "Hi! I can answer questions about running your academy, school, tutoring or coaching centre on Meet to Manage — features, pricing, or how a demo works. What would you like to know?",
+    audienceLabel: "I run a…",
+    audiences: [
+      { key: "academy", label: "Academy", question: "I run an academy. How can Meet to Manage help me?" },
+      { key: "school", label: "School", question: "I run a school. How can Meet to Manage help us?" },
+      { key: "tutor", label: "Tutor", question: "I'm an independent tutor. How can Meet to Manage help me?" },
+      { key: "coaching", label: "Coaching centre", question: "I run a coaching centre. How can Meet to Manage help us?" },
+    ],
+    suggestionsLabel: "Or ask:",
     suggestions: ["How much does it cost?", "What's included?", "Can I see a demo?"],
     placeholder: "Type your question…",
     sendAria: "Send",
     thinking: "Typing…",
     offline: "The assistant isn't available here right now — message us on WhatsApp or email and the team will answer directly.",
-    teaser: "Questions about pricing or features? Ask me.",
+    launcher: "Ask a question",
+    teaserHints: [
+      "How does it work for a school?",
+      "What does a tutor pay per month?",
+      "Can my coaching centre run live classes?",
+      "How do fee reminders work?",
+    ],
     teaserDismissAria: "Dismiss",
     whatsapp: "WhatsApp",
     email: "Email",
     demo: "Request a demo",
     disclaimer: "AI answers can be wrong — the team confirms details on your demo.",
-    toggleAria: (open: boolean) => (open ? "Close chat" : "Chat with us"),
+    toggleAria: (open: boolean) => (open ? "Close chat" : "Ask a question"),
+    micStart: "Ask by voice",
+    micStop: "Stop listening",
+    listening: "Listening… speak your question",
+    micDenied: "Microphone access was blocked — allow it in your browser, or type your question instead.",
+    speakOn: "Read replies aloud",
+    speakOff: "Stop reading replies aloud",
   },
   ar: {
     heading: "مساعد Meet to Manage",
-    sub: "اسأل عن الميزات أو الأسعار أو العرض التوضيحي",
+    sub: "اكتب أو تحدّث — الميزات أو الأسعار أو العرض التوضيحي",
     closeAria: "إغلاق الدردشة",
     greeting:
-      "مرحبًا! يمكنني الإجابة عن أسئلتك حول إدارة أكاديميتك على Meet to Manage — الميزات أو الأسعار أو كيفية العرض التوضيحي. بماذا يمكنني مساعدتك؟",
+      "مرحبًا! يمكنني الإجابة عن أسئلتك حول إدارة أكاديميتك أو مدرستك أو دروسك الخصوصية أو مركز التدريب على Meet to Manage — الميزات أو الأسعار أو كيفية العرض التوضيحي. بماذا يمكنني مساعدتك؟",
+    audienceLabel: "أنا أدير…",
+    audiences: [
+      { key: "academy", label: "أكاديمية", question: "أدير أكاديمية. كيف يمكن لـ Meet to Manage مساعدتي؟" },
+      { key: "school", label: "مدرسة", question: "أدير مدرسة. كيف يمكن لـ Meet to Manage مساعدتنا؟" },
+      { key: "tutor", label: "مدرس خصوصي", question: "أنا مدرس مستقل. كيف يمكن لـ Meet to Manage مساعدتي؟" },
+      { key: "coaching", label: "مركز تدريب", question: "أدير مركز تدريب. كيف يمكن لـ Meet to Manage مساعدتنا؟" },
+    ],
+    suggestionsLabel: "أو اسأل:",
     suggestions: ["كم التكلفة؟", "ما الذي تتضمنه المنصة؟", "هل يمكنني مشاهدة عرض توضيحي؟"],
     placeholder: "اكتب سؤالك…",
     sendAria: "إرسال",
     thinking: "يكتب…",
     offline: "المساعد غير متاح هنا حاليًا — راسلنا على واتساب أو البريد الإلكتروني وسيجيبك الفريق مباشرة.",
-    teaser: "لديك أسئلة عن الأسعار أو الميزات؟ اسألني.",
+    launcher: "اسأل سؤالًا",
+    teaserHints: [
+      "كيف تعمل المنصة مع المدارس؟",
+      "كم يدفع المدرس الخصوصي شهريًا؟",
+      "هل يمكن لمركز التدريب تقديم حصص مباشرة؟",
+      "كيف تعمل تذكيرات الرسوم؟",
+    ],
     teaserDismissAria: "إغلاق",
     whatsapp: "واتساب",
     email: "البريد",
     demo: "اطلب عرضًا توضيحيًا",
     disclaimer: "قد تخطئ إجابات الذكاء الاصطناعي — يؤكد الفريق التفاصيل خلال العرض التوضيحي.",
-    toggleAria: (open: boolean) => (open ? "إغلاق الدردشة" : "تحدث معنا"),
+    toggleAria: (open: boolean) => (open ? "إغلاق الدردشة" : "اسأل سؤالًا"),
+    micStart: "اسأل بالصوت",
+    micStop: "إيقاف الاستماع",
+    listening: "أستمع… قل سؤالك",
+    micDenied: "تم حظر الوصول إلى الميكروفون — اسمح به في المتصفح، أو اكتب سؤالك بدلًا من ذلك.",
+    speakOn: "قراءة الردود بصوت عالٍ",
+    speakOff: "إيقاف قراءة الردود",
   },
+};
+
+const AUDIENCE_ICONS: Record<string, LucideIcon> = {
+  academy: GraduationCap,
+  school: School,
+  tutor: UserRound,
+  coaching: Building2,
 };
 
 /** Session key so the "ask me" teaser nudges a visitor at most once per browser session. */
 const CHAT_TEASER_SEEN_KEY = "trn.chatTeaser.seen";
+
+/** The bits of the Web Speech API's SpeechRecognition this widget uses. Not in TypeScript's DOM
+ *  lib, and only Chromium/Safari ship it (as webkitSpeechRecognition) — Firefox has none, so the
+ *  mic button simply isn't rendered there. */
+interface SpeechRecognitionLike {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((event: { results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    SpeechRecognition?: new () => SpeechRecognitionLike;
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+const SPEECH_LANG: Record<Lang, string> = { en: "en-IN", ar: "ar-AE" };
+
+/** Reads a reply aloud. Links are dropped from the spoken text — a URL read letter by letter
+ *  helps nobody; it's still clickable in the chat. */
+function speak(text: string, lang: Lang) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const spoken = text.replace(/https?:\/\/[^\s)]+/g, "").replace(/[*•]/g, "");
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(spoken);
+  utterance.lang = SPEECH_LANG[lang];
+  window.speechSynthesis.speak(utterance);
+}
 
 /** Renders an assistant reply as plain text with its URLs made clickable — React elements
  *  only, never injected HTML, since the text comes from a model. */
@@ -265,32 +355,51 @@ function ChatText({ text }: { text: string }) {
   );
 }
 
-/** Floating chat on the homepage: answers a prospective academy's questions through the
-    backend's Gemini assistant (POST /api/marketing/chat — the API key never reaches the
-    browser) and keeps WhatsApp/email/Request a Demo one tap away underneath. The greeting is
-    local and never sent, so the conversation the model sees always opens with the visitor.
-    Separate from the FAQ-matching "Ask a Doubt" bot inside the logged-in portals
-    (DoubtChatbot.tsx). */
+/** Floating chat on the homepage: answers a prospective academy's, school's, tutor's or coaching
+    centre's questions through the backend's Gemini assistant (POST /api/marketing/chat — the API
+    key never reaches the browser) and keeps WhatsApp/email/Request a Demo one tap away
+    underneath. Questions can be typed or spoken (browser speech recognition, where supported);
+    a spoken question gets its reply read aloud too. The greeting is local and never sent, so the
+    conversation the model sees always opens with the visitor. Separate from the FAQ-matching
+    "Ask a Doubt" bot inside the logged-in portals (DoubtChatbot.tsx). */
 function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
   const t = CHAT_T[lang];
   const [open, setOpen] = useState(false);
+  const [everOpened, setEverOpened] = useState(false);
   const [messages, setMessages] = useState<SalesChatTurn[]>([]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
   const [teaser, setTeaser] = useState(false);
+  const [hintIndex, setHintIndex] = useState(0);
+  const [voiceSupported] = useState(() => speechRecognitionCtor() !== null);
+  const [canSpeak] = useState(() => typeof window !== "undefined" && "speechSynthesis" in window);
+  const [listening, setListening] = useState(false);
+  const [speakReplies, setSpeakReplies] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  // send() closes over the current messages; the recognizer's callbacks outlive a render, so
+  // they call through this ref to always reach the latest one.
+  const sendRef = useRef<(text: string, viaVoice?: boolean) => void>(() => {});
 
-  // One gentle nudge per session, a few seconds in, unless the visitor already opened the chat.
+  // One nudge per session, a few seconds in, cycling through example questions so it's clear
+  // what can be asked — unless the visitor already opened the chat.
   useEffect(() => {
     try {
       if (sessionStorage.getItem(CHAT_TEASER_SEEN_KEY) === "1") return;
     } catch {
       /* no storage — still show it once for this page view */
     }
-    const id = setTimeout(() => setTeaser(true), 8000);
+    const id = setTimeout(() => setTeaser(true), 4000);
     return () => clearTimeout(id);
   }, []);
+
+  useEffect(() => {
+    if (!teaser || open) return;
+    const id = setInterval(() => setHintIndex((i) => (i + 1) % t.teaserHints.length), 3500);
+    return () => clearInterval(id);
+  }, [teaser, open, t.teaserHints.length]);
 
   function dismissTeaser() {
     setTeaser(false);
@@ -303,27 +412,56 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, pending]);
+  }, [messages, pending, listening]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
 
-  function toggle() {
+  // Never leave the mic on or a reply talking once the chat is closed or the page is left.
+  useEffect(() => {
+    if (open) return;
+    recognitionRef.current?.abort();
+    if (canSpeak) window.speechSynthesis.cancel();
+  }, [open, canSpeak]);
+  useEffect(
+    () => () => {
+      recognitionRef.current?.abort();
+      if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    },
+    []
+  );
+
+  function openChat() {
     dismissTeaser();
     if (!open) onOpen?.();
-    setOpen((o) => !o);
+    setEverOpened(true);
+    setOpen(true);
   }
 
-  async function send(text: string) {
+  function toggle() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    openChat();
+  }
+
+  async function send(text: string, viaVoice = false) {
     const question = text.trim().slice(0, 1000);
     if (!question || pending) return;
     const next: SalesChatTurn[] = [...messages, { role: "user", text: question }];
     setMessages(next);
     setDraft("");
+    setVoiceError(null);
+    // Asking out loud implies wanting to hear the answer; typing afterwards keeps whatever the
+    // speaker toggle says.
+    const readAloud = canSpeak && (viaVoice || speakReplies);
+    if (viaVoice && canSpeak) setSpeakReplies(true);
 
     if (!apiEnabled()) {
       setMessages([...next, { role: "assistant", text: t.offline }]);
+      if (readAloud) speak(t.offline, lang);
       return;
     }
 
@@ -331,12 +469,61 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
     try {
       const reply = await askSalesAssistant(next);
       setMessages((m) => [...m, { role: "assistant", text: reply }]);
+      if (readAloud) speak(reply, lang);
     } catch {
       // The API's own error text is generic and English-only; the chat's offline line is
       // localized and points at the contact links right below it.
       setMessages((m) => [...m, { role: "assistant", text: t.offline, failed: true }]);
     } finally {
       setPending(false);
+    }
+  }
+  sendRef.current = send;
+
+  function askFromTeaser(question: string) {
+    openChat();
+    void send(question);
+  }
+
+  function toggleListening() {
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const Ctor = speechRecognitionCtor();
+    if (!Ctor) return;
+    if (canSpeak) window.speechSynthesis.cancel();
+    const recognition = new Ctor();
+    recognition.lang = SPEECH_LANG[lang];
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    let finalText = "";
+    recognition.onresult = (event) => {
+      let interim = "";
+      finalText = "";
+      for (let i = 0; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) finalText += result[0].transcript;
+        else interim += result[0].transcript;
+      }
+      setDraft((finalText + interim).trim());
+    };
+    recognition.onerror = (event) => {
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") setVoiceError(t.micDenied);
+    };
+    recognition.onend = () => {
+      setListening(false);
+      recognitionRef.current = null;
+      if (finalText.trim()) sendRef.current(finalText, true);
+    };
+    recognitionRef.current = recognition;
+    setVoiceError(null);
+    setListening(true);
+    try {
+      recognition.start();
+    } catch {
+      setListening(false);
+      recognitionRef.current = null;
     }
   }
 
@@ -346,7 +533,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
         <div
           role="dialog"
           aria-label={t.heading}
-          className="flex h-[min(560px,calc(100dvh-7rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col border border-[#D9E1F0] bg-white shadow-pop"
+          className="flex h-[min(580px,calc(100dvh-7rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col border border-[#D9E1F0] bg-white shadow-pop"
         >
           <div className="flex items-center gap-3 bg-[#0D1024] px-4 py-3.5 text-white">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white">
@@ -356,6 +543,21 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
               <p className="truncate text-sm font-bold">{t.heading}</p>
               <p className="truncate text-xs text-white/60">{t.sub}</p>
             </div>
+            {canSpeak && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (speakReplies) window.speechSynthesis.cancel();
+                  setSpeakReplies((s) => !s);
+                }}
+                aria-label={speakReplies ? t.speakOff : t.speakOn}
+                aria-pressed={speakReplies}
+                title={speakReplies ? t.speakOff : t.speakOn}
+                className={cn("p-1.5 transition-colors hover:text-white", speakReplies ? "text-[#F97316]" : "text-white/60")}
+              >
+                {speakReplies ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              </button>
+            )}
             <button type="button" onClick={() => setOpen(false)} aria-label={t.closeAria} className="p-1.5 text-white/60 transition-colors hover:text-white">
               <X className="h-4 w-4" />
             </button>
@@ -366,18 +568,42 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
               {t.greeting}
             </div>
             {messages.length === 0 && (
-              <div className="flex flex-wrap gap-2">
-                {t.suggestions.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => send(s)}
-                    className="rounded-[10px] border border-[#F97316]/40 bg-white px-3 py-2 text-xs font-semibold text-[#C2410C] transition-colors hover:bg-[#FFF3EA]"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
+              <>
+                <div>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#5B6472]">{t.audienceLabel}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {t.audiences.map((a) => {
+                      const Icon = AUDIENCE_ICONS[a.key];
+                      return (
+                        <button
+                          key={a.key}
+                          type="button"
+                          onClick={() => send(a.question)}
+                          className="flex items-center gap-2 border border-[#D9E1F0] bg-white px-3 py-2.5 text-start text-sm font-semibold text-[#111] transition-colors hover:border-[#F97316] hover:bg-[#FFF3EA]"
+                        >
+                          <Icon className="h-4 w-4 shrink-0 text-[#EA580C]" />
+                          {a.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#5B6472]">{t.suggestionsLabel}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {t.suggestions.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => send(s)}
+                        className="rounded-[10px] border border-[#F97316]/40 bg-white px-3 py-2 text-xs font-semibold text-[#C2410C] transition-colors hover:bg-[#FFF3EA]"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
             {messages.map((m, i) =>
               m.role === "user" ? (
@@ -401,6 +627,16 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-[#EA580C]" /> {t.thinking}
               </div>
             )}
+            {listening && (
+              <div className="flex items-center gap-2 self-end text-xs font-semibold text-[#C2410C]">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-[#F97316] opacity-75 motion-safe:animate-ping" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#F97316]" />
+                </span>
+                {t.listening}
+              </div>
+            )}
+            {voiceError && <p className="self-end text-xs font-medium text-[#B42318]">{voiceError}</p>}
           </div>
 
           <form
@@ -415,10 +651,28 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               maxLength={1000}
-              placeholder={t.placeholder}
+              placeholder={listening ? t.listening : t.placeholder}
               aria-label={t.placeholder}
               className="h-11 min-w-0 flex-1 border border-[#D9E1F0] px-3 text-sm text-[#111] outline-none placeholder:text-[#6B7280] focus:border-[#F97316]"
             />
+            {voiceSupported && (
+              <button
+                type="button"
+                onClick={toggleListening}
+                disabled={pending}
+                aria-label={listening ? t.micStop : t.micStart}
+                aria-pressed={listening}
+                title={listening ? t.micStop : t.micStart}
+                className={cn(
+                  "flex h-11 w-11 shrink-0 items-center justify-center border transition-colors disabled:opacity-50",
+                  listening
+                    ? "border-[#F97316] bg-[#FFF3EA] text-[#C2410C]"
+                    : "border-[#D9E1F0] bg-white text-[#171B22] hover:border-[#F97316] hover:text-[#C2410C]"
+                )}
+              >
+                {listening ? <Square className="h-3.5 w-3.5" fill="currentColor" /> : <Mic className="h-4 w-4" />}
+              </button>
+            )}
             <button
               type="submit"
               disabled={pending || !draft.trim()}
@@ -445,9 +699,15 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
       )}
 
       {teaser && !open && (
-        <div className="motion-safe:animate-slide-up relative max-w-[240px] border border-[#D9E1F0] bg-white py-3 pe-8 ps-3.5 text-sm font-semibold leading-snug text-[#111] shadow-pop">
-          <button type="button" onClick={toggle} className="text-start">
-            {t.teaser}
+        <div className="motion-safe:animate-slide-up relative w-[min(270px,calc(100vw-2.5rem))] border border-[#D9E1F0] bg-white py-3 pe-8 ps-3.5 shadow-pop">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-[#C2410C]">{t.launcher}</p>
+          <button
+            key={hintIndex}
+            type="button"
+            onClick={() => askFromTeaser(t.teaserHints[hintIndex])}
+            className="motion-safe:animate-fade-in mt-1 text-start text-sm font-semibold leading-snug text-[#111] hover:text-[#C2410C]"
+          >
+            “{t.teaserHints[hintIndex]}”
           </button>
           <button
             type="button"
@@ -460,15 +720,33 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={toggle}
-        aria-label={t.toggleAria(open)}
-        aria-expanded={open}
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F97316] text-[#171B22] shadow-pop transition-transform hover:scale-105"
-      >
-        {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-6 w-6" />}
-      </button>
+      {open ? (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={t.toggleAria(true)}
+          aria-expanded
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F97316] text-[#171B22] shadow-pop transition-transform hover:scale-105"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={t.toggleAria(false)}
+          aria-expanded={false}
+          className="relative flex h-14 items-center gap-2.5 rounded-full bg-[#F97316] pe-5 ps-2 text-sm font-bold text-[#171B22] shadow-pop transition-transform hover:scale-[1.03]"
+        >
+          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[#0D1024] text-[#F97316]">
+            {/* Ping ring until the visitor has opened the chat once — after that they know where it is. */}
+            {!everOpened && <span aria-hidden className="absolute inset-0 rounded-full bg-[#0D1024] opacity-50 motion-safe:animate-ping" />}
+            <Sparkles className="relative h-5 w-5" />
+          </span>
+          <span className="relative">{t.launcher}</span>
+          {voiceSupported && <Mic aria-hidden className="relative h-4 w-4 opacity-70" />}
+        </button>
+      )}
     </div>
   );
 }
@@ -869,7 +1147,7 @@ interface SolutionAudience {
   external?: boolean;
 }
 
-/** Real, evidenced sub-segments of the product's actual audience — tutoring/coaching academies — not generic corporate-L&D or MOOC-creator verticals the product has no evidence of fitting. */
+/** Real, evidenced sub-segments of the product's actual audience — tutoring/coaching academies, schools teaching online, tutors — not generic corporate-L&D or MOOC-creator verticals the product has no evidence of fitting. */
 const SOLUTIONS: Record<Lang, SolutionAudience[]> = {
   en: [
     {
@@ -887,6 +1165,14 @@ const SOLUTIONS: Record<Lang, SolutionAudience[]> = {
       chips: ["Billing & Payments", "Analytics & Reports"],
       ctaLabel: "See the Management Dashboard",
       ctaTo: "/portal-select",
+    },
+    {
+      icon: School,
+      title: "Schools running online & hybrid classes",
+      description: "Taking remedial, after-school or full online classes live, where parents expect schedules, recordings, attendance and fee status in one portal instead of scattered messages.",
+      chips: ["Live Classroom", "Parent Portal"],
+      ctaLabel: "Request a Demo",
+      ctaTo: "/get-started",
     },
     {
       icon: Users,
@@ -934,6 +1220,14 @@ const SOLUTIONS: Record<Lang, SolutionAudience[]> = {
       chips: ["الفوترة والمدفوعات", "التحليلات والتقارير"],
       ctaLabel: "شاهد لوحة تحكم الإدارة",
       ctaTo: "/portal-select",
+    },
+    {
+      icon: School,
+      title: "المدارس التي تقدّم حصصًا عبر الإنترنت أو هجينة",
+      description: "تقدّم حصصًا علاجية أو بعد الدوام أو حصصًا كاملة عبر الإنترنت، حيث يتوقع أولياء الأمور الجداول والتسجيلات والحضور وحالة الرسوم في بوابة واحدة بدلًا من رسائل متفرقة.",
+      chips: ["الفصل الدراسي المباشر", "بوابة ولي الأمر"],
+      ctaLabel: "اطلب عرضًا توضيحيًا",
+      ctaTo: "/get-started",
     },
     {
       icon: Users,
@@ -1151,7 +1445,7 @@ const T = {
     portalsSub: "Eight role-based portals, each showing exactly what that person needs — nothing more, nothing less.",
     explore: "Explore",
     solutionsEyebrow: "Who it's for",
-    solutionsHeading: "Built for how tutoring and coaching academies actually run",
+    solutionsHeading: "Built for academies, schools, tutors and coaching centres",
     solutionsSub: "Whether you teach one subject out of a single classroom or coordinate several branches and teachers, the same system scales with you.",
     securityEyebrow: "Security & integrations",
     securityHeading: "Real access control, built in from day one",
@@ -1217,7 +1511,7 @@ const T = {
     portalsSub: "ثماني بوابات حسب الدور، تعرض لكل شخص بالضبط ما يحتاجه — لا أكثر ولا أقل.",
     explore: "استكشف",
     solutionsEyebrow: "لمن هذا المنتج",
-    solutionsHeading: "مصمم بحسب الطريقة الفعلية لعمل أكاديميات التدريس والتدريب",
+    solutionsHeading: "مصمم للأكاديميات والمدارس والمدرسين ومراكز التدريب",
     solutionsSub: "سواء كنت تُدرّس مادة واحدة من فصل واحد أو تنسّق بين عدة فروع ومعلمين، فإن النظام نفسه ينمو معك.",
     securityEyebrow: "الأمان والتكاملات",
     securityHeading: "تحكم فعلي في الوصول، مدمج منذ اليوم الأول",
