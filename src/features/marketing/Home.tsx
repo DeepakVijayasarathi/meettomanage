@@ -49,7 +49,7 @@ import { useLightBrandScope } from "@/lib/theme";
 import { useLang, type Lang } from "@/lib/i18n";
 import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useInView } from "@/hooks/useInView";
-import { askSalesAssistant, type SalesChatTurn } from "@/api/marketing";
+import { askSalesAssistant, requestPlatformDemo, type SalesChatTurn } from "@/api/marketing";
 import { apiEnabled } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
@@ -247,6 +247,24 @@ const CHAT_T = {
     micDenied: "Microphone access was blocked — allow it in your browser, or type your question instead.",
     speakOn: "Read replies aloud",
     speakOff: "Stop reading replies aloud",
+    online: "Online · replies in seconds",
+    nextCost: "What would it cost me?",
+    nextHuman: "Chat with a person on WhatsApp",
+    leadCta: "Book my free demo",
+    leadTitle: "Want to see it with your own classes?",
+    leadBody: "Leave your details — our team will WhatsApp you within a day to set up a free demo.",
+    leadName: "Your name",
+    leadPhone: "WhatsApp number",
+    leadEmail: "Email",
+    leadOrg: "Academy / school name (optional)",
+    leadSending: "Sending…",
+    leadLater: "Not now",
+    leadRequired: "Please add your name, WhatsApp number and email.",
+    leadError: "Couldn't send that — please try again, or message us on WhatsApp.",
+    leadDone: (name: string) => `Thanks ${name}! Our team will WhatsApp you within a day to set up your free demo.`,
+    leadFallbackOrg: "Via website chat",
+    leadTranscript: "Asked in the website chat:",
+    unreadAria: "1 new message",
   },
   ar: {
     heading: "مساعد Meet to Manage",
@@ -286,6 +304,24 @@ const CHAT_T = {
     micDenied: "تم حظر الوصول إلى الميكروفون — اسمح به في المتصفح، أو اكتب سؤالك بدلًا من ذلك.",
     speakOn: "قراءة الردود بصوت عالٍ",
     speakOff: "إيقاف قراءة الردود",
+    online: "متصل · يرد خلال ثوانٍ",
+    nextCost: "كم ستكون تكلفتي؟",
+    nextHuman: "تحدّث مع شخص عبر واتساب",
+    leadCta: "احجز عرضي التوضيحي المجاني",
+    leadTitle: "هل تريد رؤيتها مع حصصك الخاصة؟",
+    leadBody: "اترك بياناتك — سيتواصل معك فريقنا عبر واتساب خلال يوم لترتيب عرض توضيحي مجاني.",
+    leadName: "اسمك",
+    leadPhone: "رقم واتساب",
+    leadEmail: "البريد الإلكتروني",
+    leadOrg: "اسم الأكاديمية أو المدرسة (اختياري)",
+    leadSending: "جارٍ الإرسال…",
+    leadLater: "ليس الآن",
+    leadRequired: "يرجى إدخال اسمك ورقم واتساب والبريد الإلكتروني.",
+    leadError: "تعذّر الإرسال — حاول مرة أخرى، أو راسلنا على واتساب.",
+    leadDone: (name: string) => `شكرًا ${name}! سيتواصل معك فريقنا عبر واتساب خلال يوم لترتيب العرض التوضيحي المجاني.`,
+    leadFallbackOrg: "عبر دردشة الموقع",
+    leadTranscript: "أسئلة من دردشة الموقع:",
+    unreadAria: "رسالة جديدة واحدة",
   },
 };
 
@@ -298,6 +334,29 @@ const AUDIENCE_ICONS: Record<string, LucideIcon> = {
 
 /** Session key so the "ask me" teaser nudges a visitor at most once per browser session. */
 const CHAT_TEASER_SEEN_KEY = "trn.chatTeaser.seen";
+/** The conversation survives a hop to /pricing and back within the same browser session. */
+const CHAT_MESSAGES_KEY = "trn.chat.messages";
+/** Set once the visitor has booked a demo from the chat, so the booking card isn't offered again. */
+const CHAT_LEAD_SENT_KEY = "trn.chat.leadSent";
+
+function readSession<T>(key: string, fallback: T): T {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeSession(key: string, value: unknown) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* no storage — the chat just won't carry over to the next page */
+  }
+}
+
+const EMPTY_LEAD = { name: "", phone: "", email: "", org: "" };
 
 /** The bits of the Web Speech API's SpeechRecognition this widget uses. Not in TypeScript's DOM
  *  lib, and only Chromium/Safari ship it (as webkitSpeechRecognition) — Firefox has none, so the
@@ -366,8 +425,16 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
   const t = CHAT_T[lang];
   const [open, setOpen] = useState(false);
   const [everOpened, setEverOpened] = useState(false);
-  const [messages, setMessages] = useState<SalesChatTurn[]>([]);
+  const [messages, setMessages] = useState<SalesChatTurn[]>(() => readSession<SalesChatTurn[]>(CHAT_MESSAGES_KEY, []));
   const [draft, setDraft] = useState("");
+  // In-chat demo booking: offered after the second answer (by then the visitor is engaged),
+  // or straight away from the "Book my free demo" buttons. Posts to the same platform-demo
+  // queue as /get-started, with the visitor's chat questions attached for the sales follow-up.
+  const [leadOpen, setLeadOpen] = useState(false);
+  const [leadDismissed, setLeadDismissed] = useState(false);
+  const [lead, setLead] = useState(EMPTY_LEAD);
+  const [leadStatus, setLeadStatus] = useState<"idle" | "sending" | "error" | "required">("idle");
+  const [leadSentName, setLeadSentName] = useState<string | null>(() => readSession<string | null>(CHAT_LEAD_SENT_KEY, null));
   const [pending, setPending] = useState(false);
   const [teaser, setTeaser] = useState(false);
   const [hintIndex, setHintIndex] = useState(0);
@@ -391,8 +458,19 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
     } catch {
       /* no storage — still show it once for this page view */
     }
-    const id = setTimeout(() => setTeaser(true), 4000);
-    return () => clearTimeout(id);
+    // On a phone the teaser would sit on top of the hero's own CTAs, so there it waits until
+    // the visitor has scrolled past the hero (or 15s), instead of 4s in.
+    const phone = window.matchMedia("(max-width: 639px)").matches;
+    const show = () => setTeaser(true);
+    const id = setTimeout(show, phone ? 15000 : 4000);
+    const onScroll = () => {
+      if (window.scrollY > window.innerHeight * 0.9) show();
+    };
+    if (phone) window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      clearTimeout(id);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
   useEffect(() => {
@@ -411,8 +489,51 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
   }
 
   useEffect(() => {
+    writeSession(CHAT_MESSAGES_KEY, messages.slice(-30));
+  }, [messages]);
+
+  useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, pending, listening]);
+  }, [messages, pending, listening, leadOpen, leadSentName]);
+
+  const answered = messages.filter((m) => m.role === "assistant" && !m.failed).length;
+  const offerLead = !leadSentName && !leadDismissed && (leadOpen || answered >= 2);
+
+  function openLead() {
+    setLeadDismissed(false);
+    setLeadOpen(true);
+    setLeadStatus("idle");
+  }
+
+  async function submitLead(e: React.FormEvent) {
+    e.preventDefault();
+    const name = lead.name.trim();
+    if (!name || !lead.phone.trim() || !lead.email.trim()) {
+      setLeadStatus("required");
+      return;
+    }
+    const questions = messages.filter((m) => m.role === "user").map((m) => `- ${m.text}`);
+    const message = [t.leadTranscript, ...questions].join("\n").slice(0, 1000);
+    setLeadStatus("sending");
+    try {
+      if (apiEnabled()) {
+        await requestPlatformDemo({
+          fullName: name,
+          workEmail: lead.email.trim(),
+          phone: lead.phone.trim(),
+          academyName: lead.org.trim() || t.leadFallbackOrg,
+          message: questions.length ? message : undefined,
+        });
+      }
+      setLeadSentName(name);
+      writeSession(CHAT_LEAD_SENT_KEY, name);
+      setLeadOpen(false);
+      setLead(EMPTY_LEAD);
+      setLeadStatus("idle");
+    } catch {
+      setLeadStatus("error");
+    }
+  }
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -536,12 +657,13 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
           className="flex h-[min(580px,calc(100dvh-7rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col border border-[#D9E1F0] bg-white shadow-pop"
         >
           <div className="flex items-center gap-3 bg-[#0D1024] px-4 py-3.5 text-white">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white">
+            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white">
               <img src="/logo-icon.png" alt="" className="h-6 w-6 object-contain" />
+              <span aria-hidden className="absolute -bottom-0.5 -end-0.5 h-3 w-3 rounded-full border-2 border-[#0D1024] bg-[#22C55E]" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold">{t.heading}</p>
-              <p className="truncate text-xs text-white/60">{t.sub}</p>
+              <p className="truncate text-xs text-[#86EFAC]">{t.online}</p>
             </div>
             {canSpeak && (
               <button
@@ -623,8 +745,121 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
               )
             )}
             {pending && (
-              <div className="flex items-center gap-2 self-start text-xs font-semibold text-[#5B6472]">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#EA580C]" /> {t.thinking}
+              <div role="status" aria-label={t.thinking} className="flex items-center gap-1 self-start border border-[#D9E1F0] bg-white px-3.5 py-3.5">
+                {[0, 150, 300].map((delay) => (
+                  <span
+                    key={delay}
+                    aria-hidden
+                    className="h-2 w-2 rounded-full bg-[#F97316] motion-safe:animate-bounce"
+                    style={{ animationDelay: `${delay}ms` }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Next steps after an answer: price it for me, book a demo, or talk to a person. */}
+            {!pending && answered > 0 && messages[messages.length - 1]?.role === "assistant" && (
+              <div className="flex flex-wrap gap-2">
+                {!leadSentName && !offerLead && (
+                  <button
+                    type="button"
+                    onClick={openLead}
+                    className="flex items-center gap-1.5 bg-[#F97316] px-3 py-2 text-xs font-bold text-[#171B22] transition-colors hover:bg-[#FB8B3C]"
+                  >
+                    <CalendarCheck2 className="h-3.5 w-3.5" /> {t.leadCta}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => send(t.nextCost)}
+                  className="rounded-[10px] border border-[#F97316]/40 bg-white px-3 py-2 text-xs font-semibold text-[#C2410C] transition-colors hover:bg-[#FFF3EA]"
+                >
+                  {t.nextCost}
+                </button>
+                <a
+                  href="https://wa.me/919344773231"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-[10px] border border-[#D9E1F0] bg-white px-3 py-2 text-xs font-semibold text-[#111] transition-colors hover:border-[#25D366]"
+                >
+                  <MessageSquare className="h-3.5 w-3.5 text-[#25D366]" /> {t.nextHuman}
+                </a>
+              </div>
+            )}
+
+            {offerLead && (
+              <div className="border border-[#F97316]/50 bg-white p-4 shadow-[0_8px_24px_-12px_rgba(249,115,22,0.35)]">
+                <div className="flex items-start gap-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#0D1024] text-[#F97316]">
+                    <CalendarCheck2 className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-[#111]">{t.leadTitle}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-[#5B6472]">{t.leadBody}</p>
+                  </div>
+                </div>
+                {leadOpen ? (
+                  <form onSubmit={submitLead} className="mt-3 flex flex-col gap-2">
+                    {(
+                      [
+                        ["name", t.leadName, "text", "name"],
+                        ["phone", t.leadPhone, "tel", "tel"],
+                        ["email", t.leadEmail, "email", "email"],
+                        ["org", t.leadOrg, "text", "organization"],
+                      ] as const
+                    ).map(([field, label, type, autoComplete]) => (
+                      <input
+                        key={field}
+                        type={type}
+                        autoComplete={autoComplete}
+                        value={lead[field]}
+                        onChange={(e) => setLead((l) => ({ ...l, [field]: e.target.value }))}
+                        placeholder={label}
+                        aria-label={label}
+                        maxLength={field === "phone" ? 20 : 150}
+                        className="h-10 border border-[#D9E1F0] px-3 text-sm text-[#111] outline-none placeholder:text-[#6B7280] focus:border-[#F97316]"
+                      />
+                    ))}
+                    {(leadStatus === "required" || leadStatus === "error") && (
+                      <p role="alert" className="text-xs font-medium text-[#B42318]">
+                        {leadStatus === "required" ? t.leadRequired : t.leadError}
+                      </p>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={leadStatus === "sending"}
+                      className="flex h-10 items-center justify-center gap-2 bg-[#F97316] text-sm font-bold text-[#171B22] transition-colors hover:bg-[#FB8B3C] disabled:opacity-60"
+                    >
+                      {leadStatus === "sending" ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> {t.leadSending}
+                        </>
+                      ) : (
+                        t.leadCta
+                      )}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={openLead}
+                      className="flex h-10 flex-1 items-center justify-center bg-[#F97316] text-sm font-bold text-[#171B22] transition-colors hover:bg-[#FB8B3C]"
+                    >
+                      {t.leadCta}
+                    </button>
+                    <button type="button" onClick={() => setLeadDismissed(true)} className="px-1 py-2 text-xs font-semibold text-[#5B6472] hover:text-[#111]">
+                      {t.leadLater}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {leadSentName && (
+              <div className="flex items-start gap-2 self-start border border-[#22C55E]/40 bg-[#F0FDF4] px-3.5 py-2.5 text-sm leading-relaxed text-[#14532D]">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#16A34A]" />
+                {t.leadDone(leadSentName)}
               </div>
             )}
             {listening && (
@@ -690,9 +925,15 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
             <a href="mailto:info@infinityuniquers.com" className="flex items-center gap-1.5 py-1 text-[#111] hover:text-[#C2410C]">
               <Mail className="h-3.5 w-3.5 text-[#EA580C]" /> {t.email}
             </a>
-            <Link to="/get-started" className="ms-auto flex items-center gap-1 py-1 text-[#C2410C] hover:text-[#9A3412]">
-              {t.demo} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
-            </Link>
+            {leadSentName ? (
+              <Link to="/get-started" className="ms-auto flex items-center gap-1 py-1 text-[#C2410C] hover:text-[#9A3412]">
+                {t.demo} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
+              </Link>
+            ) : (
+              <button type="button" onClick={openLead} className="ms-auto flex items-center gap-1 py-1 text-[#C2410C] hover:text-[#9A3412]">
+                {t.leadCta} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
+              </button>
+            )}
             <p className="w-full pb-0.5 text-[10px] font-medium text-[#6B7280]">{t.disclaimer}</p>
           </div>
         </div>
@@ -736,15 +977,26 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
           onClick={toggle}
           aria-label={t.toggleAria(false)}
           aria-expanded={false}
-          className="relative flex h-14 items-center gap-2.5 rounded-full bg-[#F97316] pe-5 ps-2 text-sm font-bold text-[#171B22] shadow-pop transition-transform hover:scale-[1.03]"
+          className="relative flex h-14 items-center gap-2.5 rounded-full bg-[#F97316] p-2 text-sm font-bold text-[#171B22] shadow-pop transition-transform hover:scale-[1.03] sm:pe-5"
         >
           <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[#0D1024] text-[#F97316]">
             {/* Ping ring until the visitor has opened the chat once — after that they know where it is. */}
             {!everOpened && <span aria-hidden className="absolute inset-0 rounded-full bg-[#0D1024] opacity-50 motion-safe:animate-ping" />}
             <Sparkles className="relative h-5 w-5" />
           </span>
-          <span className="relative">{t.launcher}</span>
-          {voiceSupported && <Mic aria-hidden className="relative h-4 w-4 opacity-70" />}
+          {/* Label only from sm up — on a phone the full pill covers the hero's own buttons. */}
+          <span className="relative hidden sm:inline">{t.launcher}</span>
+          {voiceSupported && <Mic aria-hidden className="relative hidden h-4 w-4 opacity-70 sm:block" />}
+          {/* Unread badge while the teaser is out — a visible "someone's waiting" cue. */}
+          {teaser && !everOpened && (
+            <span
+              role="status"
+              aria-label={t.unreadAria}
+              className="absolute -end-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[#DC2626] text-[10px] font-bold text-white"
+            >
+              1
+            </span>
+          )}
         </button>
       )}
     </div>
