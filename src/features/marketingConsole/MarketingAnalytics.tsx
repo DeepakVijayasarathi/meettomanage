@@ -58,8 +58,8 @@ export default function MarketingAnalytics() {
     <div>
       <PageHeader
         eyebrow="Website"
-        title="Analytics"
-        description="Connect website analytics. Tags load on the public marketing pages only (home, pricing, blog, demo pages) — never on the login or academy portals. Leave a field blank to switch that tag off."
+        title="Tracking tags"
+        description="Optional: also send visits to Google Analytics, Tag Manager or Meta (for ads). The Dashboard works without any of these. Tags load on the public marketing pages only (home, pricing, blog, demo pages) — never on the login or academy portals. Leave a field blank to switch that tag off."
         actions={
           <Button onClick={() => save()} disabled={saving || loading || invalid.length > 0}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save

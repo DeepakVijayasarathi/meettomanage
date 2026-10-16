@@ -23,6 +23,7 @@ const ForgotPin = lazy(() => import("@/features/auth/ForgotPin"));
 // Marketing console (Marketing role only, own login) — the platform owner's marketing-site admin,
 // kept out of every academy portal.
 const MarketingLogin = lazy(() => import("@/features/marketingConsole/MarketingLogin"));
+const MarketingDashboard = lazy(() => import("@/features/marketingConsole/MarketingDashboard"));
 const MarketingSeo = lazy(() => import("@/features/marketingConsole/MarketingSeo"));
 const MarketingAnalytics = lazy(() => import("@/features/marketingConsole/MarketingAnalytics"));
 const MarketingDemoRequests = lazy(() => import("@/features/admin/DemoRequests"));
@@ -342,10 +343,11 @@ export default function App() {
 
             <Route path="/marketing/login" element={<MarketingLogin />} />
             <Route path="/marketing" element={<RequireAuth role="marketing"><MarketingShell><Outlet /></MarketingShell></RequireAuth>}>
-              <Route index element={<MarketingDemoRequests />} />
+              <Route index element={<MarketingDashboard />} />
+              <Route path="demo-requests" element={<MarketingDemoRequests />} />
               <Route path="blog-posts" element={<MarketingBlogPosts />} />
               <Route path="seo" element={<MarketingSeo />} />
-              <Route path="analytics" element={<MarketingAnalytics />} />
+              <Route path="tracking" element={<MarketingAnalytics />} />
             </Route>
 
             {/* Founder Dashboard ("executive"): a Sub Admin persona (RoleDefinition

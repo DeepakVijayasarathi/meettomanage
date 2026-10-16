@@ -110,7 +110,9 @@ export interface ApiBlogPost {
   content: string;
   readMinutes: number;
   isPublished: boolean;
+  /** For a "Scheduled" post, when it goes live. */
   publishedAtUtc: string | null;
+  status: "Draft" | "Scheduled" | "Published";
   createdAtUtc: string;
 }
 
@@ -139,17 +141,52 @@ export async function createBlogPost(input: {
   excerpt: string;
   content: string;
   isPublished: boolean;
+  /** Future = scheduled (hidden from /blog until then); omit = publish now. */
+  publishAtUtc?: string;
 }): Promise<ApiBlogPost> {
   return apiFetch<ApiBlogPost>("/api/blog/admin", { method: "POST", body: JSON.stringify(input) });
 }
 
 export async function updateBlogPost(
   id: string,
-  input: { title: string; slug: string; excerpt: string; content: string; isPublished: boolean }
+  input: { title: string; slug: string; excerpt: string; content: string; isPublished: boolean; publishAtUtc?: string }
 ): Promise<ApiBlogPost> {
   return apiFetch<ApiBlogPost>(`/api/blog/admin/${id}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
 export async function deleteBlogPost(id: string): Promise<void> {
   await apiFetch<void>(`/api/blog/admin/${id}`, { method: "DELETE" });
+}
+
+export interface ApiNamedCount {
+  name: string;
+  count: number;
+}
+
+export interface ApiMarketingTotals {
+  pageViews: number;
+  visitors: number;
+  chatsStarted: number;
+  demoRequests: number;
+  chatBookings: number;
+  conversionRate: number;
+}
+
+export interface ApiMarketingDashboard {
+  days: number;
+  totals: ApiMarketingTotals;
+  previous: ApiMarketingTotals;
+  daily: { date: string; pageViews: number; visitors: number; demoRequests: number }[];
+  topPages: ApiNamedCount[];
+  topBlogPosts: ApiNamedCount[];
+  sources: ApiNamedCount[];
+  campaigns: ApiNamedCount[];
+  devices: ApiNamedCount[];
+  demoRequestsByStatus: ApiNamedCount[];
+}
+
+/** Marketing console only — first-party analytics for the last `days` days, in the browser's own calendar days. */
+export async function getMarketingDashboard(days: number): Promise<ApiMarketingDashboard> {
+  const tzOffsetMinutes = -new Date().getTimezoneOffset();
+  return apiFetch<ApiMarketingDashboard>(`/api/marketing/analytics?days=${days}&tzOffsetMinutes=${tzOffsetMinutes}`);
 }

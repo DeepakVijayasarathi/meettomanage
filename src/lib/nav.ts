@@ -134,7 +134,8 @@ export const ADMIN_NAV: NavSection[] = [
 const MARKETING_NAV: NavSection[] = [
   {
     items: [
-      { label: "Demo Requests", to: "/marketing", icon: Handshake, end: true },
+      { label: "Dashboard", to: "/marketing", icon: LayoutDashboard, end: true },
+      { label: "Demo Requests", to: "/marketing/demo-requests", icon: Handshake },
       { label: "Blog Posts", to: "/marketing/blog-posts", icon: Newspaper },
     ],
   },
@@ -142,7 +143,7 @@ const MARKETING_NAV: NavSection[] = [
     title: "Website",
     items: [
       { label: "SEO", to: "/marketing/seo", icon: Search },
-      { label: "Analytics", to: "/marketing/analytics", icon: BarChart3 },
+      { label: "Tracking tags", to: "/marketing/tracking", icon: BarChart3 },
     ],
   },
 ];

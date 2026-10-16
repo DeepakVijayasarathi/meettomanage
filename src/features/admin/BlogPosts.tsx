@@ -34,11 +34,25 @@ const DEMO_POSTS: ApiBlogPost[] = [
     readMinutes: 5,
     isPublished: true,
     publishedAtUtc: "2026-07-14T00:00:00Z",
+    status: "Published",
     createdAtUtc: "2026-07-14T00:00:00Z",
   },
 ];
 
-const EMPTY_FORM = { title: "", slug: "", excerpt: "", content: "", isPublished: false };
+const EMPTY_FORM = { title: "", slug: "", excerpt: "", content: "", isPublished: false, schedule: false, publishAt: "" };
+
+/** ISO instant -> the "YYYY-MM-DDTHH:mm" a datetime-local input wants, in the browser's own time zone. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+const STATUS_BADGE: Record<ApiBlogPost["status"], "success" | "warning" | "muted"> = {
+  Published: "success",
+  Scheduled: "warning",
+  Draft: "muted",
+};
 
 export default function BlogPosts() {
   const { toast } = useToast();
@@ -61,7 +75,16 @@ export default function BlogPosts() {
   }
 
   function openEdit(post: ApiBlogPost) {
-    setForm({ title: post.title, slug: post.slug, excerpt: post.excerpt, content: post.content, isPublished: post.isPublished });
+    const scheduled = post.status === "Scheduled" && !!post.publishedAtUtc;
+    setForm({
+      title: post.title,
+      slug: post.slug,
+      excerpt: post.excerpt,
+      content: post.content,
+      isPublished: post.isPublished,
+      schedule: scheduled,
+      publishAt: scheduled ? toLocalInput(post.publishedAtUtc!) : "",
+    });
     setFormError(null);
     setEditing(post);
   }
@@ -75,6 +98,12 @@ export default function BlogPosts() {
     e.preventDefault();
     if (!form.title.trim() || !form.excerpt.trim() || !form.content.trim()) {
       setFormError("Title, excerpt and content are all required.");
+      return;
+    }
+    // datetime-local is the browser's local time; new Date() reads it as such.
+    const publishAtUtc = form.isPublished && form.schedule && form.publishAt ? new Date(form.publishAt).toISOString() : undefined;
+    if (form.isPublished && form.schedule && (!publishAtUtc || new Date(publishAtUtc) <= new Date())) {
+      setFormError("Pick a future date and time to schedule this post, or choose Publish now.");
       return;
     }
 
@@ -94,8 +123,9 @@ export default function BlogPosts() {
           excerpt: form.excerpt,
           content: form.content,
           isPublished: form.isPublished,
+          publishAtUtc,
         });
-        toast({ variant: "success", title: "Post updated" });
+        toast({ variant: "success", title: publishAtUtc ? "Post scheduled" : "Post updated" });
       } else {
         await createBlogPost({
           title: form.title,
@@ -103,8 +133,9 @@ export default function BlogPosts() {
           excerpt: form.excerpt,
           content: form.content,
           isPublished: form.isPublished,
+          publishAtUtc,
         });
-        toast({ variant: "success", title: "Post created" });
+        toast({ variant: "success", title: publishAtUtc ? "Post scheduled" : "Post created" });
       }
       await reload();
       closeDialog();
@@ -144,15 +175,23 @@ export default function BlogPosts() {
         key: "status",
         header: "Status",
         sortable: true,
-        accessor: (row) => (row.isPublished ? "Published" : "Draft"),
-        render: (row) => <Badge variant={row.isPublished ? "success" : "muted"}>{row.isPublished ? "Published" : "Draft"}</Badge>,
+        accessor: (row) => row.status,
+        render: (row) => <Badge variant={STATUS_BADGE[row.status]}>{row.status}</Badge>,
       },
       {
         key: "published",
         header: "Published",
         sortable: true,
         accessor: (row) => row.publishedAtUtc ?? "",
-        render: (row) => <span className="text-sm text-muted-foreground">{row.publishedAtUtc ? formatDate(row.publishedAtUtc.slice(0, 10)) : "—"}</span>,
+        render: (row) => (
+          <span className="text-sm text-muted-foreground">
+            {!row.publishedAtUtc || row.status === "Draft"
+              ? "—"
+              : row.status === "Scheduled"
+                ? `Goes live ${formatDate(row.publishedAtUtc, "datetime")}`
+                : formatDate(row.publishedAtUtc.slice(0, 10))}
+          </span>
+        ),
       },
       {
         key: "actions",
@@ -256,6 +295,46 @@ export default function BlogPosts() {
               <Switch id="blog-published" checked={form.isPublished} onCheckedChange={(checked) => setForm((f) => ({ ...f, isPublished: checked }))} />
               <Label htmlFor="blog-published">Published</Label>
             </div>
+            {form.isPublished && (
+              <fieldset className="grid gap-2 rounded-lg border border-border p-3">
+                <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">When</legend>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="blog-when"
+                    checked={!form.schedule}
+                    onChange={() => setForm((f) => ({ ...f, schedule: false }))}
+                    className="accent-[hsl(var(--primary))]"
+                  />
+                  {editing?.status === "Published" ? "Keep live (no date change)" : "Publish now"}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="blog-when"
+                    checked={form.schedule}
+                    onChange={() => setForm((f) => ({ ...f, schedule: true }))}
+                    className="accent-[hsl(var(--primary))]"
+                  />
+                  Schedule for later
+                </label>
+                {form.schedule && (
+                  <div className="grid gap-1.5 ps-6">
+                    <Label htmlFor="blog-publish-at" className="sr-only">
+                      Publish date and time
+                    </Label>
+                    <Input
+                      id="blog-publish-at"
+                      type="datetime-local"
+                      value={form.publishAt}
+                      min={toLocalInput(new Date().toISOString())}
+                      onChange={(e) => setForm((f) => ({ ...f, publishAt: e.target.value }))}
+                    />
+                    <p className="text-xs text-muted-foreground">Your local time. The post appears on /blog automatically at this moment.</p>
+                  </div>
+                )}
+              </fieldset>
+            )}
             {formError && <p role="alert" className="text-sm font-medium text-destructive">{formError}</p>}
             <Button type="submit" disabled={saving} className="mt-1 w-full">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? "Save changes" : "Create post"}

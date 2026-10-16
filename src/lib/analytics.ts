@@ -9,7 +9,7 @@
  * IDs are format-checked before they go anywhere near a script URL; a malformed value is
  * ignored rather than injected.
  */
-import { apiEnabled } from "@/lib/api";
+import { apiEnabled, apiFetch } from "@/lib/api";
 import { getPublicSettings, toSettingsMap } from "@/api/settings";
 
 export const ANALYTICS_KEYS = {
@@ -111,8 +111,60 @@ function install() {
   }
 }
 
+const VISITOR_KEY = "mtm.visitorId";
+
+/** Random per-browser id for counting unique visitors on the first-party dashboard; identifies no one. */
+function visitorId(): string {
+  try {
+    let id = localStorage.getItem(VISITOR_KEY);
+    if (!id) {
+      id = crypto.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+      localStorage.setItem(VISITOR_KEY, id);
+    }
+    return id;
+  } catch {
+    return `ephemeral-${Math.random().toString(36).slice(2, 12)}`;
+  }
+}
+
+/** Where this visit came from: UTM tags on the landing URL, else an external referrer's host. */
+function attribution() {
+  const params = new URLSearchParams(window.location.search);
+  let referrerHost: string | undefined;
+  try {
+    const ref = document.referrer ? new URL(document.referrer) : null;
+    if (ref && ref.host !== window.location.host) referrerHost = ref.host;
+  } catch {
+    /* unparseable referrer -- treat as direct */
+  }
+  return {
+    referrerHost,
+    utmSource: params.get("utm_source") ?? undefined,
+    utmMedium: params.get("utm_medium") ?? undefined,
+    utmCampaign: params.get("utm_campaign") ?? undefined,
+  };
+}
+
+/** First-party beacon to the marketing console's own dashboard; never blocks or throws. */
+function beacon(type: "page_view" | "chat_started", path: string) {
+  if (!apiEnabled()) return;
+  void apiFetch<void>("/api/marketing/track", {
+    method: "POST",
+    keepalive: true,
+    body: JSON.stringify({ type, path, visitorId: visitorId(), ...attribution() }),
+  }).catch(() => {
+    /* analytics must never get in a visitor's way */
+  });
+}
+
+/** The visitor sent their first message to the sales chat assistant. */
+export function trackChatStarted(): void {
+  beacon("chat_started", window.location.pathname);
+}
+
 /** Called by each public marketing page (via <Seo>) once it renders. */
 export async function trackMarketingPageView(path: string, title: string): Promise<void> {
+  beacon("page_view", path);
   await load();
   if (!ids.ga && !ids.gtm && !ids.pixel) return;
   install();

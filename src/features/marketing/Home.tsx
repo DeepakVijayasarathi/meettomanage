@@ -51,6 +51,7 @@ import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 import { useInView } from "@/hooks/useInView";
 import { askSalesAssistant, requestPlatformDemo, type SalesChatTurn } from "@/api/marketing";
 import { apiEnabled } from "@/lib/api";
+import { trackChatStarted } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import {
   ACCENT_GRADIENT,
@@ -588,6 +589,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
     const question = text.trim().slice(0, 1000);
     if (!question || pending) return;
     const next: SalesChatTurn[] = [...messages, { role: "user", text: question }];
+    if (messages.length === 0) trackChatStarted();
     setMessages(next);
     setDraft("");
     setVoiceError(null);
