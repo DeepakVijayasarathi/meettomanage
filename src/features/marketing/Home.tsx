@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  AudioLines,
   BarChart3,
   Building2,
   CalendarCheck2,
@@ -13,6 +14,7 @@ import {
   CreditCard,
   GraduationCap,
   HeartHandshake,
+  Keyboard,
   Layers,
   Loader2,
   Lock,
@@ -269,6 +271,19 @@ const CHAT_T = {
     leadFallbackOrg: "Via website chat",
     leadTranscript: "Asked in the website chat:",
     unreadAria: "1 new message",
+    voiceHi: "Hi! I'm the Meet to Manage AI.",
+    voiceAsk: "How can I help you today?",
+    voiceGreetingSpoken: "Hi! I'm the Meet to Manage assistant. How can I help you today?",
+    talkToMe: "Talk to me",
+    typeInstead: "Type instead",
+    tryLabel: "Try:",
+    voiceIdle: "Tap the mic and ask me anything",
+    voiceThinking: "Thinking…",
+    voiceSpeaking: "Speaking — tap to interrupt",
+    voiceMode: "Switch to voice",
+    textMode: "Switch to text chat",
+    voiceUnsupported: "Voice isn't available in this browser — try Chrome, Edge or Safari, or type instead.",
+    stopSpeaking: "Stop speaking",
   },
   ar: {
     heading: "مساعد Meet to Manage",
@@ -328,6 +343,19 @@ const CHAT_T = {
     leadFallbackOrg: "عبر دردشة الموقع",
     leadTranscript: "أسئلة من دردشة الموقع:",
     unreadAria: "رسالة جديدة واحدة",
+    voiceHi: "مرحبًا! أنا مساعد Meet to Manage الذكي.",
+    voiceAsk: "كيف يمكنني مساعدتك اليوم؟",
+    voiceGreetingSpoken: "مرحبًا! أنا مساعد Meet to Manage. كيف يمكنني مساعدتك اليوم؟",
+    talkToMe: "تحدّث معي",
+    typeInstead: "اكتب بدلًا من ذلك",
+    tryLabel: "جرّب:",
+    voiceIdle: "اضغط على الميكروفون واسألني أي شيء",
+    voiceThinking: "أفكر…",
+    voiceSpeaking: "أتحدث — اضغط للمقاطعة",
+    voiceMode: "التبديل إلى الصوت",
+    textMode: "التبديل إلى الدردشة النصية",
+    voiceUnsupported: "الصوت غير متاح في هذا المتصفح — جرّب Chrome أو Edge أو Safari، أو اكتب بدلًا من ذلك.",
+    stopSpeaking: "إيقاف الكلام",
   },
 };
 
@@ -391,14 +419,70 @@ function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
 const SPEECH_LANG: Record<Lang, string> = { en: "en-IN", ar: "ar-AE" };
 
 /** Reads a reply aloud. Links are dropped from the spoken text — a URL read letter by letter
- *  helps nobody; it's still clickable in the chat. */
-function speak(text: string, lang: Lang) {
+ *  helps nobody; it's still clickable in the chat. `onStart`/`onEnd` drive the AI orb's
+ *  "speaking" animation (onEnd also fires on an error or cancel, so it never gets stuck). */
+function speak(text: string, lang: Lang, events?: { onStart?: () => void; onEnd?: () => void }) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
   const spoken = text.replace(/https?:\/\/[^\s)]+/g, "").replace(/[*•]/g, "");
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(spoken);
   utterance.lang = SPEECH_LANG[lang];
+  // Browsers can report both "error" and "end" for one cancelled utterance — finish once.
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    events?.onEnd?.();
+  };
+  utterance.onstart = () => events?.onStart?.();
+  utterance.onend = finish;
+  utterance.onerror = finish;
   window.speechSynthesis.speak(utterance);
+}
+
+type OrbState = "idle" | "listening" | "thinking" | "speaking";
+
+/** The chat's animated AI orb — a turning orange/pink/violet core with a breathing halo. It
+ *  pulses quickly while listening, spins fast while thinking, and shows equalizer bars while
+ *  speaking. Purely decorative (the state is also spelled out in text next to it). Under
+ *  prefers-reduced-motion it simply holds still. */
+function AiOrb({ state, size }: { state: OrbState; size: number }) {
+  return (
+    <span aria-hidden className="relative inline-flex shrink-0 items-center justify-center" style={{ width: size, height: size }}>
+      <span
+        className="absolute inset-0 rounded-full bg-[#F97316]/25 motion-safe:animate-orb-breathe"
+        style={{ animationDuration: state === "listening" ? "1s" : state === "speaking" ? "1.6s" : "3.2s" }}
+      />
+      <span
+        className="absolute inset-[9%] rounded-full opacity-80 blur-md motion-safe:animate-orb-spin"
+        style={{ background: "conic-gradient(from 0deg, #F97316, #F53BA6, #7C5CFC, #F97316)", animationDuration: state === "thinking" ? "1.4s" : "7s" }}
+      />
+      <span
+        className="absolute inset-[15%] rounded-full motion-safe:animate-orb-spin"
+        style={{
+          background: "conic-gradient(from 120deg, #FB923C, #F53BA6, #8B5CF6, #FB923C)",
+          animationDuration: state === "thinking" ? "1s" : "5s",
+          animationDirection: "reverse",
+        }}
+      />
+      <span className="absolute inset-[15%] rounded-full bg-[radial-gradient(circle_at_32%_28%,rgba(255,255,255,0.75),rgba(255,255,255,0)_55%)]" />
+      {state === "speaking" ? (
+        <span className="relative flex h-[34%] items-center gap-[6%]" style={{ width: "34%" }}>
+          {[0, 120, 240, 360, 120].map((delay, i) => (
+            <span
+              key={i}
+              className="h-full flex-1 rounded-full bg-white motion-safe:animate-orb-wave"
+              style={{ animationDelay: `${delay}ms` }}
+            />
+          ))}
+        </span>
+      ) : state === "listening" ? (
+        <Mic className="relative text-white" style={{ width: "30%", height: "30%" }} />
+      ) : (
+        <Sparkles className="relative text-white/95" style={{ width: "30%", height: "30%" }} />
+      )}
+    </span>
+  );
 }
 
 /** Renders an assistant reply as plain text with its URLs made clickable — React elements
@@ -450,6 +534,19 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
   const [listening, setListening] = useState(false);
   const [speakReplies, setSpeakReplies] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  // Voice mode: the chat becomes a talking orb — tap the mic, speak, hear the answer, and it
+  // listens again for a follow-up (once; a silent turn ends the loop). The transcript is the
+  // same conversation as text mode, so switching back keeps everything.
+  const [mode, setMode] = useState<"text" | "voice">("text");
+  const [speaking, setSpeaking] = useState(false);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const openRef = useRef(open);
+  openRef.current = open;
+  const greetedRef = useRef(false);
+  // Set when the visitor cuts the AI off (or the mic takes over) — an interrupted reply must not
+  // reopen the mic by itself.
+  const interruptedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -485,6 +582,30 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
     const id = setInterval(() => setHintIndex((i) => (i + 1) % t.teaserHints.length), 3500);
     return () => clearInterval(id);
   }, [teaser, open, t.teaserHints.length]);
+
+  // The greeting popup says hello out loud. Browsers only let a page speak after the visitor
+  // has clicked/tapped/typed on it, so if that hasn't happened yet it waits for the first
+  // interaction (while the popup is still showing) instead of failing silently.
+  useEffect(() => {
+    if (!teaser || open || !canSpeak || greetedRef.current) return;
+    const greet = () => {
+      if (greetedRef.current) return;
+      greetedRef.current = true;
+      say(t.voiceGreetingSpoken);
+    };
+    const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    if (activation?.hasBeenActive) {
+      greet();
+      return;
+    }
+    window.addEventListener("pointerdown", greet, { once: true });
+    window.addEventListener("keydown", greet, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", greet);
+      window.removeEventListener("keydown", greet);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- say() is recreated each render; this should only react to the popup showing
+  }, [teaser, open, canSpeak, t.voiceGreetingSpoken]);
 
   function dismissTeaser() {
     setTeaser(false);
@@ -561,8 +682,8 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
   useEffect(() => {
     if (open) return;
     recognitionRef.current?.abort();
-    if (canSpeak) window.speechSynthesis.cancel();
-  }, [open, canSpeak]);
+    if (canSpeak && !teaser) window.speechSynthesis.cancel();
+  }, [open, canSpeak, teaser]);
   useEffect(
     () => () => {
       recognitionRef.current?.abort();
@@ -571,11 +692,38 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
     []
   );
 
-  function openChat() {
+  function openChat(nextMode: "text" | "voice" = mode) {
     dismissTeaser();
     if (!open) onOpen?.();
     setEverOpened(true);
+    setMode(nextMode);
     setOpen(true);
+  }
+
+  /** Speaks a line and runs the orb's speaking state; in voice mode, optionally listens for
+   *  the visitor's follow-up as soon as it finishes. */
+  function say(text: string, listenAfter = false) {
+    if (!canSpeak) return;
+    interruptedRef.current = false;
+    speak(text, lang, {
+      onStart: () => setSpeaking(true),
+      onEnd: () => {
+        setSpeaking(false);
+        if (listenAfter && !interruptedRef.current && modeRef.current === "voice" && openRef.current) startListening();
+      },
+    });
+  }
+
+  function stopSpeaking() {
+    interruptedRef.current = true;
+    if (canSpeak) window.speechSynthesis.cancel();
+    setSpeaking(false);
+  }
+
+  /** "Talk to me": open straight into voice mode with the mic already listening. */
+  function openVoice() {
+    openChat(voiceSupported ? "voice" : "text");
+    if (voiceSupported) startListening();
   }
 
   function toggle() {
@@ -599,9 +747,11 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
     const readAloud = canSpeak && (viaVoice || speakReplies);
     if (viaVoice && canSpeak) setSpeakReplies(true);
 
+    const listenAfter = viaVoice && modeRef.current === "voice";
+
     if (!apiEnabled()) {
       setMessages([...next, { role: "assistant", text: t.offline }]);
-      if (readAloud) speak(t.offline, lang);
+      if (readAloud) say(t.offline);
       return;
     }
 
@@ -613,7 +763,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
         recordBooking(bookedName);
         setLeadOpen(false);
       }
-      if (readAloud) speak(reply, lang);
+      if (readAloud) say(reply, listenAfter);
     } catch {
       // The API's own error text is generic and English-only; the chat's offline line is
       // localized and points at the contact links right below it.
@@ -634,10 +784,18 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
       recognitionRef.current?.stop();
       return;
     }
+    startListening();
+  }
+
+  function startListening() {
+    if (recognitionRef.current) return;
     const Ctor = speechRecognitionCtor();
     if (!Ctor) return;
-    if (canSpeak) window.speechSynthesis.cancel();
     const recognition = new Ctor();
+    // Claim the mic before silencing speech: cancelling fires the utterance's end handler,
+    // which must see a recognizer already running rather than start a second one.
+    recognitionRef.current = recognition;
+    stopSpeaking();
     recognition.lang = SPEECH_LANG[lang];
     recognition.interimResults = true;
     recognition.continuous = false;
@@ -660,7 +818,6 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
       recognitionRef.current = null;
       if (finalText.trim()) sendRef.current(finalText, true);
     };
-    recognitionRef.current = recognition;
     setVoiceError(null);
     setListening(true);
     try {
@@ -670,6 +827,8 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
       recognitionRef.current = null;
     }
   }
+
+  const orbState: OrbState = listening ? "listening" : pending ? "thinking" : speaking ? "speaking" : "idle";
 
   return (
     <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6 rtl:right-auto rtl:left-5 rtl:items-start sm:rtl:left-6">
@@ -688,11 +847,24 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
               <p className="truncate text-sm font-bold">{t.heading}</p>
               <p className="truncate text-xs font-medium text-[#15803D]">{t.online}</p>
             </div>
-            {canSpeak && (
+            <button
+              type="button"
+              onClick={() => {
+                recognitionRef.current?.abort();
+                stopSpeaking();
+                setMode((m) => (m === "voice" ? "text" : "voice"));
+              }}
+              aria-label={mode === "voice" ? t.textMode : t.voiceMode}
+              title={mode === "voice" ? t.textMode : t.voiceMode}
+              className="p-1.5 text-[#6B7280] transition-colors hover:text-[#111]"
+            >
+              {mode === "voice" ? <Keyboard className="h-4 w-4" /> : <AudioLines className="h-4 w-4" />}
+            </button>
+            {canSpeak && mode === "text" && (
               <button
                 type="button"
                 onClick={() => {
-                  if (speakReplies) window.speechSynthesis.cancel();
+                  if (speakReplies) stopSpeaking();
                   setSpeakReplies((s) => !s);
                 }}
                 aria-label={speakReplies ? t.speakOff : t.speakOn}
@@ -708,6 +880,29 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
             </button>
           </div>
 
+          {mode === "voice" ? (
+            <VoicePanel
+              t={t}
+              state={orbState}
+              supported={voiceSupported}
+              draft={draft}
+              lastReply={[...messages].reverse().find((m) => m.role === "assistant")?.text ?? null}
+              error={voiceError}
+              bookedName={leadSentName}
+              onMic={() => {
+                if (speaking) stopSpeaking();
+                else toggleListening();
+              }}
+              onKeyboard={() => {
+                recognitionRef.current?.abort();
+                stopSpeaking();
+                setMode("text");
+              }}
+              onAsk={(q) => send(q, true)}
+              disabled={pending}
+            />
+          ) : (
+          <>
           <div ref={scrollRef} aria-live="polite" className="flex flex-1 flex-col gap-3 overflow-y-auto bg-[#F8F9FB] px-4 py-4">
             <div className="max-w-[85%] self-start whitespace-pre-line border border-[#D9E1F0] bg-white px-3.5 py-2.5 text-sm leading-relaxed text-[#111]">
               {t.greeting}
@@ -946,6 +1141,8 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
               <Send className="h-4 w-4 rtl:-scale-x-100" />
             </button>
           </form>
+          </>
+          )}
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[#D9E1F0] px-3 py-2 text-xs font-semibold">
             <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 py-1 text-[#111] hover:text-[#C2410C]">
@@ -968,25 +1165,57 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
         </div>
       )}
 
+      {/* Greeting popup: the orb says hello (out loud where the browser allows), and the visitor
+          can talk straight away or type. Shows once per session; see the teaser effect above. */}
       {teaser && !open && (
-        <div className="motion-safe:animate-slide-up relative w-[min(270px,calc(100vw-2.5rem))] border border-[#D9E1F0] bg-white py-3 pe-8 ps-3.5 shadow-pop">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-[#C2410C]">{t.launcher}</p>
-          <button
-            key={hintIndex}
-            type="button"
-            onClick={() => askFromTeaser(t.teaserHints[hintIndex])}
-            className="motion-safe:animate-fade-in mt-1 text-start text-sm font-semibold leading-snug text-[#111] hover:text-[#C2410C]"
-          >
-            “{t.teaserHints[hintIndex]}”
-          </button>
+        <div
+          role="dialog"
+          aria-label={t.voiceHi}
+          className="motion-safe:animate-slide-up relative w-[min(300px,calc(100vw-2.5rem))] border border-[#F1E6DC] p-4 shadow-pop"
+          style={{ background: HERO_BG }}
+        >
           <button
             type="button"
-            onClick={dismissTeaser}
+            onClick={() => {
+              stopSpeaking();
+              dismissTeaser();
+            }}
             aria-label={t.teaserDismissAria}
             className="absolute end-1.5 top-1.5 p-1 text-[#6B7280] hover:text-[#111]"
           >
             <X className="h-3.5 w-3.5" />
           </button>
+          <div className="flex items-center gap-3 pe-4">
+            <AiOrb state={speaking ? "speaking" : "idle"} size={58} />
+            <div>
+              <p className="text-sm font-bold leading-snug text-[#111]">{t.voiceHi}</p>
+              <p className="mt-0.5 text-sm leading-snug text-[#333]">{t.voiceAsk}</p>
+            </div>
+          </div>
+          <button
+            key={hintIndex}
+            type="button"
+            onClick={() => askFromTeaser(t.teaserHints[hintIndex])}
+            className="motion-safe:animate-fade-in mt-3 block text-start text-xs font-semibold text-[#5B6472] hover:text-[#C2410C]"
+          >
+            {t.tryLabel} “{t.teaserHints[hintIndex]}”
+          </button>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={openVoice}
+              className="flex h-10 flex-1 items-center justify-center gap-1.5 bg-[#EA580C] text-sm font-bold text-white transition-colors hover:bg-[#C2410C]"
+            >
+              <Mic className="h-4 w-4" /> {t.talkToMe}
+            </button>
+            <button
+              type="button"
+              onClick={() => openChat("text")}
+              className="flex h-10 items-center justify-center gap-1.5 border border-[#D9E1F0] bg-white px-3 text-sm font-semibold text-[#111] transition-colors hover:border-[#F97316]"
+            >
+              <Keyboard className="h-4 w-4" /> {t.typeInstead}
+            </button>
+          </div>
         </div>
       )}
 
@@ -1008,10 +1237,8 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
           aria-expanded={false}
           className="relative flex h-14 items-center gap-2.5 rounded-full bg-[#EA580C] p-2 text-sm font-bold text-white shadow-pop transition-transform hover:scale-[1.03] sm:pe-5"
         >
-          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[#0D1024] text-[#F97316]">
-            {/* Ping ring until the visitor has opened the chat once — after that they know where it is. */}
-            {!everOpened && <span aria-hidden className="absolute inset-0 rounded-full bg-[#0D1024] opacity-50 motion-safe:animate-ping" />}
-            <Sparkles className="relative h-5 w-5" />
+          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white">
+            <AiOrb state={speaking ? "speaking" : "idle"} size={40} />
           </span>
           {/* Label only from sm up — on a phone the full pill covers the hero's own buttons. */}
           <span className="relative hidden sm:inline">{t.launcher}</span>
@@ -1028,6 +1255,110 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
           )}
         </button>
       )}
+    </div>
+  );
+}
+
+/** The chat body in voice mode: the orb, what it's doing, the live transcript or last answer,
+ *  and a big mic button. Same conversation as text mode underneath. */
+function VoicePanel({
+  t,
+  state,
+  supported,
+  draft,
+  lastReply,
+  error,
+  bookedName,
+  onMic,
+  onKeyboard,
+  onAsk,
+  disabled,
+}: {
+  t: (typeof CHAT_T)[Lang];
+  state: OrbState;
+  supported: boolean;
+  draft: string;
+  lastReply: string | null;
+  error: string | null;
+  bookedName: string | null;
+  onMic: () => void;
+  onKeyboard: () => void;
+  onAsk: (question: string) => void;
+  disabled: boolean;
+}) {
+  const status = !supported
+    ? t.voiceUnsupported
+    : state === "listening"
+      ? t.listening
+      : state === "thinking"
+        ? t.voiceThinking
+        : state === "speaking"
+          ? t.voiceSpeaking
+          : t.voiceIdle;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto px-5 py-6 text-center" style={{ background: HERO_BG }}>
+      <p aria-live="polite" className="text-xs font-bold uppercase tracking-[0.08em] text-[#C2410C] rtl:tracking-normal">
+        {status}
+      </p>
+      <AiOrb state={state} size={150} />
+      <div className="min-h-[3.5rem] w-full">
+        {state === "listening" && draft ? (
+          <p className="text-base font-semibold leading-snug text-[#111]">“{draft}”</p>
+        ) : lastReply ? (
+          <p className="max-h-36 overflow-y-auto whitespace-pre-line text-sm leading-relaxed text-[#333]">
+            <ChatText text={lastReply} />
+          </p>
+        ) : (
+          <div className="flex flex-wrap justify-center gap-2">
+            {t.suggestions.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => onAsk(q)}
+                disabled={disabled}
+                className="rounded-[10px] border border-[#F97316]/40 bg-white px-3 py-2 text-xs font-semibold text-[#C2410C] transition-colors hover:bg-[#FFF3EA] disabled:opacity-50"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+        {bookedName && (
+          <p className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-[#15803D]">
+            <CheckCircle2 className="h-3.5 w-3.5" /> {t.leadDone(bookedName)}
+          </p>
+        )}
+        {error && <p className="mt-2 text-xs font-medium text-[#B42318]">{error}</p>}
+      </div>
+      <div className="mt-auto flex items-center gap-5">
+        <button
+          type="button"
+          onClick={onKeyboard}
+          aria-label={t.textMode}
+          title={t.textMode}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-[#D9E1F0] bg-white text-[#111] transition-colors hover:border-[#F97316]"
+        >
+          <Keyboard className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onMic}
+          disabled={!supported || state === "thinking"}
+          aria-label={state === "listening" ? t.micStop : state === "speaking" ? t.stopSpeaking : t.micStart}
+          aria-pressed={state === "listening"}
+          className="relative flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#EA580C] text-white shadow-[0_12px_30px_-8px_rgba(234,88,12,0.6)] transition-transform hover:scale-105 disabled:opacity-50"
+        >
+          {state === "listening" && <span aria-hidden className="absolute inset-0 rounded-full bg-[#EA580C]/40 motion-safe:animate-ping" />}
+          {state === "listening" || state === "speaking" ? (
+            <Square className="relative h-6 w-6" fill="currentColor" />
+          ) : state === "thinking" ? (
+            <Loader2 className="relative h-7 w-7 animate-spin" />
+          ) : (
+            <Mic className="relative h-7 w-7" />
+          )}
+        </button>
+        <span className="h-11 w-11" aria-hidden />
+      </div>
     </div>
   );
 }

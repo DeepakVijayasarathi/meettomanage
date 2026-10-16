@@ -189,6 +189,11 @@ export default {
         // Gentle bob for floating decorative badges (marketing hero) — small amplitude,
         // slow enough to read as "hovering" rather than distracting.
         float: { "0%, 100%": { transform: "translateY(0)" }, "50%": { transform: "translateY(-8px)" } },
+        // Marketing chat's AI orb: a slowly turning gradient core, a breathing halo, and
+        // equalizer-style bars while it speaks.
+        "orb-spin": { from: { transform: "rotate(0deg)" }, to: { transform: "rotate(360deg)" } },
+        "orb-breathe": { "0%, 100%": { transform: "scale(1)", opacity: "0.55" }, "50%": { transform: "scale(1.12)", opacity: "0.9" } },
+        "orb-wave": { "0%, 100%": { transform: "scaleY(0.35)" }, "50%": { transform: "scaleY(1)" } },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -202,6 +207,9 @@ export default {
         "page-in": "page-in 0.28s cubic-bezier(0.16,1,0.3,1)",
         shimmer: "shimmer 1.8s ease-in-out infinite",
         float: "float 4s ease-in-out infinite",
+        "orb-spin": "orb-spin 6s linear infinite",
+        "orb-breathe": "orb-breathe 3.2s ease-in-out infinite",
+        "orb-wave": "orb-wave 0.9s ease-in-out infinite",
       },
     },
   },
