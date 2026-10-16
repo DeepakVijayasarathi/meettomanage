@@ -8,6 +8,10 @@ import { MarketingShell } from "@/features/marketingConsole/MarketingShell";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Logo } from "@/components/Logo";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { tenantPath } from "@/lib/tenantPath";
+const PlatformTenants = lazy(() => import("@/features/platform/Tenants"));
+const PlatformMenus = lazy(() => import("@/features/platform/Menus"));
+const PlatformConfiguration = lazy(() => import("@/features/platform/Configuration"));
 
 const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Store = lazy(() => import("@/features/marketing/Store"));
@@ -167,10 +171,14 @@ function RouteFallback() {
 export default function App() {
   return (
     <TooltipProvider delayDuration={200}>
-      <BrowserRouter>
+      <BrowserRouter basename={tenantPath() || undefined}>
         <AppErrorBoundary>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
+            <Route path="/platform/tenants" element={<PlatformTenants />} />
+            <Route path="/platform" element={<Navigate to="/platform/tenants" replace />} />
+            <Route path="/platform/menus" element={<PlatformMenus />} />
+            <Route path="/platform/configuration" element={<PlatformConfiguration />} />
             <Route path="/" element={<MarketingHome />} />
             <Route path="/store" element={<Store />} />
             <Route path="/demo" element={<Demo />} />

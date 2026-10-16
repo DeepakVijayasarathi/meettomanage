@@ -3,13 +3,14 @@
  * demo mode: screens keep their mock data and login skips the backend.
  */
 import { authStorage, clearAuthStorage, getViewAs } from "@/lib/authStorage";
+import { tenantPath } from "@/lib/tenantPath";
 
-const BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+const BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "") + tenantPath();
 
 const TOKEN_KEY = "trn.accessToken";
 
 export function apiEnabled(): boolean {
-  return BASE_URL.length > 0;
+  return (import.meta.env.VITE_API_BASE_URL ?? "").length > 0;
 }
 
 export function getAccessToken(): string | null {
