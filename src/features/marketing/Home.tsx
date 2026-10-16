@@ -788,7 +788,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
                   <button
                     type="button"
                     onClick={bookDemo}
-                    className="flex items-center gap-1.5 bg-[#F97316] px-3 py-2 text-xs font-bold text-[#171B22] transition-colors hover:bg-[#FB8B3C]"
+                    className="flex items-center gap-1.5 bg-[#EA580C] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[#C2410C]"
                   >
                     <CalendarCheck2 className="h-3.5 w-3.5" /> {t.leadCta}
                   </button>
@@ -857,7 +857,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
                     <button
                       type="submit"
                       disabled={leadStatus === "sending"}
-                      className="flex h-10 items-center justify-center gap-2 bg-[#F97316] text-sm font-bold text-[#171B22] transition-colors hover:bg-[#FB8B3C] disabled:opacity-60"
+                      className="flex h-10 items-center justify-center gap-2 bg-[#EA580C] text-sm font-bold text-white transition-colors hover:bg-[#C2410C] disabled:opacity-60"
                     >
                       {leadStatus === "sending" ? (
                         <>
@@ -873,7 +873,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
                     <button
                       type="button"
                       onClick={openLead}
-                      className="flex h-10 flex-1 items-center justify-center bg-[#F97316] text-sm font-bold text-[#171B22] transition-colors hover:bg-[#FB8B3C]"
+                      className="flex h-10 flex-1 items-center justify-center bg-[#EA580C] text-sm font-bold text-white transition-colors hover:bg-[#C2410C]"
                     >
                       {t.leadCta}
                     </button>
@@ -941,7 +941,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
               type="submit"
               disabled={pending || !draft.trim()}
               aria-label={t.sendAria}
-              className="flex h-11 w-11 shrink-0 items-center justify-center bg-[#F97316] text-[#171B22] transition-colors hover:bg-[#FB8B3C] disabled:opacity-50"
+              className="flex h-11 w-11 shrink-0 items-center justify-center bg-[#EA580C] text-white transition-colors hover:bg-[#C2410C] disabled:opacity-50"
             >
               <Send className="h-4 w-4 rtl:-scale-x-100" />
             </button>
@@ -996,7 +996,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
           onClick={toggle}
           aria-label={t.toggleAria(true)}
           aria-expanded
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F97316] text-[#171B22] shadow-pop transition-transform hover:scale-105"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-[#EA580C] text-white shadow-pop transition-transform hover:scale-105"
         >
           <X className="h-5 w-5" />
         </button>
@@ -1006,7 +1006,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
           onClick={toggle}
           aria-label={t.toggleAria(false)}
           aria-expanded={false}
-          className="relative flex h-14 items-center gap-2.5 rounded-full bg-[#F97316] p-2 text-sm font-bold text-[#171B22] shadow-pop transition-transform hover:scale-[1.03] sm:pe-5"
+          className="relative flex h-14 items-center gap-2.5 rounded-full bg-[#EA580C] p-2 text-sm font-bold text-white shadow-pop transition-transform hover:scale-[1.03] sm:pe-5"
         >
           <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[#0D1024] text-[#F97316]">
             {/* Ping ring until the visitor has opened the chat once — after that they know where it is. */}
@@ -1135,7 +1135,7 @@ function DemoPopup({ lang, suppressed }: { lang: Lang; suppressed: boolean }) {
         <h2 className="font-display mt-4 text-xl font-extrabold tracking-tight text-[#171B22]">{t.heading}</h2>
         <p className="mt-2 text-sm leading-relaxed text-[#5B6472]">{t.sub}</p>
         <div className="mt-5">
-          <Button asChild size="lg" className="w-full !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
+          <Button asChild size="lg" className="w-full !bg-[#EA580C] !text-white hover:!bg-[#C2410C]">
             <Link to="/get-started" onClick={() => setOpen(false)}>
               {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
             </Link>
@@ -1894,7 +1894,7 @@ export default function MarketingHome() {
             <Button asChild variant="outline" className="border-[#171B22]/15 px-2.5 text-[#171B22] hover:bg-[#171B22]/5 sm:px-4">
               <Link to="/login">{t.signIn}</Link>
             </Button>
-            <Button asChild className="!bg-[#F97316] px-3 !text-[#171B22] hover:!bg-[#EA580C] sm:px-4">
+            <Button asChild className="!bg-[#EA580C] px-3 !text-white hover:!bg-[#C2410C] sm:px-4">
               <Link to="/get-started">
                 <span className="sm:hidden">{t.demoShort}</span>
                 <span className="hidden sm:inline">{t.requestDemo}</span>

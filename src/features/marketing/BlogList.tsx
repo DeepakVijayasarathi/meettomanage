@@ -92,7 +92,7 @@ export default function BlogList() {
                 <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /> {t.backHome}
               </Link>
             </Button>
-            <Button asChild className="!bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
+            <Button asChild className="!bg-[#EA580C] !text-white hover:!bg-[#C2410C]">
               <Link to="/login">
                 {t.signIn} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
               </Link>

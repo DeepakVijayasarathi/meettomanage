@@ -140,7 +140,7 @@ export default function Store() {
                 <ArrowLeft className="h-4 w-4" /> Back home
               </Link>
             </Button>
-            <Button asChild className="!bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
+            <Button asChild className="!bg-[#EA580C] !text-white hover:!bg-[#C2410C]">
               <Link to="/login">
                 Sign In <ArrowRight className="h-4 w-4" />
               </Link>
@@ -232,7 +232,7 @@ export default function Store() {
                   ? "Our admission team will reach out within a day to complete your enrollment."
                   : "Demo mode — no enquiry was actually sent."}
               </p>
-              <Button className="mt-6 !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]" onClick={() => setSelectedPlan(null)}>
+              <Button className="mt-6 !bg-[#EA580C] !text-white hover:!bg-[#C2410C]" onClick={() => setSelectedPlan(null)}>
                 Done
               </Button>
             </div>
@@ -307,7 +307,7 @@ export default function Store() {
                   <Textarea id="notes" rows={2} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
                 </div>
                 {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
-                <Button type="submit" disabled={submitting} className="mt-1 w-full !bg-[#F97316] !text-[#171B22] hover:!bg-[#EA580C]">
+                <Button type="submit" disabled={submitting} className="mt-1 w-full !bg-[#EA580C] !text-white hover:!bg-[#C2410C]">
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Enquiry"}
                 </Button>
               </form>
