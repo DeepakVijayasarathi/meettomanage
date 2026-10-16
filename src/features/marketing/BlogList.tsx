@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, BookOpen, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -10,15 +11,13 @@ import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { MarketingHero } from "./MarketingHero";
-import { ARROW_LINK } from "./styles";
+import { ARROW_LINK, CTA_ORANGE, FOCUS_RING } from "./styles";
+import { PostCard, PostCover, TopicChip } from "./blogMeta";
+import { TOPIC_ORDER, formatDate, topicOf, type BlogTopic } from "./blogTopics";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listBlogPosts, type ApiBlogPostSummary } from "@/api/marketing";
 import { DEMO_BLOG_SUMMARIES } from "@/data/blogPosts";
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
-}
 
 /** Page chrome only — the posts themselves (title/excerpt/body, from listBlogPosts()/
  *  DEMO_BLOG_SUMMARIES and BlogPost.tsx) are real editorial content, not UI copy, and stay
@@ -37,6 +36,12 @@ const T = {
     emptyDescription: "Check back soon — we're working on the first one.",
     readMinutes: (n: number) => `${n} min read`,
     readMore: "Read more",
+    all: "All",
+    latest: "Latest",
+    filterAria: "Filter posts by topic",
+    ctaHeading: "See it running in your own academy",
+    ctaSub: "A free 30-minute walkthrough of scheduling, admissions and billing working together — no payment details required.",
+    requestDemo: "Book a free demo",
     rights: (year: number) => `© ${year} Meet to Manage. All rights reserved.`,
   },
   ar: {
@@ -51,6 +56,12 @@ const T = {
     emptyDescription: "تفقّد الصفحة قريبًا — نعمل على أول مقالة.",
     readMinutes: (n: number) => `${n} دقيقة قراءة`,
     readMore: "اقرأ المزيد",
+    all: "الكل",
+    latest: "الأحدث",
+    filterAria: "تصفية المقالات حسب الموضوع",
+    ctaHeading: "شاهدها وهي تعمل في أكاديميتك",
+    ctaSub: "جولة مجانية مدتها 30 دقيقة في الجدولة والقبول والفوترة معًا — دون الحاجة لبيانات دفع.",
+    requestDemo: "احجز عرضًا مجانيًا",
     rights: (year: number) => `© ${year} Meet to Manage. جميع الحقوق محفوظة.`,
   },
 };
@@ -62,6 +73,10 @@ export default function BlogList() {
   const t = T[lang];
   const { data: posts, loading, error, reload } = useApiData<ApiBlogPostSummary[]>(() => listBlogPosts(), DEMO_BLOG_SUMMARIES);
   const sorted = [...posts].sort((a, b) => b.publishedAtUtc.localeCompare(a.publishedAtUtc));
+  const [topic, setTopic] = useState<BlogTopic | null>(null);
+  const topics = TOPIC_ORDER.filter((tp) => sorted.some((p) => topicOf(p) === tp));
+  const visible = topic ? sorted.filter((p) => topicOf(p) === topic) : sorted;
+  const [featured, ...rest] = visible;
 
   return (
     <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#171B22]">
@@ -73,7 +88,7 @@ export default function BlogList() {
       />
 
       <header className="sticky top-0 z-30 border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link to="/" aria-label="Meet to Manage home">
             <Logo wordmarkClassName="mix-blend-multiply" />
           </Link>
@@ -106,7 +121,7 @@ export default function BlogList() {
 
       <MarketingHero eyebrow={t.eyebrow} title={t.heading} sub={t.sub} />
 
-      <section className="mx-auto max-w-[870px] px-5 py-[clamp(48px,6vw,88px)]">
+      <section className="mx-auto max-w-[1200px] px-5 py-[clamp(40px,5vw,72px)]">
         {live && error && (
           <InlineAlert variant="warning" className="mb-8">
             {t.loadError(error)}{" "}
@@ -123,27 +138,84 @@ export default function BlogList() {
         ) : sorted.length === 0 ? (
           <EmptyState className="rounded-none" icon={BookOpen} title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
-          <div className="divide-y divide-[#D9E1F0]">
-            {sorted.map((post) => (
-              <Link key={post.slug} to={`/blog/${post.slug}`} className="group block py-9 first:pt-0">
-                <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#6B7280] rtl:tracking-normal">
-                  {formatDate(post.publishedAtUtc)} · {t.readMinutes(post.readMinutes)}
-                </p>
-                <h2 className="font-display mt-3 text-[clamp(1.5rem,2.4vw,2.125rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#111] group-hover:text-[#C2410C] rtl:tracking-normal">
-                  {post.title}
-                </h2>
-                <p className="mt-3 max-w-2xl text-base leading-relaxed text-[#333]">{post.excerpt}</p>
-                <span className={cn(ARROW_LINK, "mt-5")}>
-                  {t.readMore} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 rtl:-scale-x-100 rtl:group-hover:-translate-x-1" />
-                </span>
+          <>
+            {topics.length > 1 && (
+              <div role="group" aria-label={t.filterAria} className="mb-10 flex flex-wrap justify-center gap-2">
+                {[null, ...topics].map((tp) => (
+                  <button
+                    key={tp ?? "all"}
+                    type="button"
+                    onClick={() => setTopic(tp)}
+                    aria-pressed={topic === tp}
+                    className={cn(
+                      "border px-4 py-2 text-sm font-semibold transition-colors",
+                      FOCUS_RING,
+                      topic === tp ? "border-[#111] bg-[#111] text-white" : "border-[#D9E1F0] bg-white text-[#333] hover:border-[#F97316] hover:text-[#C2410C]"
+                    )}
+                  >
+                    {tp ?? t.all}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {featured && (
+              <Link
+                to={`/blog/${featured.slug}`}
+                className={cn(
+                  "group grid overflow-hidden border border-[#E6EAF2] bg-white transition-shadow hover:shadow-[0_24px_60px_-24px_rgba(17,17,17,0.3)] lg:grid-cols-2",
+                  FOCUS_RING
+                )}
+              >
+                <PostCover topic={topicOf(featured)} large className="min-h-[220px] lg:min-h-[340px]" />
+                <div className="flex flex-col justify-center p-7 sm:p-10">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="bg-[#111] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white rtl:tracking-normal">{t.latest}</span>
+                    <TopicChip topic={topicOf(featured)} />
+                  </div>
+                  <h2 className="font-display mt-5 text-[clamp(1.625rem,2.8vw,2.375rem)] font-extrabold leading-[1.15] tracking-[-0.02em] text-[#111] group-hover:text-[#C2410C] rtl:tracking-normal">
+                    {featured.title}
+                  </h2>
+                  <p className="mt-4 text-base leading-relaxed text-[#444]">{featured.excerpt}</p>
+                  <p className="mt-5 flex items-center gap-1.5 text-xs font-semibold text-[#6B7280]">
+                    {formatDate(featured.publishedAtUtc)} <span aria-hidden>·</span>
+                    <Clock className="h-3.5 w-3.5" /> {t.readMinutes(featured.readMinutes)}
+                  </p>
+                  <span className={cn(ARROW_LINK, "mt-4 self-start")}>
+                    {t.readMore} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 rtl:-scale-x-100 rtl:group-hover:-translate-x-1" />
+                  </span>
+                </div>
               </Link>
-            ))}
-          </div>
+            )}
+
+            {rest.length > 0 && (
+              <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {rest.map((post) => (
+                  <PostCard key={post.slug} post={post} readMinutes={t.readMinutes} />
+                ))}
+              </div>
+            )}
+
+            <div className="relative mt-16 overflow-hidden bg-[#0D1024] px-6 py-12 text-center text-white sm:px-12">
+              <div
+                className="absolute inset-0 opacity-60"
+                style={{ background: "radial-gradient(50% 80% at 0% 0%, rgba(249,115,22,0.35), transparent 70%), radial-gradient(50% 80% at 100% 100%, rgba(124,92,252,0.4), transparent 70%)" }}
+                aria-hidden
+              />
+              <div className="relative">
+                <h2 className="font-display text-[clamp(1.5rem,2.6vw,2.25rem)] font-extrabold leading-tight tracking-[-0.02em] rtl:tracking-normal">{t.ctaHeading}</h2>
+                <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-white/80">{t.ctaSub}</p>
+                <Link to="/get-started" className={cn(CTA_ORANGE, "mt-7")}>
+                  {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+                </Link>
+              </div>
+            </div>
+          </>
         )}
       </section>
 
       <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
-        <div className="mx-auto flex max-w-4xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-start">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-start">
           <Logo imgClassName="h-11 w-11" wordmarkClassName="mix-blend-multiply" />
           <p className="text-xs font-medium text-[#5B6472]">{t.rights(new Date().getFullYear())}</p>
         </div>
