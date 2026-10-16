@@ -1363,120 +1363,6 @@ function VoicePanel({
   );
 }
 
-/** Session key so a visitor sees this at most once per browser session, not every page load. */
-const DEMO_POPUP_SEEN_KEY = "trn.demoPopup.seen";
-
-const DEMO_POPUP_T = {
-  en: {
-    dialogAria: "Book a demo",
-    closeAria: "Close",
-    heading: "Before you go — see it running",
-    sub: "A 30-minute walkthrough for academy owners — no payment details required.",
-    requestDemo: "Request a Demo",
-  },
-  ar: {
-    dialogAria: "احجز عرضًا توضيحيًا",
-    closeAria: "إغلاق",
-    heading: "قبل أن تغادر — شاهدها وهي تعمل",
-    sub: "جولة مدتها 30 دقيقة لأصحاب الأكاديميات — دون الحاجة لبيانات دفع.",
-    requestDemo: "اطلب عرضًا توضيحيًا",
-  },
-};
-
-/**
- * A one-time nudge toward requesting a platform demo. Desktop: exit-intent (mouse leaves
- * the top of the viewport, the classic signal a visitor is about to close the tab or switch
- * away). Mobile has no mouse to read exit-intent from, so it falls back to a 25s on-page
- * timer instead. Either way it fires once per session (sessionStorage, not localStorage —
- * a genuinely new visit gets one shot at this again). Never fires once the visitor has opened
- * the chat assistant: they're already engaged, and the modal was landing on top of an
- * in-progress conversation.
- */
-function DemoPopup({ lang, suppressed }: { lang: Lang; suppressed: boolean }) {
-  const [open, setOpen] = useState(false);
-  const t = DEMO_POPUP_T[lang];
-
-  useEffect(() => {
-    if (suppressed) {
-      setOpen(false);
-      return;
-    }
-    let seen = false;
-    try {
-      seen = sessionStorage.getItem(DEMO_POPUP_SEEN_KEY) === "1";
-    } catch {
-      /* sessionStorage unavailable (private mode, etc.) — just skip the one-time gate */
-    }
-    if (seen) return;
-
-    function trigger() {
-      setOpen(true);
-      try {
-        sessionStorage.setItem(DEMO_POPUP_SEEN_KEY, "1");
-      } catch {
-        /* nothing to persist to — the popup still shows for this page view either way */
-      }
-    }
-
-    function handleMouseLeave(e: MouseEvent) {
-      if (e.clientY <= 0) trigger();
-    }
-
-    // Exit-intent only arms after a few seconds on the page — attaching it immediately
-    // was firing on completely ordinary interactions right after load (clicking the nav,
-    // glancing at the address bar), not genuine "about to leave" behavior.
-    const armTimer = window.setTimeout(() => {
-      document.addEventListener("mouseleave", handleMouseLeave);
-    }, 5_000);
-    // Touch-only: on desktop, exit-intent above is the signal; a timer there just
-    // interrupted visitors who were still reading (or chatting).
-    const fallbackTimer = window.matchMedia("(hover: none)").matches ? window.setTimeout(trigger, 25_000) : undefined;
-    return () => {
-      window.clearTimeout(armTimer);
-      document.removeEventListener("mouseleave", handleMouseLeave);
-      window.clearTimeout(fallbackTimer);
-    };
-  }, [suppressed]);
-
-  if (!open) return null;
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={t.dialogAria}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      onClick={() => setOpen(false)}
-    >
-      <div
-        className="relative w-full max-w-sm bg-white p-7 shadow-pop"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          aria-label={t.closeAria}
-          className="absolute right-4 top-4 text-[#6B7280] transition-colors hover:text-[#171B22] rtl:right-auto rtl:left-4"
-        >
-          <X className="h-4 w-4" />
-        </button>
-        <span className="flex h-12 w-12 items-center justify-center bg-[#FFF3EA] text-[#EA580C]">
-          <Sparkles className="h-5 w-5" />
-        </span>
-        <h2 className="font-display mt-4 text-xl font-extrabold tracking-tight text-[#171B22]">{t.heading}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-[#5B6472]">{t.sub}</p>
-        <div className="mt-5">
-          <Button asChild size="lg" className="w-full !bg-[#EA580C] !text-white hover:!bg-[#C2410C]">
-            <Link to="/get-started" onClick={() => setOpen(false)}>
-              {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
-            </Link>
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /** Official Product Hunt "featured" badge for this exact launch post (post_id 1238365) — a
     live SVG that shows the real, current upvote count rather than a static image, from
     Product Hunt's own "Embed" dialog for this post. The href carries PH's own badge-campaign
@@ -1486,7 +1372,7 @@ const PRODUCT_HUNT_BADGE_HREF =
 const PRODUCT_HUNT_BADGE_SRC = "https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1238365&theme=light";
 
 /** Session key so a visitor who dismisses the launch banner doesn't see it again for the rest
-    of that browser session (same one-shot pattern as DEMO_POPUP_SEEN_KEY above). */
+    of that browser session (sessionStorage, so a genuinely new visit shows it again). */
 const LAUNCH_BANNER_DISMISSED_KEY = "trn.launchBanner.dismissed";
 
 const LAUNCH_BANNER_T = {
@@ -2163,7 +2049,6 @@ export default function MarketingHome() {
   const brand = useBrand();
   const [lang] = useLang();
   const t = T[lang];
-  const [chatEngaged, setChatEngaged] = useState(false);
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("All");
 
   const features = FEATURES[lang];
@@ -2851,8 +2736,7 @@ export default function MarketingHome() {
         </div>
       </footer>
 
-      <ChatWidget lang={lang} onOpen={() => setChatEngaged(true)} />
-      <DemoPopup lang={lang} suppressed={chatEngaged} />
+      <ChatWidget lang={lang} />
     </div>
   );
 }
