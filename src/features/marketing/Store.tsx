@@ -187,7 +187,7 @@ export default function Store() {
           <div className={cn(HERO_OVERLAP, "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3")}>
             {plans.map((plan) => (
               <div key={plan.id} className={cn(CARD, "flex flex-col p-8")}>
-                <span className="flex h-12 w-12 items-center justify-center bg-[#0D1024] text-[#F97316]">
+                <span className="flex h-12 w-12 items-center justify-center bg-[#FFF3EA] text-[#EA580C]">
                   <GraduationCap className="h-6 w-6" />
                 </span>
                 <h2 className="font-display mt-5 text-xl font-extrabold leading-snug tracking-[-0.02em] text-[#111]">{plan.name}</h2>

@@ -11,11 +11,11 @@ interface MarketingHeroProps {
   children?: React.ReactNode;
 }
 
-/** The dark, centered page header every marketing sub-page opens with — the same stage as
+/** The light, centered page header every marketing sub-page opens with — the same stage as
  *  the homepage hero, at a smaller scale. */
 export function MarketingHero({ eyebrow, title, sub, overlap, children }: MarketingHeroProps) {
   return (
-    <section className="relative overflow-hidden text-white" style={{ background: HERO_BG }}>
+    <section className="relative overflow-hidden border-b border-[#F1E6DC] text-[#111]" style={{ background: HERO_BG }}>
       <div
         className={cn(
           "mx-auto max-w-[1280px] px-5 pt-[clamp(48px,6vw,88px)] text-center",
@@ -23,14 +23,14 @@ export function MarketingHero({ eyebrow, title, sub, overlap, children }: Market
         )}
       >
         {eyebrow && (
-          <div className="inline-flex items-center gap-1.5 rounded-[10px] bg-white/[0.08] px-3.5 py-2 text-xs font-semibold text-white/80">
+          <div className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#F97316]/25 bg-white px-3.5 py-2 text-xs font-semibold text-[#C2410C]">
             {eyebrow}
           </div>
         )}
         <h1 className="font-display mx-auto mt-5 max-w-[22ch] text-[clamp(2.25rem,4.4vw,4rem)] font-extrabold leading-[1.08] tracking-[-0.03em] rtl:tracking-normal">
           {title}
         </h1>
-        {sub && <p className="mx-auto mt-5 max-w-2xl text-[clamp(1rem,1.4vw,1.1875rem)] leading-relaxed text-white/75">{sub}</p>}
+        {sub && <p className="mx-auto mt-5 max-w-2xl text-[clamp(1rem,1.4vw,1.1875rem)] leading-relaxed text-[#333]">{sub}</p>}
         {children}
       </div>
     </section>

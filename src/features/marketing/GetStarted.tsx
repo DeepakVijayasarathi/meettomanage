@@ -215,7 +215,7 @@ export default function GetStarted() {
         <div className="border-t border-[#D9E1F0] bg-[#F8F9FB] p-8 sm:p-12 lg:border-s lg:border-t-0">
           {submitted ? (
             <div className="flex flex-col items-center py-6 text-center">
-              <span className="mb-4 flex h-12 w-12 items-center justify-center bg-[#0D1024] text-[#F97316]">
+              <span className="mb-4 flex h-12 w-12 items-center justify-center bg-[#FFF3EA] text-[#EA580C]">
                 <CheckCircle2 className="h-6 w-6" />
               </span>
               <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{t.thanksHeading}</h2>

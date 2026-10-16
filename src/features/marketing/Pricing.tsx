@@ -235,11 +235,11 @@ const T = {
   },
 };
 
-/** Toggle-pill group for currency and billing cycle — sits inside the dark hero, so it's the
- *  glass-on-navy version of the homepage's category filter rather than a new control style. */
+/** Toggle-pill group for currency and billing cycle — sits inside the hero, styled like the
+ *  homepage's category filter rather than a new control style. */
 function ToggleGroup<V extends string>({ options, value, onChange }: { options: { value: V; label: string }[]; value: V; onChange: (v: V) => void }) {
   return (
-    <div role="tablist" className="inline-flex gap-1 rounded-[10px] bg-white/[0.08] p-1">
+    <div role="tablist" className="inline-flex gap-1 rounded-[10px] border border-[#D9E1F0] bg-white p-1">
       {options.map((opt) => {
         const active = opt.value === value;
         return (
@@ -251,7 +251,7 @@ function ToggleGroup<V extends string>({ options, value, onChange }: { options: 
             onClick={() => onChange(opt.value)}
             className={cn(
               "rounded-[8px] px-4 py-2 text-xs font-semibold transition-colors",
-              active ? "bg-white text-[#111]" : "text-white/70 hover:text-white"
+              active ? "bg-[#111] text-white" : "text-[#5B6472] hover:text-[#111]"
             )}
           >
             {opt.label}
@@ -286,7 +286,7 @@ function PlanCard({ icon: Icon, eyebrow, name, price, priceNote, description, fe
           {mostFlexibleLabel}
         </span>
       )}
-      <span className="flex h-12 w-12 items-center justify-center bg-[#0D1024] text-[#F97316]">
+      <span className="flex h-12 w-12 items-center justify-center bg-[#FFF3EA] text-[#EA580C]">
         <Icon className="h-6 w-6" />
       </span>
       <p className="mt-5 text-xs font-bold uppercase tracking-[0.08em] text-[#C2410C]">{eyebrow}</p>
@@ -410,7 +410,7 @@ export default function Pricing() {
           <div className="mx-auto mt-8 max-w-2xl overflow-x-auto border border-[#D9E1F0]">
             <table className="w-full min-w-[420px] border-collapse text-sm">
               <thead>
-                <tr className="bg-[#0D1024] text-start text-xs font-bold uppercase tracking-[0.06em] text-white/80">
+                <tr className="bg-[#FFF3EA] text-start text-xs font-bold uppercase tracking-[0.06em] text-[#9A3412]">
                   <th className="px-6 py-4 text-start">{t.volumeColStudents}</th>
                   <th className="px-6 py-4 text-end">{t.volumeColRate}</th>
                 </tr>

@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
 import { MarketingHero } from "./MarketingHero";
-import { CTA_ORANGE, DARK_BAND_BG, EYEBROW } from "./styles";
+import { CTA_ORANGE, SOFT_BAND_BG, EYEBROW } from "./styles";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getBlogPost, listBlogPosts, type ApiBlogPostDetail, type ApiBlogPostSummary } from "@/api/marketing";
@@ -163,9 +163,9 @@ export default function BlogPost() {
               )}
             </div>
 
-            <div className="mt-16 px-6 py-12 text-center sm:px-12" style={{ background: DARK_BAND_BG }}>
-              <h3 className="font-display text-[clamp(1.5rem,2.4vw,2.125rem)] font-extrabold leading-tight tracking-[-0.02em] text-white rtl:tracking-normal">{t.ctaHeading}</h3>
-              <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-white/75">{t.ctaSub}</p>
+            <div className="mt-16 border border-[#F1E6DC] px-6 py-12 text-center sm:px-12" style={{ background: SOFT_BAND_BG }}>
+              <h3 className="font-display text-[clamp(1.5rem,2.4vw,2.125rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#111] rtl:tracking-normal">{t.ctaHeading}</h3>
+              <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-[#333]">{t.ctaSub}</p>
               <Link to="/get-started" className={`${CTA_ORANGE} mt-7`}>
                 {t.requestDemo}
               </Link>

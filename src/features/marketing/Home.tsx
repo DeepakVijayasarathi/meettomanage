@@ -59,12 +59,13 @@ import {
   CTA_DARK,
   CTA_GHOST,
   CTA_ORANGE,
-  DARK_BAND_BG,
+  SOFT_BAND_BG,
   EYEBROW,
   FAQ_BG,
   GRADIENT_TEXT,
   H2,
   HERO_BG,
+  ICON_TILE,
   LEAD,
   READY_BG,
   ROUND_ARROW,
@@ -678,14 +679,14 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
           aria-label={t.heading}
           className="flex h-[min(580px,calc(100dvh-7rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col border border-[#D9E1F0] bg-white shadow-pop"
         >
-          <div className="flex items-center gap-3 bg-[#0D1024] px-4 py-3.5 text-white">
-            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white">
+          <div className="flex items-center gap-3 border-b border-[#F1E6DC] px-4 py-3.5 text-[#111]" style={{ background: HERO_BG }}>
+            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-[#F97316]/20">
               <img src="/logo-icon.png" alt="" className="h-6 w-6 object-contain" />
-              <span aria-hidden className="absolute -bottom-0.5 -end-0.5 h-3 w-3 rounded-full border-2 border-[#0D1024] bg-[#22C55E]" />
+              <span aria-hidden className="absolute -bottom-0.5 -end-0.5 h-3 w-3 rounded-full border-2 border-white bg-[#22C55E]" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold">{t.heading}</p>
-              <p className="truncate text-xs text-[#86EFAC]">{t.online}</p>
+              <p className="truncate text-xs font-medium text-[#15803D]">{t.online}</p>
             </div>
             {canSpeak && (
               <button
@@ -697,12 +698,12 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
                 aria-label={speakReplies ? t.speakOff : t.speakOn}
                 aria-pressed={speakReplies}
                 title={speakReplies ? t.speakOff : t.speakOn}
-                className={cn("p-1.5 transition-colors hover:text-white", speakReplies ? "text-[#F97316]" : "text-white/60")}
+                className={cn("p-1.5 transition-colors hover:text-[#111]", speakReplies ? "text-[#EA580C]" : "text-[#6B7280]")}
               >
                 {speakReplies ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
               </button>
             )}
-            <button type="button" onClick={() => setOpen(false)} aria-label={t.closeAria} className="p-1.5 text-white/60 transition-colors hover:text-white">
+            <button type="button" onClick={() => setOpen(false)} aria-label={t.closeAria} className="p-1.5 text-[#6B7280] transition-colors hover:text-[#111]">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -818,7 +819,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
             {offerLead && (
               <div className="border border-[#F97316]/50 bg-white p-4 shadow-[0_8px_24px_-12px_rgba(249,115,22,0.35)]">
                 <div className="flex items-start gap-2.5">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#0D1024] text-[#F97316]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#FFF3EA] text-[#EA580C]">
                     <CalendarCheck2 className="h-4 w-4" />
                   </span>
                   <div>
@@ -1128,7 +1129,7 @@ function DemoPopup({ lang, suppressed }: { lang: Lang; suppressed: boolean }) {
         >
           <X className="h-4 w-4" />
         </button>
-        <span className="flex h-12 w-12 items-center justify-center bg-[#0D1024] text-[#F97316]">
+        <span className="flex h-12 w-12 items-center justify-center bg-[#FFF3EA] text-[#EA580C]">
           <Sparkles className="h-5 w-5" />
         </span>
         <h2 className="font-display mt-4 text-xl font-extrabold tracking-tight text-[#171B22]">{t.heading}</h2>
@@ -1710,6 +1711,8 @@ const T = {
     watchEyebrow: "Watch",
     watchHeading: "See it replace five apps with one",
     watchSub: (brand: string) => `A quick walkthrough of scheduling, portals and reporting inside ${brand}.`,
+    builtFor: "Built for",
+    audienceChips: ["Academies", "Coaching institutes", "Schools", "Tutors", "Coaches & creators", "Counselors & mentors"],
     painEyebrow: (brand: string) => `The old way vs. ${brand}`,
     painHeading: "You didn't start an academy to manage five different apps.",
     painSub: (brand: string) => `${brand} replaces the spreadsheet, the WhatsApp group and the sticky notes — one system, already talking to itself.`,
@@ -1776,6 +1779,8 @@ const T = {
     watchEyebrow: "شاهد",
     watchHeading: "شاهد كيف يستبدل خمسة تطبيقات بواحد",
     watchSub: (brand: string) => `جولة سريعة على الجدولة والبوابات والتقارير داخل ${brand}.`,
+    builtFor: "مصمم لـ",
+    audienceChips: ["الأكاديميات", "معاهد التدريب", "المدارس", "المدرسون", "المدربون وصنّاع المحتوى", "المستشارون والموجّهون"],
     painEyebrow: (brand: string) => `الطريقة القديمة مقابل ${brand}`,
     painHeading: "لم تبدأ أكاديميتك لتُدير خمسة تطبيقات مختلفة.",
     painSub: (brand: string) => `تحلّ ${brand} محل جدول البيانات ومجموعة واتساب والملاحظات اللاصقة — نظام واحد يتواصل مع نفسه بالفعل.`,
@@ -1843,9 +1848,6 @@ export default function MarketingHome() {
     track.scrollBy({ left: direction * (rtl ? -1 : 1) * track.clientWidth * 0.8, behavior: "smooth" });
   }
 
-  const solutions = SOLUTIONS[lang];
-  const [solutionIndex, setSolutionIndex] = useState(0);
-  const solution = solutions[solutionIndex];
 
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -1906,13 +1908,13 @@ export default function MarketingHome() {
         </div>
       </header>
 
-      {/* Hero — dark, centered and oversized. The bottom padding is deliberately huge: the
+      {/* Hero — light, centered and oversized. The bottom padding is deliberately huge: the
           walkthrough video in the next section pulls itself up into it with a matching
-          negative margin, so the frame straddles the dark/white seam. Both values are the same
+          negative margin, so the frame straddles the hero/page seam. Both values are the same
           clamp() family, so the overlap holds at every width. */}
-      <section className="relative overflow-hidden text-white" style={{ background: HERO_BG }}>
+      <section className="relative overflow-hidden text-[#111]" style={{ background: HERO_BG }}>
         <div className="relative mx-auto max-w-[1280px] px-5 pb-[clamp(160px,25vw,350px)] pt-[clamp(56px,8vw,112px)] text-center">
-          <div className="motion-safe:animate-slide-up inline-flex items-center gap-1.5 rounded-[10px] bg-white/[0.08] px-3.5 py-2 text-xs font-semibold text-white/80">
+          <div className="motion-safe:animate-slide-up inline-flex items-center gap-1.5 rounded-[10px] border border-[#F97316]/25 bg-white px-3.5 py-2 text-xs font-semibold text-[#C2410C]">
             <Sparkles className="h-3.5 w-3.5 text-[#F97316]" />
             <span>
               {t.heroEyebrowPrefix} <CyclingWord words={t.heroEyebrowWords} /> {t.heroEyebrowSuffix}
@@ -1926,7 +1928,7 @@ export default function MarketingHome() {
             <span className={GRADIENT_TEXT}>{t.heroHeadingManage}</span> {t.heroHeadingTail}
           </h1>
           <p
-            className="motion-safe:animate-slide-up mx-auto mt-5 max-w-2xl text-[clamp(1rem,1.6vw,1.25rem)] leading-relaxed text-white/75"
+            className="motion-safe:animate-slide-up mx-auto mt-5 max-w-2xl text-[clamp(1rem,1.6vw,1.25rem)] leading-relaxed text-[#333]"
             style={{ animationDelay: "160ms", animationFillMode: "backwards" }}
           >
             {t.heroSub(brand.name)}
@@ -1951,31 +1953,32 @@ export default function MarketingHome() {
             style={{ animationDelay: "280ms", animationFillMode: "backwards" }}
           >
             {t.heroTrust.map((item) => (
-              <span key={item} className="flex items-center gap-1.5 text-xs font-semibold text-white/60">
+              <span key={item} className="flex items-center gap-1.5 text-xs font-semibold text-[#5B6472]">
                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#F97316]" /> {item}
               </span>
             ))}
           </div>
 
-          {/* Suggestion pills — the page's own FAQ questions, not invented prompts: each one
-              jumps to that answer and opens it, so the pill always delivers what it asks. */}
-          <div className="mt-9 flex flex-wrap justify-center gap-2.5">
-            {FAQS[lang].slice(0, 4).map((item, i) => (
+          {/* "Built for" — who this is for, answered before anything else; each chip jumps to
+              that audience's card in the Who-it's-for section below. */}
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-2.5">
+            <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#5B6472] rtl:tracking-normal">{t.builtFor}</span>
+            {SOLUTIONS[lang].map((audience, i) => (
               <a
-                key={item.q}
-                href={`#faq-${i}`}
-                onClick={() => setOpenFaq(i)}
-                className="rounded-[10px] bg-white/[0.08] px-4 py-3 text-xs text-white/70 transition-colors hover:bg-white/15 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F97316]"
+                key={audience.title}
+                href={`#audience-${i}`}
+                className="flex items-center gap-1.5 rounded-[10px] border border-[#D9E1F0] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#111] transition-colors hover:border-[#F97316] hover:text-[#C2410C] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F97316]"
               >
-                {item.q}
+                <audience.icon className="h-3.5 w-3.5 text-[#EA580C]" />
+                {t.audienceChips[i] ?? audience.title}
               </a>
             ))}
           </div>
 
-          <h2 className="font-display mx-auto mt-[clamp(40px,5vw,80px)] max-w-3xl text-[clamp(1.75rem,3vw,2.5rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#FDFDFD] rtl:tracking-normal">
+          <h2 className="font-display mx-auto mt-[clamp(40px,5vw,80px)] max-w-3xl text-[clamp(1.75rem,3vw,2.5rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#111] rtl:tracking-normal">
             {t.watchHeading}
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm text-white/60">{t.watchSub(brand.name)}</p>
+          <p className="mx-auto mt-3 max-w-xl text-sm text-[#5B6472]">{t.watchSub(brand.name)}</p>
         </div>
       </section>
 
@@ -1986,10 +1989,58 @@ export default function MarketingHome() {
       <section className="relative">
         <div className="mx-auto max-w-[1100px] px-5">
           <div
-            className="relative z-10 -mt-[clamp(100px,22vw,300px)] rounded-[22px] p-[2px] shadow-[0_40px_90px_-30px_rgba(13,16,36,0.55)]"
+            className="relative z-10 -mt-[clamp(100px,22vw,300px)] rounded-[22px] p-[2px] shadow-[0_40px_90px_-30px_rgba(124,92,252,0.45)]"
             style={{ background: ACCENT_GRADIENT }}
           >
             <ExplainerVideo />
+          </div>
+        </div>
+      </section>
+
+      {/* Who it's for — the product's real, evidenced audiences (academies, coaching institutes,
+          schools teaching online, tutors, coaches, counselors), all visible at once right under the
+          hero instead of one at a time further down. The hero's "Built for" chips land here. */}
+      <section id="solutions" className="scroll-mt-20 bg-white pb-[clamp(56px,6vw,96px)] pt-[clamp(72px,8vw,120px)]">
+        <div className="mx-auto max-w-[1160px] px-5">
+          <Reveal className="mx-auto max-w-[760px] text-center">
+            <p className={EYEBROW}>{t.solutionsEyebrow}</p>
+            <h2 className={cn(H2, "mt-4")}>{t.solutionsHeading}</h2>
+            <p className={cn(LEAD, "mt-5")}>{t.solutionsSub}</p>
+          </Reveal>
+
+          <div className="mt-12 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {SOLUTIONS[lang].map((audience, i) => (
+              <Reveal key={audience.title} delayMs={(i % 3) * 80}>
+                <div
+                  id={`audience-${i}`}
+                  className="flex h-full scroll-mt-28 flex-col border border-[#D9E1F0] bg-white p-7 shadow-[0_4px_20px_rgba(0,0,0,0.05)] transition-shadow hover:shadow-[0_24px_48px_-16px_rgba(249,115,22,0.25)] target:border-[#F97316] target:shadow-[0_24px_48px_-16px_rgba(249,115,22,0.35)]"
+                >
+                  <span className={cn(ICON_TILE, "h-12 w-12")}>
+                    <audience.icon className="h-6 w-6" />
+                  </span>
+                  <h3 className="font-display mt-5 text-xl font-extrabold leading-snug tracking-[-0.02em] text-[#111] rtl:tracking-normal">
+                    {audience.title}
+                  </h3>
+                  <p className="mt-3 flex-1 text-sm leading-relaxed text-[#333]">{audience.description}</p>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {audience.chips.map((chip) => (
+                      <span key={chip} className="rounded-[10px] bg-[#F6F1FF] px-3 py-1.5 text-xs font-semibold text-[#4C3A99]">
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+                  {audience.external ? (
+                    <a href={audience.ctaTo} target="_blank" rel="noopener noreferrer" className={cn(ARROW_LINK, "mt-4")}>
+                      {audience.ctaLabel} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+                    </a>
+                  ) : (
+                    <Link to={audience.ctaTo} className={cn(ARROW_LINK, "mt-4")}>
+                      {audience.ctaLabel} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+                    </Link>
+                  )}
+                </div>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
@@ -2091,18 +2142,18 @@ export default function MarketingHome() {
                   key={f.title}
                   className="flex w-[264px] shrink-0 snap-start flex-col border border-[#D9E1F0] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.05)]"
                 >
-                  <div className="relative flex h-44 items-center justify-center overflow-hidden bg-[#0D1024]">
+                  <div className="relative flex h-44 items-center justify-center overflow-hidden bg-[linear-gradient(160deg,#FFF7F0_0%,#F6F1FF_100%)]">
                     <div
                       aria-hidden="true"
                       className="absolute inset-x-0 -bottom-24 h-48"
                       style={{
-                        background: `radial-gradient(closest-side, ${i % 2 === 0 ? "rgba(249,115,22,0.55)" : "rgba(124,92,252,0.6)"}, transparent)`,
+                        background: `radial-gradient(closest-side, ${i % 2 === 0 ? "rgba(249,115,22,0.28)" : "rgba(124,92,252,0.26)"}, transparent)`,
                       }}
                     />
-                    <span className="absolute start-4 top-4 text-[10px] font-bold uppercase tracking-[0.08em] text-white/50">
+                    <span className="absolute start-4 top-4 text-[10px] font-bold uppercase tracking-[0.08em] text-[#9A3412]/70">
                       {CATEGORY_LABEL[lang][f.category]}
                     </span>
-                    <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20">
+                    <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white text-[#EA580C] shadow-[0_8px_24px_-8px_rgba(249,115,22,0.45)] ring-1 ring-[#F97316]/15">
                       <f.icon className="h-9 w-9" strokeWidth={1.6} />
                     </span>
                   </div>
@@ -2230,70 +2281,6 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* Solutions — real, evidenced sub-segments of the product's actual audience (tutoring
-          and coaching academies), not generic corporate-L&D or MOOC-creator verticals with no
-          evidence in this codebase. Presented one at a time in a white card on a dark band. */}
-      <section id="solutions" className="scroll-mt-20 py-[clamp(60px,8vw,120px)]" style={{ background: DARK_BAND_BG }}>
-        <div className="mx-auto max-w-[1200px] px-5">
-          <div className="mx-auto flex max-w-[1160px] flex-wrap gap-x-16 gap-y-10 bg-white px-[clamp(20px,5.3vw,80px)] py-[clamp(40px,4.4vw,60px)]">
-            <div className="w-full lg:max-w-[400px]">
-              <p className={EYEBROW}>{t.solutionsEyebrow}</p>
-              <h2 className="font-display mt-4 text-[clamp(1.75rem,3vw,2.5rem)] font-extrabold leading-[1.12] tracking-[-0.03em] text-[#111] rtl:tracking-normal">
-                {t.solutionsHeading}
-              </h2>
-              <p className="mt-4 text-sm leading-relaxed text-[#5B6472]">{t.solutionsSub}</p>
-              <div className="mt-8 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setSolutionIndex((i) => (i - 1 + solutions.length) % solutions.length)}
-                  aria-label={t.previous}
-                  className={cn(ROUND_ARROW, "h-12 w-12 border-0")}
-                >
-                  <ChevronLeft className="h-5 w-5 rtl:-scale-x-100" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSolutionIndex((i) => (i + 1) % solutions.length)}
-                  aria-label={t.next}
-                  className={cn(ROUND_ARROW, "h-12 w-12 border-0")}
-                >
-                  <ChevronRight className="h-5 w-5 rtl:-scale-x-100" />
-                </button>
-                <span className="ms-2 text-sm font-semibold tabular-nums text-[#6B7280]">
-                  {solutionIndex + 1} / {solutions.length}
-                </span>
-              </div>
-            </div>
-
-            <div key={solution.title} aria-live="polite" className="motion-safe:animate-fade-in min-w-0 flex-1 basis-[300px]">
-              <span className="flex h-12 w-12 items-center justify-center bg-[#111] text-white">
-                <solution.icon className="h-6 w-6" />
-              </span>
-              <h3 className="font-display mt-6 text-[clamp(1.25rem,2vw,1.6875rem)] font-extrabold leading-snug tracking-[-0.02em] text-[#111] rtl:tracking-normal">
-                {solution.title}
-              </h3>
-              <p className="mt-4 text-base leading-relaxed text-[#333] sm:text-lg">{solution.description}</p>
-              <div className="mt-6 flex flex-wrap gap-2">
-                {solution.chips.map((chip) => (
-                  <span key={chip} className="rounded-[10px] bg-[#EAEEF4] px-3 py-2 text-xs font-semibold text-[#333]">
-                    {chip}
-                  </span>
-                ))}
-              </div>
-              {solution.external ? (
-                <a href={solution.ctaTo} target="_blank" rel="noopener noreferrer" className={cn(ARROW_LINK, "mt-8")}>
-                  {solution.ctaLabel} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
-                </a>
-              ) : (
-                <Link to={solution.ctaTo} className={cn(ARROW_LINK, "mt-8")}>
-                  {solution.ctaLabel} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Security & integrations in one section — verified architectural facts only for
           security (no ISO/SOC2/GDPR claims, said plainly below rather than left ambiguous);
           the real, fixed set of channels this product ships with today for integrations, not
@@ -2310,7 +2297,7 @@ export default function MarketingHome() {
             {SECURITY_ITEMS[lang].map((item, i) => (
               <Reveal key={item.title} delayMs={(i % 2) * 80}>
                 <div className="flex h-full gap-5 border border-[#D9E1F0] bg-white p-7 shadow-[0_4px_20px_rgba(0,0,0,0.05)] sm:p-9">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center bg-[#0D1024] text-[#F97316]">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center bg-[#FFF3EA] text-[#EA580C]">
                     <item.icon className="h-6 w-6" />
                   </span>
                   <div>
@@ -2415,15 +2402,15 @@ export default function MarketingHome() {
 
       {/* Closing band. Sign-in stays reachable as a quiet text link for returning users,
           without competing for weight against the lead-gen action. */}
-      <section className="mt-[clamp(60px,6vw,100px)]" style={{ background: DARK_BAND_BG }}>
+      <section className="mt-[clamp(60px,6vw,100px)] border-y border-[#F1E6DC]" style={{ background: SOFT_BAND_BG }}>
         <Reveal className="mx-auto max-w-[1160px] px-5 py-[clamp(60px,8vw,120px)] text-center">
-          <h2 className={cn(H2, "mx-auto max-w-[900px] !text-white")}>{t.ctaHeading}</h2>
-          <p className="mx-auto mt-4 max-w-[801px] text-lg leading-[1.8] text-white/80">{t.ctaSub(brand.name)}</p>
+          <h2 className={cn(H2, "mx-auto max-w-[900px]")}>{t.ctaHeading}</h2>
+          <p className="mx-auto mt-4 max-w-[801px] text-lg leading-[1.8] text-[#333]">{t.ctaSub(brand.name)}</p>
           <Link to="/get-started" className={cn(CTA_ORANGE, "mt-[clamp(30px,3.3vw,50px)]")}>
             {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
           </Link>
           <div>
-            <Link to="/login" className="mt-3 inline-block py-3 text-xs font-semibold text-white/70 hover:text-white">
+            <Link to="/login" className="mt-3 inline-block py-3 text-xs font-semibold text-[#5B6472] hover:text-[#111]">
               {t.alreadyHaveAccount}
             </Link>
           </div>
@@ -2446,7 +2433,7 @@ export default function MarketingHome() {
                   href="mailto:info@infinityuniquers.com"
                   className="group flex items-center gap-2.5 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#0D1024] text-[#F97316] transition-colors group-hover:bg-[#262D37]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#FFF3EA] text-[#EA580C] transition-colors group-hover:bg-[#FFE4CC]">
                     <Mail className="h-4 w-4" />
                   </span>
                   info@infinityuniquers.com
@@ -2457,7 +2444,7 @@ export default function MarketingHome() {
                   href="tel:+919344773231"
                   className="group flex items-center gap-2.5 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#0D1024] text-[#F97316] transition-colors group-hover:bg-[#262D37]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#FFF3EA] text-[#EA580C] transition-colors group-hover:bg-[#FFE4CC]">
                     <Phone className="h-4 w-4" />
                   </span>
                   +91 93447 73231
@@ -2470,7 +2457,7 @@ export default function MarketingHome() {
                   rel="noopener noreferrer"
                   className="group flex items-center gap-2.5 text-sm font-medium text-[#5B6472] hover:text-[#EA580C]"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#0D1024] text-[#F97316] transition-colors group-hover:bg-[#262D37]">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#FFF3EA] text-[#EA580C] transition-colors group-hover:bg-[#FFE4CC]">
                     <MessageSquare className="h-4 w-4" />
                   </span>
                   {t.whatsappUs}
