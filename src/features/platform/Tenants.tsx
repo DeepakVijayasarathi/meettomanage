@@ -5,8 +5,8 @@ import PlatformShell, { usePlatformAdmin } from "./PlatformShell";
 import { platformRequest as request, type PlatformTenant as Tenant } from "@/api/platform";
 import { Building2, CheckCircle2, PauseCircle, AlertCircle, Settings2, ListTree } from "lucide-react";
 
-type Draft = { code: string; name: string; adminEmail: string; adminPin: string };
-const empty: Draft = { code: "", name: "", adminEmail: "", adminPin: "" };
+type Draft = { code: string; name: string; databaseName: string; adminEmail: string; adminPin: string };
+const empty: Draft = { code: "", name: "", databaseName: "", adminEmail: "", adminPin: "" };
 
 export default function Tenants() {
   return <PlatformShell><TenantManagement /></PlatformShell>;
@@ -33,8 +33,11 @@ function TenantManagement() {
   async function create(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
-      await request(retry ? `/tenants/${retry}/retry` : "/tenants", token, "POST", draft);
-      setNotice(`${draft.name} is ready. Its administrator can sign in using the email and PIN you supplied.`);
+      const body = { ...draft, databaseName: draft.databaseName.trim() || undefined };
+      const created = await request<{ status?: string }>(retry ? `/tenants/${retry}/retry` : "/tenants", token, "POST", body);
+      setNotice(created?.status === "Suspended"
+        ? `${draft.name} was linked to its existing database and migrated. It is Suspended: use "Sync imported logins", then activate it.`
+        : `${draft.name} is ready. Its administrator can sign in using the email and PIN you supplied.`);
       setDraft(empty); setRetry(null);
     } catch (err) { setError(err instanceof Error ? err.message : "Provisioning failed."); }
     finally { setBusy(false); await refresh(); }
@@ -70,8 +73,9 @@ function TenantManagement() {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1"><span>Client code</span><input required maxLength={50} pattern="[a-z][a-z0-9-]{2,49}" title="3–50 lowercase letters, numbers or hyphens; start with a letter" readOnly={!!retry} className={inputClass} value={draft.code} onChange={e => setDraft({ ...draft, code: e.target.value })} /></label>
           <label className="space-y-1"><span>Client name</span><input required maxLength={200} className={inputClass} value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} /></label>
-          <label className="space-y-1"><span>Administrator email</span><input type="email" required autoComplete="off" className={inputClass} value={draft.adminEmail} onChange={e => setDraft({ ...draft, adminEmail: e.target.value })} /></label>
-          <label className="space-y-1"><span>Initial four-digit PIN</span><input type="password" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} required autoComplete="new-password" className={inputClass} value={draft.adminPin} onChange={e => setDraft({ ...draft, adminPin: e.target.value })} /></label>
+          <label className="space-y-1 sm:col-span-2"><span>Existing database name (optional)</span><input maxLength={63} pattern="[a-z_][a-z0-9_]{0,62}" title="Lowercase letters, digits and underscores. Leave empty to create a new database." readOnly={!!retry} placeholder="Leave empty to create a new database" className={inputClass} value={draft.databaseName} onChange={e => setDraft({ ...draft, databaseName: e.target.value })} /><span className="block text-xs text-muted-foreground">If this database already exists on the server its data is kept and only missing migrations are applied; the client then starts Suspended.</span></label>
+          <label className="space-y-1"><span>Administrator email{draft.databaseName.trim() ? " (not used for an existing database)" : ""}</span><input type="email" required={!draft.databaseName.trim()} autoComplete="off" className={inputClass} value={draft.adminEmail} onChange={e => setDraft({ ...draft, adminEmail: e.target.value })} /></label>
+          <label className="space-y-1"><span>Initial four-digit PIN</span><input type="password" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} required={!draft.databaseName.trim()} autoComplete="new-password" className={inputClass} value={draft.adminPin} onChange={e => setDraft({ ...draft, adminPin: e.target.value })} /></label>
         </div>
         <button disabled={busy} className="rounded bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50">{busy ? "Setting up client…" : retry ? "Retry setup" : "Create client"}</button>
         {retry && <button type="button" disabled={busy} className="ml-4 underline" onClick={() => { setRetry(null); setDraft(empty); }}>Cancel retry</button>}
