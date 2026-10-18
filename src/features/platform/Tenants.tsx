@@ -51,8 +51,11 @@ function TenantManagement() {
   async function synchronize(tenant: Tenant) {
     setBusy(true); setError(""); setNotice("");
     try {
-      await request(`/tenants/${tenant.id}/synchronize-logins`, token, "POST");
-      setNotice(`Login directory synchronized for ${tenant.name}. You can activate this client when the import is ready.`);
+      const result = await request<{ skippedPhones?: string[] }>(`/tenants/${tenant.id}/synchronize-logins`, token, "POST");
+      const skipped = result?.skippedPhones ?? [];
+      setNotice(`Login directory synchronized for ${tenant.name}.`
+        + (skipped.length ? ` ${skipped.length} phone number${skipped.length === 1 ? " is" : "s are"} shared by several users and was left unregistered (those users can still sign in with their email): ${skipped.map(k => k.replace("phone:", "")).join(", ")}.` : "")
+        + " You can activate this client when the import is ready.");
     } catch (err) { setError(err instanceof Error ? err.message : "Could not synchronize logins."); }
     finally { setBusy(false); }
   }
