@@ -726,7 +726,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-8 w-8 text-red-700/90 hover:bg-destructive/15 hover:text-red-700"
+                className="h-8 w-8 text-call-danger-ink/90 hover:bg-destructive/15 hover:text-call-danger-ink"
                 title="Delete page"
                 aria-label="Delete page"
                 onClick={removePage}

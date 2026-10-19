@@ -49,7 +49,7 @@ export default function VideoTile({ participant, isSelf, canDrawBoard, pinned, o
         <div
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(120% 90% at 50% 35%, ${avatarColor}33 0%, #E8EBEF 70%), #E8EBEF`,
+            background: `radial-gradient(120% 90% at 50% 35%, ${avatarColor}33 0%, rgb(var(--call-raised)) 70%), rgb(var(--call-raised))`,
           }}
         />
       )}

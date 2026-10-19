@@ -24,7 +24,7 @@ export default function LeaderboardPanel({ leaderboard }: { leaderboard: Leaderb
                 <div className="h-full rounded-full" style={{ width: `${(entry.stars / top) * 100}%`, backgroundColor: entry.color }} />
               </div>
             </div>
-            <span className="flex items-center gap-1 text-sm font-semibold tabular-nums text-amber-700">
+            <span className="flex items-center gap-1 text-sm font-semibold tabular-nums text-call-warn">
               <Star className="h-4 w-4 fill-current" /> {entry.stars}
             </span>
           </li>

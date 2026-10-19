@@ -215,7 +215,7 @@ export default function GamificationOverlay({
               className="flex flex-1 items-center justify-between text-left hover:text-call-ink/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <span className="flex items-center gap-1.5 text-sm font-semibold text-call-ink">
-                <Trophy className="h-4 w-4 text-amber-700" /> Leaderboard
+                <Trophy className="h-4 w-4 text-call-warn" /> Leaderboard
               </span>
               {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
             </button>

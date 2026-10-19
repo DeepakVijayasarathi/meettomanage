@@ -24,6 +24,8 @@ import type { LeaderboardEntry } from "./classroomData";
 import { NativeJitsiApi } from "./native/NativeJitsiApi";
 import NativeStage from "./native/NativeStage";
 import { classroomEngine } from "./native/engine";
+import CallThemeToggle from "./CallThemeToggle";
+import { useTheme } from "@/lib/theme";
 
 // Fallback only — used for demo-mode/mock sessions and if the authorized
 // /jitsi-join lookup fails. Real sessions get their domain from that endpoint
@@ -185,6 +187,8 @@ export default function JitsiLive({
   onLeave?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // The logo's dark figure disappears on the dark header; its "light" variant sits on a white tile.
+  const { isDark } = useTheme();
   // Video engine: Jitsi's iframe (default) or our own lib-jitsi-meet engine with Meet-style tiles
   // (opt-in, see native/engine.ts). The recording bot always uses the iframe: it is what Jibri
   // has been validated against.
@@ -1889,7 +1893,7 @@ export default function JitsiLive({
             so the chrome reads as one designed system rather than a plain dark bar. */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand-orange/40 to-transparent" aria-hidden="true" />
         <div className="flex min-w-0 items-center gap-3">
-          <Logo showWordmark={false} imgClassName="h-8 w-8" />
+          <Logo showWordmark={false} variant={isDark ? "light" : "dark"} imgClassName={isDark ? "h-7 w-7" : "h-8 w-8"} />
           <div className="hidden h-8 w-px bg-call-ink/10 sm:block" aria-hidden="true" />
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
@@ -1913,13 +1917,13 @@ export default function JitsiLive({
             {roleLabel ?? (mode === "teacher" ? "Teacher" : "Student")}
           </span>
           {recording && (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-700 ring-1 ring-inset ring-destructive/25">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-call-danger-ink ring-1 ring-inset ring-destructive/25">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" /> Rec
             </span>
           )}
           {callDegraded && (
             <span
-              className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-amber/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-700"
+              className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-amber/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-call-warn"
               title="Poor connection — turn your camera off temporarily if audio starts breaking up"
             >
               <WifiOff className="h-3 w-3" /> Poor connection
@@ -2093,6 +2097,7 @@ export default function JitsiLive({
               )}
             </div>
           )}
+          {!isRecordingObserver && <CallThemeToggle className="h-9 w-9" />}
           {inviteUrl && !error && (
             <Button
               size="sm"
@@ -2244,7 +2249,7 @@ export default function JitsiLive({
                   type="button"
                   variant="outline"
                   aria-pressed={feedbackStatus === "partial"}
-                  className={cn(feedbackStatus === "partial" && "border-brand-amber bg-brand-amber/10 text-amber-700")}
+                  className={cn(feedbackStatus === "partial" && "border-brand-amber bg-brand-amber/10 text-call-warn")}
                   onClick={() => setFeedbackStatus("partial")}
                 >
                   Partially completed
@@ -2317,7 +2322,7 @@ export default function JitsiLive({
       </Dialog>
       {!isRecordingObserver && jitsiReady && preflightMediaIssue && !deviceHintDismissed && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-call-ink/10 bg-call-ink/5 px-4 py-3 text-xs text-call-ink/70 shadow-lg shadow-black/10 backdrop-blur-md">
-          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-amber-700" />
+          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-call-warn" />
           <p className="flex-1">{preflightMediaIssue}</p>
           <button
             type="button"
@@ -2330,7 +2335,7 @@ export default function JitsiLive({
       )}
       {reloadNotice && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-call-ink/10 bg-call-ink/5 px-4 py-3 text-xs text-call-ink/70 shadow-lg shadow-black/10 backdrop-blur-md">
-          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-amber-700" />
+          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-call-warn" />
           <p className="flex-1">{reloadNotice} Refresh when convenient to pick up the latest fixes — this won't interrupt your class until you do.</p>
           <button
             type="button"
@@ -2349,7 +2354,7 @@ export default function JitsiLive({
         </div>
       )}
       {mode === "teacher" && recordingIssue && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-amber-700 shadow-lg shadow-black/10 backdrop-blur-md">
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-call-warn shadow-lg shadow-black/10 backdrop-blur-md">
           <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5" />
           <p className="flex-1">{recordingIssue}</p>
           <button
@@ -2421,7 +2426,7 @@ export default function JitsiLive({
               </div>
             </details>
             {showShareOsHint && (
-              <p className="rounded-lg bg-brand-amber/10 px-2.5 py-1.5 text-[11px] text-amber-700">
+              <p className="rounded-lg bg-brand-amber/10 px-2.5 py-1.5 text-[11px] text-call-warn">
                 Nothing happening after you click Share? On a Mac, check System Settings → Privacy &amp; Security → Screen
                 Recording and make sure your browser is allowed — that's a separate permission from camera/microphone and
                 browsers often fail silently when it's off.
@@ -2450,7 +2455,7 @@ export default function JitsiLive({
         </div>
       )}
       {mode === "teacher" && !isRecordingObserver && screenShareActive && shareMayHaveDroppedSince && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-amber-700 shadow-lg shadow-black/10 backdrop-blur-md">
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-call-warn shadow-lg shadow-black/10 backdrop-blur-md">
           <WifiOff className="h-4 w-4 shrink-0 translate-y-0.5" />
           {/* Teacher-reported live, with a screenshot: the browser's own "Choose what to
               share" picker was stuck open, blocking the class. Root cause was this banner's
@@ -2493,7 +2498,7 @@ export default function JitsiLive({
       )}
       {mode === "teacher" && !isRecordingObserver && recordingTimingHintShown && !recordingTimingHintDismissed && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-call-ink/10 bg-call-ink/5 px-4 py-3 text-xs text-call-ink/70 shadow-lg shadow-black/10 backdrop-blur-md">
-          <CheckCircle2 className="h-4 w-4 shrink-0 translate-y-0.5 text-amber-700" />
+          <CheckCircle2 className="h-4 w-4 shrink-0 translate-y-0.5 text-call-warn" />
           <p className="flex-1">
             {isPersonalRoom
               ? "Recording is on. You'll find it under Recordings, next to your meeting link, a few minutes after the meeting ends."
@@ -2510,7 +2515,7 @@ export default function JitsiLive({
       )}
       {mode === "teacher" && !isRecordingObserver && annotateFadeHintShown && !annotateFadeHintDismissed && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-call-ink/10 bg-call-ink/5 px-4 py-3 text-xs text-call-ink/70 shadow-lg shadow-black/10 backdrop-blur-md">
-          <Pencil className="h-4 w-4 shrink-0 translate-y-0.5 text-amber-700" />
+          <Pencil className="h-4 w-4 shrink-0 translate-y-0.5 text-call-warn" />
           <p className="flex-1">Marks you draw here fade after a couple seconds, like a laser pointer — they're for pointing things out live, not notes. For anything that should stay on screen, use the Board tab instead.</p>
           <button
             type="button"
@@ -2523,7 +2528,7 @@ export default function JitsiLive({
       )}
       {mode === "student" && !isRecordingObserver && jitsiReady && !soundHintDismissed && (
         <div className="mx-3 mt-3 flex shrink-0 items-start short:hidden gap-2.5 rounded-xl border border-call-ink/10 bg-call-ink/5 px-4 py-3 text-xs text-call-ink/70 shadow-lg shadow-black/10 backdrop-blur-md">
-          <Volume2 className="h-4 w-4 shrink-0 translate-y-0.5 text-amber-700" />
+          <Volume2 className="h-4 w-4 shrink-0 translate-y-0.5 text-call-warn" />
           <p className="flex-1">
             <span className="sm:hidden">Can't hear? Tap the video once.</span>
             <span className="hidden sm:inline">Can't hear the teacher? Tap anywhere on the video once — some phones and tablets block sound until you do.</span>
@@ -2556,8 +2561,8 @@ export default function JitsiLive({
         />
       ) : error ? (
         <div className="flex flex-1 items-center justify-center px-6">
-          <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-5 py-4 text-sm text-red-700 shadow-2xl shadow-black/10 backdrop-blur-md">
-            <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-red-700" />
+          <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-5 py-4 text-sm text-call-danger-ink shadow-2xl shadow-black/10 backdrop-blur-md">
+            <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-call-danger-ink" />
             <p className="font-medium">{error}</p>
           </div>
         </div>

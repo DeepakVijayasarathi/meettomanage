@@ -406,7 +406,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           className={cn(
             "flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
             hubState === "connected" && "bg-brand-green/15 text-brand-green",
-            hubState === "reconnecting" && "bg-brand-amber/15 text-amber-700",
+            hubState === "reconnecting" && "bg-brand-amber/15 text-call-warn",
             hubState === "disconnected" && "bg-call-ink/10 text-call-ink/60"
           )}
         >
@@ -595,7 +595,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
                     {entry.name.slice(0, 1).toUpperCase()}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm font-semibold text-call-ink">{entry.name}</span>
-                  <span className="flex items-center gap-1 text-xs font-bold text-amber-700">
+                  <span className="flex items-center gap-1 text-xs font-bold text-call-warn">
                     <Star className="h-3.5 w-3.5 fill-brand-amber" /> {entry.stars}
                   </span>
                 </li>
@@ -630,7 +630,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
                   </div>
                   {participant.handRaised && (
                     <span role="img" aria-label={`${participant.name} has their hand raised`} title="Hand raised">
-                      <Hand className="h-4 w-4 text-amber-300" aria-hidden="true" />
+                      <Hand className="h-4 w-4 text-call-warn" aria-hidden="true" />
                     </span>
                   )}
                   {mode === "teacher" && participant.role === "student" && (
@@ -641,7 +641,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
                       className={cn(
                         "h-7 px-2 text-[11px]",
                         justAwardedId === participant.connectionId
-                          ? "text-amber-700"
+                          ? "text-call-warn"
                           : "text-call-ink/50 hover:bg-call-ink/10 hover:text-call-ink"
                       )}
                       onClick={() => giveStar(participant)}

@@ -103,19 +103,24 @@ export default {
             deep: "#F26B1D",
             from: "#F7931E",
             to: "#F2611A",
-            // Orange text on white (WCAG AA for normal text).
-            ink: "#C2410C",
+            // Orange text: deep on the light classroom, bright on the dark one (--call-accent-ink).
+            ink: "rgb(var(--call-accent-ink) / <alpha-value>)",
           },
         },
         // Live classroom (Meet-style call UI): a light room in white and soft greys, with the
         // logo's orange for actions. `ink` is the text colour; `ink/NN` gives the matching tints.
+        // Values live in index.css (--call-*), light by default and swapped under .dark, so the
+        // classroom follows the app's own light/dark setting (lib/theme.ts).
         call: {
-          bg: "#F4F5F7",
-          surface: "#FFFFFF",
-          raised: "#E8EBEF",
-          hover: "#DCE0E6",
-          muted: "#C3C9D2",
-          ink: "#1C1F24",
+          bg: "rgb(var(--call-bg) / <alpha-value>)",
+          surface: "rgb(var(--call-surface) / <alpha-value>)",
+          raised: "rgb(var(--call-raised) / <alpha-value>)",
+          hover: "rgb(var(--call-hover) / <alpha-value>)",
+          muted: "rgb(var(--call-muted) / <alpha-value>)",
+          ink: "rgb(var(--call-ink) / <alpha-value>)",
+          /** Warning text (amber) and error text (red) tuned for each theme. */
+          warn: "rgb(var(--call-warn) / <alpha-value>)",
+          "danger-ink": "rgb(var(--call-danger-ink) / <alpha-value>)",
           danger: "#EA4335",
           "danger-hover": "#D93025",
           "danger-soft": "#F28B82",

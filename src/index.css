@@ -242,3 +242,29 @@
     border-radius: 8px;
   }
 }
+
+/* Live classroom colours (tailwind.config.ts `call-*`, `brand-orange-ink`), as "R G B" so Tailwind's
+   opacity modifiers work. Light by default; the app's dark mode (.dark on <html>) swaps them. */
+:root {
+  --call-bg: 244 245 247;
+  --call-surface: 255 255 255;
+  --call-raised: 232 235 239;
+  --call-hover: 220 224 230;
+  --call-muted: 195 201 210;
+  --call-ink: 28 31 36;
+  --call-accent-ink: 194 65 12;
+  --call-warn: 180 83 9;
+  --call-danger-ink: 185 28 28;
+}
+
+.dark {
+  --call-bg: 21 24 30;
+  --call-surface: 30 34 42;
+  --call-raised: 37 42 51;
+  --call-hover: 49 56 68;
+  --call-muted: 58 65 78;
+  --call-ink: 236 238 241;
+  --call-accent-ink: 255 138 61;
+  --call-warn: 245 165 36;
+  --call-danger-ink: 242 139 130;
+}

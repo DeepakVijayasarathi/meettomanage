@@ -6,18 +6,22 @@ import {
   Mic,
   MicOff,
   MicOff as MuteAllIcon,
+  Moon,
   MonitorUp,
   MoreVertical,
   PartyPopper,
   PhoneOff,
   PresentationIcon,
   Sparkles,
+  Sun,
   Trophy,
   Users,
   Video,
   VideoOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/lib/theme";
+import CallThemeToggle from "./CallThemeToggle";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -144,6 +148,7 @@ function PanelButton({
 }
 
 export default function Toolbar(props: ToolbarProps) {
+  const { isDark, setTheme } = useTheme();
   const {
     mode, title, elapsed, micOn, camOn, screenSharing, stageView, handRaised, recording,
     panel, participantCount, waitingCount,
@@ -250,6 +255,9 @@ export default function Toolbar(props: ToolbarProps) {
               <DropdownMenuItem className="gap-3 py-2.5 focus:bg-call-ink/10 focus:text-call-ink" onSelect={() => props.onTogglePanel("leaderboard")}>
                 <Trophy className="h-5 w-5" /> Leaderboard
               </DropdownMenuItem>
+              <DropdownMenuItem className="gap-3 py-2.5 focus:bg-call-ink/10 focus:text-call-ink sm:hidden" onSelect={() => setTheme(isDark ? "light" : "dark")}>
+                {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />} {isDark ? "Light theme" : "Dark theme"}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -270,6 +278,7 @@ export default function Toolbar(props: ToolbarProps) {
         {/* Right: side panels */}
         <div className="flex items-center justify-end gap-1">
           <div className="hidden items-center gap-1 sm:flex">
+            <CallThemeToggle className="h-10 w-10 sm:h-12 sm:w-12" />
             <PanelButton label="Leaderboard" active={panel === "leaderboard"} onClick={() => props.onTogglePanel("leaderboard")}>
               <Trophy className={icon} />
             </PanelButton>
