@@ -12,6 +12,7 @@ import { tenantPath } from "@/lib/tenantPath";
 const PlatformTenants = lazy(() => import("@/features/platform/Tenants"));
 const PlatformMenus = lazy(() => import("@/features/platform/Menus"));
 const PlatformConfiguration = lazy(() => import("@/features/platform/Configuration"));
+const PlatformEmailMappings = lazy(() => import("@/features/platform/EmailMappings"));
 
 const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Store = lazy(() => import("@/features/marketing/Store"));
@@ -180,6 +181,7 @@ export default function App() {
             <Route path="/platform" element={<Navigate to="/platform/tenants" replace />} />
             <Route path="/platform/menus" element={<PlatformMenus />} />
             <Route path="/platform/configuration" element={<PlatformConfiguration />} />
+            <Route path="/platform/email-mappings" element={<PlatformEmailMappings />} />
             <Route path="/" element={<MarketingHome />} />
             <Route path="/store" element={<Store />} />
             <Route path="/demo" element={<Demo />} />

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 import PlatformShell, { usePlatformAdmin } from "./PlatformShell";
 import { platformRequest as request, type PlatformTenant as Tenant } from "@/api/platform";
-import { Building2, CheckCircle2, PauseCircle, AlertCircle, Settings2, ListTree, ExternalLink, Search, RotateCcw, Loader2, Database, Plus } from "lucide-react";
+import { AtSign, Building2, CheckCircle2, PauseCircle, AlertCircle, Settings2, ListTree, ExternalLink, Search, RotateCcw, Loader2, Database, Plus } from "lucide-react";
 
 type Draft = { code: string; name: string; databaseName: string; adminEmail: string; adminPin: string };
 const empty: Draft = { code: "", name: "", databaseName: "", adminEmail: "", adminPin: "" };
@@ -113,7 +113,7 @@ function TenantManagement() {
             <td className="px-5 py-4 font-medium">{t.name}</td><td className="px-5 py-4 font-mono text-xs text-slate-600">{t.code}</td>
             <td className="px-5 py-4"><span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${statusStyle[t.status] ?? "bg-slate-100 text-slate-700 ring-slate-500/20"}`}>{t.status}</span></td>
             <td className="px-5 py-4"><div className="flex flex-wrap gap-2">
-              {(t.status === "Active" || t.status === "Suspended") && <><Link to={`/platform/configuration?tenant=${t.id}`} className={action}><Settings2 className="h-3 w-3" />Configure</Link><Link to={`/platform/menus?tenant=${t.id}`} className={action}><ListTree className="h-3 w-3" />Menus</Link></>}
+              {(t.status === "Active" || t.status === "Suspended") && <><Link to={`/platform/configuration?tenant=${t.id}`} className={action}><Settings2 className="h-3 w-3" />Configure</Link><Link to={`/platform/menus?tenant=${t.id}`} className={action}><ListTree className="h-3 w-3" />Menus</Link><Link to={`/platform/email-mappings?tenant=${t.id}`} className={action}><AtSign className="h-3 w-3" />Login emails</Link></>}
               <a href={`/t/${t.code}/login`} className={action}><ExternalLink className="h-3 w-3" />Client portal</a>
               {(t.status === "Active" || t.status === "Suspended") && <button disabled={busy} className={action} onClick={() => { void toggle(t); }}>{t.status === "Active" ? "Suspend" : "Activate"}</button>}
               {t.status === "Suspended" && <button disabled={busy} className={action} onClick={() => { void synchronize(t); }}>Sync imported logins</button>}

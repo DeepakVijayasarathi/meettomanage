@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LEARNING_PLUGINS, LEARNING_PLUGIN_CATEGORIES, type LearningPlugin } from "@/data/learningPlugins";
+import { apiEnabled } from "@/lib/api";
+import { useSession } from "@/state/session";
 
 const CHALLENGES = [
   "Explain one idea in your own words.",
@@ -20,6 +22,7 @@ function typeLabel(type: LearningPlugin["type"]) {
 }
 
 export default function LearningPlugins() {
+  const { hasPermission } = useSession();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [type, setType] = useState<"all" | LearningPlugin["type"]>("all");
@@ -33,6 +36,10 @@ export default function LearningPlugins() {
     const matchesType = type === "all" || plugin.type === type || (type !== "both" && plugin.type === "both");
     return matchesQuery && matchesCategory && matchesType;
   }), [query, category, type]);
+
+  if (apiEnabled() && !hasPermission("LearningPlugins", "View")) {
+    return <div className="rounded-2xl border bg-card p-8"><h1 className="text-xl font-semibold">Learning Plugins</h1><p className="mt-2 text-sm text-muted-foreground">You do not have permission to open learning games and resources. Ask an administrator to grant Learning Plugins view access in Roles &amp; Permissions.</p></div>;
+  }
 
   function open(plugin: LearningPlugin) {
     setSelected(plugin);

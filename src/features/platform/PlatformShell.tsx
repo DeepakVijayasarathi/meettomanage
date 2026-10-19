@@ -34,7 +34,9 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
-  const title = navigation.find(item => location.pathname.startsWith(item.to))?.label ?? "Tenant administration";
+  const title = location.pathname.startsWith("/platform/email-mappings")
+    ? "Login mappings"
+    : navigation.find(item => location.pathname.startsWith(item.to))?.label ?? "Tenant administration";
   useEffect(() => {
     const update = () => { setToken(sessionStorage.getItem(PLATFORM_TOKEN_KEY) ?? ""); setEmail(sessionStorage.getItem(PLATFORM_EMAIL_KEY) ?? ""); };
     window.addEventListener(PLATFORM_SESSION_EVENT, update);
