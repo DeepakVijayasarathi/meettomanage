@@ -399,7 +399,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           in the same spot the reconnecting/disconnected text still lives below it. */}
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-white/[0.03] px-3 py-2.5">
         <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/50">
-          <Sparkles className="h-3.5 w-3.5 text-brand-violet" /> Interactive
+          <Sparkles className="h-3.5 w-3.5 text-brand-orange" /> Interactive
         </span>
         <span
           role="status"
@@ -432,31 +432,31 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           <TabsList className="w-full gap-1 rounded-full bg-white/5 p-1">
             <TabsTrigger
               value="board"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange data-[state=active]:text-call-bg data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <PencilRuler className="h-3.5 w-3.5" /> Board
             </TabsTrigger>
             <TabsTrigger
               value="slides"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange data-[state=active]:text-call-bg data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <Presentation className="h-3.5 w-3.5" /> Slides
             </TabsTrigger>
             <TabsTrigger
               value="quiz"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange data-[state=active]:text-call-bg data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <Sparkles className="h-3.5 w-3.5" /> Quiz
             </TabsTrigger>
             <TabsTrigger
               value="stars"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange data-[state=active]:text-call-bg data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <Trophy className="h-3.5 w-3.5" /> Stars
             </TabsTrigger>
             <TabsTrigger
               value="people"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-violet data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-violet/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange data-[state=active]:text-call-bg data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <Users className="h-3.5 w-3.5" /> People
               {roster.length > 0 && (
@@ -484,7 +484,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
                   setHubDetail(null);
                   setRetryToken((t) => t + 1);
                 }}
-                className="shrink-0 text-[10px] font-semibold text-brand-violet underline decoration-brand-violet/50 underline-offset-2 hover:decoration-brand-violet"
+                className="shrink-0 text-[10px] font-semibold text-brand-orange underline decoration-brand-orange/50 underline-offset-2 hover:decoration-brand-orange"
               >
                 Retry
               </button>
@@ -495,7 +495,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
         {/* Dark, same as every other tab — the whiteboard's own light "paper" canvas
             provides the one intentional light surface inside this panel, framed by
             Whiteboard.tsx itself, instead of the whole tab flashing white around it. */}
-        <TabsContent value="board" className="mt-0 min-h-0 flex-1 overflow-hidden bg-brand-navy">
+        <TabsContent value="board" className="mt-0 min-h-0 flex-1 overflow-hidden bg-call-surface">
           <Whiteboard
             canDraw={canDraw}
             mode={mode}
@@ -517,7 +517,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           />
         </TabsContent>
 
-        <TabsContent value="slides" className="mt-0 min-h-0 flex-1 overflow-hidden bg-brand-navy">
+        <TabsContent value="slides" className="mt-0 min-h-0 flex-1 overflow-hidden bg-call-surface">
           <PresentationViewer
             ref={presentationRef}
             sessionId={sessionId}
@@ -540,7 +540,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
                 ) : (
                   <Button
                     size="sm"
-                    className="gap-1 !bg-brand-violet hover:!bg-[#6a4de0]"
+                    className="gap-1 !bg-brand-orange !text-call-bg hover:!bg-brand-orange-light"
                     onClick={launchQuiz}
                     disabled={questionBank.length === 0}
                     title={questionBank.length === 0 ? "Add questions for this course in Admin → Quiz Bank first" : undefined}
@@ -619,7 +619,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
                   <span
                     className={cn(
                       "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white",
-                      participant.role === "teacher" ? "bg-brand-violet" : "bg-white/15"
+                      participant.role === "teacher" ? "bg-brand-orange" : "bg-white/15"
                     )}
                   >
                     {participant.name.slice(0, 1).toUpperCase()}

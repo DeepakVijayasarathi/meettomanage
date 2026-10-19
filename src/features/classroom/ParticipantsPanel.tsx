@@ -26,7 +26,7 @@ interface ParticipantsPanelProps {
 }
 
 const iconBtn =
-  "flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D]";
+  "flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange";
 
 function Avatar({ name, color, size = "h-9 w-9 text-sm" }: { name: string; color: string; size?: string }) {
   return (
@@ -71,7 +71,7 @@ export default function ParticipantsPanel({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search for people"
             aria-label="Search for people"
-            className="h-11 w-full rounded-full border border-white/15 bg-transparent pl-10 pr-4 text-sm text-white placeholder:text-white/50 focus:border-[#FF8A3D] focus:outline-none"
+            className="h-11 w-full rounded-full border border-white/15 bg-transparent pl-10 pr-4 text-sm text-white placeholder:text-white/50 focus:border-brand-orange focus:outline-none"
           />
         </label>
       </div>
@@ -83,7 +83,7 @@ export default function ParticipantsPanel({
               <div className="flex items-center justify-between px-2 py-1.5">
                 <h3 className="text-xs font-medium uppercase tracking-wider text-white/60">Waiting to join · {waitingGuests.length}</h3>
                 {waitingGuests.length > 1 && (
-                  <button onClick={onAdmitAll} className="rounded-full px-3 py-1 text-sm font-medium text-[#FF8A3D] hover:bg-[#FF8A3D]/10">
+                  <button onClick={onAdmitAll} className="rounded-full px-3 py-1 text-sm font-medium text-brand-orange hover:bg-brand-orange/10">
                     Admit all
                   </button>
                 )}
@@ -96,7 +96,7 @@ export default function ParticipantsPanel({
                     <button onClick={() => onDenyGuest?.(g.id)} className="rounded-full px-3 py-1.5 text-sm font-medium text-white/80 hover:bg-white/10" aria-label={`Deny ${g.name}`}>
                       Deny
                     </button>
-                    <button onClick={() => onAdmitGuest?.(g.id)} className="rounded-full px-3 py-1.5 text-sm font-medium text-[#FF8A3D] hover:bg-[#FF8A3D]/10" aria-label={`Admit ${g.name}`}>
+                    <button onClick={() => onAdmitGuest?.(g.id)} className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-orange hover:bg-brand-orange/10" aria-label={`Admit ${g.name}`}>
                       Admit
                     </button>
                   </li>
@@ -109,7 +109,7 @@ export default function ParticipantsPanel({
             <div className="flex items-center justify-between px-2 py-1.5">
               <h3 className="text-xs font-medium uppercase tracking-wider text-white/60">In the class · {participants.length}</h3>
               {isHost && (
-                <button onClick={onMuteAll} className="rounded-full px-3 py-1 text-sm font-medium text-[#FF8A3D] hover:bg-[#FF8A3D]/10">
+                <button onClick={onMuteAll} className="rounded-full px-3 py-1 text-sm font-medium text-brand-orange hover:bg-brand-orange/10">
                   Mute all
                 </button>
               )}
@@ -131,7 +131,7 @@ export default function ParticipantsPanel({
 
                     <div className="flex shrink-0 items-center">
                       {p.handRaised && (
-                        <span className="mr-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#FFC24B] text-[#15181e]" title="Hand raised">
+                        <span className="mr-1 flex h-7 w-7 items-center justify-center rounded-full bg-brand-amber text-call-bg" title="Hand raised">
                           <Hand className="h-4 w-4" />
                         </span>
                       )}
@@ -140,7 +140,7 @@ export default function ParticipantsPanel({
                       {controllable ? (
                         <>
                           <button
-                            className={cn(iconBtn, boardAccess[p.id] && "bg-[#FF8A3D]/20 text-[#FF8A3D]")}
+                            className={cn(iconBtn, boardAccess[p.id] && "bg-brand-orange/20 text-brand-orange")}
                             title={boardAccess[p.id] ? "Revoke whiteboard access" : "Give whiteboard access"}
                             aria-label={`${boardAccess[p.id] ? "Revoke" : "Give"} whiteboard access for ${p.name}`}
                             onClick={() => onToggleBoardAccess(p.id)}
@@ -153,7 +153,7 @@ export default function ParticipantsPanel({
                             aria-label={`${p.camOn ? "Disable" : "Enable"} video for ${p.name}`}
                             onClick={() => onToggleCam(p.id)}
                           >
-                            {p.camOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4 text-[#f28b82]" />}
+                            {p.camOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4 text-call-danger-soft" />}
                           </button>
                           <button
                             className={iconBtn}
@@ -161,12 +161,12 @@ export default function ParticipantsPanel({
                             aria-label={`${p.micOn ? "Mute" : "Unmute"} ${p.name}`}
                             onClick={() => onToggleMic(p.id)}
                           >
-                            {p.micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4 text-[#f28b82]" />}
+                            {p.micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4 text-call-danger-soft" />}
                           </button>
                         </>
                       ) : (
                         <span className="flex h-8 w-8 items-center justify-center" aria-label={p.micOn ? "Mic on" : "Muted"}>
-                          {p.micOn ? <Mic className="h-4 w-4 text-white/50" /> : <MicOff className="h-4 w-4 text-[#f28b82]" />}
+                          {p.micOn ? <Mic className="h-4 w-4 text-white/50" /> : <MicOff className="h-4 w-4 text-call-danger-soft" />}
                         </span>
                       )}
                       {onPin && (

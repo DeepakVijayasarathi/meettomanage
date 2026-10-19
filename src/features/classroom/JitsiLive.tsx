@@ -21,6 +21,9 @@ import { detectPlatform, getMediaHelp } from "@/lib/mediaPermissionHelp";
 import GamificationOverlay from "./GamificationOverlay";
 import AnnotationOverlay, { type AnnotationOverlayHandle, type AnnotationOp } from "./AnnotationOverlay";
 import type { LeaderboardEntry } from "./classroomData";
+import { NativeJitsiApi } from "./native/NativeJitsiApi";
+import NativeStage from "./native/NativeStage";
+import { classroomEngine } from "./native/engine";
 
 // Fallback only — used for demo-mode/mock sessions and if the authorized
 // /jitsi-join lookup fails. Real sessions get their domain from that endpoint
@@ -182,6 +185,11 @@ export default function JitsiLive({
   onLeave?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Video engine: Jitsi's iframe (default) or our own lib-jitsi-meet engine with Meet-style tiles
+  // (opt-in, see native/engine.ts). The recording bot always uses the iframe: it is what Jibri
+  // has been validated against.
+  const [engine] = useState(() => (isRecordingObserver ? "iframe" : classroomEngine()));
+  const [nativeApi, setNativeApi] = useState<NativeJitsiApi | null>(null);
   const [boardMaximized, setBoardMaximized] = useState(false);
   // The floating video tile shown over the full-screen board: it can be shrunk further, or tucked
   // away entirely when the teacher doesn't need to see the class right now (a hidden tile keeps
@@ -858,7 +866,7 @@ export default function JitsiLive({
   // shared border/background, so the buttons themselves only need to style their own
   // text and "engaged" (aria-pressed) state, not fake being a standalone chip anymore.
   const headerToggleClass =
-    "gap-1.5 border-0 bg-transparent text-white/70 shadow-none transition-colors hover:bg-white/10 hover:text-white aria-pressed:bg-brand-violet aria-pressed:text-white aria-pressed:shadow-md aria-pressed:shadow-brand-violet/25";
+    "gap-1.5 border-0 bg-transparent text-white/70 shadow-none transition-colors hover:bg-white/10 hover:text-white aria-pressed:bg-brand-orange aria-pressed:text-call-bg aria-pressed:shadow-md aria-pressed:shadow-brand-orange/25";
 
   useEffect(() => {
     let api: JitsiExternalApi | undefined;
@@ -1113,9 +1121,8 @@ export default function JitsiLive({
         }
       }
 
-      await loadJitsiScript(joinDomain);
-      if (cancelled || !containerRef.current || !window.JitsiMeetExternalAPI) return;
-      api = new window.JitsiMeetExternalAPI(joinDomain, {
+      if (cancelled || !containerRef.current) return;
+      const joinOptions = {
         roomName: joinRoom,
         jwt: joinToken,
         parentNode: containerRef.current,
@@ -1248,7 +1255,7 @@ export default function JitsiLive({
           SHOW_JITSI_WATERMARK: false,
           DEFAULT_REMOTE_DISPLAY_NAME: "Student",
           // Video-tile letterbox before a camera loads, matched to our own dark panel color.
-          DEFAULT_BACKGROUND: "#161B33",
+          DEFAULT_BACKGROUND: "#15181E",
           MOBILE_APP_PROMO: false,
           HIDE_INVITE_MORE_HEADER: true,
           // Teacher feedback: tile view only showed 4 students at once. Never overridden here
@@ -1299,7 +1306,22 @@ export default function JitsiLive({
             // all — a second, inconsistent exit path is worse than just not having it.
           ],
         },
-      });
+      };
+      if (engine === "native") {
+        // Same options, same events and commands (see NativeJitsiApi), so everything below
+        // runs unchanged; only the rendering moves out of the iframe into NativeStage.
+        const created = await NativeJitsiApi.create(joinDomain, joinOptions);
+        if (cancelled) {
+          created.dispose();
+          return;
+        }
+        api = created;
+        setNativeApi(created);
+      } else {
+        await loadJitsiScript(joinDomain);
+        if (cancelled || !containerRef.current || !window.JitsiMeetExternalAPI) return;
+        api = new window.JitsiMeetExternalAPI(joinDomain, joinOptions);
+      }
       jitsiApiRef.current = api;
       setJitsiReady(true);
       // The recording observer has no browser history to go back to (Jibri navigated here
@@ -1727,6 +1749,10 @@ export default function JitsiLive({
         }
       });
 
+      // The native engine connects only now, with every listener above attached (the iframe
+      // starts on construction, but can't report anything until its own page has loaded).
+      if (api instanceof NativeJitsiApi) api.join();
+
       // Self-heal for a call area that goes black or frozen for good (client report 2026-10-09:
       // "child's screen goes black in the middle of the session"). When the video iframe hangs or
       // its page is killed (typically a low-memory tablet/phone), nothing in this app noticed:
@@ -1851,17 +1877,17 @@ export default function JitsiLive({
     // Same fix, same reasoning, already established elsewhere in this app (see AppShell's
     // own min-h-dvh comment) -- this screen had simply never been updated to match.
     <div
-      className="flex h-dvh flex-col bg-brand-navyDark bg-[radial-gradient(circle_at_50%_0%,rgba(124,92,252,0.10),transparent_60%)]"
+      className="flex h-dvh flex-col bg-call-bg"
       style={{ ["--classroom-header-h" as string]: `${headerHeight}px` }}
     >
       <header
         ref={headerRef}
-        className="relative z-50 flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-b from-brand-navyDark/95 to-brand-navyDark/75 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-md short:py-1.5 sm:px-5"
+        className="relative z-50 flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-call-bg px-4 py-3 short:py-1.5 sm:px-5"
       >
         {/* Thin brand-gradient hairline instead of a flat border — ties the header to the
             same violet/amber accent used by the celebrate button and active toggles below,
             so the chrome reads as one designed system rather than a plain dark bar. */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand-violet/60 to-transparent" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand-orange/40 to-transparent" aria-hidden="true" />
         <div className="flex min-w-0 items-center gap-3">
           <Logo showWordmark={false} imgClassName="h-8 w-8" />
           <div className="hidden h-8 w-px bg-white/10 sm:block" aria-hidden="true" />
@@ -1909,13 +1935,13 @@ export default function JitsiLive({
                   auto-hides with its toolbar on a laptop, and "mute everyone" sits under its
                   "..." menu -- so the teacher's two most-needed audio controls live up here too,
                   always visible. */}
-              {mode === "teacher" && !isRecordingObserver && (
+              {mode === "teacher" && !isRecordingObserver && engine !== "native" && (
                 <Button
                   size="pill"
                   variant="secondary"
                   aria-pressed={selfMicMuted}
                   disabled={!jitsiReady}
-                  className={cn(headerToggleClass, "aria-pressed:bg-destructive aria-pressed:shadow-destructive/25")}
+                  className={cn(headerToggleClass, "aria-pressed:bg-destructive aria-pressed:text-white aria-pressed:shadow-destructive/25")}
                   onClick={() => jitsiApiRef.current?.executeCommand("toggleAudio")}
                   title={selfMicMuted ? "Unmute your microphone" : "Mute your microphone"}
                 >
@@ -1924,7 +1950,7 @@ export default function JitsiLive({
                   <span className="sr-only lg:hidden">{selfMicMuted ? "Unmute your microphone" : "Mute your microphone"}</span>
                 </Button>
               )}
-              {!isRecordingObserver && (
+              {!isRecordingObserver && engine !== "native" && (
                 <Button
                   size="pill"
                   variant="secondary"
@@ -2045,7 +2071,7 @@ export default function JitsiLive({
                   variant="secondary"
                   aria-pressed={miniWindowState === "open"}
                   disabled={!jitsiReady || miniWindowState === "starting"}
-                  className={cn(headerToggleClass, miniWindowState === "ready" && "animate-pulse bg-brand-violet/40 text-white")}
+                  className={cn(headerToggleClass, miniWindowState === "ready" && "animate-pulse bg-brand-orange/40 text-white")}
                   onClick={toggleMiniWindow}
                   title={
                     miniWindowState === "open"
@@ -2082,7 +2108,7 @@ export default function JitsiLive({
           )}
           {/* No Leave button for the recording observer -- there's no human to click it, and
               the token it joined with is moderator: false anyway. */}
-          {!isRecordingObserver && !(error && errorStatus !== null && blockedBack) && (
+          {!isRecordingObserver && !(error && errorStatus !== null && blockedBack) && (engine !== "native" || !!error) && (
             <>
               <div className="h-6 w-px bg-white/10" aria-hidden="true" />
               <Button
@@ -2366,7 +2392,7 @@ export default function JitsiLive({
           screen -- on a landscape phone it squeezed the class into a thin strip. The tips
           now sit behind a "Tips" toggle so it's one line on a laptop too. */}
       {mode === "teacher" && !isRecordingObserver && interactive && shareScreenPromptOpen && canShareScreen && (
-        <div className="mx-3 mt-3 flex shrink-0 flex-col gap-2 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-2.5 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md sm:flex-row sm:items-start">
+        <div className="mx-3 mt-3 flex shrink-0 flex-col gap-2 rounded-xl border border-brand-orange/25 bg-brand-orange/10 px-4 py-2.5 text-xs text-brand-orange shadow-lg shadow-black/20 backdrop-blur-md sm:flex-row sm:items-start">
           <Sparkles className="hidden h-4 w-4 shrink-0 translate-y-0.5 sm:block" />
           <div className="flex-1 space-y-1.5">
             <p>
@@ -2374,7 +2400,7 @@ export default function JitsiLive({
               <span className="font-semibold">This Tab</span> so the recording captures your whiteboard and quiz. Optional.
             </p>
             <details className="group">
-              <summary className="cursor-pointer select-none font-semibold underline decoration-brand-violet/40 underline-offset-2">
+              <summary className="cursor-pointer select-none font-semibold underline decoration-brand-orange/40 underline-offset-2">
                 Tips: video sound & sharing slides
               </summary>
               <div className="mt-1.5 space-y-1.5">
@@ -2408,14 +2434,14 @@ export default function JitsiLive({
                   setShareAttempted(true);
                   jitsiApiRef.current?.executeCommand("toggleShareScreen");
                 }}
-                className="rounded-full bg-brand-violet px-3 py-1 text-[11px] font-semibold text-white hover:bg-[#6a4de0]"
+                className="rounded-full bg-brand-orange px-3 py-1 text-[11px] font-semibold text-call-bg hover:bg-brand-orange-light"
               >
                 Share screen
               </button>
               <button
                 type="button"
                 onClick={() => setShareScreenPromptOpen(false)}
-                className="font-semibold underline decoration-brand-violet/40 underline-offset-2 hover:decoration-brand-violet"
+                className="font-semibold underline decoration-brand-orange/40 underline-offset-2 hover:decoration-brand-orange"
               >
                 Skip for now
               </button>
@@ -2451,7 +2477,7 @@ export default function JitsiLive({
         </div>
       )}
       {mode === "teacher" && !isRecordingObserver && hasClassSession && recording && !screenShareActive && canShareScreen && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-4 py-3 text-xs text-brand-violet shadow-lg shadow-black/20 backdrop-blur-md">
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-orange/25 bg-brand-orange/10 px-4 py-3 text-xs text-brand-orange shadow-lg shadow-black/20 backdrop-blur-md">
           <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
           <p className="flex-1">
             Share your screen (choose <span className="font-semibold">This Tab</span>) so the recording includes your whiteboard and quiz. Playing a video? Tick <span className="font-semibold">Share tab audio</span> in the picker or students won't hear it.
@@ -2459,7 +2485,7 @@ export default function JitsiLive({
           <button
             type="button"
             onClick={() => jitsiApiRef.current?.executeCommand("toggleShareScreen")}
-            className="shrink-0 font-semibold underline decoration-brand-violet/50 underline-offset-2 hover:decoration-brand-violet"
+            className="shrink-0 font-semibold underline decoration-brand-orange/50 underline-offset-2 hover:decoration-brand-orange"
           >
             Share screen
           </button>
@@ -2560,7 +2586,7 @@ export default function JitsiLive({
               onClick={() => setFloatHidden(false)}
               title="Show the class video again"
               aria-label="Show the class video"
-              className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-brand-navy/95 px-4 py-2.5 text-sm font-semibold text-white shadow-2xl shadow-black/50 ring-1 ring-white/20 backdrop-blur-xl transition-all hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-call-surface/95 px-4 py-2.5 text-sm font-semibold text-white shadow-2xl shadow-black/50 ring-1 ring-white/20 backdrop-blur-xl transition-all hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Video className="h-4 w-4" /> Show video
             </button>
@@ -2569,7 +2595,7 @@ export default function JitsiLive({
             ref={floatRef}
             style={boardMaximized && !shareTakesStage && floatPos ? { left: floatPos.x, top: floatPos.y, right: "auto", bottom: "auto" } : undefined}
             className={cn(
-              "relative min-h-[300px] min-w-0 flex-1 overflow-hidden rounded-2xl short:min-h-0 border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5",
+              "relative min-h-[300px] min-w-0 flex-1 overflow-hidden rounded-2xl short:min-h-0 bg-call-bg",
               // Board full-screen covers the whole stage (fixed, z-40), hiding the call. Same
               // element, restyled to a floating tile above it (z-50) — the iframe is never
               // re-parented, so the call doesn't reconnect.
@@ -2601,7 +2627,17 @@ export default function JitsiLive({
                 element that forms its own stacking context.
                 pointer-events-none while dragging: the cross-origin iframe would otherwise swallow
                 pointer moves that pass over it. */}
-            <div ref={containerRef} className={cn("isolate h-full w-full", floatDragging && "pointer-events-none")} />
+            <div ref={containerRef} className={cn("isolate h-full w-full", floatDragging && "pointer-events-none")}>
+              {engine === "native" && nativeApi && (
+                <NativeStage
+                  api={nativeApi}
+                  mode={mode}
+                  canShareScreen={canShareScreen}
+                  onLeave={() => setLeaveConfirmOpen(true)}
+                  hideLeave={isRecordingObserver}
+                />
+              )}
+            </div>
             {boardMaximized && !floatHidden && (
               <div
                 onPointerDown={shareTakesStage ? undefined : startFloatDrag}
@@ -2683,7 +2719,7 @@ export default function JitsiLive({
                 className={cn(
                   "absolute bottom-32 right-3 z-30 flex h-10 items-center justify-center gap-1.5 rounded-full px-3 shadow-lg ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   focusMode && "right-28",
-                  annotateOn ? "bg-red-500 text-white shadow-red-500/40" : "bg-brand-navy/90 text-white/80 shadow-black/30 backdrop-blur-xl"
+                  annotateOn ? "bg-red-500 text-white shadow-red-500/40" : "bg-call-surface/90 text-white/80 shadow-black/30 backdrop-blur-xl"
                 )}
               >
                 <Pencil className="h-4 w-4 shrink-0" />
@@ -2703,7 +2739,7 @@ export default function JitsiLive({
                 its own toolbar (~64px+ tall) at the very bottom. */}
             {mode === "teacher" && jitsiReady && participants.length === 0 && (
               <div data-float-hide className="pointer-events-none absolute inset-x-0 bottom-20 z-10 flex justify-center px-6">
-                <p className="flex items-center gap-2.5 rounded-full border border-white/10 bg-brand-navy/80 px-4 py-2 text-xs font-medium text-white/70 shadow-xl shadow-black/30 ring-1 ring-white/5 backdrop-blur-xl">
+                <p className="flex items-center gap-2.5 rounded-full border border-white/10 bg-call-surface/80 px-4 py-2 text-xs font-medium text-white/70 shadow-xl shadow-black/30 ring-1 ring-white/5 backdrop-blur-xl">
                   <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-amber opacity-60" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-amber" />
@@ -2729,7 +2765,7 @@ export default function JitsiLive({
                 aria-label="Send a celebration to the class"
                 onClick={() => (celebrateAllRef.current ?? celebrate)("Great job, everyone! 🎉")}
                 data-float-hide
-                className={cn("group absolute bottom-20 right-3 z-20 flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-amber to-brand-violet p-3 text-sm font-bold sm:px-4 sm:py-2.5 text-white shadow-lg shadow-brand-violet/40 ring-1 ring-white/20 transition-all hover:shadow-xl hover:shadow-brand-violet/50 hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", focusMode && "right-28")}
+                className={cn("group absolute bottom-20 right-3 z-20 flex items-center gap-2 rounded-full bg-gradient-to-br from-brand-orange-from to-brand-orange-to p-3 text-sm font-bold sm:px-4 sm:py-2.5 text-white shadow-lg shadow-brand-orange/40 ring-1 ring-white/20 transition-all hover:shadow-xl hover:shadow-brand-orange/50 hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", focusMode && "right-28")}
               >
                 <PartyPopper className="h-4 w-4 transition-transform group-hover:rotate-12" />
                 <span className="hidden sm:inline">Celebrate</span>
@@ -2780,10 +2816,10 @@ export default function JitsiLive({
                 stacked
               />
               {mode === "teacher" && !interactive && !focusMode && (
-                <div className="w-64 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy/90 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-xl">
+                <div className="w-64 overflow-hidden rounded-2xl border border-white/10 bg-call-surface/90 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-xl">
                   <div className="flex items-center justify-between px-3 py-2.5">
                     <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
-                      <Users className="h-4 w-4 text-brand-violet" /> Joined
+                      <Users className="h-4 w-4 text-brand-orange" /> Joined
                     </span>
                     <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white/70">{participants.length}</span>
                   </div>
@@ -2823,7 +2859,7 @@ export default function JitsiLive({
               title="Drag to resize the panel — double-click to reset"
               className={cn(
                 "hidden shrink-0 cursor-col-resize items-center justify-center self-stretch rounded-full transition-colors lg:flex",
-                resizingPanel ? "bg-brand-violet/50" : "bg-white/5 hover:bg-white/15"
+                resizingPanel ? "bg-brand-orange/50" : "hover:bg-white/10"
               )}
               style={{ width: 10 }}
               onPointerDown={handlePanelResizeStart}
@@ -2853,7 +2889,7 @@ export default function JitsiLive({
             <aside
               style={{ ["--panel-w" as string]: `${panelWidth}px` }}
               className={cn(
-                "flex max-h-[38vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-brand-navy shadow-2xl shadow-black/40 ring-1 ring-white/5 short:max-h-none short:w-[min(42vw,340px)] lg:max-h-none lg:w-[var(--panel-w)]",
+                "flex max-h-[38vh] min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-2xl bg-call-surface short:max-h-none short:w-[min(42vw,340px)] lg:max-h-none lg:w-[var(--panel-w)]",
                 !panelOpen && "hidden"
               )}
             >

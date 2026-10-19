@@ -57,5 +57,5 @@ export default function RecordingObserver() {
 
   // Covers "still checking," "no InProgress session for this room right now," and demo
   // mode alike — none of them have anything for Jibri to do, so they all render the same way.
-  return <div className="min-h-screen bg-brand-navyDark" />;
+  return <div className="min-h-screen bg-call-bg" />;
 }

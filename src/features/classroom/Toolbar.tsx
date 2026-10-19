@@ -81,11 +81,11 @@ function ControlButton({
           aria-label={label}
           aria-pressed={state === "on" ? true : undefined}
           className={cn(
-            "h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D] focus-visible:ring-offset-2 focus-visible:ring-offset-[#15181e] sm:h-12 sm:w-12",
+            "h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-call-bg sm:h-12 sm:w-12",
             desktopOnly ? "hidden sm:flex" : "flex",
-            state === "off" && "bg-[#ea4335] text-white hover:bg-[#d93025]",
-            state === "on" && "bg-gradient-to-br from-[#F7931E] to-[#F2611A] text-white shadow-[0_0_0_1px_rgba(255,138,61,0.35)] hover:brightness-110",
-            state === "default" && "bg-[#252a33] text-white hover:bg-[#313844]"
+            state === "off" && "bg-call-danger text-white hover:bg-call-danger-hover",
+            state === "on" && "bg-gradient-to-br from-brand-orange-from to-brand-orange-to text-white shadow-[0_0_0_1px_rgba(255,138,61,0.35)] hover:brightness-110",
+            state === "default" && "bg-call-raised text-white hover:bg-call-hover"
           )}
         >
           {children}
@@ -121,16 +121,16 @@ function PanelButton({
           aria-label={label}
           aria-pressed={active}
           className={cn(
-            "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D] sm:h-12 sm:w-12",
-            active ? "bg-[#FF8A3D]/20 text-[#FF8A3D]" : "text-white hover:bg-white/10"
+            "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange sm:h-12 sm:w-12",
+            active ? "bg-brand-orange/20 text-brand-orange" : "text-white hover:bg-white/10"
           )}
         >
           {children}
           {badge !== undefined && (
             <span
               className={cn(
-                "absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold ring-2 ring-[#15181e]",
-                alert ? "bg-[#FFC24B] text-[#15181e]" : "bg-[#3a414e] text-white"
+                "absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold ring-2 ring-call-bg",
+                alert ? "bg-brand-amber text-call-bg" : "bg-call-muted text-white"
               )}
             >
               {badge}
@@ -158,8 +158,8 @@ export default function Toolbar(props: ToolbarProps) {
           <span className="h-4 w-px bg-white/30" />
           <span className="truncate text-base font-medium">{title}</span>
           {recording && (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#ea4335]/15 px-2.5 py-1 text-xs font-semibold text-[#f28b82]">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-[#ea4335]" /> REC
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-call-danger/15 px-2.5 py-1 text-xs font-semibold text-call-danger-soft">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-call-danger" /> REC
             </span>
           )}
         </div>
@@ -190,7 +190,7 @@ export default function Toolbar(props: ToolbarProps) {
           </ControlButton>
           {mode === "teacher" && (
             <ControlButton label={recording ? "Stop recording" : "Start recording"} desktopOnly state={recording ? "on" : "default"} onClick={props.onToggleRecording}>
-              <Circle className={cn(icon, recording && "fill-[#ea4335] text-[#ea4335]")} />
+              <Circle className={cn(icon, recording && "fill-call-danger text-call-danger")} />
             </ControlButton>
           )}
           <ControlButton label="Celebrate" desktopOnly onClick={props.onCelebrate}>
@@ -203,7 +203,7 @@ export default function Toolbar(props: ToolbarProps) {
                 <DropdownMenuTrigger asChild>
                   <button
                     aria-label="More options"
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#252a33] text-white transition-colors hover:bg-[#313844] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D] sm:h-12 sm:w-12"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-call-raised text-white transition-colors hover:bg-call-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange sm:h-12 sm:w-12"
                   >
                     <MoreVertical className={icon} />
                   </button>
@@ -211,7 +211,7 @@ export default function Toolbar(props: ToolbarProps) {
               </TooltipTrigger>
               <TooltipContent side="top">More options</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent side="top" align="center" className="w-60 border-white/10 bg-[#1e222a] text-white">
+            <DropdownMenuContent side="top" align="center" className="w-60 border-white/10 bg-call-surface text-white">
               <div className="sm:hidden">
                 <DropdownMenuItem className="gap-3 py-2.5 focus:bg-white/10 focus:text-white" onSelect={props.onToggleScreenShare}>
                   <MonitorUp className="h-5 w-5" /> {screenSharing ? "Stop presenting" : "Present now"}
@@ -221,7 +221,7 @@ export default function Toolbar(props: ToolbarProps) {
                 </DropdownMenuItem>
                 {mode === "teacher" && (
                   <DropdownMenuItem className="gap-3 py-2.5 focus:bg-white/10 focus:text-white" onSelect={props.onToggleRecording}>
-                    <Circle className={cn("h-5 w-5", recording && "fill-[#ea4335] text-[#ea4335]")} /> {recording ? "Stop recording" : "Start recording"}
+                    <Circle className={cn("h-5 w-5", recording && "fill-call-danger text-call-danger")} /> {recording ? "Stop recording" : "Start recording"}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem className="gap-3 py-2.5 focus:bg-white/10 focus:text-white" onSelect={props.onCelebrate}>
@@ -258,7 +258,7 @@ export default function Toolbar(props: ToolbarProps) {
               <button
                 onClick={props.onLeave}
                 aria-label="Leave class"
-                className="flex h-10 w-14 shrink-0 items-center justify-center rounded-full bg-[#ea4335] text-white transition-colors hover:bg-[#d93025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D] sm:h-12 sm:w-16"
+                className="flex h-10 w-14 shrink-0 items-center justify-center rounded-full bg-call-danger text-white transition-colors hover:bg-call-danger-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange sm:h-12 sm:w-16"
               >
                 <PhoneOff className={icon} />
               </button>

@@ -40,7 +40,7 @@ export default function VideoTile({ participant, isSelf, canDrawBoard, pinned, o
   return (
     <div
       className={cn(
-        "group relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-xl bg-[#252a33]",
+        "group relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-xl bg-call-raised",
         className
       )}
     >
@@ -58,7 +58,7 @@ export default function VideoTile({ participant, isSelf, canDrawBoard, pinned, o
         className={cn(
           "relative flex items-center justify-center rounded-full font-medium text-white",
           compact ? "h-12 w-12 text-lg" : "h-20 w-20 text-3xl sm:h-28 sm:w-28 sm:text-4xl",
-          speaking && "ring-4 ring-[#FF8A3D]/40 ring-offset-0"
+          speaking && "ring-4 ring-brand-orange/40 ring-offset-0"
         )}
         style={{ backgroundColor: avatarColor }}
       >
@@ -69,14 +69,14 @@ export default function VideoTile({ participant, isSelf, canDrawBoard, pinned, o
       <span
         className={cn(
           "pointer-events-none absolute inset-0 rounded-xl border-[3px] transition-colors",
-          speaking ? "border-[#FF8A3D]" : "border-transparent"
+          speaking ? "border-brand-orange" : "border-transparent"
         )}
       />
 
       {/* Top-left: raised hand / board access */}
       <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
         {handRaised && (
-          <span className="flex items-center gap-1 rounded-full bg-[#FFC24B] px-2 py-1 text-xs font-medium text-[#15181e]">
+          <span className="flex items-center gap-1 rounded-full bg-brand-amber px-2 py-1 text-xs font-medium text-call-bg">
             <Hand className="h-3.5 w-3.5" /> {!compact && "Hand raised"}
           </span>
         )}
@@ -94,7 +94,7 @@ export default function VideoTile({ participant, isSelf, canDrawBoard, pinned, o
             <MicOff className="h-4 w-4 text-white" aria-label="Muted" />
           </span>
         ) : speaking ? (
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F26B1D]" title="Speaking">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-orange-deep" title="Speaking">
             <SpeakingBars />
           </span>
         ) : null}
@@ -107,7 +107,7 @@ export default function VideoTile({ participant, isSelf, canDrawBoard, pinned, o
           aria-label={pinned ? `Unpin ${label}` : `Pin ${label}`}
           title={pinned ? "Unpin" : "Pin to main screen"}
           className={cn(
-            "absolute left-1/2 top-1/2 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity hover:bg-black/75 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D] group-hover:opacity-100",
+            "absolute left-1/2 top-1/2 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity hover:bg-black/75 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange group-hover:opacity-100",
             compact && "h-9 w-9"
           )}
         >

@@ -99,7 +99,7 @@ export default function ChatPanel({ mode, messages, onSend, presetText, onConsum
             <button
               key={emoji}
               onClick={() => react(emoji)}
-              className="rounded-full px-2.5 py-1 text-lg transition-transform hover:scale-110 hover:bg-white/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D]"
+              className="rounded-full px-2.5 py-1 text-lg transition-transform hover:scale-110 hover:bg-white/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
               title="Send reaction"
               aria-label={`Send ${emoji} reaction`}
             >
@@ -107,7 +107,7 @@ export default function ChatPanel({ mode, messages, onSend, presetText, onConsum
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1 rounded-full bg-[#252a33] py-1 pl-4 pr-1 focus-within:ring-2 focus-within:ring-[#FF8A3D]">
+        <div className="flex items-center gap-1 rounded-full bg-call-raised py-1 pl-4 pr-1 focus-within:ring-2 focus-within:ring-brand-orange">
           <input
             ref={inputRef}
             value={draft}
@@ -120,7 +120,7 @@ export default function ChatPanel({ mode, messages, onSend, presetText, onConsum
             className="h-9 min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/50 focus:outline-none"
           />
           <button
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#FF8A3D] hover:bg-white/10 disabled:text-white/30 disabled:hover:bg-transparent"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-brand-orange hover:bg-white/10 disabled:text-white/30 disabled:hover:bg-transparent"
             onClick={send}
             disabled={!draft.trim()}
             aria-label="Send message"

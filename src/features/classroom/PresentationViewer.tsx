@@ -305,7 +305,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
     // the reconnecting/error banners) under this overlay with no way back except Escape or
     // hunting for the Shrink button below — not acceptable on a currently-live classroom.
     <div
-      className={cn("flex h-full flex-col", maximized && "fixed inset-x-0 bottom-0 z-40 bg-brand-navy p-4")}
+      className={cn("flex h-full flex-col", maximized && "fixed inset-x-0 bottom-0 z-40 bg-call-surface p-4")}
       style={maximized ? { top: "var(--classroom-header-h, 64px)" } : undefined}
     >
       {fileInput}
@@ -343,7 +343,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
                 onClick={() => pickMarkTool(id)}
                 className={cn(
                   "flex h-7 w-7 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  markTool === id ? "bg-brand-violet text-white shadow-soft" : "text-white/60 hover:bg-white/5 hover:text-white"
+                  markTool === id ? "bg-brand-orange text-call-bg shadow-soft" : "text-white/60 hover:bg-white/5 hover:text-white"
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -429,7 +429,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
               variant="ghost"
               aria-pressed={drawOn}
               title={drawOn ? "Stop drawing — clicks go back to normal" : "Draw on this slide: pen, highlighter, shapes, text. Students see your marks live."}
-              className={cn("gap-1.5 text-white/70 hover:bg-white/10 hover:text-white", drawOn && "bg-brand-violet text-white hover:bg-brand-violet")}
+              className={cn("gap-1.5 text-white/70 hover:bg-white/10 hover:text-white", drawOn && "bg-brand-orange text-call-bg hover:bg-brand-orange")}
               onClick={() => setDrawOn((d) => !d)}
             >
               <Pencil className="h-3.5 w-3.5" />

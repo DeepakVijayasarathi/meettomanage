@@ -166,7 +166,7 @@ export default function GamificationOverlay({
             ))}
             <div
               className={cn(
-                "relative flex flex-col items-center gap-3 overflow-hidden rounded-3xl border border-white/10 bg-brand-navy/95 px-9 py-7 text-center shadow-2xl shadow-black/50 ring-1 ring-white/10 backdrop-blur-xl",
+                "relative flex flex-col items-center gap-3 overflow-hidden rounded-3xl border border-white/10 bg-call-surface/95 px-9 py-7 text-center shadow-2xl shadow-black/50 ring-1 ring-white/10 backdrop-blur-xl",
                 !reducedMotion && "animate-pop-in"
               )}
             >
@@ -179,7 +179,7 @@ export default function GamificationOverlay({
               />
               <span
                 className={cn(
-                  "relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-amber to-brand-violet text-3xl leading-none shadow-lg shadow-brand-violet/40",
+                  "relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-amber to-brand-orange text-3xl leading-none shadow-lg shadow-brand-orange/40",
                   !reducedMotion && "animate-badge-pop"
                 )}
               >
@@ -203,7 +203,7 @@ export default function GamificationOverlay({
         // rather than one deliberate card family.
         <div
           className={cn(
-            "z-20 w-64 overflow-hidden rounded-2xl border border-white/10 bg-brand-navy/90 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-xl transition-[height] duration-150",
+            "z-20 w-64 overflow-hidden rounded-2xl border border-white/10 bg-call-surface/90 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-xl transition-[height] duration-150",
             stacked ? "shrink-0" : "absolute right-3 top-3",
             collapsed && "h-11"
           )}

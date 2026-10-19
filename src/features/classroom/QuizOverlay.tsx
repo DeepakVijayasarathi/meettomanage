@@ -157,7 +157,7 @@ export default function QuizOverlay({
     <div className="flex h-full flex-col">
       <div className="shrink-0 space-y-2 border-b border-white/10 p-3">
         <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 rounded-full bg-brand-violet/20 px-2.5 py-1 text-[11px] font-bold text-brand-violet">
+          <span className="flex items-center gap-1.5 rounded-full bg-brand-orange/20 px-2.5 py-1 text-[11px] font-bold text-brand-orange">
             <Sparkles className="h-3 w-3" /> Live Quiz
           </span>
           {phase === "countdown" && (
@@ -191,7 +191,7 @@ export default function QuizOverlay({
               disabled={mode !== "student" || phase !== "countdown" || selected !== null}
               className={cn(
                 "flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all",
-                !showResult && isSelected && "border-brand-violet bg-brand-violet/15 text-white",
+                !showResult && isSelected && "border-brand-orange bg-brand-orange/15 text-white",
                 !showResult && !isSelected && "border-white/10 text-white/80 hover:border-white/25 hover:bg-white/5",
                 showResult && isCorrect && "border-brand-green bg-brand-green/15 text-white",
                 showResult && !isCorrect && isSelected && "border-destructive bg-destructive/15 text-white",
@@ -260,7 +260,7 @@ export default function QuizOverlay({
             </Button>
           )}
           {mode === "teacher" && phase === "revealed" && (
-            <Button size="sm" className="gap-1 !bg-brand-violet hover:!bg-[#6a4de0]" onClick={nextQuestion}>
+            <Button size="sm" className="gap-1 !bg-brand-orange !text-call-bg hover:!bg-brand-orange-light" onClick={nextQuestion}>
               Next <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           )}

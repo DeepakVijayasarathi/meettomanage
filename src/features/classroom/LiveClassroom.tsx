@@ -242,7 +242,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
 
   if (!session) {
     return (
-      <div className="flex h-dvh w-screen flex-col items-center justify-center gap-4 bg-[#15181e] text-white">
+      <div className="flex h-dvh w-screen flex-col items-center justify-center gap-4 bg-call-bg text-white">
         <p className="text-lg font-semibold">Session not found</p>
         <Button onClick={() => navigate(mode === "teacher" ? "/teacher" : "/parent")}>Go back</Button>
       </div>
@@ -258,7 +258,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
   const showKnock = mode === "teacher" && waitingGuests.length > 0 && panel !== "participants" && !knockDismissed;
 
   return (
-    <div className="flex h-dvh w-screen flex-col overflow-hidden bg-[#15181e] text-white">
+    <div className="flex h-dvh w-screen flex-col overflow-hidden bg-call-bg text-white">
       <div className="relative flex min-h-0 flex-1">
         {/* Stage */}
         <main className="relative min-h-0 min-w-0 flex-1">
@@ -288,9 +288,9 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
           )}
 
           {screenSharing && (
-            <div className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-3 rounded-full bg-[#F26B1D] py-1.5 pl-4 pr-1.5 text-sm font-medium text-white shadow-lg">
+            <div className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-3 rounded-full bg-brand-orange-deep py-1.5 pl-4 pr-1.5 text-sm font-medium text-white shadow-lg">
               You're presenting to everyone
-              <button onClick={() => setScreenSharing(false)} className="rounded-full bg-white px-3 py-1 text-sm font-medium text-[#F26B1D] hover:bg-white/90">
+              <button onClick={() => setScreenSharing(false)} className="rounded-full bg-white px-3 py-1 text-sm font-medium text-brand-orange-deep hover:bg-white/90">
                 Stop presenting
               </button>
             </div>
@@ -310,9 +310,9 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
 
           {/* Meet-style "Someone wants to join" prompt */}
           {showKnock && (
-            <div role="alert" className="absolute bottom-3 left-3 z-30 w-[min(360px,calc(100%-1.5rem))] rounded-2xl bg-[#1e222a] p-4 shadow-2xl shadow-black/50">
+            <div role="alert" className="absolute bottom-3 left-3 z-30 w-[min(360px,calc(100%-1.5rem))] rounded-2xl bg-call-surface p-4 shadow-2xl shadow-black/50">
               <div className="flex items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#3a414e] text-sm font-medium">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-call-muted text-sm font-medium">
                   {waitingGuests.length}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -326,11 +326,11 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
                 <button onClick={() => setKnockDismissed(true)} className="rounded-full px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10">
                   Dismiss
                 </button>
-                <button onClick={() => setPanel("participants")} className="rounded-full px-4 py-2 text-sm font-medium text-[#FF8A3D] hover:bg-[#FF8A3D]/10">
+                <button onClick={() => setPanel("participants")} className="rounded-full px-4 py-2 text-sm font-medium text-brand-orange hover:bg-brand-orange/10">
                   View all
                 </button>
                 {waitingGuests.length === 1 && (
-                  <button onClick={() => admitGuest(waitingGuests[0].id)} className="rounded-full bg-[#FF8A3D] px-4 py-2 text-sm font-medium text-[#15181e] hover:bg-[#FFA45C]">
+                  <button onClick={() => admitGuest(waitingGuests[0].id)} className="rounded-full bg-brand-orange px-4 py-2 text-sm font-medium text-call-bg hover:bg-brand-orange-light">
                     Admit
                   </button>
                 )}
@@ -343,14 +343,14 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
         {panel && (
           <aside
             aria-label={panelTitle[panel]}
-            className="fixed inset-0 z-40 flex flex-col bg-[#15181e] md:relative md:inset-auto md:z-auto md:my-2 md:mr-2 md:w-[360px] md:shrink-0 md:rounded-2xl md:bg-[#1e222a]"
+            className="fixed inset-0 z-40 flex flex-col bg-call-bg md:relative md:inset-auto md:z-auto md:my-2 md:mr-2 md:w-[360px] md:shrink-0 md:rounded-2xl md:bg-call-surface"
           >
             <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-4 md:pl-6">
               <h2 className="text-lg font-normal">{panelTitle[panel]}</h2>
               <button
                 onClick={() => setPanel(null)}
                 aria-label="Close panel"
-                className="flex h-10 w-10 items-center justify-center rounded-full text-white/80 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D]"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-white/80 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -391,11 +391,11 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
                     <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-3 md:px-6">
                       <p className="text-sm text-white/60">{quizOpen ? "Quiz is live for the class" : "Ask the class a timed question"}</p>
                       {quizOpen ? (
-                        <button onClick={() => setQuizOpen(false)} className="rounded-full px-4 py-2 text-sm font-medium text-[#FF8A3D] hover:bg-[#FF8A3D]/10">
+                        <button onClick={() => setQuizOpen(false)} className="rounded-full px-4 py-2 text-sm font-medium text-brand-orange hover:bg-brand-orange/10">
                           End quiz
                         </button>
                       ) : (
-                        <button onClick={() => setQuizOpen(true)} className="rounded-full bg-[#FF8A3D] px-4 py-2 text-sm font-medium text-[#15181e] hover:bg-[#FFA45C]">
+                        <button onClick={() => setQuizOpen(true)} className="rounded-full bg-brand-orange px-4 py-2 text-sm font-medium text-call-bg hover:bg-brand-orange-light">
                           Start quiz
                         </button>
                       )}

@@ -95,6 +95,26 @@ export default {
           amber: "#F5A524",
           cream: "#FFF8EF",
           ink: "#3A2A18",
+          // The logo's orange (Docs/newlogo.png): `from`/`to` are the mark's own gradient ends,
+          // DEFAULT is the readable accent on dark call surfaces, `deep` the solid fill.
+          orange: {
+            DEFAULT: "#FF8A3D",
+            light: "#FFA45C",
+            deep: "#F26B1D",
+            from: "#F7931E",
+            to: "#F2611A",
+          },
+        },
+        // Live classroom (Meet-style call UI) surfaces, built on the logo's near-black charcoal.
+        call: {
+          bg: "#15181E",
+          surface: "#1E222A",
+          raised: "#252A33",
+          hover: "#313844",
+          muted: "#3A414E",
+          danger: "#EA4335",
+          "danger-hover": "#D93025",
+          "danger-soft": "#F28B82",
         },
         role: {
           admin: "#1F6FE0",

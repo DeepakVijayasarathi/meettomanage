@@ -49,7 +49,7 @@ export default function StaffLiveClassroom() {
 
   if (error) {
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-brand-navyDark px-6 text-center">
+      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-call-bg px-6 text-center">
         <AlertTriangle className="h-6 w-6 text-destructive" />
         <p className="max-w-sm text-sm font-medium text-white/80">{error}</p>
       </div>
@@ -58,7 +58,7 @@ export default function StaffLiveClassroom() {
 
   if (!join) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-brand-navyDark">
+      <div className="flex h-dvh items-center justify-center bg-call-bg">
         <p className="text-sm text-white/60">Joining the class…</p>
       </div>
     );

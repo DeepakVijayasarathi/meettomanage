@@ -599,7 +599,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
     // the escape hatch a teacher would reach for to fight a too-small board, so it landing
     // on the same viewport bug undermined the one workaround that should have fixed it.
     <div
-      className={cn("flex h-full flex-col gap-2 p-3", maximized && "fixed inset-x-0 bottom-0 z-40 bg-brand-navy p-4")}
+      className={cn("flex h-full flex-col gap-2 p-3", maximized && "fixed inset-x-0 bottom-0 z-40 bg-call-surface p-4")}
       // Offset below the classroom header (a CSS var JitsiLive measures and exposes —
       // falls back to a close-enough constant for the demo-mode classroom, which doesn't
       // set it) instead of `inset-0`/`h-dvh` covering the whole viewport. The header holds
@@ -626,7 +626,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
                   "flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   // Violet marks "this tool is engaged," same accent used for Interactive/
                   // board-access/quiz elsewhere in the classroom — one consistent signal.
-                  tool === id ? "bg-brand-violet text-white shadow-soft" : "text-white/60 hover:bg-white/5 hover:text-white"
+                  tool === id ? "bg-brand-orange text-call-bg shadow-soft" : "text-white/60 hover:bg-white/5 hover:text-white"
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -643,7 +643,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
                 aria-pressed={color === sw}
                 onClick={() => setColor(sw)}
                 className={cn(
-                  "h-6 w-6 rounded-full border-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-brand-navy",
+                  "h-6 w-6 rounded-full border-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-call-surface",
                   color === sw ? "scale-110 border-white" : "border-transparent"
                 )}
                 style={{ backgroundColor: sw }}
@@ -682,7 +682,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
             variant="ghost"
             className={cn(
               "gap-1.5",
-              showActivity ? "bg-brand-violet text-white hover:bg-brand-violet/90" : "text-white/70 hover:bg-white/10 hover:text-white"
+              showActivity ? "bg-brand-orange text-white hover:bg-brand-orange/90" : "text-white/70 hover:bg-white/10 hover:text-white"
             )}
             aria-pressed={showActivity}
             onClick={() => toggleActivity(!showActivity)}
@@ -779,7 +779,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
           student's own maximize only resizes their own view, a smaller win not worth
           nagging every viewer about. */}
       {canDraw && mode === "teacher" && !maximized && !expandHintDismissed && (
-        <div className="flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-violet/25 bg-brand-violet/10 px-3 py-2 text-xs text-brand-violet [@media(max-height:820px)]:hidden">
+        <div className="flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-orange/25 bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange [@media(max-height:820px)]:hidden">
           <Maximize2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <p className="flex-1">
             Writing something the whole class needs to read clearly? Tap <span className="font-semibold">Expand</span>{" "}
@@ -788,7 +788,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
           <button
             type="button"
             onClick={dismissExpandHint}
-            className="shrink-0 font-semibold underline decoration-brand-violet/40 underline-offset-2 hover:decoration-brand-violet"
+            className="shrink-0 font-semibold underline decoration-brand-orange/40 underline-offset-2 hover:decoration-brand-orange"
           >
             Got it
           </button>
@@ -822,7 +822,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
             }}
             onBlur={commitText}
             placeholder="Type…"
-            className="absolute z-10 rounded-md border border-brand-violet bg-white px-1.5 py-0.5 text-sm text-slate-900 shadow-pop outline-none"
+            className="absolute z-10 rounded-md border border-brand-orange bg-white px-1.5 py-0.5 text-sm text-slate-900 shadow-pop outline-none"
             style={{ left: textDraft.x, top: textDraft.y, color }}
           />
         )}
