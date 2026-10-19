@@ -103,15 +103,19 @@ export default {
             deep: "#F26B1D",
             from: "#F7931E",
             to: "#F2611A",
+            // Orange text on white (WCAG AA for normal text).
+            ink: "#C2410C",
           },
         },
-        // Live classroom (Meet-style call UI) surfaces, built on the logo's near-black charcoal.
+        // Live classroom (Meet-style call UI): a light room in white and soft greys, with the
+        // logo's orange for actions. `ink` is the text colour; `ink/NN` gives the matching tints.
         call: {
-          bg: "#15181E",
-          surface: "#1E222A",
-          raised: "#252A33",
-          hover: "#313844",
-          muted: "#3A414E",
+          bg: "#F4F5F7",
+          surface: "#FFFFFF",
+          raised: "#E8EBEF",
+          hover: "#DCE0E6",
+          muted: "#C3C9D2",
+          ink: "#1C1F24",
           danger: "#EA4335",
           "danger-hover": "#D93025",
           "danger-soft": "#F28B82",

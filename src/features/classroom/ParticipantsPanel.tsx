@@ -26,7 +26,7 @@ interface ParticipantsPanelProps {
 }
 
 const iconBtn =
-  "flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange";
+  "flex h-8 w-8 items-center justify-center rounded-full text-call-ink/70 transition-colors hover:bg-call-ink/10 hover:text-call-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange";
 
 function Avatar({ name, color, size = "h-9 w-9 text-sm" }: { name: string; color: string; size?: string }) {
   return (
@@ -65,13 +65,13 @@ export default function ParticipantsPanel({
     <div className="flex h-full flex-col">
       <div className="shrink-0 px-4 pb-3">
         <label className="relative block">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-call-ink/50" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search for people"
             aria-label="Search for people"
-            className="h-11 w-full rounded-full border border-white/15 bg-transparent pl-10 pr-4 text-sm text-white placeholder:text-white/50 focus:border-brand-orange focus:outline-none"
+            className="h-11 w-full rounded-full border border-call-ink/15 bg-transparent pl-10 pr-4 text-sm text-call-ink placeholder:text-call-ink/50 focus:border-brand-orange focus:outline-none"
           />
         </label>
       </div>
@@ -79,11 +79,11 @@ export default function ParticipantsPanel({
       <ScrollArea className="flex-1">
         <div className="space-y-4 px-2 pb-4">
           {isHost && waitingGuests.length > 0 && (
-            <section className="rounded-2xl bg-white/[0.04] px-2 py-2">
+            <section className="rounded-2xl bg-call-ink/[0.04] px-2 py-2">
               <div className="flex items-center justify-between px-2 py-1.5">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-white/60">Waiting to join · {waitingGuests.length}</h3>
+                <h3 className="text-xs font-medium uppercase tracking-wider text-call-ink/60">Waiting to join · {waitingGuests.length}</h3>
                 {waitingGuests.length > 1 && (
-                  <button onClick={onAdmitAll} className="rounded-full px-3 py-1 text-sm font-medium text-brand-orange hover:bg-brand-orange/10">
+                  <button onClick={onAdmitAll} className="rounded-full px-3 py-1 text-sm font-medium text-brand-orange-ink hover:bg-brand-orange/10">
                     Admit all
                   </button>
                 )}
@@ -92,11 +92,11 @@ export default function ParticipantsPanel({
                 {waitingGuests.map((g) => (
                   <li key={g.id} className="flex items-center gap-3 rounded-xl px-2 py-2">
                     <Avatar name={g.name} color="#3a414e" />
-                    <span className="min-w-0 flex-1 truncate text-sm text-white">{g.name}</span>
-                    <button onClick={() => onDenyGuest?.(g.id)} className="rounded-full px-3 py-1.5 text-sm font-medium text-white/80 hover:bg-white/10" aria-label={`Deny ${g.name}`}>
+                    <span className="min-w-0 flex-1 truncate text-sm text-call-ink">{g.name}</span>
+                    <button onClick={() => onDenyGuest?.(g.id)} className="rounded-full px-3 py-1.5 text-sm font-medium text-call-ink/80 hover:bg-call-ink/10" aria-label={`Deny ${g.name}`}>
                       Deny
                     </button>
-                    <button onClick={() => onAdmitGuest?.(g.id)} className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-orange hover:bg-brand-orange/10" aria-label={`Admit ${g.name}`}>
+                    <button onClick={() => onAdmitGuest?.(g.id)} className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-orange-ink hover:bg-brand-orange/10" aria-label={`Admit ${g.name}`}>
                       Admit
                     </button>
                   </li>
@@ -107,9 +107,9 @@ export default function ParticipantsPanel({
 
           <section>
             <div className="flex items-center justify-between px-2 py-1.5">
-              <h3 className="text-xs font-medium uppercase tracking-wider text-white/60">In the class · {participants.length}</h3>
+              <h3 className="text-xs font-medium uppercase tracking-wider text-call-ink/60">In the class · {participants.length}</h3>
               {isHost && (
-                <button onClick={onMuteAll} className="rounded-full px-3 py-1 text-sm font-medium text-brand-orange hover:bg-brand-orange/10">
+                <button onClick={onMuteAll} className="rounded-full px-3 py-1 text-sm font-medium text-brand-orange-ink hover:bg-brand-orange/10">
                   Mute all
                 </button>
               )}
@@ -119,28 +119,28 @@ export default function ParticipantsPanel({
                 const self = p.id === selfId;
                 const controllable = isHost && p.role === "student";
                 return (
-                  <li key={p.id} className="group flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]">
+                  <li key={p.id} className="group flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-call-ink/[0.06]">
                     <Avatar name={p.name} color={p.avatarColor} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-white">
+                      <p className="truncate text-sm text-call-ink">
                         {p.name}
-                        {self && <span className="text-white/60"> (You)</span>}
+                        {self && <span className="text-call-ink/60"> (You)</span>}
                       </p>
-                      <p className="text-xs text-white/50">{p.role === "teacher" ? "Teacher · host" : "Student"}</p>
+                      <p className="text-xs text-call-ink/50">{p.role === "teacher" ? "Teacher · host" : "Student"}</p>
                     </div>
 
                     <div className="flex shrink-0 items-center">
                       {p.handRaised && (
-                        <span className="mr-1 flex h-7 w-7 items-center justify-center rounded-full bg-brand-amber text-call-bg" title="Hand raised">
+                        <span className="mr-1 flex h-7 w-7 items-center justify-center rounded-full bg-brand-amber text-amber-950" title="Hand raised">
                           <Hand className="h-4 w-4" />
                         </span>
                       )}
-                      {boardAccess[p.id] && !controllable && <PenSquare className="mx-1.5 h-4 w-4 text-white/60" aria-label="Whiteboard access" />}
+                      {boardAccess[p.id] && !controllable && <PenSquare className="mx-1.5 h-4 w-4 text-call-ink/60" aria-label="Whiteboard access" />}
 
                       {controllable ? (
                         <>
                           <button
-                            className={cn(iconBtn, boardAccess[p.id] && "bg-brand-orange/20 text-brand-orange")}
+                            className={cn(iconBtn, boardAccess[p.id] && "bg-brand-orange/20 text-brand-orange-ink")}
                             title={boardAccess[p.id] ? "Revoke whiteboard access" : "Give whiteboard access"}
                             aria-label={`${boardAccess[p.id] ? "Revoke" : "Give"} whiteboard access for ${p.name}`}
                             onClick={() => onToggleBoardAccess(p.id)}
@@ -153,7 +153,7 @@ export default function ParticipantsPanel({
                             aria-label={`${p.camOn ? "Disable" : "Enable"} video for ${p.name}`}
                             onClick={() => onToggleCam(p.id)}
                           >
-                            {p.camOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4 text-call-danger-soft" />}
+                            {p.camOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4 text-call-danger" />}
                           </button>
                           <button
                             className={iconBtn}
@@ -161,12 +161,12 @@ export default function ParticipantsPanel({
                             aria-label={`${p.micOn ? "Mute" : "Unmute"} ${p.name}`}
                             onClick={() => onToggleMic(p.id)}
                           >
-                            {p.micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4 text-call-danger-soft" />}
+                            {p.micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4 text-call-danger" />}
                           </button>
                         </>
                       ) : (
                         <span className="flex h-8 w-8 items-center justify-center" aria-label={p.micOn ? "Mic on" : "Muted"}>
-                          {p.micOn ? <Mic className="h-4 w-4 text-white/50" /> : <MicOff className="h-4 w-4 text-call-danger-soft" />}
+                          {p.micOn ? <Mic className="h-4 w-4 text-call-ink/50" /> : <MicOff className="h-4 w-4 text-call-danger" />}
                         </span>
                       )}
                       {onPin && (
@@ -178,7 +178,7 @@ export default function ParticipantsPanel({
                   </li>
                 );
               })}
-              {ordered.length === 0 && <li className="px-2 py-8 text-center text-sm text-white/50">No one matches "{query}"</li>}
+              {ordered.length === 0 && <li className="px-2 py-8 text-center text-sm text-call-ink/50">No one matches "{query}"</li>}
             </ul>
           </section>
         </div>

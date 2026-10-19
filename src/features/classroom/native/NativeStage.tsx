@@ -153,7 +153,7 @@ function Tile({ participant: p, screen, speaking, pinned, compact, onTogglePin }
       <span className={cn("pointer-events-none absolute inset-0 rounded-xl border-[3px] transition-colors", speaking && !screen ? "border-brand-orange" : "border-transparent")} />
 
       {!screen && p.handRaised && (
-        <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-full bg-brand-amber px-2 py-1 text-xs font-medium text-call-bg">
+        <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-full bg-brand-amber px-2 py-1 text-xs font-medium text-amber-950">
           <Hand className="h-3.5 w-3.5" /> {!compact && "Hand raised"}
         </span>
       )}
@@ -184,9 +184,9 @@ function Tile({ participant: p, screen, speaking, pinned, compact, onTogglePin }
       </button>
 
       <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/40 to-transparent px-3 pb-2 pt-6">
-        {pinned && <Pin className="h-3.5 w-3.5 shrink-0 text-white" aria-label="Pinned" />}
-        {screen && <MonitorUp className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden />}
-        <span className={cn("truncate font-medium text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]", compact ? "text-xs" : "text-sm")}>{label}</span>
+        {pinned && <Pin className="h-3.5 w-3.5 shrink-0 text-call-ink" aria-label="Pinned" />}
+        {screen && <MonitorUp className="h-3.5 w-3.5 shrink-0 text-call-ink" aria-hidden />}
+        <span className={cn("truncate rounded-md bg-black/50 px-2 py-0.5 font-medium text-white", compact ? "text-xs" : "text-sm")}>{label}</span>
       </div>
     </div>
   );
@@ -207,7 +207,7 @@ function ControlButton({ label, state = "default", onClick, disabled, children }
             "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-call-bg disabled:opacity-40 sm:h-12 sm:w-12",
             state === "off" && "bg-call-danger text-white hover:bg-call-danger-hover",
             state === "on" && "bg-gradient-to-br from-brand-orange-from to-brand-orange-to text-white hover:brightness-110",
-            state === "default" && "bg-call-raised text-white hover:bg-call-hover"
+            state === "default" && "bg-call-raised text-call-ink hover:bg-call-hover"
           )}
         >
           {children}
@@ -291,15 +291,15 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="relative flex h-full w-full flex-col bg-call-bg text-white">
+      <div className="relative flex h-full w-full flex-col bg-call-bg text-call-ink">
         <RemoteAudio participants={s.participants} />
 
         <div className="relative flex min-h-0 flex-1">
           {/* Stage — measured once here so the grid can size its tiles. */}
           <div ref={gridRef} className="relative min-h-0 min-w-0 flex-1">
             {s.phase === "connecting" && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 text-white/70">
-                <Loader2 className="h-8 w-8 animate-spin text-brand-orange" aria-hidden />
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 text-call-ink/70">
+                <Loader2 className="h-8 w-8 animate-spin text-brand-orange-ink" aria-hidden />
                 <p className="text-sm">Joining the class…</p>
               </div>
             )}
@@ -307,18 +307,18 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
               <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 px-6 text-center">
                 <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-call-raised">
                   <span className="absolute inset-0 animate-ping rounded-full bg-brand-orange/25" />
-                  <Users className="h-7 w-7 text-brand-orange" aria-hidden />
+                  <Users className="h-7 w-7 text-brand-orange-ink" aria-hidden />
                 </span>
                 <div>
                   <p className="text-lg font-medium">Asking to join…</p>
-                  <p className="mt-1 text-sm text-white/60">You'll join the class as soon as your teacher lets you in.</p>
+                  <p className="mt-1 text-sm text-call-ink/60">You'll join the class as soon as your teacher lets you in.</p>
                 </div>
               </div>
             )}
             {s.phase === "ended" && (
               <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 px-6 text-center">
                 <p className="text-lg font-medium">The class has ended</p>
-                <p className="text-sm text-white/60">Thanks for joining.</p>
+                <p className="text-sm text-call-ink/60">Thanks for joining.</p>
               </div>
             )}
 
@@ -368,33 +368,33 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
               ))}
 
             {s.deviceError && s.phase === "joined" && (
-              <p className="absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full bg-call-surface px-4 py-2 text-xs text-white/80 shadow-lg">{s.deviceError}</p>
+              <p className="absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full bg-call-surface px-4 py-2 text-xs text-call-ink/80 shadow-lg">{s.deviceError}</p>
             )}
 
             {visibleKnocks.length > 0 && (
-              <div role="alert" className="absolute bottom-3 left-3 z-30 w-[min(360px,calc(100%-1.5rem))] rounded-2xl bg-call-surface p-4 shadow-2xl shadow-black/50">
+              <div role="alert" className="absolute bottom-3 left-3 z-30 w-[min(360px,calc(100%-1.5rem))] rounded-2xl bg-call-surface p-4 shadow-2xl shadow-black/10">
                 <p className="text-sm font-medium">
                   {visibleKnocks.length === 1 ? `${visibleKnocks[0].name} wants to join` : `${visibleKnocks.length} people want to join`}
                 </p>
                 <ul className="mt-2 space-y-1">
                   {visibleKnocks.slice(0, 4).map((k) => (
                     <li key={k.id} className="flex items-center gap-2">
-                      <span className="min-w-0 flex-1 truncate text-sm text-white/80">{k.name}</span>
-                      <button onClick={() => api.executeCommand("answerKnockingParticipant", k.id, false)} className="rounded-full px-3 py-1.5 text-sm font-medium text-white/80 hover:bg-white/10">
+                      <span className="min-w-0 flex-1 truncate text-sm text-call-ink/80">{k.name}</span>
+                      <button onClick={() => api.executeCommand("answerKnockingParticipant", k.id, false)} className="rounded-full px-3 py-1.5 text-sm font-medium text-call-ink/80 hover:bg-call-ink/10">
                         Deny
                       </button>
-                      <button onClick={() => api.executeCommand("answerKnockingParticipant", k.id, true)} className="rounded-full bg-brand-orange px-3 py-1.5 text-sm font-medium text-call-bg hover:bg-brand-orange-light">
+                      <button onClick={() => api.executeCommand("answerKnockingParticipant", k.id, true)} className="rounded-full bg-brand-orange-deep px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-orange-to">
                         Admit
                       </button>
                     </li>
                   ))}
                 </ul>
                 <div className="mt-2 flex justify-end gap-1">
-                  <button onClick={() => setKnockDismissed((d) => [...d, ...visibleKnocks.map((k) => k.id)])} className="rounded-full px-3 py-1.5 text-sm font-medium text-white/70 hover:bg-white/10">
+                  <button onClick={() => setKnockDismissed((d) => [...d, ...visibleKnocks.map((k) => k.id)])} className="rounded-full px-3 py-1.5 text-sm font-medium text-call-ink/70 hover:bg-call-ink/10">
                     Later
                   </button>
                   {visibleKnocks.length > 1 && (
-                    <button onClick={() => visibleKnocks.forEach((k) => api.executeCommand("answerKnockingParticipant", k.id, true))} className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-orange hover:bg-brand-orange/10">
+                    <button onClick={() => visibleKnocks.forEach((k) => api.executeCommand("answerKnockingParticipant", k.id, true))} className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-orange-ink hover:bg-brand-orange/10">
                       Admit all
                     </button>
                   )}
@@ -407,28 +407,28 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
             <aside aria-label="In-call messages" className="absolute inset-0 z-40 flex flex-col bg-call-bg sm:static sm:z-auto sm:my-2 sm:mr-2 sm:w-80 sm:shrink-0 sm:rounded-2xl sm:bg-call-surface">
               <div className="flex items-center justify-between px-4 pb-2 pt-3">
                 <h2 className="text-base font-normal">In-call messages</h2>
-                <button onClick={() => setChatOpen(false)} aria-label="Close messages" className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 hover:bg-white/10">
+                <button onClick={() => setChatOpen(false)} aria-label="Close messages" className="flex h-9 w-9 items-center justify-center rounded-full text-call-ink/80 hover:bg-call-ink/10">
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <p className="mx-4 mb-2 rounded-xl bg-white/[0.06] px-3 py-2 text-center text-xs text-white/60">Visible to everyone in the call. Not saved after the class.</p>
+              <p className="mx-4 mb-2 rounded-xl bg-call-ink/[0.06] px-3 py-2 text-center text-xs text-call-ink/60">Visible to everyone in the call. Not saved after the class.</p>
               <div className="min-h-0 flex-1 overflow-y-auto px-4" role="log" aria-live="polite">
                 <ul className="space-y-3 py-2">
                   {s.messages.map((m) => (
                     <li key={m.id}>
                       <p className="flex items-baseline gap-2">
                         <span className="text-sm font-medium">{m.self ? "You" : m.name}</span>
-                        <span className="text-xs text-white/50">{new Date(m.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
+                        <span className="text-xs text-call-ink/50">{new Date(m.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
                       </p>
-                      <p className="mt-0.5 break-words text-sm text-white/85">{m.text}</p>
+                      <p className="mt-0.5 break-words text-sm text-call-ink/85">{m.text}</p>
                     </li>
                   ))}
                 </ul>
                 <div ref={chatEnd} />
               </div>
               <form onSubmit={sendChat} className="m-3 flex items-center gap-1 rounded-full bg-call-raised py-1 pl-4 pr-1 focus-within:ring-2 focus-within:ring-brand-orange">
-                <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Send a message" aria-label="Message" className="h-9 min-w-0 flex-1 bg-transparent text-sm placeholder:text-white/50 focus:outline-none" />
-                <button type="submit" disabled={!draft.trim()} aria-label="Send message" className="flex h-9 w-9 items-center justify-center rounded-full text-brand-orange hover:bg-white/10 disabled:text-white/30">
+                <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Send a message" aria-label="Message" className="h-9 min-w-0 flex-1 bg-transparent text-sm placeholder:text-call-ink/50 focus:outline-none" />
+                <button type="submit" disabled={!draft.trim()} aria-label="Send message" className="flex h-9 w-9 items-center justify-center rounded-full text-brand-orange-ink hover:bg-call-ink/10 disabled:text-call-ink/30">
                   <Send className="h-5 w-5" />
                 </button>
               </form>
@@ -459,7 +459,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
               <MessageSquare className="h-5 w-5" />
             </ControlButton>
             {unread > 0 && (
-              <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-orange px-1 text-[10px] font-bold text-call-bg ring-2 ring-call-bg">
+              <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-orange-deep px-1 text-[10px] font-bold text-white ring-2 ring-call-bg">
                 {unread}
               </span>
             )}

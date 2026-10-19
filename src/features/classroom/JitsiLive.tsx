@@ -866,7 +866,7 @@ export default function JitsiLive({
   // shared border/background, so the buttons themselves only need to style their own
   // text and "engaged" (aria-pressed) state, not fake being a standalone chip anymore.
   const headerToggleClass =
-    "gap-1.5 border-0 bg-transparent text-white/70 shadow-none transition-colors hover:bg-white/10 hover:text-white aria-pressed:bg-brand-orange aria-pressed:text-call-bg aria-pressed:shadow-md aria-pressed:shadow-brand-orange/25";
+    "gap-1.5 border-0 bg-transparent text-call-ink/70 shadow-none transition-colors hover:bg-call-ink/10 hover:text-call-ink aria-pressed:bg-brand-orange-deep aria-pressed:text-white aria-pressed:shadow-md aria-pressed:shadow-brand-orange/25";
 
   useEffect(() => {
     let api: JitsiExternalApi | undefined;
@@ -1255,7 +1255,7 @@ export default function JitsiLive({
           SHOW_JITSI_WATERMARK: false,
           DEFAULT_REMOTE_DISPLAY_NAME: "Student",
           // Video-tile letterbox before a camera loads, matched to our own dark panel color.
-          DEFAULT_BACKGROUND: "#15181E",
+          DEFAULT_BACKGROUND: "#E8EBEF",
           MOBILE_APP_PROMO: false,
           HIDE_INVITE_MORE_HEADER: true,
           // Teacher feedback: tile view only showed 4 students at once. Never overridden here
@@ -1882,7 +1882,7 @@ export default function JitsiLive({
     >
       <header
         ref={headerRef}
-        className="relative z-50 flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-call-bg px-4 py-3 short:py-1.5 sm:px-5"
+        className="relative z-50 flex shrink-0 items-center justify-between gap-3 border-b border-call-ink/10 bg-call-bg px-4 py-3 short:py-1.5 sm:px-5"
       >
         {/* Thin brand-gradient hairline instead of a flat border — ties the header to the
             same violet/amber accent used by the celebrate button and active toggles below,
@@ -1890,17 +1890,17 @@ export default function JitsiLive({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand-orange/40 to-transparent" aria-hidden="true" />
         <div className="flex min-w-0 items-center gap-3">
           <Logo showWordmark={false} imgClassName="h-8 w-8" />
-          <div className="hidden h-8 w-px bg-white/10 sm:block" aria-hidden="true" />
+          <div className="hidden h-8 w-px bg-call-ink/10 sm:block" aria-hidden="true" />
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
               <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
                 {!error && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />}
-                <span className={cn("relative inline-flex h-2 w-2 rounded-full", error ? "bg-white/30" : "bg-destructive")} />
+                <span className={cn("relative inline-flex h-2 w-2 rounded-full", error ? "bg-call-ink/30" : "bg-destructive")} />
               </span>
-              <p className={cn("truncate text-sm font-semibold tracking-tight text-white", mode === "teacher" && "hidden sm:block")}>{title ?? "Live class"}</p>
-              {mode === "teacher" && <span className="hidden text-xs font-semibold text-white/80 min-[400px]:inline sm:hidden">Live</span>}
+              <p className={cn("truncate text-sm font-semibold tracking-tight text-call-ink", mode === "teacher" && "hidden sm:block")}>{title ?? "Live class"}</p>
+              {mode === "teacher" && <span className="hidden text-xs font-semibold text-call-ink/80 min-[400px]:inline sm:hidden">Live</span>}
             </div>
-            <p className="hidden text-[10px] font-medium uppercase tracking-wide text-white/40 sm:block">Live classroom</p>
+            <p className="hidden text-[10px] font-medium uppercase tracking-wide text-call-ink/40 sm:block">Live classroom</p>
           </div>
           {/* Role context: mainly matters for the parent-preview path (mode="student" on a
               parent account) where "whose view is this" is otherwise only implied. */}
@@ -1913,13 +1913,13 @@ export default function JitsiLive({
             {roleLabel ?? (mode === "teacher" ? "Teacher" : "Student")}
           </span>
           {recording && (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-300 ring-1 ring-inset ring-destructive/25">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-700 ring-1 ring-inset ring-destructive/25">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" /> Rec
             </span>
           )}
           {callDegraded && (
             <span
-              className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-amber/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-brand-amber"
+              className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-amber/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-700"
               title="Poor connection — turn your camera off temporarily if audio starts breaking up"
             >
               <WifiOff className="h-3 w-3" /> Poor connection
@@ -1930,7 +1930,7 @@ export default function JitsiLive({
           {/* Grouped as one segmented control (shared pill housing) instead of two
               independently-bordered chips — reads as one family of view toggles. */}
           {(mode === "teacher" || interactive) && !error && (
-            <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur">
+            <div className="flex items-center gap-1 rounded-full border border-call-ink/10 bg-call-ink/5 p-1 backdrop-blur">
               {/* Client report (2026-10-08): "no mute and unmute option." Jitsi's own mic button
                   auto-hides with its toolbar on a laptop, and "mute everyone" sits under its
                   "..." menu -- so the teacher's two most-needed audio controls live up here too,
@@ -2071,7 +2071,7 @@ export default function JitsiLive({
                   variant="secondary"
                   aria-pressed={miniWindowState === "open"}
                   disabled={!jitsiReady || miniWindowState === "starting"}
-                  className={cn(headerToggleClass, miniWindowState === "ready" && "animate-pulse bg-brand-orange/40 text-white")}
+                  className={cn(headerToggleClass, miniWindowState === "ready" && "animate-pulse bg-brand-orange/40 text-call-ink")}
                   onClick={toggleMiniWindow}
                   title={
                     miniWindowState === "open"
@@ -2097,7 +2097,7 @@ export default function JitsiLive({
             <Button
               size="sm"
               variant="secondary"
-              className="gap-1.5 rounded-full bg-white/10 text-white hover:bg-white/20"
+              className="gap-1.5 rounded-full bg-call-ink/10 text-call-ink hover:bg-call-ink/20"
               onClick={copyInviteLink}
               title="Copy a shareable link to this meeting"
             >
@@ -2110,7 +2110,7 @@ export default function JitsiLive({
               the token it joined with is moderator: false anyway. */}
           {!isRecordingObserver && !(error && errorStatus !== null && blockedBack) && (engine !== "native" || !!error) && (
             <>
-              <div className="h-6 w-px bg-white/10" aria-hidden="true" />
+              <div className="h-6 w-px bg-call-ink/10" aria-hidden="true" />
               <Button
                 size="sm"
                 variant="destructive"
@@ -2244,7 +2244,7 @@ export default function JitsiLive({
                   type="button"
                   variant="outline"
                   aria-pressed={feedbackStatus === "partial"}
-                  className={cn(feedbackStatus === "partial" && "border-brand-amber bg-brand-amber/10 text-brand-amber")}
+                  className={cn(feedbackStatus === "partial" && "border-brand-amber bg-brand-amber/10 text-amber-700")}
                   onClick={() => setFeedbackStatus("partial")}
                 >
                   Partially completed
@@ -2316,40 +2316,40 @@ export default function JitsiLive({
         </DialogContent>
       </Dialog>
       {!isRecordingObserver && jitsiReady && preflightMediaIssue && !deviceHintDismissed && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
-          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-call-ink/10 bg-call-ink/5 px-4 py-3 text-xs text-call-ink/70 shadow-lg shadow-black/10 backdrop-blur-md">
+          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-amber-700" />
           <p className="flex-1">{preflightMediaIssue}</p>
           <button
             type="button"
             onClick={() => setDeviceHintDismissed(true)}
-            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+            className="shrink-0 font-semibold underline decoration-call-ink/30 underline-offset-2 hover:decoration-call-ink/70"
           >
             Dismiss
           </button>
         </div>
       )}
       {reloadNotice && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
-          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-call-ink/10 bg-call-ink/5 px-4 py-3 text-xs text-call-ink/70 shadow-lg shadow-black/10 backdrop-blur-md">
+          <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-amber-700" />
           <p className="flex-1">{reloadNotice} Refresh when convenient to pick up the latest fixes — this won't interrupt your class until you do.</p>
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+            className="shrink-0 font-semibold underline decoration-call-ink/30 underline-offset-2 hover:decoration-call-ink/70"
           >
             Refresh now
           </button>
           <button
             type="button"
             onClick={() => setReloadNotice(null)}
-            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+            className="shrink-0 font-semibold underline decoration-call-ink/30 underline-offset-2 hover:decoration-call-ink/70"
           >
             Dismiss
           </button>
         </div>
       )}
       {mode === "teacher" && recordingIssue && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-amber-700 shadow-lg shadow-black/10 backdrop-blur-md">
           <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5" />
           <p className="flex-1">{recordingIssue}</p>
           <button
@@ -2362,7 +2362,7 @@ export default function JitsiLive({
         </div>
       )}
       {reconnecting && !error && (
-        <div className="mx-3 mt-3 flex shrink-0 items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
+        <div className="mx-3 mt-3 flex shrink-0 items-center gap-2.5 rounded-xl border border-call-ink/10 bg-call-ink/5 px-4 py-3 text-xs text-call-ink/70 shadow-lg shadow-black/10 backdrop-blur-md">
           <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
           <p className="flex-1">{reconnecting}</p>
         </div>
@@ -2392,7 +2392,7 @@ export default function JitsiLive({
           screen -- on a landscape phone it squeezed the class into a thin strip. The tips
           now sit behind a "Tips" toggle so it's one line on a laptop too. */}
       {mode === "teacher" && !isRecordingObserver && interactive && shareScreenPromptOpen && canShareScreen && (
-        <div className="mx-3 mt-3 flex shrink-0 flex-col gap-2 rounded-xl border border-brand-orange/25 bg-brand-orange/10 px-4 py-2.5 text-xs text-brand-orange shadow-lg shadow-black/20 backdrop-blur-md sm:flex-row sm:items-start">
+        <div className="mx-3 mt-3 flex shrink-0 flex-col gap-2 rounded-xl border border-brand-orange/25 bg-brand-orange/10 px-4 py-2.5 text-xs text-brand-orange-ink shadow-lg shadow-black/10 backdrop-blur-md sm:flex-row sm:items-start">
           <Sparkles className="hidden h-4 w-4 shrink-0 translate-y-0.5 sm:block" />
           <div className="flex-1 space-y-1.5">
             <p>
@@ -2409,11 +2409,11 @@ export default function JitsiLive({
                 here -- Chrome only offers a "Share tab audio" checkbox for This Tab (and
                 "Share system audio" for Entire Screen on Windows only); a shared Window never
                 carries audio on any OS. Called out explicitly rather than assumed. */}
-            <p className="rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px]">
+            <p className="rounded-lg bg-call-ink/5 px-2.5 py-1.5 text-[11px]">
               Playing a video with sound? Tick <span className="font-semibold">Share tab audio</span> in the picker that opens
               next, or students won't hear it.
             </p>
-            <p className="rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px]">
+            <p className="rounded-lg bg-call-ink/5 px-2.5 py-1.5 text-[11px]">
               Sharing slides from <span className="font-semibold">another tab</span> (e.g. Google Slides)? Chrome takes you to
               that tab — click this classroom tab again to see your class (sharing carries on). To see both at once, choose{" "}
               <span className="font-semibold">Window</span> and keep your slides beside this window.
@@ -2421,7 +2421,7 @@ export default function JitsiLive({
               </div>
             </details>
             {showShareOsHint && (
-              <p className="rounded-lg bg-brand-amber/10 px-2.5 py-1.5 text-[11px] text-brand-amber">
+              <p className="rounded-lg bg-brand-amber/10 px-2.5 py-1.5 text-[11px] text-amber-700">
                 Nothing happening after you click Share? On a Mac, check System Settings → Privacy &amp; Security → Screen
                 Recording and make sure your browser is allowed — that's a separate permission from camera/microphone and
                 browsers often fail silently when it's off.
@@ -2434,7 +2434,7 @@ export default function JitsiLive({
                   setShareAttempted(true);
                   jitsiApiRef.current?.executeCommand("toggleShareScreen");
                 }}
-                className="rounded-full bg-brand-orange px-3 py-1 text-[11px] font-semibold text-call-bg hover:bg-brand-orange-light"
+                className="rounded-full bg-brand-orange-deep px-3 py-1 text-[11px] font-semibold text-white hover:bg-brand-orange-to"
               >
                 Share screen
               </button>
@@ -2450,7 +2450,7 @@ export default function JitsiLive({
         </div>
       )}
       {mode === "teacher" && !isRecordingObserver && screenShareActive && shareMayHaveDroppedSince && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-brand-amber shadow-lg shadow-black/20 backdrop-blur-md">
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-amber-700 shadow-lg shadow-black/10 backdrop-blur-md">
           <WifiOff className="h-4 w-4 shrink-0 translate-y-0.5" />
           {/* Teacher-reported live, with a screenshot: the browser's own "Choose what to
               share" picker was stuck open, blocking the class. Root cause was this banner's
@@ -2477,7 +2477,7 @@ export default function JitsiLive({
         </div>
       )}
       {mode === "teacher" && !isRecordingObserver && hasClassSession && recording && !screenShareActive && canShareScreen && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-orange/25 bg-brand-orange/10 px-4 py-3 text-xs text-brand-orange shadow-lg shadow-black/20 backdrop-blur-md">
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-orange/25 bg-brand-orange/10 px-4 py-3 text-xs text-brand-orange-ink shadow-lg shadow-black/10 backdrop-blur-md">
           <Sparkles className="h-4 w-4 shrink-0 translate-y-0.5" />
           <p className="flex-1">
             Share your screen (choose <span className="font-semibold">This Tab</span>) so the recording includes your whiteboard and quiz. Playing a video? Tick <span className="font-semibold">Share tab audio</span> in the picker or students won't hear it.
@@ -2492,8 +2492,8 @@ export default function JitsiLive({
         </div>
       )}
       {mode === "teacher" && !isRecordingObserver && recordingTimingHintShown && !recordingTimingHintDismissed && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
-          <CheckCircle2 className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-call-ink/10 bg-call-ink/5 px-4 py-3 text-xs text-call-ink/70 shadow-lg shadow-black/10 backdrop-blur-md">
+          <CheckCircle2 className="h-4 w-4 shrink-0 translate-y-0.5 text-amber-700" />
           <p className="flex-1">
             {isPersonalRoom
               ? "Recording is on. You'll find it under Recordings, next to your meeting link, a few minutes after the meeting ends."
@@ -2502,28 +2502,28 @@ export default function JitsiLive({
           <button
             type="button"
             onClick={() => setRecordingTimingHintDismissed(true)}
-            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+            className="shrink-0 font-semibold underline decoration-call-ink/30 underline-offset-2 hover:decoration-call-ink/70"
           >
             Dismiss
           </button>
         </div>
       )}
       {mode === "teacher" && !isRecordingObserver && annotateFadeHintShown && !annotateFadeHintDismissed && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
-          <Pencil className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+        <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-call-ink/10 bg-call-ink/5 px-4 py-3 text-xs text-call-ink/70 shadow-lg shadow-black/10 backdrop-blur-md">
+          <Pencil className="h-4 w-4 shrink-0 translate-y-0.5 text-amber-700" />
           <p className="flex-1">Marks you draw here fade after a couple seconds, like a laser pointer — they're for pointing things out live, not notes. For anything that should stay on screen, use the Board tab instead.</p>
           <button
             type="button"
             onClick={() => setAnnotateFadeHintDismissed(true)}
-            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+            className="shrink-0 font-semibold underline decoration-call-ink/30 underline-offset-2 hover:decoration-call-ink/70"
           >
             Dismiss
           </button>
         </div>
       )}
       {mode === "student" && !isRecordingObserver && jitsiReady && !soundHintDismissed && (
-        <div className="mx-3 mt-3 flex shrink-0 items-start short:hidden gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 shadow-lg shadow-black/20 backdrop-blur-md">
-          <Volume2 className="h-4 w-4 shrink-0 translate-y-0.5 text-brand-amber" />
+        <div className="mx-3 mt-3 flex shrink-0 items-start short:hidden gap-2.5 rounded-xl border border-call-ink/10 bg-call-ink/5 px-4 py-3 text-xs text-call-ink/70 shadow-lg shadow-black/10 backdrop-blur-md">
+          <Volume2 className="h-4 w-4 shrink-0 translate-y-0.5 text-amber-700" />
           <p className="flex-1">
             <span className="sm:hidden">Can't hear? Tap the video once.</span>
             <span className="hidden sm:inline">Can't hear the teacher? Tap anywhere on the video once — some phones and tablets block sound until you do.</span>
@@ -2531,7 +2531,7 @@ export default function JitsiLive({
           <button
             type="button"
             onClick={() => setSoundHintDismissed(true)}
-            className="shrink-0 font-semibold underline decoration-white/30 underline-offset-2 hover:decoration-white/70"
+            className="shrink-0 font-semibold underline decoration-call-ink/30 underline-offset-2 hover:decoration-call-ink/70"
           >
             Dismiss
           </button>
@@ -2542,7 +2542,7 @@ export default function JitsiLive({
         // nowhere to navigate to, since Jibri opened this page directly, not through the app's
         // own router.
         <div className="flex flex-1 items-center justify-center px-6">
-          <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm text-white/60 shadow-2xl shadow-black/40 backdrop-blur-md">
+          <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-call-ink/10 bg-call-ink/5 px-5 py-4 text-sm text-call-ink/60 shadow-2xl shadow-black/10 backdrop-blur-md">
             <p className="font-medium">Call ended.</p>
           </div>
         </div>
@@ -2556,8 +2556,8 @@ export default function JitsiLive({
         />
       ) : error ? (
         <div className="flex flex-1 items-center justify-center px-6">
-          <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-5 py-4 text-sm text-red-200 shadow-2xl shadow-black/40 backdrop-blur-md">
-            <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-red-300" />
+          <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-5 py-4 text-sm text-red-700 shadow-2xl shadow-black/10 backdrop-blur-md">
+            <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5 text-red-700" />
             <p className="font-medium">{error}</p>
           </div>
         </div>
@@ -2586,7 +2586,7 @@ export default function JitsiLive({
               onClick={() => setFloatHidden(false)}
               title="Show the class video again"
               aria-label="Show the class video"
-              className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-call-surface/95 px-4 py-2.5 text-sm font-semibold text-white shadow-2xl shadow-black/50 ring-1 ring-white/20 backdrop-blur-xl transition-all hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-call-surface/95 px-4 py-2.5 text-sm font-semibold text-call-ink shadow-2xl shadow-black/10 ring-1 ring-call-ink/20 backdrop-blur-xl transition-all hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Video className="h-4 w-4" /> Show video
             </button>
@@ -2650,7 +2650,7 @@ export default function JitsiLive({
                   !shareTakesStage && (floatDragging ? "cursor-grabbing" : "cursor-grab")
                 )}
               >
-                {!shareTakesStage && <GripHorizontal className="mr-auto h-4 w-4 text-white/70" aria-hidden="true" />}
+                {!shareTakesStage && <GripHorizontal className="mr-auto h-4 w-4 text-call-ink/70" aria-hidden="true" />}
                 <button
                   type="button"
                   onClick={() => {
@@ -2717,9 +2717,9 @@ export default function JitsiLive({
                 aria-pressed={annotateOn}
                 onClick={() => setAnnotateOn((o) => !o)}
                 className={cn(
-                  "absolute bottom-32 right-3 z-30 flex h-10 items-center justify-center gap-1.5 rounded-full px-3 shadow-lg ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "absolute bottom-32 right-3 z-30 flex h-10 items-center justify-center gap-1.5 rounded-full px-3 shadow-lg ring-1 ring-call-ink/20 transition-all hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   focusMode && "right-28",
-                  annotateOn ? "bg-red-500 text-white shadow-red-500/40" : "bg-call-surface/90 text-white/80 shadow-black/30 backdrop-blur-xl"
+                  annotateOn ? "bg-red-500 text-white shadow-red-500/40" : "bg-call-surface/90 text-call-ink/80 shadow-black/10 backdrop-blur-xl"
                 )}
               >
                 <Pencil className="h-4 w-4 shrink-0" />
@@ -2739,7 +2739,7 @@ export default function JitsiLive({
                 its own toolbar (~64px+ tall) at the very bottom. */}
             {mode === "teacher" && jitsiReady && participants.length === 0 && (
               <div data-float-hide className="pointer-events-none absolute inset-x-0 bottom-20 z-10 flex justify-center px-6">
-                <p className="flex items-center gap-2.5 rounded-full border border-white/10 bg-call-surface/80 px-4 py-2 text-xs font-medium text-white/70 shadow-xl shadow-black/30 ring-1 ring-white/5 backdrop-blur-xl">
+                <p className="flex items-center gap-2.5 rounded-full border border-call-ink/10 bg-call-surface/80 px-4 py-2 text-xs font-medium text-call-ink/70 shadow-xl shadow-black/10 ring-1 ring-call-ink/5 backdrop-blur-xl">
                   <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-amber opacity-60" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-amber" />
@@ -2765,7 +2765,7 @@ export default function JitsiLive({
                 aria-label="Send a celebration to the class"
                 onClick={() => (celebrateAllRef.current ?? celebrate)("Great job, everyone! 🎉")}
                 data-float-hide
-                className={cn("group absolute bottom-20 right-3 z-20 flex items-center gap-2 rounded-full bg-gradient-to-br from-brand-orange-from to-brand-orange-to p-3 text-sm font-bold sm:px-4 sm:py-2.5 text-white shadow-lg shadow-brand-orange/40 ring-1 ring-white/20 transition-all hover:shadow-xl hover:shadow-brand-orange/50 hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", focusMode && "right-28")}
+                className={cn("group absolute bottom-20 right-3 z-20 flex items-center gap-2 rounded-full bg-gradient-to-br from-brand-orange-from to-brand-orange-to p-3 text-sm font-bold sm:px-4 sm:py-2.5 text-white shadow-lg shadow-brand-orange/40 ring-1 ring-call-ink/20 transition-all hover:shadow-xl hover:shadow-brand-orange/50 hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", focusMode && "right-28")}
               >
                 <PartyPopper className="h-4 w-4 transition-transform group-hover:rotate-12" />
                 <span className="hidden sm:inline">Celebrate</span>
@@ -2816,16 +2816,16 @@ export default function JitsiLive({
                 stacked
               />
               {mode === "teacher" && !interactive && !focusMode && (
-                <div className="w-64 overflow-hidden rounded-2xl border border-white/10 bg-call-surface/90 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-xl">
+                <div className="w-64 overflow-hidden rounded-2xl border border-call-ink/10 bg-call-surface/90 shadow-2xl shadow-black/10 ring-1 ring-call-ink/5 backdrop-blur-xl">
                   <div className="flex items-center justify-between px-3 py-2.5">
-                    <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
-                      <Users className="h-4 w-4 text-brand-orange" /> Joined
+                    <span className="flex items-center gap-1.5 text-sm font-semibold text-call-ink">
+                      <Users className="h-4 w-4 text-brand-orange-ink" /> Joined
                     </span>
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white/70">{participants.length}</span>
+                    <span className="rounded-full bg-call-ink/10 px-2 py-0.5 text-[10px] font-bold text-call-ink/70">{participants.length}</span>
                   </div>
                   <div className="px-3 pb-3">
                     {participants.length === 0 ? (
-                      <p className="text-xs text-white/50">Waiting for students to join…</p>
+                      <p className="text-xs text-call-ink/50">Waiting for students to join…</p>
                     ) : (
                       <ul className="flex max-h-40 flex-col gap-1.5 overflow-y-auto pr-1">
                         {participants.map((p) => (
@@ -2834,7 +2834,7 @@ export default function JitsiLive({
                               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
                               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
                             </span>
-                            <span className="min-w-0 flex-1 truncate text-white/90">{p.displayName}</span>
+                            <span className="min-w-0 flex-1 truncate text-call-ink/90">{p.displayName}</span>
                           </li>
                         ))}
                       </ul>
@@ -2859,7 +2859,7 @@ export default function JitsiLive({
               title="Drag to resize the panel — double-click to reset"
               className={cn(
                 "hidden shrink-0 cursor-col-resize items-center justify-center self-stretch rounded-full transition-colors lg:flex",
-                resizingPanel ? "bg-brand-orange/50" : "hover:bg-white/10"
+                resizingPanel ? "bg-brand-orange/50" : "hover:bg-call-ink/10"
               )}
               style={{ width: 10 }}
               onPointerDown={handlePanelResizeStart}
@@ -2868,7 +2868,7 @@ export default function JitsiLive({
               onPointerCancel={handlePanelResizeEnd}
               onDoubleClick={resetPanelWidth}
             >
-              <GripVertical className="h-3.5 w-3.5 text-white/40" aria-hidden="true" />
+              <GripVertical className="h-3.5 w-3.5 text-call-ink/40" aria-hidden="true" />
             </div>
           )}
           {interactive && (

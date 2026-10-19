@@ -188,7 +188,7 @@ export default function SlideAnnotationLayer({ slide, store, active, tool, color
             e.stopPropagation(); // arrow keys / typing mustn't reach the deck's own shortcuts
           }}
           placeholder="Type, then Enter"
-          className="absolute min-w-[8rem] rounded border border-dashed border-brand-violet bg-white/80 px-1 font-semibold outline-none"
+          className="absolute min-w-[8rem] rounded border border-dashed border-brand-violet bg-call-ink/80 px-1 font-semibold outline-none"
           style={{
             left: `${textDraft.x * 100}%`,
             top: `${textDraft.y * 100}%`,

@@ -166,7 +166,7 @@ export default function GamificationOverlay({
             ))}
             <div
               className={cn(
-                "relative flex flex-col items-center gap-3 overflow-hidden rounded-3xl border border-white/10 bg-call-surface/95 px-9 py-7 text-center shadow-2xl shadow-black/50 ring-1 ring-white/10 backdrop-blur-xl",
+                "relative flex flex-col items-center gap-3 overflow-hidden rounded-3xl border border-call-ink/10 bg-call-surface/95 px-9 py-7 text-center shadow-2xl shadow-black/10 ring-1 ring-call-ink/10 backdrop-blur-xl",
                 !reducedMotion && "animate-pop-in"
               )}
             >
@@ -189,7 +189,7 @@ export default function GamificationOverlay({
                   see below) with no click to anchor a screen reader's attention — without an
                   announcement, a celebration that isn't seen or heard (sound muted) leaves no
                   trace at all for that user. */}
-              <p role="status" className="font-display text-xl font-bold text-white sm:text-2xl">
+              <p role="status" className="font-display text-xl font-bold text-call-ink sm:text-2xl">
                 {message ?? "Great job, everyone!"}
               </p>
             </div>
@@ -203,19 +203,19 @@ export default function GamificationOverlay({
         // rather than one deliberate card family.
         <div
           className={cn(
-            "z-20 w-64 overflow-hidden rounded-2xl border border-white/10 bg-call-surface/90 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-xl transition-[height] duration-150",
+            "z-20 w-64 overflow-hidden rounded-2xl border border-call-ink/10 bg-call-surface/90 shadow-2xl shadow-black/10 ring-1 ring-call-ink/5 backdrop-blur-xl transition-[height] duration-150",
             stacked ? "shrink-0" : "absolute right-3 top-3",
             collapsed && "h-11"
           )}
         >
-          <div className="flex items-center justify-between px-3 py-2.5 text-white/40">
+          <div className="flex items-center justify-between px-3 py-2.5 text-call-ink/40">
             <button
               onClick={() => setCollapsed((c) => !c)}
               aria-label={collapsed ? "Expand leaderboard" : "Collapse leaderboard"}
-              className="flex flex-1 items-center justify-between text-left hover:text-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex flex-1 items-center justify-between text-left hover:text-call-ink/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
-                <Trophy className="h-4 w-4 text-brand-amber" /> Leaderboard
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-call-ink">
+                <Trophy className="h-4 w-4 text-amber-700" /> Leaderboard
               </span>
               {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
             </button>
@@ -223,7 +223,7 @@ export default function GamificationOverlay({
               onClick={toggleMuted}
               aria-label={muted ? "Unmute celebration sounds" : "Mute celebration sounds"}
               title={muted ? "Unmute celebration sounds" : "Mute celebration sounds"}
-              className="ml-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="ml-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md hover:bg-call-ink/10 hover:text-call-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
             </button>
@@ -238,12 +238,12 @@ export default function GamificationOverlay({
                 <span
                   className={cn(
                     "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                    i < 3 ? MEDAL_STYLES[i] : "bg-white/10 text-white/50"
+                    i < 3 ? MEDAL_STYLES[i] : "bg-call-ink/10 text-call-ink/50"
                   )}
                 >
                   {i + 1}
                 </span>
-                <span className="min-w-0 flex-1 truncate font-medium text-white/85">{entry.name}</span>
+                <span className="min-w-0 flex-1 truncate font-medium text-call-ink/85">{entry.name}</span>
                 {badgeFor(entry.stars) && (
                   // role="img" + aria-label (not just title): a bare <span> with only a title
                   // attribute isn't focusable and many screen readers don't reliably expose

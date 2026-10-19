@@ -49,7 +49,7 @@ export default function VideoTile({ participant, isSelf, canDrawBoard, pinned, o
         <div
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(120% 90% at 50% 35%, ${avatarColor}40 0%, #1b1f26 70%), #1b1f26`,
+            background: `radial-gradient(120% 90% at 50% 35%, ${avatarColor}33 0%, #E8EBEF 70%), #E8EBEF`,
           }}
         />
       )}
@@ -76,7 +76,7 @@ export default function VideoTile({ participant, isSelf, canDrawBoard, pinned, o
       {/* Top-left: raised hand / board access */}
       <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
         {handRaised && (
-          <span className="flex items-center gap-1 rounded-full bg-brand-amber px-2 py-1 text-xs font-medium text-call-bg">
+          <span className="flex items-center gap-1 rounded-full bg-brand-amber px-2 py-1 text-xs font-medium text-amber-950">
             <Hand className="h-3.5 w-3.5" /> {!compact && "Hand raised"}
           </span>
         )}
@@ -117,10 +117,10 @@ export default function VideoTile({ participant, isSelf, canDrawBoard, pinned, o
 
       {/* Bottom-left: name, Meet style (plain text with a shadow, no bar) */}
       <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 px-3 pb-2.5 pt-6">
-        {pinned && <Pin className="h-3.5 w-3.5 shrink-0 text-white" aria-label="Pinned" />}
-        <span className={cn("truncate font-medium text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]", compact ? "text-xs" : "text-sm")}>
+        {pinned && <Pin className="h-3.5 w-3.5 shrink-0 text-call-ink" aria-label="Pinned" />}
+        <span className={cn("truncate rounded-md bg-black/50 px-2 py-0.5 font-medium text-white", compact ? "text-xs" : "text-sm")}>
           {label}
-          {role === "teacher" && !compact && <span className="font-normal text-white/70"> · Teacher</span>}
+          {role === "teacher" && !compact && <span className="font-normal opacity-75"> · Teacher</span>}
         </span>
         {!camOn && !compact && <span className="sr-only">(camera off)</span>}
       </div>

@@ -249,7 +249,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
     <Button
       size="sm"
       variant="ghost"
-      className="text-white/70 hover:bg-white/10 hover:text-white"
+      className="text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink"
       title={maximized ? "Shrink the slide back down" : "Make the slide bigger"}
       aria-label={maximized ? "Shrink the slide back down" : "Make the slide bigger"}
       aria-pressed={maximized}
@@ -261,7 +261,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center text-white/40">
+      <div className="flex h-full items-center justify-center text-call-ink/40">
         <Loader2 className="h-5 w-5 animate-spin" />
       </div>
     );
@@ -277,9 +277,9 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
   if (!fileName) {
     return canPresent ? (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <FileUp className="h-8 w-8 text-white/30" />
-        <p className="text-sm text-white/50">No deck uploaded yet</p>
-        <p className="max-w-xs text-xs text-white/40">
+        <FileUp className="h-8 w-8 text-call-ink/30" />
+        <p className="text-sm text-call-ink/50">No deck uploaded yet</p>
+        <p className="max-w-xs text-xs text-call-ink/40">
           Change slides right here without leaving the class — students see each slide as you click Next. Using PowerPoint?
           Save it as PDF first (File → Save As → PDF).
         </p>
@@ -290,7 +290,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
         </Button>
       </div>
     ) : (
-      <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-white/40">
+      <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-call-ink/40">
         <Loader2 className="h-5 w-5" />
         <p className="text-sm">Waiting for the teacher to present</p>
       </div>
@@ -309,7 +309,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
       style={maximized ? { top: "var(--classroom-header-h, 64px)" } : undefined}
     >
       {fileInput}
-      <div className="relative flex-1 overflow-hidden bg-white/[0.02] p-3">
+      <div className="relative flex-1 overflow-hidden bg-call-ink/[0.02] p-3">
         <div ref={stageRef} className="flex h-full w-full items-center justify-center">
           <div className="relative max-h-full max-w-full">
             <canvas ref={canvasRef} className="block max-h-full max-w-full rounded-md bg-white shadow-lg" />
@@ -326,13 +326,13 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
         </div>
         {(rendering || uploading) && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-            <Loader2 className="h-5 w-5 animate-spin text-white/60" />
+            <Loader2 className="h-5 w-5 animate-spin text-call-ink/60" />
           </div>
         )}
       </div>
       {canPresent && drawOn && (
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-t border-white/10 px-2 py-1.5">
-          <div className="flex flex-wrap items-center gap-0.5 rounded-xl bg-white/5 p-1">
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-t border-call-ink/10 px-2 py-1.5">
+          <div className="flex flex-wrap items-center gap-0.5 rounded-xl bg-call-ink/5 p-1">
             {MARK_TOOLS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -343,14 +343,14 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
                 onClick={() => pickMarkTool(id)}
                 className={cn(
                   "flex h-7 w-7 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  markTool === id ? "bg-brand-orange text-call-bg shadow-soft" : "text-white/60 hover:bg-white/5 hover:text-white"
+                  markTool === id ? "bg-brand-orange-deep text-white shadow-soft" : "text-call-ink/60 hover:bg-call-ink/5 hover:text-call-ink"
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1.5">
+          <div className="flex items-center gap-1 rounded-xl bg-call-ink/5 p-1.5">
             {MARK_COLORS.map((c) => (
               <button
                 key={c}
@@ -360,14 +360,14 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
                 aria-pressed={markColor === c}
                 onClick={() => setMarkColor(c)}
                 className={cn(
-                  "h-5 w-5 rounded-full ring-1 ring-white/20 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "h-5 w-5 rounded-full ring-1 ring-call-ink/20 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   markColor === c && "scale-110 ring-2 ring-white"
                 )}
                 style={{ backgroundColor: c }}
               />
             ))}
           </div>
-          <div className="flex items-center gap-0.5 rounded-xl bg-white/5 p-1">
+          <div className="flex items-center gap-0.5 rounded-xl bg-call-ink/5 p-1">
             {MARK_WIDTHS.map((w) => (
               <button
                 key={w}
@@ -376,7 +376,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
                 aria-label={w === 2 ? "Thin" : w === 4 ? "Medium" : "Thick"}
                 aria-pressed={markWidth === w}
                 onClick={() => setMarkWidth(w)}
-                className={cn("flex h-7 w-7 items-center justify-center rounded-lg transition-colors", markWidth === w ? "bg-white/15" : "hover:bg-white/5")}
+                className={cn("flex h-7 w-7 items-center justify-center rounded-lg transition-colors", markWidth === w ? "bg-call-ink/15" : "hover:bg-call-ink/5")}
               >
                 <span className="rounded-full bg-white" style={{ width: w + 3, height: w + 3 }} />
               </button>
@@ -385,7 +385,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7 text-white/70 hover:bg-white/10 hover:text-white"
+            className="h-7 w-7 text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink"
             title="Undo your last mark on this slide"
             aria-label="Undo"
             disabled={marksOnSlide.length === 0}
@@ -399,7 +399,7 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7 text-white/70 hover:bg-white/10 hover:text-white"
+            className="h-7 w-7 text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink"
             title="Clear all marks from this slide"
             aria-label="Clear marks on this slide"
             disabled={marksOnSlide.length === 0}
@@ -411,25 +411,25 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
       )}
       {/* flex-wrap: in the ~380px side panel, Draw pushed Update deck / Stop presenting off the
           edge (seen on UAT) -- they now drop to a second row instead of disappearing. */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/10 p-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-call-ink/10 p-2">
         {canPresent ? (
           <>
-            <Button size="sm" variant="ghost" className="text-white/70 hover:bg-white/10 hover:text-white" disabled={pageIndex === 0} onClick={() => goTo(pageIndex - 1)}>
+            <Button size="sm" variant="ghost" className="text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink" disabled={pageIndex === 0} onClick={() => goTo(pageIndex - 1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="min-w-[52px] text-center text-xs font-medium tabular-nums text-white/60">
+            <span className="min-w-[52px] text-center text-xs font-medium tabular-nums text-call-ink/60">
               {pageIndex + 1} / {pageCount}
             </span>
-            <Button size="sm" variant="ghost" className="text-white/70 hover:bg-white/10 hover:text-white" disabled={pageIndex === pageCount - 1} onClick={() => goTo(pageIndex + 1)}>
+            <Button size="sm" variant="ghost" className="text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink" disabled={pageIndex === pageCount - 1} onClick={() => goTo(pageIndex + 1)}>
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <div className="mx-1 h-5 w-px bg-white/10" aria-hidden="true" />
+            <div className="mx-1 h-5 w-px bg-call-ink/10" aria-hidden="true" />
             <Button
               size="sm"
               variant="ghost"
               aria-pressed={drawOn}
               title={drawOn ? "Stop drawing — clicks go back to normal" : "Draw on this slide: pen, highlighter, shapes, text. Students see your marks live."}
-              className={cn("gap-1.5 text-white/70 hover:bg-white/10 hover:text-white", drawOn && "bg-brand-orange text-call-bg hover:bg-brand-orange")}
+              className={cn("gap-1.5 text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink", drawOn && "bg-brand-orange-deep text-white hover:bg-brand-orange-deep")}
               onClick={() => setDrawOn((d) => !d)}
             >
               <Pencil className="h-3.5 w-3.5" />
@@ -446,20 +446,20 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
             <Button
               size="sm"
               variant="ghost"
-              className="text-white/70 hover:bg-white/10 hover:text-white"
+              className="text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink"
               disabled={uploading}
               onClick={() => fileInputRef.current?.click()}
             >
               {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileUp className="h-3.5 w-3.5" />}
               Update deck
             </Button>
-            <Button size="sm" variant="ghost" className="text-white/50 hover:bg-white/10 hover:text-white" onClick={stopPresenting}>
+            <Button size="sm" variant="ghost" className="text-call-ink/50 hover:bg-call-ink/10 hover:text-call-ink" onClick={stopPresenting}>
               <X className="h-3.5 w-3.5" /> Stop presenting
             </Button>
           </>
         ) : (
           <>
-            <span className="flex-1 text-center text-xs text-white/40">
+            <span className="flex-1 text-center text-xs text-call-ink/40">
               {pageIndex + 1} / {pageCount} — following the teacher
             </span>
             {renderMaximizeButton()}

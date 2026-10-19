@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NativeJitsiApi } from "./NativeJitsiApi";
-import { createFakeLib, EVENTS, type FakeLib } from "./fakeLibJitsi";
+import { createFakeLib, EVENTS, FakeTrack, type FakeLib } from "./fakeLibJitsi";
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
@@ -77,6 +77,9 @@ describe("NativeJitsiApi", () => {
     expect(events.filter(([e]) => e === "contentSharingParticipantsChanged").pop()).toEqual(["contentSharingParticipantsChanged", { data: ["r1"] }]);
 
     conf.remoteLeave("r1");
+    // A late track from someone who already left must not bring them back.
+    conf.emit(EVENTS.conference.TRACK_ADDED, new FakeTrack("video", "r1", false));
+    expect(api.getSnapshot().participants.some((p) => p.id === "r1")).toBe(false);
     expect(events).toContainEqual(["participantLeft", { id: "r1" }]);
     expect(events).toContainEqual(["contentSharingParticipantsChanged", { data: [] }]);
   });

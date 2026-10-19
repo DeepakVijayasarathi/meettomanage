@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import WhiteboardActivity from "./WhiteboardActivity";
+import WhiteboardActivity, { type WhiteboardActivitySelection } from "./WhiteboardActivity";
 import type { ApiWhiteboardActivity } from "@/api/whiteboardActivities";
 import { drawStroke, isFreehand, type Point, type Stroke, type ToolId } from "./drawing";
 
@@ -59,6 +59,7 @@ export type BoardOp =
   // (and the emoji sound/visual its completion triggers) only ever saw it on their own
   // screen; students never saw the activity appear at all.
   | { kind: "activity"; open: boolean }
+  | { kind: "activitySelection"; selection: WhiteboardActivitySelection }
   // Teacher-reported live (2026-09-17): "students also complain they can't see what I am
   // writing on whiteboard and whiteboard itself is too small." Before this, `maximized`
   // was pure local UI state — a teacher expanding the board to full-screen on her own
@@ -131,6 +132,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
   const [color, setColor] = useState(CHART_PALETTE[0]);
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [showActivity, setShowActivity] = useState(false);
+  const [activitySelection, setActivitySelection] = useState<WhiteboardActivitySelection>({ source: "class" });
   // Fills the viewport on demand — the board otherwise lives in a ~380px sidebar, cramped
   // for detailed drawing or a big class to read from the back. The canvas's own ResizeObserver
   // (below) picks up the new, much larger container size automatically; nothing here touches
@@ -554,6 +556,9 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
         case "activity":
           setShowActivity(op.open);
           break;
+        case "activitySelection":
+          setActivitySelection(op.selection);
+          break;
         case "maximize":
           setMaximized(op.value);
           break;
@@ -572,7 +577,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
     <Button
       size="icon"
       variant="ghost"
-      className={cn("text-white/70 hover:bg-white/10 hover:text-white", compact ? "h-7 w-7" : "h-8 w-8")}
+      className={cn("text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink", compact ? "h-7 w-7" : "h-8 w-8")}
       title={
         maximized
           ? "Shrink the board back down"
@@ -613,8 +618,8 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
         // Dark toolbar chrome matches the rest of the interactive panel (tabs, roster,
         // quiz) — only the canvas below stays a light "paper" surface, so this reads
         // as one dark product with a sheet of paper on it, not two stitched-together UIs.
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2 shadow-inner shadow-black/20 backdrop-blur-sm">
-          <div className="flex flex-wrap items-center gap-1 rounded-xl bg-white/5 p-1">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-call-ink/10 bg-call-ink/5 px-2.5 py-2 shadow-inner shadow-black/10 backdrop-blur-sm">
+          <div className="flex flex-wrap items-center gap-1 rounded-xl bg-call-ink/5 p-1">
             {TOOLS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -626,7 +631,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
                   "flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   // Violet marks "this tool is engaged," same accent used for Interactive/
                   // board-access/quiz elsewhere in the classroom — one consistent signal.
-                  tool === id ? "bg-brand-orange text-call-bg shadow-soft" : "text-white/60 hover:bg-white/5 hover:text-white"
+                  tool === id ? "bg-brand-orange-deep text-white shadow-soft" : "text-call-ink/60 hover:bg-call-ink/5 hover:text-call-ink"
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -634,7 +639,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
             ))}
           </div>
 
-          <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1">
+          <div className="flex items-center gap-1 rounded-xl bg-call-ink/5 p-1">
             {SWATCHES.map((sw) => (
               <button
                 key={sw}
@@ -651,7 +656,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
             ))}
           </div>
 
-          <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1">
+          <div className="flex items-center gap-1 rounded-xl bg-call-ink/5 p-1">
             {WIDTHS.map((w) => (
               <button
                 key={w}
@@ -661,7 +666,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
                 onClick={() => setStrokeWidth(w)}
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  strokeWidth === w ? "bg-white/15 text-white shadow-soft" : "text-white/50 hover:bg-white/5 hover:text-white/80"
+                  strokeWidth === w ? "bg-call-ink/15 text-call-ink shadow-soft" : "text-call-ink/50 hover:bg-call-ink/5 hover:text-call-ink/80"
                 )}
               >
                 <span className="rounded-full bg-current" style={{ width: w + 2, height: w + 2 }} />
@@ -669,11 +674,11 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
             ))}
           </div>
 
-          <Button size="sm" variant="ghost" className="gap-1.5 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => setClearConfirmOpen(true)}>
+          <Button size="sm" variant="ghost" className="gap-1.5 text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink" onClick={() => setClearConfirmOpen(true)}>
             <Trash2 className="h-3.5 w-3.5" /> Clear
           </Button>
           {lastCleared && lastCleared.pageIndex === pageIndex && (
-            <Button size="sm" variant="ghost" className="gap-1.5 text-white/70 hover:bg-white/10 hover:text-white" onClick={undoClear}>
+            <Button size="sm" variant="ghost" className="gap-1.5 text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink" onClick={undoClear}>
               <Undo2 className="h-3.5 w-3.5" /> Undo clear
             </Button>
           )}
@@ -682,7 +687,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
             variant="ghost"
             className={cn(
               "gap-1.5",
-              showActivity ? "bg-brand-orange text-white hover:bg-brand-orange/90" : "text-white/70 hover:bg-white/10 hover:text-white"
+              showActivity ? "bg-brand-orange-deep text-white hover:bg-brand-orange/90" : "text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink"
             )}
             aria-pressed={showActivity}
             onClick={() => toggleActivity(!showActivity)}
@@ -694,34 +699,34 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
             <Button
               size="icon"
               variant="ghost"
-              className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
+              className="h-8 w-8 text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink"
               aria-label="Previous page"
               onClick={() => goToPage(Math.max(0, pageIndex - 1))}
               disabled={pageIndex === 0}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="whitespace-nowrap text-xs font-medium text-white/50">
+            <span className="whitespace-nowrap text-xs font-medium text-call-ink/50">
               Page {pageIndex + 1}/{pages.length}
             </span>
             <Button
               size="icon"
               variant="ghost"
-              className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
+              className="h-8 w-8 text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink"
               aria-label="Next page"
               onClick={() => goToPage(Math.min(pages.length - 1, pageIndex + 1))}
               disabled={pageIndex === pages.length - 1}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white" title="Add page" aria-label="Add page" onClick={addPage}>
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink" title="Add page" aria-label="Add page" onClick={addPage}>
               <Plus className="h-4 w-4" />
             </Button>
             {pages.length > 1 && (
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-8 w-8 text-red-300/90 hover:bg-destructive/15 hover:text-red-200"
+                className="h-8 w-8 text-red-700/90 hover:bg-destructive/15 hover:text-red-700"
                 title="Delete page"
                 aria-label="Delete page"
                 onClick={removePage}
@@ -729,12 +734,12 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
                 <X className="h-4 w-4" />
               </Button>
             )}
-            <div className="ml-1 h-6 w-px bg-white/10" aria-hidden="true" />
+            <div className="ml-1 h-6 w-px bg-call-ink/10" aria-hidden="true" />
             {renderMaximizeButton()}
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/60 shadow-inner shadow-black/20 backdrop-blur-sm">
+        <div className="flex items-center justify-between rounded-2xl border border-call-ink/10 bg-call-ink/5 px-3 py-2 text-xs font-medium text-call-ink/60 shadow-inner shadow-black/10 backdrop-blur-sm">
           <span>👀 View only — ask your teacher for whiteboard access to draw</span>
           <div className="flex items-center gap-1">
             {/* Without draw access there's no Add/Remove page — but browsing between
@@ -745,27 +750,27 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7 text-white/60 hover:bg-white/10 hover:text-white"
+              className="h-7 w-7 text-call-ink/60 hover:bg-call-ink/10 hover:text-call-ink"
               aria-label="Previous page"
               onClick={() => goToPage(Math.max(0, pageIndex - 1))}
               disabled={pageIndex === 0}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <span className="whitespace-nowrap px-0.5 text-white/40">
+            <span className="whitespace-nowrap px-0.5 text-call-ink/40">
               Page {pageIndex + 1}/{pages.length}
             </span>
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7 text-white/60 hover:bg-white/10 hover:text-white"
+              className="h-7 w-7 text-call-ink/60 hover:bg-call-ink/10 hover:text-call-ink"
               aria-label="Next page"
               onClick={() => goToPage(Math.min(pages.length - 1, pageIndex + 1))}
               disabled={pageIndex === pages.length - 1}
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
-            <div className="mx-1 h-5 w-px bg-white/10" aria-hidden="true" />
+            <div className="mx-1 h-5 w-px bg-call-ink/10" aria-hidden="true" />
             {renderMaximizeButton(true)}
           </div>
         </div>
@@ -779,7 +784,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
           student's own maximize only resizes their own view, a smaller win not worth
           nagging every viewer about. */}
       {canDraw && mode === "teacher" && !maximized && !expandHintDismissed && (
-        <div className="flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-orange/25 bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange [@media(max-height:820px)]:hidden">
+        <div className="flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-orange/25 bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange-ink [@media(max-height:820px)]:hidden">
           <Maximize2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <p className="flex-1">
             Writing something the whole class needs to read clearly? Tap <span className="font-semibold">Expand</span>{" "}
@@ -795,7 +800,7 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
         </div>
       )}
 
-      <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-brand-cream shadow-pop ring-1 ring-black/5">
+      <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-call-ink/10 bg-brand-cream shadow-pop ring-1 ring-black/5">
         <canvas
           ref={canvasRef}
           className={cn(
@@ -831,6 +836,11 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
           <WhiteboardActivity
             activities={activities}
             mode={mode}
+            selection={activitySelection}
+            onSelectionChange={(selection) => {
+              setActivitySelection(selection);
+              if (canDraw) onBoardOp?.({ kind: "activitySelection", selection });
+            }}
             onClose={() => toggleActivity(false)}
             onAllMatched={onActivityComplete}
           />

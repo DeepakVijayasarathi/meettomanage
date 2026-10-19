@@ -397,17 +397,17 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           rounded card it now sits inside) and a persistent, always-visible hub-status
           chip — previously that signal only appeared conditionally above the tab list,
           in the same spot the reconnecting/disconnected text still lives below it. */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-white/[0.03] px-3 py-2.5">
-        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/50">
-          <Sparkles className="h-3.5 w-3.5 text-brand-orange" /> Interactive
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-call-ink/10 bg-call-ink/[0.03] px-3 py-2.5">
+        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-call-ink/50">
+          <Sparkles className="h-3.5 w-3.5 text-brand-orange-ink" /> Interactive
         </span>
         <span
           role="status"
           className={cn(
             "flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
             hubState === "connected" && "bg-brand-green/15 text-brand-green",
-            hubState === "reconnecting" && "bg-brand-amber/15 text-brand-amber",
-            hubState === "disconnected" && "bg-white/10 text-white/60"
+            hubState === "reconnecting" && "bg-brand-amber/15 text-amber-700",
+            hubState === "disconnected" && "bg-call-ink/10 text-call-ink/60"
           )}
         >
           {hubState === "connected" && (
@@ -428,39 +428,39 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
         </span>
       </div>
       <Tabs value={tab} onValueChange={(v) => setTab(v as PanelTab)} className="flex h-full min-h-0 flex-col">
-        <div className="shrink-0 border-b border-white/10 bg-white/[0.02] p-2">
-          <TabsList className="w-full gap-1 rounded-full bg-white/5 p-1">
+        <div className="shrink-0 border-b border-call-ink/10 bg-call-ink/[0.02] p-2">
+          <TabsList className="w-full gap-1 rounded-full bg-call-ink/5 p-1">
             <TabsTrigger
               value="board"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange data-[state=active]:text-call-bg data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <PencilRuler className="h-3.5 w-3.5" /> Board
             </TabsTrigger>
             <TabsTrigger
               value="slides"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange data-[state=active]:text-call-bg data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <Presentation className="h-3.5 w-3.5" /> Slides
             </TabsTrigger>
             <TabsTrigger
               value="quiz"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange data-[state=active]:text-call-bg data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <Sparkles className="h-3.5 w-3.5" /> Quiz
             </TabsTrigger>
             <TabsTrigger
               value="stars"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange data-[state=active]:text-call-bg data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <Trophy className="h-3.5 w-3.5" /> Stars
             </TabsTrigger>
             <TabsTrigger
               value="people"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-white/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange data-[state=active]:text-call-bg data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <Users className="h-3.5 w-3.5" /> People
               {roster.length > 0 && (
-                <span className="ml-0.5 rounded-full bg-white/15 px-1.5 py-px text-[10px] font-bold leading-tight">{roster.length}</span>
+                <span className="ml-0.5 rounded-full bg-call-ink/15 px-1.5 py-px text-[10px] font-bold leading-tight">{roster.length}</span>
               )}
             </TabsTrigger>
           </TabsList>
@@ -468,13 +468,13 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
               extra detail text (what a degraded sync actually means for the class) so
               the two don't duplicate the same "reconnecting"/"offline" announcement. */}
           {hubState === "reconnecting" && (
-            <p role="status" className="mt-1.5 px-1 text-[10px] text-white/40">
+            <p role="status" className="mt-1.5 px-1 text-[10px] text-call-ink/40">
               Board and quiz updates may not reach everyone yet.
             </p>
           )}
           {hubState === "disconnected" && (
             <div className="mt-1.5 flex items-center justify-between gap-2 px-1">
-              <p role="status" className="text-[10px] text-white/40">
+              <p role="status" className="text-[10px] text-call-ink/40">
                 {hubDetail ?? "Live sync is unavailable — the class call is unaffected."}
               </p>
               <button
@@ -484,7 +484,7 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
                   setHubDetail(null);
                   setRetryToken((t) => t + 1);
                 }}
-                className="shrink-0 text-[10px] font-semibold text-brand-orange underline decoration-brand-orange/50 underline-offset-2 hover:decoration-brand-orange"
+                className="shrink-0 text-[10px] font-semibold text-brand-orange-ink underline decoration-brand-orange/50 underline-offset-2 hover:decoration-brand-orange"
               >
                 Retry
               </button>
@@ -531,16 +531,16 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
         <TabsContent value="quiz" className="mt-0 min-h-0 flex-1 overflow-hidden">
           <div className="flex h-full flex-col">
             {mode === "teacher" && (
-              <div className="flex shrink-0 items-center justify-between border-b border-white/10 p-2.5">
-                <p className="text-xs font-semibold text-white/70">{quizActive ? "Quiz is live for the class" : "No quiz running"}</p>
+              <div className="flex shrink-0 items-center justify-between border-b border-call-ink/10 p-2.5">
+                <p className="text-xs font-semibold text-call-ink/70">{quizActive ? "Quiz is live for the class" : "No quiz running"}</p>
                 {quizActive ? (
-                  <Button size="sm" variant="ghost" className="text-white/70 hover:bg-white/10 hover:text-white" onClick={endQuiz}>
+                  <Button size="sm" variant="ghost" className="text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink" onClick={endQuiz}>
                     End quiz
                   </Button>
                 ) : (
                   <Button
                     size="sm"
-                    className="gap-1 !bg-brand-orange !text-call-bg hover:!bg-brand-orange-light"
+                    className="gap-1 !bg-brand-orange-deep text-white hover:!bg-brand-orange-to"
                     onClick={launchQuiz}
                     disabled={questionBank.length === 0}
                     title={questionBank.length === 0 ? "Add questions for this course in Admin → Quiz Bank first" : undefined}
@@ -576,11 +576,11 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
         <TabsContent value="stars" className="mt-0 min-h-0 flex-1 overflow-y-auto p-3">
           {leaderboard.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-white/40">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-call-ink/5 text-call-ink/40">
                 <Trophy className="h-5 w-5" />
               </span>
-              <p className="text-sm font-semibold text-white/70">No stars yet</p>
-              <p className="max-w-[220px] text-xs text-white/40">Correct quiz answers earn stars — the class leaderboard fills up live.</p>
+              <p className="text-sm font-semibold text-call-ink/70">No stars yet</p>
+              <p className="max-w-[220px] text-xs text-call-ink/40">Correct quiz answers earn stars — the class leaderboard fills up live.</p>
             </div>
           ) : (
             <ol className="space-y-2">
@@ -590,12 +590,12 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
                   className="flex items-center gap-2.5 rounded-xl px-3 py-2"
                   style={{ backgroundColor: i < 3 ? `${entry.color}1F` : "rgba(255,255,255,0.05)" }}
                 >
-                  <span className="w-5 text-center text-xs font-bold text-white/50">{i + 1}</span>
+                  <span className="w-5 text-center text-xs font-bold text-call-ink/50">{i + 1}</span>
                   <span className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: entry.color }}>
                     {entry.name.slice(0, 1).toUpperCase()}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{entry.name}</span>
-                  <span className="flex items-center gap-1 text-xs font-bold text-brand-amber">
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-call-ink">{entry.name}</span>
+                  <span className="flex items-center gap-1 text-xs font-bold text-amber-700">
                     <Star className="h-3.5 w-3.5 fill-brand-amber" /> {entry.stars}
                   </span>
                 </li>
@@ -607,26 +607,26 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
         <TabsContent value="people" className="mt-0 min-h-0 flex-1 overflow-y-auto p-3">
           {roster.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-white/40">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-call-ink/5 text-call-ink/40">
                 <Users className="h-5 w-5" />
               </span>
-              <p className="max-w-[220px] text-xs text-white/40">No one is connected to the interactive layer yet.</p>
+              <p className="max-w-[220px] text-xs text-call-ink/40">No one is connected to the interactive layer yet.</p>
             </div>
           ) : (
             <ul className="space-y-2">
               {roster.map((participant) => (
-                <li key={participant.connectionId} className="flex items-center gap-2.5 rounded-xl bg-white/5 px-3 py-2">
+                <li key={participant.connectionId} className="flex items-center gap-2.5 rounded-xl bg-call-ink/5 px-3 py-2">
                   <span
                     className={cn(
                       "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white",
-                      participant.role === "teacher" ? "bg-brand-orange" : "bg-white/15"
+                      participant.role === "teacher" ? "bg-brand-orange-deep" : "bg-slate-400"
                     )}
                   >
                     {participant.name.slice(0, 1).toUpperCase()}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-white">{participant.name}</p>
-                    <p className="text-[10px] uppercase tracking-wide text-white/40">{participant.role}</p>
+                    <p className="truncate text-sm font-semibold text-call-ink">{participant.name}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-call-ink/40">{participant.role}</p>
                   </div>
                   {participant.handRaised && (
                     <span role="img" aria-label={`${participant.name} has their hand raised`} title="Hand raised">
@@ -641,8 +641,8 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
                       className={cn(
                         "h-7 px-2 text-[11px]",
                         justAwardedId === participant.connectionId
-                          ? "text-brand-amber"
-                          : "text-white/50 hover:bg-white/10 hover:text-white"
+                          ? "text-amber-700"
+                          : "text-call-ink/50 hover:bg-call-ink/10 hover:text-call-ink"
                       )}
                       onClick={() => giveStar(participant)}
                       title={`Give ${participant.name} a star`}
@@ -658,8 +658,8 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
                       className={cn(
                         "h-7 px-2 text-[11px]",
                         grantedIds.has(participant.connectionId)
-                          ? "text-brand-green hover:bg-white/10"
-                          : "text-white/50 hover:bg-white/10 hover:text-white"
+                          ? "text-brand-green hover:bg-call-ink/10"
+                          : "text-call-ink/50 hover:bg-call-ink/10 hover:text-call-ink"
                       )}
                       onClick={() => toggleBoardAccess(participant)}
                     >

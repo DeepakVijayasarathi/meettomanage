@@ -27,13 +27,13 @@ export default function ClassroomBlocked({
   const Icon = copy.icon;
   return (
     <div className="flex flex-1 items-center justify-center overflow-y-auto px-5 py-8">
-      <div role="alert" className="flex w-full max-w-md flex-col items-center gap-4 rounded-3xl border border-white/10 bg-white/5 px-6 py-8 text-center shadow-2xl shadow-black/40 backdrop-blur-md sm:px-8">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-orange/15 text-brand-orange ring-8 ring-brand-orange/5">
+      <div role="alert" className="flex w-full max-w-md flex-col items-center gap-4 rounded-3xl border border-call-ink/10 bg-call-ink/5 px-6 py-8 text-center shadow-2xl shadow-black/10 backdrop-blur-md sm:px-8">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-orange/15 text-brand-orange-ink ring-8 ring-brand-orange/5">
           <Icon className="h-7 w-7" aria-hidden="true" />
         </span>
         <div className="space-y-2">
-          <h1 className="text-xl font-bold tracking-tight text-white">{copy.title}</h1>
-          <p className="text-sm leading-relaxed text-white/70">{copy.body}</p>
+          <h1 className="text-xl font-bold tracking-tight text-call-ink">{copy.title}</h1>
+          <p className="text-sm leading-relaxed text-call-ink/70">{copy.body}</p>
         </div>
         <div className="mt-2 flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
           {onBack && backLabel && (
@@ -42,7 +42,7 @@ export default function ClassroomBlocked({
             </Button>
           )}
           {copy.canRetry && (
-            <Button variant="outline" onClick={onRetry} className="gap-1.5 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white sm:min-w-[9rem]">
+            <Button variant="outline" onClick={onRetry} className="gap-1.5 border-call-ink/20 bg-transparent text-call-ink hover:bg-call-ink/10 hover:text-call-ink sm:min-w-[9rem]">
               <RefreshCw className="h-4 w-4" /> Try again
             </Button>
           )}

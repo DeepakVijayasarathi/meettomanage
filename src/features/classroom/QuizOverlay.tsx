@@ -126,11 +126,11 @@ export default function QuizOverlay({
   if (questions.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-white/40">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-call-ink/5 text-call-ink/40">
           <Sparkles className="h-5 w-5" />
         </span>
-        <p className="text-sm font-semibold text-white/70">No quiz questions yet</p>
-        <p className="max-w-[220px] text-xs text-white/40">
+        <p className="text-sm font-semibold text-call-ink/70">No quiz questions yet</p>
+        <p className="max-w-[220px] text-xs text-call-ink/40">
           {mode === "teacher"
             ? "This course has no quiz questions configured — add some in Admin → Academics → Quiz Bank."
             : "Your teacher hasn't set up any quiz questions for this class yet."}
@@ -142,11 +142,11 @@ export default function QuizOverlay({
   if (!active || !question) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-white/40">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-call-ink/5 text-call-ink/40">
           <Sparkles className="h-5 w-5" />
         </span>
-        <p className="text-sm font-semibold text-white/70">No quiz running</p>
-        <p className="max-w-[220px] text-xs text-white/40">
+        <p className="text-sm font-semibold text-call-ink/70">No quiz running</p>
+        <p className="max-w-[220px] text-xs text-call-ink/40">
           {mode === "teacher" ? "Launch a live quiz from the toolbar — it'll appear here for the class." : "Your teacher hasn't started a quiz yet. Hang tight!"}
         </p>
       </div>
@@ -155,26 +155,26 @@ export default function QuizOverlay({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 space-y-2 border-b border-white/10 p-3">
+      <div className="shrink-0 space-y-2 border-b border-call-ink/10 p-3">
         <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 rounded-full bg-brand-orange/20 px-2.5 py-1 text-[11px] font-bold text-brand-orange">
+          <span className="flex items-center gap-1.5 rounded-full bg-brand-orange/20 px-2.5 py-1 text-[11px] font-bold text-brand-orange-ink">
             <Sparkles className="h-3 w-3" /> Live Quiz
           </span>
           {phase === "countdown" && (
             <span
               className={cn(
                 "flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold",
-                timeLeft <= 5 ? "bg-destructive/20 text-destructive" : "bg-white/10 text-white/80"
+                timeLeft <= 5 ? "bg-destructive/20 text-destructive" : "bg-call-ink/10 text-call-ink/80"
               )}
             >
               <Timer className="h-3.5 w-3.5" /> {timeLeft}s
             </span>
           )}
         </div>
-        <p className="text-xs font-medium text-white/50">
+        <p className="text-xs font-medium text-call-ink/50">
           Question {(qIndex % questions.length) + 1} of {questions.length}
         </p>
-        <p ref={promptRef} tabIndex={-1} className="text-sm font-semibold leading-snug text-white focus:outline-none">
+        <p ref={promptRef} tabIndex={-1} className="text-sm font-semibold leading-snug text-call-ink focus:outline-none">
           {question.prompt}
         </p>
       </div>
@@ -191,15 +191,15 @@ export default function QuizOverlay({
               disabled={mode !== "student" || phase !== "countdown" || selected !== null}
               className={cn(
                 "flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-all",
-                !showResult && isSelected && "border-brand-orange bg-brand-orange/15 text-white",
-                !showResult && !isSelected && "border-white/10 text-white/80 hover:border-white/25 hover:bg-white/5",
-                showResult && isCorrect && "border-brand-green bg-brand-green/15 text-white",
-                showResult && !isCorrect && isSelected && "border-destructive bg-destructive/15 text-white",
-                showResult && !isCorrect && !isSelected && "border-white/10 text-white/40"
+                !showResult && isSelected && "border-brand-orange bg-brand-orange/15 text-call-ink",
+                !showResult && !isSelected && "border-call-ink/10 text-call-ink/80 hover:border-call-ink/25 hover:bg-call-ink/5",
+                showResult && isCorrect && "border-brand-green bg-brand-green/15 text-call-ink",
+                showResult && !isCorrect && isSelected && "border-destructive bg-destructive/15 text-call-ink",
+                showResult && !isCorrect && !isSelected && "border-call-ink/10 text-call-ink/40"
               )}
             >
               <span className="flex items-center gap-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white/70">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-call-ink/10 text-xs font-bold text-call-ink/70">
                   {String.fromCharCode(65 + i)}
                 </span>
                 {opt}
@@ -207,9 +207,9 @@ export default function QuizOverlay({
               {showResult && isCorrect && <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-green" />}
               {showResult && !isCorrect && isSelected && <XCircle className="h-4 w-4 shrink-0 text-destructive" />}
               {!showResult && (
-                <span className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-white/10">
+                <span className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-call-ink/10">
                   <span
-                    className="block h-full rounded-full bg-white/40"
+                    className="block h-full rounded-full bg-call-ink/40"
                     style={{ width: `${(optionCounts[i] / Math.max(...optionCounts, 1)) * 100}%` }}
                   />
                 </span>
@@ -219,20 +219,20 @@ export default function QuizOverlay({
         })}
 
         {phase === "revealed" && (
-          <div className="space-y-2 rounded-xl bg-white/5 p-3">
-            <p className="text-[11px] font-semibold text-white/50">Live response tally</p>
+          <div className="space-y-2 rounded-xl bg-call-ink/5 p-3">
+            <p className="text-[11px] font-semibold text-call-ink/50">Live response tally</p>
             {question.options.map((opt, i) => {
               const count = optionCounts[i];
               return (
                 <div key={opt} className="flex items-center gap-2 text-xs">
-                  <span className="w-24 shrink-0 truncate font-medium text-white/70" title={opt}>{opt}</span>
-                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+                  <span className="w-24 shrink-0 truncate font-medium text-call-ink/70" title={opt}>{opt}</span>
+                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-call-ink/10">
                     <span
-                      className={cn("block h-full rounded-full", i === question.correctIndex ? "bg-brand-green" : "bg-white/30")}
+                      className={cn("block h-full rounded-full", i === question.correctIndex ? "bg-brand-green" : "bg-call-ink/30")}
                       style={{ width: `${(count / maxCount) * 100}%` }}
                     />
                   </span>
-                  <span className="w-5 text-right text-white/40">{count}</span>
+                  <span className="w-5 text-right text-call-ink/40">{count}</span>
                 </div>
               );
             })}
@@ -240,12 +240,12 @@ export default function QuizOverlay({
         )}
       </div>
 
-      <div className="flex shrink-0 items-center justify-between border-t border-white/10 p-3">
+      <div className="flex shrink-0 items-center justify-between border-t border-call-ink/10 p-3">
         {/* role="status" (student mode only, via aria-live semantics on the text itself):
             updates the instant a question resolves — the one thing on this panel a
             screen-reader user landing on the (now-focused, see the effect above) prompt
             would actually want confirmed: did I get that right. */}
-        <p className="text-xs font-semibold text-white/70" role={mode === "student" ? "status" : undefined}>
+        <p className="text-xs font-semibold text-call-ink/70" role={mode === "student" ? "status" : undefined}>
           {/* The teacher can no longer answer their own quiz (see selectOption above), so
               their own score would always read 0/0 — show something real instead: how many
               students have actually responded to this question so far. */}
@@ -255,12 +255,12 @@ export default function QuizOverlay({
         </p>
         <div className="flex gap-2">
           {mode === "teacher" && phase === "countdown" && (
-            <Button size="sm" variant="ghost" className="text-white/70 hover:bg-white/10 hover:text-white" onClick={() => setPhase("revealed")}>
+            <Button size="sm" variant="ghost" className="text-call-ink/70 hover:bg-call-ink/10 hover:text-call-ink" onClick={() => setPhase("revealed")}>
               Reveal now
             </Button>
           )}
           {mode === "teacher" && phase === "revealed" && (
-            <Button size="sm" className="gap-1 !bg-brand-orange !text-call-bg hover:!bg-brand-orange-light" onClick={nextQuestion}>
+            <Button size="sm" className="gap-1 !bg-brand-orange-deep text-white hover:!bg-brand-orange-to" onClick={nextQuestion}>
               Next <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           )}

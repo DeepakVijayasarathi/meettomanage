@@ -439,7 +439,11 @@ export class NativeJitsiApi {
     conf.on(E.TRACK_ADDED, (track: JitsiTrack) => {
       if (track.isLocal()) return;
       const id = track.getParticipantId();
-      this.upsertParticipant(id, this.trackPatch(track, false));
+      // A track can arrive after its owner has left (seen live when a class was ended): don't
+      // resurrect them as a ghost tile.
+      const user = conf.getParticipantById?.(id);
+      if (!user && !this.state.participants.some((p) => p.id === id)) return;
+      this.upsertParticipant(id, { ...(user ? { name: user.getDisplayName()?.trim() || "Student" } : {}), ...this.trackPatch(track, false) });
       this.recomputeSharing();
       this.updateReceiverConstraints();
     });

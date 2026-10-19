@@ -85,7 +85,7 @@ function ControlButton({
             desktopOnly ? "hidden sm:flex" : "flex",
             state === "off" && "bg-call-danger text-white hover:bg-call-danger-hover",
             state === "on" && "bg-gradient-to-br from-brand-orange-from to-brand-orange-to text-white shadow-[0_0_0_1px_rgba(255,138,61,0.35)] hover:brightness-110",
-            state === "default" && "bg-call-raised text-white hover:bg-call-hover"
+            state === "default" && "bg-call-raised text-call-ink hover:bg-call-hover"
           )}
         >
           {children}
@@ -122,7 +122,7 @@ function PanelButton({
           aria-pressed={active}
           className={cn(
             "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange sm:h-12 sm:w-12",
-            active ? "bg-brand-orange/20 text-brand-orange" : "text-white hover:bg-white/10"
+            active ? "bg-brand-orange/20 text-brand-orange-ink" : "text-call-ink hover:bg-call-ink/10"
           )}
         >
           {children}
@@ -130,7 +130,7 @@ function PanelButton({
             <span
               className={cn(
                 "absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold ring-2 ring-call-bg",
-                alert ? "bg-brand-amber text-call-bg" : "bg-call-muted text-white"
+                alert ? "bg-brand-amber text-amber-950" : "bg-call-muted text-call-ink"
               )}
             >
               {badge}
@@ -153,12 +153,12 @@ export default function Toolbar(props: ToolbarProps) {
     <TooltipProvider delayDuration={200}>
       <div className="grid h-20 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 sm:px-5">
         {/* Left: elapsed time and class title, like Meet's "10:42 AM | abc-defg-hij" */}
-        <div className="hidden min-w-0 items-center gap-3 text-white md:flex">
+        <div className="hidden min-w-0 items-center gap-3 text-call-ink md:flex">
           <span className="text-base font-medium tabular-nums">{elapsed}</span>
-          <span className="h-4 w-px bg-white/30" />
+          <span className="h-4 w-px bg-call-ink/30" />
           <span className="truncate text-base font-medium">{title}</span>
           {recording && (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-call-danger/15 px-2.5 py-1 text-xs font-semibold text-call-danger-soft">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-call-danger/15 px-2.5 py-1 text-xs font-semibold text-call-danger">
               <span className="h-2 w-2 animate-pulse rounded-full bg-call-danger" /> REC
             </span>
           )}
@@ -203,7 +203,7 @@ export default function Toolbar(props: ToolbarProps) {
                 <DropdownMenuTrigger asChild>
                   <button
                     aria-label="More options"
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-call-raised text-white transition-colors hover:bg-call-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange sm:h-12 sm:w-12"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-call-raised text-call-ink transition-colors hover:bg-call-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange sm:h-12 sm:w-12"
                   >
                     <MoreVertical className={icon} />
                   </button>
@@ -211,43 +211,43 @@ export default function Toolbar(props: ToolbarProps) {
               </TooltipTrigger>
               <TooltipContent side="top">More options</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent side="top" align="center" className="w-60 border-white/10 bg-call-surface text-white">
+            <DropdownMenuContent side="top" align="center" className="w-60 border-call-ink/10 bg-call-surface text-call-ink">
               <div className="sm:hidden">
-                <DropdownMenuItem className="gap-3 py-2.5 focus:bg-white/10 focus:text-white" onSelect={props.onToggleScreenShare}>
+                <DropdownMenuItem className="gap-3 py-2.5 focus:bg-call-ink/10 focus:text-call-ink" onSelect={props.onToggleScreenShare}>
                   <MonitorUp className="h-5 w-5" /> {screenSharing ? "Stop presenting" : "Present now"}
                 </DropdownMenuItem>
-                <DropdownMenuItem className="gap-3 py-2.5 focus:bg-white/10 focus:text-white" onSelect={props.onToggleStage}>
+                <DropdownMenuItem className="gap-3 py-2.5 focus:bg-call-ink/10 focus:text-call-ink" onSelect={props.onToggleStage}>
                   <PresentationIcon className="h-5 w-5" /> {stageView === "whiteboard" ? "Back to video" : "Open whiteboard"}
                 </DropdownMenuItem>
                 {mode === "teacher" && (
-                  <DropdownMenuItem className="gap-3 py-2.5 focus:bg-white/10 focus:text-white" onSelect={props.onToggleRecording}>
+                  <DropdownMenuItem className="gap-3 py-2.5 focus:bg-call-ink/10 focus:text-call-ink" onSelect={props.onToggleRecording}>
                     <Circle className={cn("h-5 w-5", recording && "fill-call-danger text-call-danger")} /> {recording ? "Stop recording" : "Start recording"}
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem className="gap-3 py-2.5 focus:bg-white/10 focus:text-white" onSelect={props.onCelebrate}>
+                <DropdownMenuItem className="gap-3 py-2.5 focus:bg-call-ink/10 focus:text-call-ink" onSelect={props.onCelebrate}>
                   <PartyPopper className="h-5 w-5" /> Celebrate
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuSeparator className="bg-call-ink/10" />
               </div>
               {mode === "teacher" ? (
                 <>
-                  <DropdownMenuItem className="gap-3 py-2.5 focus:bg-white/10 focus:text-white" onSelect={props.onBirthday}>
+                  <DropdownMenuItem className="gap-3 py-2.5 focus:bg-call-ink/10 focus:text-call-ink" onSelect={props.onBirthday}>
                     <span className="w-5 text-center text-base leading-none">🎂</span> Birthday celebration
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-3 py-2.5 focus:bg-white/10 focus:text-white" onSelect={props.onMuteAll}>
+                  <DropdownMenuItem className="gap-3 py-2.5 focus:bg-call-ink/10 focus:text-call-ink" onSelect={props.onMuteAll}>
                     <MuteAllIcon className="h-5 w-5" /> Mute all students
                   </DropdownMenuItem>
                 </>
               ) : (
-                <DropdownMenuItem className="gap-3 py-2.5 focus:bg-white/10 focus:text-white" onSelect={props.onAskDoubt}>
+                <DropdownMenuItem className="gap-3 py-2.5 focus:bg-call-ink/10 focus:text-call-ink" onSelect={props.onAskDoubt}>
                   <HelpCircle className="h-5 w-5" /> Ask a doubt
                 </DropdownMenuItem>
               )}
-              <DropdownMenuSeparator className="bg-white/10" />
-              <DropdownMenuItem className="gap-3 py-2.5 focus:bg-white/10 focus:text-white" onSelect={() => props.onTogglePanel("quiz")}>
+              <DropdownMenuSeparator className="bg-call-ink/10" />
+              <DropdownMenuItem className="gap-3 py-2.5 focus:bg-call-ink/10 focus:text-call-ink" onSelect={() => props.onTogglePanel("quiz")}>
                 <Sparkles className="h-5 w-5" /> Live quiz
               </DropdownMenuItem>
-              <DropdownMenuItem className="gap-3 py-2.5 focus:bg-white/10 focus:text-white" onSelect={() => props.onTogglePanel("leaderboard")}>
+              <DropdownMenuItem className="gap-3 py-2.5 focus:bg-call-ink/10 focus:text-call-ink" onSelect={() => props.onTogglePanel("leaderboard")}>
                 <Trophy className="h-5 w-5" /> Leaderboard
               </DropdownMenuItem>
             </DropdownMenuContent>
