@@ -47,6 +47,7 @@ import {
   Newspaper,
   LifeBuoy,
   Radar,
+  Gamepad2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -76,6 +77,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Recordings", to: "/admin/recordings", icon: Video },
       { label: "Quiz Bank", to: "/admin/quiz-bank", icon: Sparkles },
       { label: "Activity Bank", to: "/admin/activity-bank", icon: PencilRuler },
+      { label: "Learning Plugins", to: "/admin/learning-plugins", icon: Gamepad2 },
     ],
   },
   {
