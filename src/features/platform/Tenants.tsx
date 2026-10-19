@@ -73,16 +73,16 @@ function TenantManagement() {
   };
   const action = "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:text-foreground";
   const stats = [
-    { label: "Total tenants", count: tenants.length, icon: Building2, tone: "bg-[hsl(214_52%_20%)] text-sky-300" },
+    { label: "Total tenants", count: tenants.length, icon: Building2, tone: "bg-orange-50 text-[#EA580C]" },
     { label: "Active", count: tenants.filter(t => t.status === "Active").length, icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-600" },
     { label: "Suspended", count: tenants.filter(t => t.status === "Suspended").length, icon: PauseCircle, tone: "bg-amber-50 text-amber-600" },
     { label: "Needs attention", count: tenants.filter(t => t.status === "Failed" || t.status === "Provisioning").length, icon: AlertCircle, tone: "bg-red-50 text-red-600" },
   ];
   return <div className="space-y-6">
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[hsl(214_52%_20%)] via-[hsl(214_52%_28%)] to-[hsl(214_52%_20%)] p-7 text-white shadow-lg sm:p-9">
-      <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-sky-400/20 blur-3xl" />
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#7C2D12] via-[#C2410C] to-[#EA580C] p-7 text-white shadow-lg shadow-orange-950/15 sm:p-9">
+      <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-amber-300/25 blur-3xl" />
       <h1 className="relative font-serif text-3xl font-semibold tracking-tight">Tenant management</h1>
-      <p className="relative mt-2 max-w-xl text-sm leading-relaxed text-white/70">Create client workspaces and manage their lifecycle: set up, suspend, activate and sync logins.</p>
+      <p className="relative mt-2 max-w-xl text-sm leading-relaxed text-white/80">Create client workspaces, manage their lifecycle, and configure Simple SSO email routing from one place.</p>
     </div>
     <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">{stats.map(card => <div key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-card">
       <div className="flex items-center justify-between gap-2"><span className="text-sm text-slate-500">{card.label}</span><span className={`flex h-9 w-9 items-center justify-center rounded-xl ${card.tone}`}><card.icon className="h-4 w-4" /></span></div>
@@ -90,7 +90,7 @@ function TenantManagement() {
     {error && <p role="alert" className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</p>}
     {notice && <p role="status" className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{notice}</p>}
       <form onSubmit={create} className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-card sm:p-7">
-        <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(214_52%_20%)] text-sky-300">{retry ? <RotateCcw className="h-5 w-5" /> : <Plus className="h-5 w-5" />}</span>
+        <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-[#EA580C] ring-1 ring-orange-200">{retry ? <RotateCcw className="h-5 w-5" /> : <Plus className="h-5 w-5" />}</span>
           <div><h2 className="font-serif text-xl font-semibold">{retry ? "Retry client setup" : "Create client"}</h2><p className="text-xs text-slate-500">{retry ? "Finish setting up this workspace." : "Each client gets its own database, users and settings."}</p></div></div>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className={labelClass}><span>Client code</span><input required maxLength={50} pattern="[a-z][a-z0-9-]{2,49}" title="3–50 lowercase letters, numbers or hyphens; start with a letter" readOnly={!!retry} className={inputClass} value={draft.code} onChange={e => setDraft({ ...draft, code: e.target.value })} /></label>
@@ -100,7 +100,7 @@ function TenantManagement() {
           <label className={labelClass}><span>Initial four-digit PIN</span><input type="password" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} required={!draft.databaseName.trim() && !retry} autoComplete="new-password" className={inputClass} value={draft.adminPin} onChange={e => setDraft({ ...draft, adminPin: e.target.value })} /></label>
         </div>
         <div className="flex flex-wrap items-center gap-4">
-          <button disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-[hsl(214_52%_20%)] px-5 py-2.5 text-sm font-semibold text-white shadow-md ring-1 ring-white/15 transition hover:bg-[hsl(214_52%_28%)] disabled:opacity-60">{busy && <Loader2 className="h-4 w-4 animate-spin" />}{busy ? "Setting up client…" : retry ? "Retry setup" : "Create client"}</button>
+          <button disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-[#EA580C] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-900/15 transition hover:bg-[#C2410C] disabled:opacity-60">{busy && <Loader2 className="h-4 w-4 animate-spin" />}{busy ? "Setting up client…" : retry ? "Retry setup" : "Create client"}</button>
           {retry && <button type="button" disabled={busy} className="text-sm font-medium text-slate-600 underline-offset-4 hover:underline" onClick={() => { setRetry(null); setDraft(empty); }}>Cancel retry</button>}
         </div>
       </form>
@@ -113,7 +113,7 @@ function TenantManagement() {
             <td className="px-5 py-4 font-medium">{t.name}</td><td className="px-5 py-4 font-mono text-xs text-slate-600">{t.code}</td>
             <td className="px-5 py-4"><span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${statusStyle[t.status] ?? "bg-slate-100 text-slate-700 ring-slate-500/20"}`}>{t.status}</span></td>
             <td className="px-5 py-4"><div className="flex flex-wrap gap-2">
-              {(t.status === "Active" || t.status === "Suspended") && <><Link to={`/platform/configuration?tenant=${t.id}`} className={action}><Settings2 className="h-3 w-3" />Configure</Link><Link to={`/platform/menus?tenant=${t.id}`} className={action}><ListTree className="h-3 w-3" />Menus</Link><Link to={`/platform/email-mappings?tenant=${t.id}`} className={action}><AtSign className="h-3 w-3" />Login emails</Link></>}
+              {(t.status === "Active" || t.status === "Suspended") && <><Link to={`/platform/configuration?tenant=${t.id}`} className={action}><Settings2 className="h-3 w-3" />Configure</Link><Link to={`/platform/menus?tenant=${t.id}`} className={action}><ListTree className="h-3 w-3" />Menus</Link><Link to={`/platform/email-mappings?tenant=${t.id}`} className={`${action} !border-orange-200 !text-[#C2410C] hover:!bg-orange-50`}><AtSign className="h-3 w-3" />Simple SSO</Link></>}
               <a href={`/t/${t.code}/login`} className={action}><ExternalLink className="h-3 w-3" />Client portal</a>
               {(t.status === "Active" || t.status === "Suspended") && <button disabled={busy} className={action} onClick={() => { void toggle(t); }}>{t.status === "Active" ? "Suspend" : "Activate"}</button>}
               {t.status === "Suspended" && <button disabled={busy} className={action} onClick={() => { void synchronize(t); }}>Sync imported logins</button>}

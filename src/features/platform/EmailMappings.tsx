@@ -42,9 +42,9 @@ function EmailMappingsPage() {
   }
 
   return <div className="space-y-6">
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[hsl(214_52%_20%)] via-[hsl(214_52%_28%)] to-[hsl(214_52%_20%)] p-7 text-white shadow-lg sm:p-9">
-      <AtSign className="mb-4 h-8 w-8 text-sky-300" /><h1 className="font-serif text-3xl font-semibold">Login email mappings</h1>
-      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/70">Route users from the shared login URL to the correct tenant. Use a domain for organisation email, or an exact address for Gmail and other shared providers.</p>
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#7C2D12] via-[#C2410C] to-[#EA580C] p-7 text-white shadow-lg shadow-orange-950/15 sm:p-9">
+      <AtSign className="mb-4 h-8 w-8 text-orange-100" /><h1 className="font-serif text-3xl font-semibold">Simple SSO</h1>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/80">Give every client one shared login experience. Route organisation domains automatically, or map an exact Gmail address to the correct tenant.</p>
     </div>
     <TenantSelector {...selection} onChange={selection.select} />
     {selection.error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{selection.error}</p>}
@@ -55,12 +55,12 @@ function EmailMappingsPage() {
           : <p className="p-8 text-sm text-muted-foreground">No email mappings for this tenant yet.</p>}
       </section>
       <form onSubmit={add} className="self-start space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-card">
-        <div><h2 className="font-semibold">Add mapping</h2><p className="mt-1 text-sm text-muted-foreground">For Gmail, choose Exact email.</p></div>
+        <div><h2 className="font-semibold">Add SSO mapping</h2><p className="mt-1 text-sm text-muted-foreground">For Gmail and other shared providers, choose Exact email.</p></div>
         <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">{(["email", "domain"] as const).map(item => <button key={item} type="button" onClick={() => { setKind(item); setError(""); }} className={`rounded-lg px-3 py-2 text-sm font-medium ${kind === item ? "bg-white shadow dark:bg-background" : "text-muted-foreground"}`}>{item === "email" ? "Exact email" : "Domain"}</button>)}</div>
         <label className="block space-y-2 text-sm"><span>{kind === "email" ? "Email address" : "Organisation domain"}</span><input required type={kind === "email" ? "email" : "text"} value={value} onChange={e => setValue(e.target.value)} placeholder={kind === "email" ? "owner@gmail.com" : "school.org"} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 dark:border-white/15 dark:bg-white/5" /></label>
         {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
         {notice && !error && <p role="status" className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-800"><CheckCircle2 className="h-4 w-4" />{notice}</p>}
-        <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(214_52%_20%)] px-4 py-3 text-sm font-semibold text-white"><Plus className="h-4 w-4" />Add mapping</button>
+        <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#EA580C] px-4 py-3 text-sm font-semibold text-white shadow-md shadow-orange-900/15 hover:bg-[#C2410C]"><Plus className="h-4 w-4" />Add SSO mapping</button>
         <p className="text-xs leading-relaxed text-amber-700">These mappings currently apply to this browser. A shared production mapping requires the platform API tenant registry.</p>
       </form>
     </div>}
