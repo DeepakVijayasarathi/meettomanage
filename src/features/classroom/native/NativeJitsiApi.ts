@@ -465,6 +465,12 @@ export class NativeJitsiApi {
       const isAudio = track.getType() === "audio";
       if (isAudio) this.patchParticipant(track.getParticipantId(), { audioMuted: muted });
       else if (track.getVideoType?.() !== "desktop") this.patchParticipant(track.getParticipantId(), { videoMuted: muted });
+      else {
+        // Jitsi ends a screen share by muting its source on viewers' side (and unmutes it if the
+        // same person presents again) rather than removing the track — verified on a live server.
+        this.patchParticipant(track.getParticipantId(), { desktopTrack: muted ? undefined : track });
+        this.recomputeSharing();
+      }
     });
 
     conf.on(E.DOMINANT_SPEAKER_CHANGED, (id: string) => {
@@ -546,7 +552,8 @@ export class NativeJitsiApi {
 
   private trackPatch(track: JitsiTrack, removed: boolean): Partial<NativeParticipant> {
     if (track.getType() === "audio") return removed ? { audioTrack: undefined, audioMuted: true } : { audioTrack: track, audioMuted: track.isMuted() };
-    if (track.getVideoType?.() === "desktop") return { desktopTrack: removed ? undefined : track };
+    // A muted desktop source is a share that has stopped (see TRACK_MUTE_CHANGED).
+    if (track.getVideoType?.() === "desktop") return { desktopTrack: removed || track.isMuted() ? undefined : track };
     return removed ? { videoTrack: undefined, videoMuted: true } : { videoTrack: track, videoMuted: track.isMuted() };
   }
 

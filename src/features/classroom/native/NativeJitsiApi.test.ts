@@ -66,6 +66,16 @@ describe("NativeJitsiApi", () => {
     conf.remoteShare("r1");
     expect(events).toContainEqual(["contentSharingParticipantsChanged", { data: ["r1"] }]);
 
+    // Jitsi ends a share by muting the source on the viewer's side, and unmutes it on re-share.
+    const share = conf.participants.get("r1")!.tracks.find((t) => t.getVideoType() === "desktop")!;
+    share.muted = true;
+    conf.emit(EVENTS.conference.TRACK_MUTE_CHANGED, share);
+    expect(events.filter(([e]) => e === "contentSharingParticipantsChanged").pop()).toEqual(["contentSharingParticipantsChanged", { data: [] }]);
+    expect(api.getSnapshot().participants.find((p) => p.id === "r1")!.desktopTrack).toBeUndefined();
+    share.muted = false;
+    conf.emit(EVENTS.conference.TRACK_MUTE_CHANGED, share);
+    expect(events.filter(([e]) => e === "contentSharingParticipantsChanged").pop()).toEqual(["contentSharingParticipantsChanged", { data: ["r1"] }]);
+
     conf.remoteLeave("r1");
     expect(events).toContainEqual(["participantLeft", { id: "r1" }]);
     expect(events).toContainEqual(["contentSharingParticipantsChanged", { data: [] }]);
