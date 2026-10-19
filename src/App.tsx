@@ -428,6 +428,7 @@ export default function App() {
               <Route path="leave" element={<TeacherLeave />} />
               <Route path="payout" element={<TeacherPayout />} />
               <Route path="resources" element={<TeacherResources />} />
+              <Route path="learning-plugins" element={<LearningPlugins />} />
             </Route>
 
             <Route path="/parent" element={<RequireAuth role="parent"><AppShell role="parent"><Outlet /></AppShell></RequireAuth>}>

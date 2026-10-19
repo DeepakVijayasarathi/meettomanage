@@ -168,6 +168,7 @@ export const TEACHER_NAV: NavSection[] = [
       { label: "Recordings", to: "/teacher/recordings", icon: Video },
       { label: "Demo Feedback", to: "/teacher/demo-feedback", icon: ClipboardCheck, badge: "1" },
       { label: "Student Doubts", to: "/teacher/doubts", icon: MessageCircleQuestion },
+      { label: "Learning Plugins", to: "/teacher/learning-plugins", icon: Gamepad2 },
     ],
   },
   {
