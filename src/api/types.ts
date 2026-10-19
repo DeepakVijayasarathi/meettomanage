@@ -47,6 +47,8 @@ export interface BulkImportResult {
 }
 
 export interface LoginResponse {
+  tenantId?: string | null;
+  tenantCode?: string | null;
   accessToken: string;
   expiresAtUtc: string;
   user: ApiUser;

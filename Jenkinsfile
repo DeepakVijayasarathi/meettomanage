@@ -1,15 +1,11 @@
-// Deploys the frontend SPA container. Unlike the backend, the build takes no runtime
-// secrets — VITE_* config is baked in at build time from .env.production, which is
-// committed to the repo (see that file's own comments for why).
 pipeline {
+
     agent any
 
     environment {
-        IMAGE_NAME         = 'deepakrajv/readernestfrontend'
-        CONTAINER_NAME     = 'readernestfrontend'
-        GITHUB_REPO        = 'https://github.com/Deepan45/the-reader-nest-frontend.git'
-
-        DOCKER_NETWORK     = 'reader-network'
+        IMAGE_NAME     = 'deepakrajv/meettomanage'
+        CONTAINER_NAME = 'meettomanageUi'
+        GITHUB_REPO    = 'https://github.com/DeepakVijayasarathi/meettomanage.git'
     }
 
     triggers {
@@ -21,72 +17,109 @@ pipeline {
         stage('Checkout') {
             steps {
                 git(
-                    branch: 'main',
                     url: "${GITHUB_REPO}",
+                    branch: 'main',
                     credentialsId: 'github'
                 )
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                sh """
-                    docker build \
-                      -t ${IMAGE_NAME}:latest \
-                      -f Dockerfile .
-                """
-            }
-        }
-
-        stage('Create Docker Network') {
-            steps {
-                sh """
-                    docker network inspect ${DOCKER_NETWORK} >/dev/null 2>&1 || \
-                    docker network create ${DOCKER_NETWORK}
-                """
-            }
-        }
-
         stage('Remove Old Container') {
             steps {
-                sh """
+                sh '''
+                    echo "Stopping old container..."
+
                     docker stop ${CONTAINER_NAME} || true
                     docker rm ${CONTAINER_NAME} || true
-                """
+
+                    echo "Old container removed"
+                '''
+            }
+        }
+
+        stage('Remove Old Image') {
+            steps {
+                sh '''
+                    echo "Removing old image..."
+
+                    docker rmi ${IMAGE_NAME}:latest || true
+
+                    echo "Old image removed"
+                '''
+            }
+        }
+
+        stage('Clear Docker Cache') {
+            steps {
+                sh '''
+                    echo "Clearing Docker cache..."
+
+                    docker builder prune -af || true
+                    docker image prune -af || true
+
+                    echo "Docker cache cleared"
+                '''
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh '''
+                    echo "Building Docker image..."
+
+                    docker build \
+                    --no-cache \
+                    --pull \
+                    -t ${IMAGE_NAME}:latest \
+                    -f Dockerfile .
+
+                    echo "Docker image build completed"
+                '''
             }
         }
 
         stage('Run Container') {
             steps {
-                sh """
+                sh '''
+                    echo "Starting new container..."
+
                     docker run -d \
-                      --name ${CONTAINER_NAME} \
-                      --network ${DOCKER_NETWORK} \
-                      -p 1001:80 \
-                      --restart unless-stopped \
-                      ${IMAGE_NAME}:latest
-                """
+                    --restart unless-stopped \
+                    --name ${CONTAINER_NAME} \
+                    -p 2100:80 \
+                    ${IMAGE_NAME}:latest
+
+                    echo "Container started"
+                '''
             }
         }
 
-        stage('Verify Deployment') {
+        stage('Verify Container') {
             steps {
-                sh """
-                    sleep 10
+                sh '''
+                    echo "Checking container status..."
+
                     docker ps | grep ${CONTAINER_NAME}
-                    docker logs --tail 50 ${CONTAINER_NAME}
-                """
+
+                    echo "Deployment verified"
+                '''
             }
         }
     }
 
     post {
+
         success {
-            echo '✅ ReaderNest Frontend deployed successfully on port 1001'
+            echo "✅ Deployment Successful"
         }
 
         failure {
-            echo '❌ Deployment failed. Check Jenkins console logs.'
+            echo "❌ Build or Deployment Failed"
+
+            sh '''
+                echo "Docker container logs:"
+                docker logs ${CONTAINER_NAME} || true
+            '''
         }
 
         always {
@@ -94,9 +127,3 @@ pipeline {
         }
     }
 }
-
-// ---------------------------------------------------------------------------------------
-// Jenkins setup required (one-time, before the first run of this pipeline):
-// Just a GitHub webhook/credential like the backend uses — no secret text credentials
-// needed here since there are no runtime secrets baked into this build.
-// ---------------------------------------------------------------------------------------
