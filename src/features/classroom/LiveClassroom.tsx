@@ -3,17 +3,17 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { apiEnabled } from "@/lib/api";
 import { useSession } from "@/state/session";
 import JitsiLive, { GUID_RE } from "./JitsiLive";
-import { HelpCircle, LogOut, MessageSquare, PanelRightClose, PanelRightOpen, Sparkles, Users } from "lucide-react";
+import { X } from "lucide-react";
 import { SESSIONS } from "@/data/sessions";
 import type { ChatMessage, Participant } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { buildInitialMessages, buildParticipants, DEMO_ACTIVITY_BANK, LEADERBOARD_SEED, QUIZ_BANK } from "./classroomData";
 import VideoStage from "./VideoStage";
 import Whiteboard from "./Whiteboard";
 import ParticipantsPanel from "./ParticipantsPanel";
 import ChatPanel from "./ChatPanel";
-import Toolbar from "./Toolbar";
+import Toolbar, { type SidePanel } from "./Toolbar";
+import LeaderboardPanel from "./LeaderboardPanel";
 import QuizOverlay from "./QuizOverlay";
 import GamificationOverlay from "./GamificationOverlay";
 import { postEngagement } from "@/api/engagement";
@@ -22,7 +22,6 @@ import { isLikelyInAppBrowser } from "@/lib/jitsi";
 import { useToast } from "@/hooks/use-toast";
 
 type StageView = "video" | "whiteboard";
-type RightTab = "participants" | "chat" | "quiz";
 
 interface WaitingGuest {
   id: string;
@@ -142,8 +141,9 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
 
   const [elapsed, setElapsed] = useState(0);
   const [stageView, setStageView] = useState<StageView>("video");
-  const [rightOpen, setRightOpen] = useState(true);
-  const [rightTab, setRightTab] = useState<RightTab>("participants");
+  // Meet opens with the room full-width; panels slide in only when asked for.
+  const [panel, setPanel] = useState<SidePanel | null>(null);
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
 
   const [screenSharing, setScreenSharing] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -151,6 +151,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
     { id: "w-1", name: "Aarav's Parent" },
     { id: "w-2", name: "Guest Observer" },
   ]);
+  const [knockDismissed, setKnockDismissed] = useState(false);
 
   const [boardAccess, setBoardAccess] = useState<Record<string, boolean>>({});
   const [quizOpen, setQuizOpen] = useState(false);
@@ -215,8 +216,13 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
     setWaitingGuests((prev) => prev.filter((g) => g.id !== id));
   }
 
+  function togglePanel(next: SidePanel) {
+    setPanel((current) => (current === next ? null : next));
+  }
+
   const canDrawBoard = mode === "teacher" || Boolean(selfId && boardAccess[selfId]);
   const selfName = self?.name ?? (mode === "teacher" ? "Teacher" : "Student");
+  const leave = () => navigate(mode === "teacher" ? "/teacher" : "/parent");
 
   function celebrate(message?: string) {
     setCelebrationMessage(message);
@@ -236,113 +242,61 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
 
   if (!session) {
     return (
-      <div className="flex h-dvh w-screen flex-col items-center justify-center gap-4 bg-slate-950 text-white">
+      <div className="flex h-dvh w-screen flex-col items-center justify-center gap-4 bg-[#15181e] text-white">
         <p className="text-lg font-semibold">Session not found</p>
         <Button onClick={() => navigate(mode === "teacher" ? "/teacher" : "/parent")}>Go back</Button>
       </div>
     );
   }
 
+  const panelTitle: Record<SidePanel, string> = {
+    participants: "People",
+    chat: "In-class messages",
+    quiz: "Live quiz",
+    leaderboard: "Leaderboard",
+  };
+  const showKnock = mode === "teacher" && waitingGuests.length > 0 && panel !== "participants" && !knockDismissed;
+
   return (
-    <div className="flex h-dvh w-screen flex-col overflow-hidden bg-slate-950 text-foreground">
-      {/* Minimal header — this screen renders outside the portal AppShell */}
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-gradient-to-r from-brand-navyDark via-brand-navy to-brand-navyDark px-3 py-2.5 text-white sm:gap-3 sm:px-4">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive" />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold leading-tight">{session.title}</p>
-            <p className="truncate text-[11px] text-white/60">
-              {session.teacherName} · {participants.length} joined
-            </p>
-          </div>
-        </div>
-
-        {/* shrink-0: the title above already absorbs any width pressure via its own
-            min-w-0 + truncate — these controls (timer/doubt/panel-toggle/exit) must stay
-            legible instead of splitting the squeeze with it. On mode="student", the extra
-            "Ask a doubt" button made this group wider than a 375px viewport could fit
-            alongside the title, so its label collapses to icon-only below sm. */}
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-          {recording && (
-            <span className="flex items-center gap-1.5 rounded-full bg-destructive/15 px-2 py-1 text-xs font-semibold text-destructive sm:px-2.5">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-destructive" /> REC
-            </span>
-          )}
-          <span className="rounded-full bg-white/10 px-2 py-1 text-xs font-semibold tabular-nums text-white/85 sm:px-2.5">
-            {formatElapsed(elapsed)}
-          </span>
-          {mode === "student" && (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="gap-1.5 bg-white/10 px-2.5 text-white hover:bg-white/20 sm:px-3"
-              aria-label="Ask a doubt"
-              onClick={() => {
-                setRightOpen(true);
-                setRightTab("chat");
-                setChatPreset("I have a doubt: ");
-              }}
-            >
-              <HelpCircle className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Ask a doubt</span>
-            </Button>
-          )}
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 text-white/70 hover:bg-white/10 hover:text-white"
-            title={rightOpen ? "Collapse panel" : "Expand panel"}
-            aria-label={rightOpen ? "Collapse panel" : "Expand panel"}
-            onClick={() => setRightOpen((o) => !o)}
-          >
-            {rightOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            className="gap-1.5 px-2.5 sm:px-3"
-            onClick={() => navigate(mode === "teacher" ? "/teacher" : "/parent")}
-          >
-            <LogOut className="h-3.5 w-3.5" /> Exit
-          </Button>
-        </div>
-      </header>
-
-      {/* Body */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+    <div className="flex h-dvh w-screen flex-col overflow-hidden bg-[#15181e] text-white">
+      <div className="relative flex min-h-0 flex-1">
         {/* Stage */}
-        <div className="relative min-h-0 min-w-0 flex-1 bg-slate-950">
+        <main className="relative min-h-0 min-w-0 flex-1">
           {stageView === "video" ? (
-            <VideoStage participants={participants} boardAccess={boardAccess} />
-          ) : (
-            <Whiteboard
-              canDraw={canDrawBoard}
-              mode={mode}
-              activities={DEMO_ACTIVITY_BANK}
-              onActivityComplete={() => {
-                celebrate();
-                postEngagement(sessionId, selfName, "ActivityCompleted");
-              }}
-              onInteraction={() => postEngagement(sessionId, selfName, "WhiteboardInteraction")}
+            <VideoStage
+              participants={participants}
+              boardAccess={boardAccess}
+              selfId={selfId}
+              pinnedId={pinnedId}
+              onTogglePin={(id) => setPinnedId((cur) => (cur === id ? null : id))}
             />
+          ) : (
+            <div className="h-full p-2">
+              <div className="h-full overflow-hidden rounded-xl">
+                <Whiteboard
+                  canDraw={canDrawBoard}
+                  mode={mode}
+                  activities={DEMO_ACTIVITY_BANK}
+                  onActivityComplete={() => {
+                    celebrate();
+                    postEngagement(sessionId, selfName, "ActivityCompleted");
+                  }}
+                  onInteraction={() => postEngagement(sessionId, selfName, "WhiteboardInteraction")}
+                />
+              </div>
+            </div>
           )}
 
-          {mode === "teacher" && (
-            <button
-              title="Birthday celebration"
-              aria-label="Send a birthday celebration"
-              onClick={() => {
-                const student = participants.find((p) => p.role === "student");
-                celebrate(`Happy Birthday${student ? `, ${student.name.split(" ")[0]}` : ""}! 🎂`);
-              }}
-              className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy/95 text-lg backdrop-blur transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              🎂
-            </button>
+          {screenSharing && (
+            <div className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-3 rounded-full bg-[#F26B1D] py-1.5 pl-4 pr-1.5 text-sm font-medium text-white shadow-lg">
+              You're presenting to everyone
+              <button onClick={() => setScreenSharing(false)} className="rounded-full bg-white px-3 py-1 text-sm font-medium text-[#F26B1D] hover:bg-white/90">
+                Stop presenting
+              </button>
+            </div>
           )}
 
+          {/* Celebration confetti/banner only — the leaderboard lives in its own side panel here. */}
           <GamificationOverlay
             celebrating={celebrating}
             onCelebrationEnd={() => {
@@ -351,83 +305,78 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
             }}
             leaderboard={LEADERBOARD_SEED}
             message={celebrationMessage}
-            // This mock/demo classroom has no Stars tab elsewhere to duplicate — always show.
-            showLeaderboardCard
+            showLeaderboardCard={false}
           />
 
-          <div className="absolute inset-x-0 bottom-4 z-30 flex justify-center px-2 sm:px-4">
-            <Toolbar
-              mode={mode}
-              micOn={self?.micOn ?? true}
-              camOn={self?.camOn ?? true}
-              screenSharing={screenSharing}
-              stageView={stageView}
-              handRaised={self?.handRaised ?? false}
-              recording={recording}
-              waitingCount={waitingGuests.length}
-              waitingRoomOpen={rightOpen && rightTab === "participants"}
-              onToggleMic={() => updateParticipant(selfId, { micOn: !(self?.micOn ?? true) })}
-              onToggleCam={() => updateParticipant(selfId, { camOn: !(self?.camOn ?? true) })}
-              onToggleScreenShare={() => setScreenSharing((s) => !s)}
-              onToggleStage={() => setStageView((v) => (v === "video" ? "whiteboard" : "video"))}
-              onToggleHand={() => {
-                const raising = !(self?.handRaised ?? false);
-                updateParticipant(selfId, { handRaised: raising });
-                if (raising) postEngagement(sessionId, selfName, "HandRaise");
-              }}
-              onMuteAll={handleMuteAll}
-              onToggleWaitingRoom={() => {
-                setRightOpen(true);
-                setRightTab("participants");
-              }}
-              onToggleRecording={() => setRecording((r) => !r)}
-              onLaunchQuiz={() => {
-                setQuizOpen(true);
-                setRightOpen(true);
-                setRightTab("quiz");
-              }}
-              onCelebrate={() => celebrate()}
-              onLeave={() => navigate(mode === "teacher" ? "/teacher" : "/parent")}
-            />
-          </div>
-        </div>
-
-        {/* Right panel — docked, dark, never a popup: Jitsi keeps chat/participants/polls as tabs in one side panel.
-            Below md the body stacks (video above, panel below) instead of sitting side-by-side, so this panel
-            needs its own height cap (not shrink-0, which only constrains flex-row width) — otherwise its content
-            (search box + waiting room + full roster) claims however much height it wants and squeezes the video
-            stage down to a sliver. max-h caps it so the video stays usable and the panel scrolls internally
-            (ParticipantsPanel/ChatPanel/QuizOverlay already render their lists in a flex-1 ScrollArea). */}
-        {rightOpen && (
-          <aside className="flex max-h-[45vh] min-h-0 w-full flex-col border-t border-white/10 bg-brand-navy md:max-h-none md:w-[320px] md:shrink-0 md:border-l md:border-t-0">
-            <Tabs value={rightTab} onValueChange={(v) => setRightTab(v as RightTab)} className="flex h-full min-h-0 flex-col">
-              <div className="shrink-0 border-b border-white/10 p-2">
-                <TabsList className="w-full bg-white/5">
-                  <TabsTrigger value="participants" className="flex-1 gap-1.5 text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none">
-                    <Users className="h-3.5 w-3.5" /> People
-                  </TabsTrigger>
-                  <TabsTrigger value="chat" className="flex-1 gap-1.5 text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none">
-                    <MessageSquare className="h-3.5 w-3.5" /> Chat
-                  </TabsTrigger>
-                  <TabsTrigger value="quiz" className="flex-1 gap-1.5 text-white/60 data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none">
-                    <Sparkles className="h-3.5 w-3.5" /> Quiz
-                  </TabsTrigger>
-                </TabsList>
+          {/* Meet-style "Someone wants to join" prompt */}
+          {showKnock && (
+            <div role="alert" className="absolute bottom-3 left-3 z-30 w-[min(360px,calc(100%-1.5rem))] rounded-2xl bg-[#1e222a] p-4 shadow-2xl shadow-black/50">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#3a414e] text-sm font-medium">
+                  {waitingGuests.length}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">
+                    {waitingGuests.length === 1 ? `${waitingGuests[0].name} wants to join` : `${waitingGuests.length} people want to join`}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-white/60">{waitingGuests.map((g) => g.name).join(", ")}</p>
+                </div>
               </div>
-              <TabsContent value="participants" className="mt-0 min-h-0 flex-1 overflow-hidden">
+              <div className="mt-3 flex justify-end gap-1">
+                <button onClick={() => setKnockDismissed(true)} className="rounded-full px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10">
+                  Dismiss
+                </button>
+                <button onClick={() => setPanel("participants")} className="rounded-full px-4 py-2 text-sm font-medium text-[#FF8A3D] hover:bg-[#FF8A3D]/10">
+                  View all
+                </button>
+                {waitingGuests.length === 1 && (
+                  <button onClick={() => admitGuest(waitingGuests[0].id)} className="rounded-full bg-[#FF8A3D] px-4 py-2 text-sm font-medium text-[#15181e] hover:bg-[#FFA45C]">
+                    Admit
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </main>
+
+        {/* Side panel — floating rounded card on desktop (Meet), full-screen sheet on phones. */}
+        {panel && (
+          <aside
+            aria-label={panelTitle[panel]}
+            className="fixed inset-0 z-40 flex flex-col bg-[#15181e] md:relative md:inset-auto md:z-auto md:my-2 md:mr-2 md:w-[360px] md:shrink-0 md:rounded-2xl md:bg-[#1e222a]"
+          >
+            <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-4 md:pl-6">
+              <h2 className="text-lg font-normal">{panelTitle[panel]}</h2>
+              <button
+                onClick={() => setPanel(null)}
+                aria-label="Close panel"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-white/80 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1">
+              {panel === "participants" && (
                 <ParticipantsPanel
                   mode={mode}
                   participants={participants}
+                  selfId={selfId}
                   boardAccess={boardAccess}
                   waitingGuests={waitingGuests}
                   onAdmitGuest={admitGuest}
                   onDenyGuest={denyGuest}
+                  onAdmitAll={() => waitingGuests.forEach((g) => admitGuest(g.id))}
+                  onMuteAll={handleMuteAll}
                   onToggleMic={toggleParticipantMic}
                   onToggleCam={toggleParticipantCam}
                   onToggleBoardAccess={toggleBoardAccess}
+                  onPin={(id) => {
+                    setStageView("video");
+                    setPinnedId(id);
+                  }}
                 />
-              </TabsContent>
-              <TabsContent value="chat" className="mt-0 min-h-0 flex-1 overflow-hidden">
+              )}
+              {panel === "chat" && (
                 <ChatPanel
                   mode={mode}
                   messages={messages}
@@ -435,35 +384,78 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
                   presetText={chatPreset}
                   onConsumePreset={() => setChatPreset(null)}
                 />
-              </TabsContent>
-              <TabsContent value="quiz" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
-                {/* Same "End quiz" pattern as the real classroom's InteractivePanel — without
-                    it, a launched quiz here had no way to stop; Toolbar's launch button only
-                    ever set quizOpen to true, never back to false. */}
-                {mode === "teacher" && quizOpen && (
-                  <div className="flex shrink-0 items-center justify-between border-b border-white/10 p-2.5">
-                    <p className="text-xs font-semibold text-white/70">Quiz is live for the class</p>
-                    <Button size="sm" variant="ghost" className="text-white/70 hover:bg-white/10 hover:text-white" onClick={() => setQuizOpen(false)}>
-                      End quiz
-                    </Button>
+              )}
+              {panel === "quiz" && (
+                <div className="flex h-full flex-col">
+                  {mode === "teacher" && (
+                    <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-3 md:px-6">
+                      <p className="text-sm text-white/60">{quizOpen ? "Quiz is live for the class" : "Ask the class a timed question"}</p>
+                      {quizOpen ? (
+                        <button onClick={() => setQuizOpen(false)} className="rounded-full px-4 py-2 text-sm font-medium text-[#FF8A3D] hover:bg-[#FF8A3D]/10">
+                          End quiz
+                        </button>
+                      ) : (
+                        <button onClick={() => setQuizOpen(true)} className="rounded-full bg-[#FF8A3D] px-4 py-2 text-sm font-medium text-[#15181e] hover:bg-[#FFA45C]">
+                          Start quiz
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <div className="min-h-0 flex-1">
+                    <QuizOverlay
+                      active={quizOpen}
+                      mode={mode}
+                      questions={QUIZ_BANK}
+                      onCorrectAnswer={() => {
+                        celebrate();
+                        postEngagement(sessionId, selfName, "QuizCorrect");
+                      }}
+                    />
                   </div>
-                )}
-                <div className="min-h-0 flex-1">
-                  <QuizOverlay
-                    active={quizOpen}
-                    mode={mode}
-                    questions={QUIZ_BANK}
-                    onCorrectAnswer={() => {
-                      celebrate();
-                      postEngagement(sessionId, selfName, "QuizCorrect");
-                    }}
-                  />
                 </div>
-              </TabsContent>
-            </Tabs>
+              )}
+              {panel === "leaderboard" && <LeaderboardPanel leaderboard={LEADERBOARD_SEED} />}
+            </div>
           </aside>
         )}
       </div>
+
+      <Toolbar
+        mode={mode}
+        title={session.title}
+        elapsed={formatElapsed(elapsed)}
+        micOn={self?.micOn ?? true}
+        camOn={self?.camOn ?? true}
+        screenSharing={screenSharing}
+        stageView={stageView}
+        handRaised={self?.handRaised ?? false}
+        recording={recording}
+        panel={panel}
+        participantCount={participants.length}
+        waitingCount={waitingGuests.length}
+        onToggleMic={() => updateParticipant(selfId, { micOn: !(self?.micOn ?? true) })}
+        onToggleCam={() => updateParticipant(selfId, { camOn: !(self?.camOn ?? true) })}
+        onToggleScreenShare={() => setScreenSharing((s) => !s)}
+        onToggleStage={() => setStageView((v) => (v === "video" ? "whiteboard" : "video"))}
+        onToggleHand={() => {
+          const raising = !(self?.handRaised ?? false);
+          updateParticipant(selfId, { handRaised: raising });
+          if (raising) postEngagement(sessionId, selfName, "HandRaise");
+        }}
+        onToggleRecording={() => setRecording((r) => !r)}
+        onCelebrate={() => celebrate()}
+        onBirthday={() => {
+          const student = participants.find((p) => p.role === "student");
+          celebrate(`Happy Birthday${student ? `, ${student.name.split(" ")[0]}` : ""}! 🎂`);
+        }}
+        onMuteAll={handleMuteAll}
+        onAskDoubt={() => {
+          setPanel("chat");
+          setChatPreset("I have a doubt: ");
+        }}
+        onTogglePanel={togglePanel}
+        onLeave={leave}
+      />
     </div>
   );
 }

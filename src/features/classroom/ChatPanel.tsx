@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/types";
@@ -70,38 +68,38 @@ export default function ChatPanel({ mode, messages, onSend, presetText, onConsum
         ))}
       </div>
 
-      <ScrollArea className="flex-1 px-3 pt-3">
+      <p className="mx-4 mb-2 shrink-0 rounded-xl bg-white/[0.06] px-3 py-2.5 text-center text-xs text-white/60">
+        Messages are visible to everyone in the class and are deleted when the class ends.
+      </p>
+      <ScrollArea className="flex-1 px-4">
         {/* role="log" + aria-live: new messages append while focus is usually elsewhere
             (video stage, toolbar) — without this a screen-reader user only discovers
             them by manually re-opening the chat tab. "polite" so it doesn't interrupt
             whatever's currently being read; existing messages aren't re-announced since
             only newly-added <li> nodes count as an "addition". */}
-        <ul className="space-y-3 pb-2" role="log" aria-live="polite" aria-relevant="additions">
+        <ul className="space-y-4 py-2" role="log" aria-live="polite" aria-relevant="additions">
           {messages.map((m) => (
-            <li key={m.id} className={cn("flex flex-col gap-0.5", m.isSelf && "items-end")}>
-              <div
-                className={cn(
-                  "max-w-[85%] rounded-2xl px-3 py-2 text-sm animate-fade-in",
-                  m.isSelf ? "bg-brand-green text-white" : "bg-white/10 text-white"
-                )}
-              >
-                {!m.isSelf && <p className="mb-0.5 text-[11px] font-semibold text-white/60">{m.author}</p>}
-                <p className="leading-snug">{m.text}</p>
-              </div>
-              <span className="px-1 text-[10px] text-white/35">{m.time}</span>
+            <li key={m.id} className="animate-fade-in">
+              <p className="flex items-baseline gap-2">
+                <span className="text-sm font-medium text-white">{m.isSelf ? "You" : m.author}</span>
+                <span className="text-xs text-white/50">{m.time}</span>
+              </p>
+              <p className={cn("mt-0.5 break-words text-sm leading-relaxed text-white/85", /^\p{Extended_Pictographic}+$/u.test(m.text) && "text-2xl")}>
+                {m.text}
+              </p>
             </li>
           ))}
           <div ref={bottomRef} />
         </ul>
       </ScrollArea>
 
-      <div className="shrink-0 space-y-2 border-t border-white/10 p-2.5">
+      <div className="shrink-0 space-y-2 px-4 pb-4 pt-2">
         <div className="flex gap-1">
           {QUICK_REACTIONS.map((emoji) => (
             <button
               key={emoji}
               onClick={() => react(emoji)}
-              className="rounded-lg px-2 py-1 text-base transition-transform hover:scale-125 hover:bg-white/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded-full px-2.5 py-1 text-lg transition-transform hover:scale-110 hover:bg-white/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8A3D]"
               title="Send reaction"
               aria-label={`Send ${emoji} reaction`}
             >
@@ -109,20 +107,26 @@ export default function ChatPanel({ mode, messages, onSend, presetText, onConsum
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          <Input
+        <div className="flex items-center gap-1 rounded-full bg-[#252a33] py-1 pl-4 pr-1 focus-within:ring-2 focus-within:ring-[#FF8A3D]">
+          <input
             ref={inputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") send();
             }}
-            placeholder={mode === "teacher" ? "Message the class…" : "Say something…"}
-            className="h-9 border-white/10 bg-white/5 text-sm text-white placeholder:text-white/40 focus-visible:ring-white/30"
+            placeholder={mode === "teacher" ? "Send a message to the class" : "Send a message"}
+            aria-label="Message"
+            className="h-9 min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/50 focus:outline-none"
           />
-          <Button size="icon" className="h-9 w-9 shrink-0 !bg-brand-green hover:!bg-brand-greenDark" onClick={send} disabled={!draft.trim()} aria-label="Send message">
-            <Send className="h-4 w-4" />
-          </Button>
+          <button
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#FF8A3D] hover:bg-white/10 disabled:text-white/30 disabled:hover:bg-transparent"
+            onClick={send}
+            disabled={!draft.trim()}
+            aria-label="Send message"
+          >
+            <Send className="h-5 w-5" />
+          </button>
         </div>
       </div>
     </div>
