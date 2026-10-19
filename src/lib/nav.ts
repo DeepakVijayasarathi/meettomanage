@@ -77,8 +77,11 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Recordings", to: "/admin/recordings", icon: Video },
       { label: "Quiz Bank", to: "/admin/quiz-bank", icon: Sparkles },
       { label: "Activity Bank", to: "/admin/activity-bank", icon: PencilRuler },
-      { label: "Learning Plugins", to: "/admin/learning-plugins", icon: Gamepad2 },
     ],
+  },
+  {
+    title: "Games & Activities",
+    items: [{ label: "Learning Games & Activities", to: "/admin/learning-plugins", icon: Gamepad2 }],
   },
   {
     title: "People",
@@ -168,8 +171,11 @@ export const TEACHER_NAV: NavSection[] = [
       { label: "Recordings", to: "/teacher/recordings", icon: Video },
       { label: "Demo Feedback", to: "/teacher/demo-feedback", icon: ClipboardCheck, badge: "1" },
       { label: "Student Doubts", to: "/teacher/doubts", icon: MessageCircleQuestion },
-      { label: "Learning Plugins", to: "/teacher/learning-plugins", icon: Gamepad2 },
     ],
+  },
+  {
+    title: "Games & Activities",
+    items: [{ label: "Learning Games & Activities", to: "/teacher/learning-plugins", icon: Gamepad2 }],
   },
   {
     title: "My Account",

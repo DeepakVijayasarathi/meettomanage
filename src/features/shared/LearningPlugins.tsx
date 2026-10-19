@@ -67,7 +67,7 @@ export default function LearningPlugins() {
     <div>
       <PageHeader
         eyebrow="Games & resources"
-        title="Learning Plugins"
+        title="Learning Games & Activities"
         description={`${LEARNING_PLUGINS.length} ready-to-launch games and teaching resources across 10 skill areas. Open any plugin during a class or use its printable activity guide.`}
       />
 
