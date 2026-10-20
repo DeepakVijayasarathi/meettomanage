@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { tenantPath } from "./tenantPath";
+import { apiTenantPath, setSessionTenant, tenantPath } from "./tenantPath";
+import { clearAuthStorage } from "./authStorage";
 
 describe("public tenant URLs", () => {
   it("keeps a client prefix through public route navigation", () => {
@@ -11,5 +12,19 @@ describe("public tenant URLs", () => {
     expect(tenantPath("/platform/tenants")).toBe("");
     expect(tenantPath("/t/../../login")).toBe("");
     expect(tenantPath("/t/UPPERCASE/login")).toBe("");
+  });
+});
+
+describe("single-URL login tenant", () => {
+  it("uses the signed-in tenant for API calls until the session is cleared", () => {
+    expect(apiTenantPath()).toBe("");
+    setSessionTenant("academy-one");
+    expect(apiTenantPath()).toBe("/t/academy-one");
+    clearAuthStorage();
+    expect(apiTenantPath()).toBe("");
+  });
+  it("ignores malformed tenant codes", () => {
+    setSessionTenant("../admin");
+    expect(apiTenantPath()).toBe("");
   });
 });

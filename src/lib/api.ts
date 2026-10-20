@@ -3,9 +3,11 @@
  * demo mode: screens keep their mock data and login skips the backend.
  */
 import { authStorage, clearAuthStorage, getViewAs } from "@/lib/authStorage";
-import { tenantPath } from "@/lib/tenantPath";
+import { apiTenantPath } from "@/lib/tenantPath";
 
-const BASE_URL: string = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "") + tenantPath();
+const API_ROOT: string = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+/** Read per request: a single-URL login sets the tenant after this module has loaded. */
+const baseUrl = () => API_ROOT + apiTenantPath();
 
 const TOKEN_KEY = "trn.accessToken";
 
@@ -139,7 +141,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  let response = await safeFetch(`${BASE_URL}${path}`, { ...init, headers });
+  let response = await safeFetch(`${baseUrl()}${path}`, { ...init, headers });
 
   // Any request that 401s is retried once before treating it as a real logout — this is
   // exactly the shape of a transient hiccup (the backend re-verifies the account's live
@@ -158,7 +160,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   // session, register a recording, post engagement) rather than GET.
   if (response.status === 401 && token && !path.startsWith("/api/auth/")) {
     await new Promise((resolve) => setTimeout(resolve, 400));
-    response = await safeFetch(`${BASE_URL}${path}`, { ...init, headers });
+    response = await safeFetch(`${baseUrl()}${path}`, { ...init, headers });
   }
 
   // An expired/revoked token means the session is no longer authenticated: clear it
@@ -186,7 +188,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 /** Downloads a file response (a bulk-export CSV) with the auth token and saves it as `filename`. */
 export async function downloadFile(path: string, filename: string): Promise<void> {
   const token = getAccessToken();
-  const response = await safeFetch(`${BASE_URL}${path}`, {
+  const response = await safeFetch(`${baseUrl()}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 

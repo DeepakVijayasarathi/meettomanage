@@ -12,7 +12,7 @@ const REMEMBER_KEY = "trn.remember";
 /** Every key persisted through authStorage() — kept in one place so a login can
  *  wipe a stale copy left in whichever store it isn't using this time, and so
  *  logout/expiry can clear both stores thoroughly regardless of which was used. */
-const AUTH_KEYS = ["trn.accessToken", "trn.role", "trn.homePath", "trn.userName", "trn.permissions"];
+const AUTH_KEYS = ["trn.accessToken", "trn.role", "trn.homePath", "trn.userName", "trn.permissions", "trn.tenantCode"];
 
 export function getRemember(): boolean {
   if (typeof window === "undefined") return true;

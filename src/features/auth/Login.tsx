@@ -14,7 +14,8 @@ import { getRemember, setRemember } from "@/lib/authStorage";
 import { login } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
 import { cn, safeInternalPath } from "@/lib/utils";
-import { isTenantPortal, rememberDiscoveredEmail, takeDiscoveredEmail, tenantCodeForEmail, tenantLoginUrl } from "@/lib/tenantDiscovery";
+import { isTenantPortal, takeDiscoveredEmail } from "@/lib/tenantDiscovery";
+import { setSessionTenant } from "@/lib/tenantPath";
 import type { Role } from "@/types";
 
 // Floating feature badges over the hero panel — colour comes from the brand-accent
@@ -126,6 +127,9 @@ export default function Login() {
         setAccessToken(null);
         throw new Error("Sign in failed. Please check your email and PIN.");
       }
+      // On the single /login URL the API finds the organisation from the email or
+      // mobile in its login directory; keep it with the session for prefixed public calls.
+      if (!tenantPortal) setSessionTenant(response.tenantCode ?? null);
       const homePath = homeOverride ?? safeInternalPath(response.defaultRoute) ?? ROLE_META[frontendRole].homePath;
       setSessionRole(frontendRole);
       setUserName(response.user.fullName);
@@ -162,19 +166,6 @@ export default function Login() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    // The single public login URL only discovers the organisation. The PIN is
-    // submitted after moving to that tenant's isolated API path.
-    if (apiEnabled() && !tenantPortal) {
-      const tenantCode = tenantCodeForEmail(email);
-      if (!tenantCode) {
-        setError("We couldn't find an organisation for that email. Ask your administrator for your organisation login link.");
-        return;
-      }
-      rememberDiscoveredEmail(email);
-      window.location.assign(tenantLoginUrl(tenantCode));
-      return;
-    }
 
     // Decided before any session state is written, so setRole/setUserName/etc.
     // below (and setAccessToken inside login()) all land in the right store.
@@ -251,7 +242,7 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
-                {tenantPortal || !apiEnabled() ? "Email or mobile number" : "Work email"}
+                Email or mobile number
               </Label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-ink/35" />
@@ -260,7 +251,7 @@ export default function Login() {
                   type="text"
                   inputMode="email"
                   autoComplete="username"
-                  placeholder={tenantPortal || !apiEnabled() ? "you@meettomanage.cloud or 98765 43210" : "you@yourorganisation.com"}
+                  placeholder="you@meettomanage.cloud or 98765 43210"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-11 pl-9"
@@ -269,7 +260,7 @@ export default function Login() {
               </div>
             </div>
 
-            {(tenantPortal || !apiEnabled()) && <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="pin" className="text-xs font-bold uppercase tracking-wide text-brand-ink/70">
                 PIN
               </Label>
@@ -318,9 +309,9 @@ export default function Login() {
                   />
                 ))}
               </div>
-            </div>}
+            </div>
 
-            {(tenantPortal || !apiEnabled()) && <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
               <Label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-ink/70">
                 <Sparkles className="h-3 w-3 text-brand-amber" /> Demo accounts — tap to sign in
               </Label>
@@ -357,7 +348,7 @@ export default function Login() {
                   );
                 })}
               </div>
-            </div>}
+            </div>
 
             {error && (
               <p
@@ -369,7 +360,7 @@ export default function Login() {
               </p>
             )}
 
-            {(tenantPortal || !apiEnabled()) && <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm font-medium text-brand-ink/70">
                 <Checkbox checked={rememberMe} onCheckedChange={(v) => setRememberMe(v === true)} />
                 Remember me
@@ -377,7 +368,7 @@ export default function Login() {
               <Link to="/forgot-pin" className="text-sm font-semibold text-brand-accent hover:underline">
                 Forgot your PIN?
               </Link>
-            </div>}
+            </div>
 
             <Button
               type="submit"
@@ -387,11 +378,11 @@ export default function Login() {
             >
               {submitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> {tenantPortal || !apiEnabled() ? "Signing in…" : "Finding your organisation…"}
+                  <Loader2 className="h-4 w-4 animate-spin" /> Signing in…
                 </>
               ) : apiEnabled() ? (
                 <>
-                  {tenantPortal ? "Sign In" : "Continue"} <ArrowRight className="h-4 w-4" />
+                  Sign In <ArrowRight className="h-4 w-4" />
                 </>
               ) : (
                 <>
