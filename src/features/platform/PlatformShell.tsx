@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Building2, ChevronDown, ChevronRight, Eye, EyeOff, LayoutDashboard, ListTree, Loader2, LogOut, Settings2, ShieldCheck } from "lucide-react";
+import { BellRing, Building2, ChevronDown, ChevronRight, Eye, EyeOff, Layers, LayoutDashboard, ListTree, Loader2, LogOut, Receipt, Settings2, ShieldCheck, TrendingUp } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { clearPlatformSession, platformRequest, PLATFORM_EMAIL_KEY, PLATFORM_SESSION_EVENT, PLATFORM_TOKEN_KEY } from "@/api/platform";
 
@@ -15,6 +15,10 @@ const navigation = [
   { to: "/platform/tenants", label: "Tenant management", icon: Building2, hint: "Create and manage client workspaces" },
   { to: "/platform/menus", label: "Menu management", icon: ListTree, hint: "Shape each client's navigation" },
   { to: "/platform/configuration", label: "Tenant configuration", icon: Settings2, hint: "Branding, integrations and settings" },
+  { to: "/platform/plans", label: "Plans", icon: Layers, hint: "Prices, limits and features per plan" },
+  { to: "/platform/subscriptions", label: "Subscriptions & invoices", icon: Receipt, hint: "Trials, renewals, overrides and payments" },
+  { to: "/platform/revenue", label: "Revenue", icon: TrendingUp, hint: "MRR, churn, conversion and collections" },
+  { to: "/platform/reminders", label: "Auto-reminders", icon: BellRing, hint: "Billing e-mails and delivery log" },
 ];
 
 /** Brand navy (hue 214, the app's primary) with sky tints, used by the whole operator console. */

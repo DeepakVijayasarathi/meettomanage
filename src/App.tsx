@@ -13,6 +13,12 @@ const PlatformTenants = lazy(() => import("@/features/platform/Tenants"));
 const PlatformMenus = lazy(() => import("@/features/platform/Menus"));
 const PlatformConfiguration = lazy(() => import("@/features/platform/Configuration"));
 const PlatformEmailMappings = lazy(() => import("@/features/platform/EmailMappings"));
+const PlatformPlans = lazy(() => import("@/features/platform/Plans"));
+const PlatformSubscriptions = lazy(() => import("@/features/platform/Subscriptions"));
+const PlatformRevenue = lazy(() => import("@/features/platform/Revenue"));
+const PlatformReminders = lazy(() => import("@/features/platform/Reminders"));
+const AdminSubscription = lazy(() => import("@/features/admin/Subscription"));
+const Signup = lazy(() => import("@/features/public/Signup"));
 
 const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Store = lazy(() => import("@/features/marketing/Store"));
@@ -182,6 +188,11 @@ export default function App() {
             <Route path="/platform/menus" element={<PlatformMenus />} />
             <Route path="/platform/configuration" element={<PlatformConfiguration />} />
             <Route path="/platform/email-mappings" element={<PlatformEmailMappings />} />
+            <Route path="/platform/plans" element={<PlatformPlans />} />
+            <Route path="/platform/subscriptions" element={<PlatformSubscriptions />} />
+            <Route path="/platform/revenue" element={<PlatformRevenue />} />
+            <Route path="/platform/reminders" element={<PlatformReminders />} />
+            <Route path="/signup" element={<Signup />} />
             <Route path="/" element={<MarketingHome />} />
             <Route path="/store" element={<Store />} />
             <Route path="/demo" element={<Demo />} />
@@ -278,6 +289,7 @@ export default function App() {
               <Route path="resources" element={<AdminResources />} />
               <Route path="billing" element={<AdminBilling />} />
               <Route path="packages" element={<AdminPackages />} />
+              <Route path="subscription" element={<AdminSubscription />} />
               <Route path="payment-mapping" element={<AdminPaymentMapping />} />
               <Route path="payouts" element={<AdminPayouts />} />
               <Route path="payout-approvals" element={<PayoutApprovals />} />

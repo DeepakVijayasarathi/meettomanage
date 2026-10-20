@@ -111,6 +111,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Teacher Payouts", to: "/admin/payouts", icon: Wallet },
       { label: "Payout Approvals", to: "/admin/payout-approvals", icon: ClipboardCheck },
       { label: "Fee Suspension", to: "/admin/fee-suspension", icon: Ban, badge: "2" },
+      { label: "My Subscription", to: "/admin/subscription", icon: Gauge },
     ],
   },
   {
