@@ -16,7 +16,7 @@ describe("platform administration authorization", () => {
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "platform@example.test" } });
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "long-platform-password" } });
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    await screen.findByRole("heading", { name: "Create client" });
+    await screen.findByRole("heading", { name: "Tenant management" });
     expect(sessionStorage.getItem("mtm.platformToken")).toBe("platform-token");
     expect(localStorage.getItem("trn.accessToken")).toBe("existing-client-token");
     expect(fetch.mock.calls[0][1]?.headers).not.toHaveProperty("Authorization");
@@ -36,5 +36,65 @@ describe("platform administration authorization", () => {
     await screen.findByRole("heading", { name: "Platform administrator sign in" });
     expect(sessionStorage.getItem("mtm.platformToken")).toBeNull();
     expect(localStorage.getItem("trn.accessToken")).toBe("existing-client-token");
+  });
+
+  describe("tenant cards", () => {
+    const tenants = [
+      { id: "t1", code: "acme", name: "Acme Academy", status: "Active" },
+      { id: "t2", code: "broken", name: "Broken Co", status: "Failed" },
+    ];
+    const subs = [{
+      tenantId: "t1", tenantCode: "acme", tenantName: "Acme Academy", tenantStatus: "Active", id: "s1", planCode: "starter", planName: "Starter", status: "Trialing",
+      price: null, trialEndsAtUtc: "2026-11-03T00:00:00Z", currentPeriodEndUtc: null, graceEndsAtUtc: null, cancelAtPeriodEnd: false, suspendedByBilling: false, mrr: 0,
+      usage: { activeStudents: 12, staffCount: 3, storageMb: 5, sessionMinutesMonth: 0, date: "2026-10-20" }, openInvoices: 0, openAmount: 0,
+    }];
+    const plans = [{ id: "p1", code: "starter", name: "Starter", description: null, isPublic: true, isActive: true, trialDays: 0, sortOrder: 1, subscribers: 1, prices: [], entitlements: [] }];
+
+    function mockApi() {
+      return vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+        const u = String(url);
+        if (init?.method === "POST" && u.endsWith("/tenants")) return response({ id: "t3", code: "new", name: "New Co", status: "Active" });
+        if (u.endsWith("/tenants")) return response(tenants);
+        if (u.endsWith("/subscriptions")) return response(subs);
+        if (u.endsWith("/plans")) return response(plans);
+        return response([]);
+      });
+    }
+    beforeEach(() => { sessionStorage.setItem("mtm.platformToken", "platform-token"); });
+
+    it("shows each client's plan, trial date and usage next to its status", async () => {
+      mockApi();
+      render(<MemoryRouter><Tenants /></MemoryRouter>);
+      expect(await screen.findByRole("heading", { name: "Acme Academy" })).toBeTruthy();
+      expect(await screen.findByText("Starter")).toBeTruthy();
+      expect(screen.getByText(/Trial ends/)).toBeTruthy();
+      expect(screen.getByText(/12 students · 3 staff/)).toBeTruthy();
+    });
+
+    it("filters to clients that need setup", async () => {
+      mockApi();
+      render(<MemoryRouter><Tenants /></MemoryRouter>);
+      await screen.findByRole("heading", { name: "Acme Academy" });
+      fireEvent.click(screen.getByRole("button", { name: "Needs setup" }));
+      expect(screen.queryByRole("heading", { name: "Acme Academy" })).toBeNull();
+      expect(screen.getByRole("heading", { name: "Broken Co" })).toBeTruthy();
+    });
+
+    it("creates a client from the dialog and sends the chosen plan", async () => {
+      const fetch = mockApi();
+      render(<MemoryRouter><Tenants /></MemoryRouter>);
+      await screen.findByRole("heading", { name: "Acme Academy" });
+      fireEvent.click(screen.getByRole("button", { name: /New client/ }));
+      fireEvent.change(await screen.findByLabelText("Client code"), { target: { value: "new" } });
+      fireEvent.change(screen.getByLabelText("Client name"), { target: { value: "New Co" } });
+      fireEvent.change(screen.getByLabelText(/Administrator email/), { target: { value: "owner@new.test" } });
+      fireEvent.change(screen.getByLabelText("Initial four-digit PIN"), { target: { value: "1234" } });
+      fireEvent.change(screen.getByLabelText("Starting plan"), { target: { value: "starter" } });
+      fireEvent.click(screen.getByRole("button", { name: "Create client" }));
+      await waitFor(() => expect(fetch.mock.calls.some(c => c[1]?.method === "POST")).toBe(true));
+      const post = fetch.mock.calls.find(c => c[1]?.method === "POST")!;
+      expect(JSON.parse(String(post[1]?.body))).toMatchObject({ code: "new", name: "New Co", planCode: "starter" });
+      expect(await screen.findByText(/New Co is ready/)).toBeTruthy();
+    });
   });
 });

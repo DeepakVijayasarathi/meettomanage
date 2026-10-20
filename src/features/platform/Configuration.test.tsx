@@ -50,4 +50,70 @@ describe("Tenant Admin configuration", () => {
     const save = fetch.mock.calls.find(([, init]) => init?.method === "PUT");
     expect(JSON.parse(String(save?.[1]?.body))).toEqual([{ key: "org.optionalNote", value: "", category: "General", isPublic: false }]);
   });
+
+  describe("branding", () => {
+    const brand = [
+      { key: "brand.name", value: "Acme", category: "Branding", isPublic: true },
+      { key: "brand.logoUrl", value: null, category: "Branding", isPublic: true },
+      { key: "brand.primaryColor", value: "#1E3A5F", category: "Branding", isPublic: true },
+      { key: "brand.accentColor", value: "#E63329", category: "Branding", isPublic: true },
+    ];
+    function mock() {
+      return vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+        const u = String(url);
+        if (u.endsWith("/tenants")) return response(tenants);
+        if (u.endsWith("/branding/logo") && init?.method === "POST") return response({ logoUrl: "https://api.test/t/academy-a/api/settings/brand-logo?v=abc" });
+        if (init?.method === "PUT") return response(JSON.parse(String(init.body)));
+        return response(u.endsWith("/seo") ? [] : brand);
+      });
+    }
+    async function openBranding() {
+      render(<MemoryRouter initialEntries={["/platform/configuration?tenant=a"]}><Configuration /></MemoryRouter>);
+      fireEvent.click(await screen.findByRole("tab", { name: "Branding" }));
+    }
+
+    it("edits colour and typeface and saves them (creating the font keys on first save)", async () => {
+      const fetch = mock();
+      await openBranding();
+      fireEvent.change(await screen.findByLabelText("Primary colour hex code"), { target: { value: "#0A7D5C" } });
+      fireEvent.change(screen.getByLabelText("Heading font"), { target: { value: "Playfair Display" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save configuration" }));
+      await screen.findByText("Tenant configuration saved.");
+      const save = fetch.mock.calls.find(([, init]) => init?.method === "PUT");
+      const body = JSON.parse(String(save?.[1]?.body)) as { key: string; value: string; category: string; isPublic: boolean }[];
+      expect(body).toContainEqual({ key: "brand.primaryColor", value: "#0A7D5C", category: "Branding", isPublic: true });
+      expect(body).toContainEqual({ key: "brand.headingFont", value: "Playfair Display", category: "Branding", isPublic: true });
+      expect(body.some(b => b.key === "brand.fontFamily")).toBe(false);
+    });
+
+    it("rejects an invalid hex code inline", async () => {
+      mock();
+      await openBranding();
+      fireEvent.change(await screen.findByLabelText("Primary colour hex code"), { target: { value: "#12" } });
+      expect(screen.getAllByText("Use a 6-digit hex code like #1E3A5F.").length).toBeGreaterThan(0);
+    });
+
+    it("uploads a logo for the selected tenant with the platform token and shows it", async () => {
+      const fetch = mock();
+      await openBranding();
+      const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "logo.png", { type: "image/png" });
+      fireEvent.change(await screen.findByLabelText("Upload logo file"), { target: { files: [file] } });
+      await screen.findByText("Logo uploaded and applied.");
+      const upload = fetch.mock.calls.find(([url]) => String(url).endsWith("/tenants/a/branding/logo"));
+      expect(upload?.[1]?.method).toBe("POST");
+      expect(upload?.[1]?.headers).toMatchObject({ Authorization: "Bearer platform-token" });
+      expect(upload?.[1]?.body).toBeInstanceOf(FormData);
+      expect((screen.getByLabelText("Or use a logo from a web address") as HTMLInputElement).value).toContain("brand-logo?v=abc");
+      // already saved server-side, so it must not count as an unsaved change
+      expect(screen.getByText("All changes saved")).toBeTruthy();
+    });
+
+    it("refuses a non-image file before uploading anything", async () => {
+      const fetch = mock();
+      await openBranding();
+      fireEvent.change(await screen.findByLabelText("Upload logo file"), { target: { files: [new File(["x"], "notes.txt", { type: "text/plain" })] } });
+      await screen.findByText("Choose a PNG, JPG or WebP image.");
+      expect(fetch.mock.calls.some(([url]) => String(url).includes("/branding/logo"))).toBe(false);
+    });
+  });
 });

@@ -27,6 +27,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { cn, formatCurrency, hexToHslTriple, isValidEmail } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
+import { FontField, LogoField } from "@/components/BrandingFields";
+import { tenantLogo } from "@/api/branding";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { getStorageStatus, setStorageProvider, startStorageSync, type ApiStorageStatus } from "@/api/storage";
 import { useSession } from "@/state/session";
@@ -93,6 +95,8 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "brand.logoUrl": { category: "Branding", isPublic: true, fallback: "" },
   "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#1E3A5F" },
   "brand.accentColor": { category: "Branding", isPublic: true, fallback: "#E63329" },
+  "brand.fontFamily": { category: "Branding", isPublic: true, fallback: "DM Sans" },
+  "brand.headingFont": { category: "Branding", isPublic: true, fallback: "Plus Jakarta Sans" },
   // No-show grace for the teacher payout pipeline -- was a fixed constant in
   // NoShowDetectionBackgroundService until now.
   "payroll.noShowGraceMinutes": { category: "General", fallback: "20" },
@@ -240,6 +244,8 @@ export default function AdminSettings() {
       logoUrl: values["brand.logoUrl"] || undefined,
       primaryHsl: hexToHslTriple(values["brand.primaryColor"] || "#1E3A5F"),
       accentHsl: hexToHslTriple(values["brand.accentColor"] || "#E63329"),
+      fontFamily: values["brand.fontFamily"] || undefined,
+      headingFont: values["brand.headingFont"] || undefined,
     });
 
     setSaved(true);
@@ -429,15 +435,20 @@ export default function AdminSettings() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-5">
-                <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 p-2">
-                  <img src={values["brand.logoUrl"] || "/logo-icon.png"} alt="Brand logo" className="h-full w-full object-contain" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Logo preview</p>
-                  <p className="text-xs text-muted-foreground">PNG or SVG, minimum 256×256px, transparent background recommended.</p>
-                </div>
-              </div>
+              <LogoField
+                logoUrl={values["brand.logoUrl"]}
+                disabled={!apiEnabled()}
+                onUpload={async (file) => {
+                  const { logoUrl } = await tenantLogo.upload(file);
+                  setValue("brand.logoUrl", logoUrl);
+                  setBrand({ ...getBrand(), logoUrl });
+                }}
+                onRemove={async () => {
+                  await tenantLogo.remove();
+                  setValue("brand.logoUrl", "");
+                  setBrand({ ...getBrand(), logoUrl: undefined });
+                }}
+              />
 
               <Separator />
 
@@ -505,6 +516,13 @@ export default function AdminSettings() {
                     ))}
                   </div>
                 </div>
+              </div>
+
+              <Separator />
+
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <FontField id="brand-font" label="Body font" value={values["brand.fontFamily"] || "DM Sans"} sample="The quick brown fox jumps over the lazy dog" onChange={(f) => setValue("brand.fontFamily", f)} />
+                <FontField id="brand-heading-font" label="Heading font" value={values["brand.headingFont"] || "Plus Jakarta Sans"} sample="Welcome back to class" onChange={(f) => setValue("brand.headingFont", f)} />
               </div>
 
               <div className="rounded-xl border border-border p-4">

@@ -17,8 +17,9 @@ export default {
         short: { raw: "(orientation: landscape) and (max-height: 520px)" },
       },
       fontFamily: {
-        sans: ["DM Sans", "system-ui", "sans-serif"],
-        display: ["Plus Jakarta Sans", "system-ui", "sans-serif"],
+        // Driven by --brand-font-sans (default in index.css) so a client's chosen font applies at runtime.
+        sans: ["var(--brand-font-sans)", "system-ui", "sans-serif"],
+        display: ["var(--brand-font-display)", "system-ui", "sans-serif"],
         // Arabic marketing pages (lib/i18n.ts's "lang-ar" body class) — DM Sans/Plus
         // Jakarta Sans have no Arabic glyphs, so both sans and display swap to this one
         // face for Arabic rather than falling through to a generic system font.

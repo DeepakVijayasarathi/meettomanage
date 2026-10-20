@@ -8,7 +8,8 @@
  *   VITE_BRAND_ACCENT   — accent colour as "H S% L%" HSL triple for the --brand-accent token
  *   VITE_BRAND_LOGO_URL — logo image URL; falls back to the built-in mark
  *
- * DB keys: brand.name, brand.logoUrl, brand.primaryColor (#hex), brand.accentColor (#hex).
+ * DB keys: brand.name, brand.logoUrl, brand.primaryColor (#hex), brand.accentColor (#hex),
+ * brand.fontFamily (body) and brand.headingFont (headings), both from BRAND_FONTS.
  * Components must read colour through the --primary / --brand-accent CSS tokens (Tailwind's
  * `primary` / `brand-accent` classes) — never a literal hex or an arbitrary-value Tailwind
  * class — since those bake the colour in at build time and can't react to a runtime
@@ -33,6 +34,34 @@ const BRAND_PRIMARY: string = (import.meta.env.VITE_BRAND_PRIMARY as string | un
 
 const BRAND_ACCENT: string = (import.meta.env.VITE_BRAND_ACCENT as string | undefined) ?? "3 79% 53%";
 
+/**
+ * Typefaces a client can choose. A fixed allow-list (never a free-text value) because the name is placed into a
+ * stylesheet URL and a CSS variable. All are Google Fonts; the two defaults already ship in index.html.
+ */
+export const BRAND_FONTS = [
+  "DM Sans", "Plus Jakarta Sans", "Inter", "Poppins", "Roboto", "Open Sans", "Lato", "Montserrat", "Nunito",
+  "Work Sans", "Source Sans 3", "Raleway", "Merriweather", "Playfair Display", "Lora",
+] as const;
+export const DEFAULT_BODY_FONT = "DM Sans";
+export const DEFAULT_HEADING_FONT = "Plus Jakarta Sans";
+const PRELOADED_FONTS = new Set<string>([DEFAULT_BODY_FONT, DEFAULT_HEADING_FONT]);
+
+export function isBrandFont(name: string | undefined | null): name is string {
+  return !!name && (BRAND_FONTS as readonly string[]).includes(name);
+}
+
+/** Loads a chosen typeface from Google Fonts once; the default pair is already in index.html. */
+export function loadBrandFont(name: string) {
+  if (PRELOADED_FONTS.has(name) || typeof document === "undefined") return;
+  const id = `brand-font-${name.replace(/\s+/g, "-").toLowerCase()}`;
+  if (document.getElementById(id)) return;
+  const link = document.createElement("link");
+  link.id = id;
+  link.rel = "stylesheet";
+  link.href = `https://fonts.googleapis.com/css2?family=${name.replace(/ /g, "+")}:wght@400;500;600;700;800&display=swap`;
+  document.head.appendChild(link);
+}
+
 export interface Brand {
   name: string;
   logoUrl?: string;
@@ -40,6 +69,10 @@ export interface Brand {
   primaryHsl?: string;
   /** Accent colour as "H S% L%" triple, ready for the --brand-accent token. */
   accentHsl?: string;
+  /** Body typeface (one of BRAND_FONTS). */
+  fontFamily?: string;
+  /** Heading typeface (one of BRAND_FONTS). */
+  headingFont?: string;
 }
 
 let brand: Brand = {
@@ -80,6 +113,12 @@ export function setBrand(next: Brand) {
   if (brand.accentHsl) {
     document.documentElement.style.setProperty("--brand-accent", brand.accentHsl);
   }
+  const body = isBrandFont(brand.fontFamily) ? brand.fontFamily : DEFAULT_BODY_FONT;
+  const heading = isBrandFont(brand.headingFont) ? brand.headingFont : DEFAULT_HEADING_FONT;
+  loadBrandFont(body);
+  loadBrandFont(heading);
+  document.documentElement.style.setProperty("--brand-font-sans", `"${body}"`);
+  document.documentElement.style.setProperty("--brand-font-display", `"${heading}"`);
   emit();
 }
 
@@ -103,6 +142,8 @@ export async function loadBrandingFromApi(): Promise<void> {
       logoUrl: map["brand.logoUrl"] || BRAND_LOGO_URL,
       primaryHsl: primaryHex ? hexToHslTriple(primaryHex) : BRAND_PRIMARY,
       accentHsl: accentHex ? hexToHslTriple(accentHex) : BRAND_ACCENT,
+      fontFamily: map["brand.fontFamily"] ?? undefined,
+      headingFont: map["brand.headingFont"] ?? undefined,
     });
   } catch {
     /* keep env brand */

@@ -7,6 +7,7 @@ import type { ApiSetting, SettingCategory } from "@/api/settings";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { TenantSelector, useTenantSelection } from "./TenantSelection";
 import TenantIntegrations from "./TenantIntegrations";
+import BrandingEditor, { BRAND_DEFAULTS, BRAND_EDITOR_KEYS } from "./BrandingEditor";
 
 const PORTALS = ["admin", "teacher", "parent", "subadmin", "admission", "coordinator", "management", "student"];
 // Widget settings only exist in a tenant's database once someone saves them; until then the
@@ -20,6 +21,9 @@ const withWidgetDefaults = (list: ApiSetting[]): ApiSetting[] => [
   ...list,
   ...Object.entries(WIDGET_DEFAULTS).filter(([key]) => !list.some(s => s.key === key))
     .map(([key, value]): ApiSetting => ({ key, value, category: "Widgets", isPublic: true })),
+  // Typefaces only exist in a client's database once someone saves them; show the built-in defaults so they can be changed.
+  ...Object.entries(BRAND_DEFAULTS).filter(([key]) => !list.some(s => s.key === key))
+    .map(([key, value]): ApiSetting => ({ key, value, category: "Branding", isPublic: true })),
 ];
 
 const categories: SettingCategory[] = ["General", "Branding", "Notifications", "Integrations", "Widgets", "Seo"];
@@ -97,6 +101,14 @@ function ConfigurationEditor({ tenantId, token, onDirty, onSaving }: { tenantId:
     setDraft(previous => ({ ...previous, [key]: newValue }));
     setNewKey(""); setNewValue(""); setAdding(false); setError("");
   }
+  const rows = settings.filter(s => s.category === category && !(category === "Branding" && BRAND_EDITOR_KEYS.has(s.key)));
+  const setDraftKey = (key: string, value: string) => setDraft(previous => ({ ...previous, [key]: value }));
+  // An uploaded logo is already saved on the server: reflect it as the stored value so it does not read as an unsaved edit.
+  const logoChanged = (url: string) => {
+    setSettings(previous => previous.map(s => s.key === "brand.logoUrl" ? { ...s, value: url || null } : s));
+    setDraft(previous => ({ ...previous, "brand.logoUrl": url }));
+    setNotice(url ? "Logo uploaded and applied." : "Logo removed.");
+  };
   if (loading) return <div role="status" className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-card p-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" />Loading tenant configuration…</div>;
   return <div className="space-y-4">
     {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{error}</p>}
@@ -104,10 +116,11 @@ function ConfigurationEditor({ tenantId, token, onDirty, onSaving }: { tenantId:
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-card"><div className="flex flex-wrap gap-1 border-b p-3" role="tablist" aria-label="Configuration categories">{categories.map(item => <button key={item} role="tab" type="button" aria-selected={category === item} onClick={() => setCategory(item)} className={`rounded-lg px-4 py-2 text-sm font-medium ${category === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{categoryLabel(item)}</button>)}</div>
       {category === "Integrations" ? <TenantIntegrations tenantId={tenantId} token={token} /> :
       <form onSubmit={save}><div className="flex items-center justify-between gap-4 border-b p-5"><div className="flex items-center gap-3"><Settings2 className="h-5 w-5 text-muted-foreground" /><div><h2 className="font-semibold">{categoryLabel(category)} settings</h2><p className="mt-1 text-xs text-muted-foreground">Changes affect the selected tenant only.</p></div></div><button type="button" onClick={() => setAdding(!adding)} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm"><Plus className="h-4 w-4" />Add setting</button></div>
-        <div className="divide-y">{settings.filter(s => s.category === category).map(setting => <div key={setting.key} className="grid gap-3 p-5 md:grid-cols-[minmax(180px,1fr)_minmax(0,1.4fr)]"><div><label htmlFor={`setting-${setting.key}`} className="text-sm font-medium">{labelFor(setting.key)}</label><p className="mt-1 break-all text-xs text-muted-foreground">{setting.key}{setting.isPublic && <span className="ml-2 rounded bg-blue-50 px-1.5 text-blue-700">Public</span>}</p></div>
+        {category === "Branding" && <BrandingEditor values={draft} set={setDraftKey} disabled={saving} tenantId={tenantId} token={token} onLogoChanged={logoChanged} />}
+        <div className="divide-y">{rows.map(setting => <div key={setting.key} className="grid gap-3 p-5 md:grid-cols-[minmax(180px,1fr)_minmax(0,1.4fr)]"><div><label htmlFor={`setting-${setting.key}`} className="text-sm font-medium">{labelFor(setting.key)}</label><p className="mt-1 break-all text-xs text-muted-foreground">{setting.key}{setting.isPublic && <span className="ml-2 rounded bg-blue-50 px-1.5 text-blue-700">Public</span>}</p></div>
           {setting.value === "true" || setting.value === "false" ? <label className="flex items-center gap-3 text-sm"><input id={`setting-${setting.key}`} type="checkbox" checked={draft[setting.key] === "true"} disabled={saving} onChange={e => setDraft({ ...draft, [setting.key]: String(e.target.checked) })} className="h-4 w-4 accent-blue-600" />{draft[setting.key] === "true" ? "Enabled" : "Disabled"}</label>
             : <textarea id={`setting-${setting.key}`} maxLength={2000} rows={(draft[setting.key]?.length ?? 0) > 100 ? 3 : 1} disabled={saving || setting.key === "storage.provider"} className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 dark:border-white/15 dark:bg-white/5 text-sm disabled:bg-muted" value={draft[setting.key] ?? ""} onChange={e => setDraft({ ...draft, [setting.key]: e.target.value })} />}
-        </div>)}{settings.filter(s => s.category === category).length === 0 && <p className="p-8 text-sm text-muted-foreground">No settings in this category yet. Add one to customize this tenant.</p>}</div>
+        </div>)}{rows.length === 0 && category !== "Branding" && <p className="p-8 text-sm text-muted-foreground">No settings in this category yet. Add one to customize this tenant.</p>}</div>
         <div className="flex items-center justify-between gap-4 border-t bg-muted/20 p-4"><span className="text-sm text-muted-foreground">{changed.length ? `${changed.length} unsaved change${changed.length === 1 ? "" : "s"}` : "All changes saved"}</span><button disabled={saving || changed.length === 0} className="inline-flex items-center gap-2 rounded-xl bg-primary hover:bg-primary/90 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save configuration</button></div>
       </form>}
     </div>
