@@ -71,7 +71,7 @@ function PlanManagement() {
     {!draft && <div><button className={primaryButton} onClick={() => { setDraft(blank(catalog.data)); setError(""); setNotice(""); }}><Plus className="h-4 w-4" />New plan</button></div>}
 
     {draft && <form onSubmit={save} className={`${panel} space-y-5 p-6 sm:p-7`}>
-      <h2 className="font-serif text-xl font-semibold">{draft.id ? `Edit ${draft.name}` : "New plan"}</h2>
+      <h2 className="console-serif text-xl font-semibold">{draft.id ? `Edit ${draft.name}` : "New plan"}</h2>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={labelClass}><span>Code</span><input required readOnly={!!draft.id} pattern="[a-z][a-z0-9_\-]{1,49}" title="Lowercase letters, digits, - or _" className={inputClass} value={draft.code} onChange={e => set({ code: e.target.value })} /></label>
         <label className={labelClass}><span>Name</span><input required maxLength={150} className={inputClass} value={draft.name} onChange={e => set({ name: e.target.value })} /></label>
@@ -84,45 +84,45 @@ function PlanManagement() {
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.isActive} onChange={e => set({ isActive: e.target.checked })} />Plan is active</label>
       </div>
       <div>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">Limits &amp; features</h3>
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">Limits &amp; features</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {catalog.data.map(def => def.type === "Bool"
-            ? <label key={def.key} className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-sm dark:border-white/10"><input type="checkbox" checked={draft.values[def.key] === 1} onChange={e => set({ values: { ...draft.values, [def.key]: e.target.checked ? 1 : 0 } })} />{def.label}</label>
-            : <label key={def.key} className={`${labelClass} rounded-xl border border-slate-200 p-3 dark:border-white/10`}><span>{def.label} <span className="font-normal text-slate-500">({def.unit}; -1 = unlimited)</span></span>
+            ? <label key={def.key} className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm"><input type="checkbox" checked={draft.values[def.key] === 1} onChange={e => set({ values: { ...draft.values, [def.key]: e.target.checked ? 1 : 0 } })} />{def.label}</label>
+            : <label key={def.key} className={`${labelClass} rounded-xl border border-border p-3`}><span>{def.label} <span className="font-normal text-muted-foreground">({def.unit}; -1 = unlimited)</span></span>
               <input type="number" min={-1} className={inputClass} value={draft.values[def.key] ?? -1} onChange={e => set({ values: { ...draft.values, [def.key]: Number(e.target.value) } })} /></label>)}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <button disabled={busy} className={primaryButton}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}{busy ? "Saving…" : "Save plan"}</button>
-        <button type="button" disabled={busy} className="text-sm font-medium text-slate-600 underline-offset-4 hover:underline" onClick={() => setDraft(null)}>Cancel</button>
+        <button type="button" disabled={busy} className="text-sm font-medium text-muted-foreground underline-offset-4 hover:underline" onClick={() => setDraft(null)}>Cancel</button>
       </div>
     </form>}
 
     <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
       {plans.data.map(plan => <article key={plan.id} className={`${panel} flex flex-col p-6`}>
         <div className="flex items-start justify-between gap-3">
-          <div><h3 className="font-serif text-xl font-semibold">{plan.name}</h3><p className="font-mono text-xs text-slate-500">{plan.code}</p></div>
+          <div><h3 className="console-serif text-xl font-semibold">{plan.name}</h3><p className="font-mono text-xs text-muted-foreground">{plan.code}</p></div>
           <div className="flex flex-wrap justify-end gap-1.5">
-            {!plan.isPublic && <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600"><EyeOff className="h-3 w-3" />Hidden</span>}
+            {!plan.isPublic && <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground"><EyeOff className="h-3 w-3" />Hidden</span>}
             <Pill value={plan.isActive ? "Active" : "Cancelled"} label={plan.isActive ? "Active" : "Inactive"} />
           </div>
         </div>
-        {plan.description && <p className="mt-2 text-sm text-slate-600 dark:text-muted-foreground">{plan.description}</p>}
+        {plan.description && <p className="mt-2 text-sm text-muted-foreground">{plan.description}</p>}
         <p className="mt-3 text-sm font-medium">
           {plan.prices.filter(p => p.isActive).length === 0 ? (plan.trialDays > 0 ? `${plan.trialDays}-day free trial` : "Operator-assigned")
             : plan.prices.filter(p => p.isActive).map(p => `${formatMoney(p.amount, p.currency)}/${p.billingInterval === "Month" ? "mo" : "yr"}`).join("  ·  ")}
         </p>
-        <ul className="mt-3 flex-1 space-y-1 text-xs text-slate-600 dark:text-muted-foreground">
+        <ul className="mt-3 flex-1 space-y-1 text-xs text-muted-foreground">
           {catalog.data.filter(d => d.type === "Number").map(d => {
             const v = plan.entitlements.find(e => e.key === d.key)?.value;
-            return v === undefined ? null : <li key={d.key}>{d.label}: <b className="text-slate-800 dark:text-foreground">{describeLimit(v, d.unit)}</b></li>;
+            return v === undefined ? null : <li key={d.key}>{d.label}: <b className="text-foreground">{describeLimit(v, d.unit)}</b></li>;
           })}
           <li>Features: {catalog.data.filter(d => d.type === "Bool" && plan.entitlements.find(e => e.key === d.key)?.value === 1).map(d => d.label).join(", ") || "none"}</li>
         </ul>
-        <div className="mt-4 flex items-center justify-between"><span className="text-xs text-slate-500">{plan.subscribers} subscriber{plan.subscribers === 1 ? "" : "s"}</span>
+        <div className="mt-4 flex items-center justify-between"><span className="text-xs text-muted-foreground">{plan.subscribers} subscriber{plan.subscribers === 1 ? "" : "s"}</span>
           <button className={smallButton} onClick={() => edit(plan)}><Pencil className="h-3 w-3" />Edit</button></div>
       </article>)}
     </div>
-    {plans.loaded && plans.data.length === 0 && <p className="p-8 text-center text-sm text-slate-500">No plans yet.</p>}
+    {plans.loaded && plans.data.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">No plans yet.</p>}
   </div>;
 }

@@ -37,33 +37,33 @@ function SubscriptionManagement() {
     <Notices error={error || subs.error || invoices.error} notice={notice} />
     <div className="flex flex-wrap items-center justify-between gap-3">
       <TabBar tabs={[{ id: "subs", label: "Subscriptions" }, { id: "invoices", label: "Invoices" }]} value={tab} onChange={setTab} />
-      {tab === "subs" && <select aria-label="Filter by status" className={`${inputClass} w-48`} value={filter} onChange={e => setFilter(e.target.value)}>
+      {tab === "subs" && <select aria-label="Filter by status" className={`${inputClass} !w-52`} value={filter} onChange={e => setFilter(e.target.value)}>
         {STATUSES.map(s => <option key={s} value={s}>{s ? s.replace(/([a-z])([A-Z])/g, "$1 $2") : "All statuses"}</option>)}</select>}
     </div>
 
     {tab === "subs" && <section className={`${panel} overflow-hidden`}><div className="overflow-x-auto"><table className="w-full text-left text-sm">
-      <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 dark:bg-white/5"><tr>
+      <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground"><tr>
         <th className={th}>Client</th><th className={th}>Plan</th><th className={th}>Status</th><th className={th}>Renews / ends</th><th className={th}>Usage</th><th className={th}>Open</th><th className={th} /></tr></thead>
-      <tbody className="divide-y divide-slate-100 dark:divide-white/10">{subs.data.map(s => <tr key={s.id} className="hover:bg-slate-50/70 dark:hover:bg-white/5">
-        <td className={td}><div className="font-medium">{s.tenantName}</div><div className="font-mono text-xs text-slate-500">{s.tenantCode}</div></td>
-        <td className={td}>{s.planName}{s.price && <div className="text-xs text-slate-500">{formatMoney(s.price.amount, s.price.currency)}/{s.price.interval === "Month" ? "mo" : "yr"}</div>}</td>
+      <tbody className="divide-y divide-border">{subs.data.map(s => <tr key={s.id} className="hover:bg-muted/40">
+        <td className={td}><div className="font-medium">{s.tenantName}</div><div className="font-mono text-xs text-muted-foreground">{s.tenantCode}</div></td>
+        <td className={td}>{s.planName}{s.price && <div className="text-xs text-muted-foreground">{formatMoney(s.price.amount, s.price.currency)}/{s.price.interval === "Month" ? "mo" : "yr"}</div>}</td>
         <td className={td}><Pill value={s.status} />{s.cancelAtPeriodEnd && <div className="mt-1 text-xs text-amber-700">ending</div>}{s.tenantStatus === "Suspended" && <div className="mt-1 text-xs text-red-700">tenant suspended</div>}</td>
         <td className={td}>{s.status === "Trialing" ? `Trial ends ${formatDay(s.trialEndsAtUtc)}` : s.status === "PastDue" ? `Grace until ${formatDay(s.graceEndsAtUtc)}` : s.currentPeriodEndUtc ? formatDay(s.currentPeriodEndUtc) : "No renewal"}</td>
-        <td className={`${td} text-xs text-slate-600`}>{s.usage ? <>{s.usage.activeStudents} students<br />{s.usage.staffCount} staff · {s.usage.storageMb} MB</> : "-"}</td>
+        <td className={`${td} text-xs text-muted-foreground`}>{s.usage ? <>{s.usage.activeStudents} students<br />{s.usage.staffCount} staff · {s.usage.storageMb} MB</> : "-"}</td>
         <td className={td}>{s.openInvoices > 0 ? <span className="font-medium text-amber-700">{s.openInvoices} · {formatMoney(s.openAmount)}</span> : "-"}</td>
         <td className={td}><button className={smallButton} onClick={() => setSelected(s.tenantId)}>Manage</button></td></tr>)}</tbody>
     </table></div>
-      {!subs.loaded && <p className="p-6 text-sm text-slate-500">Loading…</p>}
-      {subs.loaded && subs.data.length === 0 && <p className="p-8 text-center text-sm text-slate-500">No subscriptions match.</p>}</section>}
+      {!subs.loaded && <p className="p-6 text-sm text-muted-foreground">Loading…</p>}
+      {subs.loaded && subs.data.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">No subscriptions match.</p>}</section>}
 
     {tab === "invoices" && <section className={`${panel} overflow-hidden`}><div className="overflow-x-auto"><table className="w-full text-left text-sm">
-      <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 dark:bg-white/5"><tr>
+      <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground"><tr>
         <th className={th}>Invoice</th><th className={th}>Client</th><th className={th}>Total</th><th className={th}>Status</th><th className={th}>Due</th><th className={th}>Actions</th></tr></thead>
-      <tbody className="divide-y divide-slate-100 dark:divide-white/10">{invoices.data.map(i => <tr key={i.id} className="hover:bg-slate-50/70 dark:hover:bg-white/5">
-        <td className={`${td} font-mono text-xs`}>{i.invoiceNumber}<div className="font-sans text-slate-500">{formatDay(i.periodStartUtc)} → {formatDay(i.periodEndUtc)}</div></td>
+      <tbody className="divide-y divide-border">{invoices.data.map(i => <tr key={i.id} className="hover:bg-muted/40">
+        <td className={`${td} font-mono text-xs`}>{i.invoiceNumber}<div className="font-sans text-muted-foreground">{formatDay(i.periodStartUtc)} → {formatDay(i.periodEndUtc)}</div></td>
         <td className={td}>{i.tenantName}</td>
-        <td className={td}>{formatMoney(i.total, i.currency)}<div className="text-xs text-slate-500">GST {formatMoney(i.taxAmount, i.currency)}</div></td>
-        <td className={td}>{i.overdue ? <Pill value="Overdue" /> : <Pill value={i.status} />}{i.paidAtUtc && <div className="text-xs text-slate-500">{formatDay(i.paidAtUtc)}</div>}</td>
+        <td className={td}>{formatMoney(i.total, i.currency)}<div className="text-xs text-muted-foreground">GST {formatMoney(i.taxAmount, i.currency)}</div></td>
+        <td className={td}>{i.overdue ? <Pill value="Overdue" /> : <Pill value={i.status} />}{i.paidAtUtc && <div className="text-xs text-muted-foreground">{formatDay(i.paidAtUtc)}</div>}</td>
         <td className={td}>{formatDay(i.dueAtUtc)}</td>
         <td className={td}><div className="flex flex-wrap gap-2">
           <button className={smallButton} onClick={() => { void openPlatformInvoicePdf(token, i.id).catch(err => setError(err.message)); }}><FileText className="h-3 w-3" />PDF</button>
@@ -73,7 +73,7 @@ function SubscriptionManagement() {
             <button disabled={busy} className={smallButton} onClick={() => { if (window.confirm(`Void ${i.invoiceNumber}? It can no longer be paid.`)) void run(() => saasPlatform.voidInvoice(token, i.id), `${i.invoiceNumber} voided.`); }}>Void</button></>}
         </div></td></tr>)}</tbody>
     </table></div>
-      {invoices.loaded && invoices.data.length === 0 && <p className="p-8 text-center text-sm text-slate-500">No invoices have been issued yet.</p>}</section>}
+      {invoices.loaded && invoices.data.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">No invoices have been issued yet.</p>}</section>}
 
     {selected && <Detail tenantId={selected} token={token} plans={plans.data} busy={busy} run={run} onClose={() => setSelected(null)} />}
   </div>;
@@ -107,34 +107,34 @@ function Detail({ tenantId, token, plans, busy, run, onClose }: {
 
   return <section className={`${panel} space-y-6 p-6`} aria-label="Subscription details">
     <div className="flex items-start justify-between gap-3">
-      <div><h2 className="font-serif text-xl font-semibold">{d?.tenantName ?? "Loading…"}</h2>{d && <p className="text-sm text-slate-500">{d.planName} · <Pill value={d.status} /></p>}</div>
+      <div><h2 className="console-serif text-xl font-semibold">{d?.tenantName ?? "Loading…"}</h2>{d && <p className="text-sm text-muted-foreground">{d.planName} · <Pill value={d.status} /></p>}</div>
       <button className={smallButton} onClick={onClose} aria-label="Close"><X className="h-3 w-3" />Close</button>
     </div>
     {detail.error && <p role="alert" className="text-sm text-red-700">{detail.error}</p>}
     {d && <>
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500">Assign a plan</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">Assign a plan</h3>
           <TabBar tabs={[{ id: "invoice", label: "Invoice" }, { id: "complimentary", label: "Complimentary" }, { id: "trial", label: "Trial" }]} value={mode} onChange={setMode} />
           {mode !== "trial" && <label className={labelClass}><span>Plan &amp; price</span>
             <select className={inputClass} value={priceId} onChange={e => setPriceId(e.target.value)}><option value="">{mode === "complimentary" ? "Choose a priced plan, or pick a plan code below" : "Choose…"}</option>{priced.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>}
           {mode !== "invoice" && <label className={labelClass}><span>Plan code{mode === "trial" ? " (trial plan)" : " (used when no price is chosen)"}</span>
             <select className={inputClass} value={planCode} onChange={e => setPlanCode(e.target.value)}>{plans.map(p => <option key={p.id} value={p.code}>{p.name} ({p.code})</option>)}</select></label>}
           {mode === "trial" && <label className={labelClass}><span>Trial days</span><input type="number" min={1} max={365} className={inputClass} value={days} onChange={e => setDays(Number(e.target.value))} /></label>}
-          <p className="text-xs text-slate-500">{mode === "invoice" ? "Issues an invoice; the plan changes once it is paid." : mode === "complimentary" ? "Active immediately, never invoiced or renewed." : "Starts a fresh trial and reactivates a billing-suspended client."}</p>
+          <p className="text-xs text-muted-foreground">{mode === "invoice" ? "Issues an invoice; the plan changes once it is paid." : mode === "complimentary" ? "Active immediately, never invoiced or renewed." : "Starts a fresh trial and reactivates a billing-suspended client."}</p>
           <button disabled={busy || (mode === "invoice" && !priceId)} className={smallButton} onClick={() => { void withReload(() => saasPlatform.assign(token, tenantId, { mode, planCode: mode === "invoice" ? undefined : planCode, planPriceId: priceId || undefined, trialDays: mode === "trial" ? days : undefined }), "Plan assigned."); }}>
             {busy && <Loader2 className="h-3 w-3 animate-spin" />}Apply</button>
         </div>
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500">Actions</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">Actions</h3>
           <div className="flex flex-wrap gap-2">
             <button disabled={busy} className={smallButton} onClick={() => { const v = window.prompt("Extend the trial by how many days?", "7"); if (v) void withReload(() => saasPlatform.extendTrial(token, tenantId, Number(v)), "Trial extended."); }}>Extend trial</button>
             <button disabled={busy} className={smallButton} onClick={() => { void withReload(() => saasPlatform.resume(token, tenantId), "Subscription resumed."); }}>Resume</button>
             <button disabled={busy} className={smallButton} onClick={() => { if (window.confirm("Cancel at the end of the current period?")) void withReload(() => saasPlatform.cancel(token, tenantId, false), "Cancellation scheduled."); }}>Cancel at period end</button>
             <button disabled={busy} className={smallButton} onClick={() => { if (window.confirm("Cancel NOW and suspend this client? Its data is kept.")) void withReload(() => saasPlatform.cancel(token, tenantId, true), "Subscription cancelled."); }}>Cancel now</button>
           </div>
-          <h3 className="pt-2 text-sm font-semibold uppercase tracking-wider text-slate-500">Limit &amp; feature overrides</h3>
-          <ul className="space-y-1 text-sm">{d.overrides.length === 0 && <li className="text-slate-500">None. The client gets exactly what its plan includes.</li>}
+          <h3 className="pt-2 text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">Limit &amp; feature overrides</h3>
+          <ul className="space-y-1 text-sm">{d.overrides.length === 0 && <li className="text-muted-foreground">None. The client gets exactly what its plan includes.</li>}
             {d.overrides.map(o => <li key={o.key} className="flex items-center justify-between gap-2"><span><b>{catalog.data.find(c => c.key === o.key)?.label ?? o.key}</b>: {o.value}{o.reason ? ` (${o.reason})` : ""}</span>
               <button className={smallButton} disabled={busy} onClick={() => { void withReload(() => saasPlatform.setOverrides(token, tenantId, d.overrides.filter(x => x.key !== o.key)), "Override removed."); }}>Remove</button></li>)}</ul>
           <div className="grid gap-2 sm:grid-cols-[1fr_90px_1fr_auto]">
@@ -143,12 +143,12 @@ function Detail({ tenantId, token, plans, busy, run, onClose }: {
             <input aria-label="Override reason" placeholder="Reason" className={inputClass} value={overrideReason} onChange={e => setOverrideReason(e.target.value)} />
             <button disabled={busy || !overrideKey || overrideValue === ""} className={smallButton} onClick={() => { void saveOverride(); }}>Set</button>
           </div>
-          <p className="text-xs text-slate-500">Features: 1 = on, 0 = off. Limits: -1 = unlimited.</p>
+          <p className="text-xs text-muted-foreground">Features: 1 = on, 0 = off. Limits: -1 = unlimited.</p>
         </div>
       </div>
-      <div><h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-500">History</h3>
-        <ul className="max-h-64 divide-y divide-slate-100 overflow-y-auto text-sm dark:divide-white/10">{d.events.map((e, i) => <li key={i} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
-          <span><b>{e.eventType.replace(/_/g, " ")}</b>{e.detail ? <span className="text-slate-600"> · {e.detail}</span> : null}</span><span className="text-xs text-slate-500">{e.actor} · {new Date(e.createdAtUtc).toLocaleString("en-IN")}</span></li>)}</ul></div>
+      <div><h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">History</h3>
+        <ul className="max-h-64 divide-y divide-border overflow-y-auto text-sm">{d.events.map((e, i) => <li key={i} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+          <span><b>{e.eventType.replace(/_/g, " ")}</b>{e.detail ? <span className="text-muted-foreground"> · {e.detail}</span> : null}</span><span className="text-xs text-muted-foreground">{e.actor} · {new Date(e.createdAtUtc).toLocaleString("en-IN")}</span></li>)}</ul></div>
     </>}
   </section>;
 }

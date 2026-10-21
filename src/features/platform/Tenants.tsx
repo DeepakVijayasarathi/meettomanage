@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import {
-  AlertCircle, AtSign, Building2, Check, CheckCircle2, Copy, CreditCard, Database, ExternalLink, FlaskConical, ListTree, Loader2,
+  AtSign, Building2, Check, Copy, CreditCard, Database, ExternalLink, ListTree, Loader2,
   MoreHorizontal, PauseCircle, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Users,
 } from "lucide-react";
 
@@ -9,13 +9,10 @@ import PlatformShell, { usePlatformAdmin } from "./PlatformShell";
 import { platformRequest as request, type PlatformTenant as Tenant } from "@/api/platform";
 import { saasPlatform, formatDay, formatMoney, type PlanView, type SubscriptionRow } from "@/api/saas";
 import { tenantLoginUrl } from "@/lib/tenantDiscovery";
-import { PageHeader } from "@/components/PageHeader";
-import { KpiCard } from "@/components/KpiCard";
+import { ConsoleHeader, Pill, Segmented, StatStrip, panel } from "./saasUi";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
-import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -30,9 +27,6 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "All" }, { id: "active", label: "Active" }, { id: "suspended", label: "Suspended" }, { id: "setup", label: "Needs setup" },
 ];
 
-const tenantVariant: Record<string, BadgeProps["variant"]> = { Active: "success", Suspended: "warning", Failed: "destructive", Provisioning: "default" };
-const planVariant: Record<string, BadgeProps["variant"]> = { Active: "success", Trialing: "default", PastDue: "warning", Suspended: "destructive", Expired: "destructive", Cancelled: "muted" };
-const accent: Record<string, string> = { Active: "before:bg-success", Suspended: "before:bg-warning", Failed: "before:bg-destructive", Provisioning: "before:bg-primary" };
 
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join("") || "?";
 const needsSetup = (t: Tenant) => t.status === "Failed" || t.status === "Provisioning";
@@ -137,81 +131,79 @@ function TenantManagement() {
   const newDatabase = !draft.databaseName.trim() && !retry;
   const sellable = plans.filter(p => p.isActive);
 
-  return <div>
-    <PageHeader eyebrow="Platform" title="Tenant management"
+  return <div className="space-y-6">
+    <ConsoleHeader title="Tenant management"
       description="Create client workspaces, see where each one stands on its plan, and manage their lifecycle from one place."
       actions={<>
         <Button asChild variant="outline"><Link to="/platform/email-mappings"><AtSign />Simple SSO</Link></Button>
         <Button onClick={openCreate}><Plus />New client</Button>
       </>} />
 
-    <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
-      <KpiCard label="Total clients" value={String(counts.total)} icon={Building2} loading={!loaded} />
-      <KpiCard label="Active" value={String(counts.active)} icon={CheckCircle2} tone="success" loading={!loaded} />
-      <KpiCard label="On free trial" value={String(counts.trial)} icon={FlaskConical} loading={!loaded} />
-      <KpiCard label="Needs attention" value={String(counts.attention)} detail="Suspended, overdue or not set up" icon={AlertCircle} tone="warning" loading={!loaded} />
-    </div>
+    <StatStrip items={[
+      { label: "Total clients", value: loaded ? counts.total : "–" },
+      { label: "Active", value: loaded ? counts.active : "–", tone: "good" },
+      { label: "On free trial", value: loaded ? counts.trial : "–" },
+      { label: "Needs attention", value: loaded ? counts.attention : "–", hint: "Suspended, overdue or not set up", tone: counts.attention > 0 ? "warn" : "default" },
+    ]} />
 
-    <div className="space-y-5">
-      {error && <InlineAlert variant="error" bordered>{error}</InlineAlert>}
-      {notice && <InlineAlert variant="success" bordered>{notice}</InlineAlert>}
+    {error && <InlineAlert variant="error" bordered>{error}</InlineAlert>}
+    {notice && <InlineAlert variant="success" bordered>{notice}</InlineAlert>}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div role="group" aria-label="Filter clients" className="flex flex-wrap gap-2">
-          {FILTERS.map(f => <Button key={f.id} type="button" size="pill" variant="pill" aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>{f.label}</Button>)}
-        </div>
+    <section className={`${panel} overflow-hidden`}>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 sm:px-6">
+        <Segmented label="Filter clients" options={FILTERS} value={filter} onChange={setFilter} />
         <div className="relative w-full sm:w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input aria-label="Search tenants" placeholder="Search by name or code…" className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+          <Input aria-label="Search tenants" placeholder="Search by name or code…" className="bg-card pl-9" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
 
-      {!loaded && <div role="status" aria-label="Loading clients" className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">{[0, 1, 2].map(i => <Skeleton key={i} className="h-56 rounded-xl" />)}</div>}
+      {!loaded && <div role="status" aria-label="Loading clients" className="space-y-3 p-6">{[0, 1, 2].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}</div>}
 
-      {loaded && tenants.length === 0 && <EmptyState icon={Building2} title="No clients yet"
+      {loaded && tenants.length === 0 && <div className="p-8"><EmptyState icon={Building2} title="No clients yet"
         description="Each client gets its own workspace, database, users and settings. Create the first one to get started."
-        action={<Button onClick={openCreate}><Plus />Create your first client</Button>} />}
+        action={<Button onClick={openCreate}><Plus />Create your first client</Button>} /></div>}
 
-      {loaded && tenants.length > 0 && visible.length === 0 && <EmptyState icon={Search} title="No clients match"
-        description="Try a different search or filter." action={<Button variant="outline" onClick={() => { setSearch(""); setFilter("all"); }}>Clear filters</Button>} />}
+      {loaded && tenants.length > 0 && visible.length === 0 && <div className="p-8"><EmptyState icon={Search} title="No clients match"
+        description="Try a different search or filter." action={<Button variant="outline" onClick={() => { setSearch(""); setFilter("all"); }}>Clear filters</Button>} /></div>}
 
-      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+      <ul className="divide-y divide-border">
         {visible.map(t => {
           const sub = subs[t.id];
-          return <Card key={t.id} className={`relative flex flex-col overflow-hidden p-5 before:absolute before:inset-y-0 before:left-0 before:w-1 ${accent[t.status] ?? "before:bg-border"}`}>
-            <div className="flex items-start gap-3">
-              <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary ring-1 ring-primary/15">{initials(t.name)}</span>
-              <div className="min-w-0 flex-1">
-                <h3 className="truncate text-base font-semibold leading-tight">{t.name}</h3>
-                <p className="mt-0.5 font-mono text-xs text-muted-foreground">{t.code}</p>
+          return <li key={t.id} className="grid gap-4 px-4 py-5 transition-colors hover:bg-muted/30 sm:px-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1.2fr)_auto] lg:items-center">
+            <div className="flex min-w-0 items-center gap-4">
+              <span aria-hidden className="console-serif flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-base font-semibold text-primary">{initials(t.name)}</span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="truncate text-[15px] font-semibold">{t.name}</h3>
+                  <Pill value={t.status} />
+                </div>
+                <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  <span className="font-mono">{t.code}</span><span aria-hidden>·</span>
+                  <a href={tenantLoginUrl(t.code)} className="min-w-0 truncate font-mono text-primary underline-offset-4 hover:underline">{tenantLoginUrl(t.code)}</a>
+                  <Button type="button" variant="ghost" size="iconSm" aria-label={`Copy URL for ${t.name}`} title="Copy URL" onClick={() => { void copyUrl(t); }}>
+                    {copied === t.id ? <Check className="text-success" /> : <Copy />}</Button>
+                </div>
               </div>
-              <Badge variant={tenantVariant[t.status] ?? "muted"}>{t.status}</Badge>
             </div>
 
-            <div className="mt-4 space-y-2 rounded-lg bg-muted/50 p-3 text-sm">
+            <div className="min-w-0 text-sm">
               {sub ? <>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1.5 font-medium"><CreditCard className="h-3.5 w-3.5 text-muted-foreground" />{sub.planName}
-                    {sub.price && <span className="font-normal text-muted-foreground">· {formatMoney(sub.price.amount, sub.price.currency)}/{sub.price.interval === "Month" ? "mo" : "yr"}</span>}</span>
-                  <Badge variant={planVariant[sub.status] ?? "muted"}>{sub.status.replace(/([a-z])([A-Z])/g, "$1 $2")}</Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 font-medium"><CreditCard className="h-3.5 w-3.5 text-muted-foreground" />{sub.planName}</span>
+                  {sub.price && <span className="text-muted-foreground">{formatMoney(sub.price.amount, sub.price.currency)}/{sub.price.interval === "Month" ? "mo" : "yr"}</span>}
+                  <Pill value={sub.status} />
                 </div>
-                <p className="text-xs text-muted-foreground">{billingLine(sub)}</p>
-                {sub.usage && <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Users className="h-3.5 w-3.5" />{sub.usage.activeStudents} students · {sub.usage.staffCount} staff</p>}
+                <p className="mt-1 text-xs text-muted-foreground">{billingLine(sub)}{sub.usage && <><span aria-hidden> · </span><Users className="mb-0.5 inline h-3 w-3" /> {sub.usage.activeStudents} students · {sub.usage.staffCount} staff</>}</p>
               </> : <p className="text-xs text-muted-foreground">{isLive(t) ? "No plan information yet." : "Finish setup to assign a plan."}</p>}
             </div>
 
-            <div className="mt-3 flex items-center gap-1 text-xs">
-              <a href={tenantLoginUrl(t.code)} className="min-w-0 truncate font-mono text-primary underline-offset-4 hover:underline">{tenantLoginUrl(t.code)}</a>
-              <Button type="button" variant="ghost" size="iconSm" aria-label={`Copy URL for ${t.name}`} title="Copy URL" onClick={() => { void copyUrl(t); }}>
-                {copied === t.id ? <Check className="text-success" /> : <Copy />}</Button>
-            </div>
-
-            <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               {isLive(t) && <Button asChild size="sm"><a href={tenantLoginUrl(t.code)}><ExternalLink />Open portal</a></Button>}
               {isLive(t) && <Button asChild size="sm" variant="outline"><Link to={`/platform/configuration?tenant=${t.id}`}><Settings2 />Configure</Link></Button>}
               {needsSetup(t) && <Button size="sm" disabled={busy} onClick={() => openRetry(t)}><RotateCcw />Retry setup</Button>}
               <DropdownMenu>
-                <DropdownMenuTrigger asChild><Button size="sm" variant="ghost" className="ml-auto" aria-label={`More actions for ${t.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
+                <DropdownMenuTrigger asChild><Button size="sm" variant="ghost" aria-label={`More actions for ${t.name}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   {isLive(t) && <>
                     <DropdownMenuItem asChild><Link to={`/platform/menus?tenant=${t.id}`}><ListTree className="h-4 w-4" />Menus</Link></DropdownMenuItem>
@@ -227,10 +219,10 @@ function TenantManagement() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          </Card>;
+          </li>;
         })}
-      </div>
-    </div>
+      </ul>
+    </section>
 
     <Dialog open={dialogOpen} onOpenChange={o => { if (!busy) setDialogOpen(o); }}>
       <DialogContent className="max-w-2xl">
