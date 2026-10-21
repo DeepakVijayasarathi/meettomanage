@@ -97,4 +97,59 @@ describe("platform administration authorization", () => {
       expect(await screen.findByText(/New Co is ready/)).toBeTruthy();
     });
   });
+
+  describe("mobile app access", () => {
+    const list = [
+      { id: "t1", code: "acme", name: "Acme Academy", status: "Active", appAccessGranted: true },
+      { id: "t2", code: "nogo", name: "No App Co", status: "Active", appAccessGranted: false },
+    ];
+    function mockApi() {
+      return vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+        const u = String(url);
+        if (init?.method === "POST" && u.endsWith("/tenants")) return response({ id: "t3", code: "new", name: "New Co", status: "Active", appAccessGranted: false });
+        if (init?.method === "PUT" && u.endsWith("/app-access")) return new Response(null, { status: 204 });
+        if (u.endsWith("/tenants")) return response(list);
+        return response([]);
+      });
+    }
+    beforeEach(() => { sessionStorage.setItem("mtm.platformToken", "platform-token"); });
+
+    it("shows whether each client has the app on or off", async () => {
+      mockApi();
+      render(<MemoryRouter><Tenants /></MemoryRouter>);
+      await screen.findByRole("heading", { name: "Acme Academy" });
+      expect(screen.getByText("App on")).toBeTruthy();
+      expect(screen.getByText("App off")).toBeTruthy();
+    });
+
+    it("sends the app-access choice when creating a client (on by default, can be switched off)", async () => {
+      const fetch = mockApi();
+      render(<MemoryRouter><Tenants /></MemoryRouter>);
+      await screen.findByRole("heading", { name: "Acme Academy" });
+      fireEvent.click(screen.getByRole("button", { name: /New client/ }));
+      const box = await screen.findByLabelText(/Grant mobile app access/) as HTMLInputElement;
+      expect(box.checked).toBe(true);
+      fireEvent.click(box);
+      fireEvent.change(screen.getByLabelText("Client code"), { target: { value: "new" } });
+      fireEvent.change(screen.getByLabelText("Client name"), { target: { value: "New Co" } });
+      fireEvent.change(screen.getByLabelText(/Administrator email/), { target: { value: "o@new.test" } });
+      fireEvent.change(screen.getByLabelText("Initial four-digit PIN"), { target: { value: "1234" } });
+      fireEvent.click(screen.getByRole("button", { name: "Create client" }));
+      await waitFor(() => expect(fetch.mock.calls.some(c => c[1]?.method === "POST")).toBe(true));
+      const post = fetch.mock.calls.find(c => c[1]?.method === "POST")!;
+      expect(JSON.parse(String(post[1]?.body))).toMatchObject({ code: "new", appAccessGranted: false });
+    });
+
+    it("grants app access from the client's menu", async () => {
+      const fetch = mockApi();
+      render(<MemoryRouter><Tenants /></MemoryRouter>);
+      await screen.findByRole("heading", { name: "No App Co" });
+      fireEvent.keyDown(screen.getByRole("button", { name: "More actions for No App Co" }), { key: "ArrowDown" });
+      fireEvent.click(await screen.findByRole("menuitem", { name: /Grant mobile app access/ }));
+      await waitFor(() => expect(fetch.mock.calls.some(c => String(c[0]).endsWith("/tenants/t2/app-access"))).toBe(true));
+      const put = fetch.mock.calls.find(c => String(c[0]).endsWith("/tenants/t2/app-access"))!;
+      expect(put[1]?.method).toBe("PUT");
+      expect(JSON.parse(String(put[1]?.body))).toEqual({ granted: true });
+    });
+  });
 });

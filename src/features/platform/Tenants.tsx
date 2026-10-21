@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { Link } from "react-router-dom";
 import {
   AtSign, Building2, Check, Copy, CreditCard, Database, ExternalLink, ListTree, Loader2,
-  MoreHorizontal, PauseCircle, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Users,
+  MoreHorizontal, PauseCircle, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Smartphone, Users,
 } from "lucide-react";
 
 import PlatformShell, { usePlatformAdmin } from "./PlatformShell";
@@ -19,8 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 
-type Draft = { code: string; name: string; databaseName: string; adminEmail: string; adminPin: string; planCode: string };
-const empty: Draft = { code: "", name: "", databaseName: "", adminEmail: "", adminPin: "", planCode: "" };
+type Draft = { code: string; name: string; databaseName: string; adminEmail: string; adminPin: string; planCode: string; appAccessGranted: boolean };
+const empty: Draft = { code: "", name: "", databaseName: "", adminEmail: "", adminPin: "", planCode: "", appAccessGranted: true };
 
 type Filter = "all" | "active" | "suspended" | "setup";
 const FILTERS: { id: Filter; label: string }[] = [
@@ -107,6 +107,8 @@ function TenantManagement() {
     catch (err) { setError(err instanceof Error ? err.message : failure); }
     finally { setBusy(false); }
   }
+  const toggleApp = (t: Tenant) => run(() => request(`/tenants/${t.id}/app-access`, token, "PUT", { granted: t.appAccessGranted === false }), "Could not change app access.",
+    `${t.name}: mobile app access ${t.appAccessGranted === false ? "granted" : "withdrawn"}.`);
   const toggle = (t: Tenant) => run(() => request(`/tenants/${t.id}/status`, token, "PUT", { suspended: t.status === "Active" }), "Could not change client status.");
   const synchronize = (t: Tenant) => run(async () => {
     const result = await request<{ skippedPhones?: string[] }>(`/tenants/${t.id}/synchronize-logins`, token, "POST");
@@ -177,6 +179,9 @@ function TenantManagement() {
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="truncate text-[15px] font-semibold">{t.name}</h3>
                   <Pill value={t.status} />
+                  <span title={t.appAccessGranted === false ? "Families cannot use the mobile app" : "Families can use the mobile app"}
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${t.appAccessGranted === false ? "bg-stone-100 text-stone-600 ring-stone-500/20" : "bg-secondary text-primary ring-primary/15"}`}>
+                    <Smartphone className="h-3 w-3" />{t.appAccessGranted === false ? "App off" : "App on"}</span>
                 </div>
                 <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                   <span className="font-mono">{t.code}</span><span aria-hidden>·</span>
@@ -212,6 +217,7 @@ function TenantManagement() {
                     <DropdownMenuSeparator />
                   </>}
                   <DropdownMenuItem onSelect={() => { void copyUrl(t); }}><Copy className="h-4 w-4" />Copy sign-in URL</DropdownMenuItem>
+                  {isLive(t) && <DropdownMenuItem disabled={busy} onSelect={() => { void toggleApp(t); }}><Smartphone className="h-4 w-4" />{t.appAccessGranted === false ? "Grant mobile app access" : "Withdraw mobile app access"}</DropdownMenuItem>}
                   {isLive(t) && <DropdownMenuItem disabled={busy} onSelect={() => { void toggle(t); }}>
                     {t.status === "Active" ? <><PauseCircle className="h-4 w-4" />Suspend client</> : <><Play className="h-4 w-4" />Activate client</>}</DropdownMenuItem>}
                   {t.status === "Suspended" && <DropdownMenuItem disabled={busy} onSelect={() => { void synchronize(t); }}><RefreshCw className="h-4 w-4" />Sync imported logins</DropdownMenuItem>}
@@ -242,6 +248,11 @@ function TenantManagement() {
             </div>
             <div className="space-y-1.5"><Label htmlFor="tenant-admin-email">Administrator email{newDatabase ? "" : " (only for a new database)"}</Label><Input id="tenant-admin-email" type="email" required={newDatabase} autoComplete="off" value={draft.adminEmail} onChange={e => setDraft({ ...draft, adminEmail: e.target.value })} /></div>
             <div className="space-y-1.5"><Label htmlFor="tenant-admin-pin">Initial four-digit PIN</Label><Input id="tenant-admin-pin" type="password" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} required={newDatabase} autoComplete="new-password" value={draft.adminPin} onChange={e => setDraft({ ...draft, adminPin: e.target.value })} /></div>
+            {!retry && <label className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:col-span-2" htmlFor="tenant-app-access">
+              <input id="tenant-app-access" type="checkbox" className="mt-1 h-4 w-4 accent-[hsl(var(--primary))]" checked={draft.appAccessGranted} onChange={e => setDraft({ ...draft, appAccessGranted: e.target.checked })} />
+              <span><span className="flex items-center gap-1.5 text-sm font-medium"><Smartphone className="h-3.5 w-3.5 text-primary" />Grant mobile app access</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">Lets this client's families sign in to the parent app. You can change it later from the client's menu or Tenant configuration.</span></span>
+            </label>}
             {sellable.length > 0 && <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="tenant-plan">Starting plan</Label>
               <select id="tenant-plan" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" value={draft.planCode} onChange={e => setDraft({ ...draft, planCode: e.target.value })}>

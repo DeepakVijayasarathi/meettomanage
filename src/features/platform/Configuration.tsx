@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { TenantSelector, useTenantSelection } from "./TenantSelection";
 import TenantIntegrations from "./TenantIntegrations";
 import BrandingEditor, { BRAND_DEFAULTS, BRAND_EDITOR_KEYS } from "./BrandingEditor";
+import ParentAppEditor, { APP_DEFAULTS, APP_EDITOR_KEYS } from "./ParentAppEditor";
 
 const PORTALS = ["admin", "teacher", "parent", "subadmin", "admission", "coordinator", "management", "student"];
 // Widget settings only exist in a tenant's database once someone saves them; until then the
@@ -24,10 +25,15 @@ const withWidgetDefaults = (list: ApiSetting[]): ApiSetting[] => [
   // Typefaces only exist in a client's database once someone saves them; show the built-in defaults so they can be changed.
   ...Object.entries(BRAND_DEFAULTS).filter(([key]) => !list.some(s => s.key === key))
     .map(([key, value]): ApiSetting => ({ key, value, category: "Branding", isPublic: true })),
+  // Parent-app content only exists once saved. Not public: a signed-in family reads it through /api/app/config.
+  ...Object.entries(APP_DEFAULTS).filter(([key]) => !list.some(s => s.key === key))
+    .map(([key, value]): ApiSetting => ({ key, value, category: "General", isPublic: false })),
 ];
 
-const categories: SettingCategory[] = ["General", "Branding", "Notifications", "Integrations", "Widgets", "Seo"];
-const categoryLabel = (category: SettingCategory) => category === "Seo" ? "SEO" : category;
+// "App" is a virtual tab: its keys are stored as ordinary General settings but edited in their own editor.
+type Tab = SettingCategory | "App";
+const categories: Tab[] = ["General", "Branding", "App", "Notifications", "Integrations", "Widgets", "Seo"];
+const categoryLabel = (category: Tab) => category === "Seo" ? "SEO" : category === "App" ? "Parent app" : category;
 const labelFor = (key: string) => key.split(".").slice(1).join(" · ").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, s => s.toUpperCase()) || key;
 
 export default function Configuration() {
@@ -44,15 +50,16 @@ function ConfigurationPage() {
     <TenantSelector {...selection} disabled={saving} onChange={id => { if (dirty) setPending(id); else selection.select(id); }} />
     {selection.error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{selection.error}</p>}
     {!selection.loading && selection.tenants.length === 0 && !selection.error && <p className="rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(31,41,55,0.04)] p-8 text-muted-foreground">Create and provision a tenant before configuring its workspace.</p>}
-    {selection.tenant && <ConfigurationEditor key={selection.tenant.id} tenantId={selection.tenant.id} token={selection.token} onDirty={setDirty} onSaving={setSaving} />}
+    {selection.tenant && <ConfigurationEditor key={selection.tenant.id} tenantId={selection.tenant.id} token={selection.token} appAccessGranted={selection.tenant.appAccessGranted !== false} onDirty={setDirty} onSaving={setSaving} />}
     <ConfirmDialog open={pending !== null} onOpenChange={open => { if (!open) setPending(null); }} title="Discard unsaved configuration?" description="Your changes have not been saved. Switch to the other tenant and discard them?" confirmLabel="Discard and switch" onConfirm={() => { if (pending) selection.select(pending); setDirty(false); setPending(null); }} />
   </div>;
 }
 
-function ConfigurationEditor({ tenantId, token, onDirty, onSaving }: { tenantId: string; token: string; onDirty: (dirty: boolean) => void; onSaving: (saving: boolean) => void }) {
+function ConfigurationEditor({ tenantId, token, appAccessGranted, onDirty, onSaving }: { tenantId: string; token: string; appAccessGranted: boolean; onDirty: (dirty: boolean) => void; onSaving: (saving: boolean) => void }) {
+  const [appGranted, setAppGranted] = useState(appAccessGranted);
   const [settings, setSettings] = useState<ApiSetting[]>([]);
   const [draft, setDraft] = useState<Record<string, string>>({});
-  const [category, setCategory] = useState<SettingCategory>("General");
+  const [category, setCategory] = useState<Tab>("General");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -96,12 +103,12 @@ function ConfigurationEditor({ tenantId, token, onDirty, onSaving }: { tenantId:
   function addSetting(event: FormEvent) {
     event.preventDefault(); const key = newKey.trim();
     if (!key || key.length > 100 || key === "storage.provider" || settings.some(s => s.key === key)) { setError("Use a unique setting key. Manage storage provider changes from the client's File storage page."); return; }
-    setSettings(previous => [...previous, { key, value: null, category, isPublic: false }]);
+    setSettings(previous => [...previous, { key, value: null, category: category === "App" ? "General" : category, isPublic: false }]);
     setNewKeys(previous => new Set([...previous, key]));
     setDraft(previous => ({ ...previous, [key]: newValue }));
     setNewKey(""); setNewValue(""); setAdding(false); setError("");
   }
-  const rows = settings.filter(s => s.category === category && !(category === "Branding" && BRAND_EDITOR_KEYS.has(s.key)));
+  const rows = settings.filter(s => category === "App" ? false : s.category === category && !(category === "Branding" && BRAND_EDITOR_KEYS.has(s.key)) && !(category === "General" && APP_EDITOR_KEYS.has(s.key)));
   const setDraftKey = (key: string, value: string) => setDraft(previous => ({ ...previous, [key]: value }));
   // An uploaded logo is already saved on the server: reflect it as the stored value so it does not read as an unsaved edit.
   const logoChanged = (url: string) => {
@@ -116,11 +123,12 @@ function ConfigurationEditor({ tenantId, token, onDirty, onSaving }: { tenantId:
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(31,41,55,0.04)]"><div className="flex flex-wrap gap-1 border-b p-3" role="tablist" aria-label="Configuration categories">{categories.map(item => <button key={item} role="tab" type="button" aria-selected={category === item} onClick={() => setCategory(item)} className={`rounded-lg px-4 py-2 text-sm font-medium ${category === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{categoryLabel(item)}</button>)}</div>
       {category === "Integrations" ? <TenantIntegrations tenantId={tenantId} token={token} /> :
       <form onSubmit={save}><div className="flex items-center justify-between gap-4 border-b p-5"><div className="flex items-center gap-3"><Settings2 className="h-5 w-5 text-muted-foreground" /><div><h2 className="font-semibold">{categoryLabel(category)} settings</h2><p className="mt-1 text-xs text-muted-foreground">Changes affect the selected tenant only.</p></div></div><button type="button" onClick={() => setAdding(!adding)} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm"><Plus className="h-4 w-4" />Add setting</button></div>
+        {category === "App" && <ParentAppEditor values={draft} set={setDraftKey} disabled={saving} tenantId={tenantId} token={token} granted={appGranted} onGrantedChange={setAppGranted} />}
         {category === "Branding" && <BrandingEditor values={draft} set={setDraftKey} disabled={saving} tenantId={tenantId} token={token} onLogoChanged={logoChanged} />}
         <div className="divide-y">{rows.map(setting => <div key={setting.key} className="grid gap-3 p-5 md:grid-cols-[minmax(180px,1fr)_minmax(0,1.4fr)]"><div><label htmlFor={`setting-${setting.key}`} className="text-sm font-medium">{labelFor(setting.key)}</label><p className="mt-1 break-all text-xs text-muted-foreground">{setting.key}{setting.isPublic && <span className="ml-2 rounded bg-blue-50 px-1.5 text-blue-700">Public</span>}</p></div>
           {setting.value === "true" || setting.value === "false" ? <label className="flex items-center gap-3 text-sm"><input id={`setting-${setting.key}`} type="checkbox" checked={draft[setting.key] === "true"} disabled={saving} onChange={e => setDraft({ ...draft, [setting.key]: String(e.target.checked) })} className="h-4 w-4 accent-blue-600" />{draft[setting.key] === "true" ? "Enabled" : "Disabled"}</label>
             : <textarea id={`setting-${setting.key}`} maxLength={2000} rows={(draft[setting.key]?.length ?? 0) > 100 ? 3 : 1} disabled={saving || setting.key === "storage.provider"} className="w-full resize-y rounded-xl border border-input bg-card px-3 py-2 outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 text-sm disabled:bg-muted" value={draft[setting.key] ?? ""} onChange={e => setDraft({ ...draft, [setting.key]: e.target.value })} />}
-        </div>)}{rows.length === 0 && category !== "Branding" && <p className="p-8 text-sm text-muted-foreground">No settings in this category yet. Add one to customize this tenant.</p>}</div>
+        </div>)}{rows.length === 0 && category !== "Branding" && category !== "App" && <p className="p-8 text-sm text-muted-foreground">No settings in this category yet. Add one to customize this tenant.</p>}</div>
         <div className="flex items-center justify-between gap-4 border-t bg-muted/20 p-4"><span className="text-sm text-muted-foreground">{changed.length ? `${changed.length} unsaved change${changed.length === 1 ? "" : "s"}` : "All changes saved"}</span><button disabled={saving || changed.length === 0} className="inline-flex items-center gap-2 rounded-xl bg-primary hover:bg-primary/90 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save configuration</button></div>
       </form>}
     </div>
