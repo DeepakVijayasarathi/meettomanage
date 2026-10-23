@@ -12,7 +12,9 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 type Priority = "All" | "Action needed" | "Monitor" | "On track";
 type CopilotMode = "Executive" | "Finance" | "Students" | "Classes" | "Growth";
 type CopilotUiMessage = BusinessCopilotMessage & { generatedAtUtc?: string; aiPowered?: boolean };
-const CHAT_STORAGE_KEY = "m2m.admin.business-copilot.v2";
+// v3 intentionally starts clean: v2 may contain deterministic outage fallbacks that
+// providers can mimic as prior assistant answers after service recovery.
+const CHAT_STORAGE_KEY = "m2m.admin.business-copilot.v3";
 const modes: { name: CopilotMode; icon: ReactNode; prompts: string[] }[] = [
   { name: "Executive", icon: <BriefcaseBusiness className="h-3.5 w-3.5" />, prompts: ["Give me today's top three owner actions", "What needs immediate attention?", "Create a concise daily operating brief"] },
   { name: "Finance", icon: <IndianRupee className="h-3.5 w-3.5" />, prompts: ["Analyze this month's cost, contribution, margin, and forecast", "Where can I reduce cost without hurting classes?", "Prioritize overdue recovery by financial impact", "What finance data is missing before I can trust profit?"] },
