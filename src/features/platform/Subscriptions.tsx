@@ -107,7 +107,7 @@ function Detail({ tenantId, token, plans, busy, run, onClose }: {
 
   return <section className={`${panel} space-y-6 p-6`} aria-label="Subscription details">
     <div className="flex items-start justify-between gap-3">
-      <div><h2 className="console-serif text-xl font-semibold">{d?.tenantName ?? "Loading…"}</h2>{d && <p className="text-sm text-muted-foreground">{d.planName} · <Pill value={d.status} /></p>}</div>
+      <div><h2 className="console-heading text-xl font-semibold">{d?.tenantName ?? "Loading…"}</h2>{d && <p className="text-sm text-muted-foreground">{d.planName} · <Pill value={d.status} /></p>}</div>
       <button className={smallButton} onClick={onClose} aria-label="Close"><X className="h-3 w-3" />Close</button>
     </div>
     {detail.error && <p role="alert" className="text-sm text-red-700">{detail.error}</p>}

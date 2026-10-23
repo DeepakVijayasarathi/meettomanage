@@ -71,7 +71,7 @@ function PlanManagement() {
     {!draft && <div><button className={primaryButton} onClick={() => { setDraft(blank(catalog.data)); setError(""); setNotice(""); }}><Plus className="h-4 w-4" />New plan</button></div>}
 
     {draft && <form onSubmit={save} className={`${panel} space-y-5 p-6 sm:p-7`}>
-      <h2 className="console-serif text-xl font-semibold">{draft.id ? `Edit ${draft.name}` : "New plan"}</h2>
+      <h2 className="console-heading text-xl font-semibold">{draft.id ? `Edit ${draft.name}` : "New plan"}</h2>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={labelClass}><span>Code</span><input required readOnly={!!draft.id} pattern="[a-z][a-z0-9_\-]{1,49}" title="Lowercase letters, digits, - or _" className={inputClass} value={draft.code} onChange={e => set({ code: e.target.value })} /></label>
         <label className={labelClass}><span>Name</span><input required maxLength={150} className={inputClass} value={draft.name} onChange={e => set({ name: e.target.value })} /></label>
@@ -101,7 +101,7 @@ function PlanManagement() {
     <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
       {plans.data.map(plan => <article key={plan.id} className={`${panel} flex flex-col p-6`}>
         <div className="flex items-start justify-between gap-3">
-          <div><h3 className="console-serif text-xl font-semibold">{plan.name}</h3><p className="font-mono text-xs text-muted-foreground">{plan.code}</p></div>
+          <div><h3 className="console-heading text-xl font-semibold">{plan.name}</h3><p className="font-mono text-xs text-muted-foreground">{plan.code}</p></div>
           <div className="flex flex-wrap justify-end gap-1.5">
             {!plan.isPublic && <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground"><EyeOff className="h-3 w-3" />Hidden</span>}
             <Pill value={plan.isActive ? "Active" : "Cancelled"} label={plan.isActive ? "Active" : "Inactive"} />

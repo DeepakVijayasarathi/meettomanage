@@ -48,11 +48,11 @@ function RevenueDashboard() {
         <StatCard label="Failed payments (30 days)" value={s.failedPayments30d} tone={s.failedPayments30d > 0 ? "text-red-700" : undefined} />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className={`${panel} p-6`}><h2 className="console-serif text-xl font-semibold">Plan distribution</h2>
+        <section className={`${panel} p-6`}><h2 className="console-heading text-xl font-semibold">Plan distribution</h2>
           <ul className="mt-4 space-y-3">{s.planDistribution.map(p => <li key={p.plan}><div className="flex justify-between text-sm"><span>{p.plan}</span><span className="text-muted-foreground">{p.count}</span></div>
             <div className="mt-1 h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-[hsl(214_52%_28%)]" style={{ width: `${total ? (p.count / total) * 100 : 0}%` }} /></div></li>)}</ul>
           <p className="mt-4 text-xs text-muted-foreground">Past due {s.pastDue} · Suspended {s.suspended} · Expired {s.expired} · Cancelled {s.cancelled}</p></section>
-        <section className={`${panel} overflow-hidden`}><h2 className="p-6 pb-3 console-serif text-xl font-semibold">Collections queue</h2>
+        <section className={`${panel} overflow-hidden`}><h2 className="p-6 pb-3 console-heading text-xl font-semibold">Collections queue</h2>
           <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground"><tr><th className={th}>Client</th><th className={th}>Owes</th><th className={th}>Suspends</th></tr></thead>
             <tbody className="divide-y divide-border">{queue.data.map(q => <tr key={q.id}><td className={td}>{q.tenantName}<div><Pill value={q.status} /></div></td><td className={td}>{formatMoney(q.openAmount)}</td><td className={td}>{formatDay(q.graceEndsAtUtc)}</td></tr>)}</tbody></table></div>
           {queue.loaded && queue.data.length === 0 && <p className="p-6 pt-2 text-sm text-muted-foreground">No overdue clients.</p>}</section>

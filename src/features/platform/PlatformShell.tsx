@@ -42,6 +42,14 @@ function useConsoleTheme() {
   useEffect(() => {
     const root = document.documentElement;
     root.classList.add("console-light");
+    // The console's typeface is fetched only when a Tenant Admin page opens; no other page downloads or uses it.
+    if (!document.getElementById("console-font")) {
+      const link = document.createElement("link");
+      link.id = "console-font";
+      link.rel = "stylesheet";
+      link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap";
+      document.head.appendChild(link);
+    }
     return () => root.classList.remove("console-light");
   }, []);
 }
@@ -81,10 +89,10 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
       <section className="relative hidden flex-col justify-between overflow-hidden border-r border-border bg-secondary/60 p-14 lg:flex">
         <div className="pointer-events-none absolute -left-24 top-1/3 h-96 w-96 rounded-full bg-[hsl(var(--console-brass)/0.10)] blur-3xl" />
-        <div className="relative flex items-center gap-3"><BrandMark /><div><p className="console-serif text-lg font-semibold leading-tight">Meet to Manage</p><p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Platform administration</p></div></div>
+        <div className="relative flex items-center gap-3"><BrandMark /><div><p className="console-heading text-lg font-semibold leading-tight">Meet to Manage</p><p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Platform administration</p></div></div>
         <div className="relative max-w-md">
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs font-medium text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5 text-primary" />Tenant Admin workspace</span>
-          <h1 className="console-serif mt-7 text-5xl font-semibold leading-[1.08]">One calm place to run every client.</h1>
+          <h1 className="console-heading mt-7 text-5xl font-semibold leading-[1.08]">One calm place to run every client.</h1>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground">Create workspaces, shape their branding and menus, set plans and keep billing on track, all from a single, secure console.</p>
         </div>
         <ul className="relative grid max-w-md gap-4">
@@ -95,7 +103,7 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
         <form onSubmit={login} className="w-full max-w-md space-y-6 rounded-2xl border border-border bg-card p-8 shadow-[0_20px_60px_-30px_rgba(31,58,95,0.35)]">
           <div className="space-y-3">
             <BrandMark size="h-12 w-12" />
-            <div><h2 className="console-serif text-2xl font-semibold">Platform administrator sign in</h2><p className="mt-1.5 text-sm text-muted-foreground">Use your Tenant Admin credentials to continue. This is separate from any client login.</p></div>
+            <div><h2 className="console-heading text-2xl font-semibold">Platform administrator sign in</h2><p className="mt-1.5 text-sm text-muted-foreground">Use your Tenant Admin credentials to continue. This is separate from any client login.</p></div>
           </div>
           {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
           <div className="space-y-2"><label htmlFor="platform-email" className="text-sm font-medium">Email</label>
@@ -120,7 +128,7 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between gap-4 px-5 sm:px-8">
           <Link to="/platform/tenants" className="flex items-center gap-3">
             <BrandMark size="h-9 w-9" />
-            <span><span className="console-serif block text-[17px] font-semibold leading-tight">Meet to Manage</span><span className="block text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Platform administration</span></span>
+            <span><span className="console-heading block text-[17px] font-semibold leading-tight">Meet to Manage</span><span className="block text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Platform administration</span></span>
           </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

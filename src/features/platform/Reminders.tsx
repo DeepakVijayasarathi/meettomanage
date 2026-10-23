@@ -50,7 +50,7 @@ function ReminderCenter() {
     </section>}
 
     {tab === "templates" && editing && <section className={`${panel} space-y-4 p-6`}>
-      <h2 className="console-serif text-xl font-semibold">{editing.title}</h2>
+      <h2 className="console-heading text-xl font-semibold">{editing.title}</h2>
       <label className={labelClass}><span>Subject</span><input className={inputClass} value={editing.subject} onChange={e => setEditing({ ...editing, subject: e.target.value })} /></label>
       <label className={labelClass}><span>Body (HTML)</span><textarea rows={10} className={`${inputClass} font-mono text-xs`} value={editing.body} onChange={e => setEditing({ ...editing, body: e.target.value })} /></label>
       <p className="text-xs text-muted-foreground">Placeholders: {"{{tenant_name}} {{plan_name}} {{amount}} {{invoice_number}} {{due_date}} {{trial_end_date}} {{period_end_date}} {{grace_end_date}} {{portal_url}} {{pay_block}} {{support_email}}"}. Values are escaped automatically.</p>

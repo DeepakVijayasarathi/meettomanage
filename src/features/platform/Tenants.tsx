@@ -174,7 +174,7 @@ function TenantManagement() {
           const sub = subs[t.id];
           return <li key={t.id} className="grid gap-4 px-4 py-5 transition-colors hover:bg-muted/30 sm:px-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1.2fr)_auto] lg:items-center">
             <div className="flex min-w-0 items-center gap-4">
-              <span aria-hidden className="console-serif flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-base font-semibold text-primary">{initials(t.name)}</span>
+              <span aria-hidden className="console-heading flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-base font-semibold text-primary">{initials(t.name)}</span>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="truncate text-[15px] font-semibold">{t.name}</h3>

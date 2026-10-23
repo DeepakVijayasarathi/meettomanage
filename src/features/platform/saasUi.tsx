@@ -22,7 +22,7 @@ export function ConsoleHeader({ eyebrow = "Platform", title, description, action
   return <header className={`flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between ${className}`}>
     <div className="min-w-0">
       {eyebrow && <p className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[hsl(var(--console-brass))]"><span className="h-px w-6 bg-[hsl(var(--console-brass))]" />{eyebrow}</p>}
-      <h1 className="console-serif text-[32px] font-semibold leading-tight text-foreground">{title}</h1>
+      <h1 className="console-heading text-[28px] font-bold leading-tight text-foreground">{title}</h1>
       {description && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</p>}
     </div>
     {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -40,7 +40,7 @@ export function StatStrip({ items }: { items: { label: string; value: ReactNode;
   return <dl className={`${panel} grid grid-cols-2 divide-border sm:grid-cols-4 sm:divide-x [&>div:nth-child(n+3)]:border-t [&>div:nth-child(n+3)]:border-border sm:[&>div:nth-child(n+3)]:border-t-0`}>
     {items.map(item => <div key={item.label} className="px-6 py-5">
       <dt className="text-xs font-medium text-muted-foreground">{item.label}</dt>
-      <dd className={`console-serif mt-1.5 text-3xl font-semibold ${tone[item.tone ?? "default"]}`}>{item.value}</dd>
+      <dd className={`console-heading mt-1.5 text-3xl font-semibold ${tone[item.tone ?? "default"]}`}>{item.value}</dd>
       {item.hint && <p className="mt-1 text-xs text-muted-foreground">{item.hint}</p>}
     </div>)}
   </dl>;
@@ -49,7 +49,7 @@ export function StatStrip({ items }: { items: { label: string; value: ReactNode;
 export function StatCard({ label, value, hint, tone = "text-foreground" }: { label: string; value: ReactNode; hint?: string; tone?: string }) {
   return <div className={`${panel} p-5`}>
     <span className="text-xs font-medium text-muted-foreground">{label}</span>
-    <p className={`console-serif mt-1.5 text-3xl font-semibold ${tone}`}>{value}</p>
+    <p className={`console-heading mt-1.5 text-3xl font-semibold ${tone}`}>{value}</p>
     {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
   </div>;
 }
