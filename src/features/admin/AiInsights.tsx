@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, BookOpenCheck, CheckCircle2, Clipboard, Mic, MicOff, RefreshCw, Send, Sparkles, Trash2, Volume2, VolumeX } from "lucide-react";
+import { AlertTriangle, BookOpenCheck, BriefcaseBusiness, CheckCircle2, Clipboard, Download, GraduationCap, IndianRupee, Mic, MicOff, RefreshCw, RotateCcw, Send, Sparkles, Trash2, TrendingUp, Users, Volume2, VolumeX } from "lucide-react";
 import { askBusinessCopilot, getBusinessAiBrief, type BusinessAiBrief, type BusinessCopilotMessage } from "@/api/chatbot";
 import { useApiData } from "@/api/hooks";
 import { PageHeader } from "@/components/PageHeader";
@@ -10,6 +10,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/utils";
 
 type Priority = "All" | "Action needed" | "Monitor" | "On track";
+type CopilotMode = "Executive" | "Finance" | "Students" | "Classes" | "Growth";
+type CopilotUiMessage = BusinessCopilotMessage & { generatedAtUtc?: string; aiPowered?: boolean };
+const CHAT_STORAGE_KEY = "m2m.admin.business-copilot.v2";
+const modes: { name: CopilotMode; icon: ReactNode; prompts: string[] }[] = [
+  { name: "Executive", icon: <BriefcaseBusiness className="h-3.5 w-3.5" />, prompts: ["Give me today's top three owner actions", "What needs immediate attention?", "Create a concise daily operating brief"] },
+  { name: "Finance", icon: <IndianRupee className="h-3.5 w-3.5" />, prompts: ["What should I follow up on financially?", "Summarize collections and overdue risk", "Give me a fee recovery action plan"] },
+  { name: "Students", icon: <Users className="h-3.5 w-3.5" />, prompts: ["Which students need attention today?", "Compare attendance and engagement risks", "Draft a student follow-up priority list"] },
+  { name: "Classes", icon: <GraduationCap className="h-3.5 w-3.5" />, prompts: ["Summarize recent class delivery", "Which classes need teacher follow-up?", "Identify missing notes and delivery risks"] },
+  { name: "Growth", icon: <TrendingUp className="h-3.5 w-3.5" />, prompts: ["Where are the biggest growth opportunities?", "What operational issue may limit growth?", "Suggest three improvements from current data"] },
+];
 interface SpeechRecognitionLike {
   lang: string; interimResults: boolean; continuous: boolean;
   onresult: ((event: { results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
@@ -23,7 +33,13 @@ function speechRecognitionCtor() {
 
 export default function AiInsights() {
   const { data, loading, error, reload } = useApiData<BusinessAiBrief | null>(() => getBusinessAiBrief(), null);
-  const [messages, setMessages] = useState<BusinessCopilotMessage[]>([]);
+  const [messages, setMessages] = useState<CopilotUiMessage[]>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) ?? "[]") as CopilotUiMessage[];
+      return Array.isArray(saved) ? saved.filter((x) => (x.role === "user" || x.role === "assistant") && typeof x.content === "string").slice(-20) : [];
+    } catch { return []; }
+  });
+  const [mode, setMode] = useState<CopilotMode>("Executive");
   const [question, setQuestion] = useState("");
   const [asking, setAsking] = useState(false);
   const [copilotError, setCopilotError] = useState<string | null>(null);
@@ -33,31 +49,33 @@ export default function AiInsights() {
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [speakReplies, setSpeakReplies] = useState(true);
+  const [voiceLanguage, setVoiceLanguage] = useState("en-IN");
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const conversationRef = useRef<HTMLDivElement | null>(null);
   const askRef = useRef<(text: string, fromVoice?: boolean) => void>(() => undefined);
   const voiceSupported = typeof window !== "undefined" && Boolean(speechRecognitionCtor());
   const speechSupported = typeof window !== "undefined" && "speechSynthesis" in window;
-  const suggestions = ["Which students need attention today?", "What should I follow up on financially?", "Summarize recent class delivery", "What are my top three actions right now?"];
+  const activeMode = modes.find((item) => item.name === mode)!;
 
   function stopSpeaking() { if (speechSupported) window.speechSynthesis.cancel(); setSpeaking(false); }
   function speakAnswer(content: string) {
     if (!speechSupported) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(content.replace(/https?:\/\/\S+/g, "").replace(/[*#_`]/g, "").trim());
-    utterance.lang = "en-IN"; utterance.rate = 0.96; utterance.pitch = 1;
+    utterance.lang = voiceLanguage; utterance.rate = 0.96; utterance.pitch = 1;
     utterance.onstart = () => setSpeaking(true);
     utterance.onend = utterance.onerror = () => setSpeaking(false);
     window.speechSynthesis.speak(utterance);
   }
-  async function ask(text = question, fromVoice = false) {
+  async function ask(text = question, fromVoice = false, historyOverride?: CopilotUiMessage[]) {
     const value = text.trim(); if (!value || asking) return;
-    const history = messages;
+    const history = historyOverride ?? messages;
     setMessages((current) => [...current, { role: "user", content: value }]);
     setQuestion(""); setAsking(true); setCopilotError(null);
     try {
-      const result = await askBusinessCopilot(value, history);
-      setMessages((current) => [...current, { role: "assistant", content: result.answer }]);
+      const result = await askBusinessCopilot(`[${mode} focus] ${value}`, history.map(({ role, content }) => ({ role, content })));
+      setMessages((current) => [...current, { role: "assistant", content: result.answer, generatedAtUtc: result.generatedAtUtc, aiPowered: result.aiPowered }]);
       if (speakReplies || fromVoice) speakAnswer(result.answer);
     } catch (err) { setCopilotError(err instanceof Error ? err.message : "The copilot could not answer."); }
     finally { setAsking(false); }
@@ -70,7 +88,7 @@ export default function AiInsights() {
     if (!Recognition) { setVoiceError("Voice input is not supported in this browser. Try Chrome, Edge, or Safari."); return; }
     stopSpeaking(); setVoiceError(null);
     const recognition = new Recognition();
-    recognition.lang = "en-IN"; recognition.interimResults = true; recognition.continuous = false;
+    recognition.lang = voiceLanguage; recognition.interimResults = true; recognition.continuous = false;
     recognition.onresult = (event) => {
       let transcript = ""; let isFinal = false;
       for (let i = 0; i < event.results.length; i += 1) { transcript += event.results[i][0].transcript; isFinal ||= event.results[i].isFinal; }
@@ -84,8 +102,27 @@ export default function AiInsights() {
     recognition.onend = () => setListening(false); recognitionRef.current = recognition;
     try { recognition.start(); setListening(true); } catch { setVoiceError("Voice input could not start. Please try again."); }
   }
+  useEffect(() => { localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.slice(-20))); conversationRef.current?.scrollTo({ top: conversationRef.current.scrollHeight, behavior: "smooth" }); }, [messages, asking]);
   useEffect(() => () => { recognitionRef.current?.abort(); if (speechSupported) window.speechSynthesis.cancel(); }, [speechSupported]);
   async function copyAnswer(content: string, index: number) { await navigator.clipboard.writeText(content); setCopiedIndex(index); window.setTimeout(() => setCopiedIndex(null), 1500); }
+  function clearChat() { setMessages([]); localStorage.removeItem(CHAT_STORAGE_KEY); setCopilotError(null); stopSpeaking(); }
+  function regenerate() {
+    let lastUser = -1;
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index].role === "user") { lastUser = index; break; }
+    }
+    if (lastUser < 0 || asking) return;
+    const history = messages.slice(0, lastUser);
+    const text = messages[lastUser].content;
+    setMessages(history);
+    void ask(text, false, history);
+  }
+  function exportTranscript() {
+    if (messages.length === 0) return;
+    const content = [`# MeetToManage AI Business Copilot`, ``, `Mode: ${mode}`, `Exported: ${new Date().toLocaleString()}`, ``, ...messages.map((item) => `## ${item.role === "user" ? "Owner" : "Copilot"}\n\n${item.content}\n`)].join("\n");
+    const url = URL.createObjectURL(new Blob([content], { type: "text/markdown" }));
+    const anchor = document.createElement("a"); anchor.href = url; anchor.download = `ai-copilot-${new Date().toISOString().slice(0, 10)}.md`; anchor.click(); URL.revokeObjectURL(url);
+  }
 
   const actionNeeded = data?.studentProgressInsights.filter((x) => x.priority === "Action needed").length ?? 0;
   const monitoring = data?.studentProgressInsights.filter((x) => x.priority === "Monitor").length ?? 0;
@@ -96,15 +133,16 @@ export default function AiInsights() {
   return <div>
     <PageHeader eyebrow="Business Intelligence" title="AI Command Center" description="Live business answers, student risk signals, class summaries, and prioritized owner actions." actions={<Button variant="outline" onClick={reload} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />Refresh data</Button>} />
     {error && <InlineAlert variant="error" className="mb-4">{error}</InlineAlert>}
-    <Card className="mb-5 border-primary/30"><CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" />Business Copilot</CardTitle><div className="flex items-center gap-1"><Button variant={speakReplies ? "secondary" : "ghost"} size="sm" onClick={() => { setSpeakReplies((x) => !x); if (speakReplies) stopSpeaking(); }} disabled={!speechSupported}>{speakReplies ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}{speakReplies ? "Voice on" : "Voice off"}</Button>{messages.length > 0 && <Button variant="ghost" size="sm" onClick={() => { setMessages([]); setCopilotError(null); stopSpeaking(); }}><Trash2 className="mr-2 h-4 w-4" />Clear chat</Button>}</div></div></CardHeader><CardContent>
-      <div className="max-h-96 space-y-3 overflow-y-auto rounded-xl bg-muted/40 p-4">
-        {messages.length === 0 && <div><p className="text-sm text-muted-foreground">Ask about students, attendance, classes, teachers, collections, pending fees, or today&apos;s priorities.</p><div className="mt-3 flex flex-wrap gap-2">{suggestions.map((item) => <button key={item} type="button" onClick={() => void ask(item)} className="rounded-full border bg-background px-3 py-1.5 text-xs hover:border-primary hover:text-primary">{item}</button>)}</div></div>}
-        {messages.map((message, index) => <div key={index} className={`group flex items-start gap-1 ${message.role === "user" ? "justify-end" : "justify-start"}`}><div className={`max-w-[85%] whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-relaxed ${message.role === "user" ? "bg-primary text-primary-foreground" : "border bg-background"}`}>{message.content}</div>{message.role === "assistant" && <div className="mt-1 flex opacity-0 group-hover:opacity-100 focus-within:opacity-100"><button type="button" onClick={() => speakAnswer(message.content)} className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label="Read answer aloud"><Volume2 className="h-3.5 w-3.5" /></button><button type="button" onClick={() => void copyAnswer(message.content, index)} className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label="Copy answer">{copiedIndex === index ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <Clipboard className="h-3.5 w-3.5" />}</button></div>}</div>)}
+    <Card className="mb-5 border-primary/30"><CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" />Business Copilot <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">Live data</span></CardTitle><div className="flex flex-wrap items-center gap-1"><Button variant={speakReplies ? "secondary" : "ghost"} size="sm" onClick={() => { setSpeakReplies((x) => !x); if (speakReplies) stopSpeaking(); }} disabled={!speechSupported}>{speakReplies ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}{speakReplies ? "Voice on" : "Voice off"}</Button>{messages.length > 0 && <><Button variant="ghost" size="sm" onClick={regenerate} disabled={asking}><RotateCcw className="mr-2 h-4 w-4" />Regenerate</Button><Button variant="ghost" size="sm" onClick={exportTranscript}><Download className="mr-2 h-4 w-4" />Export</Button><Button variant="ghost" size="sm" onClick={clearChat}><Trash2 className="mr-2 h-4 w-4" />Clear</Button></>}</div></div></CardHeader><CardContent>
+      <div className="mb-3 flex gap-2 overflow-x-auto pb-1">{modes.map((item) => <button key={item.name} type="button" onClick={() => setMode(item.name)} className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${mode === item.name ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary hover:text-primary"}`}>{item.icon}{item.name}</button>)}</div>
+      <div ref={conversationRef} className="max-h-96 space-y-3 overflow-y-auto rounded-xl bg-muted/40 p-4">
+        {messages.length === 0 && <div><p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">{mode} mode.</span> Ask about students, attendance, classes, teachers, collections, pending fees, or today&apos;s priorities.</p><div className="mt-3 flex flex-wrap gap-2">{activeMode.prompts.map((item) => <button key={item} type="button" onClick={() => void ask(item)} className="rounded-full border bg-background px-3 py-1.5 text-xs hover:border-primary hover:text-primary">{item}</button>)}</div></div>}
+        {messages.map((message, index) => <div key={index} className={`group flex items-start gap-1 ${message.role === "user" ? "justify-end" : "justify-start"}`}><div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm leading-relaxed ${message.role === "user" ? "bg-primary text-primary-foreground" : "border bg-background"}`}><div className="whitespace-pre-wrap">{message.content}</div>{message.role === "assistant" && <div className="mt-2 flex items-center gap-2 border-t pt-1.5 text-[10px] text-muted-foreground"><span className={`h-1.5 w-1.5 rounded-full ${message.aiPowered === false ? "bg-warning" : "bg-success"}`} />{message.aiPowered === false ? "Live-data fallback" : "AI analysis"}{message.generatedAtUtc && <span>· {formatDate(message.generatedAtUtc, "datetime")}</span>}</div>}</div>{message.role === "assistant" && <div className="mt-1 flex opacity-0 group-hover:opacity-100 focus-within:opacity-100"><button type="button" onClick={() => speakAnswer(message.content)} className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label="Read answer aloud"><Volume2 className="h-3.5 w-3.5" /></button><button type="button" onClick={() => void copyAnswer(message.content, index)} className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label="Copy answer">{copiedIndex === index ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <Clipboard className="h-3.5 w-3.5" />}</button></div>}</div>)}
         {asking && <div className="flex justify-start"><div className="rounded-xl border bg-background px-3 py-2 text-sm text-muted-foreground">Reviewing live business data...</div></div>}
       </div>
       {copilotError && <InlineAlert variant="error" className="mt-3">{copilotError}</InlineAlert>}{voiceError && <InlineAlert variant="error" className="mt-3">{voiceError}</InlineAlert>}
       <div className="mt-3 flex gap-2"><input value={question} onChange={(e) => setQuestion(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void ask(); } }} placeholder={listening ? "Listening... speak your question" : "Ask a question about your business..."} className={`h-10 min-w-0 flex-1 rounded-md border bg-background px-3 text-sm ${listening ? "border-destructive ring-2 ring-destructive/20" : "border-input"}`} disabled={asking} /><Button variant={listening ? "destructive" : "outline"} size="icon" onClick={toggleListening} disabled={asking || !voiceSupported} className={listening ? "animate-pulse" : ""} aria-label={listening ? "Stop listening" : "Ask by voice"} title={voiceSupported ? "Ask by voice" : "Voice input requires Chrome, Edge, or Safari"}>{listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}</Button><Button onClick={() => void ask()} disabled={asking || !question.trim()}><Send className="mr-2 h-4 w-4" />Ask</Button></div>
-      <div className="mt-2 flex min-h-5 items-center gap-2 text-xs text-muted-foreground">{listening ? <><span className="h-2 w-2 animate-pulse rounded-full bg-destructive" />Listening - sends automatically when you finish.</> : speaking ? <><span className="h-2 w-2 animate-pulse rounded-full bg-primary" />Speaking the AI response. <button type="button" onClick={stopSpeaking} className="font-medium text-primary hover:underline">Stop</button></> : <span>Voice input and playback happen in your browser; no audio recording is stored by this app.</span>}</div>
+      <div className="mt-2 flex min-h-5 flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><div className="flex items-center gap-2">{listening ? <><span className="h-2 w-2 animate-pulse rounded-full bg-destructive" />Listening - sends automatically when you finish.</> : speaking ? <><span className="h-2 w-2 animate-pulse rounded-full bg-primary" />Speaking the AI response. <button type="button" onClick={stopSpeaking} className="font-medium text-primary hover:underline">Stop</button></> : <span>Conversation is saved in this browser. Audio recordings are not stored.</span>}</div><select value={voiceLanguage} onChange={(e) => setVoiceLanguage(e.target.value)} className="h-7 rounded-md border bg-background px-2 text-[11px]" aria-label="Voice language"><option value="en-IN">English (India)</option><option value="hi-IN">Hindi</option><option value="ta-IN">Tamil</option></select></div>
     </CardContent></Card>
     {loading || !data ? <Loading /> : <><div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Action needed" value={actionNeeded} detail="student follow-ups" tone="text-destructive" /><Metric label="Monitor" value={monitoring} detail="progress signals" tone="text-warning-foreground" /><Metric label="Missing notes" value={missingNotes} detail="recent classes" /><Metric label="Classes reviewed" value={data.recentClassSummaries.length} detail="latest completions" tone="text-primary" /></div>
       <Card className="border-primary/20 bg-primary/5"><CardContent className="p-5"><div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"><Sparkles className="h-4 w-4" />{data.aiPowered ? "AI owner briefing" : "Live-data fallback briefing"}</div><p className="leading-relaxed">{data.executiveSummary}</p><p className="mt-2 text-xs text-muted-foreground">Data refreshed {formatDate(data.generatedAtUtc, "datetime")}</p></CardContent></Card>
