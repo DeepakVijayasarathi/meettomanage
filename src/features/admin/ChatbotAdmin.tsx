@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Bot, Eye, EyeOff, Loader2, MessageCircleQuestion, Plus, Save, Send, Trash2, Users } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Bot, CircleDollarSign, Eye, EyeOff, Gauge, Loader2, MessageCircleQuestion, Plus, RefreshCw, Save, Send, Trash2, Users } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useApiData } from "@/api/hooks";
 import { apiEnabled, userMessage } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatNumber } from "@/lib/utils";
 import {
   listAllFaqs,
   createChatFaq,
@@ -33,6 +33,7 @@ import {
   updateAiChatConfiguration,
   testAiChat,
   listAiModels,
+  getAiCostMonitor,
   type AiChatConfiguration,
 } from "@/api/chatbot";
 import { MOCK_CHAT_FAQS, MOCK_CHAT_ESCALATIONS, MOCK_CHATBOT_USAGE_STATS } from "@/data/chatbot";
@@ -74,12 +75,13 @@ export default function ChatbotAdmin() {
 
 const DEFAULT_AI: AiChatConfiguration = {
   enabled: false, endpoint: "https://inference.hetzner.com/api/v1", model: "Qwen/Qwen3.6-35B-A3B-FP8", systemPrompt: "Answer in 2-3 short sentences.",
-  maxTokens: 500, temperature: 0.3, hasApiKey: false, maskedApiKey: "",
+  maxTokens: 500, temperature: 0.3, hasApiKey: false, maskedApiKey: "", inputCostPerMillionTokensUsd: 0, outputCostPerMillionTokensUsd: 0, monthlyBudgetUsd: 0,
 };
 
 function AiProviderPanel() {
   const { toast } = useToast();
   const { data: loaded, loading, error: loadError, reload } = useApiData(() => getAiChatConfiguration(), DEFAULT_AI);
+  const { data: cost, error: costError, reload: reloadCost } = useApiData(() => getAiCostMonitor(), null);
   const [form, setForm] = useState<AiChatConfiguration>(DEFAULT_AI);
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
@@ -99,7 +101,7 @@ function AiProviderPanel() {
     setSaving(true); setError(null);
     try {
       await updateAiChatConfiguration({ ...form, endpoint: form.endpoint.trim(), model: form.model.trim(), apiKey: apiKey.trim() || undefined });
-      setApiKey(""); reload();
+      setApiKey(""); reload(); reloadCost();
       toast({ variant: "success", title: "AI provider saved", description: "The shared assistant now uses this configuration in every enabled portal." });
     } catch (err) { const message = userMessage(err, "Could not save the AI provider."); setError(message); }
     finally { setSaving(false); }
@@ -107,7 +109,7 @@ function AiProviderPanel() {
 
   async function test() {
     setTesting(true); setError(null); setTestAnswer("");
-    try { setTestAnswer((await testAiChat(testQuestion)).answer); }
+    try { setTestAnswer((await testAiChat(testQuestion)).answer); reloadCost(); }
     catch (err) { setError(userMessage(err, "The AI connection test failed.")); }
     finally { setTesting(false); }
   }
@@ -134,12 +136,20 @@ function AiProviderPanel() {
           <div className="space-y-2 md:col-span-2"><Label htmlFor="ai-prompt">System prompt</Label><Textarea id="ai-prompt" value={form.systemPrompt} onChange={(e) => setForm((f) => ({ ...f, systemPrompt: e.target.value }))} /></div>
           <div className="space-y-2"><Label htmlFor="ai-tokens">Maximum output tokens</Label><Input id="ai-tokens" type="number" min={1} max={2000} value={form.maxTokens} onChange={(e) => setForm((f) => ({ ...f, maxTokens: Number(e.target.value) }))} /></div>
           <div className="space-y-2"><Label htmlFor="ai-temp">Temperature (0–2)</Label><Input id="ai-temp" type="number" min={0} max={2} step={0.1} value={form.temperature} onChange={(e) => setForm((f) => ({ ...f, temperature: Number(e.target.value) }))} /></div>
+          <div className="space-y-2"><Label htmlFor="ai-input-price">Input price / 1M tokens (USD)</Label><Input id="ai-input-price" type="number" min={0} step={0.000001} value={form.inputCostPerMillionTokensUsd} onChange={(e) => setForm((f) => ({ ...f, inputCostPerMillionTokensUsd: Number(e.target.value) }))} /></div>
+          <div className="space-y-2"><Label htmlFor="ai-output-price">Output price / 1M tokens (USD)</Label><Input id="ai-output-price" type="number" min={0} step={0.000001} value={form.outputCostPerMillionTokensUsd} onChange={(e) => setForm((f) => ({ ...f, outputCostPerMillionTokensUsd: Number(e.target.value) }))} /></div>
+          <div className="space-y-2"><Label htmlFor="ai-budget">Monthly AI budget (USD)</Label><Input id="ai-budget" type="number" min={0} step={0.01} value={form.monthlyBudgetUsd} onChange={(e) => setForm((f) => ({ ...f, monthlyBudgetUsd: Number(e.target.value) }))} /><p className="text-xs text-muted-foreground">Set 0 to monitor usage without a budget alert.</p></div>
         </div>
         <Button onClick={() => void save()} disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save configuration</Button>
+        <div className="space-y-3 border-t pt-5"><div className="flex flex-wrap items-center justify-between gap-2"><div><Label className="flex items-center gap-2 text-base"><CircleDollarSign className="h-4 w-4 text-primary" />AI cost monitor</Label><p className="mt-1 text-xs text-muted-foreground">Provider usage for {cost?.periodLabel ?? "this month"}; estimates use the prices configured above.</p></div><Button variant="outline" size="sm" onClick={reloadCost}><RefreshCw className="mr-2 h-3.5 w-3.5" />Refresh</Button></div>{costError && <InlineAlert variant="error">{costError}</InlineAlert>}{cost && <><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><AiCostMetric label="Estimated spend" value={cost.pricingConfigured ? `$${cost.estimatedCostUsd.toFixed(4)}` : "Set pricing"} detail={cost.monthlyBudgetUsd > 0 ? `${cost.budgetUsedPercent}% of $${cost.monthlyBudgetUsd.toFixed(2)} budget` : "No monthly budget set"} warning={cost.monthlyBudgetUsd > 0 && cost.budgetUsedPercent >= 80} /><AiCostMetric label="Requests" value={formatNumber(cost.requests)} detail={`${cost.successfulRequests} successful · ${cost.failedRequests} failed`} warning={cost.failedRequests > 0} /><AiCostMetric label="Total tokens" value={formatNumber(cost.totalTokens)} detail={`${formatNumber(cost.inputTokens)} input · ${formatNumber(cost.outputTokens)} output`} /><AiCostMetric label="Success rate" value={cost.requests === 0 ? "No usage" : `${Math.round(100 * cost.successfulRequests / cost.requests)}%`} detail={`Updated ${formatDate(cost.generatedAtUtc, "datetime")}`} icon={<Gauge className="h-4 w-4" />} /></div>{cost.monthlyBudgetUsd > 0 && <div className="h-2 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full transition-all ${cost.budgetUsedPercent >= 100 ? "bg-destructive" : cost.budgetUsedPercent >= 80 ? "bg-warning" : "bg-primary"}`} style={{ width: `${Math.min(100, cost.budgetUsedPercent)}%` }} /></div>}{!cost.pricingConfigured && <InlineAlert variant="warning">Enter your provider&apos;s input and output token prices to calculate estimated spend.</InlineAlert>}</>}</div>
         <div className="space-y-3 border-t pt-5"><Label htmlFor="ai-test">Test saved configuration</Label><div className="flex gap-2"><Input id="ai-test" value={testQuestion} onChange={(e) => setTestQuestion(e.target.value)} /><Button variant="outline" onClick={() => void test()} disabled={testing || !testQuestion.trim()}>{testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}<span className="ml-2">Test</span></Button></div>{testAnswer && <div className="rounded-lg bg-muted p-3 text-sm">{testAnswer}</div>}</div>
       </CardContent>
     </Card>
   );
+}
+
+function AiCostMetric({ label, value, detail, warning = false, icon }: { label: string; value: string; detail: string; warning?: boolean; icon?: ReactNode }) {
+  return <div className={`rounded-lg border p-3 ${warning ? "border-warning/40 bg-warning/5" : "bg-muted/20"}`}><p className="text-xs font-medium text-muted-foreground">{label}</p><p className={`mt-1 flex items-center gap-1.5 text-xl font-bold ${warning ? "text-warning-foreground" : ""}`}>{icon}{value}</p><p className="mt-1 text-[11px] text-muted-foreground">{detail}</p></div>;
 }
 
 function FaqManager() {

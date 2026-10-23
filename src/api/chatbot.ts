@@ -74,6 +74,9 @@ export interface AiChatConfiguration {
   temperature: number;
   hasApiKey: boolean;
   maskedApiKey: string;
+  inputCostPerMillionTokensUsd: number;
+  outputCostPerMillionTokensUsd: number;
+  monthlyBudgetUsd: number;
 }
 
 export interface UpdateAiChatConfiguration extends Omit<AiChatConfiguration, "hasApiKey" | "maskedApiKey"> {
@@ -97,10 +100,41 @@ export async function listAiModels(): Promise<string[]> {
   return (await apiFetch<{ models: string[] }>("/api/chatbot/admin/ai-configuration/models")).models;
 }
 
+export interface AiCostMonitor {
+  periodLabel: string; requests: number; successfulRequests: number; failedRequests: number;
+  inputTokens: number; outputTokens: number; totalTokens: number; estimatedCostUsd: number;
+  monthlyBudgetUsd: number; budgetUsedPercent: number; pricingConfigured: boolean; generatedAtUtc: string;
+}
+
+export async function getAiCostMonitor(): Promise<AiCostMonitor> {
+  return apiFetch<AiCostMonitor>("/api/chatbot/admin/ai-cost-monitor");
+}
+
 export interface BusinessAiBrief {
   executiveSummary: string;
   aiPowered: boolean;
   generatedAtUtc: string;
+  costSnapshot: {
+    periodLabel: string;
+    collectedRevenue: number;
+    outstandingRevenue: number;
+    overdueRevenue: number;
+    overdueInvoiceCount: number;
+    teacherPayoutCost: number;
+    staffPayrollCost: number;
+    totalPeopleCost: number;
+    estimatedContribution: number;
+    estimatedMarginPercent: number | null;
+    projectedMonthRevenue: number;
+    projectedMonthContribution: number;
+    forecastBasis: string;
+    costPerActiveEnrollment: number | null;
+    activeEnrollmentCount: number;
+    eligibleStaffCount: number;
+    configuredStaffCount: number;
+    hasRecordedPeopleCosts: boolean;
+    coverageNote: string;
+  };
   studentProgressInsights: { childId: string; childName: string; attendancePercent: number | null; engagementScore: number; priority: "Action needed" | "Monitor" | "On track"; insight: string }[];
   recentClassSummaries: { sessionId: string; className: string; teacherName: string; completedAtUtc: string; summary: string }[];
 }
