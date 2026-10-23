@@ -65,6 +65,34 @@ export interface ApiChatbotUsageStats {
   topUnansweredQuestions: string[];
 }
 
+export interface AiChatConfiguration {
+  enabled: boolean;
+  endpoint: string;
+  model: string;
+  systemPrompt: string;
+  maxTokens: number;
+  temperature: number;
+  hasApiKey: boolean;
+  maskedApiKey: string;
+}
+
+export interface UpdateAiChatConfiguration extends Omit<AiChatConfiguration, "hasApiKey" | "maskedApiKey"> {
+  apiKey?: string;
+  clearApiKey?: boolean;
+}
+
+export async function getAiChatConfiguration(): Promise<AiChatConfiguration> {
+  return apiFetch<AiChatConfiguration>("/api/chatbot/admin/ai-configuration");
+}
+
+export async function updateAiChatConfiguration(request: UpdateAiChatConfiguration): Promise<AiChatConfiguration> {
+  return apiFetch<AiChatConfiguration>("/api/chatbot/admin/ai-configuration", { method: "PUT", body: JSON.stringify(request) });
+}
+
+export async function testAiChat(message: string): Promise<{ answer: string }> {
+  return apiFetch<{ answer: string }>("/api/chatbot/admin/ai-configuration/test", { method: "POST", body: JSON.stringify({ message }) });
+}
+
 /** Active FAQs — every signed-in role, used by the widget's browse view and local matching. */
 export async function listActiveFaqs(): Promise<ApiChatFaq[]> {
   return apiFetch<ApiChatFaq[]>("/api/chatbot/faqs");
