@@ -8,6 +8,9 @@ import {
   RefreshCw,
   Undo2,
   Clock,
+  Sparkles,
+  AlertTriangle,
+  BookOpenCheck,
 } from "lucide-react";
 import {
   AreaChart,
@@ -56,6 +59,7 @@ import { useMemo } from "react";
 import { useApiData } from "@/api/hooks";
 import { useSession } from "@/state/session";
 import { getDashboardSummary, type ApiDashboardSummary } from "@/api/reports";
+import { getBusinessAiBrief, type BusinessAiBrief } from "@/api/chatbot";
 import { listSessions, todayWindow, toFrontendSession } from "@/api/sessions";
 import type { ClassSession } from "@/types";
 
@@ -165,6 +169,9 @@ export default function FounderDashboard() {
   );
 
   const { data: summary, loading, error } = useApiData<ApiDashboardSummary>(() => getDashboardSummary(), DEMO_SUMMARY, EMPTY_SUMMARY);
+  const { data: aiBrief, loading: aiLoading, error: aiError, reload: refreshAi } = useApiData<BusinessAiBrief | null>(
+    () => usingApi ? getBusinessAiBrief() : Promise.resolve(null), null
+  );
 
   const departmentRevenue = summary.revenueByDepartment.map((d, i) => ({
     department: d.name,
@@ -229,6 +236,23 @@ export default function FounderDashboard() {
       </div>
 
       {/* Operational detail — the full breakdown behind the headline numbers above */}
+      <Card className="mt-6 overflow-hidden border-primary/20">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b bg-primary/5 p-5">
+          <div className="flex gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Sparkles className="h-5 w-5" /></span><div><p className="font-semibold">Real-time business intelligence</p><p className="text-xs text-muted-foreground">Student risk signals and recent class delivery, translated into owner actions</p></div></div>
+          <button type="button" onClick={refreshAi} className="rounded-lg border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-muted" disabled={aiLoading}>Refresh insight</button>
+        </div>
+        <div className="p-5">
+          {aiLoading ? <div className="space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-4/5" /><Skeleton className="h-24 w-full" /></div>
+          : aiError ? <p className="text-sm text-destructive">Couldn&apos;t load the live business insight: {aiError}</p>
+          : !aiBrief ? <p className="text-sm text-muted-foreground">Live insights appear when connected to the academy API.</p>
+          : <><div className="rounded-xl bg-muted/60 p-4"><div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"><Sparkles className="h-3.5 w-3.5" /> {aiBrief.aiPowered ? "AI owner briefing" : "Live owner briefing"}</div><p className="text-sm leading-relaxed">{aiBrief.executiveSummary}</p></div>
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <div><div className="mb-2 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-warning" /><p className="text-sm font-semibold">Student progress priorities</p></div><div className="space-y-2">{aiBrief.studentProgressInsights.slice(0, 5).map((item) => <div key={item.childId} className="rounded-lg border p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-semibold">{item.childName}</p><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${item.priority === "Action needed" ? "bg-destructive/10 text-destructive" : item.priority === "Monitor" ? "bg-warning/15 text-warning-foreground" : "bg-success/10 text-success"}`}>{item.priority}</span></div><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.insight}</p></div>)}</div></div>
+                <div><div className="mb-2 flex items-center gap-2"><BookOpenCheck className="h-4 w-4 text-primary" /><p className="text-sm font-semibold">Latest class summaries</p></div><div className="space-y-2">{aiBrief.recentClassSummaries.slice(0, 5).map((item) => <div key={item.sessionId} className="rounded-lg border p-3"><p className="text-sm font-semibold">{item.className}</p><p className="text-[11px] text-muted-foreground">{item.teacherName} · {formatDate(item.completedAtUtc, "short")}</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.summary}</p></div>)}</div></div>
+              </div></>}
+        </div>
+      </Card>
+
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 min-[1360px]:grid-cols-5">
         <KpiCard
           label="Active Enrollments"

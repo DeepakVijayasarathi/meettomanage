@@ -93,6 +93,18 @@ export async function testAiChat(message: string): Promise<{ answer: string }> {
   return apiFetch<{ answer: string }>("/api/chatbot/admin/ai-configuration/test", { method: "POST", body: JSON.stringify({ message }) });
 }
 
+export interface BusinessAiBrief {
+  executiveSummary: string;
+  aiPowered: boolean;
+  generatedAtUtc: string;
+  studentProgressInsights: { childId: string; childName: string; attendancePercent: number | null; engagementScore: number; priority: "Action needed" | "Monitor" | "On track"; insight: string }[];
+  recentClassSummaries: { sessionId: string; className: string; teacherName: string; completedAtUtc: string; summary: string }[];
+}
+
+export async function getBusinessAiBrief(): Promise<BusinessAiBrief> {
+  return apiFetch<BusinessAiBrief>("/api/chatbot/business-brief");
+}
+
 /** Active FAQs — every signed-in role, used by the widget's browse view and local matching. */
 export async function listActiveFaqs(): Promise<ApiChatFaq[]> {
   return apiFetch<ApiChatFaq[]>("/api/chatbot/faqs");
