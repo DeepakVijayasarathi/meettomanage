@@ -46,32 +46,74 @@ function renderInlineMarkdown(text: string) {
 }
 
 function CopilotResponse({ content }: { content: string }) {
-  const lines = content.replace(/\r\n?/g, "\n").split("\n");
+  type ResponseBlock =
+    | { kind: "text"; text: string; heading?: boolean }
+    | { kind: "action"; number: string; title: string; details: string[] }
+    | { kind: "note"; title: string; details: string[] };
 
-  return <div className="space-y-2.5 leading-6 text-foreground/90">
-    {lines.map((rawLine, index) => {
-      const line = rawLine.trim();
-      if (!line) return <div key={index} className="h-1" aria-hidden="true" />;
+  const blocks: ResponseBlock[] = [];
+  let active: Extract<ResponseBlock, { kind: "action" | "note" }> | null = null;
+  const finishActive = () => { if (active) blocks.push(active); active = null; };
 
-      const heading = line.match(/^#{1,3}\s+(.+)$/);
-      if (heading) return <p key={index} className="pt-1 font-semibold text-foreground">{renderInlineMarkdown(heading[1])}</p>;
+  for (const rawLine of content.replace(/\r\n?/g, "\n").split("\n")) {
+    const line = rawLine.trim();
+    if (!line) continue;
 
-      const numbered = line.match(/^(\d+)[.)]\s+(.+)$/);
-      if (numbered) return <div key={index} className="flex items-start gap-3 pt-1">
-        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{numbered[1]}</span>
-        <p className="min-w-0 font-medium text-foreground">{renderInlineMarkdown(numbered[2])}</p>
-      </div>;
+    const numbered = line.match(/^(\d+)[.)]\s+(.+)$/);
+    if (numbered) {
+      finishActive();
+      active = { kind: "action", number: numbered[1], title: numbered[2], details: [] };
+      continue;
+    }
 
-      const bullet = line.match(/^[-*•]\s+(.+)$/);
-      if (bullet) return <div key={index} className={`flex items-start gap-2 ${/^\s/.test(rawLine) ? "ml-9" : "ml-1"}`}>
-        <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/70" aria-hidden="true" />
-        <p className="min-w-0">{renderInlineMarkdown(bullet[1])}</p>
-      </div>;
+    const note = line.match(/^\*\*(Note[^*]*)\*\*$/i);
+    if (note) {
+      finishActive();
+      active = { kind: "note", title: note[1], details: [] };
+      continue;
+    }
 
-      const emphasizedLine = line.match(/^\*\*(.+)\*\*$/);
-      if (emphasizedLine) return <p key={index} className="pt-1 font-semibold text-foreground">{emphasizedLine[1]}</p>;
+    const bullet = line.match(/^[-*•]\s+(.+)$/);
+    if (bullet && active) {
+      active.details.push(bullet[1]);
+      continue;
+    }
+    if (active) {
+      active.details.push(line);
+      continue;
+    }
 
-      return <p key={index}>{renderInlineMarkdown(line)}</p>;
+    const heading = line.match(/^#{1,3}\s+(.+)$/);
+    blocks.push({ kind: "text", text: heading?.[1] ?? line, heading: Boolean(heading) });
+  }
+  finishActive();
+
+  return <div className="space-y-3 text-sm leading-6 text-foreground/90">
+    {blocks.map((block, index) => {
+      if (block.kind === "action") return <section key={index} className="overflow-hidden rounded-xl border border-border/80 bg-gradient-to-br from-background via-background to-primary/[0.035] shadow-sm">
+        <div className="flex items-start gap-3 border-b border-border/70 px-4 py-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground shadow-sm">{block.number}</span>
+          <h4 className="min-w-0 pt-0.5 text-[15px] font-semibold leading-6 text-foreground">{renderInlineMarkdown(block.title)}</h4>
+        </div>
+        {block.details.length > 0 && <div className="grid gap-2 p-3 sm:grid-cols-2">
+          {block.details.map((detail, detailIndex) => {
+            const isFinancial = /financial impact|revenue|cost|profit|margin/i.test(detail);
+            return <div key={detailIndex} className={`flex items-start gap-2.5 rounded-lg border px-3 py-2.5 ${isFinancial ? "border-amber-200/80 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/20" : "border-border/60 bg-muted/35"}`}>
+              {isFinancial ? <IndianRupee className="mt-1 h-4 w-4 shrink-0 text-amber-600" /> : <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />}
+              <p className="min-w-0 text-[13px] leading-5">{renderInlineMarkdown(detail)}</p>
+            </div>;
+          })}
+        </div>}
+      </section>;
+
+      if (block.kind === "note") return <aside key={index} className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/60 dark:bg-amber-950/20">
+        <div className="flex items-center gap-2 font-semibold text-amber-900 dark:text-amber-200"><AlertTriangle className="h-4 w-4" />{renderInlineMarkdown(block.title)}</div>
+        {block.details.length > 0 && <div className="mt-2 space-y-1.5 pl-6">{block.details.map((detail, detailIndex) => <p key={detailIndex} className="text-[13px] leading-5">{renderInlineMarkdown(detail)}</p>)}</div>}
+      </aside>;
+
+      return block.heading
+        ? <h4 key={index} className="pt-1 text-[15px] font-semibold text-foreground">{renderInlineMarkdown(block.text)}</h4>
+        : <p key={index} className={index === 0 ? "rounded-lg bg-primary/[0.045] px-3 py-2.5 font-medium text-foreground" : "px-1"}>{renderInlineMarkdown(block.text)}</p>;
     })}
   </div>;
 }
@@ -182,7 +224,7 @@ export default function AiInsights() {
       <div className="mb-3 flex gap-2 overflow-x-auto pb-1">{modes.map((item) => <button key={item.name} type="button" onClick={() => setMode(item.name)} className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${mode === item.name ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary hover:text-primary"}`}>{item.icon}{item.name}</button>)}</div>
       <div ref={conversationRef} className="max-h-96 space-y-3 overflow-y-auto rounded-xl bg-muted/40 p-4">
         {messages.length === 0 && <div><p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">{mode} mode.</span> Ask about costs, contribution, students, classes, collections, pending fees, or today&apos;s priorities.</p><div className="mt-3 flex flex-wrap gap-2">{activeMode.prompts.map((item) => <button key={item} type="button" onClick={() => void ask(item)} className="rounded-full border bg-background px-3 py-1.5 text-xs hover:border-primary hover:text-primary">{item}</button>)}</div></div>}
-        {messages.map((message, index) => <div key={index} className={`group flex items-start gap-1 ${message.role === "user" ? "justify-end" : "justify-start"}`}><div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm leading-relaxed ${message.role === "user" ? "bg-primary text-primary-foreground" : "border bg-background"}`}>{message.role === "assistant" ? <CopilotResponse content={message.content} /> : <div className="whitespace-pre-wrap">{message.content}</div>}{message.role === "assistant" && <div className="mt-3 flex items-center gap-2 border-t pt-1.5 text-[10px] text-muted-foreground"><span className={`h-1.5 w-1.5 rounded-full ${message.aiPowered === false ? "bg-warning" : "bg-success"}`} />{message.aiPowered === false ? "Live-data fallback" : "AI analysis"}{message.generatedAtUtc && <span>· {formatDate(message.generatedAtUtc, "datetime")}</span>}</div>}</div>{message.role === "assistant" && <div className="mt-1 flex opacity-0 group-hover:opacity-100 focus-within:opacity-100"><button type="button" onClick={() => speakAnswer(message.content)} className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label="Read answer aloud"><Volume2 className="h-3.5 w-3.5" /></button><button type="button" onClick={() => void copyAnswer(message.content, index)} className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label="Copy answer">{copiedIndex === index ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <Clipboard className="h-3.5 w-3.5" />}</button></div>}</div>)}
+        {messages.map((message, index) => <div key={index} className={`group flex items-start gap-1 ${message.role === "user" ? "justify-end" : "justify-start"}`}><div className={`text-sm leading-relaxed ${message.role === "user" ? "max-w-[85%] rounded-xl bg-primary px-3 py-2 text-primary-foreground" : "w-full max-w-[94%] rounded-2xl border bg-background p-3 shadow-sm sm:p-4"}`}>{message.role === "assistant" ? <CopilotResponse content={message.content} /> : <div className="whitespace-pre-wrap">{message.content}</div>}{message.role === "assistant" && <div className="mt-3 flex items-center gap-2 border-t pt-2 text-[10px] text-muted-foreground"><span className={`h-1.5 w-1.5 rounded-full ${message.aiPowered === false ? "bg-warning" : "bg-success"}`} />{message.aiPowered === false ? "Live-data fallback" : "AI analysis"}{message.generatedAtUtc && <span>· {formatDate(message.generatedAtUtc, "datetime")}</span>}</div>}</div>{message.role === "assistant" && <div className="mt-1 flex opacity-0 group-hover:opacity-100 focus-within:opacity-100"><button type="button" onClick={() => speakAnswer(message.content)} className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label="Read answer aloud"><Volume2 className="h-3.5 w-3.5" /></button><button type="button" onClick={() => void copyAnswer(message.content, index)} className="rounded p-1.5 text-muted-foreground hover:bg-muted" aria-label="Copy answer">{copiedIndex === index ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <Clipboard className="h-3.5 w-3.5" />}</button></div>}</div>)}
         {asking && <div className="flex justify-start"><div className="rounded-xl border bg-background px-3 py-2 text-sm text-muted-foreground">Reviewing live business data...</div></div>}
       </div>
       {copilotError && <InlineAlert variant="error" className="mt-3">{copilotError}</InlineAlert>}{voiceError && <InlineAlert variant="error" className="mt-3">{voiceError}</InlineAlert>}
