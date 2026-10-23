@@ -77,6 +77,7 @@ const AdminBulkEmailHistory = lazy(() => import("@/features/admin/BulkEmailHisto
 const AdminEmailTemplates = lazy(() => import("@/features/admin/EmailTemplates"));
 const AdminProgressReports = lazy(() => import("@/features/admin/ProgressReports"));
 const AdminChatbot = lazy(() => import("@/features/admin/ChatbotAdmin"));
+const AdminAiInsights = lazy(() => import("@/features/admin/AiInsights"));
 const AdminEnrollments = lazy(() => import("@/features/admin/Enrollments"));
 const AdminSearchUsers = lazy(() => import("@/features/admin/SearchUsers"));
 const AdminStoreInquiries = lazy(() => import("@/features/admin/StoreInquiries"));
@@ -300,6 +301,7 @@ export default function App() {
               <Route path="email-templates" element={<AdminEmailTemplates />} />
               <Route path="progress-reports" element={<AdminProgressReports />} />
               <Route path="chatbot" element={<AdminChatbot />} />
+              <Route path="ai-insights" element={<AdminAiInsights />} />
               <Route path="enrollments" element={<AdminEnrollments />} />
               <Route path="leads" element={<AdmissionLeads />} />
               <Route path="demo-scheduling" element={<AdmissionDemoScheduling />} />

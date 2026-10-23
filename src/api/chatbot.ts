@@ -93,6 +93,10 @@ export async function testAiChat(message: string): Promise<{ answer: string }> {
   return apiFetch<{ answer: string }>("/api/chatbot/admin/ai-configuration/test", { method: "POST", body: JSON.stringify({ message }) });
 }
 
+export async function listAiModels(): Promise<string[]> {
+  return (await apiFetch<{ models: string[] }>("/api/chatbot/admin/ai-configuration/models")).models;
+}
+
 export interface BusinessAiBrief {
   executiveSummary: string;
   aiPowered: boolean;
@@ -103,6 +107,11 @@ export interface BusinessAiBrief {
 
 export async function getBusinessAiBrief(): Promise<BusinessAiBrief> {
   return apiFetch<BusinessAiBrief>("/api/chatbot/business-brief");
+}
+
+export interface BusinessCopilotMessage { role: "user" | "assistant"; content: string }
+export async function askBusinessCopilot(question: string, history: BusinessCopilotMessage[]): Promise<{ answer: string; aiPowered: boolean; generatedAtUtc: string }> {
+  return apiFetch("/api/chatbot/business-copilot", { method: "POST", body: JSON.stringify({ question, history }) });
 }
 
 /** Active FAQs — every signed-in role, used by the widget's browse view and local matching. */

@@ -118,6 +118,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Insights",
     items: [
       { label: "Reports & Analytics", to: "/admin/reports", icon: BarChart3 },
+      { label: "AI Insights", to: "/admin/ai-insights", icon: Sparkles },
       { label: "Bulk Email", to: "/admin/bulk-email", icon: Mail },
       { label: "Bulk Email History", to: "/admin/bulk-email/history", icon: History },
       { label: "Email Templates", to: "/admin/email-templates", icon: FileText },
