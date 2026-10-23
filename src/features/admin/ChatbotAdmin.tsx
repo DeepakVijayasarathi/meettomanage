@@ -74,7 +74,7 @@ export default function ChatbotAdmin() {
 
 const DEFAULT_AI: AiChatConfiguration = {
   enabled: false, endpoint: "https://inference.hetzner.com/api/v1", model: "Qwen/Qwen3.6-35B-A3B-FP8", systemPrompt: "Answer in 2-3 short sentences.",
-  maxTokens: 120, temperature: 0.3, hasApiKey: false, maskedApiKey: "",
+  maxTokens: 500, temperature: 0.3, hasApiKey: false, maskedApiKey: "",
 };
 
 function AiProviderPanel() {
