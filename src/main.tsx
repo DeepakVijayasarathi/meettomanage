@@ -10,7 +10,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { applyInitialLang } from "@/lib/i18n";
 import { stripFreshReloadParam, tryAutoReloadFresh } from "@/lib/freshReload";
 import { clearAuthStorage } from "@/lib/authStorage";
-import { discoverHostTenant, hasTenantSessionMismatch, setSessionTenant } from "@/lib/tenantPath";
+import { discoverHostTenant, hasTenantSessionMismatch } from "@/lib/tenantPath";
 import "@/index.css";
 
 // Vite fires this when a lazy route's JS or CSS can't be preloaded - i.e. this tab holds an older
@@ -25,7 +25,6 @@ async function start() {
   // verified host before SessionProvider or public branding reads tenant state.
   const discovered = await discoverHostTenant();
   if (hasTenantSessionMismatch() || discovered.mismatch) clearAuthStorage();
-  if (discovered.code) setSessionTenant(discovered.code);
 
   applyBranding();
   void loadBrandingFromApi();

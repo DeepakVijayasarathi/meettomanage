@@ -2,6 +2,7 @@ import { authStorage } from "./authStorage";
 
 const TENANT_CODE_KEY = "trn.tenantCode";
 const TENANT_CODE = /^[a-z][a-z0-9-]{2,49}$/;
+let hostTenantCode: string | null = null;
 
 /** Public links carry the client code in their path; login still resolves it from email/mobile. */
 export function tenantPath(pathname = window.location.pathname): string {
@@ -48,15 +49,22 @@ export function hasTenantSessionMismatch(pathname = window.location.pathname): b
 
 /** Resolve a verified custom hostname before branding, routing or session state loads. */
 export async function discoverHostTenant(): Promise<{ code: string | null; mismatch: boolean }> {
+  hostTenantCode = null;
   if (tenantPath()) return { code: null, mismatch: false };
   const root = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
   if (!root) return { code: null, mismatch: false };
   try {
-    const response = await fetch(`${root}/api/tenant/resolve`, { headers: { Accept: "application/json" } });
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 4_000);
+    const response = await fetch(`${root}/api/tenant/resolve`, {
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    }).finally(() => window.clearTimeout(timeout));
     if (!response.ok) return { code: null, mismatch: false };
     const result = await response.json() as { tenantCode?: string | null };
     const code = result.tenantCode && TENANT_CODE.test(result.tenantCode) ? result.tenantCode : null;
     if (!code) return { code: null, mismatch: false };
+    hostTenantCode = code;
     return { code, mismatch: Boolean(sessionTenantCode() && sessionTenantCode() !== code) };
   } catch {
     return { code: null, mismatch: false };
@@ -67,6 +75,7 @@ export async function discoverHostTenant(): Promise<{ code: string | null; misma
 export function apiTenantPath(): string {
   const fromUrl = tenantPath();
   if (fromUrl) return fromUrl;
+  if (hostTenantCode) return `/t/${hostTenantCode}`;
   const code = sessionTenantCode();
   return code ? `/t/${code}` : "";
 }

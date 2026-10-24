@@ -46,6 +46,8 @@ describe("single-URL login tenant", () => {
     vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ tenantCode: "academy-two" }) }));
     await expect(discoverHostTenant()).resolves.toEqual({ code: "academy-two", mismatch: true });
+    expect(localStorage.getItem("trn.tenantCode")).toBe("academy-one");
+    expect(apiTenantPath()).toBe("/t/academy-two");
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
     clearAuthStorage();
