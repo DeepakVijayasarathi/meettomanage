@@ -7,10 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { platformRequest } from "@/api/platform";
 
 /** Settings this editor owns (hidden from the generic rows). All are read by the mobile app via GET /api/app/config. */
-export const APP_EDITOR_KEYS = new Set(["app.webBaseUrl", "app.announcement", "org.supportEmail", "org.supportPhone"]);
+export const APP_EDITOR_KEYS = new Set(["app.webBaseUrl", "app.announcement", "app.joinOpensMinutesBefore", "org.supportEmail", "org.supportPhone"]);
 
 /** Defaults for keys a client has never saved. Not public: only a signed-in family reads them, through the app config endpoint. */
-export const APP_DEFAULTS: Record<string, string> = { "app.webBaseUrl": "", "app.announcement": "" };
+export const APP_DEFAULTS: Record<string, string> = { "app.webBaseUrl": "", "app.announcement": "", "app.joinOpensMinutesBefore": "10" };
 
 const isHttp = (value: string) => { try { const u = new URL(value); return u.protocol === "https:" || u.protocol === "http:"; } catch { return false; } };
 
@@ -62,6 +62,9 @@ export default function ParentAppEditor({ values, set, disabled, tenantId, token
         <Input id="app-support-email" type="email" disabled={disabled} maxLength={200} value={values["org.supportEmail"] ?? ""} onChange={e => set("org.supportEmail", e.target.value)} /></div>
       <div className="grid gap-1.5"><Label htmlFor="app-support-phone">Support phone</Label>
         <Input id="app-support-phone" disabled={disabled} maxLength={40} value={values["org.supportPhone"] ?? ""} onChange={e => set("org.supportPhone", e.target.value)} /></div>
+      <div className="grid gap-1.5"><Label htmlFor="app-join-opens">Join Class opens (minutes before start)</Label>
+        <Input id="app-join-opens" type="number" min={0} max={1440} disabled={disabled} value={values["app.joinOpensMinutesBefore"] ?? "10"} onChange={e => set("app.joinOpensMinutesBefore", e.target.value)} />
+        <p className="text-xs text-muted-foreground">The app enables Join Class this many minutes before a class starts. Default 10.</p></div>
       <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="app-announcement">Announcement</Label>
         <Textarea id="app-announcement" disabled={disabled} rows={3} maxLength={500} placeholder="A short message shown at the top of the app, e.g. Classes are off on Friday." value={values["app.announcement"] ?? ""} onChange={e => set("app.announcement", e.target.value)} />
         <p className="text-xs text-muted-foreground">Leave empty to show nothing. The app's name, logo and colours come from the Branding tab.</p></div>
