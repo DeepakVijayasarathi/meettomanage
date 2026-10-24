@@ -3,7 +3,7 @@ export const PLATFORM_EMAIL_KEY = "mtm.platformEmail";
 export const PLATFORM_SESSION_EVENT = "mtm-platform-session";
 const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
-export type PlatformTenant = { id: string; code: string; name: string; customDomain?: string | null; status: "Provisioning" | "Active" | "Suspended" | "Failed"; appAccessGranted?: boolean };
+export type PlatformTenant = { id: string; code: string; name: string; customDomain?: string | null; customDomainVerifiedAtUtc?: string | null; status: "Provisioning" | "Active" | "Suspended" | "Failed"; appAccessGranted?: boolean };
 
 export function clearPlatformSession() {
   sessionStorage.removeItem(PLATFORM_TOKEN_KEY);

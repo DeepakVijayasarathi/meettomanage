@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { apiTenantPath, hasTenantSessionMismatch, setSessionTenant, tenantPath } from "./tenantPath";
+import { describe, expect, it, vi } from "vitest";
+import { apiTenantPath, discoverHostTenant, hasTenantSessionMismatch, setSessionTenant, tenantPath } from "./tenantPath";
 import { clearAuthStorage } from "./authStorage";
 
 describe("public tenant URLs", () => {
@@ -39,6 +39,15 @@ describe("single-URL login tenant", () => {
       .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     localStorage.setItem("trn.accessToken", `header.${payload}.signature`);
     expect(hasTenantSessionMismatch("/t/another-academy/admin")).toBe(true);
+    clearAuthStorage();
+  });
+  it("discovers a verified custom-domain tenant and detects another tenant's session", async () => {
+    setSessionTenant("academy-one");
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ tenantCode: "academy-two" }) }));
+    await expect(discoverHostTenant()).resolves.toEqual({ code: "academy-two", mismatch: true });
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     clearAuthStorage();
   });
 });

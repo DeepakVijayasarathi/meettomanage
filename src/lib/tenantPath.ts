@@ -46,6 +46,23 @@ export function hasTenantSessionMismatch(pathname = window.location.pathname): b
   return Boolean(path && sessionCode && path !== `/t/${sessionCode}`);
 }
 
+/** Resolve a verified custom hostname before branding, routing or session state loads. */
+export async function discoverHostTenant(): Promise<{ code: string | null; mismatch: boolean }> {
+  if (tenantPath()) return { code: null, mismatch: false };
+  const root = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  if (!root) return { code: null, mismatch: false };
+  try {
+    const response = await fetch(`${root}/api/tenant/resolve`, { headers: { Accept: "application/json" } });
+    if (!response.ok) return { code: null, mismatch: false };
+    const result = await response.json() as { tenantCode?: string | null };
+    const code = result.tenantCode && TENANT_CODE.test(result.tenantCode) ? result.tenantCode : null;
+    if (!code) return { code: null, mismatch: false };
+    return { code, mismatch: Boolean(sessionTenantCode() && sessionTenantCode() !== code) };
+  } catch {
+    return { code: null, mismatch: false };
+  }
+}
+
 /** API prefix: a /t/<code> URL wins, otherwise the tenant the session signed in to. */
 export function apiTenantPath(): string {
   const fromUrl = tenantPath();

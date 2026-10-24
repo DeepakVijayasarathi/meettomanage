@@ -10,7 +10,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { applyInitialLang } from "@/lib/i18n";
 import { stripFreshReloadParam, tryAutoReloadFresh } from "@/lib/freshReload";
 import { clearAuthStorage } from "@/lib/authStorage";
-import { hasTenantSessionMismatch } from "@/lib/tenantPath";
+import { discoverHostTenant, hasTenantSessionMismatch, setSessionTenant } from "@/lib/tenantPath";
 import "@/index.css";
 
 // Vite fires this when a lazy route's JS or CSS can't be preloaded - i.e. this tab holds an older
@@ -20,13 +20,16 @@ window.addEventListener("vite:preloadError", () => {
 });
 stripFreshReloadParam();
 
-// localStorage is shared by every tenant path on this origin. Discard a login
-// belonging to another client before SessionProvider reads and renders it.
-if (hasTenantSessionMismatch()) clearAuthStorage();
+async function start() {
+  // localStorage is shared by every tenant path and custom hostname. Resolve a
+  // verified host before SessionProvider or public branding reads tenant state.
+  const discovered = await discoverHostTenant();
+  if (hasTenantSessionMismatch() || discovered.mismatch) clearAuthStorage();
+  if (discovered.code) setSessionTenant(discovered.code);
 
-applyBranding();
-void loadBrandingFromApi();
-void loadSeoSettingsFromApi();
+  applyBranding();
+  void loadBrandingFromApi();
+  void loadSeoSettingsFromApi();
 // Re-applies the same "trn.theme" value index.html's inline script already used —
 // idempotent, just keeps this module's state and the DOM class in agreement.
 applyInitialTheme();
@@ -43,7 +46,7 @@ try {
   /* sessionStorage unavailable — nothing to clear */
 }
 
-createRoot(document.getElementById("root")!).render(
+  createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
       <SessionProvider>
@@ -53,4 +56,7 @@ createRoot(document.getElementById("root")!).render(
       </SessionProvider>
     </ErrorBoundary>
   </StrictMode>
-);
+  );
+}
+
+void start();
