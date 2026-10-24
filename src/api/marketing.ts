@@ -57,7 +57,7 @@ export interface SalesChatTurn {
 }
 
 /**
- * Public — no login required. The homepage chat assistant (Gemini, called server-side so the
+ * Public — no login required. The homepage chat assistant (Hetzner AI, called server-side so the
  * key never reaches the browser). Sends the conversation so far; the backend accepts at most
  * 20 turns and must start with the visitor, so older turns are trimmed from the front.
  * `bookedName` is set when the assistant booked a platform demo during this turn.
@@ -79,6 +79,14 @@ ${text}`.slice(-1000);
     body: JSON.stringify({ messages }),
   });
   return { reply: res.reply, bookedName: res.bookedName ?? null };
+}
+
+export async function translateMarketingText(texts: string[], targetLanguage: string): Promise<string[]> {
+  const response = await apiFetch<{ translations: string[] }>("/api/marketing/translate", {
+    method: "POST",
+    body: JSON.stringify({ texts, targetLanguage }),
+  });
+  return response.translations;
 }
 
 // --- Blog ---

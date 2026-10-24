@@ -1,4 +1,5 @@
-import { useLang } from "@/lib/i18n";
+import { Languages } from "lucide-react";
+import { MARKETING_LOCALES, useMarketingLocale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /** EN/AR switcher for the marketing site's header — same pill-toggle visual pattern as
@@ -7,27 +8,19 @@ import { cn } from "@/lib/utils";
  *  reads useLang() and flips <html dir> site-wide (see lib/i18n.ts) — not scoped to
  *  whichever page happened to render this control. */
 export function LanguageToggle({ className }: { className?: string }) {
-  const [lang, setLang] = useLang();
+  const [locale, setLocale] = useMarketingLocale();
   return (
-    <div role="tablist" aria-label="Language" className={cn("inline-flex gap-1 rounded-full border border-black/10 bg-[#F5F6F9] p-1", className)}>
-      {(["en", "ar"] as const).map((l) => {
-        const active = l === lang;
-        return (
-          <button
-            key={l}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => setLang(l)}
-            className={cn(
-              "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
-              active ? "bg-[#EA580C] text-white" : "text-[#5B6472] hover:text-white"
-            )}
-          >
-            {l === "en" ? "🇬🇧 EN" : "🇦🇪 AR"}
-          </button>
-        );
-      })}
-    </div>
+    <label className={cn("inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-[#F5F6F9] px-2", className)}>
+      <Languages className="h-3.5 w-3.5 text-[#EA580C]" aria-hidden />
+      <span className="sr-only">Language</span>
+      <select
+        aria-label="Language"
+        value={locale}
+        onChange={(event) => setLocale(event.target.value)}
+        className="max-w-32 cursor-pointer bg-transparent py-2 text-xs font-semibold text-[#171B22] outline-none"
+      >
+        {MARKETING_LOCALES.map((item) => <option key={item.code} value={item.code}>{item.nativeLabel}</option>)}
+      </select>
+    </label>
   );
 }

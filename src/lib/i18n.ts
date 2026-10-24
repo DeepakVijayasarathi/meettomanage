@@ -22,8 +22,37 @@
 import { useSyncExternalStore } from "react";
 
 export type Lang = "en" | "ar";
+export type MarketingLocale = { code: string; label: string; nativeLabel: string; dir?: "rtl" };
+
+export const MARKETING_LOCALES: readonly MarketingLocale[] = [
+  { code: "en", label: "English", nativeLabel: "English" },
+  { code: "ar", label: "Arabic", nativeLabel: "العربية", dir: "rtl" },
+  { code: "hi", label: "Hindi", nativeLabel: "हिन्दी" },
+  { code: "es", label: "Spanish", nativeLabel: "Español" },
+  { code: "fr", label: "French", nativeLabel: "Français" },
+  { code: "de", label: "German", nativeLabel: "Deutsch" },
+  { code: "pt", label: "Portuguese", nativeLabel: "Português" },
+  { code: "zh", label: "Chinese", nativeLabel: "中文" },
+  { code: "ja", label: "Japanese", nativeLabel: "日本語" },
+  { code: "ko", label: "Korean", nativeLabel: "한국어" },
+  { code: "id", label: "Indonesian", nativeLabel: "Bahasa Indonesia" },
+  { code: "ms", label: "Malay", nativeLabel: "Bahasa Melayu" },
+  { code: "bn", label: "Bengali", nativeLabel: "বাংলা" },
+  { code: "ta", label: "Tamil", nativeLabel: "தமிழ்" },
+  { code: "te", label: "Telugu", nativeLabel: "తెలుగు" },
+  { code: "ur", label: "Urdu", nativeLabel: "اردو", dir: "rtl" },
+  { code: "tr", label: "Turkish", nativeLabel: "Türkçe" },
+  { code: "ru", label: "Russian", nativeLabel: "Русский" },
+  { code: "it", label: "Italian", nativeLabel: "Italiano" },
+  { code: "nl", label: "Dutch", nativeLabel: "Nederlands" },
+  { code: "pl", label: "Polish", nativeLabel: "Polski" },
+  { code: "th", label: "Thai", nativeLabel: "ไทย" },
+  { code: "vi", label: "Vietnamese", nativeLabel: "Tiếng Việt" },
+  { code: "sw", label: "Swahili", nativeLabel: "Kiswahili" },
+];
 
 const LANG_KEY = "trn.lang";
+const LOCALE_KEY = "trn.marketingLocale";
 
 function getStoredLang(): Lang {
   if (typeof window === "undefined") return "en";
@@ -42,6 +71,14 @@ function applyLangAttributes(next: Lang) {
 }
 
 let lang: Lang = getStoredLang();
+function getStoredMarketingLocale(): string {
+  if (typeof window === "undefined") return "en";
+  try {
+    const stored = localStorage.getItem(LOCALE_KEY);
+    return MARKETING_LOCALES.some((item) => item.code === stored) ? stored! : lang;
+  } catch { return lang; }
+}
+let marketingLocale = getStoredMarketingLocale();
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -63,9 +100,40 @@ export function setLang(next: Lang) {
   emit();
 }
 
+export function getMarketingLocale() { return marketingLocale; }
+
+export function setMarketingLocale(next: string) {
+  const locale = MARKETING_LOCALES.find((item) => item.code === next) ?? MARKETING_LOCALES[0];
+  marketingLocale = locale.code;
+  lang = locale.code === "ar" ? "ar" : "en";
+  try {
+    localStorage.setItem(LOCALE_KEY, locale.code);
+    localStorage.setItem(LANG_KEY, lang);
+  } catch { /* preference remains active for this page */ }
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = locale.code;
+    document.documentElement.dir = locale.dir ?? "ltr";
+    document.body.classList.toggle("lang-ar", locale.dir === "rtl");
+  }
+  emit();
+}
+
+export function useMarketingLocale(): [string, (next: string) => void] {
+  const current = useSyncExternalStore((listener) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }, getMarketingLocale, getMarketingLocale);
+  return [current, setMarketingLocale];
+}
+
 /** Idempotent; safe to call again once React mounts (mirrors theme.ts's applyInitialTheme). */
 export function applyInitialLang() {
-  applyLangAttributes(lang);
+  const locale = MARKETING_LOCALES.find((item) => item.code === marketingLocale) ?? MARKETING_LOCALES[0];
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = locale.code;
+    document.documentElement.dir = locale.dir ?? "ltr";
+    document.body.classList.toggle("lang-ar", locale.dir === "rtl");
+  }
 }
 
 export function useLang(): [Lang, (next: Lang) => void] {

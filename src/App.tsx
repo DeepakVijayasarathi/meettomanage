@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { MarketingTranslationLayer } from "@/components/MarketingTranslationLayer";
 import { Toaster } from "@/components/ui/toaster";
 import { ViewAsBanner } from "@/components/ViewAsBanner";
 import { AppShell } from "@/components/AppShell";
@@ -196,14 +197,14 @@ export default function App() {
             <Route path="/platform/reminders" element={<PlatformReminders />} />
             <Route path="/platform/operations" element={<PlatformOperations />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/" element={<MarketingHome />} />
-            <Route path="/store" element={<Store />} />
-            <Route path="/demo" element={<Demo />} />
-            <Route path="/get-started" element={<GetStarted />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/blog" element={<BlogList />} />
-            <Route path="/blog/:slug" element={<BlogPost />} />
-            <Route path="/policy" element={<PrivacyPolicy />} />
+            <Route path="/" element={<MarketingTranslationLayer><MarketingHome /></MarketingTranslationLayer>} />
+            <Route path="/store" element={<MarketingTranslationLayer><Store /></MarketingTranslationLayer>} />
+            <Route path="/demo" element={<MarketingTranslationLayer><Demo /></MarketingTranslationLayer>} />
+            <Route path="/get-started" element={<MarketingTranslationLayer><GetStarted /></MarketingTranslationLayer>} />
+            <Route path="/pricing" element={<MarketingTranslationLayer><Pricing /></MarketingTranslationLayer>} />
+            <Route path="/blog" element={<MarketingTranslationLayer><BlogList /></MarketingTranslationLayer>} />
+            <Route path="/blog/:slug" element={<MarketingTranslationLayer><BlogPost /></MarketingTranslationLayer>} />
+            <Route path="/policy" element={<MarketingTranslationLayer><PrivacyPolicy /></MarketingTranslationLayer>} />
             <Route path="/login" element={<Login />} />
             <Route path="/portal-select" element={<PortalSelect />} />
             <Route path="/forgot-pin" element={<ForgotPin />} />

@@ -215,7 +215,7 @@ function ExplainerVideo() {
 const CHAT_T = {
   en: {
     heading: "Meet to Manage assistant",
-    sub: "Type or speak — features, pricing or a demo",
+    sub: "Ask in any language — type or speak",
     closeAria: "Close chat",
     greeting:
       "Hi! I can answer questions about running your academy, school, tutoring or coaching centre on Meet to Manage — features, pricing, or how a demo works. What would you like to know?",
@@ -287,7 +287,7 @@ const CHAT_T = {
   },
   ar: {
     heading: "مساعد Meet to Manage",
-    sub: "اكتب أو تحدّث — الميزات أو الأسعار أو العرض التوضيحي",
+    sub: "اسأل بأي لغة — اكتب أو تحدّث",
     closeAria: "إغلاق الدردشة",
     greeting:
       "مرحبًا! يمكنني الإجابة عن أسئلتك حول إدارة أكاديميتك أو مدرستك أو دروسك الخصوصية أو مركز التدريب على Meet to Manage — الميزات أو الأسعار أو كيفية العرض التوضيحي. بماذا يمكنني مساعدتك؟",
@@ -418,6 +418,14 @@ function speechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
 
 const SPEECH_LANG: Record<Lang, string> = { en: "en-IN", ar: "ar-AE" };
 
+/** Voice follows the visitor's browser locale worldwide. An explicitly selected Arabic page
+ * stays Arabic even when the device itself is configured in English. */
+function speechLanguage(pageLang: Lang): string {
+  if (pageLang === "ar") return SPEECH_LANG.ar;
+  if (typeof navigator !== "undefined" && navigator.language) return navigator.language;
+  return SPEECH_LANG.en;
+}
+
 /** Reads a reply aloud. Links are dropped from the spoken text — a URL read letter by letter
  *  helps nobody; it's still clickable in the chat. `onStart`/`onEnd` drive the AI orb's
  *  "speaking" animation (onEnd also fires on an error or cancel, so it never gets stuck). */
@@ -426,7 +434,7 @@ function speak(text: string, lang: Lang, events?: { onStart?: () => void; onEnd?
   const spoken = text.replace(/https?:\/\/[^\s)]+/g, "").replace(/[*•]/g, "");
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(spoken);
-  utterance.lang = SPEECH_LANG[lang];
+  utterance.lang = speechLanguage(lang);
   // Browsers can report both "error" and "end" for one cancelled utterance — finish once.
   let finished = false;
   const finish = () => {
@@ -505,13 +513,13 @@ function ChatText({ text }: { text: string }) {
 }
 
 /** Floating chat on the homepage: answers a prospective academy's, school's, tutor's or coaching
-    centre's questions through the backend's Gemini assistant (POST /api/marketing/chat — the API
+    centre's questions through the backend's Hetzner AI assistant (POST /api/marketing/chat — the API
     key never reaches the browser) and keeps WhatsApp/email/Request a Demo one tap away
     underneath. Questions can be typed or spoken (browser speech recognition, where supported);
     a spoken question gets its reply read aloud too. The greeting is local and never sent, so the
     conversation the model sees always opens with the visitor. Separate from the FAQ-matching
     "Ask a Doubt" bot inside the logged-in portals (DoubtChatbot.tsx). */
-function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
+function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; openRequest?: number; onOpen?: () => void }) {
   const t = CHAT_T[lang];
   const [open, setOpen] = useState(false);
   const [everOpened, setEverOpened] = useState(false);
@@ -700,6 +708,14 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
     setOpen(true);
   }
 
+  // The hero can open the same assistant without duplicating chat state or UI. A counter is
+  // used instead of a boolean so the action still works after the visitor closes and retries.
+  useEffect(() => {
+    if (openRequest > 0) openChat("text");
+    // openChat intentionally uses the latest mode/state; the request counter is the trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openRequest]);
+
   /** Speaks a line and runs the orb's speaking state; in voice mode, optionally listens for
    *  the visitor's follow-up as soon as it finishes. */
   function say(text: string, listenAfter = false) {
@@ -796,7 +812,7 @@ function ChatWidget({ lang, onOpen }: { lang: Lang; onOpen?: () => void }) {
     // which must see a recognizer already running rather than start a second one.
     recognitionRef.current = recognition;
     stopSpeaking();
-    recognition.lang = SPEECH_LANG[lang];
+    recognition.lang = speechLanguage(lang);
     recognition.interimResults = true;
     recognition.continuous = false;
     let finalText = "";
@@ -1919,6 +1935,7 @@ const T = {
     heroSub: (brand: string) =>
       `${brand} brings live teaching, scheduling, admissions, billing and reporting into a single, role-based system — so every meeting turns into progress everyone can track.`,
     requestDemo: "Request a Demo",
+    askAi: "Ask our AI",
     explorePortals: "Explore Portals",
     heroTrust: ["No payment details to book a demo", "One login — 8 role-based portals", "Free demo class before you commit"],
     signIn: "Sign In",
@@ -1987,6 +2004,7 @@ const T = {
     heroSub: (brand: string) =>
       `توفّر ${brand} التدريس المباشر والجدولة والقبول والفوترة والتقارير في نظام واحد قائم على الأدوار — بحيث تتحوّل كل جلسة إلى تقدّم يمكن للجميع متابعته.`,
     requestDemo: "اطلب عرضًا توضيحيًا",
+    askAi: "اسأل مساعدنا الذكي",
     explorePortals: "استكشف البوابات",
     heroTrust: ["لا حاجة لبيانات الدفع لحجز عرض توضيحي", "تسجيل دخول واحد — 8 بوابات حسب الدور", "حصة تجريبية مجانية قبل الالتزام"],
     signIn: "تسجيل الدخول",
@@ -2050,6 +2068,7 @@ export default function MarketingHome() {
   const [lang] = useLang();
   const t = T[lang];
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("All");
+  const [aiOpenRequest, setAiOpenRequest] = useState(0);
 
   const features = FEATURES[lang];
   const visibleFeatures = activeCategory === "All" ? features : features.filter((f) => f.category === activeCategory);
@@ -2159,6 +2178,14 @@ export default function MarketingHome() {
             <Link to="/portal-select" className={CTA_GHOST}>
               {t.explorePortals}
             </Link>
+            <button
+              type="button"
+              onClick={() => setAiOpenRequest((request) => request + 1)}
+              className={cn(CTA_GHOST, "border-[#F97316]/35 bg-white text-[#C2410C] hover:border-[#F97316] hover:bg-[#FFF7ED]")}
+            >
+              <Sparkles className="h-4 w-4" />
+              {t.askAi}
+            </button>
           </div>
 
           {/* Real, verifiable trust indicators only — every phrase here restates language
@@ -2736,7 +2763,7 @@ export default function MarketingHome() {
         </div>
       </footer>
 
-      <ChatWidget lang={lang} />
+      <ChatWidget lang={lang} openRequest={aiOpenRequest} />
     </div>
   );
 }
