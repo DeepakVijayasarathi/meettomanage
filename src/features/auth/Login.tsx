@@ -127,9 +127,10 @@ export default function Login() {
         setAccessToken(null);
         throw new Error("Sign in failed. Please check your email and PIN.");
       }
-      // On the single /login URL the API finds the organisation from the email or
-      // mobile in its login directory; keep it with the session for prefixed public calls.
-      if (!tenantPortal) setSessionTenant(response.tenantCode ?? null);
+      // Persist the resolved organisation for every login, including /t/<code>.
+      // Besides prefixing calls made from the single /login URL, this lets startup
+      // reject a remembered tenant-A session opened under tenant B's portal.
+      setSessionTenant(response.tenantCode ?? null);
       const homePath = homeOverride ?? safeInternalPath(response.defaultRoute) ?? ROLE_META[frontendRole].homePath;
       setSessionRole(frontendRole);
       setUserName(response.user.fullName);

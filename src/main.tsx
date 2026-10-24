@@ -9,6 +9,8 @@ import { applyInitialTheme } from "@/lib/theme";
 import { HelmetProvider } from "react-helmet-async";
 import { applyInitialLang } from "@/lib/i18n";
 import { stripFreshReloadParam, tryAutoReloadFresh } from "@/lib/freshReload";
+import { clearAuthStorage } from "@/lib/authStorage";
+import { hasTenantSessionMismatch } from "@/lib/tenantPath";
 import "@/index.css";
 
 // Vite fires this when a lazy route's JS or CSS can't be preloaded - i.e. this tab holds an older
@@ -17,6 +19,10 @@ window.addEventListener("vite:preloadError", () => {
   tryAutoReloadFresh();
 });
 stripFreshReloadParam();
+
+// localStorage is shared by every tenant path on this origin. Discard a login
+// belonging to another client before SessionProvider reads and renders it.
+if (hasTenantSessionMismatch()) clearAuthStorage();
 
 applyBranding();
 void loadBrandingFromApi();

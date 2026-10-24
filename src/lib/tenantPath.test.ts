@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { apiTenantPath, setSessionTenant, tenantPath } from "./tenantPath";
+import { apiTenantPath, hasTenantSessionMismatch, setSessionTenant, tenantPath } from "./tenantPath";
 import { clearAuthStorage } from "./authStorage";
 
 describe("public tenant URLs", () => {
@@ -26,5 +26,19 @@ describe("single-URL login tenant", () => {
   it("ignores malformed tenant codes", () => {
     setSessionTenant("../admin");
     expect(apiTenantPath()).toBe("");
+  });
+  it("detects a remembered login opened under another tenant URL", () => {
+    setSessionTenant("academy-one");
+    expect(hasTenantSessionMismatch("/t/academy-one/admin")).toBe(false);
+    expect(hasTenantSessionMismatch("/t/academy-two/login")).toBe(true);
+    expect(hasTenantSessionMismatch("/login")).toBe(false);
+    clearAuthStorage();
+  });
+  it("uses the JWT tenant claim for sessions created before tenant code persistence", () => {
+    const payload = btoa(JSON.stringify({ tenant_code: "legacy-academy" }))
+      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    localStorage.setItem("trn.accessToken", `header.${payload}.signature`);
+    expect(hasTenantSessionMismatch("/t/another-academy/admin")).toBe(true);
+    clearAuthStorage();
   });
 });
