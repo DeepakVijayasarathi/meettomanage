@@ -148,12 +148,12 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1500px] gap-8 px-5 py-8 sm:px-8 lg:grid-cols-[240px_minmax(0,1fr)]">
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <nav aria-label="Administration" className="space-y-6">
-            {groups.map(group => <div key={group.title}>
+      <div className="mx-auto grid min-w-0 max-w-[1500px] gap-8 px-5 py-8 sm:px-8 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+          <nav aria-label="Administration" className="min-w-0 space-y-6">
+            {groups.map(group => <div key={group.title} className="min-w-0">
               <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{group.title}</p>
-              <ul className="flex gap-1 overflow-x-auto lg:block lg:space-y-0.5 lg:overflow-visible">
+              <ul className="flex w-full max-w-full gap-1 overflow-x-auto lg:block lg:space-y-0.5 lg:overflow-visible">
                 {group.items.map(item => <li key={item.to} className="shrink-0">
                   <NavLink to={item.to} className={({ isActive }) => `group relative flex items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition ${isActive ? "bg-primary/[0.07] text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
                     {({ isActive }) => <>
