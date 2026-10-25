@@ -7,10 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { platformRequest } from "@/api/platform";
 
 /** Settings this editor owns (hidden from the generic rows). All are read by the mobile app via GET /api/app/config. */
-export const APP_EDITOR_KEYS = new Set(["app.webBaseUrl", "app.announcement", "app.joinOpensMinutesBefore", "org.supportEmail", "org.supportPhone"]);
+export const APP_EDITOR_KEYS = new Set(["app.webBaseUrl", "app.announcement", "app.joinOpensMinutesBefore", "org.supportEmail", "org.supportPhone",
+  "app.welcome.enabled", "app.welcome.title", "app.welcome.subtitle", "app.welcome.features"]);
 
 /** Defaults for keys a client has never saved. Not public: only a signed-in family reads them, through the app config endpoint. */
-export const APP_DEFAULTS: Record<string, string> = { "app.webBaseUrl": "", "app.announcement": "", "app.joinOpensMinutesBefore": "10" };
+export const APP_DEFAULTS: Record<string, string> = { "app.webBaseUrl": "", "app.announcement": "", "app.joinOpensMinutesBefore": "10",
+  "app.welcome.enabled": "true", "app.welcome.title": "", "app.welcome.subtitle": "", "app.welcome.features": "" };
 
 const isHttp = (value: string) => { try { const u = new URL(value); return u.protocol === "https:" || u.protocol === "http:"; } catch { return false; } };
 
@@ -68,6 +70,26 @@ export default function ParentAppEditor({ values, set, disabled, tenantId, token
       <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="app-announcement">Announcement</Label>
         <Textarea id="app-announcement" disabled={disabled} rows={3} maxLength={500} placeholder="A short message shown at the top of the app, e.g. Classes are off on Friday." value={values["app.announcement"] ?? ""} onChange={e => set("app.announcement", e.target.value)} />
         <p className="text-xs text-muted-foreground">Leave empty to show nothing. The app's name, logo and colours come from the Branding tab.</p></div>
+    </div>
+
+    <div className="space-y-4 rounded-xl border border-border p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Label htmlFor="app-welcome-enabled" className="text-sm font-semibold">Welcome tour</Label>
+          <p className="mt-0.5 text-xs text-muted-foreground">A short, swipeable introduction families see once, the first time they open the app. It uses this client's logo and colours from the Branding tab.</p>
+        </div>
+        <Switch id="app-welcome-enabled" checked={values["app.welcome.enabled"] !== "false"} disabled={disabled} onCheckedChange={v => set("app.welcome.enabled", v ? "true" : "false")} aria-label="Show the welcome tour" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-1.5"><Label htmlFor="app-welcome-title">Welcome title</Label>
+          <Input id="app-welcome-title" disabled={disabled} maxLength={80} placeholder="Welcome to {name}" value={values["app.welcome.title"] ?? ""} onChange={e => set("app.welcome.title", e.target.value)} />
+          <p className="text-xs text-muted-foreground">Empty uses "Welcome to" plus the brand name.</p></div>
+        <div className="grid gap-1.5"><Label htmlFor="app-welcome-subtitle">Welcome subtitle</Label>
+          <Input id="app-welcome-subtitle" disabled={disabled} maxLength={160} placeholder="Classes, progress and fees for your family, all in one place." value={values["app.welcome.subtitle"] ?? ""} onChange={e => set("app.welcome.subtitle", e.target.value)} /></div>
+        <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="app-welcome-features">Features and overview</Label>
+          <Textarea id="app-welcome-features" disabled={disabled} rows={6} className="font-mono text-xs" placeholder={"Live classes | Join your child's class with one tap.\nProgress reports | See how your child is doing after every term.\nFees & payments | View invoices and pay securely."} value={values["app.welcome.features"] ?? ""} onChange={e => set("app.welcome.features", e.target.value)} />
+          <p className="text-xs text-muted-foreground">One feature per line as <code>Title | Description</code>, up to 6. Empty uses the standard feature list.</p></div>
+      </div>
     </div>
   </div>;
 }
