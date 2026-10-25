@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Download, Eye, EyeOff, FileText, FolderOpen, Loader2, Upload, Video } from "lucide-react";
+import { BookOpen, Download, Eye, EyeOff, FileText, Check, FolderOpen, Loader2, Upload, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { FileDropzone } from "@/components/FileDropzone";
@@ -151,9 +151,14 @@ export default function TeacherResources() {
     ? [...localAdds, ...apiResources.map(apiToView)]
     : [...localAdds, ...demoView];
 
+  // Nothing is pre-picked unless there's only one batch to choose: a silently pre-selected first
+  // batch got toggled OFF when the teacher tapped it, leaving none selected and Upload disabled
+  // (reported as "one batch won't save, two batches will").
+  const defaultBatchIds = useMemo(() => (batchOptions.length === 1 ? [batchOptions[0].id] : []), [batchOptions]);
+
   useEffect(() => {
-    setSelectedBatchIds((prev) => (prev.length > 0 ? prev : batchOptions[0]?.id ? [batchOptions[0].id] : []));
-  }, [batchOptions]);
+    setSelectedBatchIds((prev) => (prev.length > 0 ? prev : defaultBatchIds));
+  }, [defaultBatchIds]);
 
   function toggleBatch(id: string) {
     setSelectedBatchIds((prev) => (prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]));
@@ -168,7 +173,7 @@ export default function TeacherResources() {
   function resetUploadForm() {
     setTitle("");
     setType("worksheet");
-    setSelectedBatchIds(batchOptions[0]?.id ? [batchOptions[0].id] : []);
+    setSelectedBatchIds(defaultBatchIds);
     setFile(null);
     setUploadError(null);
     setUploadAttempted(false);
@@ -335,6 +340,7 @@ export default function TeacherResources() {
                           aria-pressed={selectedBatchIds.includes(b.id)}
                           onClick={() => toggleBatch(b.id)}
                         >
+                          {selectedBatchIds.includes(b.id) && <Check className="h-3 w-3" />}
                           {b.name}
                         </Button>
                       ))}
@@ -356,7 +362,7 @@ export default function TeacherResources() {
                 <Button variant="outline" onClick={() => setUploadOpen(false)}>
                   Cancel
                 </Button>
-                <Button disabled={!title.trim() || selectedBatchIds.length === 0 || submitting} onClick={handleUpload}>
+                <Button disabled={submitting} onClick={handleUpload}>
                   {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {submitting ? "Uploading…" : "Upload"}
                 </Button>
               </DialogFooter>

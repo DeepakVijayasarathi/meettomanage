@@ -23,6 +23,10 @@ interface ConfirmDialogProps {
    * onConfirm keeps the original fire-and-forget, closes-immediately behavior.
    */
   onConfirm: () => void | Promise<unknown>;
+  /** Extra fields under the description (e.g. a required reason). */
+  children?: ReactNode;
+  /** Keeps the confirm button disabled, e.g. until a required field is filled in. */
+  confirmDisabled?: boolean;
 }
 
 export function ConfirmDialog({
@@ -34,6 +38,8 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   destructive,
   onConfirm,
+  children,
+  confirmDisabled,
 }: ConfirmDialogProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +79,7 @@ export function ConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
+        {children}
         {error && (
           <p role="alert" className="text-sm font-medium text-destructive">
             {error}
@@ -82,7 +89,7 @@ export function ConfirmDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             {cancelLabel}
           </Button>
-          <Button variant={destructive ? "destructive" : "default"} onClick={handleConfirm} disabled={busy}>
+          <Button variant={destructive ? "destructive" : "default"} onClick={handleConfirm} disabled={busy || confirmDisabled}>
             {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {confirmLabel}
           </Button>

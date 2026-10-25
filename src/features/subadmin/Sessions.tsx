@@ -11,6 +11,7 @@ import { RecordingsDialog } from "@/components/RecordingsDialog";
 import { GuestLinkDialog } from "@/components/GuestLinkDialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -106,6 +107,9 @@ export default function SubAdminSessions() {
   }, [dateFilter]);
   const [rescheduleTarget, setRescheduleTarget] = useState<ClassSession | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ClassSession | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  // A demo with a booking is cancelled through its lead, which records its own reason.
+  const cancelNeedsReason = !!cancelTarget && !(cancelTarget.type === "demo" && canCancelDemos);
   const [recordingsFor, setRecordingsFor] = useState<ClassSession | null>(null);
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
@@ -242,7 +246,7 @@ export default function SubAdminSessions() {
         }
         if (!canManage) throw new Error("This demo has no booking to cancel. Please ask an admin to cancel it.");
       }
-      await cancelSession(cancelTarget.id, "Cancelled by relationship manager");
+      await cancelSession(cancelTarget.id, cancelReason.trim() || "Cancelled by relationship manager");
       notify(true, `"${cancelTarget.title}" cancelled. Parents and the teacher can see the change.`);
       reload();
     } catch (err) {
@@ -693,13 +697,34 @@ export default function SubAdminSessions() {
 
       <ConfirmDialog
         open={!!cancelTarget}
-        onOpenChange={(open) => !open && setCancelTarget(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelTarget(null);
+            setCancelReason("");
+          }
+        }}
         title="Cancel this session?"
         description={cancelTarget ? `"${cancelTarget.title}" will be cancelled. Parents and the teacher will see the change.` : undefined}
         confirmLabel="Cancel Session"
         destructive
+        confirmDisabled={cancelNeedsReason && cancelReason.trim().length === 0}
         onConfirm={handleCancel}
-      />
+      >
+        {cancelNeedsReason && (
+          <div className="grid gap-1.5">
+            <Label htmlFor="cancel-reason">Reason for cancelling</Label>
+            <Textarea
+              id="cancel-reason"
+              rows={3}
+              maxLength={400}
+              placeholder="e.g. Teacher unwell today — class will be rescheduled this week"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Parents and the teacher will see this reason.</p>
+          </div>
+        )}
+      </ConfirmDialog>
 
       {recordingsFor && <RecordingsDialog session={recordingsFor} onClose={() => setRecordingsFor(null)} />}
       {guestLinkSession && <GuestLinkDialog session={guestLinkSession} onClose={() => setGuestLinkSession(null)} />}
