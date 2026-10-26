@@ -64,7 +64,7 @@ export default function ParentAppEditor({ values, set, disabled, tenantId, token
             <Smartphone className="h-5 w-5 text-primary" />
             <h3 id="app-readiness-title" className="font-semibold">Mobile app readiness</h3>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">Configuration health for this tenant. Runtime usage monitoring is tracked separately in the implementation TODO.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Configuration health for this tenant. Runtime usage appears in the app monitor above.</p>
         </div>
         <div className={`rounded-full px-3 py-1 text-xs font-semibold ${readinessPercent === 100 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
           {readyCount}/{readiness.length} ready · {readinessPercent}%
