@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   Award,
+  ArrowRight,
   BookOpen,
   CalendarCheck2,
   Flame,
@@ -447,6 +448,14 @@ function ApiStudentDashboard() {
           Could not load {firstName}'s progress ({dashboardError}) — the stats below may be incomplete.
         </InlineAlert>
       )}
+
+      <Link to="/student/mito" className="mb-6 block rounded-2xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+        <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-primary to-role-teacher p-5 text-primary-foreground shadow-pop transition-transform hover:-translate-y-0.5 sm:p-6">
+          <span className="flex h-14 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/95 text-primary"><Sparkles className="h-7 w-7" /></span>
+          <div className="min-w-0 flex-1"><p className="text-xl font-bold">Learn with Mito</p><p className="text-sm text-white/85">Ask a doubt, build today's plan, or review a mistake.</p></div>
+          <ArrowRight className="h-5 w-5 shrink-0" />
+        </div>
+      </Link>
 
       {/* Today's class */}
       <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 sm:p-8">
