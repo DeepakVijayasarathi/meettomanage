@@ -198,6 +198,7 @@ export const PARENT_NAV: NavSection[] = [
       { label: "Resources", to: "/parent/resources", icon: FolderOpen },
       { label: "Recordings", to: "/parent/recordings", icon: Video },
       { label: "Student View", to: "/student", icon: Sparkles },
+      { label: "Mito AI Companion", to: "/parent/mito", icon: MessageCircleQuestion },
     ],
   },
   {

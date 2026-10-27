@@ -165,6 +165,7 @@ const ManagementPerformance = lazy(() => import("@/features/management/Performan
 const ManagementReports = lazy(() => import("@/features/management/Reports"));
 
 const StudentDashboard = lazy(() => import("@/features/student/Dashboard"));
+const Mito = lazy(() => import("@/features/student/Mito"));
 
 function RouteFallback() {
   return (
@@ -460,6 +461,7 @@ export default function App() {
               <Route path="notifications" element={<ParentNotifications />} />
               <Route path="support" element={<ParentSupport />} />
               <Route path="add-child" element={<ParentAddChild />} />
+              <Route path="mito" element={<Mito />} />
             </Route>
 
             {/* Subadmin/Admission/Coordinator/Management are one shared pool of pages, not 4
@@ -659,6 +661,7 @@ export default function App() {
             {/* The student view doubles as the parent's "what my child sees" preview. */}
             <Route path="/student" element={<RequireAuth role="student" also={["parent"]}><AppShell role="student"><Outlet /></AppShell></RequireAuth>}>
               <Route index element={<StudentDashboard />} />
+              <Route path="mito" element={<Mito />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
