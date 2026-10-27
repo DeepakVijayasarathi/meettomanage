@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, LogOut, User, Settings, ShieldCheck } from "lucide-react";
+import { Menu, LogOut, User, Settings } from "lucide-react";
 import { AccountDialog } from "@/components/AccountDialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -25,7 +25,7 @@ interface TopbarProps {
 }
 
 export function Topbar({ onMenuClick, title }: TopbarProps) {
-  const { userName, logout, role } = useSession();
+  const { userName, logout } = useSession();
   const navigate = useNavigate();
   const [accountOpen, setAccountOpen] = useState(false);
   const [accountTab, setAccountTab] = useState<"profile" | "preferences">("profile");
@@ -71,12 +71,6 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
             <DropdownMenuItem onClick={() => openAccount("preferences")}>
               <Settings /> Preferences
             </DropdownMenuItem>
-            {role === "admin" && !getViewAs() && <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => window.location.assign("/platform/tenants")}>
-                <ShieldCheck /> Tenant administration
-              </DropdownMenuItem>
-            </>}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => {

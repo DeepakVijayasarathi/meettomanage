@@ -10,15 +10,10 @@ vi.mock("@/components/NotificationPanel", () => ({ NotificationPanel: () => null
 vi.mock("@/components/NetworkStatus", () => ({ NetworkStatus: () => null }));
 vi.mock("@/components/ThemeToggle", () => ({ ThemeToggle: () => null }));
 
-describe("Tenant Admin profile entry", () => {
-  beforeEach(() => { sessionStorage.clear(); session.role = "admin"; });
-  it("provides the separate administration entry for a client administrator", async () => {
-    render(<MemoryRouter><Topbar onMenuClick={() => {}} /></MemoryRouter>);
-    fireEvent.keyDown(screen.getByRole("button", { name: "Account menu for Test administrator" }), { key: "ArrowDown" });
-    expect(await screen.findByRole("menuitem", { name: "Tenant administration" })).toBeInTheDocument();
-  });
-  it("does not show platform administration to a teacher", async () => {
-    session.role = "teacher";
+describe("Profile menu", () => {
+  beforeEach(() => { sessionStorage.clear(); });
+  it.each(["admin", "teacher"])("does not show Tenant administration to a %s", async (role) => {
+    session.role = role;
     render(<MemoryRouter><Topbar onMenuClick={() => {}} /></MemoryRouter>);
     fireEvent.keyDown(screen.getByRole("button", { name: "Account menu for Test administrator" }), { key: "ArrowDown" });
     await screen.findByRole("menuitem", { name: "Profile" });
