@@ -18,6 +18,7 @@ const PlatformPlans = lazy(() => import("@/features/platform/Plans"));
 const PlatformSubscriptions = lazy(() => import("@/features/platform/Subscriptions"));
 const PlatformRevenue = lazy(() => import("@/features/platform/Revenue"));
 const PlatformReminders = lazy(() => import("@/features/platform/Reminders"));
+const PlatformAuditLog = lazy(() => import("@/features/platform/AuditLog"));
 const PlatformOperations = lazy(() => import("@/features/platform/Operations"));
 const AdminSubscription = lazy(() => import("@/features/admin/Subscription"));
 const Signup = lazy(() => import("@/features/public/Signup"));
@@ -196,6 +197,7 @@ export default function App() {
             <Route path="/platform/subscriptions" element={<PlatformSubscriptions />} />
             <Route path="/platform/revenue" element={<PlatformRevenue />} />
             <Route path="/platform/reminders" element={<PlatformReminders />} />
+            <Route path="/platform/audit-log" element={<PlatformAuditLog />} />
             <Route path="/platform/operations" element={<PlatformOperations />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/" element={<MarketingTranslationLayer><MarketingHome /></MarketingTranslationLayer>} />

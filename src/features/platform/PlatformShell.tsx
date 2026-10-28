@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
-  AtSign, BellRing, Building2, ChevronDown, Eye, EyeOff, Gauge, Layers, ListTree, Loader2, LogOut, Receipt, Settings2, ShieldCheck, TrendingUp,
+  AtSign, BellRing, Building2, ChevronDown, Eye, EyeOff, Gauge, History, Layers, ListTree, Loader2, LogOut, Receipt, Settings2, ShieldCheck, TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -24,6 +24,7 @@ const groups: { title: string; items: NavItem[] }[] = [
       { to: "/platform/configuration", label: "Tenant configuration", icon: Settings2, hint: "Branding, integrations and settings" },
       { to: "/platform/email-mappings", label: "Simple SSO", icon: AtSign, hint: "One sign-in page for every client" },
       { to: "/platform/operations", label: "Tenant operations", icon: Gauge, hint: "Health, usage, onboarding and recovery" },
+      { to: "/platform/audit-log", label: "Audit log", icon: History, hint: "Who changed what, and when" },
     ],
   },
   {

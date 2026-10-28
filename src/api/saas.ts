@@ -19,6 +19,12 @@ export interface PlanInput {
   entitlements: { key: string; value: number }[];
 }
 
+export interface AuditLogRow {
+  id: string; occurredAtUtc: string; actor: string; action: string; httpMethod: string; path: string;
+  tenantId: string | null; tenantName: string | null; statusCode: number; ipAddress: string | null; detail: string | null;
+}
+export interface AuditLogPage { total: number; page: number; pageSize: number; items: AuditLogRow[] }
+
 export interface SubscriptionRow {
   tenantId: string; tenantCode: string; tenantName: string; tenantStatus: string; id: string;
   planCode: string; planName: string; status: SaasStatus;
@@ -80,6 +86,13 @@ export const saasPlatform = {
   paymentLink: (token: string, id: string) => platformRequest<{ paymentUrl: string | null }>(`/invoices/${id}/payment-link`, token, "POST"),
   revenue: (token: string) => platformRequest<RevenueSummary>("/revenue", token),
   reminders: (token: string) => platformRequest<ReminderLogRow[]>("/reminders", token),
+  auditLog: (token: string, query: { page: number; failedOnly?: boolean; actor?: string; tenantId?: string }) => {
+    const params = new URLSearchParams({ page: String(query.page), pageSize: "50" });
+    if (query.failedOnly) params.set("failedOnly", "true");
+    if (query.actor?.trim()) params.set("actor", query.actor.trim());
+    if (query.tenantId) params.set("tenantId", query.tenantId);
+    return platformRequest<AuditLogPage>(`/audit-log?${params}`, token);
+  },
   templates: (token: string) => platformRequest<EmailTemplateRow[]>("/email-templates", token),
   saveTemplate: (token: string, key: string, body: { subject: string; body: string; isActive: boolean }) =>
     platformRequest<void>(`/email-templates/${key}`, token, "PUT", body),
