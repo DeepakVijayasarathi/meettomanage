@@ -3,7 +3,7 @@ import { Bot, CalendarDays, CheckCircle2, HelpCircle, RefreshCw, Send, Sparkles,
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { answerMitoQuiz, askMito, getMitoProgress, getMitoToday, startMitoQuiz, type MitoChatTurn, type MitoMode, type MitoProgressResponse, type MitoQuizAnswer, type MitoQuizQuestion, type MitoTodayResponse } from "@/api/mito";
+import { answerMitoQuiz, askMito, getMitoConfiguration, getMitoProgress, getMitoToday, startMitoQuiz, type MitoChatTurn, type MitoConfiguration, type MitoMode, type MitoProgressResponse, type MitoQuizAnswer, type MitoQuizQuestion, type MitoTodayResponse } from "@/api/mito";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/state/session";
@@ -29,14 +29,17 @@ export default function Mito() {
   const endRef = useRef<HTMLDivElement>(null);
   const [today, setToday] = useState<MitoTodayResponse | null>(null);
   const [progress, setProgress] = useState<MitoProgressResponse | null>(null);
+  const [configuration, setConfiguration] = useState<MitoConfiguration | null>(null);
 
   useEffect(() => {
     if (!childId) return;
-    setMessages([{ role: "assistant", text: `Hi ${childName.split(" ")[0]}! I'm Mito. Ask me a learning question or let's plan your day.` }]);
+    setMessages([]);
     setToday(null); setProgress(null);
     if (apiEnabled()) {
-      void Promise.all([getMitoToday(childId), getMitoProgress(childId)]).then(([nextToday, nextProgress]) => {
-        setToday(nextToday); setProgress(nextProgress);
+      void Promise.all([getMitoConfiguration(), getMitoToday(childId), getMitoProgress(childId)]).then(([nextConfiguration, nextToday, nextProgress]) => {
+        setConfiguration(nextConfiguration); setToday(nextToday); setProgress(nextProgress);
+        const assistantName = nextConfiguration.displayName?.trim() || "Mito";
+        setMessages([{ role: "assistant", text: `Hi ${childName.split(" ")[0]}! I'm ${assistantName}. ${nextConfiguration.welcomeMessage || "Ask me a learning question or let's plan your day."}` }]);
       }).catch(() => { /* chat remains usable if a summary fails */ });
     }
   }, [childId, childName]);
@@ -52,7 +55,6 @@ export default function Mito() {
       const result = await askMito(child.id, next.slice(-20), requestMode);
       setMessages((current) => [...current, { role: "assistant", text: result.reply }]);
       setSuggestions(result.suggestedPrompts ?? []);
-      speak(result.reply);
     } catch (err) {
       setError(userMessage(err, "Mito couldn't answer just now. Please try again."));
     } finally { setSending(false); }
@@ -66,20 +68,22 @@ export default function Mito() {
   }
 
   if (!child) return <div><PageHeader eyebrow="Student experience" title="Meet Mito" description="Add or select a student before opening Mito." /></div>;
+  if (configuration?.enabled === false) return <div><PageHeader eyebrow="AI learning companion" title="Mito is not enabled" description="Your academy has not enabled the AI learning companion." /><Card className="mt-5 p-6 text-sm text-muted-foreground">Contact your academy if you believe this should be available.</Card></div>;
+  const assistantName = configuration?.displayName?.trim() || "Mito";
 
   return (
     <div className="mx-auto flex h-[calc(100vh-8rem)] max-w-5xl flex-col">
-      <PageHeader eyebrow="AI learning companion" title="Meet Mito" description={`Personal learning support for ${child.name}.`} />
+      <PageHeader eyebrow="AI learning companion" title={`Meet ${assistantName}`} description={`Personal learning support for ${child.name}.`} />
       <Card className="mt-5 flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="border-b border-border bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <MitoFace />
-            <div className="min-w-0 flex-1"><p className="font-semibold text-foreground">Your AI learning companion</p><p className="text-xs text-muted-foreground">Grounded in authorized classes and progress</p></div>
-            <Button size="icon" variant="ghost" onClick={() => window.speechSynthesis?.cancel()} aria-label="Stop Mito speaking"><Square className="h-4 w-4" /></Button>
+            <div className="min-w-0 flex-1"><p className="font-semibold text-foreground">{assistantName}, your AI learning companion</p><p className="text-xs text-muted-foreground">Grounded in authorized classes and progress</p></div>
+            {configuration?.voiceEnabled !== false && <Button size="icon" variant="ghost" onClick={() => window.speechSynthesis?.cancel()} aria-label={`Stop ${assistantName} speaking`}><Square className="h-4 w-4" /></Button>}
           </div>
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-            {MODES.map((item) => <Button key={item.mode} size="sm" variant={mode === item.mode ? "default" : "outline"} disabled={sending} className="shrink-0" onClick={() => chooseMode(item.mode, item.prompt)}><item.icon className="h-3.5 w-3.5" />{item.label}</Button>)}
-            <Button size="sm" variant={quizOpen ? "default" : "outline"} className="shrink-0" onClick={() => setQuizOpen((value) => !value)}><Trophy className="h-3.5 w-3.5" />Practice quiz</Button>
+            {MODES.filter(item => item.mode === "doubt" ? configuration?.doubtModeEnabled !== false : item.mode === "plan" ? configuration?.planModeEnabled !== false : configuration?.reviewModeEnabled !== false).map((item) => configuration?.chatEnabled !== false && <Button key={item.mode} size="sm" variant={mode === item.mode ? "default" : "outline"} disabled={sending} className="shrink-0" onClick={() => chooseMode(item.mode, item.prompt)}><item.icon className="h-3.5 w-3.5" />{item.label}</Button>)}
+            {configuration?.quizEnabled !== false && <Button size="sm" variant={quizOpen ? "default" : "outline"} className="shrink-0" onClick={() => setQuizOpen((value) => !value)}><Trophy className="h-3.5 w-3.5" />Practice quiz</Button>}
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <ContextStat icon={CalendarDays} label={today ? `${today.items.length} classes today` : "Loading today..."} />
@@ -88,7 +92,7 @@ export default function Mito() {
         </div>
 
         {quizOpen ? <QuizPanel key={child.id} childId={child.id} onClose={() => setQuizOpen(false)} /> : <div className="flex-1 space-y-3 overflow-y-auto bg-muted/20 p-4 sm:p-6" aria-live="polite">
-          {messages.map((message, index) => <div key={index} className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}><div className={cn("max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%]", message.role === "user" ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border border-border bg-card text-foreground shadow-sm")}><p className="whitespace-pre-wrap">{message.text}</p>{message.role === "assistant" && <button type="button" className="mt-2 text-muted-foreground hover:text-primary" onClick={() => speak(message.text)} aria-label="Read reply aloud"><Volume2 className="h-4 w-4" /></button>}</div></div>)}
+          {messages.map((message, index) => <div key={index} className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}><div className={cn("max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%]", message.role === "user" ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border border-border bg-card text-foreground shadow-sm")}><p className="whitespace-pre-wrap">{message.text}</p>{message.role === "assistant" && configuration?.voiceEnabled !== false && <button type="button" className="mt-2 text-muted-foreground hover:text-primary" onClick={() => speak(message.text)} aria-label="Read reply aloud"><Volume2 className="h-4 w-4" /></button>}</div></div>)}
           {sending && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Bot className="h-4 w-4 animate-pulse" />Mito is thinking...</div>}
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           {suggestions.length > 0 && !sending && <div className="flex flex-wrap gap-2">{suggestions.map((text) => <Button key={text} size="sm" variant="outline" onClick={() => void submit(text)}>{text}</Button>)}</div>}
@@ -96,7 +100,7 @@ export default function Mito() {
           <div ref={endRef} />
         </div>}
 
-        {!quizOpen && <form className="flex gap-2 border-t border-border bg-card p-3 sm:p-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+        {!quizOpen && configuration?.chatEnabled !== false && <form className="flex gap-2 border-t border-border bg-card p-3 sm:p-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
           <label htmlFor="mito-message" className="sr-only">Message Mito</label>
           <textarea id="mito-message" value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }} maxLength={2000} rows={1} disabled={sending || !apiEnabled()} placeholder="Ask Mito a question..." className="min-h-11 flex-1 resize-none rounded-xl border border-input bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
           <Button type="submit" size="icon" className="h-11 w-11 shrink-0 rounded-xl" disabled={!input.trim() || sending || !apiEnabled()} aria-label="Send message"><Send className="h-4 w-4" /></Button>

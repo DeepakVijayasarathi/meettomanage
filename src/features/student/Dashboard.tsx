@@ -36,6 +36,7 @@ import { getResourcesForBatch } from "@/data/resources";
 import { LEADERBOARD_SEED } from "@/features/classroom/classroomData";
 import { isJoinable, joinHint } from "@/features/parent/utils";
 import { formatDate, formatTimeLabel } from "@/lib/utils";
+import { getMitoConfiguration, type MitoConfiguration } from "@/api/mito";
 
 const CHILD_ID = "c-1";
 const TODAY = "2026-07-09";
@@ -349,6 +350,7 @@ export default function StudentDashboard() {
  * Badges are derived from those real numbers, never seeded.
  */
 function ApiStudentDashboard() {
+  const { data: mitoConfiguration } = useApiData<MitoConfiguration | null>(() => getMitoConfiguration(), null, null);
   const { children, activeChildId } = useSession();
   const activeChild = children.find((c) => c.id === activeChildId) ?? children[0];
 
@@ -449,13 +451,13 @@ function ApiStudentDashboard() {
         </InlineAlert>
       )}
 
-      <Link to="/student/mito" className="mb-6 block rounded-2xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+      {mitoConfiguration?.enabled !== false && <Link to="/student/mito" className="mb-6 block rounded-2xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
         <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-primary to-role-teacher p-5 text-primary-foreground shadow-pop transition-transform hover:-translate-y-0.5 sm:p-6">
           <span className="flex h-14 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/95 text-primary"><Sparkles className="h-7 w-7" /></span>
-          <div className="min-w-0 flex-1"><p className="text-xl font-bold">Learn with Mito</p><p className="text-sm text-white/85">Ask a doubt, build today's plan, or review a mistake.</p></div>
+          <div className="min-w-0 flex-1"><p className="text-xl font-bold">Learn with {mitoConfiguration?.displayName || "Mito"}</p><p className="text-sm text-white/85">{mitoConfiguration?.chatEnabled === false ? "Practise with approved quizzes." : "Ask a doubt, build today's plan, or review a mistake."}</p></div>
           <ArrowRight className="h-5 w-5 shrink-0" />
         </div>
-      </Link>
+      </Link>}
 
       {/* Today's class */}
       <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 sm:p-8">

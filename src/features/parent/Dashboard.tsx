@@ -40,6 +40,7 @@ import { CHART_PALETTE } from "@/lib/roles";
 import type { Child, ClassSession, Invoice } from "@/types";
 import { compareSessionAsc, compareSessionDesc, isJoinable, joinHint, minutesUntilStart } from "./utils";
 import { formatSchedulePreference, readSchedulePreference } from "@/lib/schedulePreference";
+import { getMitoConfiguration, type MitoConfiguration } from "@/api/mito";
 
 const PARENT_ID = "p-1";
 
@@ -69,6 +70,7 @@ export default function ParentDashboard() {
 
   // Live overlay: the API's per-child summary and real schedule replace the mock numbers
   const { data: apiDash, loading: dashLoading, error: dashError } = useApiData<ApiParentDashboard | null>(() => getParentDashboard(), null, null);
+  const { data: mitoConfiguration } = useApiData<MitoConfiguration | null>(() => getMitoConfiguration(), null, null);
   const { data: apiSessions, reload: reloadSchedule } = useApiData<ClassSession[]>(
     () => {
       const [from, to] = defaultParentScheduleWindow();
@@ -200,11 +202,11 @@ export default function ParentDashboard() {
 
       <MultiChildSwitcher />
 
-      {isEnrolled && (
+      {isEnrolled && mitoConfiguration?.enabled !== false && (
         <Link to="/parent/mito" className="mt-6 block rounded-2xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
           <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-primary to-brand-orange p-5 text-primary-foreground shadow-pop transition-transform hover:-translate-y-0.5">
             <span className="flex h-12 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/95 text-primary"><Sparkles className="h-6 w-6" /></span>
-            <div className="min-w-0 flex-1"><p className="text-lg font-bold">Hi! I am Mito.</p><p className="text-sm text-white/85">Ask a doubt · Plan today · Review and improve</p></div>
+            <div className="min-w-0 flex-1"><p className="text-lg font-bold">Learn with {mitoConfiguration?.displayName || "Mito"}</p><p className="text-sm text-white/85">{mitoConfiguration?.chatEnabled === false ? "Practise with approved quizzes" : "Ask a doubt · Plan today · Review and improve"}</p></div>
             <ArrowRight className="h-5 w-5 shrink-0" />
           </div>
         </Link>

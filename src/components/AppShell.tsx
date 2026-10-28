@@ -18,6 +18,7 @@ import { AccountSuspendedScreen } from "@/components/AccountSuspendedScreen";
 import { TimezoneMismatchBanner } from "@/components/TimezoneMismatchBanner";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import type { Role } from "@/types";
+import { getMitoConfiguration, type MitoConfiguration } from "@/api/mito";
 
 interface AppShellProps {
   role: Role;
@@ -39,6 +40,7 @@ export function AppShell({ role, children }: AppShellProps) {
     return localStorage.getItem(COLLAPSE_KEY) === "1";
   });
   const meta = ROLE_META[role];
+  const { data: mitoConfiguration } = useApiData<MitoConfiguration | null>(() => role === "parent" || role === "student" ? getMitoConfiguration() : Promise.resolve(null), null, null);
 
   // DB-maintained, role-permission-filtered sidebar: /api/menus/mine returns the
   // signed-in user's portal items minus any their assigned role can't view. The
@@ -164,7 +166,7 @@ export function AppShell({ role, children }: AppShellProps) {
         Skip to content
       </a>
       <Sidebar
-        sections={apiSections ?? NAV_BY_ROLE[role]}
+        sections={(apiSections ?? NAV_BY_ROLE[role]).map(section => ({ ...section, items: section.items.filter(item => mitoConfiguration?.enabled !== false || !item.to.endsWith("/mito")) })).filter(section => section.items.length > 0)}
         roleLabel={meta.label}
         roleHex={meta.hex}
         mobileOpen={mobileOpen}

@@ -18,6 +18,15 @@ export interface MitoProgressResponse {
 }
 export interface MitoQuizQuestion { id: string; prompt: string; courseName: string | null; options: { id: string; text: string }[] }
 export interface MitoQuizAnswer { correct: boolean; correctOptionId: string; correctAnswer: string; feedback: string }
+export interface MitoConfiguration {
+  enabled: boolean; chatEnabled: boolean; quizEnabled: boolean; voiceEnabled: boolean;
+  doubtModeEnabled: boolean; planModeEnabled: boolean; reviewModeEnabled: boolean;
+  displayName: string; welcomeMessage: string | null;
+}
+
+export function getMitoConfiguration(): Promise<MitoConfiguration> {
+  return apiFetch<MitoConfiguration>("/api/mito/config");
+}
 
 export function askMito(childId: string, messages: MitoChatTurn[], mode: MitoMode): Promise<MitoChatResponse> {
   return apiFetch<MitoChatResponse>("/api/mito/chat", { method: "POST", body: JSON.stringify({ childId, messages, mode }) });

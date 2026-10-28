@@ -12,7 +12,8 @@ export const APP_EDITOR_KEYS = new Set(["app.webBaseUrl", "app.announcement", "a
   "app.welcome.enabled", "app.welcome.title", "app.welcome.subtitle", "app.welcome.features", "app.maintenance.enabled", "app.maintenance.message",
   "app.maintenance.startsAtUtc", "app.maintenance.endsAtUtc", "app.minimumVersion", "app.forceUpgrade", "app.quickActions",
   "app.features.classes", "app.features.fees", "app.features.updates", "app.features.reports", "app.features.resources", "app.features.recordings",
-  "app.features.enrollment", "app.features.support", "app.features.feedback"]);
+  "app.features.enrollment", "app.features.support", "app.features.feedback", "app.features.mito", "app.mito.chatEnabled", "app.mito.quizEnabled",
+  "app.mito.voiceEnabled", "app.mito.modes.doubt", "app.mito.modes.plan", "app.mito.modes.review", "app.mito.displayName", "app.mito.welcomeMessage"]);
 
 /** Defaults for keys a client has never saved. Not public: only a signed-in family reads them, through the app config endpoint. */
 export const APP_DEFAULTS: Record<string, string> = { "app.webBaseUrl": "", "app.announcement": "", "app.joinOpensMinutesBefore": "10",
@@ -20,7 +21,10 @@ export const APP_DEFAULTS: Record<string, string> = { "app.webBaseUrl": "", "app
 Object.assign(APP_DEFAULTS, {
   "app.maintenance.enabled": "false", "app.maintenance.message": "", "app.maintenance.startsAtUtc": "", "app.maintenance.endsAtUtc": "",
   "app.minimumVersion": "", "app.forceUpgrade": "false", "app.quickActions": "reports,resources,recordings,support",
-  ...Object.fromEntries(["classes", "fees", "updates", "reports", "resources", "recordings", "enrollment", "support", "feedback"].map(x => [`app.features.${x}`, "true"])),
+  ...Object.fromEntries(["classes", "fees", "updates", "reports", "resources", "recordings", "enrollment", "support", "feedback", "mito"].map(x => [`app.features.${x}`, "true"])),
+  "app.mito.chatEnabled": "true", "app.mito.quizEnabled": "true", "app.mito.voiceEnabled": "true",
+  "app.mito.modes.doubt": "true", "app.mito.modes.plan": "true", "app.mito.modes.review": "true",
+  "app.mito.displayName": "Mito", "app.mito.welcomeMessage": "",
 });
 
 const isHttp = (value: string) => { try { const u = new URL(value); return u.protocol === "https:" || u.protocol === "http:"; } catch { return false; } };
@@ -113,7 +117,18 @@ export default function ParentAppEditor({ values, set, disabled, tenantId, token
       <div className="grid gap-1.5"><Label htmlFor="quick-actions">Home quick actions</Label><Input id="quick-actions" disabled={disabled} value={values["app.quickActions"] ?? ""} onChange={e => set("app.quickActions", e.target.value)} /><p className="text-xs text-muted-foreground">Comma-separated: reports, resources, recordings, support.</p></div>
     </div>
 
-    <div className="space-y-4 rounded-xl border border-border p-4"><div><Label className="font-semibold">Mobile features</Label><p className="mt-0.5 text-xs text-muted-foreground">Hidden features disappear from navigation immediately after configuration refresh.</p></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{["classes", "fees", "updates", "reports", "resources", "recordings", "enrollment", "support", "feedback"].map(feature => <label key={feature} className="flex items-center justify-between rounded-lg border p-3 text-sm font-medium capitalize"><span>{feature}</span><Switch checked={values[`app.features.${feature}`] !== "false"} disabled={disabled} onCheckedChange={v => set(`app.features.${feature}`, String(v))} /></label>)}</div></div>
+    <div className="space-y-4 rounded-xl border border-border p-4"><div><Label className="font-semibold">Mobile features</Label><p className="mt-0.5 text-xs text-muted-foreground">Hidden features disappear from navigation immediately after configuration refresh.</p></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{["classes", "fees", "updates", "reports", "resources", "recordings", "enrollment", "support", "feedback", "mito"].map(feature => <label key={feature} className="flex items-center justify-between rounded-lg border p-3 text-sm font-medium capitalize"><span>{feature === "mito" ? "Mito AI" : feature}</span><Switch checked={values[`app.features.${feature}`] !== "false"} disabled={disabled} onCheckedChange={v => set(`app.features.${feature}`, String(v))} /></label>)}</div></div>
+
+    <div className="space-y-4 rounded-xl border border-primary/20 bg-primary/[0.03] p-4">
+      <div><Label className="font-semibold">Mito AI configuration</Label><p className="mt-0.5 text-xs text-muted-foreground">These controls apply to the API, mobile app, dashboard entry points, and practice experience. Disabled capabilities are enforced by the server.</p></div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {[{ key: "chatEnabled", label: "AI chat" }, { key: "quizEnabled", label: "Practice quiz" }, { key: "voiceEnabled", label: "Read aloud" }, { key: "modes.doubt", label: "Ask a doubt" }, { key: "modes.plan", label: "Today's plan" }, { key: "modes.review", label: "Review mistakes" }].map(item => <label key={item.key} className="flex items-center justify-between rounded-lg border bg-card p-3 text-sm font-medium"><span>{item.label}</span><Switch checked={values[`app.mito.${item.key}`] !== "false"} disabled={disabled || values["app.features.mito"] === "false"} onCheckedChange={v => set(`app.mito.${item.key}`, String(v))} /></label>)}
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-1.5"><Label htmlFor="mito-display-name">Assistant name</Label><Input id="mito-display-name" maxLength={40} disabled={disabled} placeholder="Mito" value={values["app.mito.displayName"] ?? ""} onChange={e => set("app.mito.displayName", e.target.value)} /></div>
+        <div className="grid gap-1.5"><Label htmlFor="mito-welcome">Welcome message</Label><Input id="mito-welcome" maxLength={240} disabled={disabled} placeholder="Ask me a learning question or let's plan your day." value={values["app.mito.welcomeMessage"] ?? ""} onChange={e => set("app.mito.welcomeMessage", e.target.value)} /></div>
+      </div>
+    </div>
 
     <p className="text-sm text-muted-foreground">The app is built with one API address only. Everything below is read from here after a family signs in, so you can change it at any time without publishing a new app.</p>
 
