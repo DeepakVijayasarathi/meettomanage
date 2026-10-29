@@ -14,7 +14,7 @@ export const READY_BG = "linear-gradient(135deg, rgba(255,225,199,0.55) 0%, #FFF
 
 export const GRADIENT_TEXT = "bg-[linear-gradient(90deg,#F97316_0%,#F53BA6_55%,#7C5CFC_100%)] bg-clip-text text-transparent";
 export const H2 =
-  "font-display text-[clamp(2.125rem,4vw,3.5rem)] font-extrabold leading-[1.1] tracking-[-0.03em] text-[#111] rtl:tracking-normal";
+  "font-display text-[clamp(1.75rem,3.2vw,2.6rem)] font-extrabold leading-[1.1] tracking-[-0.03em] text-[#111] rtl:tracking-normal";
 /** Second-tier heading, for sub-sections inside a page that already has a hero h1. */
 export const H2_SM =
   "font-display text-[clamp(1.5rem,2.4vw,2.125rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#111] rtl:tracking-normal";
@@ -22,7 +22,7 @@ export const LEAD = "text-[clamp(1rem,1.4vw,1.1875rem)] leading-relaxed text-[#3
 export const EYEBROW = "text-xs font-bold uppercase tracking-[0.08em] text-[#C2410C]";
 export const FOCUS_RING = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F97316]";
 const CTA_BASE = `inline-flex min-w-[199px] items-center justify-center gap-2 px-8 py-4 text-[15px] font-bold uppercase tracking-[-0.01em] transition-colors disabled:pointer-events-none disabled:opacity-60 rtl:tracking-normal ${FOCUS_RING}`;
-export const CTA_ORANGE = `${CTA_BASE} bg-[#EA580C] text-white hover:bg-[#C2410C]`;
+export const CTA_ORANGE = `${CTA_BASE} bg-[#C2410C] text-white hover:bg-[#9A3412]`;
 export const CTA_DARK = `${CTA_BASE} bg-[#111] text-white hover:bg-[#262D37]`;
 export const CTA_GHOST = `${CTA_BASE} border border-[#111]/20 bg-white/60 text-[#111] hover:bg-white`;
 export const ARROW_LINK = `inline-flex items-center gap-1.5 py-2.5 text-[15px] font-bold uppercase text-[#C2410C] hover:text-[#9A3412] ${FOCUS_RING}`;

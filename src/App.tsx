@@ -3,10 +3,10 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MarketingTranslationLayer } from "@/components/MarketingTranslationLayer";
 import { Toaster } from "@/components/ui/toaster";
-import { ViewAsBanner } from "@/components/ViewAsBanner";
-import { AppShell } from "@/components/AppShell";
-import { MarketingShell } from "@/features/marketingConsole/MarketingShell";
 import { RequireAuth } from "@/components/RequireAuth";
+// The home page is the most visited route: importing it statically puts it in the first download instead of
+// behind a second request chain (entry -> route chunk -> its dependencies).
+import MarketingHome from "@/features/marketing/Home";
 import { Logo } from "@/components/Logo";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { tenantPath } from "@/lib/tenantPath";
@@ -23,13 +23,16 @@ const PlatformOperations = lazy(() => import("@/features/platform/Operations"));
 const AdminSubscription = lazy(() => import("@/features/admin/Subscription"));
 const Signup = lazy(() => import("@/features/public/Signup"));
 
-const MarketingHome = lazy(() => import("@/features/marketing/Home"));
 const Store = lazy(() => import("@/features/marketing/Store"));
 const Demo = lazy(() => import("@/features/marketing/Demo"));
 const GetStarted = lazy(() => import("@/features/marketing/GetStarted"));
 const Pricing = lazy(() => import("@/features/marketing/Pricing"));
 const BlogList = lazy(() => import("@/features/marketing/BlogList"));
 const BlogPost = lazy(() => import("@/features/marketing/BlogPost"));
+// Portal chrome is only needed once someone is signed in, so it stays out of the marketing visitor's bundle.
+const AppShell = lazy(() => import("@/components/AppShell").then((m) => ({ default: m.AppShell })));
+const MarketingShell = lazy(() => import("@/features/marketingConsole/MarketingShell").then((m) => ({ default: m.MarketingShell })));
+const ViewAsBanner = lazy(() => import("@/components/ViewAsBanner").then((m) => ({ default: m.ViewAsBanner })));
 const PrivacyPolicy = lazy(() => import("@/features/marketing/PrivacyPolicy"));
 const Login = lazy(() => import("@/features/auth/Login"));
 const PortalSelect = lazy(() => import("@/features/auth/PortalSelect"));
@@ -46,6 +49,11 @@ const ResetPin = lazy(() => import("@/features/auth/ResetPin"));
 const NotFound = lazy(() => import("@/features/auth/NotFound"));
 const AdmissionPayment = lazy(() => import("@/features/public/AdmissionPayment"));
 const Terms = lazy(() => import("@/features/public/Terms"));
+const Customers = lazy(() => import("@/features/marketing/Customers"));
+const CaseStudyReaderNest = lazy(() => import("@/features/marketing/CaseStudyReaderNest"));
+const Careers = lazy(() => import("@/features/marketing/Careers"));
+const PlatformTerms = lazy(() => import("@/features/marketing/PlatformTerms"));
+const PlatformPrivacy = lazy(() => import("@/features/marketing/PlatformPrivacy"));
 
 const AdminDashboard = lazy(() => import("@/features/admin/Dashboard"));
 const FounderDashboard = lazy(() => import("@/features/founder/Dashboard"));
@@ -208,6 +216,11 @@ export default function App() {
             <Route path="/blog" element={<MarketingTranslationLayer><BlogList /></MarketingTranslationLayer>} />
             <Route path="/blog/:slug" element={<MarketingTranslationLayer><BlogPost /></MarketingTranslationLayer>} />
             <Route path="/policy" element={<MarketingTranslationLayer><PrivacyPolicy /></MarketingTranslationLayer>} />
+            <Route path="/customers" element={<MarketingTranslationLayer><Customers /></MarketingTranslationLayer>} />
+            <Route path="/customers/the-reader-nest" element={<MarketingTranslationLayer><CaseStudyReaderNest /></MarketingTranslationLayer>} />
+            <Route path="/careers" element={<MarketingTranslationLayer><Careers /></MarketingTranslationLayer>} />
+            <Route path="/privacy" element={<MarketingTranslationLayer><PlatformPrivacy /></MarketingTranslationLayer>} />
+            <Route path="/legal/terms" element={<MarketingTranslationLayer><PlatformTerms /></MarketingTranslationLayer>} />
             <Route path="/login" element={<Login />} />
             <Route path="/portal-select" element={<PortalSelect />} />
             <Route path="/forgot-pin" element={<ForgotPin />} />
@@ -672,7 +685,9 @@ export default function App() {
         </AppErrorBoundary>
       </BrowserRouter>
       <Toaster />
-      <ViewAsBanner />
+      <Suspense fallback={null}>
+        <ViewAsBanner />
+      </Suspense>
     </TooltipProvider>
   );
 }

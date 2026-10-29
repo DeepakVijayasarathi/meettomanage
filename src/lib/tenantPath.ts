@@ -47,6 +47,25 @@ export function hasTenantSessionMismatch(pathname = window.location.pathname): b
   return Boolean(path && sessionCode && path !== `/t/${sessionCode}`);
 }
 
+type TenantResolve = { tenantCode?: string | null };
+
+/** index.html starts this request before the app bundle has even downloaded, so the round trip overlaps
+ *  the JavaScript download instead of following it (see the inline script there). */
+function earlyResolve(): Promise<TenantResolve | null> | undefined {
+  return (window as Window & { __m2mTenantResolve?: Promise<TenantResolve | null> }).__m2mTenantResolve;
+}
+
+async function fetchResolve(root: string): Promise<TenantResolve | null> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 4_000);
+  try {
+    const response = await fetch(`${root}/api/tenant/resolve`, { headers: { Accept: "application/json" }, signal: controller.signal });
+    return response.ok ? ((await response.json()) as TenantResolve) : null;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 /** Resolve a verified custom hostname before branding, routing or session state loads. */
 export async function discoverHostTenant(): Promise<{ code: string | null; mismatch: boolean }> {
   hostTenantCode = null;
@@ -54,15 +73,11 @@ export async function discoverHostTenant(): Promise<{ code: string | null; misma
   const root = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
   if (!root) return { code: null, mismatch: false };
   try {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 4_000);
-    const response = await fetch(`${root}/api/tenant/resolve`, {
-      headers: { Accept: "application/json" },
-      signal: controller.signal,
-    }).finally(() => window.clearTimeout(timeout));
-    if (!response.ok) return { code: null, mismatch: false };
-    const result = await response.json() as { tenantCode?: string | null };
-    const code = result.tenantCode && TENANT_CODE.test(result.tenantCode) ? result.tenantCode : null;
+    const early = earlyResolve();
+    const result = early
+      ? await Promise.race([early, new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 4_000))])
+      : await fetchResolve(root);
+    const code = result?.tenantCode && TENANT_CODE.test(result.tenantCode) ? result.tenantCode : null;
     if (!code) return { code: null, mismatch: false };
     hostTenantCode = code;
     return { code, mismatch: Boolean(sessionTenantCode() && sessionTenantCode() !== code) };

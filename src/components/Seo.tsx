@@ -35,6 +35,14 @@ export function Seo({ pageKey, title: titleFallback, description: descriptionFal
     if (!noindex) void trackMarketingPageView(path, titleRef.current);
   }, [path, noindex]);
 
+  // index.html ships site-wide default tags for crawlers that don't run JavaScript. Once a page declares its own,
+  // two canonicals (or two descriptions) would conflict, so the defaults are dropped; Helmet's own tags carry data-rh.
+  useEffect(() => {
+    document.head
+      .querySelectorAll('link[rel="canonical"]:not([data-rh]), meta[name="description"]:not([data-rh]), meta[property^="og:"]:not([data-rh]), meta[name^="twitter:"]:not([data-rh])')
+      .forEach((el) => el.remove());
+  }, [path, title, description]);
+
   return (
     <Helmet>
       <title>{title}</title>

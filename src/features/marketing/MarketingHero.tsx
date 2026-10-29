@@ -27,7 +27,7 @@ export function MarketingHero({ eyebrow, title, sub, overlap, children }: Market
             {eyebrow}
           </div>
         )}
-        <h1 className="font-display mx-auto mt-5 max-w-[22ch] text-[clamp(2.25rem,4.4vw,4rem)] font-extrabold leading-[1.08] tracking-[-0.03em] rtl:tracking-normal">
+        <h1 className="font-display mx-auto mt-5 max-w-[22ch] text-[clamp(1.9rem,3.6vw,2.9rem)] font-extrabold leading-[1.08] tracking-[-0.03em] rtl:tracking-normal">
           {title}
         </h1>
         {sub && <p className="mx-auto mt-5 max-w-2xl text-[clamp(1rem,1.4vw,1.1875rem)] leading-relaxed text-[#333]">{sub}</p>}
