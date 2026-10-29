@@ -7,7 +7,7 @@ import { apiTenantPath } from "@/lib/tenantPath";
 
 const API_ROOT: string = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 /** Read per request: a single-URL login sets the tenant after this module has loaded. */
-const baseUrl = () => API_ROOT + apiTenantPath();
+const baseUrl = (tenantScoped: boolean) => API_ROOT + (tenantScoped ? apiTenantPath() : "");
 
 const TOKEN_KEY = "trn.accessToken";
 
@@ -133,15 +133,15 @@ async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
   }
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function fetchApi<T>(path: string, init: RequestInit | undefined, tenantScoped: boolean, includeAuth: boolean): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set("Accept", "application/json");
   // FormData sets its own multipart boundary; forcing JSON would corrupt uploads
   if (init?.body != null && !(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
-  const token = getAccessToken();
+  const token = includeAuth ? getAccessToken() : null;
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  let response = await safeFetch(`${baseUrl()}${path}`, { ...init, headers });
+  let response = await safeFetch(`${baseUrl(tenantScoped)}${path}`, { ...init, headers });
 
   // Any request that 401s is retried once before treating it as a real logout — this is
   // exactly the shape of a transient hiccup (the backend re-verifies the account's live
@@ -160,7 +160,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   // session, register a recording, post engagement) rather than GET.
   if (response.status === 401 && token && !path.startsWith("/api/auth/")) {
     await new Promise((resolve) => setTimeout(resolve, 400));
-    response = await safeFetch(`${baseUrl()}${path}`, { ...init, headers });
+    response = await safeFetch(`${baseUrl(tenantScoped)}${path}`, { ...init, headers });
   }
 
   // An expired/revoked token means the session is no longer authenticated: clear it
@@ -169,7 +169,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     // A read-only "view as parent" tab has no login page to go back to: it just ends.
     const viewAs = getViewAs() !== null;
     clearAuthStorage();
-    window.location.assign(viewAs ? "/view-as?ended=1" : "/login");
+    window.location.assign(viewAs ? "/view-as?ended=1" : window.location.pathname.startsWith("/marketing") ? "/marketing/login" : "/login");
   }
 
   if (!response.ok) {
@@ -185,10 +185,20 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
+/** Tenant-scoped API request used by academy portals. */
+export function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  return fetchApi<T>(path, init, true, true);
+}
+
+/** Platform-wide request that must never inherit the last academy's /t/{code} prefix. */
+export function apiFetchGlobal<T>(path: string, init?: RequestInit, includeAuth = true): Promise<T> {
+  return fetchApi<T>(path, init, false, includeAuth);
+}
+
 /** Downloads a file response (a bulk-export CSV) with the auth token and saves it as `filename`. */
 export async function downloadFile(path: string, filename: string): Promise<void> {
   const token = getAccessToken();
-  const response = await safeFetch(`${baseUrl()}${path}`, {
+  const response = await safeFetch(`${baseUrl(true)}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 

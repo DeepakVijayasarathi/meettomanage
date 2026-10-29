@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiFetch, getAccessToken, setAccessToken } from "./api";
+import { ApiError, apiFetch, apiFetchGlobal, getAccessToken, setAccessToken } from "./api";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -41,6 +41,24 @@ describe("apiFetch", () => {
     const [, init] = vi.mocked(fetch).mock.calls[0];
     const headers = new Headers(init?.headers);
     expect(headers.has("Authorization")).toBe(false);
+  });
+
+  it("keeps platform-global requests outside the remembered tenant prefix", async () => {
+    localStorage.setItem("trn.tenantCode", "academy-one");
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse([]));
+
+    await apiFetchGlobal("/api/blog", undefined, false);
+
+    expect(vi.mocked(fetch).mock.calls[0][0]).toBe("/api/blog");
+  });
+
+  it("keeps normal academy requests tenant-scoped", async () => {
+    localStorage.setItem("trn.tenantCode", "academy-one");
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse([]));
+
+    await apiFetch("/api/sessions");
+
+    expect(vi.mocked(fetch).mock.calls[0][0]).toBe("/t/academy-one/api/sessions");
   });
 
   it("returns parsed JSON on success", async () => {

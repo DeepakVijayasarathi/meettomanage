@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiEnabled, getAccessToken, setAccessToken, userMessage } from "@/lib/api";
-import { login } from "@/api/auth";
+import { loginMarketing } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
 import { useSession } from "@/state/session";
 
@@ -39,7 +39,7 @@ export default function MarketingLogin() {
     setSubmitting(true);
     setError(null);
     try {
-      const response = await login(email.trim(), pin);
+      const response = await loginMarketing(email.trim(), pin);
       if (toFrontendRole(response.user.role) !== "marketing") {
         setAccessToken(null);
         throw new Error("Sign in failed. Please check your email and PIN.");

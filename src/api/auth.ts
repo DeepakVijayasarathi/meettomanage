@@ -1,8 +1,18 @@
-import { apiFetch, getAccessToken, setAccessToken } from "@/lib/api";
+import { apiFetch, apiFetchGlobal, getAccessToken, setAccessToken } from "@/lib/api";
 import type { LoginResponse } from "./types";
 
 export async function login(email: string, pin: string): Promise<LoginResponse> {
   const response = await apiFetch<LoginResponse>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, pin }),
+  });
+  setAccessToken(response.accessToken);
+  return response;
+}
+
+/** The marketing account belongs to the platform, not to any academy tenant. */
+export async function loginMarketing(email: string, pin: string): Promise<LoginResponse> {
+  const response = await apiFetchGlobal<LoginResponse>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, pin }),
   });
