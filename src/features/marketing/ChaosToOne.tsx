@@ -163,7 +163,7 @@ export function ChaosToOne({ lang, brandName }: { lang: Lang; brandName: string 
           {TOOLS.map((tool, i) => (
             <div
               key={tool.key}
-              className="absolute z-10 motion-safe:transition-[left,top,transform,opacity] motion-safe:duration-[900ms] motion-safe:ease-[cubic-bezier(.6,0,.9,.4)]"
+              className="absolute z-10 motion-safe:transition-[left,top,transform,opacity] motion-safe:duration-1000 motion-safe:ease-in"
               style={{
                 left: merged ? "50%" : `${tool.at.l}%`,
                 top: merged ? "50%" : `${tool.at.t}%`,
@@ -193,7 +193,7 @@ export function ChaosToOne({ lang, brandName }: { lang: Lang; brandName: string 
 
             <div
               className={cn(
-                "order-1 col-span-2 mx-auto w-full max-w-[320px] rounded-2xl border bg-white p-5 text-center motion-safe:transition-[transform,opacity] motion-safe:duration-700 motion-safe:ease-[cubic-bezier(.34,1.56,.64,1)] md:order-2 md:col-span-1",
+                "order-1 col-span-2 mx-auto w-full max-w-[320px] rounded-2xl border bg-white p-5 text-center motion-safe:transition-[transform,opacity] motion-safe:duration-700 motion-safe:ease-out md:order-2 md:col-span-1",
                 merged ? "m2m-glow scale-100 border-[#F97316]/50 opacity-100" : "pointer-events-none scale-50 border-[#D9E1F0] opacity-0"
               )}
               style={{ transitionDelay: merged ? "650ms" : "0ms" }}

@@ -9,7 +9,7 @@
  * IDs are format-checked before they go anywhere near a script URL; a malformed value is
  * ignored rather than injected.
  */
-import { apiEnabled, apiFetch } from "@/lib/api";
+import { apiEnabled, apiFetchGlobal } from "@/lib/api";
 import { getPublicSettings, toSettingsMap } from "@/api/settings";
 
 export const ANALYTICS_KEYS = {
@@ -112,6 +112,14 @@ function install() {
 }
 
 const VISITOR_KEY = "mtm.visitorId";
+const ATTRIBUTION_KEY = "mtm.marketingAttribution";
+
+export type MarketingAttribution = {
+  referrerHost?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+};
 
 /** Random per-browser id for counting unique visitors on the first-party dashboard; identifies no one. */
 function visitorId(): string {
@@ -127,8 +135,12 @@ function visitorId(): string {
   }
 }
 
-/** Where this visit came from: UTM tags on the landing URL, else an external referrer's host. */
-function attribution() {
+/**
+ * Preserve campaign attribution for the browser tab. SPA navigation removes the landing
+ * page's UTM query string, so reading only the current URL made later page views and chat
+ * starts look like direct traffic. The stored values are campaign labels only, never form data.
+ */
+export function marketingAttribution(): MarketingAttribution {
   const params = new URLSearchParams(window.location.search);
   let referrerHost: string | undefined;
   try {
@@ -137,22 +149,34 @@ function attribution() {
   } catch {
     /* unparseable referrer -- treat as direct */
   }
-  return {
+  const current: MarketingAttribution = {
     referrerHost,
     utmSource: params.get("utm_source") ?? undefined,
     utmMedium: params.get("utm_medium") ?? undefined,
     utmCampaign: params.get("utm_campaign") ?? undefined,
   };
+  const hasCurrent = Object.values(current).some(Boolean);
+  try {
+    if (hasCurrent) {
+      sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(current));
+      return current;
+    }
+    const stored = JSON.parse(sessionStorage.getItem(ATTRIBUTION_KEY) ?? "null") as MarketingAttribution | null;
+    if (stored && typeof stored === "object") return stored;
+  } catch {
+    /* Storage can be unavailable or contain stale invalid JSON; current attribution still works. */
+  }
+  return current;
 }
 
 /** First-party beacon to the marketing console's own dashboard; never blocks or throws. */
 function beacon(type: "page_view" | "chat_started", path: string) {
   if (!apiEnabled()) return;
-  void apiFetch<void>("/api/marketing/track", {
+  void apiFetchGlobal<void>("/api/marketing/track", {
     method: "POST",
     keepalive: true,
-    body: JSON.stringify({ type, path, visitorId: visitorId(), ...attribution() }),
-  }).catch(() => {
+    body: JSON.stringify({ type, path, visitorId: visitorId(), ...marketingAttribution() }),
+  }, false).catch(() => {
     /* analytics must never get in a visitor's way */
   });
 }
