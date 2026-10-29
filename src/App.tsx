@@ -7,7 +7,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 // The home page is the most visited route: importing it statically puts it in the first download instead of
 // behind a second request chain (entry -> route chunk -> its dependencies).
 import MarketingHome from "@/features/marketing/Home";
-import { Logo } from "@/components/Logo";
+import { BrandLoader } from "@/components/BrandLoader";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { tenantPath } from "@/lib/tenantPath";
 const PlatformTenants = lazy(() => import("@/features/platform/Tenants"));
@@ -179,12 +179,7 @@ const Mito = lazy(() => import("@/features/student/Mito"));
 function RouteFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-4">
-        <Logo showWordmark={false} imgClassName="h-12 w-12 animate-pulse" />
-        <div className="h-1 w-32 overflow-hidden rounded-full bg-muted">
-          <div className="h-full w-1/2 animate-pulse rounded-full bg-primary" />
-        </div>
-      </div>
+      <BrandLoader />
     </div>
   );
 }
