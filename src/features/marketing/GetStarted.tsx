@@ -1,18 +1,16 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Building2, CheckCircle2, Loader2, Megaphone } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowRight, CheckCircle2, CreditCard, Landmark, Loader2, Mail, MessageCircle, MessageSquare, Phone, User, Users, Video, type LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Logo } from "@/components/Logo";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import { Seo } from "@/components/Seo";
 import { apiEnabled } from "@/lib/api";
 import { requestPlatformDemo } from "@/api/marketing";
 import { cn } from "@/lib/utils";
-import { MarketingHero } from "./MarketingHero";
-import { CARD, CTA_DARK, CTA_ORANGE, EYEBROW, HERO_OVERLAP } from "./styles";
+import { MarketingFooter } from "./MarketingFooter";
+import { MarketingNav } from "./MarketingNav";
+import { CTA_DARK, CTA_ORANGE } from "./styles";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
 
@@ -113,6 +111,56 @@ const T = {
   },
 };
 
+/** Copy for the two-panel layout: the pitch on the left, the form on the right. */
+const PANEL = {
+  en: {
+    eyebrow: "Request a demo",
+    heading: ["See how Meet to Manage works for", "your academy."],
+    sub: "Get a personalised walkthrough of live classes, admissions, fees and parent updates, as one platform.",
+    features: [
+      { title: "Live Classes", body: "Smoother teaching experience" },
+      { title: "Admissions", body: "Track and convert enquiries" },
+      { title: "Fees & Payments", body: "Simple and secure" },
+      { title: "Parent Updates", body: "Keep everyone informed" },
+    ],
+    noCommit: "No commitment. We'll follow up at a convenient time.",
+    formTitle: "Request a Demo",
+    formSub: "Share a few details and we'll get in touch to schedule a demo for your academy.",
+  },
+  ar: {
+    eyebrow: "اطلب عرضًا توضيحيًا",
+    heading: ["شاهد كيف تعمل Meet to Manage مع", "أكاديميتك."],
+    sub: "احصل على جولة مخصصة في الحصص المباشرة والقبول والرسوم وتحديثات أولياء الأمور، كمنصة واحدة.",
+    features: [
+      { title: "الحصص المباشرة", body: "تجربة تدريس أسلس" },
+      { title: "القبول", body: "تتبّع الاستفسارات وحوّلها" },
+      { title: "الرسوم والمدفوعات", body: "بسيطة وآمنة" },
+      { title: "تحديثات أولياء الأمور", body: "أبقِ الجميع على اطلاع" },
+    ],
+    noCommit: "دون التزام. سنتواصل معك في وقت مناسب.",
+    formTitle: "اطلب عرضًا توضيحيًا",
+    formSub: "شاركنا بعض التفاصيل وسنتواصل معك لتحديد موعد عرض لأكاديميتك.",
+  },
+};
+
+const PANEL_TILES = [
+  { icon: Video, bg: "from-[#FFF3EA] to-[#FFDFC8]", fg: "#C2410C" },
+  { icon: Users, bg: "from-[#FFF3EA] to-[#FFDFC8]", fg: "#C2410C" },
+  { icon: CreditCard, bg: "from-[#FFF3EA] to-[#FFDFC8]", fg: "#C2410C" },
+  { icon: MessageSquare, bg: "from-[#FFF3EA] to-[#FFDFC8]", fg: "#C2410C" },
+];
+
+/** A form field with a leading icon, rounded, in the page's soft style. */
+function Field({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <Icon aria-hidden className="pointer-events-none absolute start-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#44403C]" />
+      {children}
+    </div>
+  );
+}
+const FIELD = "h-12 w-full !rounded-xl border border-[#EBD9C8] bg-white ps-11 pe-3 text-sm text-[#1C1917] shadow-none placeholder:text-[#8A817A] focus:border-[#F97316] focus-visible:ring-2 focus-visible:ring-[#F97316]/25";
+
 const EMPTY_FORM = { fullName: "", workEmail: "", phone: "", academyName: "", message: "" };
 
 export default function GetStarted() {
@@ -120,6 +168,7 @@ export default function GetStarted() {
   const live = apiEnabled();
   const [lang] = useLang();
   const t = T[lang];
+  const pc = PANEL[lang];
   // ?for=coach arrives from the homepage's "Influencers & personal-brand coaches" Solutions
   // card and the Pricing page's Pay As You Grow plan — same form and same sales-assisted
   // flow underneath, just reframed so a solo coach isn't greeted with "academy owners" copy
@@ -177,134 +226,99 @@ export default function GetStarted() {
         path="/get-started"
       />
 
-      <header className="sticky top-0 z-30 border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link to="/" aria-label="Meet to Manage home">
-            <Logo wordmarkClassName="mix-blend-multiply" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <LanguageToggle />
-            <Button asChild variant="ghost">
-              <Link to="/">
-                <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /> {t.backHome}
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <MarketingNav />
 
-      <MarketingHero
-        eyebrow={
-          <>
-            {isCoach ? <Megaphone className="h-3.5 w-3.5 text-[#F97316]" /> : <Building2 className="h-3.5 w-3.5 text-[#F97316]" />}
-            {isCoach ? t.badgeCoach : t.badgeAcademy}
-          </>
-        }
-        title={isCoach ? t.headingCoach : t.headingAcademy}
-        sub={isCoach ? t.introCoach : t.introAcademy}
-        overlap
-      />
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#FFF3EA] via-[#FFF8F3] to-white px-5 py-[clamp(32px,5vw,72px)]">
+        <div className="mx-auto max-w-[1160px] overflow-hidden rounded-[28px] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05),0_40px_80px_-40px_rgba(194,65,12,0.35)] ring-1 ring-[#F6E3D3]">
+          <div className="grid lg:grid-cols-[1.05fr_1fr]">
+            <div className="relative overflow-hidden p-7 sm:p-10 lg:p-12">
+              <p className="relative text-xs font-bold uppercase tracking-[0.12em] text-[#C2410C] rtl:tracking-normal">{pc.eyebrow}</p>
+              <h1 className="font-display relative mt-3 text-[clamp(1.7rem,2.7vw,2.4rem)] font-extrabold leading-[1.1] tracking-[-0.03em] text-[#1C1917] rtl:tracking-normal">
+                {isCoach ? t.headingCoach : <>{pc.heading[0]} <span className="text-[#C2410C]">{pc.heading[1]}</span></>}
+              </h1>
+              <p className="relative mt-3 max-w-[46ch] text-[15px] leading-relaxed text-[#57534E]">{isCoach ? t.introCoach : pc.sub}</p>
 
-      <section className="mx-auto max-w-[1160px] px-5 pb-[clamp(72px,8vw,120px)]">
-        <div className={cn(CARD, HERO_OVERLAP, "grid grid-cols-1 lg:grid-cols-2")}>
-        <div className="p-8 sm:p-12">
-          <p className={EYEBROW}>{t.includedHeading}</p>
-          <ul className="mt-6 flex flex-col gap-5">
-            {(isCoach ? t.includedCoach : t.includedAcademy).map((item) => (
-              <li key={item} className="flex items-start gap-3 border-b border-[#D9E1F0] pb-5 last:border-b-0 last:pb-0">
-                <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-[#EA580C]" />
-                <span className="text-base leading-relaxed text-[#111]">{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="border-t border-[#D9E1F0] bg-[#F8F9FB] p-8 sm:p-12 lg:border-s lg:border-t-0">
-          {submitted ? (
-            <div className="flex flex-col items-center py-6 text-center">
-              <span className="mb-4 flex h-12 w-12 items-center justify-center bg-[#FFF3EA] text-[#EA580C]">
-                <CheckCircle2 className="h-6 w-6" />
-              </span>
-              <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{t.thanksHeading}</h2>
-              <p className="mt-1.5 text-sm text-[#5B6472]">
-                {live ? (isCoach ? t.thanksCoach : t.thanksAcademy) : t.demoModeNote}
+              <div className="relative mt-7 flex items-end gap-2">
+              <ul className="flex min-w-0 flex-1 flex-col gap-3">
+                {pc.features.map((f, i) => {
+                  const Icon = PANEL_TILES[i].icon;
+                  return (
+                    <li key={f.title} className="flex items-center gap-4">
+                      <span className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-b shadow-[0_6px_14px_-8px_rgba(28,25,23,0.45)] ring-1 ring-white", PANEL_TILES[i].bg)} style={{ color: PANEL_TILES[i].fg }}><Icon className="h-6 w-6" /></span>
+                      <span><span className="block text-[15px] font-bold text-[#1C1917]">{f.title}</span><span className="block text-sm text-[#57534E]">{f.body}</span></span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div aria-hidden="true" className="relative hidden w-[210px] shrink-0 self-stretch xl:block">
+                <div className="absolute bottom-1 start-1/2 h-5 w-32 -translate-x-1/2 rounded-[50%] bg-[#F4C9A4]/50 blur-md" />
+                <img src="/product/mito-robot.webp" alt="" width={483} height={700} loading="lazy" decoding="async" className="absolute bottom-2 start-1/2 h-[290px] w-auto max-w-none -translate-x-1/2 select-none rtl:-scale-x-100" />
+              </div>
+              </div>
+              <p className="relative mt-8 flex items-center gap-3 border-t border-[#EFE3D7] pt-5 text-sm font-medium text-[#57534E]">
+                <CheckCircle2 aria-hidden className="h-6 w-6 shrink-0 text-[#EA580C]" /> {pc.noCommit}
               </p>
-              <Link to="/" className={cn(CTA_DARK, "mt-7")}>
-                {t.backToHome}
-              </Link>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-              <div className="grid gap-1.5">
-                <Label htmlFor="gs-fullName">{t.yourName}</Label>
-                <Input
-                  id="gs-fullName"
-                  required
-                  value={form.fullName}
-                  onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-                  placeholder={t.namePlaceholder}
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="gs-workEmail">{t.workEmail}</Label>
-                  <Input
-                    id="gs-workEmail"
-                    type="email"
-                    required
-                    value={form.workEmail}
-                    onChange={(e) => setForm((f) => ({ ...f, workEmail: e.target.value }))}
-                    placeholder={t.emailPlaceholder}
-                  />
+
+            <div className="flex flex-col justify-center border-t border-[#EFE3D7] p-7 sm:p-10 lg:border-s lg:border-t-0 lg:p-12">
+              {submitted ? (
+                <div className="flex flex-col items-center py-10 text-center">
+                  <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FFF3EA] text-[#EA580C]"><CheckCircle2 className="h-7 w-7" /></span>
+                  <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-[#1C1917] rtl:tracking-normal">{t.thanksHeading}</h2>
+                  <p className="mt-2 max-w-sm text-sm text-[#57534E]">{live ? (isCoach ? t.thanksCoach : t.thanksAcademy) : t.demoModeNote}</p>
+                  <Link to="/" className={cn(CTA_DARK, "mt-7 !rounded-2xl")}>{t.backToHome}</Link>
                 </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="gs-phone">{t.phone}</Label>
-                  <Input
-                    id="gs-phone"
-                    type="tel"
-                    required
-                    value={form.phone}
-                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                    placeholder={t.phonePlaceholder}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="gs-academyName">{isCoach ? t.academyNameCoach : t.academyNameAcademy}</Label>
-                <Input
-                  id="gs-academyName"
-                  required={!isCoach}
-                  value={form.academyName}
-                  onChange={(e) => setForm((f) => ({ ...f, academyName: e.target.value }))}
-                  placeholder={isCoach ? t.academyPlaceholderCoach : t.academyPlaceholderAcademy}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="gs-message">{t.anythingElse}</Label>
-                <Textarea
-                  id="gs-message"
-                  rows={3}
-                  value={form.message}
-                  onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-                  placeholder={t.messagePlaceholder}
-                />
-              </div>
-              {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
-              <button type="submit" disabled={submitting} className={cn(CTA_ORANGE, "mt-2 w-full")}>
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : t.requestDemo}
-              </button>
-            </form>
-          )}
-        </div>
+              ) : (
+                <>
+                  <h2 className="font-display text-[clamp(1.6rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em] text-[#1C1917] rtl:tracking-normal">{pc.formTitle}</h2>
+                  <p className="mt-2 max-w-[44ch] text-[15px] leading-relaxed text-[#57534E]">{pc.formSub}</p>
+                  <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gs-fullName" className="font-semibold text-[#1C1917]">{t.yourName} <span aria-hidden className="text-[#C2410C]">*</span></Label>
+                      <Field icon={User}>
+                        <Input id="gs-fullName" required className={FIELD} value={form.fullName} onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} placeholder={t.namePlaceholder} />
+                      </Field>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="gs-workEmail" className="font-semibold text-[#1C1917]">{t.workEmail} <span aria-hidden className="text-[#C2410C]">*</span></Label>
+                        <Field icon={Mail}>
+                          <Input id="gs-workEmail" type="email" required className={FIELD} value={form.workEmail} onChange={(e) => setForm((f) => ({ ...f, workEmail: e.target.value }))} placeholder={t.emailPlaceholder} />
+                        </Field>
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="gs-phone" className="font-semibold text-[#1C1917]">{t.phone} <span aria-hidden className="text-[#C2410C]">*</span></Label>
+                        <Field icon={Phone}>
+                          <Input id="gs-phone" type="tel" required className={FIELD} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t.phonePlaceholder} />
+                        </Field>
+                      </div>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gs-academyName" className="font-semibold text-[#1C1917]">{isCoach ? t.academyNameCoach : t.academyNameAcademy}{!isCoach && <span aria-hidden className="text-[#C2410C]"> *</span>}</Label>
+                      <Field icon={Landmark}>
+                        <Input id="gs-academyName" required={!isCoach} className={FIELD} value={form.academyName} onChange={(e) => setForm((f) => ({ ...f, academyName: e.target.value }))} placeholder={isCoach ? t.academyPlaceholderCoach : t.academyPlaceholderAcademy} />
+                      </Field>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gs-message" className="font-semibold text-[#1C1917]">{t.anythingElse}</Label>
+                      <div className="relative">
+                        <MessageCircle aria-hidden className="pointer-events-none absolute start-4 top-4 h-[18px] w-[18px] text-[#44403C]" />
+                        <Textarea id="gs-message" rows={3} className={cn(FIELD, "h-auto py-3.5")} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} placeholder={t.messagePlaceholder} />
+                      </div>
+                    </div>
+                    {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
+                    <button type="submit" disabled={submitting} className={cn(CTA_ORANGE, "mt-1 h-14 w-full !rounded-2xl text-base normal-case tracking-normal shadow-[0_16px_30px_-14px_rgba(194,65,12,0.8)]")}>
+                      {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{t.requestDemo} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
-      <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
-        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-start">
-          <Logo imgClassName="h-11 w-11" wordmarkClassName="mix-blend-multiply" />
-          <p className="text-xs font-medium text-[#5B6472]">{t.rights(new Date().getFullYear())}</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }

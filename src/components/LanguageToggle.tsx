@@ -1,4 +1,4 @@
-import { Languages } from "lucide-react";
+import { Globe } from "lucide-react";
 import { MARKETING_LOCALES, useMarketingLocale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -10,14 +10,14 @@ import { cn } from "@/lib/utils";
 export function LanguageToggle({ className }: { className?: string }) {
   const [locale, setLocale] = useMarketingLocale();
   return (
-    <label className={cn("inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-[#F5F6F9] px-2", className)}>
-      <Languages className="h-3.5 w-3.5 text-[#EA580C]" aria-hidden />
+    <label className={cn("inline-flex items-center gap-1.5 rounded-full border border-[#EFE3D7] bg-white px-3 shadow-sm", className)}>
+      <Globe className="h-4 w-4 text-[#EA580C]" aria-hidden />
       <span className="sr-only">Language</span>
       <select
         aria-label="Language"
         value={locale}
         onChange={(event) => setLocale(event.target.value)}
-        className="max-w-32 cursor-pointer bg-transparent py-2 text-xs font-semibold text-[#171B22] outline-none"
+        className="max-w-32 cursor-pointer bg-transparent py-2 text-sm font-semibold text-[#171B22] outline-none"
       >
         {MARKETING_LOCALES.map((item) => <option key={item.code} value={item.code}>{item.nativeLabel}</option>)}
       </select>

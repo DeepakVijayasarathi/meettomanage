@@ -28,7 +28,7 @@ export const CTA_GHOST = `${CTA_BASE} border border-[#111]/20 bg-white/60 text-[
 export const ARROW_LINK = `inline-flex items-center gap-1.5 py-2.5 text-[15px] font-bold uppercase text-[#C2410C] hover:text-[#9A3412] ${FOCUS_RING}`;
 export const ROUND_ARROW = `flex h-[55px] w-[55px] shrink-0 items-center justify-center rounded-full border border-[#D9E1F0] bg-[#EAEEF4] text-[#111] transition-colors hover:bg-[#D9E1F0] ${FOCUS_RING}`;
 /** Square white card on a hairline border — the default surface for anything boxed. */
-export const CARD = "border border-[#D9E1F0] bg-white shadow-[0_8px_40px_0_rgba(0,0,0,0.08)]";
+export const CARD = "rounded-3xl border border-[#EFE3D7] bg-white shadow-[0_8px_40px_0_rgba(0,0,0,0.08)]";
 /** Pulls the block after a `<MarketingHero overlap>` up across the hero/page seam. */
 export const HERO_OVERLAP = "relative z-10 -mt-[clamp(72px,9vw,128px)]";
 /** Light icon tile (orange on peach) — the default square badge for an icon on a card. */

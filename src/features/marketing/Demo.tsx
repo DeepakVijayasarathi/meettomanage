@@ -1,14 +1,12 @@
-import { Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/Logo";
-import { LanguageToggle } from "@/components/LanguageToggle";
+import { CheckCircle2 } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { BookDemoForm } from "@/components/BookDemoForm";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { MarketingHero } from "./MarketingHero";
+import { MarketingFooter } from "./MarketingFooter";
+import { MarketingNav } from "./MarketingNav";
 import { CARD, EYEBROW, HERO_OVERLAP } from "./styles";
 
 const T = {
@@ -54,21 +52,7 @@ export default function Demo() {
         path="/demo"
       />
 
-      <header className="sticky top-0 z-30 border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link to="/" aria-label="Meet to Manage home">
-            <Logo wordmarkClassName="mix-blend-multiply" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <LanguageToggle />
-            <Button asChild variant="ghost">
-              <Link to="/">
-                <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /> {t.backHome}
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <MarketingNav />
 
       <MarketingHero eyebrow={t.eyebrow} title={t.heading} sub={t.sub} overlap />
 
@@ -92,12 +76,7 @@ export default function Demo() {
         </div>
       </section>
 
-      <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
-        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-start">
-          <Logo imgClassName="h-11 w-11" wordmarkClassName="mix-blend-multiply" />
-          <p className="text-xs font-medium text-[#5B6472]">{t.rights(new Date().getFullYear())}</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }

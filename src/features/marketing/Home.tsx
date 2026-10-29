@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { ArrowRight, BookOpenText, Mail, MessageSquare, Calculator, CheckCircle2, ChevronDown, Code2, CreditCard, GraduationCap, Languages, Lock, ShieldCheck, Sparkles, Users, type LucideIcon } from "lucide-react";
+import { ArrowRight, Bell, Smartphone, Tag, Video, BookOpenText, UserRound, Mail, MessageSquare, Calculator, CheckCircle2, ChevronDown, Code2, CreditCard, GraduationCap, Languages, Lock, ShieldCheck, Sparkles, Users, type LucideIcon } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { saasPublic } from "@/api/saas";
 import { apiEnabled } from "@/lib/api";
@@ -23,6 +23,8 @@ import { MobileSection } from "./home/MobileSection";
 import { Showcase } from "./home/Showcase";
 
 // The assistant (about 1,000 lines of chat and voice code) loads after the page is interactive, or at once if asked for.
+// The offer popup loads after the page is interactive and shows once per visit.
+const PromoPopup = lazy(() => import("./home/PromoPopup").then((m) => ({ default: m.PromoPopup })));
 const ChatWidget = lazy(() => import("./HomeChat").then((m) => ({ default: m.ChatWidget })));
 
 /** One mark per item in the "built on" strip, in the same order as the copy. Cashfree has no logo in the open icon set we
@@ -45,6 +47,58 @@ function ProofMark({ mark, label }: { mark: { logo?: string; icon?: LucideIcon; 
         (() => { const Icon = mark.icon!; return <Icon aria-hidden="true" className="h-8 w-8" style={{ color: mark.color }} />; })()
       )}
     </span>
+  );
+}
+
+/** One warm orange tint for every card: the brand colour is the only accent, so nothing competes with it. */
+const PEACH = { tile: "from-[#FFF3EA] to-[#FFDFC8]", icon: "#C2410C", blob: "#FFE6D3", dot: "#F4B98C", wash: "#FFFAF6", shadow: "rgba(194,65,12,0.3)" };
+const TINTS = Array.from({ length: 6 }, () => PEACH);
+
+/** Which pastel each security card uses: peach, sky, mint. */
+const SEC_TINT = [0, 3, 2];
+
+/** Icons for the pricing teaser's three included points, in the order of the copy. */
+const PRICE_POINT_ICONS: LucideIcon[] = [Video, Smartphone, Tag];
+
+/** Icon and tint for each metric card, in the order of the copy: portals, games, reminders, login. */
+const METRIC_STYLE: { icon: LucideIcon; tint: number }[] = [
+  { icon: Users, tint: 0 },
+  { icon: BookOpenText, tint: 1 },
+  { icon: Bell, tint: 2 },
+  { icon: UserRound, tint: 3 },
+];
+
+/** Soft, faded illustration in a security card's top-right corner: a peach blob plus a motif that matches the card. */
+function SecurityArt({ index }: { index: number }) {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute -end-6 -top-6 h-44 w-52">
+      <div className="absolute end-0 top-0 h-36 w-36 rounded-full opacity-90" style={{ background: `linear-gradient(135deg, ${TINTS[SEC_TINT[index]].blob}, transparent)` }} />
+      {index === 0 && <div className="absolute end-10 top-14 h-14 w-20 opacity-80 [background-size:20px_20px]" style={{ backgroundImage: `radial-gradient(${TINTS[SEC_TINT[0]].dot} 2.5px, transparent 2.5px)` }} />}
+      {index === 1 && (
+        <>
+          <div className="absolute end-16 top-12 h-16 w-24 rotate-[-14deg] rounded-lg bg-gradient-to-br from-[#FDBA74] to-[#FFE0C2] opacity-80 shadow-md" />
+          <div className="absolute end-8 top-14 h-16 w-24 rotate-[-8deg] rounded-lg bg-[#FFE9D8] opacity-70" />
+        </>
+      )}
+      {index === 2 && (
+        <svg viewBox="0 0 80 92" className="absolute end-10 top-9 h-24 w-20 opacity-80">
+          <path d="M40 4 L74 16 V44 C74 66 58 82 40 90 C22 82 6 66 6 44 V16 Z" fill={TINTS[SEC_TINT[2]].dot} />
+          <path d="M24 46 L36 58 L58 32" fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+/** Faded corner motif for an audience card: a peach blob and a dot grid, varied by position so the six cards don't repeat. */
+function CardArt({ index }: { index: number }) {
+  const t = TINTS[index % TINTS.length];
+  const flip = index % 2 === 1;
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute -end-8 -top-8 h-40 w-44">
+      <div className="absolute end-0 top-0 h-32 w-32 rounded-full opacity-90 transition-transform duration-500 group-hover:scale-110" style={{ background: `linear-gradient(135deg, ${t.blob}, transparent)` }} />
+      <div className={"absolute top-14 h-12 w-16 opacity-80 [background-size:18px_18px] " + (flip ? "end-14" : "end-10")} style={{ backgroundImage: `radial-gradient(${t.dot} 2.5px, transparent 2.5px)` }} />
+    </div>
   );
 }
 
@@ -206,10 +260,12 @@ export default function MarketingHome() {
               {c.audience.items.map((item, i) => {
                 const Icon = AUDIENCE_ICONS[item.key];
                 return (
-                  <Reveal as="li" key={item.key} delay={(i % 3) * 90} className="group rounded-2xl border border-[#EFE3D7] bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#F2B98A] hover:shadow-[0_24px_50px_-28px_rgba(194,65,12,0.45)]">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#FFEBDD] text-[#C2410C] transition-colors group-hover:bg-[#C2410C] group-hover:text-white"><Icon className="h-6 w-6" /></span>
-                    <h3 className="font-display mt-5 text-lg font-extrabold tracking-[-0.01em] rtl:tracking-normal">{item.title}</h3>
-                    <p className="mt-2 text-[15px] leading-relaxed text-[#57534E]">{item.body}</p>
+                  <Reveal as="li" key={item.key} delay={(i % 3) * 90} className="group relative overflow-hidden rounded-3xl p-7 transition-transform duration-300 hover:-translate-y-1">
+                    <div className="absolute inset-0 -z-0 bg-white" style={{ background: `linear-gradient(160deg, #fff 35%, ${TINTS[i % TINTS.length].wash})`, boxShadow: `0 1px 2px rgba(28,25,23,0.05), 0 18px 40px -24px ${TINTS[i % TINTS.length].shadow}` }} />
+                    <CardArt index={i} />
+                    <span className={"relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-b shadow-[0_6px_14px_-8px_rgba(28,25,23,0.45)] ring-1 ring-white transition-transform duration-300 group-hover:scale-105 " + TINTS[i % TINTS.length].tile} style={{ color: TINTS[i % TINTS.length].icon }}><Icon className="h-7 w-7" /></span>
+                    <h3 className="font-display relative mt-6 text-xl font-extrabold tracking-[-0.02em] text-[#1C1917] rtl:tracking-normal">{item.title}</h3>
+                    <p className="relative mt-2 text-[15px] leading-relaxed text-[#57534E]">{item.body}</p>
                   </Reveal>
                 );
               })}
@@ -251,28 +307,49 @@ export default function MarketingHome() {
         </section>
 
         {/* WALKTHROUGH */}
-        <section id="walkthrough" className="scroll-mt-20 bg-[#FFF6EE] py-[clamp(48px,5.5vw,80px)]">
-          <div className="mx-auto max-w-[1000px] px-5">
-            <Reveal className="mx-auto max-w-[680px] text-center">
+        <section id="walkthrough" className="relative scroll-mt-20 overflow-hidden bg-gradient-to-b from-[#FFF3EA] via-[#FFF8F3] to-[#FFF3EA] py-[clamp(48px,5.5vw,80px)]">
+          {/* soft background blobs */}
+          <div aria-hidden="true" className="pointer-events-none absolute -start-24 top-24 h-72 w-72 rounded-full bg-[#FFE3CF]/70 blur-2xl" />
+          <div aria-hidden="true" className="pointer-events-none absolute -end-20 bottom-10 h-80 w-80 rounded-full bg-[#FFE3CF]/70 blur-2xl" />
+          <div className="relative mx-auto max-w-[1120px] px-5">
+            <Reveal className="mx-auto max-w-[760px] text-center">
               <p className={EYEBROW}>{c.video.eyebrow}</p>
-              <h2 className={cn(H2, "mt-4")}>{c.video.heading}</h2>
+              <h2 className={cn(H2, "mt-4")}>
+                {c.video.heading.split(lang === "en" ? /(13-minute)/ : /(13 دقيقة)/).map((part, i) =>
+                  i % 2 === 1 ? <span key={i} className="text-[#C2410C]">{part}</span> : <span key={i}>{part}</span>
+                )}
+              </h2>
               <p className="mt-5 text-lg leading-relaxed text-[#57534E]">{c.video.sub}</p>
             </Reveal>
-            <Reveal delay={120} className="mt-12 overflow-hidden rounded-2xl border border-[#E7D6C5] shadow-[0_1px_2px_rgba(28,25,23,0.06),0_30px_70px_-35px_rgba(194,65,12,0.4)]">
-              <ExplainerVideo />
+            <Reveal delay={120} className="mt-10">
+              <div className="rounded-[28px] bg-gradient-to-b from-[#FB923C] to-[#EA580C] p-[5px] shadow-[0_40px_80px_-30px_rgba(194,65,12,0.65)]">
+                <div className="overflow-hidden rounded-[23px] bg-[#0B1220]">
+                  <ExplainerVideo title={c.video.heading} />
+                </div>
+              </div>
             </Reveal>
           </div>
         </section>
 
         {/* METRICS */}
-        <section aria-label="Platform facts" className="bg-white py-14">
-          <dl className="mx-auto grid max-w-[1200px] grid-cols-2 gap-y-10 px-5 lg:grid-cols-4">
-            {c.metrics.map((m, i) => (
-              <Reveal key={m.label} delay={i * 90} className="border-s-2 border-[#F4B98C] ps-6">
-                <dd className="font-display text-[clamp(1.9rem,3.2vw,2.7rem)] font-extrabold leading-none tracking-[-0.03em] text-[#C2410C]"><CountUp to={m.to} suffix={m.suffix} /></dd>
-                <dt className="mt-2 text-sm font-medium text-[#57534E]">{m.label}</dt>
-              </Reveal>
-            ))}
+        <section aria-label="Platform facts" className="bg-white py-12">
+          <dl className="mx-auto grid max-w-[1200px] gap-4 px-5 sm:grid-cols-2 lg:grid-cols-4">
+            {c.metrics.map((m, i) => {
+              const { icon: Icon, tint } = METRIC_STYLE[i];
+              const t = TINTS[tint];
+              return (
+                <Reveal key={m.label} delay={i * 90} className="group relative flex items-center gap-4 overflow-hidden rounded-2xl px-5 py-6">
+                  <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, #fff 35%, ${t.wash})`, boxShadow: `0 1px 2px rgba(28,25,23,0.05), 0 18px 40px -26px ${t.shadow}` }} />
+                  <div aria-hidden="true" className="pointer-events-none absolute -end-6 -top-6 h-24 w-24 rounded-full opacity-90" style={{ background: `linear-gradient(135deg, ${t.blob}, transparent)` }} />
+                  <span className={"relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-b shadow-[0_6px_14px_-8px_rgba(28,25,23,0.45)] ring-1 ring-white " + t.tile} style={{ color: t.icon }}><Icon className="h-7 w-7" /></span>
+                  <span aria-hidden="true" className="relative h-12 w-px shrink-0" style={{ backgroundColor: t.dot }} />
+                  <div className="relative min-w-0">
+                    <dd className="font-display text-[clamp(1.9rem,3vw,2.5rem)] font-extrabold leading-none tracking-[-0.03em]" style={{ color: t.icon }}><CountUp to={m.to} suffix={m.suffix} /></dd>
+                    <dt className="mt-1.5 text-sm font-medium leading-snug text-[#57534E]">{m.label}</dt>
+                  </div>
+                </Reveal>
+              );
+            })}
           </dl>
         </section>
 
@@ -288,10 +365,12 @@ export default function MarketingHome() {
               {c.security.items.map((item, i) => {
                 const Icon = SECURITY_ICONS[i];
                 return (
-                  <Reveal as="li" key={item.title} delay={i * 100} className="rounded-2xl border border-[#EBD9C8] bg-white p-7">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#FFEBDD] text-[#C2410C]"><Icon className="h-6 w-6" /></span>
-                    <h3 className="font-display mt-5 text-lg font-extrabold tracking-[-0.01em] rtl:tracking-normal">{item.title}</h3>
-                    <p className="mt-2 text-[15px] leading-relaxed text-[#57534E]">{item.body}</p>
+                  <Reveal as="li" key={item.title} delay={i * 100} className="group relative overflow-hidden rounded-3xl p-7 transition-transform duration-300 hover:-translate-y-1">
+                    <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, #fff 35%, ${TINTS[SEC_TINT[i]].wash})`, boxShadow: `0 1px 2px rgba(28,25,23,0.05), 0 18px 40px -24px ${TINTS[SEC_TINT[i]].shadow}` }} />
+                    <SecurityArt index={i} />
+                    <span className={"relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-b shadow-[0_6px_14px_-8px_rgba(28,25,23,0.45)] ring-1 ring-white " + TINTS[SEC_TINT[i]].tile} style={{ color: TINTS[SEC_TINT[i]].icon }}><Icon className="h-7 w-7" /></span>
+                    <h3 className="font-display relative mt-6 text-xl font-extrabold tracking-[-0.02em] text-[#1C1917] rtl:tracking-normal">{item.title}</h3>
+                    <p className="relative mt-2 text-[15px] leading-relaxed text-[#57534E]">{item.body}</p>
                   </Reveal>
                 );
               })}
@@ -308,20 +387,42 @@ export default function MarketingHome() {
         {/* PRICING TEASER */}
         <section className="bg-white py-[clamp(40px,4.5vw,64px)]">
           <div className="mx-auto max-w-[1200px] px-5">
-            <Reveal className="grid items-center gap-10 rounded-3xl border border-[#EBD9C8] bg-gradient-to-br from-[#FFF3EA] to-white p-8 md:grid-cols-[1.4fr_1fr] md:p-12">
-              <div>
-                <p className={EYEBROW}>{c.pricing.eyebrow}</p>
-                <h2 className="font-display mt-3 text-[clamp(1.5rem,2.5vw,2rem)] font-extrabold leading-[1.1] tracking-[-0.03em] rtl:tracking-normal">{c.pricing.heading}</h2>
-                <p className="mt-4 text-lg leading-relaxed text-[#57534E]">{c.pricing.sub}</p>
-                <ul className="mt-6 flex flex-col gap-2.5">
-                  {c.pricing.points.map((p) => <li key={p} className="flex items-center gap-2.5 text-[15px] font-medium text-[#292524]"><CheckCircle2 className="h-4 w-4 shrink-0 text-[#EA580C]" /> {p}</li>)}
-                </ul>
-              </div>
-              <div className="border-[#EBD9C8] md:border-s md:ps-10">
-                <p className="text-sm font-semibold text-[#57534E]">{c.pricing.from}</p>
-                <p className="font-display mt-1 text-5xl font-extrabold tracking-[-0.03em] text-[#1C1917]">₹{fromPrice.toLocaleString("en-IN")}</p>
-                <p className="mt-1 text-sm font-semibold text-[#57534E]">{c.pricing.perMonth}</p>
-                <Link to="/pricing" className={cn(BTN_PRIMARY, "mt-6 w-full sm:w-auto")}>{c.pricing.cta} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
+            <Reveal className="relative overflow-hidden rounded-3xl border border-[#F6CDB2] bg-gradient-to-br from-[#FFF3EA] via-[#FFF8F3] to-white shadow-[0_1px_2px_rgba(194,65,12,0.06),0_30px_60px_-36px_rgba(194,65,12,0.4)]">
+              <img
+                src="/product/pricing-girl.webp"
+                alt=""
+                width={932}
+                height={698}
+                loading="lazy"
+                decoding="async"
+                className="pointer-events-none absolute bottom-0 end-0 hidden h-[88%] w-auto select-none lg:block rtl:-scale-x-100"
+              />
+              <div className="relative grid items-center gap-8 p-8 md:grid-cols-[1.35fr_1fr] md:p-12 lg:grid-cols-[1.35fr_0.95fr_0.75fr]">
+                <div>
+                  <p className={EYEBROW}>{c.pricing.eyebrow}</p>
+                  <h2 className="font-display mt-3 text-[clamp(1.6rem,2.8vw,2.3rem)] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#1C1917] rtl:tracking-normal">
+                    {lang === "en" ? <>One simple <span className="text-[#C2410C]">price</span> per centre.</> : c.pricing.heading}
+                  </h2>
+                  <p className="mt-3 text-base leading-relaxed text-[#6B6560]">{c.pricing.sub}</p>
+                  <ul className="mt-5 flex flex-col gap-3">
+                    {c.pricing.points.map((point, i) => {
+                      const Icon = PRICE_POINT_ICONS[i];
+                      return (
+                        <li key={point} className="flex items-center gap-3 text-[15px] font-medium text-[#292524]">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FFE3CF] text-[#C2410C]"><Icon className="h-4 w-4" /></span>
+                          {point}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+                <div className="md:border-s md:border-[#F2D5BF] md:ps-10 lg:ps-8">
+                  <p className="text-sm font-semibold text-[#57534E]">{c.pricing.from}</p>
+                  <p className="font-display mt-1 text-[clamp(2.6rem,4vw,3.4rem)] font-extrabold leading-none tracking-[-0.03em] text-[#C2410C]">₹{fromPrice.toLocaleString("en-IN")}</p>
+                  <p className="mt-1.5 text-sm font-semibold text-[#57534E]">{c.pricing.perMonth}</p>
+                  <Link to="/pricing" className={cn(BTN_PRIMARY, "mt-6 w-full rounded-2xl sm:w-auto")}>{c.pricing.cta} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
+                </div>
+                <div className="hidden lg:block" aria-hidden="true" />
               </div>
             </Reveal>
           </div>
@@ -378,6 +479,11 @@ export default function MarketingHome() {
       </main>
 
       <MarketingFooter />
+      {chatReady && (
+        <Suspense fallback={null}>
+          <PromoPopup lang={lang} />
+        </Suspense>
+      )}
       {chatReady && (
         <Suspense fallback={null}>
           <ChatWidget lang={lang} openRequest={aiOpenRequest} />

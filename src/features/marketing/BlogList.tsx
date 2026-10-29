@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, BookOpen, Clock, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/Logo";
-import { LanguageToggle } from "@/components/LanguageToggle";
+import { ArrowRight, BookOpen, Clock, Loader2 } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
@@ -11,6 +8,8 @@ import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { MarketingHero } from "./MarketingHero";
+import { MarketingFooter } from "./MarketingFooter";
+import { MarketingNav } from "./MarketingNav";
 import { ARROW_LINK, CTA_ORANGE, FOCUS_RING } from "./styles";
 import { PostCard, PostCover, TopicChip } from "./blogMeta";
 import { TOPIC_ORDER, formatDate, topicOf, type BlogTopic } from "./blogTopics";
@@ -87,37 +86,7 @@ export default function BlogList() {
         path="/blog"
       />
 
-      <header className="sticky top-0 z-30 border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link to="/" aria-label="Meet to Manage home">
-            <Logo wordmarkClassName="mix-blend-multiply" />
-          </Link>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <LanguageToggle className="hidden sm:inline-flex" />
-            {/* Text label collapses to an icon-only button below `sm` — there isn't room for
-                both this and Sign In as full-width buttons, but a visitor should still get an
-                explicit way back to the homepage, not just an implicit logo tap. */}
-            <Button asChild variant="ghost" size="icon" className="sm:hidden" aria-label={t.backHome}>
-              <Link to="/">
-                <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" />
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" className="hidden sm:inline-flex">
-              <Link to="/">
-                <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /> {t.backHome}
-              </Link>
-            </Button>
-            <Button asChild className="!bg-[#EA580C] !text-white hover:!bg-[#C2410C]">
-              <Link to="/login">
-                {t.signIn} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-        <div className="flex justify-center border-t border-black/5 py-1.5 sm:hidden">
-          <LanguageToggle />
-        </div>
-      </header>
+      <MarketingNav />
 
       <MarketingHero eyebrow={t.eyebrow} title={t.heading} sub={t.sub} />
 
@@ -136,7 +105,7 @@ export default function BlogList() {
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         ) : sorted.length === 0 ? (
-          <EmptyState className="rounded-none" icon={BookOpen} title={t.emptyTitle} description={t.emptyDescription} />
+          <EmptyState className="rounded-3xl" icon={BookOpen} title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
           <>
             {topics.length > 1 && (
@@ -148,7 +117,7 @@ export default function BlogList() {
                     onClick={() => setTopic(tp)}
                     aria-pressed={topic === tp}
                     className={cn(
-                      "border px-4 py-2 text-sm font-semibold transition-colors",
+                      "rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
                       FOCUS_RING,
                       topic === tp ? "border-[#111] bg-[#111] text-white" : "border-[#D9E1F0] bg-white text-[#333] hover:border-[#F97316] hover:text-[#C2410C]"
                     )}
@@ -163,14 +132,14 @@ export default function BlogList() {
               <Link
                 to={`/blog/${featured.slug}`}
                 className={cn(
-                  "group grid overflow-hidden border border-[#E6EAF2] bg-white transition-shadow hover:shadow-[0_24px_60px_-24px_rgba(17,17,17,0.3)] lg:grid-cols-2",
+                  "group grid overflow-hidden rounded-3xl border border-[#EDE6DF] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04),0_14px_30px_-22px_rgba(28,25,23,0.25)] transition-shadow hover:shadow-[0_24px_60px_-24px_rgba(17,17,17,0.3)] lg:grid-cols-2",
                   FOCUS_RING
                 )}
               >
                 <PostCover topic={topicOf(featured)} large className="min-h-[220px] lg:min-h-[340px]" />
                 <div className="flex flex-col justify-center p-7 sm:p-10">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="bg-[#111] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white rtl:tracking-normal">{t.latest}</span>
+                    <span className="rounded-lg bg-[#111] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white rtl:tracking-normal">{t.latest}</span>
                     <TopicChip topic={topicOf(featured)} />
                   </div>
                   <h2 className="font-display mt-5 text-[clamp(1.625rem,2.8vw,2.375rem)] font-extrabold leading-[1.15] tracking-[-0.02em] text-[#111] group-hover:text-[#C2410C] rtl:tracking-normal">
@@ -196,7 +165,7 @@ export default function BlogList() {
               </div>
             )}
 
-            <div className="relative mt-16 overflow-hidden bg-[#0D1024] px-6 py-12 text-center text-white sm:px-12">
+            <div className="relative mt-16 overflow-hidden rounded-3xl bg-[#0D1024] px-6 py-12 text-center text-white sm:px-12">
               <div
                 className="absolute inset-0 opacity-60"
                 style={{ background: "radial-gradient(50% 80% at 0% 0%, rgba(249,115,22,0.35), transparent 70%), radial-gradient(50% 80% at 100% 100%, rgba(124,92,252,0.4), transparent 70%)" }}
@@ -214,12 +183,7 @@ export default function BlogList() {
         )}
       </section>
 
-      <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-start">
-          <Logo imgClassName="h-11 w-11" wordmarkClassName="mix-blend-multiply" />
-          <p className="text-xs font-medium text-[#5B6472]">{t.rights(new Date().getFullYear())}</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }

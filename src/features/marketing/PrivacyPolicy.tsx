@@ -1,10 +1,8 @@
-import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/Logo";
 import { Seo } from "@/components/Seo";
 import { useLightBrandScope } from "@/lib/theme";
 import { MarketingHero } from "./MarketingHero";
+import { MarketingFooter } from "./MarketingFooter";
+import { MarketingNav } from "./MarketingNav";
 
 /**
  * Legal text, supplied verbatim by the business (not editorial copy this codebase authors,
@@ -251,18 +249,7 @@ export default function PrivacyPolicy() {
         path="/policy"
       />
 
-      <header className="sticky top-0 z-30 border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <Link to="/" aria-label="Meet to Manage home">
-            <Logo wordmarkClassName="mix-blend-multiply" />
-          </Link>
-          <Button asChild variant="ghost">
-            <Link to="/">
-              <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /> Back home
-            </Link>
-          </Button>
-        </div>
-      </header>
+      <MarketingNav />
 
       <MarketingHero eyebrow="Last Updated: September 4, 2026" title="Privacy Policy" />
 
@@ -346,12 +333,7 @@ export default function PrivacyPolicy() {
         </div>
       </article>
 
-      <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
-        <div className="mx-auto flex max-w-3xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-start">
-          <Logo imgClassName="h-11 w-11" wordmarkClassName="mix-blend-multiply" />
-          <p className="text-xs font-medium text-[#5B6472]">© {new Date().getFullYear()} Meet to Manage. All rights reserved.</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }

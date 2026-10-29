@@ -1,23 +1,11 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  AlertCircle,
-  ArrowLeft,
-  ArrowRight,
-  BookOpen,
-  CalendarClock,
-  CheckCircle2,
-  GraduationCap,
-  Loader2,
-  Sparkles,
-} from "lucide-react";
+import { AlertCircle, BookOpen, CalendarClock, CheckCircle2, GraduationCap, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/EmptyState";
-import { Logo } from "@/components/Logo";
 import { BookDemoDialog } from "@/components/BookDemoDialog";
 import { Seo } from "@/components/Seo";
 import { useBrand } from "@/lib/branding";
@@ -27,6 +15,8 @@ import { useApiData } from "@/api/hooks";
 import { listStorePlans, submitStoreInquiry, type ApiStorePlan } from "@/api/store";
 import { cn, formatCurrency } from "@/lib/utils";
 import { MarketingHero } from "./MarketingHero";
+import { MarketingFooter } from "./MarketingFooter";
+import { MarketingNav } from "./MarketingNav";
 import { CARD, CTA_DARK, CTA_ORANGE, HERO_OVERLAP } from "./styles";
 
 const DEMO_PLANS: ApiStorePlan[] = [
@@ -121,33 +111,7 @@ export default function Store() {
         description="Browse current courses and book a free demo class — no account needed."
         path="/store"
       />
-      <header className="sticky top-0 z-30 border-b border-black/10 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link to="/" aria-label={`${brand.name} home`}>
-            <Logo wordmarkClassName="mix-blend-multiply" />
-          </Link>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Text label collapses to an icon-only button below `sm` — there isn't room for
-                both this and Sign In as full-width buttons, but a visitor should still get an
-                explicit way back to the homepage, not just an implicit logo tap. */}
-            <Button asChild variant="ghost" size="icon" className="sm:hidden" aria-label="Back home">
-              <Link to="/">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" className="hidden sm:inline-flex">
-              <Link to="/">
-                <ArrowLeft className="h-4 w-4" /> Back home
-              </Link>
-            </Button>
-            <Button asChild className="!bg-[#EA580C] !text-white hover:!bg-[#C2410C]">
-              <Link to="/login">
-                Sign In <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <MarketingNav />
 
       <MarketingHero
         eyebrow={
@@ -210,14 +174,7 @@ export default function Store() {
         )}
       </section>
 
-      <footer className="border-t border-black/10 bg-[#F5F6F9] py-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-center sm:flex-row sm:text-left">
-          <Logo imgClassName="h-11 w-11" wordmarkClassName="mix-blend-multiply" />
-          <p className="text-xs font-medium text-[#5B6472]">
-            © {new Date().getFullYear()} {brand.name}. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      <MarketingFooter />
 
       <Dialog open={selectedPlan !== null} onOpenChange={(open) => !open && setSelectedPlan(null)}>
         <DialogContent className="max-w-md">

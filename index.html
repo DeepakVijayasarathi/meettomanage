@@ -2,7 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/webp" href="/logo-icon-128.webp" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preload" as="image" href="/logo-full.webp" />
@@ -101,8 +103,8 @@
       /* First paint for the home page, before any JavaScript has run. It is replaced the moment the app mounts
          (React clears #root), and removed at once on every other route or in Arabic. Visible to crawlers too. */
       #boot { font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif; color: #1c1917; background: #fff; min-height: 100vh }
-      #boot header { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1200px; height: 68px; margin: 0 auto; padding: 0 20px; border-bottom: 1px solid #efe3d7 }
-      #boot header img { height: 48px; width: auto }
+      #boot header { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1200px; height: 84px; margin: 0 auto; padding: 0 20px; border-bottom: 1px solid #efe3d7 }
+      #boot header img { height: 64px; width: auto }
       #boot header nav { display: none; gap: 32px }
       #boot header nav a { color: #57534e; font-size: 14px; font-weight: 600; text-decoration: none }
       #boot .cta { display: inline-block; background: #c2410c; color: #fff; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 700; text-decoration: none }
@@ -123,7 +125,7 @@
   <body>
     <div id="root"><div id="boot">
       <header>
-        <a href="/" aria-label="Meet to Manage home"><img src="/logo-full.webp" alt="Meet to Manage" width="135" height="48" /></a>
+        <a href="/" aria-label="Meet to Manage home"><img src="/logo-full.webp" alt="Meet to Manage" width="179" height="64" /></a>
         <nav aria-label="Primary"><a href="/#features">Platform</a><a href="/#classroom">Live classroom</a><a href="/#app">Mobile app</a><a href="/pricing">Pricing</a><a href="/#faq">FAQ</a><a href="/blog">Blog</a></nav>
         <a class="cta" href="/get-started">Book Demo</a>
       </header>

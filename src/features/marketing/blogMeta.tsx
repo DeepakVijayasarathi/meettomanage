@@ -6,7 +6,7 @@ import { TOPIC_STYLES, formatDate, topicOf, type BlogTopic } from "./blogTopics"
 
 export function TopicChip({ topic, className }: { topic: BlogTopic; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] rtl:tracking-normal", TOPIC_STYLES[topic].chip, className)}>
+    <span className={cn("inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] rtl:tracking-normal", TOPIC_STYLES[topic].chip, className)}>
       {topic}
     </span>
   );
@@ -50,7 +50,7 @@ export function PostCard({ post, readMinutes }: { post: CardPost; readMinutes: (
     <Link
       to={`/blog/${post.slug}`}
       className={cn(
-        "group flex h-full flex-col border border-[#E6EAF2] bg-white transition-all duration-200 hover:-translate-y-1 hover:border-[#F97316]/40 hover:shadow-[0_18px_40px_-18px_rgba(17,17,17,0.25)]",
+        "group flex h-full flex-col overflow-hidden rounded-3xl border border-[#EDE6DF] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04),0_14px_30px_-22px_rgba(28,25,23,0.25)] transition-all duration-200 hover:-translate-y-1 hover:border-[#F97316]/40 hover:shadow-[0_18px_40px_-18px_rgba(17,17,17,0.25)]",
         FOCUS_RING
       )}
     >

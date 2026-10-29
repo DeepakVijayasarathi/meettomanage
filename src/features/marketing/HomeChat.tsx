@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, AudioLines, Building2, CalendarCheck2, CheckCircle2, GraduationCap, Keyboard, Loader2, Mail, MessageSquare, Mic, Send, School, Sparkles, Square, UserRound, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
+import { ArrowRight, AudioLines, ChevronRight, Building2, CalendarCheck2, CheckCircle2, GraduationCap, Keyboard, Loader2, Mail, MessageSquare, Mic, Send, School, Sparkles, Square, UserRound, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
 import { type Lang } from "@/lib/i18n";
 import { askSalesAssistant, requestPlatformDemo, type SalesChatTurn } from "@/api/marketing";
 import { apiEnabled } from "@/lib/api";
@@ -9,8 +9,19 @@ import { cn } from "@/lib/utils";
 import { HERO_BG } from "./styles";
 
 /** The AI sales assistant (text + voice), moved verbatim out of the old Home.tsx. */
+/** Mito the assistant, in a round badge. */
+function MitoAvatar() {
+  return (
+    <span aria-hidden className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white p-[3px] shadow-[0_8px_18px_-10px_rgba(194,65,12,0.6)] ring-2 ring-[#FFD2B3]">
+      <img src="/product/mito-avatar.webp" alt="" width={192} height={192} className="h-full w-full rounded-full object-cover" />
+    </span>
+  );
+}
+
 const CHAT_T = {
   en: {
+    mitoLead: "Meet",
+    mitoName: "Mito",
     heading: "Meet to Manage assistant",
     sub: "Ask in any language — type or speak",
     closeAria: "Close chat",
@@ -29,7 +40,8 @@ const CHAT_T = {
     sendAria: "Send",
     thinking: "Typing…",
     offline: "The assistant isn't available here right now — message us on WhatsApp or email and the team will answer directly.",
-    launcher: "Ask a question",
+    launcher: "Ask",
+    launcherName: "Mito",
     teaserHints: [
       "How does it work for a school?",
       "What does a tutor pay per month?",
@@ -83,6 +95,8 @@ const CHAT_T = {
     stopSpeaking: "Stop speaking",
   },
   ar: {
+    mitoLead: "تعرّف على",
+    mitoName: "ميتو",
     heading: "مساعد Meet to Manage",
     sub: "اسأل بأي لغة — اكتب أو تحدّث",
     closeAria: "إغلاق الدردشة",
@@ -101,7 +115,8 @@ const CHAT_T = {
     sendAria: "إرسال",
     thinking: "يكتب…",
     offline: "المساعد غير متاح هنا حاليًا — راسلنا على واتساب أو البريد الإلكتروني وسيجيبك الفريق مباشرة.",
-    launcher: "اسأل سؤالًا",
+    launcher: "اسأل",
+    launcherName: "ميتو",
     teaserHints: [
       "كيف تعمل المنصة مع المدارس؟",
       "كم يدفع المدرس الخصوصي شهريًا؟",
@@ -223,26 +238,108 @@ function speechLanguage(pageLang: Lang): string {
   return SPEECH_LANG.en;
 }
 
-/** Reads a reply aloud. Links are dropped from the spoken text — a URL read letter by letter
- *  helps nobody; it's still clickable in the chat. `onStart`/`onEnd` drive the AI orb's
- *  "speaking" animation (onEnd also fires on an error or cancel, so it never gets stuck). */
+/** Voice names that are female in the common browser and operating-system voice sets, best first. Browsers expose no gender
+ *  field, so this is matched by name; a voice whose name is on the male list is never picked. */
+const FEMALE_HINTS = [
+  "neerja", "heera", "swara", "kalpana", "aria", "jenny", "sonia", "libby", "natasha", "clara", "salma", "zariyah",
+  "samantha", "karen", "moira", "tessa", "veena", "fiona", "serena", "susan", "hazel", "zira", "linda", "catherine", "ava", "allison", "joanna", "female",
+];
+const MALE_HINTS = ["ravi", "hemant", "prabhat", "madhur", "david", "mark", "guy", "ryan", "george", "james", "rishi", "alex", "daniel", "fred", "thomas", "oliver", "male", "hamed", "shakir", "naayf"];
+
+/** The warmest available female voice for a language tag, or null to let the browser choose. Natural, neural and online voices
+ *  are preferred over the plain system ones, and a voice in the visitor's own regional accent beats a generic one. */
+function pickFemaleVoice(langTag: string): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) return null;
+  const base = langTag.toLowerCase().split("-")[0];
+  let best: SpeechSynthesisVoice | null = null;
+  let bestScore = 0;
+  for (const v of voices) {
+    const name = v.name.toLowerCase();
+    const vlang = v.lang.toLowerCase().replace("_", "-");
+    if (vlang.split("-")[0] !== base) continue;
+    if (MALE_HINTS.some((h) => name.includes(h) && !FEMALE_HINTS.some((f) => name.includes(f)))) continue;
+    let score = 1;
+    if (vlang === langTag.toLowerCase()) score += 3;
+    const femaleAt = FEMALE_HINTS.findIndex((h) => name.includes(h));
+    if (femaleAt >= 0) score += 10 - Math.min(femaleAt, 9) * 0.1;
+    if (/natural|neural|online|enhanced|premium/.test(name)) score += 5;
+    if (/google/.test(name) && /female/.test(name)) score += 4;
+    if (score > bestScore) {
+      best = v;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+type Emotion = "happy" | "excited" | "curious" | "caring" | "calm";
+
+/** Reads the mood of one sentence from its wording and punctuation, so the delivery can follow it. */
+function emotionOf(sentence: string): Emotion {
+  const t = sentence.toLowerCase();
+  if (/\b(sorry|unfortunately|apolog|can't|cannot|unable|not available|isn't available|don't have)\b|क्षमा|آسف|للأسف/.test(t)) return "caring";
+  if (/!/.test(sentence) || /\b(great|wonderful|amazing|welcome|congrat|fantastic|love|perfect|excellent|happy to)\b/.test(t)) return /!!|\b(amazing|fantastic|congrat)\b/.test(t) ? "excited" : "happy";
+  if (/\?\s*$/.test(sentence.trim()) || /؟\s*$/.test(sentence.trim())) return "curious";
+  if (/^(hi|hello|hey)\b|\bthank/.test(t)) return "happy";
+  return "calm";
+}
+
+/** Pitch, speed and loudness for each emotion, on top of a slightly raised, warm base. */
+const DELIVERY: Record<Emotion, { pitch: number; rate: number; volume: number }> = {
+  happy: { pitch: 1.18, rate: 1.0, volume: 1 },
+  excited: { pitch: 1.3, rate: 1.08, volume: 1 },
+  curious: { pitch: 1.22, rate: 0.97, volume: 0.95 },
+  caring: { pitch: 1.04, rate: 0.9, volume: 0.9 },
+  calm: { pitch: 1.1, rate: 0.98, volume: 0.95 },
+};
+
+let speakToken = 0;
+
+/** Reads a reply aloud as Mito: a female voice, one sentence at a time, each with its own emotion (happy, excited, curious,
+ *  caring or calm) shown through pitch, pace and volume, with a short breath between sentences. Links are dropped from the
+ *  spoken text, since a URL read letter by letter helps nobody. `onStart` and `onEnd` drive the orb's speaking animation; `onEnd`
+ *  also fires on an error or a cancel, so it never gets stuck. */
 function speak(text: string, lang: Lang, events?: { onStart?: () => void; onEnd?: () => void }) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  const spoken = text.replace(/https?:\/\/[^\s)]+/g, "").replace(/[*•]/g, "");
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(spoken);
-  utterance.lang = speechLanguage(lang);
-  // Browsers can report both "error" and "end" for one cancelled utterance — finish once.
+  const spoken = text.replace(/https?:\/\/[^\s)]+/g, "").replace(/[*•_#`]/g, "").replace(/\s+/g, " ").trim();
+  if (!spoken) return;
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const token = ++speakToken;
+  const langTag = speechLanguage(lang);
+  const voice = pickFemaleVoice(langTag);
+  const sentences = spoken.match(/[^.!?؟。]+[.!?؟。]*/g)?.map((x) => x.trim()).filter(Boolean) ?? [spoken];
+
   let finished = false;
   const finish = () => {
     if (finished) return;
     finished = true;
     events?.onEnd?.();
   };
-  utterance.onstart = () => events?.onStart?.();
-  utterance.onend = finish;
-  utterance.onerror = finish;
-  window.speechSynthesis.speak(utterance);
+
+  sentences.forEach((sentence, i) => {
+    const u = new SpeechSynthesisUtterance(sentence);
+    u.lang = voice?.lang ?? langTag;
+    if (voice) u.voice = voice;
+    const d = DELIVERY[emotionOf(sentence)];
+    // Without a recognisably female voice installed, lift the pitch a little more so the voice still reads as feminine.
+    u.pitch = Math.min(2, voice ? d.pitch : d.pitch + 0.12);
+    u.rate = d.rate;
+    u.volume = d.volume;
+    if (i === 0) u.onstart = () => { if (token === speakToken) events?.onStart?.(); };
+    if (i === sentences.length - 1) u.onend = () => { if (token === speakToken) finish(); };
+    u.onerror = () => { if (token === speakToken) finish(); };
+    synth.speak(u);
+  });
+  // A cancel by a newer reply or by closing the chat moves the token on; make sure the old animation still stops.
+  window.setTimeout(() => { if (token !== speakToken) finish(); }, 0);
+}
+
+// Voices load asynchronously in most browsers: ask early so the first reply already has the right one.
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.addEventListener?.("voiceschanged", () => window.speechSynthesis.getVoices());
 }
 
 type OrbState = "idle" | "listening" | "thinking" | "speaking";
@@ -649,16 +746,14 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
         <div
           role="dialog"
           aria-label={t.heading}
-          className="flex h-[min(580px,calc(100dvh-7rem))] w-[min(380px,calc(100vw-2.5rem))] flex-col border border-[#D9E1F0] bg-white shadow-pop"
+          className="flex h-[min(720px,calc(100dvh-6rem))] w-[min(410px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-3xl border border-[#F6D9C3] bg-[#FFFAF6] shadow-[0_30px_70px_-20px_rgba(194,65,12,0.45)]"
         >
-          <div className="flex items-center gap-3 border-b border-[#F1E6DC] px-4 py-3.5 text-[#111]" style={{ background: HERO_BG }}>
-            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-[#F97316]/20">
-              <img src="/logo-icon-128.webp" alt="" className="h-6 w-6 object-contain" />
-              <span aria-hidden className="absolute -bottom-0.5 -end-0.5 h-3 w-3 rounded-full border-2 border-white bg-[#22C55E]" />
-            </span>
+          <div className="flex items-center gap-3 bg-gradient-to-b from-[#FFF1E6] to-[#FFFAF6] px-4 pb-3 pt-4 text-[#1C1917]">
+            <MitoAvatar />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold">{t.heading}</p>
-              <p className="truncate text-xs font-medium text-[#15803D]">{t.online}</p>
+              <p className="font-display truncate text-xl font-extrabold leading-tight tracking-[-0.02em] rtl:tracking-normal">{t.mitoLead} <span className="text-[#C2410C]">{t.mitoName}</span></p>
+              <p className="truncate text-xs font-medium text-[#57534E]">{t.heading}</p>
+              <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs font-semibold text-[#15803D]"><span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-[#22C55E]" />{t.online}</p>
             </div>
             <button
               type="button"
@@ -716,14 +811,16 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
             />
           ) : (
           <>
-          <div ref={scrollRef} aria-live="polite" className="flex flex-1 flex-col gap-3 overflow-y-auto bg-[#F8F9FB] px-4 py-4">
-            <div className="max-w-[85%] self-start whitespace-pre-line border border-[#D9E1F0] bg-white px-3.5 py-2.5 text-sm leading-relaxed text-[#111]">
-              {t.greeting}
+          <div ref={scrollRef} aria-live="polite" className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-3">
+            <div className="relative">
+              <div className="max-w-[88%] whitespace-pre-line rounded-3xl rounded-es-md border border-[#F6E3D3] bg-white px-4 py-3.5 text-sm leading-relaxed text-[#1C1917] shadow-[0_10px_24px_-18px_rgba(194,65,12,0.4)]">
+                {t.greeting}
+              </div>
             </div>
             {messages.length === 0 && (
               <>
                 <div>
-                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#5B6472]">{t.audienceLabel}</p>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#57534E]">{t.audienceLabel}</p>
                   <div className="grid grid-cols-2 gap-2">
                     {t.audiences.map((a) => {
                       const Icon = AUDIENCE_ICONS[a.key];
@@ -732,24 +829,25 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
                           key={a.key}
                           type="button"
                           onClick={() => send(a.question)}
-                          className="flex items-center gap-2 border border-[#D9E1F0] bg-white px-3 py-2.5 text-start text-sm font-semibold text-[#111] transition-colors hover:border-[#F97316] hover:bg-[#FFF3EA]"
+                          className="flex items-center gap-2.5 !rounded-2xl border border-[#F6E3D3] bg-white px-2.5 py-2.5 text-start text-sm font-semibold text-[#1C1917] shadow-[0_8px_18px_-14px_rgba(194,65,12,0.4)] transition-all hover:-translate-y-0.5 hover:border-[#F97316]"
                         >
-                          <Icon className="h-4 w-4 shrink-0 text-[#EA580C]" />
-                          {a.label}
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-b from-[#FFF1E6] to-[#FFE0CB]"><Icon className="h-[18px] w-[18px] text-[#C2410C]" /></span>
+                          <span className="min-w-0 flex-1 truncate">{a.label}</span>
+                          <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-[#EA580C] rtl:-scale-x-100" />
                         </button>
                       );
                     })}
                   </div>
                 </div>
                 <div>
-                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#5B6472]">{t.suggestionsLabel}</p>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#57534E]">{t.suggestionsLabel}</p>
                   <div className="flex flex-wrap gap-2">
                     {t.suggestions.map((s) => (
                       <button
                         key={s}
                         type="button"
                         onClick={() => send(s)}
-                        className="rounded-[10px] border border-[#F97316]/40 bg-white px-3 py-2 text-xs font-semibold text-[#C2410C] transition-colors hover:bg-[#FFF3EA]"
+                        className="!rounded-full border border-[#F97316]/50 bg-white px-3.5 py-2 text-[13px] font-semibold text-[#C2410C] transition-colors hover:bg-[#FFF3EA]"
                       >
                         {s}
                       </button>
@@ -760,15 +858,15 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
             )}
             {messages.map((m, i) =>
               m.role === "user" ? (
-                <div key={i} className="max-w-[85%] self-end whitespace-pre-line bg-[#0D1024] px-3.5 py-2.5 text-sm leading-relaxed text-white">
+                <div key={i} className="max-w-[85%] self-end whitespace-pre-line rounded-2xl rounded-ee-md bg-[#C2410C] px-3.5 py-2.5 text-sm leading-relaxed text-white">
                   {m.text}
                 </div>
               ) : (
                 <div
                   key={i}
                   className={cn(
-                    "max-w-[85%] self-start whitespace-pre-line border bg-white px-3.5 py-2.5 text-sm leading-relaxed",
-                    m.failed ? "border-[#F97316]/40 text-[#5B6472]" : "border-[#D9E1F0] text-[#111]"
+                    "max-w-[85%] self-start whitespace-pre-line rounded-2xl rounded-es-md border bg-white px-3.5 py-2.5 text-sm leading-relaxed",
+                    m.failed ? "border-[#F97316]/40 text-[#57534E]" : "border-[#F6E3D3] text-[#1C1917]"
                   )}
                 >
                   <ChatText text={m.text} />
@@ -916,7 +1014,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
               e.preventDefault();
               send(draft);
             }}
-            className="flex items-center gap-2 border-t border-[#D9E1F0] p-3"
+            className="flex items-center gap-2 bg-white px-3 pb-2 pt-3"
           >
             <input
               ref={inputRef}
@@ -925,7 +1023,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
               maxLength={1000}
               placeholder={listening ? t.listening : t.placeholder}
               aria-label={t.placeholder}
-              className="h-11 min-w-0 flex-1 border border-[#D9E1F0] px-3 text-sm text-[#111] outline-none placeholder:text-[#6B7280] focus:border-[#F97316]"
+              className="h-12 min-w-0 flex-1 !rounded-2xl border border-[#F0DFD0] bg-[#FFFCFA] px-4 text-sm text-[#1C1917] outline-none placeholder:text-[#6B6560] focus:border-[#F97316]"
             />
             {voiceSupported && (
               <button
@@ -936,7 +1034,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
                 aria-pressed={listening}
                 title={listening ? t.micStop : t.micStart}
                 className={cn(
-                  "flex h-11 w-11 shrink-0 items-center justify-center border transition-colors disabled:opacity-50",
+                  "flex h-12 w-12 shrink-0 items-center justify-center !rounded-2xl border transition-colors disabled:opacity-50",
                   listening
                     ? "border-[#F97316] bg-[#FFF3EA] text-[#C2410C]"
                     : "border-[#D9E1F0] bg-white text-[#171B22] hover:border-[#F97316] hover:text-[#C2410C]"
@@ -949,7 +1047,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
               type="submit"
               disabled={pending || !draft.trim()}
               aria-label={t.sendAria}
-              className="flex h-11 w-11 shrink-0 items-center justify-center bg-[#EA580C] text-white transition-colors hover:bg-[#C2410C] disabled:opacity-50"
+              className="flex h-12 w-12 shrink-0 items-center justify-center !rounded-2xl bg-[#EA580C] text-white shadow-[0_10px_20px_-10px_rgba(234,88,12,0.7)] transition-colors hover:bg-[#C2410C] disabled:opacity-50"
             >
               <Send className="h-4 w-4 rtl:-scale-x-100" />
             </button>
@@ -957,12 +1055,12 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
           </>
           )}
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[#D9E1F0] px-3 py-2 text-xs font-semibold">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 bg-white px-4 pb-3 pt-1 text-sm font-semibold">
             <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 py-1 text-[#111] hover:text-[#C2410C]">
-              <MessageSquare className="h-3.5 w-3.5 text-[#25D366]" /> {t.whatsapp}
+              <span aria-hidden className="block h-5 w-5 bg-[#25D366] [mask:url(/tool-logos/whatsapp.svg)_center/contain_no-repeat]" /> {t.whatsapp}
             </a>
             <a href="mailto:info@infinityuniquers.com" className="flex items-center gap-1.5 py-1 text-[#111] hover:text-[#C2410C]">
-              <Mail className="h-3.5 w-3.5 text-[#EA580C]" /> {t.email}
+              <Mail className="h-5 w-5 text-[#EA580C]" /> {t.email}
             </a>
             {leadSentName ? (
               <Link to="/get-started" className="ms-auto flex items-center gap-1 py-1 text-[#C2410C] hover:text-[#9A3412]">
@@ -973,7 +1071,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
                 {t.leadCta} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
               </button>
             )}
-            <p className="w-full pb-0.5 text-[10px] font-medium text-[#6B7280]">{t.disclaimer}</p>
+            <p className="w-full pt-1 text-[11px] font-medium text-[#6B6560]">{t.disclaimer}</p>
           </div>
         </div>
       )}
@@ -1048,14 +1146,14 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
           onClick={toggle}
           aria-label={t.toggleAria(false)}
           aria-expanded={false}
-          className="relative flex h-14 items-center gap-2.5 rounded-full bg-[#EA580C] p-2 text-sm font-bold text-white shadow-pop transition-transform hover:scale-[1.03] sm:pe-5"
+          className="relative flex h-16 items-center gap-3 rounded-full bg-gradient-to-r from-[#FB8A1E] via-[#F2640F] to-[#D9480F] p-1.5 text-base text-white shadow-[0_18px_36px_-12px_rgba(234,88,12,0.7)] ring-1 ring-white/30 transition-transform hover:scale-[1.03] sm:pe-6"
         >
-          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white">
-            <AiOrb state={speaking ? "speaking" : "idle"} size={40} />
+          <span className="relative flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-white p-[3px] shadow-[0_0_0_4px_rgba(255,255,255,0.35)]">
+            <img src="/product/mito-avatar.webp" alt="" width={192} height={192} className={cn("h-full w-full rounded-full object-cover", speaking && "motion-safe:animate-pulse")} />
           </span>
-          {/* Label only from sm up — on a phone the full pill covers the hero's own buttons. */}
-          <span className="relative hidden sm:inline">{t.launcher}</span>
-          {voiceSupported && <Mic aria-hidden className="relative hidden h-4 w-4 opacity-70 sm:block" />}
+          {/* Label only from sm up: on a phone the full pill covers the page's own buttons. */}
+          <span className="relative hidden text-lg font-medium sm:inline">{t.launcher} <b className="font-extrabold">{t.launcherName}</b></span>
+          {voiceSupported && <Mic aria-hidden className="relative hidden h-5 w-5 sm:block" />}
           {/* Unread badge while the teaser is out — a visible "someone's waiting" cue. */}
           {teaser && !everOpened && (
             <span

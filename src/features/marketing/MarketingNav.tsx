@@ -53,23 +53,31 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
     { label: c.nav.blog, href: "/blog", route: true },
   ];
 
-  const linkClass = "text-sm font-semibold text-[#57534E] transition-colors hover:text-[#1C1917] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2410C]";
+  // The current page or section is shown in orange with an underline. On the home page the first section link is active until another hash is chosen.
+  const isActive = (l: { href: string; route?: boolean }, index: number) =>
+    l.route ? location.pathname.startsWith(l.href) : home && location.pathname === "/" && (location.hash ? l.href.endsWith(location.hash) : index === 0);
+  const linkClass = (active: boolean) =>
+    cn(
+      "relative py-1.5 text-sm font-semibold transition-colors hover:text-[#C2410C] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2410C]",
+      active ? "text-[#C2410C] after:absolute after:inset-x-0 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-[#C2410C]" : "text-[#1C1917]"
+    );
 
   return (
-    <header className={cn("sticky top-0 z-40 border-b bg-white transition-shadow", scrolled ? "border-[#EFE3D7] shadow-[0_8px_30px_-20px_rgba(28,25,23,0.3)]" : "border-transparent")}>
-      <div className="mx-auto flex h-[68px] max-w-[1200px] items-center justify-between gap-4 px-5">
+    <header className={cn("sticky top-0 z-40 border-b bg-white transition-shadow", scrolled ? "border-[#F6E3D3] shadow-[0_14px_34px_-22px_rgba(194,65,12,0.45)]" : "border-transparent")}>
+      <div className="mx-auto flex h-[84px] max-w-[1200px] items-center justify-between gap-4 px-5">
         <Link to="/" aria-label={`${brand.name} home`} className="shrink-0">
-          <img src="/logo-full.webp" alt={brand.name} width={420} height={150} className="h-12 w-auto object-contain mix-blend-multiply sm:h-14" />
+          <img src="/logo-full.webp" alt={brand.name} width={420} height={150} className="h-14 w-auto object-contain mix-blend-multiply sm:h-[68px]" />
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-6 whitespace-nowrap lg:flex">
-          {links.map((l) => (l.route ? <Link key={l.href} to={l.href} className={linkClass}>{l.label}</Link> : <a key={l.href} href={l.href} className={linkClass}>{l.label}</a>))}
+          {links.map((l, i) => (l.route ? <Link key={l.href} to={l.href} aria-current={isActive(l, i) ? "page" : undefined} className={linkClass(isActive(l, i))}>{l.label}</Link> : <a key={l.href} href={l.href} aria-current={isActive(l, i) ? "true" : undefined} className={linkClass(isActive(l, i))}>{l.label}</a>))}
         </nav>
 
         <div className="flex items-center gap-2">
+          <span aria-hidden="true" className="me-3 hidden h-8 w-px bg-[#EBD9C8] lg:block" />
           <LanguageToggle className="hidden sm:inline-flex" />
           <Link to="/login" className="hidden whitespace-nowrap px-3 py-2 text-sm font-semibold text-[#1C1917] hover:text-[#C2410C] sm:inline-flex">{c.nav.signIn}</Link>
-          <Link to="/get-started" className={cn(BTN_PRIMARY, "hidden whitespace-nowrap sm:inline-flex")}>
+          <Link to="/get-started" className={cn(BTN_PRIMARY, "hidden whitespace-nowrap !rounded-full bg-gradient-to-r from-[#EA580C] to-[#C2410C] shadow-[0_12px_24px_-12px_rgba(194,65,12,0.8)] hover:from-[#C2410C] hover:to-[#9A3412] sm:inline-flex")}>
             {c.nav.demo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
           </Link>
           <button

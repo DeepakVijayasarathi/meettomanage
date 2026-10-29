@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Receipt, RotateCcw, type LucideIcon } from "lucide-react";
+import { Check, Receipt, RotateCcw, Video, type LucideIcon } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -74,16 +74,16 @@ function reducedMotion(): boolean {
 }
 
 /** Tints one monochrome SVG with a tool's brand colour through a CSS mask. */
-function ToolMark({ tool, small }: { tool: Tool; small?: boolean }) {
+function ToolMark({ tool, small, tone }: { tool: Tool; small?: boolean; tone?: string }) {
   if (!tool.logo) {
     const Icon = tool.icon!;
-    return <Icon className={small ? "h-5 w-5" : "h-7 w-7"} style={{ color: tool.color }} />;
+    return <Icon className={small ? "h-5 w-5" : "h-7 w-7"} style={{ color: tone ?? tool.color }} />;
   }
   return (
     <span
       aria-hidden="true"
       className={small ? "block h-5 w-5" : "block h-7 w-7"}
-      style={{ backgroundColor: tool.color, WebkitMask: `url(${tool.logo}) center / contain no-repeat`, mask: `url(${tool.logo}) center / contain no-repeat` }}
+      style={{ backgroundColor: tone ?? tool.color, WebkitMask: `url(${tool.logo}) center / contain no-repeat`, mask: `url(${tool.logo}) center / contain no-repeat` }}
     />
   );
 }
@@ -91,24 +91,52 @@ function ToolMark({ tool, small }: { tool: Tool; small?: boolean }) {
 const LEFT = ["form", "receipt", "sheet"];
 const RIGHT = ["video", "chat", "note"];
 
-/** After the merge: the old tool, struck through and greyed, with what replaced it. */
-function Swap({ tool, to, lang, merged, delay, from }: { tool: Tool; to: string; lang: Lang; merged: boolean; delay: number; from: "left" | "right" }) {
+const GAP = 48; // px between a column and the hub, where the connector curves live
+const STEP = 76; // px from a top or bottom row's centre to the middle row's centre
+
+/** A short curve with a dot at each end, from a card toward the hub. `row` is 0 (top), 1 (middle) or 2 (bottom). */
+function Connector({ row, side, merged, delay }: { row: number; side: "left" | "right"; merged: boolean; delay: number }) {
+  const flip = side === "right";
+  const d = row === 1 ? `M0 0 H${GAP}` : row === 0 ? `M0 0 C${GAP / 2} 0 ${GAP / 2} ${STEP} ${GAP} ${STEP}` : `M0 ${STEP} C${GAP / 2} ${STEP} ${GAP / 2} 0 ${GAP} 0`;
+  const y1 = row === 2 ? STEP : 0;
+  const y2 = row === 0 ? STEP : row === 1 ? 0 : 0;
+  return (
+    <svg
+      aria-hidden="true"
+      width={GAP}
+      height={row === 1 ? 2 : STEP}
+      viewBox={`0 0 ${GAP} ${row === 1 ? 2 : STEP}`}
+      className={cn("absolute hidden overflow-visible motion-safe:transition-opacity motion-safe:duration-700 md:block", flip ? "end-full rtl:end-auto rtl:start-full" : "start-full rtl:start-auto rtl:end-full", merged ? "opacity-100" : "opacity-0", flip && "-scale-x-100", row === 0 ? "top-1/2" : row === 2 ? "bottom-1/2" : "top-1/2")}
+      style={{ transitionDelay: merged ? `${1300 + delay}ms` : "0ms" }}
+    >
+      <g transform={row === 1 ? "translate(0 1)" : undefined}>
+        <path d={d} fill="none" stroke="#FDBA74" strokeWidth="1.5" />
+        <circle cx="0" cy={row === 1 ? 0 : y1} r="3.5" fill="#F97316" />
+        <circle cx={GAP} cy={row === 1 ? 0 : y2} r="3.5" fill="#F97316" />
+      </g>
+    </svg>
+  );
+}
+
+/** After the merge: the old tool, struck through, with what replaced it, joined to the hub by a curve. */
+function Swap({ tool, to, lang, merged, delay, from, row, side }: { tool: Tool; to: string; lang: Lang; merged: boolean; delay: number; from: "left" | "right"; row: number; side: "left" | "right" }) {
   return (
     <div
       className={cn(
-        "flex min-w-0 items-center gap-3 rounded-xl border border-[#F2D9C4] bg-white px-3 py-2.5 shadow-sm motion-safe:transition-all motion-safe:duration-700",
+        "relative flex min-h-[64px] min-w-0 items-center gap-3 rounded-2xl border border-[#F6E3D3] bg-white px-3 py-2.5 shadow-[0_10px_24px_-16px_rgba(194,65,12,0.35)] motion-safe:transition-all motion-safe:duration-700",
         merged ? "translate-x-0 opacity-100" : from === "left" ? "translate-x-8 opacity-0" : "-translate-x-8 opacity-0"
       )}
       style={{ transitionDelay: merged ? `${900 + delay}ms` : "0ms" }}
     >
-      <span aria-hidden="true" className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#F5F2EE] opacity-70 grayscale sm:grid"><ToolMark tool={tool} small /></span>
+      <span aria-hidden="true" className="hidden h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-b from-[#FFF1E6] to-[#FFE0CB] sm:grid">{tool.key === "video" ? <Video className="h-5 w-5" style={{ color: "#C2410C" }} /> : <ToolMark tool={tool} small tone="#C2410C" />}</span>
       <div className="min-w-0 text-start">
-        <p className="truncate text-[11px] font-medium text-[#6B6560] line-through decoration-[#B91C1C]/60">{tool.label[lang]}</p>
+        <p className="truncate text-[11px] font-medium text-[#6B6560] line-through decoration-[#6B6560]/70">{tool.label[lang]}</p>
         <p className="flex items-start gap-1.5 break-words text-[13px] font-bold leading-snug text-[#1C1917]">
           <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#16A34A] text-white"><Check className="h-2.5 w-2.5" strokeWidth={3.5} /></span>
           {to}
         </p>
       </div>
+      <Connector row={row} side={side} merged={merged} delay={delay} />
     </div>
   );
 }
@@ -156,7 +184,7 @@ export function ChaosToOne({ lang, brandName }: { lang: Lang; brandName: string 
           ref={ref}
           role="img"
           aria-label={t.stageLabel}
-          className="relative mt-12 h-[600px] overflow-hidden rounded-2xl border border-[#EFE3D7] bg-[#FFFBF7] md:h-[340px]"
+          className="relative mt-12 h-[600px] overflow-hidden rounded-2xl border border-[#EFE3D7] bg-[#FFFBF7] md:h-[360px]"
         >
           {/* The mess: six real tools, each with a red badge, drifting loose. On merge they all
               collapse toward the centre, one after another. */}
@@ -186,25 +214,26 @@ export function ChaosToOne({ lang, brandName }: { lang: Lang; brandName: string 
           ))}
 
           {/* The one system: the hub pops out of the spot the tools collapsed into, with what replaced each tool on either side. */}
-          <div className="absolute inset-0 z-20 grid grid-cols-2 content-center items-center gap-3 p-4 md:grid-cols-[1fr_280px_1fr] md:gap-6 md:p-8">
-            <div className="order-2 flex flex-col gap-3 md:order-1">
-              {LEFT.map((key, i) => <Swap key={key} tool={TOOLS.find((x) => x.key === key)!} to={t.swaps[key]} lang={lang} merged={merged} delay={i * 130} from="left" />)}
+          <div className="absolute inset-0 z-20 grid grid-cols-2 content-center items-center gap-3 p-4 md:grid-cols-[1fr_300px_1fr] md:gap-x-12 md:gap-y-0 md:p-8">
+            <div className="order-2 flex flex-col gap-3 md:order-1 md:gap-3">
+              {LEFT.map((key, i) => <Swap key={key} tool={TOOLS.find((x) => x.key === key)!} to={t.swaps[key]} lang={lang} merged={merged} delay={i * 130} from="left" row={i} side="left" />)}
             </div>
 
             <div
               className={cn(
-                "order-1 col-span-2 mx-auto w-full max-w-[320px] rounded-2xl border bg-white p-5 text-center motion-safe:transition-[transform,opacity] motion-safe:duration-700 motion-safe:ease-out md:order-2 md:col-span-1",
+                "relative order-1 col-span-2 mx-auto w-full max-w-[320px] rounded-3xl border bg-white p-6 text-center motion-safe:transition-[transform,opacity] motion-safe:duration-700 motion-safe:ease-out md:order-2 md:col-span-1",
                 merged ? "m2m-glow scale-100 border-[#F97316]/50 opacity-100" : "pointer-events-none scale-50 border-[#D9E1F0] opacity-0"
               )}
               style={{ transitionDelay: merged ? "650ms" : "0ms" }}
             >
-              <img src="/logo-icon-128.webp" alt="" width={44} height={44} className="mx-auto h-11 w-11 object-contain" />
+              <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 -z-10 hidden h-[250px] w-[250px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(249,115,22,0.16),transparent_68%)] md:block" />
+              <img src="/logo-icon-128.webp" alt="" width={56} height={56} className="mx-auto h-14 w-14 object-contain" />
               <p className="font-display mt-2 text-lg font-extrabold leading-tight text-[#111]">{brandName}</p>
               <p className="mt-0.5 text-xs font-bold uppercase tracking-[0.06em] text-[#16A34A] rtl:tracking-normal">{t.allIn}</p>
             </div>
 
             <div className="order-3 flex flex-col gap-3">
-              {RIGHT.map((key, i) => <Swap key={key} tool={TOOLS.find((x) => x.key === key)!} to={t.swaps[key]} lang={lang} merged={merged} delay={i * 130} from="right" />)}
+              {RIGHT.map((key, i) => <Swap key={key} tool={TOOLS.find((x) => x.key === key)!} to={t.swaps[key]} lang={lang} merged={merged} delay={i * 130} from="right" row={i} side="right" />)}
             </div>
           </div>
         </div>

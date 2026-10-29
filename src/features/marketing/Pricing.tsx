@@ -159,7 +159,7 @@ const T = {
 
 function ToggleGroup<V extends string>({ options, value, onChange }: { options: { value: V; label: string }[]; value: V; onChange: (v: V) => void }) {
   return (
-    <div role="tablist" className="inline-flex gap-1 rounded-[10px] border border-[#D9E1F0] bg-white p-1">
+    <div role="tablist" className="inline-flex gap-1 rounded-full border border-[#EFE3D7] bg-white p-1">
       {options.map((opt) => {
         const active = opt.value === value;
         return (
@@ -169,7 +169,7 @@ function ToggleGroup<V extends string>({ options, value, onChange }: { options: 
             role="tab"
             aria-selected={active}
             onClick={() => onChange(opt.value)}
-            className={cn("rounded-[8px] px-4 py-2 text-xs font-semibold transition-colors", active ? "bg-[#111] text-white" : "text-[#5B6472] hover:text-[#111]")}
+            className={cn("rounded-full px-4 py-2 text-xs font-semibold transition-colors", active ? "bg-[#111] text-white" : "text-[#5B6472] hover:text-[#111]")}
           >
             {opt.label}
           </button>
@@ -196,20 +196,20 @@ interface CardProps {
 
 function PlanCard({ eyebrow, name, price, priceNote, badge, description, highlighted, icon: Icon, ctaLabel, ctaTo, popularLabel, children }: CardProps) {
   return (
-    <div className={cn(CARD, "relative flex flex-col p-8 sm:p-9", highlighted && "lg:-mt-4 lg:pb-12")}>
+    <div className={cn(CARD, "relative flex flex-col overflow-hidden p-8 sm:p-9", highlighted && "lg:-mt-4 lg:pb-12")}>
       {highlighted && <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ background: ACCENT_GRADIENT }} />}
       {highlighted && (
-        <span className="absolute end-8 top-0 bg-[#111] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-white rtl:tracking-normal">{popularLabel}</span>
+        <span className="absolute end-8 top-0 rounded-b-xl bg-[#111] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-white rtl:tracking-normal">{popularLabel}</span>
       )}
       <span className="flex h-12 w-12 items-center justify-center bg-[#FFF3EA] text-[#EA580C]"><Icon className="h-6 w-6" /></span>
       <p className="mt-5 text-xs font-bold uppercase tracking-[0.08em] text-[#C2410C] rtl:tracking-normal">{eyebrow}</p>
       <h2 className="font-display mt-1.5 text-2xl font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{name}</h2>
       <p className="font-display mt-5 text-[clamp(2.25rem,3.4vw,3rem)] font-extrabold leading-none tracking-[-0.03em] text-[#111] rtl:tracking-normal">{price}</p>
       <p className="mt-2 text-sm font-semibold text-[#5B6472]">{priceNote}</p>
-      {badge && <p className="mt-3 inline-flex w-fit items-center rounded-[10px] bg-[#FFF3EA] px-3 py-1.5 text-xs font-semibold text-[#C2410C]">{badge}</p>}
+      {badge && <p className="mt-3 inline-flex w-fit items-center rounded-full bg-[#FFF3EA] px-3 py-1.5 text-xs font-semibold text-[#C2410C]">{badge}</p>}
       {description && <p className="mt-4 text-sm leading-relaxed text-[#333]">{description}</p>}
       <div className="mt-6 flex flex-1 flex-col gap-5 border-t border-[#D9E1F0] pt-6">{children}</div>
-      <Link to={ctaTo} className={cn(highlighted ? CTA_ORANGE : CTA_DARK, "mt-8 w-full")}>
+      <Link to={ctaTo} className={cn(highlighted ? CTA_ORANGE : CTA_DARK, "mt-8 w-full !rounded-2xl")}>
         {ctaLabel} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
       </Link>
     </div>

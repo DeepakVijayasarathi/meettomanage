@@ -101,7 +101,7 @@ export const COPY: Record<Lang, HomeCopy> = {
         { key: "ai", title: "AI Command Center", body: "Ask about collections, students and classes and get live answers, with a prioritised list of owner actions.", alt: "AI Command Center with a business copilot, student follow-ups and a financial forecast" },
       ],
     },
-    video: { eyebrow: "See it in action", heading: "A two-minute tour of the platform.", sub: "Scheduling, portals and reporting, recorded from the real product." },
+    video: { eyebrow: "See it in action", heading: "A 13-minute tour of the platform.", sub: "Scheduling, portals and reporting, recorded from the real product." },
     metrics: [
       { to: 8, label: "role-based portals" },
       { to: 145, label: "learning games and resources" },
@@ -231,7 +231,7 @@ export const COPY: Record<Lang, HomeCopy> = {
         { key: "ai", title: "مركز القيادة بالذكاء الاصطناعي", body: "اسأل عن التحصيل والطلاب والحصص واحصل على إجابات حية مع قائمة مرتبة بإجراءات المالك.", alt: "مركز القيادة بالذكاء الاصطناعي مع مساعد أعمال ومتابعات الطلاب وتوقعات مالية" },
       ],
     },
-    video: { eyebrow: "شاهده يعمل", heading: "جولة من دقيقتين في المنصة.", sub: "الجدولة والبوابات والتقارير، مسجّلة من المنتج الفعلي." },
+    video: { eyebrow: "شاهده يعمل", heading: "جولة من 13 دقيقة في المنصة.", sub: "الجدولة والبوابات والتقارير، مسجّلة من المنتج الفعلي." },
     metrics: [
       { to: 8, label: "بوابات حسب الدور" },
       { to: 145, label: "لعبة ومورد تعليمي" },
