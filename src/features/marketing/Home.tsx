@@ -208,9 +208,29 @@ export default function MarketingHome() {
           </ul>
         </section>
 
-        {/* NGO OFFER: the designed banner on wider English screens; live text on phones and in Arabic, where the picture's baked-in English would not read */}
+        {/* NGO OFFER: the designed banner on wider English screens; the phone picture on small English screens; live text in Arabic, where the pictures' baked-in English would not read */}
         <section aria-labelledby="ngo-offer" className="bg-white pt-[clamp(40px,5vw,72px)]">
           <div className="mx-auto max-w-[1200px] px-5">
+            {lang === "en" && (
+              <Reveal className="md:hidden">
+                <Link
+                  to="/get-started?offer=ngo"
+                  className="block overflow-hidden rounded-3xl shadow-[0_24px_60px_-30px_rgba(194,65,12,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2410C]"
+                >
+                  <img
+                    src="/product/ngo-offer-mobile-768.webp"
+                    srcSet="/product/ngo-offer-mobile-768.webp 768w, /product/ngo-offer-mobile.webp 1536w"
+                    sizes="100vw"
+                    alt={`${c.ngo.heading} ${c.ngo.body} ${c.ngo.note} ${c.ngo.cta}`}
+                    width={1536}
+                    height={1024}
+                    loading="lazy"
+                    decoding="async"
+                    className="block h-auto w-full"
+                  />
+                </Link>
+              </Reveal>
+            )}
             {lang === "en" && (
               <Reveal className="hidden md:block">
                 <Link
@@ -231,7 +251,7 @@ export default function MarketingHome() {
                 </Link>
               </Reveal>
             )}
-            <Reveal className={cn("relative overflow-hidden rounded-3xl bg-[#C2410C] px-7 py-9 text-white sm:px-12 sm:py-11", lang === "en" && "md:hidden")}>
+            <Reveal className={cn("relative overflow-hidden rounded-3xl bg-[#C2410C] px-7 py-9 text-white sm:px-12 sm:py-11", lang === "en" && "hidden")}>
               <div aria-hidden="true" className="absolute inset-0 opacity-20 [background-image:radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px] [mask-image:radial-gradient(60%_100%_at_100%_50%,#000,transparent)]" />
               <div className="relative grid items-center gap-6 md:grid-cols-[1.5fr_auto]">
                 <div>
