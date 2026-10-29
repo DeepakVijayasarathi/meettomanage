@@ -126,7 +126,14 @@ export default function GetStarted() {
   // or forced to invent an academy name they don't have.
   const [searchParams] = useSearchParams();
   const isCoach = searchParams.get("for") === "coach";
-  const [form, setForm] = useState(EMPTY_FORM);
+  // The homepage hero hands over whatever the visitor typed (an email or a mobile number) as ?contact=.
+  const [form, setForm] = useState(() => {
+    const contact = (searchParams.get("contact") ?? "").trim().slice(0, 120);
+    // ?offer=ngo comes from the homepage's "Free for NGOs" banner; the team confirms eligibility from this note.
+    const base = searchParams.get("offer") === "ngo" ? { ...EMPTY_FORM, message: "NGO / non-profit offer: please confirm eligibility and next steps." } : EMPTY_FORM;
+    if (!contact) return base;
+    return contact.includes("@") ? { ...base, workEmail: contact } : { ...base, phone: contact };
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);

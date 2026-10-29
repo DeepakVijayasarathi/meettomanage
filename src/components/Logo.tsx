@@ -25,7 +25,7 @@ export function Logo({ className, imgClassName, showWordmark = true, variant = "
     const height = imgClassName?.match(/\bh-\S+/)?.[0] ?? "h-14";
     return (
       <div className={cn("flex items-center", className)}>
-        <img src="/logo-full.png" alt={brand.name} className={cn(height, "w-auto object-contain", wordmarkClassName)} />
+        <img src="/logo-full.webp" alt={brand.name} className={cn(height, "w-auto object-contain", wordmarkClassName)} />
       </div>
     );
   }

@@ -2,9 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logo-icon.png" />
+    <link rel="icon" type="image/webp" href="/logo-icon-128.webp" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preload" as="image" href="/logo-full.webp" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#F97316" />
     <title>Meet to Manage — LMS &amp; Virtual Classroom</title>
@@ -48,6 +49,20 @@
       }
     </script>
     <script>
+      // Starts the tenant lookup now, in parallel with the app bundle, instead of after it has loaded
+      // (src/lib/tenantPath.ts awaits window.__m2mTenantResolve). Skipped for /t/<code> links, which
+      // carry the tenant in the path and never ask.
+      (function () {
+        try {
+          var root = "%VITE_API_BASE_URL%";
+          if (root.indexOf("http") !== 0 || /^\/t\/[a-z][a-z0-9-]{2,49}(\/|$)/.test(location.pathname)) return;
+          window.__m2mTenantResolve = fetch(root.replace(/\/$/, "") + "/api/tenant/resolve", { headers: { Accept: "application/json" } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .catch(function () { return null; });
+        } catch (e) {}
+      })();
+    </script>
+    <script>
       // Applies the persisted (or OS-level) theme before first paint so there's no
       // flash of the wrong theme while React boots. Keep in sync with src/lib/theme.ts,
       // which reads the same "trn.theme" key once the app mounts.
@@ -78,13 +93,56 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Fredoka:wght@500;600;700&family=Cairo:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Fonts load without blocking first paint: the stylesheet is fetched as a preload and applied
+         on arrival (display=swap keeps text visible meanwhile). The noscript tag is the no-JS fallback. -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Fredoka:wght@500;600;700&family=Cairo:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Fredoka:wght@500;600;700&family=Cairo:wght@400;500;600;700;800&display=swap" /></noscript>
+    <style>
+      /* First paint for the home page, before any JavaScript has run. It is replaced the moment the app mounts
+         (React clears #root), and removed at once on every other route or in Arabic. Visible to crawlers too. */
+      #boot { font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif; color: #1c1917; background: #fff; min-height: 100vh }
+      #boot header { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1200px; height: 68px; margin: 0 auto; padding: 0 20px; border-bottom: 1px solid #efe3d7 }
+      #boot header img { height: 48px; width: auto }
+      #boot header nav { display: none; gap: 32px }
+      #boot header nav a { color: #57534e; font-size: 14px; font-weight: 600; text-decoration: none }
+      #boot .cta { display: inline-block; background: #c2410c; color: #fff; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 700; text-decoration: none }
+      #boot header .cta { padding: 12px 20px; font-size: 14px }
+      #boot main { max-width: 940px; margin: 0 auto; padding: clamp(48px, 7vw, 104px) 20px; text-align: center; background: radial-gradient(60% 70% at 50% 0%, #ffe6d0, transparent) }
+      #boot h1 { margin: 0; font-family: "Plus Jakarta Sans", "DM Sans", system-ui, sans-serif; font-size: clamp(1.8rem, 3.1vw, 2.7rem); line-height: 1.04; letter-spacing: -0.04em; font-weight: 800 }
+      #boot h1 em { font-style: normal; color: #c2410c }
+      #boot p { max-width: 640px; margin: 24px auto 0; font-size: clamp(1.0625rem, 1.5vw, 1.25rem); line-height: 1.6; color: #57534e }
+      #boot main .cta { margin-top: 36px }
+      @media (min-width: 1024px) {
+        #boot header nav { display: flex }
+        #boot main { max-width: none; text-align: start; padding-inline: max(20px, calc((100% - 1280px) / 2 + 20px)) }
+        #boot h1 { max-width: 560px; font-size: clamp(1.8rem, 3.1vw, 2.7rem) }
+        #boot p { margin-inline: 0; max-width: 560px }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="boot">
+      <header>
+        <a href="/" aria-label="Meet to Manage home"><img src="/logo-full.webp" alt="Meet to Manage" width="135" height="48" /></a>
+        <nav aria-label="Primary"><a href="/#features">Platform</a><a href="/#classroom">Live classroom</a><a href="/#app">Mobile app</a><a href="/pricing">Pricing</a><a href="/#faq">FAQ</a><a href="/blog">Blog</a></nav>
+        <a class="cta" href="/get-started">Book Demo</a>
+      </header>
+      <main>
+        <h1>Automate your work. Enter the <em>new era</em> of online coaching.</h1>
+        <p>Your own virtual classroom, plus fee collection, admissions and a parent app, all on autopilot, so you can spend your day teaching.</p>
+        <a class="cta" href="/get-started">Book Demo</a>
+      </main>
+    </div></div>
+    <script>
+      (function () {
+        var boot = document.getElementById("boot");
+        var arabic = false;
+        try { arabic = localStorage.getItem("trn.lang") === "ar"; } catch (e) {}
+        if (boot && (location.pathname !== "/" || arabic)) boot.parentNode.removeChild(boot);
+        // Tells the home page its headline is already on screen, so it doesn't replay the intro animation.
+        else if (boot) document.documentElement.classList.add("has-boot");
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
