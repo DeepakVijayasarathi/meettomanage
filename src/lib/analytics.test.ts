@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { marketingAttribution } from "./analytics";
+import { browserCountry, marketingAttribution } from "./analytics";
 
 describe("marketingAttribution", () => {
   beforeEach(() => {
@@ -40,5 +40,10 @@ describe("marketingAttribution", () => {
     at("");
 
     expect(marketingAttribution()).toEqual({});
+  });
+
+  it("reports the country/region from the browser locale without using an IP address", () => {
+    vi.stubGlobal("navigator", { ...navigator, language: "en-IN" });
+    expect(browserCountry()).toBe("IN");
   });
 });

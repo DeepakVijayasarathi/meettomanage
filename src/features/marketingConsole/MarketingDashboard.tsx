@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarCheck2, Eye, MessageCircle, Table2, TrendingUp, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, CalendarCheck2, Eye, MessageCircle, MousePointerClick, Table2, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
@@ -20,13 +20,17 @@ const RANGES = [7, 30, 90] as const;
 
 const EMPTY: ApiMarketingDashboard = {
   days: 30,
-  totals: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, chatBookings: 0, conversionRate: 0 },
-  previous: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, chatBookings: 0, conversionRate: 0 },
+  startDate: "",
+  endDate: "",
+  totals: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
+  previous: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
   daily: [],
   topPages: [],
   topBlogPosts: [],
   sources: [],
   campaigns: [],
+  mediums: [],
+  countries: [],
   devices: [],
   demoRequestsByStatus: [],
 };
@@ -38,6 +42,8 @@ function change(current: number, previous: number): { value: number; label: stri
 }
 
 const fmt = (n: number) => n.toLocaleString();
+const localDate = (date: string) => date ? new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${date}T00:00:00`)) : "";
+const regionNames = typeof Intl.DisplayNames === "function" ? new Intl.DisplayNames(undefined, { type: "region" }) : null;
 
 /** Horizontal ranked bars — one hue, value as text beside each bar, full name on hover. */
 function RankedList({ title, items, emptyText, loading, format }: { title: string; items: ApiNamedCount[]; emptyText: string; loading: boolean; format?: (name: string) => string }) {
@@ -89,6 +95,8 @@ export default function MarketingDashboard() {
   const p: ApiMarketingTotals = data.previous;
   const daily = data.daily.map((d) => ({ ...d, label: formatDate(d.date) }));
   const hasTraffic = daily.some((d) => d.pageViews > 0);
+  const exactRange = data.startDate && data.endDate ? `${localDate(data.startDate)} – ${localDate(data.endDate)}` : `Last ${days} days`;
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "local time";
 
   const kpis: { label: string; value: string; detail?: string; icon: LucideIcon; tone: "primary" | "success" | "warning" | "neutral"; trend?: { value: number; label: string } }[] = [
     { label: "Visitors", value: fmt(t.visitors), icon: Users, tone: "primary", trend: change(t.visitors, p.visitors) },
@@ -103,6 +111,9 @@ export default function MarketingDashboard() {
       trend: change(t.demoRequests, p.demoRequests),
     },
     { label: "Visitor → demo", value: `${t.conversionRate}%`, detail: "per 100 visitors", icon: TrendingUp, tone: "warning" },
+    { label: "Pages / visitor", value: t.pagesPerVisitor.toFixed(1), detail: "content depth", icon: BarChart3, tone: "neutral" },
+    { label: "Chat engagement", value: `${t.chatStartRate}%`, detail: "visitors starting chat", icon: MousePointerClick, tone: "primary" },
+    { label: "Demo → converted", value: `${t.demoPipelineConversionRate}%`, detail: "sales pipeline", icon: TrendingUp, tone: "success" },
   ];
 
   return (
@@ -110,7 +121,7 @@ export default function MarketingDashboard() {
       <PageHeader
         eyebrow="Website"
         title="Analytics"
-        description="Visitors, where they come from, and how many turn into demo requests — from the public marketing site only. Anonymous: no IP addresses or personal data are stored."
+        description={`Public-site acquisition and conversion, ${exactRange} (${timeZone}). Anonymous: no IP addresses or personal data are stored.`}
         actions={
           <div role="group" aria-label="Date range" className="inline-flex rounded-lg border border-border p-0.5">
             {RANGES.map((r) => (
@@ -131,7 +142,7 @@ export default function MarketingDashboard() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k) => (
           <KpiCard key={k.label} label={k.label} value={k.value} detail={k.detail} icon={k.icon} tone={k.tone} trend={k.trend} loading={loading} error={error} />
         ))}
@@ -140,7 +151,7 @@ export default function MarketingDashboard() {
       <ChartCard
         className="mt-6"
         title="Visitors & page views"
-        description={`Per day, last ${days} days`}
+        description={`Per local calendar day · ${exactRange} · ${timeZone}`}
         height={300}
         loading={loading}
         error={error}
@@ -201,6 +212,8 @@ export default function MarketingDashboard() {
         <RankedList title="Top blog posts" items={data.topBlogPosts} loading={loading} emptyText="No blog reads yet." format={(path) => path.replace(/^\/blog\//, "")} />
         <RankedList title="Devices" items={data.devices} loading={loading} emptyText="No visits yet." format={(d) => DEVICE_LABEL[d] ?? d} />
         <RankedList title="Campaigns (utm_campaign)" items={data.campaigns} loading={loading} emptyText="No tagged campaign traffic. Add ?utm_source=…&utm_campaign=… to your ad links." />
+        <RankedList title="Traffic medium (utm_medium)" items={data.mediums} loading={loading} emptyText="No tagged medium yet. Use values such as cpc, email or social." />
+        <RankedList title="Audience country / region" items={data.countries} loading={loading} emptyText="Country appears for new visits when the browser locale includes a region." format={(code) => `${regionNames?.of(code) ?? code} (${code})`} />
         <RankedList title="Demo requests by status" items={data.demoRequestsByStatus} loading={loading} emptyText="No demo requests in this period." />
       </div>
     </div>

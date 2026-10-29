@@ -9,6 +9,7 @@ import { apiEnabled, getAccessToken, setAccessToken, userMessage } from "@/lib/a
 import { loginMarketing } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
 import { useSession } from "@/state/session";
+import { setSessionTenant } from "@/lib/tenantPath";
 
 const PIN_LENGTH = 4;
 
@@ -44,6 +45,7 @@ export default function MarketingLogin() {
         setAccessToken(null);
         throw new Error("Sign in failed. Please check your email and PIN.");
       }
+      setSessionTenant(response.tenantCode ?? null);
       setRole("marketing");
       setUserName(response.user.fullName);
       setPermissions(response.permissions);

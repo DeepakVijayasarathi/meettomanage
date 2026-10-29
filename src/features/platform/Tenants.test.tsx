@@ -46,7 +46,7 @@ describe("platform administration authorization", () => {
     const subs = [{
       tenantId: "t1", tenantCode: "acme", tenantName: "Acme Academy", tenantStatus: "Active", id: "s1", planCode: "starter", planName: "Starter", status: "Trialing",
       price: null, trialEndsAtUtc: "2026-11-03T00:00:00Z", currentPeriodEndUtc: null, graceEndsAtUtc: null, cancelAtPeriodEnd: false, suspendedByBilling: false, mrr: 0,
-      usage: { activeStudents: 12, staffCount: 3, storageMb: 5, sessionMinutesMonth: 0, date: "2026-10-20" }, openInvoices: 0, openAmount: 0,
+      usage: { activeStudents: 12, staffCount: 3, storageMb: 5, sessionMinutesMonth: 0, sessionsMonth: 8, recordingsMonth: 4, date: "2026-10-20" }, openInvoices: 0, openAmount: 0,
     }];
     const plans = [{ id: "p1", code: "starter", name: "Starter", description: null, isPublic: true, isActive: true, trialDays: 0, sortOrder: 1, subscribers: 1, prices: [], entitlements: [] }];
 
