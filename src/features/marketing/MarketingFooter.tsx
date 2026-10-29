@@ -60,7 +60,14 @@ export function MarketingFooter() {
         </div>
       </div>
       <div className="border-t border-[#EFE3D7]">
-        <p className="mx-auto max-w-[1200px] px-5 py-6 text-xs font-medium text-[#6B6560]">{f.rights(new Date().getFullYear())}</p>
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-3 px-5 py-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs font-medium text-[#6B6560]">{f.rights(new Date().getFullYear())}</p>
+          <p className="flex items-center gap-2 text-xs font-medium text-[#6B6560]">
+            {lang === "ar" ? "إحدى منتجات" : "A product of"}
+            <img src="/infinity-uniquers-logo.png" alt="Infinity Uniquers" width={351} height={150} loading="lazy" className="h-7 w-auto object-contain" />
+            <span className="font-bold text-[#1C1917]">Infinity Uniquers</span>
+          </p>
+        </div>
       </div>
     </footer>
   );
