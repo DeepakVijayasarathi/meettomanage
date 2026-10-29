@@ -1,4 +1,4 @@
-import { apiFetchGlobal } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 export type ApiPlatformDemoRequestStatus = "New" | "Contacted" | "Converted" | "Closed";
 
@@ -25,23 +25,23 @@ export async function requestPlatformDemo(input: {
   academyName: string;
   message?: string;
 }): Promise<ApiPlatformDemoRequest> {
-  return apiFetchGlobal<ApiPlatformDemoRequest>("/api/marketing/demo-requests", {
+  return apiFetch<ApiPlatformDemoRequest>("/api/marketing/demo-requests", {
     method: "POST",
     body: JSON.stringify(input),
-  }, false);
+  });
 }
 
 /** Admin — the follow-up queue for platform-demo requests. */
 export async function listPlatformDemoRequests(status?: ApiPlatformDemoRequestStatus): Promise<ApiPlatformDemoRequest[]> {
   const query = status ? `?status=${status}` : "";
-  return apiFetchGlobal<ApiPlatformDemoRequest[]>(`/api/marketing/demo-requests${query}`);
+  return apiFetch<ApiPlatformDemoRequest[]>(`/api/marketing/demo-requests${query}`);
 }
 
 export async function updatePlatformDemoRequestStatus(
   id: string,
   status: ApiPlatformDemoRequestStatus
 ): Promise<ApiPlatformDemoRequest> {
-  return apiFetchGlobal<ApiPlatformDemoRequest>(`/api/marketing/demo-requests/${id}/status`, {
+  return apiFetch<ApiPlatformDemoRequest>(`/api/marketing/demo-requests/${id}/status`, {
     method: "PUT",
     body: JSON.stringify({ status }),
   });
@@ -74,18 +74,18 @@ ${text}`.slice(-1000);
   }
   let messages = merged.slice(-20);
   while (messages.length > 0 && messages[0].role !== "user") messages = messages.slice(1);
-  const res = await apiFetchGlobal<{ reply: string; bookedName?: string | null }>("/api/marketing/chat", {
+  const res = await apiFetch<{ reply: string; bookedName?: string | null }>("/api/marketing/chat", {
     method: "POST",
     body: JSON.stringify({ messages }),
-  }, false);
+  });
   return { reply: res.reply, bookedName: res.bookedName ?? null };
 }
 
 export async function translateMarketingText(texts: string[], targetLanguage: string): Promise<string[]> {
-  const response = await apiFetchGlobal<{ translations: string[] }>("/api/marketing/translate", {
+  const response = await apiFetch<{ translations: string[] }>("/api/marketing/translate", {
     method: "POST",
     body: JSON.stringify({ texts, targetLanguage }),
-  }, false);
+  });
   return response.translations;
 }
 
@@ -126,21 +126,21 @@ export interface ApiBlogPost {
 
 /** Public — no login required. */
 export async function listBlogPosts(): Promise<ApiBlogPostSummary[]> {
-  return apiFetchGlobal<ApiBlogPostSummary[]>("/api/blog", undefined, false);
+  return apiFetch<ApiBlogPostSummary[]>("/api/blog");
 }
 
 /** Public — no login required. */
 export async function getBlogPost(slug: string): Promise<ApiBlogPostDetail> {
-  return apiFetchGlobal<ApiBlogPostDetail>(`/api/blog/${slug}`, undefined, false);
+  return apiFetch<ApiBlogPostDetail>(`/api/blog/${slug}`);
 }
 
 /** Admin — full CRUD. */
 export async function listBlogPostsAdmin(): Promise<ApiBlogPost[]> {
-  return apiFetchGlobal<ApiBlogPost[]>("/api/blog/admin");
+  return apiFetch<ApiBlogPost[]>("/api/blog/admin");
 }
 
 export async function getBlogPostAdmin(id: string): Promise<ApiBlogPost> {
-  return apiFetchGlobal<ApiBlogPost>(`/api/blog/admin/${id}`);
+  return apiFetch<ApiBlogPost>(`/api/blog/admin/${id}`);
 }
 
 export async function createBlogPost(input: {
@@ -152,18 +152,18 @@ export async function createBlogPost(input: {
   /** Future = scheduled (hidden from /blog until then); omit = publish now. */
   publishAtUtc?: string;
 }): Promise<ApiBlogPost> {
-  return apiFetchGlobal<ApiBlogPost>("/api/blog/admin", { method: "POST", body: JSON.stringify(input) });
+  return apiFetch<ApiBlogPost>("/api/blog/admin", { method: "POST", body: JSON.stringify(input) });
 }
 
 export async function updateBlogPost(
   id: string,
   input: { title: string; slug: string; excerpt: string; content: string; isPublished: boolean; publishAtUtc?: string }
 ): Promise<ApiBlogPost> {
-  return apiFetchGlobal<ApiBlogPost>(`/api/blog/admin/${id}`, { method: "PUT", body: JSON.stringify(input) });
+  return apiFetch<ApiBlogPost>(`/api/blog/admin/${id}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
 export async function deleteBlogPost(id: string): Promise<void> {
-  await apiFetchGlobal<void>(`/api/blog/admin/${id}`, { method: "DELETE" });
+  await apiFetch<void>(`/api/blog/admin/${id}`, { method: "DELETE" });
 }
 
 export interface ApiNamedCount {
@@ -178,10 +178,15 @@ export interface ApiMarketingTotals {
   demoRequests: number;
   chatBookings: number;
   conversionRate: number;
+  pagesPerVisitor: number;
+  chatStartRate: number;
+  demoPipelineConversionRate: number;
 }
 
 export interface ApiMarketingDashboard {
   days: number;
+  startDate: string;
+  endDate: string;
   totals: ApiMarketingTotals;
   previous: ApiMarketingTotals;
   daily: { date: string; pageViews: number; visitors: number; demoRequests: number }[];
@@ -189,6 +194,8 @@ export interface ApiMarketingDashboard {
   topBlogPosts: ApiNamedCount[];
   sources: ApiNamedCount[];
   campaigns: ApiNamedCount[];
+  mediums: ApiNamedCount[];
+  countries: ApiNamedCount[];
   devices: ApiNamedCount[];
   demoRequestsByStatus: ApiNamedCount[];
 }
@@ -196,5 +203,5 @@ export interface ApiMarketingDashboard {
 /** Marketing console only — first-party analytics for the last `days` days, in the browser's own calendar days. */
 export async function getMarketingDashboard(days: number): Promise<ApiMarketingDashboard> {
   const tzOffsetMinutes = -new Date().getTimezoneOffset();
-  return apiFetchGlobal<ApiMarketingDashboard>(`/api/marketing/analytics?days=${days}&tzOffsetMinutes=${tzOffsetMinutes}`);
+  return apiFetch<ApiMarketingDashboard>(`/api/marketing/analytics?days=${days}&tzOffsetMinutes=${tzOffsetMinutes}`);
 }

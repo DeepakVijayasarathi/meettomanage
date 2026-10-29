@@ -9,7 +9,7 @@
  * IDs are format-checked before they go anywhere near a script URL; a malformed value is
  * ignored rather than injected.
  */
-import { apiEnabled, apiFetchGlobal } from "@/lib/api";
+import { apiEnabled, apiFetch } from "@/lib/api";
 import { getPublicSettings, toSettingsMap } from "@/api/settings";
 
 export const ANALYTICS_KEYS = {
@@ -121,6 +121,15 @@ export type MarketingAttribution = {
   utmCampaign?: string;
 };
 
+export function browserCountry(): string | undefined {
+  try {
+    const region = new Intl.Locale(navigator.language).region;
+    return region?.toUpperCase();
+  } catch {
+    return navigator.language.match(/[-_]([A-Za-z]{2})\b/)?.[1]?.toUpperCase();
+  }
+}
+
 /** Random per-browser id for counting unique visitors on the first-party dashboard; identifies no one. */
 function visitorId(): string {
   try {
@@ -172,11 +181,11 @@ export function marketingAttribution(): MarketingAttribution {
 /** First-party beacon to the marketing console's own dashboard; never blocks or throws. */
 function beacon(type: "page_view" | "chat_started", path: string) {
   if (!apiEnabled()) return;
-  void apiFetchGlobal<void>("/api/marketing/track", {
+  void apiFetch<void>("/api/marketing/track", {
     method: "POST",
     keepalive: true,
-    body: JSON.stringify({ type, path, visitorId: visitorId(), ...marketingAttribution() }),
-  }, false).catch(() => {
+    body: JSON.stringify({ type, path, visitorId: visitorId(), country: browserCountry(), ...marketingAttribution() }),
+  }).catch(() => {
     /* analytics must never get in a visitor's way */
   });
 }

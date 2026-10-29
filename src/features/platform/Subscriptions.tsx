@@ -49,7 +49,7 @@ function SubscriptionManagement() {
         <td className={td}>{s.planName}{s.price && <div className="text-xs text-muted-foreground">{formatMoney(s.price.amount, s.price.currency)}/{s.price.interval === "Month" ? "mo" : "yr"}</div>}</td>
         <td className={td}><Pill value={s.status} />{s.cancelAtPeriodEnd && <div className="mt-1 text-xs text-amber-700">ending</div>}{s.tenantStatus === "Suspended" && <div className="mt-1 text-xs text-red-700">tenant suspended</div>}</td>
         <td className={td}>{s.status === "Trialing" ? `Trial ends ${formatDay(s.trialEndsAtUtc)}` : s.status === "PastDue" ? `Grace until ${formatDay(s.graceEndsAtUtc)}` : s.currentPeriodEndUtc ? formatDay(s.currentPeriodEndUtc) : "No renewal"}</td>
-        <td className={`${td} text-xs text-muted-foreground`}>{s.usage ? <>{s.usage.activeStudents} students<br />{s.usage.staffCount} staff · {s.usage.storageMb} MB</> : "-"}</td>
+        <td className={`${td} text-xs text-muted-foreground`}>{s.usage ? <>{s.usage.activeStudents} students · {s.usage.staffCount} staff<br />{s.usage.sessionsMonth} sessions · {s.usage.recordingsMonth} recordings<br />{s.usage.storageMb} MB · {s.usage.sessionMinutesMonth} live min</> : "-"}</td>
         <td className={td}>{s.openInvoices > 0 ? <span className="font-medium text-amber-700">{s.openInvoices} · {formatMoney(s.openAmount)}</span> : "-"}</td>
         <td className={td}><button className={smallButton} onClick={() => setSelected(s.tenantId)}>Manage</button></td></tr>)}</tbody>
     </table></div>

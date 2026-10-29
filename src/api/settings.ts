@@ -1,4 +1,4 @@
-import { apiFetch, apiFetchGlobal } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 export type SettingCategory = "General" | "Branding" | "Notifications" | "Integrations" | "Widgets" | "Seo" | "Analytics";
 
@@ -35,12 +35,12 @@ export async function updateSettings(items: UpdateSettingItem[]): Promise<ApiSet
 
 /** Marketing console only (Marketing role): the public site's seo.* and analytics.* settings. */
 export async function getMarketingSettings(): Promise<ApiSetting[]> {
-  return apiFetchGlobal<ApiSetting[]>("/api/marketing/settings");
+  return apiFetch<ApiSetting[]>("/api/marketing/settings");
 }
 
 /** Marketing console only. Keys must be seo.* or analytics.*; returns the full marketing list after saving. */
 export async function updateMarketingSettings(items: UpdateSettingItem[]): Promise<ApiSetting[]> {
-  return apiFetchGlobal<ApiSetting[]>("/api/marketing/settings", {
+  return apiFetch<ApiSetting[]>("/api/marketing/settings", {
     method: "PUT",
     body: JSON.stringify(items),
   });

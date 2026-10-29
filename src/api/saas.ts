@@ -31,7 +31,7 @@ export interface SubscriptionRow {
   price: { amount: number; currency: string; interval: BillingInterval } | null;
   trialEndsAtUtc: string | null; currentPeriodEndUtc: string | null; graceEndsAtUtc: string | null;
   cancelAtPeriodEnd: boolean; suspendedByBilling: boolean; mrr: number;
-  usage: { activeStudents: number; staffCount: number; storageMb: number; sessionMinutesMonth: number; date: string } | null;
+  usage: { activeStudents: number; staffCount: number; storageMb: number; sessionMinutesMonth: number; sessionsMonth: number; recordingsMonth: number; date: string } | null;
   openInvoices: number; openAmount: number;
 }
 
