@@ -31,7 +31,7 @@ export default defineConfig({
           if (!id.includes("node_modules")) return undefined;
           // Small utilities the app shell and recharts both use. Rollup otherwise parks them in the
           // chart chunk, which makes the entry import all of recharts just to get `clsx`.
-          if (/[\/](clsx|tailwind-merge|class-variance-authority)[\/]/.test(id)) return "vendor-react";
+          if (/[\\/](clsx|tailwind-merge|class-variance-authority)[\\/]/.test(id)) return "vendor-react";
           if (/[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) {
             return "vendor-react";
           }

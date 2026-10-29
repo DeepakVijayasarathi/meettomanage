@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { ArrowRight, Menu, X } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useBrand } from "@/lib/branding";
@@ -20,13 +20,28 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
   const c = COPY[lang];
   const scrolled = useScrolled();
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const firstMobileLinkRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    firstMobileLinkRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      menuButtonRef.current?.focus();
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open]);
+
+  useEffect(() => setOpen(false), [location.pathname, location.hash]);
 
   const base = home ? "" : "/";
   const links = [
@@ -58,6 +73,7 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
             {c.nav.demo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
           </Link>
           <button
+            ref={menuButtonRef}
             type="button"
             className="inline-flex h-11 w-11 items-center justify-center border border-[#D9C9BA] text-[#1C1917] lg:hidden"
             aria-expanded={open}
@@ -73,12 +89,12 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
       {open && (
         <div id="mobile-menu" className="border-t border-[#E2E8F0] bg-white lg:hidden">
           <nav aria-label="Mobile" className="mx-auto flex max-w-[1200px] flex-col px-5 py-3">
-            {links.map((l) => {
+            {links.map((l, index) => {
               const cls = "border-b border-[#EEF2F7] py-3.5 text-base font-semibold text-[#1C1917]";
               return l.route ? (
-                <Link key={l.href} to={l.href} className={cls} onClick={() => setOpen(false)}>{l.label}</Link>
+                <Link ref={index === 0 ? firstMobileLinkRef : undefined} key={l.href} to={l.href} className={cls} onClick={() => setOpen(false)}>{l.label}</Link>
               ) : (
-                <a key={l.href} href={l.href} className={cls} onClick={() => setOpen(false)}>{l.label}</a>
+                <a ref={index === 0 ? firstMobileLinkRef : undefined} key={l.href} href={l.href} className={cls} onClick={() => setOpen(false)}>{l.label}</a>
               );
             })}
             <div className="flex flex-col gap-3 py-4">

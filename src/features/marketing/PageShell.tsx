@@ -20,6 +20,7 @@ export function PageShell({ eyebrow, title, sub, seo, jsonLd, children }: {
     <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#1C1917]">
       <Seo title={seo.title} description={seo.description} path={seo.path} type={seo.type} />
       {jsonLd && <Helmet><script type="application/ld+json">{JSON.stringify(jsonLd)}</script></Helmet>}
+      <a href="#main" className="sr-only z-50 bg-white px-4 py-3 text-sm font-bold text-[#1C1917] focus:not-sr-only focus:fixed focus:start-3 focus:top-3">Skip to main content</a>
       <MarketingNav />
       <main id="main">
         <section className="relative overflow-hidden bg-white pb-[clamp(40px,5vw,72px)] pt-[clamp(48px,6vw,96px)]">

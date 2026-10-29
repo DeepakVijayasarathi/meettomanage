@@ -4,7 +4,7 @@ export interface HomeCopy {
   skip: string;
   nav: { features: string; classroom: string; app: string; customers: string; pricing: string; faq: string; blog: string; signIn: string; demo: string; menu: string; closeMenu: string };
   ngo: { eyebrow: string; heading: string; body: string; cta: string; note: string };
-  hero: { words: string[]; accent: number[]; sub: string; demo: string; watch: string; trust: string[]; form: { label: string; placeholder: string; note: string }; room: { alt: string; caption: string } };
+  hero: { words: string[]; accent: number[]; sub: string; demo: string; watch: string; trust: string[]; form: { label: string; placeholder: string; note: string; invalid: string }; room: { alt: string; caption: string } };
   proof: { label: string; items: string[] };
   audience: { eyebrow: string; heading: string; sub: string; items: { key: string; title: string; body: string }[] };
   autopilot: { heading: string; items: string[] };
@@ -31,7 +31,7 @@ export const COPY: Record<Lang, HomeCopy> = {
       demo: "Book Demo",
       watch: "Watch the walkthrough",
       trust: ["One login, 8 role-based portals", "Parent mobile app included", "Live classroom, fees and admissions"],
-      form: { label: "Your email or mobile number", placeholder: "Your email or mobile number", note: "Free demo class. No payment details." },
+      form: { label: "Your email or mobile number", placeholder: "Your email or mobile number", note: "Free demo class. No payment details.", invalid: "Enter a valid email address or mobile number." },
       room: {
         alt: "A Meet to Manage live class: a teacher and three children on screen waving and giving a thumbs up, a Great job reward, a student joining, and the parent app on a phone showing the next class and a Join class button",
         caption: "A live class on Meet to Manage. Illustration with sample names.",
@@ -161,7 +161,7 @@ export const COPY: Record<Lang, HomeCopy> = {
       demo: "احجز عرضًا",
       watch: "شاهد الجولة",
       trust: ["تسجيل دخول واحد، 8 بوابات حسب الدور", "تطبيق جوال لأولياء الأمور مشمول", "فصل مباشر ورسوم وقبول"],
-      form: { label: "بريدك الإلكتروني أو رقم جوالك", placeholder: "بريدك الإلكتروني أو رقم جوالك", note: "حصة تجريبية مجانية دون بيانات دفع." },
+      form: { label: "بريدك الإلكتروني أو رقم جوالك", placeholder: "بريدك الإلكتروني أو رقم جوالك", note: "حصة تجريبية مجانية دون بيانات دفع.", invalid: "أدخل بريدًا إلكترونيًا صالحًا أو رقم جوال." },
       room: {
         alt: "حصة مباشرة على Meet to Manage: معلم وثلاثة أطفال على الشاشة يلوّحون ويرفعون الإبهام، ومكافأة أحسنت، وطالب ينضم، وتطبيق أولياء الأمور على الهاتف يعرض الحصة القادمة وزر الانضمام",
         caption: "حصة مباشرة على Meet to Manage. رسم توضيحي بأسماء توضيحية.",

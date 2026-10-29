@@ -138,7 +138,7 @@ export function ChaosToOne({ lang, brandName }: { lang: Lang; brandName: string 
           {TOOLS.map((tool, i) => (
             <div
               key={tool.key}
-              className="absolute z-10 motion-safe:transition-[left,top,transform,opacity] motion-safe:duration-[900ms] motion-safe:ease-[cubic-bezier(.6,0,.9,.4)]"
+              className="absolute z-10 motion-safe:transition-[left,top,transform,opacity] motion-safe:duration-1000 motion-safe:ease-in"
               style={{
                 left: merged ? "50%" : `${tool.at.l}%`,
                 top: merged ? "50%" : `${tool.at.t}%`,
@@ -163,7 +163,7 @@ export function ChaosToOne({ lang, brandName }: { lang: Lang; brandName: string 
           {/* The one system: pops out of the spot the tools collapsed into. */}
           <div
             className={cn(
-              "absolute left-1/2 top-1/2 z-20 w-[calc(100%-32px)] max-w-[540px] border bg-white p-6 text-center motion-safe:transition-[transform,opacity] motion-safe:duration-700 motion-safe:ease-[cubic-bezier(.34,1.56,.64,1)]",
+              "absolute left-1/2 top-1/2 z-20 w-[calc(100%-32px)] max-w-[540px] border bg-white p-6 text-center motion-safe:transition-[transform,opacity] motion-safe:duration-700 motion-safe:ease-out",
               merged ? "m2m-glow border-[#F97316]/50" : "pointer-events-none border-[#D9E1F0]"
             )}
             style={{
