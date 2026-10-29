@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { ArrowRight, BookOpenText, Calculator, CheckCircle2, ChevronDown, Code2, CreditCard, GraduationCap, Languages, Lock, ShieldCheck, Sparkles, Users, type LucideIcon } from "lucide-react";
+import { ArrowRight, BookOpenText, Mail, MessageSquare, Calculator, CheckCircle2, ChevronDown, Code2, CreditCard, GraduationCap, Languages, Lock, ShieldCheck, Sparkles, Users, type LucideIcon } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { saasPublic } from "@/api/saas";
 import { apiEnabled } from "@/lib/api";
@@ -24,6 +24,29 @@ import { Showcase } from "./home/Showcase";
 
 // The assistant (about 1,000 lines of chat and voice code) loads after the page is interactive, or at once if asked for.
 const ChatWidget = lazy(() => import("./HomeChat").then((m) => ({ default: m.ChatWidget })));
+
+/** One mark per item in the "built on" strip, in the same order as the copy. Cashfree has no logo in the open icon set we
+ *  use, so it (like email and SMS, which are channels rather than brands) gets a plain icon instead of a made-up logo. */
+const PROOF_MARKS: { logo?: string; icon?: LucideIcon; color: string }[] = [
+  { logo: "/tool-logos/razorpay.svg", color: "#0C2451" },
+  { icon: CreditCard, color: "#57534E" },
+  { logo: "/tool-logos/whatsapp.svg", color: "#25D366" },
+  { icon: Mail, color: "#C2410C" },
+  { icon: MessageSquare, color: "#7C3AED" },
+];
+
+function ProofMark({ mark, label }: { mark: { logo?: string; icon?: LucideIcon; color: string }; label: string }) {
+  return (
+    <span title={label} className="flex h-9 w-9 items-center justify-center">
+      <span className="sr-only">{label}</span>
+      {mark.logo ? (
+        <span aria-hidden="true" className="block h-8 w-8" style={{ backgroundColor: mark.color, WebkitMask: `url(${mark.logo}) center / contain no-repeat`, mask: `url(${mark.logo}) center / contain no-repeat` }} />
+      ) : (
+        (() => { const Icon = mark.icon!; return <Icon aria-hidden="true" className="h-8 w-8" style={{ color: mark.color }} />; })()
+      )}
+    </span>
+  );
+}
 
 const SECURITY_ICONS: LucideIcon[] = [Lock, CreditCard, ShieldCheck];
 const AUDIENCE_ICONS: Record<string, LucideIcon> = { abacus: Calculator, phonics: BookOpenText, english: Languages, tuition: GraduationCap, coding: Code2, trainer: Users };
@@ -122,13 +145,13 @@ export default function MarketingHome() {
         {/* PROOF: what it's built on */}
         <section aria-label={c.proof.label} className="border-y border-[#EFE3D7] bg-white py-7">
           <p className="mb-4 text-center text-xs font-bold uppercase tracking-[0.1em] text-[#6B6560] rtl:tracking-normal">{c.proof.label}</p>
-          <div className="mx-auto max-w-[1200px] overflow-hidden px-5 [mask-image:linear-gradient(90deg,transparent,#000_10%,#000_90%,transparent)]">
-            <ul className="mx-marquee flex w-max items-center gap-10 motion-reduce:w-auto motion-reduce:flex-wrap motion-reduce:justify-center">
-              {[...c.proof.items, ...c.proof.items].map((item, i) => (
-                <li key={`${item}-${i}`} aria-hidden={i >= c.proof.items.length || undefined} className="whitespace-nowrap text-[15px] font-semibold text-[#57534E]">{item}</li>
-              ))}
-            </ul>
-          </div>
+          <ul className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-center gap-x-12 gap-y-5 px-5">
+            {c.proof.items.map((item, i) => (
+              <li key={item} className="opacity-90 transition-opacity hover:opacity-100">
+                <ProofMark mark={PROOF_MARKS[i]} label={item} />
+              </li>
+            ))}
+          </ul>
         </section>
 
         {/* NGO OFFER: the designed banner on wider English screens; live text on phones and in Arabic, where the picture's baked-in English would not read */}
@@ -172,7 +195,7 @@ export default function MarketingHome() {
         </section>
 
         {/* WHO IT'S FOR */}
-        <section className="bg-white py-[clamp(72px,8vw,120px)]">
+        <section className="bg-white pb-[clamp(24px,3vw,40px)] pt-[clamp(48px,5.5vw,80px)]">
           <div className="mx-auto max-w-[1200px] px-5">
             <Reveal className="mx-auto max-w-[760px] text-center">
               <p className={EYEBROW}>{c.audience.eyebrow}</p>
@@ -213,7 +236,7 @@ export default function MarketingHome() {
         <MobileSection c={c.app} />
 
         {/* PLATFORM TOUR */}
-        <section id="features" className="scroll-mt-20 bg-white py-[clamp(72px,8vw,120px)]">
+        <section id="features" className="scroll-mt-20 bg-white py-[clamp(48px,5.5vw,80px)]">
           <div className="mx-auto max-w-[1200px] px-5">
             <Reveal className="max-w-[720px]">
               <p className={EYEBROW}>{c.showcase.eyebrow}</p>
@@ -228,7 +251,7 @@ export default function MarketingHome() {
         </section>
 
         {/* WALKTHROUGH */}
-        <section id="walkthrough" className="scroll-mt-20 bg-[#FFF6EE] py-[clamp(72px,8vw,120px)]">
+        <section id="walkthrough" className="scroll-mt-20 bg-[#FFF6EE] py-[clamp(48px,5.5vw,80px)]">
           <div className="mx-auto max-w-[1000px] px-5">
             <Reveal className="mx-auto max-w-[680px] text-center">
               <p className={EYEBROW}>{c.video.eyebrow}</p>
@@ -254,7 +277,7 @@ export default function MarketingHome() {
         </section>
 
         {/* SECURITY */}
-        <section id="security" className="scroll-mt-20 bg-[#FFF6EE] py-[clamp(72px,8vw,120px)]">
+        <section id="security" className="scroll-mt-20 bg-[#FFF6EE] py-[clamp(48px,5.5vw,80px)]">
           <div className="mx-auto max-w-[1200px] px-5">
             <Reveal className="max-w-[720px]">
               <p className={EYEBROW}>{c.security.eyebrow}</p>
@@ -283,7 +306,7 @@ export default function MarketingHome() {
         </section>
 
         {/* PRICING TEASER */}
-        <section className="bg-white py-[clamp(64px,7vw,104px)]">
+        <section className="bg-white py-[clamp(40px,4.5vw,64px)]">
           <div className="mx-auto max-w-[1200px] px-5">
             <Reveal className="grid items-center gap-10 rounded-3xl border border-[#EBD9C8] bg-gradient-to-br from-[#FFF3EA] to-white p-8 md:grid-cols-[1.4fr_1fr] md:p-12">
               <div>
@@ -305,7 +328,7 @@ export default function MarketingHome() {
         </section>
 
         {/* FAQ */}
-        <section id="faq" className="scroll-mt-20 bg-[#FFF6EE] py-[clamp(72px,8vw,120px)]">
+        <section id="faq" className="scroll-mt-20 bg-[#FFF6EE] py-[clamp(48px,5.5vw,80px)]">
           <div className="mx-auto max-w-[820px] px-5">
             <Reveal className="text-center">
               <p className={EYEBROW}>{c.faq.eyebrow}</p>

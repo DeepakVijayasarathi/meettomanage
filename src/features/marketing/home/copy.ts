@@ -37,7 +37,7 @@ export const COPY: Record<Lang, HomeCopy> = {
         caption: "A live class on Meet to Manage. Illustration with sample names.",
       },
     },
-    proof: { label: "Built on trusted infrastructure", items: ["Jitsi live video", "Razorpay payments", "Cashfree payments", "WhatsApp reminders", "Email notifications", "SMS alerts"] },
+    proof: { label: "Built on trusted infrastructure", items: ["Razorpay payments", "Cashfree payments", "WhatsApp reminders", "Email notifications", "SMS alerts"] },
     ngo: {
       eyebrow: "Offer for non-profits",
       heading: "Free for NGOs.",
@@ -167,7 +167,7 @@ export const COPY: Record<Lang, HomeCopy> = {
         caption: "حصة مباشرة على Meet to Manage. رسم توضيحي بأسماء توضيحية.",
       },
     },
-    proof: { label: "مبني على بنية تحتية موثوقة", items: ["فيديو مباشر Jitsi", "مدفوعات Razorpay", "مدفوعات Cashfree", "تذكيرات واتساب", "إشعارات البريد", "تنبيهات SMS"] },
+    proof: { label: "مبني على بنية تحتية موثوقة", items: ["مدفوعات Razorpay", "مدفوعات Cashfree", "تذكيرات واتساب", "إشعارات البريد", "تنبيهات SMS"] },
     ngo: {
       eyebrow: "عرض للمنظمات غير الربحية",
       heading: "مجاني للمنظمات غير الحكومية.",

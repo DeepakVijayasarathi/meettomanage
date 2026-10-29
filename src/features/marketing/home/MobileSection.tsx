@@ -13,7 +13,7 @@ const LAYOUT = ["-me-5 mt-12 -rotate-3 scale-[0.92]", "z-10 -mt-2", "-ms-5 mt-12
 /** The parent app: three real screens fanned out beside what a family can do with it. */
 export function MobileSection({ c }: { c: HomeCopy["app"] }) {
   return (
-    <section id="app" className="scroll-mt-20 overflow-hidden bg-[#FFF6EE] py-[clamp(72px,8vw,120px)]">
+    <section id="app" className="scroll-mt-20 overflow-hidden bg-[#FFF6EE] py-[clamp(48px,5.5vw,80px)]">
       <div className="mx-auto grid max-w-[1200px] items-center gap-14 px-5 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
         <div>
           <Reveal>

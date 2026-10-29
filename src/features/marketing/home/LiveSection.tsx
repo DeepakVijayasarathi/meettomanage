@@ -9,7 +9,7 @@ const H2 = "font-display text-[clamp(1.65rem,3vw,2.5rem)] font-extrabold leading
 /** The live classroom: a real screenshot beside the five things teachers care about. */
 export function LiveSection({ c }: { c: HomeCopy["live"] }) {
   return (
-    <section id="classroom" className="scroll-mt-20 bg-white py-[clamp(72px,8vw,120px)]">
+    <section id="classroom" className="scroll-mt-20 bg-white pb-[clamp(48px,5.5vw,80px)] pt-[clamp(24px,3vw,40px)]">
       <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-5 lg:grid-cols-[1.3fr_1fr] lg:gap-16">
         <Reveal className="relative order-2 lg:order-1">
           <img

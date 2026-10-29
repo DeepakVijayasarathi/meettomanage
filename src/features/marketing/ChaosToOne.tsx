@@ -34,7 +34,7 @@ const T = {
     eyebrow: "The problem we solve",
     heading: "Academies don't fail at teaching. They drown in admin.",
     sub: (brand: string) => `Fees chased on WhatsApp, enquiries lost in inboxes, parents asking for updates. ${brand} puts it all in one system.`,
-    checks: ["Fees collect themselves", "No enquiry goes cold", "Parents stay in the loop", "Teachers paid on real attendance"],
+    swaps: { form: "Admissions pipeline", receipt: "Auto invoices and payments", sheet: "Reports and attendance", chat: "Parent app and reminders", video: "Live classroom", note: "Notes and follow-ups" } as Record<string, string>,
     allIn: "All in one login",
     before: "6 tools · 6 logins · endless follow-ups",
     after: "1 system · 1 login · nothing slips",
@@ -45,7 +45,7 @@ const T = {
     eyebrow: "المشكلة التي نحلّها",
     heading: "الأكاديميات لا تفشل في التدريس، بل تغرق في العمل الإداري.",
     sub: (brand: string) => `رسوم تُطارَد عبر واتساب، واستفسارات تضيع في البريد، وأولياء أمور يطلبون التحديثات. تجمع ${brand} كل ذلك في نظام واحد.`,
-    checks: ["الرسوم تُحصَّل تلقائيًا", "لا استفسار يضيع", "أولياء الأمور على اطلاع", "مستحقات المعلمين من الحضور الفعلي"],
+    swaps: { form: "مسار القبول", receipt: "فواتير ومدفوعات آلية", sheet: "التقارير والحضور", chat: "تطبيق أولياء الأمور والتذكيرات", video: "الفصل المباشر", note: "الملاحظات والمتابعات" } as Record<string, string>,
     allIn: "كل شيء بتسجيل دخول واحد",
     before: "6 أدوات · 6 تسجيلات دخول · متابعات لا تنتهي",
     after: "نظام واحد · تسجيل دخول واحد · لا شيء يفوتك",
@@ -74,17 +74,42 @@ function reducedMotion(): boolean {
 }
 
 /** Tints one monochrome SVG with a tool's brand colour through a CSS mask. */
-function ToolMark({ tool }: { tool: Tool }) {
+function ToolMark({ tool, small }: { tool: Tool; small?: boolean }) {
   if (!tool.logo) {
     const Icon = tool.icon!;
-    return <Icon className="h-7 w-7" style={{ color: tool.color }} />;
+    return <Icon className={small ? "h-5 w-5" : "h-7 w-7"} style={{ color: tool.color }} />;
   }
   return (
     <span
       aria-hidden="true"
-      className="block h-7 w-7"
+      className={small ? "block h-5 w-5" : "block h-7 w-7"}
       style={{ backgroundColor: tool.color, WebkitMask: `url(${tool.logo}) center / contain no-repeat`, mask: `url(${tool.logo}) center / contain no-repeat` }}
     />
+  );
+}
+
+const LEFT = ["form", "receipt", "sheet"];
+const RIGHT = ["video", "chat", "note"];
+
+/** After the merge: the old tool, struck through and greyed, with what replaced it. */
+function Swap({ tool, to, lang, merged, delay, from }: { tool: Tool; to: string; lang: Lang; merged: boolean; delay: number; from: "left" | "right" }) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 items-center gap-3 rounded-xl border border-[#F2D9C4] bg-white px-3 py-2.5 shadow-sm motion-safe:transition-all motion-safe:duration-700",
+        merged ? "translate-x-0 opacity-100" : from === "left" ? "translate-x-8 opacity-0" : "-translate-x-8 opacity-0"
+      )}
+      style={{ transitionDelay: merged ? `${900 + delay}ms` : "0ms" }}
+    >
+      <span aria-hidden="true" className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#F5F2EE] opacity-70 grayscale sm:grid"><ToolMark tool={tool} small /></span>
+      <div className="min-w-0 text-start">
+        <p className="truncate text-[11px] font-medium text-[#6B6560] line-through decoration-[#B91C1C]/60">{tool.label[lang]}</p>
+        <p className="flex items-start gap-1.5 break-words text-[13px] font-bold leading-snug text-[#1C1917]">
+          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#16A34A] text-white"><Check className="h-2.5 w-2.5" strokeWidth={3.5} /></span>
+          {to}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -118,7 +143,7 @@ export function ChaosToOne({ lang, brandName }: { lang: Lang; brandName: string 
   }
 
   return (
-    <section className="bg-white py-[clamp(64px,7vw,104px)]">
+    <section className="bg-white pb-[clamp(48px,5vw,72px)] pt-[clamp(32px,4vw,56px)]">
       <style>{KEYFRAMES}</style>
       <div className="mx-auto max-w-[1040px] px-5">
         <div className="mx-auto max-w-[720px] text-center">
@@ -131,7 +156,7 @@ export function ChaosToOne({ lang, brandName }: { lang: Lang; brandName: string 
           ref={ref}
           role="img"
           aria-label={t.stageLabel}
-          className="relative mt-12 h-[380px] overflow-hidden border border-[#EFE3D7] bg-[#FFFBF7] md:h-[310px]"
+          className="relative mt-12 h-[600px] overflow-hidden rounded-2xl border border-[#EFE3D7] bg-[#FFFBF7] md:h-[340px]"
         >
           {/* The mess: six real tools, each with a red badge, drifting loose. On merge they all
               collapse toward the centre, one after another. */}
@@ -160,39 +185,27 @@ export function ChaosToOne({ lang, brandName }: { lang: Lang; brandName: string 
             </div>
           ))}
 
-          {/* The one system: pops out of the spot the tools collapsed into. */}
-          <div
-            className={cn(
-              "absolute left-1/2 top-1/2 z-20 w-[calc(100%-32px)] max-w-[540px] border bg-white p-6 text-center motion-safe:transition-[transform,opacity] motion-safe:duration-700 motion-safe:ease-[cubic-bezier(.34,1.56,.64,1)]",
-              merged ? "m2m-glow border-[#F97316]/50" : "pointer-events-none border-[#D9E1F0]"
-            )}
-            style={{
-              transform: `translate(-50%, -50%) scale(${merged ? 1 : 0.5})`,
-              opacity: merged ? 1 : 0,
-              transitionDelay: merged ? "650ms" : "0ms",
-            }}
-          >
-            <div className="flex items-center justify-center gap-3">
-              <img src="/logo-icon-128.webp" alt="" width={44} height={44} className="h-11 w-11 object-contain" />
-              <div className="text-start">
-                <p className="font-display text-lg font-extrabold leading-tight text-[#111]">{brandName}</p>
-                <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#16A34A] rtl:tracking-normal">{t.allIn}</p>
-              </div>
+          {/* The one system: the hub pops out of the spot the tools collapsed into, with what replaced each tool on either side. */}
+          <div className="absolute inset-0 z-20 grid grid-cols-2 content-center items-center gap-3 p-4 md:grid-cols-[1fr_280px_1fr] md:gap-6 md:p-8">
+            <div className="order-2 flex flex-col gap-3 md:order-1">
+              {LEFT.map((key, i) => <Swap key={key} tool={TOOLS.find((x) => x.key === key)!} to={t.swaps[key]} lang={lang} merged={merged} delay={i * 130} from="left" />)}
             </div>
-            <ul className="mt-5 grid grid-cols-1 gap-2.5 text-start sm:grid-cols-2">
-              {t.checks.map((c, i) => (
-                <li
-                  key={c}
-                  className={cn("flex items-center gap-2.5 text-sm font-semibold text-[#111] motion-safe:transition-all motion-safe:duration-500", merged ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0")}
-                  style={{ transitionDelay: merged ? `${1100 + i * 140}ms` : "0ms" }}
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#16A34A] text-white">
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                  </span>
-                  {c}
-                </li>
-              ))}
-            </ul>
+
+            <div
+              className={cn(
+                "order-1 col-span-2 mx-auto w-full max-w-[320px] rounded-2xl border bg-white p-5 text-center motion-safe:transition-[transform,opacity] motion-safe:duration-700 motion-safe:ease-[cubic-bezier(.34,1.56,.64,1)] md:order-2 md:col-span-1",
+                merged ? "m2m-glow scale-100 border-[#F97316]/50 opacity-100" : "pointer-events-none scale-50 border-[#D9E1F0] opacity-0"
+              )}
+              style={{ transitionDelay: merged ? "650ms" : "0ms" }}
+            >
+              <img src="/logo-icon-128.webp" alt="" width={44} height={44} className="mx-auto h-11 w-11 object-contain" />
+              <p className="font-display mt-2 text-lg font-extrabold leading-tight text-[#111]">{brandName}</p>
+              <p className="mt-0.5 text-xs font-bold uppercase tracking-[0.06em] text-[#16A34A] rtl:tracking-normal">{t.allIn}</p>
+            </div>
+
+            <div className="order-3 flex flex-col gap-3">
+              {RIGHT.map((key, i) => <Swap key={key} tool={TOOLS.find((x) => x.key === key)!} to={t.swaps[key]} lang={lang} merged={merged} delay={i * 130} from="right" />)}
+            </div>
           </div>
         </div>
 
