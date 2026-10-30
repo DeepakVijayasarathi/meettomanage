@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart3, CalendarCheck2, Eye, Loader2, MessageCircle, MousePointerClick, Sparkles, Table2, TrendingUp, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, CalendarCheck2, ChevronLeft, ChevronRight, Eye, Loader2, MessageCircle, MousePointerClick, Sparkles, Table2, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
@@ -100,12 +100,16 @@ export default function MarketingDashboard() {
   const [insights, setInsights] = useState<ApiMarketingInsights | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const { data, loading, error } = useApiData(() => getMarketingDashboard(days), EMPTY, undefined, { cacheKey: `marketing-dashboard-${days}`, ttlMs: 60_000 });
 
   // cacheKey carries `days`, so switching the range refetches (useApiData re-runs on cacheKey).
   const t: ApiMarketingTotals = data.totals;
   const p: ApiMarketingTotals = data.previous;
   const daily = data.daily.map((d) => ({ ...d, label: formatDate(d.date) }));
+  const selectedIndex = Math.max(0, selectedDate ? daily.findIndex(d => d.date === selectedDate) : daily.length - 1);
+  const selectedDay = daily[selectedIndex];
+  const previousDay = selectedIndex > 0 ? daily[selectedIndex - 1] : undefined;
   const hasTraffic = daily.some((d) => d.pageViews > 0);
   const exactRange = data.startDate && data.endDate ? `${localDate(data.startDate)} – ${localDate(data.endDate)}` : `Last ${days} days`;
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "local time";
@@ -148,7 +152,7 @@ export default function MarketingDashboard() {
               <button
                 key={r}
                 type="button"
-                onClick={() => { setDays(r); setInsights(null); setInsightsError(null); }}
+                onClick={() => { setDays(r); setSelectedDate(null); setInsights(null); setInsightsError(null); }}
                 aria-pressed={days === r}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
@@ -219,8 +223,8 @@ export default function MarketingDashboard() {
               </thead>
               <tbody className="divide-y divide-border">
                 {[...daily].reverse().map((d) => (
-                  <tr key={d.date}>
-                    <td className="py-1.5 pe-3">{d.label}</td>
+                  <tr key={d.date} className={cn("cursor-pointer hover:bg-muted/50", selectedDay?.date === d.date && "bg-primary/5")} onClick={() => setSelectedDate(d.date)} aria-selected={selectedDay?.date === d.date}>
+                    <td className="py-1.5 pe-3"><button type="button" className="font-medium text-primary hover:underline" onClick={() => setSelectedDate(d.date)}>{d.label}</button></td>
                     <td className="py-1.5 pe-3 text-right tabular-nums">{fmt(d.visitors)}</td>
                     <td className="py-1.5 pe-3 text-right tabular-nums">{fmt(d.pageViews)}</td>
                     <td className="py-1.5 pe-3 text-right tabular-nums">{d.pagesPerVisitor.toFixed(1)}</td>
@@ -251,6 +255,29 @@ export default function MarketingDashboard() {
           </ResponsiveContainer>
         )}
       </ChartCard>
+
+      {selectedDay && <Card className="mt-6">
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <div><CardTitle className="text-base">Daily detail · {selectedDay.label}</CardTitle><p className="mt-1 text-sm text-muted-foreground">Compared with {previousDay?.label ?? "the previous available day"}. Today’s figures may still be incomplete.</p></div>
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="outline" aria-label="Previous day" disabled={selectedIndex <= 0} onClick={() => setSelectedDate(daily[selectedIndex - 1]?.date ?? null)}><ChevronLeft className="h-4 w-4" /></Button>
+            <Button size="icon" variant="outline" aria-label="Next day" disabled={selectedIndex >= daily.length - 1} onClick={() => setSelectedDate(daily[selectedIndex + 1]?.date ?? null)}><ChevronRight className="h-4 w-4" /></Button>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {[
+            ["Visitors", selectedDay.visitors, previousDay?.visitors], ["Page views", selectedDay.pageViews, previousDay?.pageViews],
+            ["Pages / visitor", selectedDay.pagesPerVisitor, previousDay?.pagesPerVisitor], ["Chats started", selectedDay.chatsStarted, previousDay?.chatsStarted],
+            ["Demo requests", selectedDay.demoRequests, previousDay?.demoRequests], ["Visitor → demo", selectedDay.conversionRate, previousDay?.conversionRate],
+          ].map(([label, value, previous]) => {
+            const numberValue = Number(value); const previousValue = previous === undefined ? undefined : Number(previous);
+            const delta = previousValue === undefined ? null : numberValue - previousValue;
+            const percentage = label === "Visitor → demo";
+            const decimal = label === "Pages / visitor" || percentage;
+            return <div key={String(label)} className="rounded-xl border bg-muted/20 p-4"><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold tabular-nums">{decimal ? numberValue.toFixed(1) : fmt(numberValue)}{percentage ? "%" : ""}</p>{delta !== null && <p className={cn("mt-1 text-xs", delta > 0 ? "text-success" : delta < 0 ? "text-destructive" : "text-muted-foreground")}>{delta > 0 ? "+" : ""}{delta.toFixed(decimal ? 1 : 0)}{percentage ? " pts" : ""} vs prior day</p>}</div>;
+          })}
+        </CardContent>
+      </Card>}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <PerformanceList title="Source quality" items={data.sourceQuality} />
