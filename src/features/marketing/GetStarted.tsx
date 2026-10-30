@@ -14,6 +14,7 @@ import { CTA_DARK, CTA_ORANGE } from "./styles";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
 import { marketingAttribution, marketingVisitorId } from "@/lib/analytics";
+import { markDemoBooked } from "./chatTeaser";
 
 const T = {
   en: {
@@ -213,6 +214,7 @@ export default function GetStarted() {
         visitorId: marketingVisitorId(), source: attribution.utmSource ?? attribution.referrerHost,
         medium: attribution.utmMedium, campaign: attribution.utmCampaign, landingPath: window.location.pathname,
       });
+      markDemoBooked();
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.submitError);

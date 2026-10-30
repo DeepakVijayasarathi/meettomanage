@@ -64,8 +64,10 @@ export default function DemoRequests() {
   const live = apiEnabled();
   const [page, setPage] = useState(1);
   const [archivedOnly, setArchivedOnly] = useState(false);
+  // Sample rows only in offline demo mode; live mode starts (and stays, on error) empty.
   const fallbackPage = { items: DEMO_REQUESTS, totalCount: DEMO_REQUESTS.length, page: 1, pageSize: 25 };
-  const { data: pageData, error, reload } = useApiData(() => listPlatformDemoRequestsPaged({ page, archivedOnly }), fallbackPage, undefined, { cacheKey: `marketing-leads-${page}-${archivedOnly}`, ttlMs: 15_000 });
+  const emptyPage = { items: [] as ApiPlatformDemoRequest[], totalCount: 0, page: 1, pageSize: 25 };
+  const { data: pageData, loading, error, reload } = useApiData(() => listPlatformDemoRequestsPaged({ page, archivedOnly }), fallbackPage, emptyPage, { cacheKey: `marketing-leads-${page}-${archivedOnly}`, ttlMs: 15_000 });
   const requests = pageData.items;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -100,35 +102,63 @@ export default function DemoRequests() {
     }
   }
 
-  async function removeRequest() {
-    if (!deleteRequest) return;
+  /** Runs a lead action with demo-mode guard, error toast and optional success toast. */
+  async function runAction(action: () => Promise<unknown>, failTitle: string, successTitle?: string): Promise<boolean> {
     if (!live) {
-      setActionError("Demo mode — no request actually deleted.");
-      return;
+      setActionError("Demo mode — nothing was changed.");
+      return false;
     }
-    setBusyId(deleteRequest.id);
     setActionError(null);
     try {
-      await deletePlatformDemoRequest(deleteRequest.id);
-      await reload();
-      toast({ variant: "success", title: "Request deleted", description: `${deleteRequest.fullName}'s demo request was deleted.` });
-    } finally {
-      setBusyId(null);
+      await action();
+      if (successTitle) toast({ variant: "success", title: successTitle });
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Please try again.";
+      toast({ variant: "error", title: failTitle, description: message });
+      return false;
     }
+  }
+
+  async function removeRequest() {
+    const request = deleteRequest;
+    if (!request) return;
+    setBusyId(request.id);
+    const ok = await runAction(async () => { await deletePlatformDemoRequest(request.id); reload(); }, "Couldn't delete request");
+    setBusyId(null);
+    setDeleteRequest(null);
+    if (ok) toast({ variant: "success", title: "Request deleted", description: `${request.fullName}'s demo request was deleted.` });
   }
 
   async function remindTomorrow(request: ApiPlatformDemoRequest) {
     const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(10, 0, 0, 0);
     setBusyId(request.id);
-    try { await updatePlatformDemoRequest(request.id, { nextFollowUpAtUtc: tomorrow.toISOString() }); await reload(); toast({ variant: "success", title: "Follow-up scheduled" }); }
-    finally { setBusyId(null); }
+    await runAction(async () => { await updatePlatformDemoRequest(request.id, { nextFollowUpAtUtc: tomorrow.toISOString() }); reload(); }, "Couldn't schedule follow-up", "Follow-up scheduled");
+    setBusyId(null);
   }
 
-  async function openLead(row: ApiPlatformDemoRequest) { setDetailOpen(true); setRecommendation(null); const value = await getMarketingLead(row.id); setDetail(value); setNotes(value.lead.internalNotes ?? ""); }
-  async function saveNotes() { if (!detail) return; await updatePlatformDemoRequest(detail.lead.id, { internalNotes: notes }); setDetail(await getMarketingLead(detail.lead.id)); await reload(); toast({ variant: "success", title: "Lead notes saved" }); }
-  async function analyzeLead() { if (!detail) return; setRecommendation(await getMarketingLeadRecommendation(detail.lead.id)); }
-  async function bulk(status?: ApiPlatformDemoRequestStatus, archive = false) { await bulkUpdateMarketingLeads({ ids: [...selected], status, archive }); setSelected(new Set()); await reload(); toast({ variant: "success", title: archive ? "Leads archived" : "Leads updated" }); }
-  async function restoreLead(id: string) { await restoreMarketingLead(id); await reload(); toast({ variant: "success", title: "Lead restored" }); }
+  async function openLead(row: ApiPlatformDemoRequest) {
+    if (!live) return;
+    setDetail(null); setRecommendation(null); setNotes(""); setDetailOpen(true);
+    const ok = await runAction(async () => { const value = await getMarketingLead(row.id); setDetail(value); setNotes(value.lead.internalNotes ?? ""); }, "Couldn't open lead");
+    if (!ok) setDetailOpen(false);
+  }
+  async function saveNotes() {
+    if (!detail) return;
+    const id = detail.lead.id;
+    await runAction(async () => { await updatePlatformDemoRequest(id, { internalNotes: notes }); setDetail(await getMarketingLead(id)); reload(); }, "Couldn't save notes", "Lead notes saved");
+  }
+  async function analyzeLead() {
+    if (!detail) return;
+    const id = detail.lead.id;
+    await runAction(async () => setRecommendation(await getMarketingLeadRecommendation(id)), "Couldn't analyze lead");
+  }
+  async function bulk(status?: ApiPlatformDemoRequestStatus, archive = false) {
+    if (selected.size === 0) return;
+    const ok = await runAction(async () => { await bulkUpdateMarketingLeads({ ids: [...selected], status, archive }); reload(); }, "Couldn't update leads", archive ? "Leads archived" : "Leads updated");
+    if (ok) setSelected(new Set());
+  }
+  async function restoreLead(id: string) { await runAction(async () => { await restoreMarketingLead(id); reload(); }, "Couldn't restore lead", "Lead restored"); }
 
   function exportCsv() {
     const rows = [["Name", "Email", "Phone", "Academy", "Status", "Score", "Source", "Campaign", "Follow-up", "Submitted"], ...requests.map(r => [r.fullName, r.workEmail, r.phone, r.academyName, r.status, String(r.leadScore ?? 0), r.source ?? "Direct", r.campaign ?? "", r.nextFollowUpAtUtc ?? "", r.createdAtUtc])];
@@ -250,7 +280,9 @@ export default function DemoRequests() {
         <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Possible duplicates</p><p className="text-2xl font-bold">{duplicateCount}</p></div>
       </div>
 
-      {requests.length === 0 && !error ? (
+      {loading && requests.length === 0 ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : requests.length === 0 && !error ? (
         <EmptyState icon={Handshake} title="No platform demo requests yet" description="Submissions from the public /get-started page will show up here." />
       ) : (
         <DataTable

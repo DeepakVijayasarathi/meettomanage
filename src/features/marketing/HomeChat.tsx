@@ -5,6 +5,7 @@ import { type Lang } from "@/lib/i18n";
 import { askSalesAssistant, requestPlatformDemo, type SalesChatTurn } from "@/api/marketing";
 import { apiEnabled } from "@/lib/api";
 import { marketingAttribution, marketingVisitorId, trackChatStarted } from "@/lib/analytics";
+import { markDemoBooked, markTeaserSeen, teaserRecentlySeen } from "./chatTeaser";
 import { cn } from "@/lib/utils";
 import { HERO_BG } from "./styles";
 
@@ -179,7 +180,6 @@ const AUDIENCE_ICONS: Record<string, LucideIcon> = {
 };
 
 /** Session key so the "ask me" teaser nudges a visitor at most once per browser session. */
-const CHAT_TEASER_SEEN_KEY = "trn.chatTeaser.seen";
 /** The conversation survives a hop to /pricing and back within the same browser session. */
 const CHAT_MESSAGES_KEY = "trn.chat.messages";
 /** Set once the visitor has booked a demo from the chat, so the booking card isn't offered again. */
@@ -459,24 +459,27 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
   // One nudge per session, a few seconds in, cycling through example questions so it's clear
   // what can be asked — unless the visitor already opened the chat.
   useEffect(() => {
-    try {
-      if (sessionStorage.getItem(CHAT_TEASER_SEEN_KEY) === "1") return;
-    } catch {
-      /* no storage — still show it once for this page view */
-    }
+    if (teaserRecentlySeen()) return;
     // On a phone the teaser would sit on top of the hero's own CTAs, so there it waits until
     // the visitor has scrolled past the hero (or 15s), instead of 4s in.
     const phone = window.matchMedia("(max-width: 639px)").matches;
-    const show = () => setTeaser(true);
-    const id = setTimeout(show, phone ? 15000 : 4000);
+    let id = 0;
     const onScroll = () => {
       if (window.scrollY > window.innerHeight * 0.9) show();
     };
-    if (phone) window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
+    const stop = () => {
       clearTimeout(id);
       window.removeEventListener("scroll", onScroll);
     };
+    // Fires once: after showing (or a dismissal in the meantime) the timer and scroll trigger
+    // are both removed, so closing the popup never brings it back on the next scroll.
+    function show() {
+      stop();
+      if (!teaserRecentlySeen()) setTeaser(true);
+    }
+    id = window.setTimeout(show, phone ? 15000 : 4000);
+    if (phone) window.addEventListener("scroll", onScroll, { passive: true });
+    return stop;
   }, []);
 
   useEffect(() => {
@@ -511,11 +514,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
 
   function dismissTeaser() {
     setTeaser(false);
-    try {
-      sessionStorage.setItem(CHAT_TEASER_SEEN_KEY, "1");
-    } catch {
-      /* nothing to persist to */
-    }
+    markTeaserSeen();
   }
 
   useEffect(() => {
@@ -545,6 +544,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
   function recordBooking(name: string) {
     setLeadSentName(name);
     writeSession(CHAT_LEAD_SENT_KEY, name);
+    markDemoBooked();
   }
 
   async function submitLead(e: React.FormEvent) {
@@ -1084,7 +1084,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
       )}
 
       {/* Greeting popup: the orb says hello (out loud where the browser allows), and the visitor
-          can talk straight away or type. Shows once per session; see the teaser effect above. */}
+          can talk straight away or type. Shows once, then stays away 7 days; see the teaser effect above. */}
       {teaser && !open && (
         <div
           role="dialog"
