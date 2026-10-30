@@ -4,7 +4,7 @@ import { ArrowRight, AudioLines, ChevronRight, Building2, CalendarCheck2, CheckC
 import { type Lang } from "@/lib/i18n";
 import { askSalesAssistant, requestPlatformDemo, type SalesChatTurn } from "@/api/marketing";
 import { apiEnabled } from "@/lib/api";
-import { trackChatStarted } from "@/lib/analytics";
+import { marketingAttribution, marketingVisitorId, trackChatStarted } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { HERO_BG } from "./styles";
 
@@ -559,12 +559,15 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
     setLeadStatus("sending");
     try {
       if (apiEnabled()) {
+        const attribution = marketingAttribution();
         await requestPlatformDemo({
           fullName: name,
           workEmail: lead.email.trim(),
           phone: lead.phone.trim(),
           academyName: lead.org.trim() || t.leadFallbackOrg,
           message: questions.length ? message : undefined,
+          visitorId: marketingVisitorId(), source: attribution.utmSource ?? attribution.referrerHost,
+          medium: attribution.utmMedium, campaign: attribution.utmCampaign, landingPath: window.location.pathname,
         });
       }
       recordBooking(name);

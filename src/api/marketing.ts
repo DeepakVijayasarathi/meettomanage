@@ -11,6 +11,17 @@ export interface ApiPlatformDemoRequest {
   message: string | null;
   status: ApiPlatformDemoRequestStatus;
   createdAtUtc: string;
+  source?: string | null;
+  medium?: string | null;
+  campaign?: string | null;
+  landingPath?: string | null;
+  assignedTo?: string | null;
+  nextFollowUpAtUtc?: string | null;
+  lastContactedAtUtc?: string | null;
+  internalNotes?: string | null;
+  leadScore?: number;
+  leadTemperature?: "Hot" | "Warm" | "Cold";
+  isDuplicate?: boolean;
 }
 
 /**
@@ -24,6 +35,11 @@ export async function requestPlatformDemo(input: {
   phone: string;
   academyName: string;
   message?: string;
+  visitorId?: string;
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  landingPath?: string;
 }): Promise<ApiPlatformDemoRequest> {
   return apiFetch<ApiPlatformDemoRequest>("/api/marketing/demo-requests", {
     method: "POST",
@@ -45,6 +61,14 @@ export async function updatePlatformDemoRequestStatus(
     method: "PUT",
     body: JSON.stringify({ status }),
   });
+}
+
+export async function deletePlatformDemoRequest(id: string): Promise<void> {
+  await apiFetch<void>(`/api/marketing/demo-requests/${id}`, { method: "DELETE" });
+}
+
+export async function updatePlatformDemoRequest(id: string, input: { status?: ApiPlatformDemoRequestStatus; assignedTo?: string; nextFollowUpAtUtc?: string; internalNotes?: string }): Promise<ApiPlatformDemoRequest> {
+  return apiFetch<ApiPlatformDemoRequest>(`/api/marketing/demo-requests/${id}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
 // --- Sales chat ---
@@ -189,7 +213,7 @@ export interface ApiMarketingDashboard {
   endDate: string;
   totals: ApiMarketingTotals;
   previous: ApiMarketingTotals;
-  daily: { date: string; pageViews: number; visitors: number; demoRequests: number }[];
+  daily: { date: string; pageViews: number; visitors: number; demoRequests: number; chatsStarted: number; conversionRate: number; pagesPerVisitor: number }[];
   topPages: ApiNamedCount[];
   topBlogPosts: ApiNamedCount[];
   sources: ApiNamedCount[];
@@ -198,10 +222,28 @@ export interface ApiMarketingDashboard {
   countries: ApiNamedCount[];
   devices: ApiNamedCount[];
   demoRequestsByStatus: ApiNamedCount[];
+  sourceQuality: ApiMarketingPerformance[];
+  campaignPerformance: ApiMarketingPerformance[];
+  landingPagePerformance: ApiMarketingPerformance[];
 }
+
+export interface ApiMarketingPerformance { name: string; leads: number; converted: number; conversionRate: number }
 
 /** Marketing console only — first-party analytics for the last `days` days, in the browser's own calendar days. */
 export async function getMarketingDashboard(days: number): Promise<ApiMarketingDashboard> {
   const tzOffsetMinutes = -new Date().getTimezoneOffset();
   return apiFetch<ApiMarketingDashboard>(`/api/marketing/analytics?days=${days}&tzOffsetMinutes=${tzOffsetMinutes}`);
+}
+
+export interface ApiMarketingInsights {
+  summary: string;
+  observations: string[];
+  nextActions: string[];
+  aiPowered: boolean;
+  generatedAtUtc: string;
+}
+
+export async function getMarketingInsights(days: number): Promise<ApiMarketingInsights> {
+  const tzOffsetMinutes = -new Date().getTimezoneOffset();
+  return apiFetch<ApiMarketingInsights>(`/api/marketing/analytics/insights?days=${days}&tzOffsetMinutes=${tzOffsetMinutes}`);
 }

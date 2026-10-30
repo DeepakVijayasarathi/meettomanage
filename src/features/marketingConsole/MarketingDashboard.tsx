@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart3, CalendarCheck2, Eye, MessageCircle, MousePointerClick, Table2, TrendingUp, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, CalendarCheck2, Eye, Loader2, MessageCircle, MousePointerClick, Sparkles, Table2, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useApiData } from "@/api/hooks";
-import { getMarketingDashboard, type ApiMarketingDashboard, type ApiMarketingTotals, type ApiNamedCount } from "@/api/marketing";
+import { getMarketingDashboard, getMarketingInsights, type ApiMarketingDashboard, type ApiMarketingInsights, type ApiMarketingTotals, type ApiNamedCount } from "@/api/marketing";
+import { userMessage } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 
 // Validated with the dataviz palette checker (light + dark surfaces): blue for visitors, a
@@ -33,6 +34,7 @@ const EMPTY: ApiMarketingDashboard = {
   countries: [],
   devices: [],
   demoRequestsByStatus: [],
+  sourceQuality: [], campaignPerformance: [], landingPagePerformance: [],
 };
 
 /** % change vs the previous period; undefined when there's nothing to compare against. */
@@ -83,11 +85,21 @@ function RankedList({ title, items, emptyText, loading, format }: { title: strin
   );
 }
 
+function PerformanceList({ title, items }: { title: string; items: ApiMarketingDashboard["sourceQuality"] }) {
+  return <Card><CardHeader className="pb-3"><CardTitle className="text-base">{title}</CardTitle></CardHeader><CardContent>
+    {items.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No attributed leads in this period.</p> :
+      <div className="overflow-auto"><table className="w-full text-sm"><thead className="text-left text-xs text-muted-foreground"><tr><th className="pb-2">Channel</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">Won</th><th className="pb-2 text-right">Rate</th></tr></thead><tbody className="divide-y divide-border">{items.map(x => <tr key={x.name}><td className="max-w-40 truncate py-2" title={x.name}>{x.name}</td><td className="text-right">{x.leads}</td><td className="text-right">{x.converted}</td><td className="text-right font-medium">{x.conversionRate}%</td></tr>)}</tbody></table></div>}
+  </CardContent></Card>;
+}
+
 const DEVICE_LABEL: Record<string, string> = { desktop: "Desktop", mobile: "Mobile", tablet: "Tablet" };
 
 export default function MarketingDashboard() {
   const [days, setDays] = useState<(typeof RANGES)[number]>(30);
-  const [showTable, setShowTable] = useState(false);
+  const [showTable, setShowTable] = useState(true);
+  const [insights, setInsights] = useState<ApiMarketingInsights | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
   const { data, loading, error } = useApiData(() => getMarketingDashboard(days), EMPTY, undefined, { cacheKey: `marketing-dashboard-${days}`, ttlMs: 60_000 });
 
   // cacheKey carries `days`, so switching the range refetches (useApiData re-runs on cacheKey).
@@ -97,6 +109,14 @@ export default function MarketingDashboard() {
   const hasTraffic = daily.some((d) => d.pageViews > 0);
   const exactRange = data.startDate && data.endDate ? `${localDate(data.startDate)} – ${localDate(data.endDate)}` : `Last ${days} days`;
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "local time";
+
+  async function analyze() {
+    setInsightsLoading(true);
+    setInsightsError(null);
+    try { setInsights(await getMarketingInsights(days)); }
+    catch (err) { setInsightsError(userMessage(err, "Could not generate the analysis.")); }
+    finally { setInsightsLoading(false); }
+  }
 
   const kpis: { label: string; value: string; detail?: string; icon: LucideIcon; tone: "primary" | "success" | "warning" | "neutral"; trend?: { value: number; label: string } }[] = [
     { label: "Visitors", value: fmt(t.visitors), icon: Users, tone: "primary", trend: change(t.visitors, p.visitors) },
@@ -128,7 +148,7 @@ export default function MarketingDashboard() {
               <button
                 key={r}
                 type="button"
-                onClick={() => setDays(r)}
+                onClick={() => { setDays(r); setInsights(null); setInsightsError(null); }}
                 aria-pressed={days === r}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
@@ -147,6 +167,26 @@ export default function MarketingDashboard() {
           <KpiCard key={k.label} label={k.label} value={k.value} detail={k.detail} icon={k.icon} tone={k.tone} trend={k.trend} loading={loading} error={error} />
         ))}
       </div>
+
+      <Card className="mt-6 border-primary/20">
+        <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
+          <div><CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" />Next moves</CardTitle><p className="mt-1 text-sm text-muted-foreground">Hetzner AI analyzes the selected period using only the aggregate figures shown here.</p></div>
+          <Button size="sm" onClick={() => void analyze()} disabled={loading || insightsLoading}>
+            {insightsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{insights ? "Refresh analysis" : "Analyze period"}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {insightsError && <p role="alert" className="text-sm text-destructive">{insightsError}</p>}
+          {!insights && !insightsError && <p className="text-sm text-muted-foreground">Generate a concise diagnosis and prioritized actions from the {days}-day data.</p>}
+          {insights && <div className="space-y-4 text-sm">
+            <div className="flex flex-wrap items-center gap-2"><p className="font-medium">{insights.summary}</p><span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{insights.aiPowered ? "Hetzner AI" : "Measured-data fallback"}</span></div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div><h3 className="mb-2 font-semibold">What the data says</h3><ul className="list-disc space-y-1.5 ps-5 text-muted-foreground">{insights.observations.map((item) => <li key={item}>{item}</li>)}</ul></div>
+              <div><h3 className="mb-2 font-semibold">Prioritized next actions</h3><ol className="list-decimal space-y-1.5 ps-5 text-muted-foreground">{insights.nextActions.map((item) => <li key={item}>{item}</li>)}</ol></div>
+            </div>
+          </div>}
+        </CardContent>
+      </Card>
 
       <ChartCard
         className="mt-6"
@@ -171,7 +211,10 @@ export default function MarketingDashboard() {
                   <th className="py-2 pe-3 font-semibold">Date</th>
                   <th className="py-2 pe-3 text-right font-semibold">Visitors</th>
                   <th className="py-2 pe-3 text-right font-semibold">Page views</th>
+                  <th className="py-2 pe-3 text-right font-semibold">Pages / visitor</th>
+                  <th className="py-2 pe-3 text-right font-semibold">Chats</th>
                   <th className="py-2 text-right font-semibold">Demo requests</th>
+                  <th className="py-2 text-right font-semibold">Conversion</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -180,7 +223,10 @@ export default function MarketingDashboard() {
                     <td className="py-1.5 pe-3">{d.label}</td>
                     <td className="py-1.5 pe-3 text-right tabular-nums">{fmt(d.visitors)}</td>
                     <td className="py-1.5 pe-3 text-right tabular-nums">{fmt(d.pageViews)}</td>
-                    <td className="py-1.5 text-right tabular-nums">{fmt(d.demoRequests)}</td>
+                    <td className="py-1.5 pe-3 text-right tabular-nums">{d.pagesPerVisitor.toFixed(1)}</td>
+                    <td className="py-1.5 pe-3 text-right tabular-nums">{fmt(d.chatsStarted)}</td>
+                    <td className="py-1.5 pe-3 text-right tabular-nums">{fmt(d.demoRequests)}</td>
+                    <td className="py-1.5 text-right tabular-nums">{d.conversionRate.toFixed(1)}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -207,6 +253,9 @@ export default function MarketingDashboard() {
       </ChartCard>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <PerformanceList title="Source quality" items={data.sourceQuality} />
+        <PerformanceList title="Campaign conversion" items={data.campaignPerformance} />
+        <PerformanceList title="Landing-page conversion" items={data.landingPagePerformance} />
         <RankedList title="Where visitors come from" items={data.sources} loading={loading} emptyText="No visits yet." />
         <RankedList title="Top pages" items={data.topPages} loading={loading} emptyText="No page views yet." />
         <RankedList title="Top blog posts" items={data.topBlogPosts} loading={loading} emptyText="No blog reads yet." format={(path) => path.replace(/^\/blog\//, "")} />

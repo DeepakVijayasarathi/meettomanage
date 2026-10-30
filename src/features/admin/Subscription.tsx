@@ -86,6 +86,8 @@ export default function AdminSubscription() {
   const s = status;
   const BannerIcon = s.banner?.level === "danger" ? AlertTriangle : Info;
   const bannerTone = s.banner?.level === "danger" ? "border-destructive/30 bg-destructive/10 text-destructive" : s.banner?.level === "warning" ? "border-warning/40 bg-warning/15" : "border-primary/20 bg-primary/5";
+  const highUsage = s.limits!.filter(l => l.limit !== -1 && l.percent >= 80);
+  const reachedUsage = highUsage.filter(l => l.percent >= 100);
 
   return <div className="space-y-6">
     <PageHeader title="My Subscription" description="Your plan, usage against your limits, plan changes and invoices." eyebrow="Billing" />
@@ -110,6 +112,10 @@ export default function AdminSubscription() {
 
       <Card className="lg:col-span-2"><CardContent className="space-y-4 p-6">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Usage</p>
+        {highUsage.length > 0 && <div role="alert" className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${reachedUsage.length > 0 ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-warning/40 bg-warning/15"}`}>
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{reachedUsage.length > 0 ? "Usage limit reached" : "Approaching usage limit"}: {(reachedUsage.length > 0 ? reachedUsage : highUsage).map(l => `${l.label} (${Math.round(l.percent)}%)`).join(", ")}. {reachedUsage.length > 0 ? "Upgrade or reduce usage to continue." : "Consider upgrading before service is interrupted."}</span>
+        </div>}
         {s.limits!.map(l => {
           const unlimited = l.limit === -1;
           const tone = l.percent >= 100 ? "bg-destructive" : l.percent >= 80 ? "bg-warning" : "bg-primary";

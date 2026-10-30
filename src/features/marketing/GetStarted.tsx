@@ -13,6 +13,7 @@ import { MarketingNav } from "./MarketingNav";
 import { CTA_DARK, CTA_ORANGE } from "./styles";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
+import { marketingAttribution, marketingVisitorId } from "@/lib/analytics";
 
 const T = {
   en: {
@@ -202,12 +203,15 @@ export default function GetStarted() {
     setSubmitting(true);
     setError(null);
     try {
+      const attribution = marketingAttribution();
       await requestPlatformDemo({
         fullName: form.fullName,
         workEmail: form.workEmail,
         phone: form.phone,
         academyName: form.academyName.trim() || t.fallbackName,
         message: form.message || undefined,
+        visitorId: marketingVisitorId(), source: attribution.utmSource ?? attribution.referrerHost,
+        medium: attribution.utmMedium, campaign: attribution.utmCampaign, landingPath: window.location.pathname,
       });
       setSubmitted(true);
     } catch (err) {

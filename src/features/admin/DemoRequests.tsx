@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, Handshake, Loader2 } from "lucide-react";
+import { ChevronDown, Download, Handshake, Loader2, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
 import { EmptyState } from "@/components/EmptyState";
@@ -12,6 +13,8 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
   listPlatformDemoRequests,
+  deletePlatformDemoRequest,
+  updatePlatformDemoRequest,
   updatePlatformDemoRequestStatus,
   type ApiPlatformDemoRequest,
   type ApiPlatformDemoRequestStatus,
@@ -55,6 +58,7 @@ export default function DemoRequests() {
   const { data: requests, error, reload } = useApiData<ApiPlatformDemoRequest[]>(() => listPlatformDemoRequests(), DEMO_REQUESTS);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [deleteRequest, setDeleteRequest] = useState<ApiPlatformDemoRequest | null>(null);
 
   async function changeStatus(request: ApiPlatformDemoRequest, status: ApiPlatformDemoRequestStatus) {
     if (!live) {
@@ -74,6 +78,37 @@ export default function DemoRequests() {
     } finally {
       setBusyId(null);
     }
+  }
+
+  async function removeRequest() {
+    if (!deleteRequest) return;
+    if (!live) {
+      setActionError("Demo mode — no request actually deleted.");
+      return;
+    }
+    setBusyId(deleteRequest.id);
+    setActionError(null);
+    try {
+      await deletePlatformDemoRequest(deleteRequest.id);
+      await reload();
+      toast({ variant: "success", title: "Request deleted", description: `${deleteRequest.fullName}'s demo request was deleted.` });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function remindTomorrow(request: ApiPlatformDemoRequest) {
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(10, 0, 0, 0);
+    setBusyId(request.id);
+    try { await updatePlatformDemoRequest(request.id, { nextFollowUpAtUtc: tomorrow.toISOString() }); await reload(); toast({ variant: "success", title: "Follow-up scheduled" }); }
+    finally { setBusyId(null); }
+  }
+
+  function exportCsv() {
+    const rows = [["Name", "Email", "Phone", "Academy", "Status", "Score", "Source", "Campaign", "Follow-up", "Submitted"], ...requests.map(r => [r.fullName, r.workEmail, r.phone, r.academyName, r.status, String(r.leadScore ?? 0), r.source ?? "Direct", r.campaign ?? "", r.nextFollowUpAtUtc ?? "", r.createdAtUtc])];
+    const csv = rows.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const link = document.createElement("a"); link.href = url; link.download = `marketing-leads-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url);
   }
 
   const columns: DataTableColumn<ApiPlatformDemoRequest>[] = useMemo(
@@ -105,6 +140,14 @@ export default function DemoRequests() {
         render: (row) => <span className="text-sm text-muted-foreground">{formatDate(row.createdAtUtc.slice(0, 10))}</span>,
       },
       {
+        key: "score", header: "Lead", sortable: true, accessor: (row) => row.leadScore ?? 0,
+        render: (row) => <div><Badge variant={row.leadTemperature === "Hot" ? "destructive" : row.leadTemperature === "Warm" ? "warning" : "muted"}>{row.leadTemperature ?? "Cold"} · {row.leadScore ?? 0}</Badge>{row.isDuplicate && <p className="mt-1 text-xs text-warning">Possible duplicate</p>}</div>,
+      },
+      {
+        key: "source", header: "Source", accessor: (row) => row.source ?? "Direct",
+        render: (row) => <div className="text-sm"><p>{row.source ?? "Direct"}</p>{row.campaign && <p className="text-xs text-muted-foreground">{row.campaign}</p>}</div>,
+      },
+      {
         key: "status",
         header: "Status",
         sortable: true,
@@ -134,6 +177,10 @@ export default function DemoRequests() {
                     Mark {s}
                   </DropdownMenuItem>
                 ))}
+                <DropdownMenuItem onClick={() => void remindTomorrow(row)}>Follow up tomorrow, 10:00</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteRequest(row)}>
+                  <Trash2 className="mr-2 h-4 w-4" />Delete request
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -149,6 +196,7 @@ export default function DemoRequests() {
       <PageHeader
         eyebrow="Marketing"
         title="Demo Requests"
+        actions={<Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" />Export CSV</Button>}
         description="Prospective academies asking to see the Meet to Manage platform itself — from the public /get-started page. Distinct from class-demo bookings, which are for an academy's own parents."
       />
 
@@ -177,6 +225,16 @@ export default function DemoRequests() {
           onRetry={reload}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteRequest !== null}
+        onOpenChange={(open) => { if (!open) setDeleteRequest(null); }}
+        title="Delete demo request?"
+        description={deleteRequest ? `This permanently removes the request from ${deleteRequest.fullName} (${deleteRequest.academyName}). This cannot be undone.` : undefined}
+        confirmLabel="Delete request"
+        destructive
+        onConfirm={removeRequest}
+      />
     </div>
   );
 }

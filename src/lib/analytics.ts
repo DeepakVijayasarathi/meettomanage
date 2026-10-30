@@ -131,7 +131,7 @@ export function browserCountry(): string | undefined {
 }
 
 /** Random per-browser id for counting unique visitors on the first-party dashboard; identifies no one. */
-function visitorId(): string {
+export function marketingVisitorId(): string {
   try {
     let id = localStorage.getItem(VISITOR_KEY);
     if (!id) {
@@ -164,7 +164,7 @@ export function marketingAttribution(): MarketingAttribution {
     utmMedium: params.get("utm_medium") ?? undefined,
     utmCampaign: params.get("utm_campaign") ?? undefined,
   };
-  const hasCurrent = Object.values(current).some(Boolean);
+  const hasCurrent = Boolean(referrerHost || current.utmSource || current.utmMedium || current.utmCampaign);
   try {
     if (hasCurrent) {
       sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(current));
@@ -184,7 +184,7 @@ function beacon(type: "page_view" | "chat_started", path: string) {
   void apiFetch<void>("/api/marketing/track", {
     method: "POST",
     keepalive: true,
-    body: JSON.stringify({ type, path, visitorId: visitorId(), country: browserCountry(), ...marketingAttribution() }),
+    body: JSON.stringify({ type, path, visitorId: marketingVisitorId(), country: browserCountry(), ...marketingAttribution() }),
   }).catch(() => {
     /* analytics must never get in a visitor's way */
   });
