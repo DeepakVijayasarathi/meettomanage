@@ -107,8 +107,8 @@ export default function Store() {
     <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#171B22]">
       <Seo
         pageKey="store"
-        title="Course Catalogue — Meet to Manage"
-        description="Browse current courses and book a free demo class — no account needed."
+        title="Live Online Courses & Free Demo Classes | Meet to Manage"
+        description="Browse live online courses and book a free demo class in minutes. No account needed. Meet the teacher and try the live classroom before you enrol."
         path="/store"
       />
       <MarketingNav />

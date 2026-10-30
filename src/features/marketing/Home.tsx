@@ -152,8 +152,8 @@ export default function MarketingHome() {
       <style>{FX_CSS}</style>
       <Seo
         pageKey="home"
-        title="Meet to Manage — Online Coaching Software for Abacus, Phonics & Tuition Centres"
-        description="Automate live classes, fee collection, admissions and parent updates. Meet to Manage is the LMS and virtual classroom built for abacus, phonics and online tuition centres."
+        title="Online Coaching Software & Academy Management | Meet to Manage"
+        description="Run live classes, automate fee collection, manage admissions and keep parents updated in one app. Built for tuition, abacus and phonics centres. Book a free demo."
         path="/"
       />
       <Helmet><script type="application/ld+json">{jsonLd}</script></Helmet>

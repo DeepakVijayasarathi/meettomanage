@@ -39,8 +39,8 @@ const NAV = [
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-/** Page title without the " — Meet to Manage…" suffix, for the visible heading. */
-const heading = (title) => title.replace(/\s+—\s+Meet to Manage.*$/, "");
+/** Page title without the " — Meet to Manage…" or " | Meet to Manage" suffix, for the visible heading. */
+const heading = (title) => title.replace(/\s+[—|]\s+Meet to Manage.*$/, "");
 
 /** Same markdown-lite as BlogPost.tsx: "## " headings, "- "/"• " lists, **bold**, blank-line paragraphs. */
 function markdownToHtml(content) {
@@ -164,7 +164,33 @@ for (const post of await blogPages()) {
   else PAGES.push(post);
 }
 
-const shell = await readFile(path.join(dist, "index.html"), "utf8");
+// Marketing console → SEO overrides, so crawlers that don't run JavaScript see the same
+// titles/descriptions as the live pages. The home page's live in the shell (dist/index.html).
+const SEO_KEYS = { "/": "home", "/pricing": "pricing", "/get-started": "getStarted", "/demo": "demo", "/store": "store", "/blog": "blog" };
+let seo = {};
+try {
+  seo = Object.fromEntries((await getJson(`${API}/api/settings/public`)).filter((s) => s.key?.startsWith("seo.") && s.value?.trim()).map((s) => [s.key, s.value.trim()]));
+} catch (err) {
+  console.warn(`prerender-meta: no SEO overrides (${err.message})`);
+}
+for (const page of PAGES) {
+  const key = SEO_KEYS[page.path];
+  if (!key) continue;
+  page.title = seo[`seo.${key}.title`] ?? page.title;
+  page.description = seo[`seo.${key}.description`] ?? page.description;
+}
+
+let shell = await readFile(path.join(dist, "index.html"), "utf8");
+if (seo["seo.home.title"] || seo["seo.home.description"]) {
+  const t = esc(seo["seo.home.title"] ?? "");
+  const d = esc(seo["seo.home.description"] ?? "");
+  const set = (re, v) => { if (v) shell = shell.replace(re, (_m, a, b) => `${a}${v}${b}`); };
+  set(/(<title>)[\s\S]*?(<\/title>)/, t);
+  set(/(<meta property="og:title" content=")[^"]*(")/, t);
+  set(/(<meta name="twitter:title" content=")[^"]*(")/, t);
+  set(/(<meta\s+name="description"\s+content=")[^"]*(")/, d);
+  await writeFile(path.join(dist, "index.html"), shell);
+}
 for (const page of PAGES) {
   const file = path.join(dist, `${page.path}.html`);
   await mkdir(path.dirname(file), { recursive: true });

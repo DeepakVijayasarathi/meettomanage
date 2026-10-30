@@ -12,6 +12,7 @@ import { useMarketingSettings } from "./useMarketingSettings";
 /** One row per public page — key prefix, display label, and a live link. */
 const SEO_PAGES = [
   { key: "home", label: "Landing Page", path: "/" },
+  { key: "pricing", label: "Pricing", path: "/pricing" },
   { key: "store", label: "Course Catalogue", path: "/store" },
   { key: "demo", label: "Class Demo Page", path: "/demo" },
   { key: "getStarted", label: "Platform Demo Request", path: "/get-started" },
@@ -20,18 +21,18 @@ const SEO_PAGES = [
 
 /** Same fallbacks each page's own <Seo> passes, shown until a value is saved. */
 const SEO_DEFAULTS: Record<string, string> = {
-  "seo.home.title": "Meet to Manage — LMS & Virtual Classroom",
-  "seo.home.description":
-    "Meet to Manage brings live teaching, scheduling, admissions, billing and reporting into one role-based platform for schools and academies.",
-  "seo.store.title": "Course Catalogue — Meet to Manage",
-  "seo.store.description": "Browse current courses and book a free demo class — no account needed.",
-  "seo.demo.title": "Book a Free Demo — Meet to Manage",
-  "seo.demo.description": "Book a free demo class and see how Meet to Manage's live classroom, scheduling and billing work together.",
-  "seo.getStarted.title": "Request a Demo — Meet to Manage",
-  "seo.getStarted.description":
-    "Running an academy? See how Meet to Manage's live classroom, scheduling, admissions and billing work together — request a platform demo.",
-  "seo.blog.title": "Blog — Meet to Manage",
-  "seo.blog.description": "Practical notes on running a modern academy: admissions, billing automation, scheduling and more.",
+  "seo.home.title": "Online Coaching Software & Academy Management | Meet to Manage",
+  "seo.home.description": "Run live classes, automate fee collection, manage admissions and keep parents updated in one app. Built for tuition, abacus and phonics centres. Book a free demo.",
+  "seo.pricing.title": "Pricing: Academy Management Software Plans | Meet to Manage",
+  "seo.pricing.description": "One simple price per academy with live classes, admissions, automatic fee collection and a parent app included. Pay monthly or yearly. Book a free demo.",
+  "seo.store.title": "Live Online Courses & Free Demo Classes | Meet to Manage",
+  "seo.store.description": "Browse live online courses and book a free demo class in minutes. No account needed. Meet the teacher and try the live classroom before you enrol.",
+  "seo.demo.title": "Book a Free Live Demo Class | Meet to Manage",
+  "seo.demo.description": "Book a free live demo class and see how lessons run in the Meet to Manage virtual classroom, with whiteboard, quizzes and recordings. No account needed.",
+  "seo.getStarted.title": "Book a Free Platform Demo for Your Academy | Meet to Manage",
+  "seo.getStarted.description": "See live classes, admissions, fee collection and the parent app working together for your academy or coaching centre. Book a free 30-minute demo today.",
+  "seo.blog.title": "Academy Growth & Management Blog | Meet to Manage",
+  "seo.blog.description": "Practical guides for coaching centres and online academies on admissions, fee collection, scheduling, parent communication and student retention.",
 };
 
 export default function MarketingSeo() {
