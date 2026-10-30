@@ -21,6 +21,8 @@ const PAGES = [
   { path: "/blog/automatic-fee-suspension-payment-conversations", type: "article", title: "How automatic fee-suspension turns an awkward conversation into a non-event — Meet to Manage Blog", description: "How automatic fee suspension removes the awkward payment conversation between academy and parents." },
   { path: "/customers", title: "Customers and Case Studies — Meet to Manage", description: "How online coaching centres use Meet to Manage for live classes, enrolment, fee collection and a parent app." },
   { path: "/customers/the-reader-nest", type: "article", title: "The Reader Nest Customer Story — Meet to Manage", description: "How The Reader Nest runs online phonics and public-speaking classes for children on Meet to Manage: enrolment, live classes, worksheets, recordings and a parent dashboard." },
+  { path: "/solutions/live-class-software-for-institutes", title: "Live Class Software for Institutes and Online Coaching — Meet to Manage", description: "Run live classes and meetings with video, shared whiteboard, quizzes, screen sharing and recordings. Attendance, fees and the parent app are built in." },
+  { path: "/solutions/online-attendance-software-for-institutes", title: "Online Attendance Software for Institutes — Meet to Manage", description: "Attendance is recorded when students join the live class and shown to parents on their dashboard. One platform for classes, attendance, fees and reports." },
   { path: "/careers", title: "Careers — Meet to Manage", description: "Work on the platform online coaching centres use for live classes, fees and parent apps. See open roles or send an open application." },
   { path: "/privacy", title: "Privacy Policy — Meet to Manage", description: "How Meet to Manage collects, uses, shares and protects information about academies, teachers, parents and students." },
   { path: "/legal/terms", title: "Terms of Service — Meet to Manage", description: "The terms that apply when an academy, school or coach subscribes to Meet to Manage: plans and billing, cancellation, acceptable use and data." },
@@ -29,7 +31,7 @@ const PAGES = [
 
 const NAV = [
   ["/", "Home"], ["/pricing", "Pricing"], ["/demo", "Book a free demo"], ["/get-started", "Request a platform demo"],
-  ["/store", "Course catalogue"], ["/blog", "Blog"], ["/customers", "Customers"], ["/careers", "Careers"],
+  ["/store", "Course catalogue"], ["/blog", "Blog"], ["/customers", "Customers"], ["/solutions/live-class-software-for-institutes", "Live class software"], ["/solutions/online-attendance-software-for-institutes", "Attendance software"], ["/careers", "Careers"],
 ];
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");

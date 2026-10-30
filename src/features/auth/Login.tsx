@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from "react";
+import { Helmet } from "react-helmet-async";
 import { useLocation, useNavigate, Navigate, Link } from "react-router-dom";
 import { ArrowRight, Clock, Eye, EyeOff, Loader2, Lock, Mail, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -195,6 +196,7 @@ export default function Login() {
 
   return (
     <div className="theme-light-scope relative h-dvh overflow-hidden bg-[#FFF6EE] lg:grid lg:grid-cols-[1.3fr_1fr]">
+      <Helmet><meta name="robots" content="noindex, follow" /></Helmet>
       {/* Left: the institute photo under a light warm wash, with a no-commitment card at the bottom. */}
       <div className="relative hidden overflow-hidden lg:block">
         <img src="/loginpage.png" alt="" className="absolute inset-0 h-full w-full object-cover object-[62%_bottom]" />

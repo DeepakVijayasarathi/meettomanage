@@ -30,6 +30,8 @@ export function MarketingFooter() {
             <li><Link to="/pricing" className={LINK}>{f.pricing}</Link></li>
             <li><Link to="/login" className={LINK}>{f.signIn}</Link></li>
             <li><Link to="/blog" className={LINK}>{f.blog}</Link></li>
+            <li><Link to="/solutions/live-class-software-for-institutes" className={LINK}>Live class software</Link></li>
+            <li><Link to="/solutions/online-attendance-software-for-institutes" className={LINK}>Attendance software</Link></li>
             <li><Link to="/careers" className={LINK}>{f.careers}</Link></li>
           </ul>
         </nav>
