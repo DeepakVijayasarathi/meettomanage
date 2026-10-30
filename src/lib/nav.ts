@@ -44,6 +44,7 @@ import {
   MessageCircleQuestion,
   Handshake,
   MessagesSquare,
+  Footprints,
   Search,
   Newspaper,
   LifeBuoy,
@@ -151,6 +152,7 @@ const MARKETING_NAV: NavSection[] = [
   {
     title: "Website",
     items: [
+      { label: "Visitors", to: "/marketing/visitors", icon: Footprints },
       { label: "SEO", to: "/marketing/seo", icon: Search },
       { label: "Tracking tags", to: "/marketing/tracking", icon: BarChart3 },
     ],

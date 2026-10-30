@@ -10,6 +10,7 @@
  * ignored rather than injected.
  */
 import { apiEnabled, apiFetch } from "@/lib/api";
+import { countryFromTimeZone } from "@/lib/timezoneCountry";
 import { getPublicSettings, toSettingsMap } from "@/api/settings";
 
 export const ANALYTICS_KEYS = {
@@ -121,7 +122,18 @@ export type MarketingAttribution = {
   utmCampaign?: string;
 };
 
+/**
+ * Where the visitor is, without an IP address. The browser's time zone is the reliable signal:
+ * its language is not — most Indian browsers say "en-US", which used to count them as US
+ * visitors. The language's region is only a fallback for zones that name no country (UTC).
+ */
 export function browserCountry(): string | undefined {
+  try {
+    const fromZone = countryFromTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    if (fromZone) return fromZone;
+  } catch {
+    /* fall through to the language */
+  }
   try {
     const region = new Intl.Locale(navigator.language).region;
     return region?.toUpperCase();
@@ -178,9 +190,22 @@ export function marketingAttribution(): MarketingAttribution {
   return current;
 }
 
+/**
+ * True in a browser driven by automation (Puppeteer, Playwright, Selenium — SEO audits and
+ * scrapers). They often send a normal Chrome user agent, so the server's bot filter misses
+ * them; one such crawl once added 36 "US visitors" in an hour, one page each.
+ */
+function isAutomatedBrowser(): boolean {
+  try {
+    return navigator.webdriver === true;
+  } catch {
+    return false;
+  }
+}
+
 /** First-party beacon to the marketing console's own dashboard; never blocks or throws. */
 function beacon(type: "page_view" | "chat_started", path: string) {
-  if (!apiEnabled()) return;
+  if (!apiEnabled() || isAutomatedBrowser()) return;
   void apiFetch<void>("/api/marketing/track", {
     method: "POST",
     keepalive: true,

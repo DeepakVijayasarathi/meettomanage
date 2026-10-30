@@ -299,6 +299,56 @@ export interface ApiMarketingInsights {
   generatedAtUtc: string;
 }
 
+export interface ApiMarketingVisitorJourney {
+  visitor: string;
+  firstSeenUtc: string;
+  lastSeenUtc: string;
+  country: string | null;
+  device: string;
+  source: string;
+  campaign: string | null;
+  pageViews: number;
+  pages: { path: string; atUtc: string }[];
+  startedChat: boolean;
+  bookedDemo: boolean;
+  returnVisits: number;
+}
+export interface ApiMarketingVisitorJourneys {
+  days: number;
+  startDate: string;
+  endDate: string;
+  totalVisitors: number;
+  singlePageVisitors: number;
+  returningVisitors: number;
+  chatVisitors: number;
+  bookedVisitors: number;
+  countries: ApiNamedCount[];
+  entryPages: ApiNamedCount[];
+  exitPages: ApiNamedCount[];
+  topJourneys: ApiNamedCount[];
+  visitsByHour: ApiNamedCount[];
+  visitors: ApiMarketingVisitorJourney[];
+  page: number;
+  pageSize: number;
+}
+/** Marketing console → Visitors: each anonymous visitor's pages in order, for the same window as the dashboard. */
+export async function getMarketingVisitorJourneys(days: number, range: MarketingDateRange | null, page: number, country?: string | null): Promise<ApiMarketingVisitorJourneys> {
+  const q = new URLSearchParams(analyticsQuery(days, range));
+  q.set("page", String(page));
+  q.set("pageSize", "25");
+  if (country) q.set("country", country);
+  return apiFetch<ApiMarketingVisitorJourneys>(`/api/marketing/analytics/visitors?${q}`);
+}
+
+export interface ApiMarketingContentStat { path: string; title: string | null; readers: number; views: number; wentOn: number; toBuyingPages: number; bookedDemo: number }
+export interface ApiMarketingContentPerformance { days: number; startDate: string; endDate: string; blogReaders: number; posts: ApiMarketingContentStat[] }
+export interface ApiMarketingBlogIdea { title: string; targetKeyword: string; why: string; outline: string[] }
+export interface ApiMarketingBlogIdeas { ideas: ApiMarketingBlogIdea[]; aiPowered: boolean; generatedAtUtc: string }
+/** Which blog posts readers engage with and act on, for the Blog Posts page. */
+export const getMarketingContentPerformance = (days: number) => apiFetch<ApiMarketingContentPerformance>(`/api/marketing/analytics/content?${analyticsQuery(days)}`);
+/** AI: the next five blog post ideas, from content performance and visitors' chat questions. */
+export const suggestBlogPosts = (days: number) => apiFetch<ApiMarketingBlogIdeas>(`/api/marketing/analytics/blog-ideas?${analyticsQuery(days)}`, { method: "POST" });
+
 export async function getMarketingInsights(days: number, range?: MarketingDateRange | null): Promise<ApiMarketingInsights> {
   return apiFetch<ApiMarketingInsights>(`/api/marketing/analytics/insights?${analyticsQuery(days, range)}`);
 }

@@ -21,7 +21,9 @@ import {
   listBlogPostsAdmin,
   updateBlogPost,
   type ApiBlogPost,
+  type ApiMarketingBlogIdea,
 } from "@/api/marketing";
+import { BlogInsights } from "./BlogInsights";
 import { formatDate } from "@/lib/utils";
 
 const DEMO_POSTS: ApiBlogPost[] = [
@@ -70,6 +72,18 @@ export default function BlogPosts() {
 
   function openCreate() {
     setForm(EMPTY_FORM);
+    setFormError(null);
+    setCreating(true);
+  }
+
+  /** New draft from an AI idea: its title, and its outline as "## " section headings to write under. */
+  function openDraft(idea: ApiMarketingBlogIdea) {
+    const sections = idea.outline.length > 0 ? idea.outline : ["Introduction", "Main points", "Next steps"];
+    setForm({
+      ...EMPTY_FORM,
+      title: idea.title,
+      content: sections.map((h) => `## ${h}\n\nWrite this section…`).join("\n\n"),
+    });
     setFormError(null);
     setCreating(true);
   }
@@ -232,6 +246,8 @@ export default function BlogPosts() {
           </button>
         </InlineAlert>
       )}
+
+      {live && <BlogInsights onDraft={openDraft} />}
 
       {posts.length === 0 && !error ? (
         <EmptyState icon={Newspaper} title="No blog posts yet" description="Create your first post to publish it to /blog." />

@@ -42,8 +42,30 @@ describe("marketingAttribution", () => {
     expect(marketingAttribution()).toEqual({});
   });
 
-  it("reports the country/region from the browser locale without using an IP address", () => {
-    vi.stubGlobal("navigator", { ...navigator, language: "en-IN" });
+  function stubTimeZone(timeZone: string) {
+    const real = Intl.DateTimeFormat;
+    vi.spyOn(Intl, "DateTimeFormat").mockImplementation(((...args: ConstructorParameters<typeof Intl.DateTimeFormat>) => {
+      const f = new real(...args);
+      const options = f.resolvedOptions();
+      f.resolvedOptions = () => ({ ...options, timeZone });
+      return f;
+    }) as unknown as typeof Intl.DateTimeFormat);
+  }
+
+  it("reports the country from the browser's time zone, not its language, without an IP address", () => {
+    // An Indian browser set to US English used to be counted as a US visitor.
+    vi.stubGlobal("navigator", { ...navigator, language: "en-US" });
+    stubTimeZone("Asia/Calcutta");
     expect(browserCountry()).toBe("IN");
+    stubTimeZone("Europe/London");
+    expect(browserCountry()).toBe("GB");
+    vi.restoreAllMocks();
+  });
+
+  it("falls back to the language's region when the time zone names no country", () => {
+    vi.stubGlobal("navigator", { ...navigator, language: "en-IN" });
+    stubTimeZone("UTC");
+    expect(browserCountry()).toBe("IN");
+    vi.restoreAllMocks();
   });
 });
