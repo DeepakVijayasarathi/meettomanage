@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, Download, Handshake, Loader2, Trash2 } from "lucide-react";
+import { Archive, ChevronDown, Download, Handshake, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -8,16 +8,23 @@ import { EmptyState } from "@/components/EmptyState";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
-  listPlatformDemoRequests,
+  listPlatformDemoRequestsPaged,
+  getMarketingLead,
+  getMarketingLeadRecommendation,
+  bulkUpdateMarketingLeads,
+  restoreMarketingLead,
   deletePlatformDemoRequest,
   updatePlatformDemoRequest,
   updatePlatformDemoRequestStatus,
   type ApiPlatformDemoRequest,
   type ApiPlatformDemoRequestStatus,
+  type ApiMarketingLeadDetail,
 } from "@/api/marketing";
 import { formatDate } from "@/lib/utils";
 
@@ -55,10 +62,19 @@ const STATUS_VARIANT: Record<ApiPlatformDemoRequestStatus, "warning" | "default"
 export default function DemoRequests() {
   const { toast } = useToast();
   const live = apiEnabled();
-  const { data: requests, error, reload } = useApiData<ApiPlatformDemoRequest[]>(() => listPlatformDemoRequests(), DEMO_REQUESTS);
+  const [page, setPage] = useState(1);
+  const [archivedOnly, setArchivedOnly] = useState(false);
+  const fallbackPage = { items: DEMO_REQUESTS, totalCount: DEMO_REQUESTS.length, page: 1, pageSize: 25 };
+  const { data: pageData, error, reload } = useApiData(() => listPlatformDemoRequestsPaged({ page, archivedOnly }), fallbackPage, undefined, { cacheKey: `marketing-leads-${page}-${archivedOnly}`, ttlMs: 15_000 });
+  const requests = pageData.items;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [deleteRequest, setDeleteRequest] = useState<ApiPlatformDemoRequest | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [detail, setDetail] = useState<ApiMarketingLeadDetail | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [recommendation, setRecommendation] = useState<Awaited<ReturnType<typeof getMarketingLeadRecommendation>> | null>(null);
+  const [notes, setNotes] = useState("");
   const now = Date.now();
   const overdueCount = requests.filter(r => r.nextFollowUpAtUtc && new Date(r.nextFollowUpAtUtc).getTime() < now && !["Converted", "Closed"].includes(r.status)).length;
   const hotCount = requests.filter(r => r.leadTemperature === "Hot").length;
@@ -107,6 +123,12 @@ export default function DemoRequests() {
     try { await updatePlatformDemoRequest(request.id, { nextFollowUpAtUtc: tomorrow.toISOString() }); await reload(); toast({ variant: "success", title: "Follow-up scheduled" }); }
     finally { setBusyId(null); }
   }
+
+  async function openLead(row: ApiPlatformDemoRequest) { setDetailOpen(true); setRecommendation(null); const value = await getMarketingLead(row.id); setDetail(value); setNotes(value.lead.internalNotes ?? ""); }
+  async function saveNotes() { if (!detail) return; await updatePlatformDemoRequest(detail.lead.id, { internalNotes: notes }); setDetail(await getMarketingLead(detail.lead.id)); await reload(); toast({ variant: "success", title: "Lead notes saved" }); }
+  async function analyzeLead() { if (!detail) return; setRecommendation(await getMarketingLeadRecommendation(detail.lead.id)); }
+  async function bulk(status?: ApiPlatformDemoRequestStatus, archive = false) { await bulkUpdateMarketingLeads({ ids: [...selected], status, archive }); setSelected(new Set()); await reload(); toast({ variant: "success", title: archive ? "Leads archived" : "Leads updated" }); }
+  async function restoreLead(id: string) { await restoreMarketingLead(id); await reload(); toast({ variant: "success", title: "Lead restored" }); }
 
   function exportCsv() {
     const rows = [["Name", "Email", "Phone", "Academy", "Status", "Score", "Source", "Campaign", "Follow-up", "Submitted"], ...requests.map(r => [r.fullName, r.workEmail, r.phone, r.academyName, r.status, String(r.leadScore ?? 0), r.source ?? "Direct", r.campaign ?? "", r.nextFollowUpAtUtc ?? "", r.createdAtUtc])];
@@ -188,6 +210,7 @@ export default function DemoRequests() {
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuItem onClick={() => void remindTomorrow(row)}>Follow up tomorrow, 10:00</DropdownMenuItem>
+                {archivedOnly && <DropdownMenuItem onClick={() => void restoreLead(row.id)}>Restore lead</DropdownMenuItem>}
                 <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteRequest(row)}>
                   <Trash2 className="mr-2 h-4 w-4" />Delete request
                 </DropdownMenuItem>
@@ -198,7 +221,7 @@ export default function DemoRequests() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [busyId]
+    [busyId, archivedOnly]
   );
 
   return (
@@ -206,7 +229,7 @@ export default function DemoRequests() {
       <PageHeader
         eyebrow="Marketing"
         title="Demo Requests"
-        actions={<Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" />Export CSV</Button>}
+        actions={<div className="flex gap-2"><Button variant={archivedOnly ? "default" : "outline"} onClick={() => { setArchivedOnly(v => !v); setPage(1); }}><Archive className="h-4 w-4" />{archivedOnly ? "Active leads" : "Archive"}</Button><Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" />Export CSV</Button></div>}
         description="Prospective academies asking to see the Meet to Manage platform itself — from the public /get-started page. Distinct from class-demo bookings, which are for an academy's own parents."
       />
 
@@ -239,6 +262,12 @@ export default function DemoRequests() {
           emptyDescription="Submissions from the public /get-started page will show up here."
           error={live ? error : null}
           onRetry={reload}
+          onRowClick={(row) => void openLead(row)}
+          selectable
+          selectedKeys={selected}
+          onSelectionChange={setSelected}
+          bulkActions={<div className="flex gap-2"><Button size="sm" onClick={() => void bulk("Contacted")}>Mark contacted</Button><Button size="sm" variant="outline" onClick={() => void bulk(undefined, true)}>Archive</Button></div>}
+          serverPagination={{ page: pageData.page, pageSize: pageData.pageSize, totalCount: pageData.totalCount, onPageChange: setPage }}
         />
       )}
 
@@ -251,6 +280,14 @@ export default function DemoRequests() {
         destructive
         onConfirm={removeRequest}
       />
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>{detail?.lead.fullName ?? "Lead workspace"}</DialogTitle><DialogDescription>{detail ? `${detail.lead.academyName} · ${detail.lead.workEmail} · ${detail.lead.phone}` : "Loading lead…"}</DialogDescription></DialogHeader>
+        {!detail ? <Loader2 className="h-5 w-5 animate-spin" /> : <div className="space-y-5">
+          <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Score</p><p className="font-bold">{detail.lead.leadTemperature} · {detail.lead.leadScore}</p></div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Source</p><p className="font-bold">{detail.lead.source ?? "Direct"}</p></div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Status</p><p className="font-bold">{detail.lead.status}</p></div></div>
+          <div><p className="mb-2 text-sm font-semibold">Internal notes</p><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} /><Button className="mt-2" size="sm" onClick={() => void saveNotes()}>Save notes</Button></div>
+          <div className="rounded-xl border bg-primary/5 p-4"><div className="flex justify-between gap-3"><h3 className="font-semibold">AI next action</h3><Button size="sm" variant="outline" onClick={() => void analyzeLead()}><Sparkles className="h-4 w-4" />Analyze</Button></div>{recommendation && <div className="mt-3 space-y-2 text-sm"><p>{recommendation.summary}</p><p><b>Next:</b> {recommendation.nextAction}</p><p><b>{recommendation.suggestedChannel}:</b> {recommendation.suggestedMessage}</p></div>}</div>
+          <div><h3 className="mb-2 font-semibold">Timeline</h3><div className="space-y-2">{detail.activity.map(a => <div key={a.id} className="rounded-lg border p-3 text-sm"><div className="flex justify-between gap-3"><b>{a.type}</b><span className="text-xs text-muted-foreground">{new Date(a.createdAtUtc).toLocaleString()}</span></div><p className="mt-1 text-muted-foreground">{a.detail}</p></div>)}</div></div>
+        </div>}
+      </DialogContent></Dialog>
     </div>
   );
 }

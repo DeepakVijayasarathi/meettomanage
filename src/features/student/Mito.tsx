@@ -36,11 +36,14 @@ export default function Mito() {
     setMessages([]);
     setToday(null); setProgress(null);
     if (apiEnabled()) {
-      void Promise.all([getMitoConfiguration(), getMitoToday(childId), getMitoProgress(childId)]).then(([nextConfiguration, nextToday, nextProgress]) => {
-        setConfiguration(nextConfiguration); setToday(nextToday); setProgress(nextProgress);
-        const assistantName = nextConfiguration.displayName?.trim() || "Mito";
-        setMessages([{ role: "assistant", text: `Hi ${childName.split(" ")[0]}! I'm ${assistantName}. ${nextConfiguration.welcomeMessage || "Ask me a learning question or let's plan your day."}` }]);
-      }).catch(() => { /* chat remains usable if a summary fails */ });
+      void Promise.allSettled([getMitoConfiguration(), getMitoToday(childId), getMitoProgress(childId)]).then(([configResult, todayResult, progressResult]) => {
+        const nextConfiguration = configResult.status === "fulfilled" ? configResult.value : null;
+        if (nextConfiguration) setConfiguration(nextConfiguration);
+        if (todayResult.status === "fulfilled") setToday(todayResult.value);
+        if (progressResult.status === "fulfilled") setProgress(progressResult.value);
+        const assistantName = nextConfiguration?.displayName?.trim() || "Mito";
+        setMessages([{ role: "assistant", text: `Hi ${childName.split(" ")[0]}! I'm ${assistantName}. ${nextConfiguration?.welcomeMessage || "Ask me a learning question or let's plan your day."}` }]);
+      });
     }
   }, [childId, childName]);
   useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [messages, sending]);
@@ -93,16 +96,16 @@ export default function Mito() {
 
         {quizOpen ? <QuizPanel key={child.id} childId={child.id} onClose={() => setQuizOpen(false)} /> : <div className="flex-1 space-y-3 overflow-y-auto bg-muted/20 p-4 sm:p-6" aria-live="polite">
           {messages.map((message, index) => <div key={index} className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}><div className={cn("max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%]", message.role === "user" ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border border-border bg-card text-foreground shadow-sm")}><p className="whitespace-pre-wrap">{message.text}</p>{message.role === "assistant" && configuration?.voiceEnabled !== false && <button type="button" className="mt-2 text-muted-foreground hover:text-primary" onClick={() => speak(message.text)} aria-label="Read reply aloud"><Volume2 className="h-4 w-4" /></button>}</div></div>)}
-          {sending && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Bot className="h-4 w-4 animate-pulse" />Mito is thinking...</div>}
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          {suggestions.length > 0 && !sending && <div className="flex flex-wrap gap-2">{suggestions.map((text) => <Button key={text} size="sm" variant="outline" onClick={() => void submit(text)}>{text}</Button>)}</div>}
+          {sending && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Bot className="h-4 w-4 animate-pulse" />{assistantName} is thinking...</div>}
+          {error && <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive"><XCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span></div>}
+          {suggestions.length > 0 && !sending && <div className="flex gap-2 overflow-x-auto pb-1">{suggestions.map((text) => <Button key={text} size="sm" variant="outline" className="h-auto max-w-xs shrink-0 whitespace-normal py-2 text-left" onClick={() => void submit(text)}>{text}</Button>)}</div>}
           {!apiEnabled() && <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning-foreground">Connect the web app to the API to chat with Mito.</p>}
           <div ref={endRef} />
         </div>}
 
         {!quizOpen && configuration?.chatEnabled !== false && <form className="flex gap-2 border-t border-border bg-card p-3 sm:p-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-          <label htmlFor="mito-message" className="sr-only">Message Mito</label>
-          <textarea id="mito-message" value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }} maxLength={2000} rows={1} disabled={sending || !apiEnabled()} placeholder="Ask Mito a question..." className="min-h-11 flex-1 resize-none rounded-xl border border-input bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
+          <label htmlFor="mito-message" className="sr-only">Message {assistantName}</label>
+          <textarea id="mito-message" value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }} maxLength={2000} rows={1} disabled={sending || !apiEnabled()} placeholder={`Ask ${assistantName} a question...`} className="min-h-11 flex-1 resize-none rounded-xl border border-input bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
           <Button type="submit" size="icon" className="h-11 w-11 shrink-0 rounded-xl" disabled={!input.trim() || sending || !apiEnabled()} aria-label="Send message"><Send className="h-4 w-4" /></Button>
         </form>}
       </Card>

@@ -22,6 +22,8 @@ export interface ApiPlatformDemoRequest {
   leadScore?: number;
   leadTemperature?: "Hot" | "Warm" | "Cold";
   isDuplicate?: boolean;
+  assignedToUserId?: string | null;
+  archivedAtUtc?: string | null;
 }
 
 /**
@@ -67,9 +69,30 @@ export async function deletePlatformDemoRequest(id: string): Promise<void> {
   await apiFetch<void>(`/api/marketing/demo-requests/${id}`, { method: "DELETE" });
 }
 
-export async function updatePlatformDemoRequest(id: string, input: { status?: ApiPlatformDemoRequestStatus; assignedTo?: string; nextFollowUpAtUtc?: string; internalNotes?: string }): Promise<ApiPlatformDemoRequest> {
+export async function updatePlatformDemoRequest(id: string, input: { status?: ApiPlatformDemoRequestStatus; assignedTo?: string; assignedToUserId?: string; nextFollowUpAtUtc?: string; internalNotes?: string }): Promise<ApiPlatformDemoRequest> {
   return apiFetch<ApiPlatformDemoRequest>(`/api/marketing/demo-requests/${id}`, { method: "PUT", body: JSON.stringify(input) });
 }
+
+export interface ApiMarketingLeadActivity { id: string; type: string; detail: string; createdAtUtc: string }
+export interface ApiMarketingLeadDetail { lead: ApiPlatformDemoRequest; activity: ApiMarketingLeadActivity[] }
+export interface ApiPaged<T> { items: T[]; totalCount: number; page: number; pageSize: number }
+export async function listPlatformDemoRequestsPaged(input: { page: number; pageSize?: number; search?: string; status?: ApiPlatformDemoRequestStatus; overdueOnly?: boolean; archivedOnly?: boolean }): Promise<ApiPaged<ApiPlatformDemoRequest>> {
+  const q = new URLSearchParams({ page: String(input.page), pageSize: String(input.pageSize ?? 25) });
+  if (input.search) q.set("search", input.search); if (input.status) q.set("status", input.status);
+  if (input.overdueOnly) q.set("overdueOnly", "true"); if (input.archivedOnly) q.set("archivedOnly", "true");
+  return apiFetch<ApiPaged<ApiPlatformDemoRequest>>(`/api/marketing/demo-requests/paged?${q}`);
+}
+export const getMarketingLead = (id: string) => apiFetch<ApiMarketingLeadDetail>(`/api/marketing/demo-requests/${id}`);
+export const getMarketingLeadRecommendation = (id: string) => apiFetch<{ summary: string; nextAction: string; suggestedChannel: string; suggestedMessage: string; aiPowered: boolean }>(`/api/marketing/demo-requests/${id}/recommendation`);
+export async function bulkUpdateMarketingLeads(input: { ids: string[]; status?: ApiPlatformDemoRequestStatus; nextFollowUpAtUtc?: string; archive?: boolean }): Promise<void> { await apiFetch("/api/marketing/demo-requests/bulk", { method: "POST", body: JSON.stringify(input) }); }
+export async function restoreMarketingLead(id: string): Promise<void> { await apiFetch(`/api/marketing/demo-requests/${id}/restore`, { method: "POST" }); }
+
+export interface ApiMarketingCampaignBudget { id: string; campaign: string; spend: number; currency: string; wonRevenue: number | null; startDate: string; endDate: string; leads: number; converted: number; costPerLead: number | null; costPerAcquisition: number | null; returnOnAdSpend: number | null }
+export const listMarketingCampaignBudgets = () => apiFetch<ApiMarketingCampaignBudget[]>("/api/marketing/demo-requests/campaigns");
+export const saveMarketingCampaignBudget = (input: Partial<ApiMarketingCampaignBudget>) => apiFetch<ApiMarketingCampaignBudget>("/api/marketing/demo-requests/campaigns", { method: "PUT", body: JSON.stringify(input) });
+export interface ApiMarketingReportSetting { enabled: boolean; frequency: "Daily" | "Weekly"; recipientEmail: string; retentionDays: number; lastSentAtUtc: string | null }
+export const getMarketingReportSettings = () => apiFetch<ApiMarketingReportSetting>("/api/marketing/demo-requests/settings");
+export const saveMarketingReportSettings = (input: ApiMarketingReportSetting) => apiFetch<ApiMarketingReportSetting>("/api/marketing/demo-requests/settings", { method: "PUT", body: JSON.stringify(input) });
 
 // --- Sales chat ---
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BarChart3, CalendarCheck2, ChevronLeft, ChevronRight, Eye, Loader2, MessageCircle, MousePointerClick, Sparkles, Table2, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useApiData } from "@/api/hooks";
-import { getMarketingDashboard, getMarketingInsights, type ApiMarketingDashboard, type ApiMarketingInsights, type ApiMarketingTotals, type ApiNamedCount } from "@/api/marketing";
+import { getMarketingDashboard, getMarketingInsights, getMarketingReportSettings, listMarketingCampaignBudgets, saveMarketingCampaignBudget, saveMarketingReportSettings, type ApiMarketingCampaignBudget, type ApiMarketingDashboard, type ApiMarketingInsights, type ApiMarketingReportSetting, type ApiMarketingTotals, type ApiNamedCount } from "@/api/marketing";
 import { userMessage } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -102,6 +102,12 @@ export default function MarketingDashboard() {
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const { data, loading, error } = useApiData(() => getMarketingDashboard(days), EMPTY, undefined, { cacheKey: `marketing-dashboard-${days}`, ttlMs: 60_000 });
+  const campaignState = useApiData<ApiMarketingCampaignBudget[]>(listMarketingCampaignBudgets, [], undefined, { cacheKey: "marketing-campaign-budgets", ttlMs: 30_000 });
+  const reportState = useApiData<ApiMarketingReportSetting>(getMarketingReportSettings, { enabled: false, frequency: "Weekly", recipientEmail: "", retentionDays: 400, lastSentAtUtc: null }, undefined, { cacheKey: "marketing-report-settings", ttlMs: 30_000 });
+  const [reportForm, setReportForm] = useState(reportState.data);
+  const [campaignForm, setCampaignForm] = useState({ campaign: "", spend: "", wonRevenue: "", startDate: new Date().toISOString().slice(0, 10), endDate: new Date().toISOString().slice(0, 10) });
+  const [operationsBusy, setOperationsBusy] = useState(false);
+  useEffect(() => setReportForm(reportState.data), [reportState.data]);
 
   // cacheKey carries `days`, so switching the range refetches (useApiData re-runs on cacheKey).
   const t: ApiMarketingTotals = data.totals;
@@ -121,6 +127,15 @@ export default function MarketingDashboard() {
     catch (err) { setInsightsError(userMessage(err, "Could not generate the analysis.")); }
     finally { setInsightsLoading(false); }
   }
+
+  async function addCampaign() {
+    if (!campaignForm.campaign.trim() || !campaignForm.spend) return;
+    setOperationsBusy(true);
+    try { await saveMarketingCampaignBudget({ id: "00000000-0000-0000-0000-000000000000", campaign: campaignForm.campaign, spend: Number(campaignForm.spend), wonRevenue: campaignForm.wonRevenue ? Number(campaignForm.wonRevenue) : null, currency: "INR", startDate: campaignForm.startDate, endDate: campaignForm.endDate }); await campaignState.reload(); setCampaignForm(f => ({ ...f, campaign: "", spend: "", wonRevenue: "" })); }
+    finally { setOperationsBusy(false); }
+  }
+
+  async function saveAutomation() { setOperationsBusy(true); try { await saveMarketingReportSettings(reportForm); await reportState.reload(); } finally { setOperationsBusy(false); } }
 
   const kpis: { label: string; value: string; detail?: string; icon: LucideIcon; tone: "primary" | "success" | "warning" | "neutral"; trend?: { value: number; label: string } }[] = [
     { label: "Visitors", value: fmt(t.visitors), icon: Users, tone: "primary", trend: change(t.visitors, p.visitors) },
@@ -298,6 +313,19 @@ export default function MarketingDashboard() {
           })}
         </CardContent>
       </Card>}
+
+      <div className="mb-3 mt-8"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Operations</p><h2 className="mt-1 text-xl font-bold">ROI and automation</h2></div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card><CardHeader><CardTitle className="text-base">Campaign ROI</CardTitle><p className="text-sm text-muted-foreground">Add spend and won revenue using the exact utm_campaign value.</p></CardHeader><CardContent className="space-y-4">
+          <div className="grid gap-2 sm:grid-cols-5"><input aria-label="Campaign" placeholder="Campaign" value={campaignForm.campaign} onChange={e => setCampaignForm({ ...campaignForm, campaign: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Spend" type="number" min="0" placeholder="Spend ₹" value={campaignForm.spend} onChange={e => setCampaignForm({ ...campaignForm, spend: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Won revenue" type="number" min="0" placeholder="Won ₹" value={campaignForm.wonRevenue} onChange={e => setCampaignForm({ ...campaignForm, wonRevenue: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Start date" type="date" value={campaignForm.startDate} onChange={e => setCampaignForm({ ...campaignForm, startDate: e.target.value })} className="h-10 rounded-md border bg-background px-2 text-sm" /><Button disabled={operationsBusy} onClick={() => void addCampaign()}>Add</Button></div>
+          <div className="overflow-auto"><table className="w-full text-sm"><thead className="text-xs text-muted-foreground"><tr><th className="pb-2 text-left">Campaign</th><th className="pb-2 text-right">Spend</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">CPA</th><th className="pb-2 text-right">ROAS</th></tr></thead><tbody className="divide-y">{campaignState.data.map(c => <tr key={c.id}><td className="py-2">{c.campaign}</td><td className="text-right">₹{c.spend.toLocaleString()}</td><td className="text-right">{c.leads}</td><td className="text-right">{c.costPerAcquisition == null ? "—" : `₹${c.costPerAcquisition.toLocaleString()}`}</td><td className="text-right font-semibold">{c.returnOnAdSpend == null ? "—" : `${c.returnOnAdSpend}×`}</td></tr>)}</tbody></table></div>
+        </CardContent></Card>
+        <Card><CardHeader><CardTitle className="text-base">Reports, reminders and retention</CardTitle><p className="text-sm text-muted-foreground">Email performance summaries at 08:00 IST and remind the team about overdue follow-ups.</p></CardHeader><CardContent className="space-y-4">
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={reportForm.enabled} onChange={e => setReportForm({ ...reportForm, enabled: e.target.checked })} /> Enable scheduled report</label>
+          <div className="grid gap-3 sm:grid-cols-3"><select aria-label="Report frequency" value={reportForm.frequency} onChange={e => setReportForm({ ...reportForm, frequency: e.target.value as "Daily" | "Weekly" })} className="h-10 rounded-md border bg-background px-3 text-sm"><option>Daily</option><option>Weekly</option></select><input aria-label="Report email" type="email" placeholder="marketing@example.com" value={reportForm.recipientEmail} onChange={e => setReportForm({ ...reportForm, recipientEmail: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Retention days" type="number" min="30" max="730" value={reportForm.retentionDays} onChange={e => setReportForm({ ...reportForm, retentionDays: Number(e.target.value) })} className="h-10 rounded-md border bg-background px-3 text-sm" /></div>
+          <Button disabled={operationsBusy || !reportForm.recipientEmail} onClick={() => void saveAutomation()}>Save automation</Button>
+        </CardContent></Card>
+      </div>
 
       <div className="mb-3 mt-8"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Breakdown</p><h2 className="mt-1 text-xl font-bold">What drives growth</h2></div>
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">

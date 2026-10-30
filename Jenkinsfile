@@ -24,6 +24,17 @@ pipeline {
             }
         }
 
+        stage('Quality Gate') {
+            steps {
+                sh '''
+                    npm ci
+                    npm run lint
+                    npm test -- --run
+                    npm run build
+                '''
+            }
+        }
+
         stage('Remove Old Container') {
             steps {
                 sh '''
