@@ -3,7 +3,9 @@
 // The SPA still boots from the same shell (nginx serves <route>.html via try_files), but
 // crawlers that don't run JavaScript (Bing, AI bots, link previews) now see per-page metadata
 // instead of the homepage defaults. Keep the table in sync with each page's <Seo> and with
-// public/sitemap.xml.
+// public/sitemap-pages.xml. Blog posts are fetched from the live API at build time (a post
+// published after the build still works — it just gets the shell's default tags until the
+// next deploy); the sitemap lists them live via /sitemap-blog.xml.
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 
@@ -59,6 +61,27 @@ function render(shell, page) {
   const summary = `<noscript><h1>${title}</h1><p>${desc}</p><nav><ul>${links}</ul></nav></noscript>`;
   swap(/<body([^>]*)>/, (a) => `<body${a}>${summary}`);
   return html;
+}
+
+/** Every published post, from the API. A build must never fail because the API is down. */
+async function blogPages() {
+  const api = (process.env.PRERENDER_API_URL ?? "https://api.meettomanage.cloud").replace(/\/$/, "");
+  try {
+    const res = await fetch(`${api}/api/blog`, { signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const posts = await res.json();
+    return posts
+      .filter((p) => typeof p.slug === "string" && /^[a-z0-9-]+$/.test(p.slug))
+      .map((p) => ({ path: `/blog/${p.slug}`, type: "article", title: `${p.title} — Meet to Manage Blog`, description: p.excerpt ?? "" }));
+  } catch (err) {
+    console.warn(`prerender-meta: skipped blog posts (${err.message})`);
+    return [];
+  }
+}
+
+const known = new Set(PAGES.map((p) => p.path));
+for (const post of await blogPages()) {
+  if (!known.has(post.path)) PAGES.push(post);
 }
 
 const shell = await readFile(path.join(dist, "index.html"), "utf8");
