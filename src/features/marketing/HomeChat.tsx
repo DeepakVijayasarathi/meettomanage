@@ -670,7 +670,11 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
 
     setPending(true);
     try {
-      const { reply, bookedName } = await askSalesAssistant(next);
+      const attribution = marketingAttribution();
+      const { reply, bookedName } = await askSalesAssistant(next, {
+        visitorId: marketingVisitorId(), source: attribution.utmSource ?? attribution.referrerHost,
+        medium: attribution.utmMedium, campaign: attribution.utmCampaign, landingPath: window.location.pathname,
+      });
       setMessages((m) => [...m, { role: "assistant", text: reply }]);
       if (bookedName) {
         recordBooking(bookedName);

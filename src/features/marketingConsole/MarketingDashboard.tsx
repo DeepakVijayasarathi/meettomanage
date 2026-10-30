@@ -88,7 +88,7 @@ function RankedList({ title, items, emptyText, loading, format }: { title: strin
 function PerformanceList({ title, items }: { title: string; items: ApiMarketingDashboard["sourceQuality"] }) {
   return <Card><CardHeader className="pb-3"><CardTitle className="text-base">{title}</CardTitle></CardHeader><CardContent>
     {items.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No attributed leads in this period.</p> :
-      <div className="overflow-auto"><table className="w-full text-sm"><thead className="text-left text-xs text-muted-foreground"><tr><th className="pb-2">Channel</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">Won</th><th className="pb-2 text-right">Rate</th></tr></thead><tbody className="divide-y divide-border">{items.map(x => <tr key={x.name}><td className="max-w-40 truncate py-2" title={x.name}>{x.name}</td><td className="text-right">{x.leads}</td><td className="text-right">{x.converted}</td><td className="text-right font-medium">{x.conversionRate}%</td></tr>)}</tbody></table></div>}
+      <div className="overflow-auto"><table className="w-full text-sm"><thead className="text-left text-xs text-muted-foreground"><tr><th className="pb-2">Channel</th><th className="pb-2 text-right">Visitors</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">Lead rate</th><th className="pb-2 text-right">Won</th><th className="pb-2 text-right">Sales rate</th></tr></thead><tbody className="divide-y divide-border">{items.map(x => <tr key={x.name}><td className="max-w-40 truncate py-2" title={x.name}>{x.name}</td><td className="text-right">{x.visitors}</td><td className="text-right">{x.leads}</td><td className="text-right font-medium">{x.leadConversionRate}%</td><td className="text-right">{x.converted}</td><td className="text-right font-medium">{x.conversionRate}%</td></tr>)}</tbody></table></div>}
   </CardContent></Card>;
 }
 
@@ -139,15 +139,24 @@ export default function MarketingDashboard() {
     { label: "Chat engagement", value: `${t.chatStartRate}%`, detail: "visitors starting chat", icon: MousePointerClick, tone: "primary" },
     { label: "Demo → converted", value: `${t.demoPipelineConversionRate}%`, detail: "sales pipeline", icon: TrendingUp, tone: "success" },
   ];
+  const supportingKpis = kpis.filter(k => ["Page views", "Chats started", "Pages / visitor", "Chat engagement"].includes(k.label));
+  const demoTrend = change(t.demoRequests, p.demoRequests);
 
   return (
     <div>
       <PageHeader
         eyebrow="Website"
-        title="Analytics"
-        description={`Public-site acquisition and conversion, ${exactRange} (${timeZone}). Anonymous: no IP addresses or personal data are stored.`}
-        actions={
-          <div role="group" aria-label="Date range" className="inline-flex rounded-lg border border-border p-0.5">
+        title="Growth command center"
+        description={`Acquisition, engagement and sales performance for ${exactRange}. Anonymous traffic measurement; no IP addresses are stored.`}
+      />
+
+      <section className="relative mb-6 overflow-hidden rounded-3xl bg-[#0B132B] px-5 py-6 text-white shadow-[0_24px_60px_-32px_rgba(11,19,43,0.8)] sm:px-7 sm:py-7">
+        <div aria-hidden className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#F05A0A]/20 blur-3xl" />
+        <div aria-hidden className="absolute -bottom-32 left-1/3 h-64 w-64 rounded-full bg-blue-500/15 blur-3xl" />
+        <div className="relative flex flex-col gap-6">
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+            <div><div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-orange-300"><span className="h-2 w-2 rounded-full bg-[#F05A0A] shadow-[0_0_0_5px_rgba(240,90,10,0.16)]" />Live growth pulse</div><h2 className="max-w-2xl text-2xl font-bold tracking-tight sm:text-3xl">Turn website attention into qualified academy conversations.</h2><p className="mt-2 text-sm text-slate-300">{exactRange} · {timeZone}</p></div>
+            <div role="group" aria-label="Date range" className="inline-flex self-start rounded-xl border border-white/15 bg-white/5 p-1 backdrop-blur">
             {RANGES.map((r) => (
               <button
                 key={r}
@@ -155,24 +164,34 @@ export default function MarketingDashboard() {
                 onClick={() => { setDays(r); setSelectedDate(null); setInsights(null); setInsightsError(null); }}
                 aria-pressed={days === r}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-semibold transition-colors",
-                  days === r ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  "rounded-lg px-3.5 py-2 text-sm font-semibold transition-all",
+                  days === r ? "bg-[#F05A0A] text-white shadow-lg" : "text-slate-300 hover:bg-white/10 hover:text-white"
                 )}
               >
                 {r} days
               </button>
             ))}
           </div>
-        }
-      />
+          </div>
+          <div className="grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["Unique visitors", fmt(t.visitors), "people reached"],
+              ["Demo requests", fmt(t.demoRequests), demoTrend ? `${demoTrend.value >= 0 ? "+" : ""}${demoTrend.value}% vs prior` : "new opportunities"],
+              ["Visitor → demo", `${t.conversionRate}%`, "acquisition conversion"],
+              ["Demo → won", `${t.demoPipelineConversionRate}%`, "pipeline conversion"],
+            ].map(([label, value, detail]) => <div key={label} className="bg-[#0B132B]/80 p-5 backdrop-blur"><p className="text-xs font-medium text-slate-400">{label}</p><p className="mt-2 text-3xl font-bold tabular-nums">{value}</p><p className="mt-1 text-xs text-slate-400">{detail}</p></div>)}
+          </div>
+        </div>
+      </section>
 
+      <div className="mb-3 flex items-end justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Engagement</p><h2 className="mt-1 text-xl font-bold">How visitors interact</h2></div><p className="hidden text-sm text-muted-foreground sm:block">Supporting signals behind conversion</p></div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((k) => (
+        {supportingKpis.map((k) => (
           <KpiCard key={k.label} label={k.label} value={k.value} detail={k.detail} icon={k.icon} tone={k.tone} trend={k.trend} loading={loading} error={error} />
         ))}
       </div>
 
-      <Card className="mt-6 border-primary/20">
+      <Card className="mt-6 overflow-hidden border-primary/20 bg-gradient-to-br from-primary/[0.06] via-card to-card shadow-sm">
         <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
           <div><CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" />Next moves</CardTitle><p className="mt-1 text-sm text-muted-foreground">Hetzner AI analyzes the selected period using only the aggregate figures shown here.</p></div>
           <Button size="sm" onClick={() => void analyze()} disabled={loading || insightsLoading}>
@@ -192,8 +211,9 @@ export default function MarketingDashboard() {
         </CardContent>
       </Card>
 
+      <div className="mb-3 mt-8"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Trend</p><h2 className="mt-1 text-xl font-bold">Performance over time</h2></div>
       <ChartCard
-        className="mt-6"
+        className="shadow-sm"
         title="Visitors & page views"
         description={`Per local calendar day · ${exactRange} · ${timeZone}`}
         height={300}
@@ -279,7 +299,8 @@ export default function MarketingDashboard() {
         </CardContent>
       </Card>}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="mb-3 mt-8"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Breakdown</p><h2 className="mt-1 text-xl font-bold">What drives growth</h2></div>
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <PerformanceList title="Source quality" items={data.sourceQuality} />
         <PerformanceList title="Campaign conversion" items={data.campaignPerformance} />
         <PerformanceList title="Landing-page conversion" items={data.landingPagePerformance} />

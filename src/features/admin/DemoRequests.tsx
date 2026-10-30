@@ -59,6 +59,10 @@ export default function DemoRequests() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [deleteRequest, setDeleteRequest] = useState<ApiPlatformDemoRequest | null>(null);
+  const now = Date.now();
+  const overdueCount = requests.filter(r => r.nextFollowUpAtUtc && new Date(r.nextFollowUpAtUtc).getTime() < now && !["Converted", "Closed"].includes(r.status)).length;
+  const hotCount = requests.filter(r => r.leadTemperature === "Hot").length;
+  const duplicateCount = requests.filter(r => r.isDuplicate).length;
 
   async function changeStatus(request: ApiPlatformDemoRequest, status: ApiPlatformDemoRequestStatus) {
     if (!live) {
@@ -106,7 +110,9 @@ export default function DemoRequests() {
 
   function exportCsv() {
     const rows = [["Name", "Email", "Phone", "Academy", "Status", "Score", "Source", "Campaign", "Follow-up", "Submitted"], ...requests.map(r => [r.fullName, r.workEmail, r.phone, r.academyName, r.status, String(r.leadScore ?? 0), r.source ?? "Direct", r.campaign ?? "", r.nextFollowUpAtUtc ?? "", r.createdAtUtc])];
-    const csv = rows.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    // Quoting is not enough for spreadsheets: neutralize formula prefixes as well.
+    const safe = (value: unknown) => { const text = String(value); return /^[=+\-@]/.test(text) ? `'${text}` : text; };
+    const csv = rows.map(row => row.map(v => `"${safe(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const link = document.createElement("a"); link.href = url; link.download = `marketing-leads-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url);
   }
@@ -146,6 +152,10 @@ export default function DemoRequests() {
       {
         key: "source", header: "Source", accessor: (row) => row.source ?? "Direct",
         render: (row) => <div className="text-sm"><p>{row.source ?? "Direct"}</p>{row.campaign && <p className="text-xs text-muted-foreground">{row.campaign}</p>}</div>,
+      },
+      {
+        key: "followUp", header: "Follow-up", sortable: true, accessor: (row) => row.nextFollowUpAtUtc ?? "",
+        render: (row) => row.nextFollowUpAtUtc ? <div className="text-sm"><p className={new Date(row.nextFollowUpAtUtc).getTime() < Date.now() && !["Converted", "Closed"].includes(row.status) ? "font-semibold text-destructive" : ""}>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.nextFollowUpAtUtc))}</p>{row.assignedTo && <p className="text-xs text-muted-foreground">{row.assignedTo}</p>}</div> : <span className="text-sm text-muted-foreground">Not scheduled</span>,
       },
       {
         key: "status",
@@ -211,6 +221,12 @@ export default function DemoRequests() {
 
       {actionError && <InlineAlert variant="warning" className="mb-4">{actionError}</InlineAlert>}
 
+      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Hot leads</p><p className="text-2xl font-bold">{hotCount}</p></div>
+        <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Overdue follow-ups</p><p className={overdueCount ? "text-2xl font-bold text-destructive" : "text-2xl font-bold"}>{overdueCount}</p></div>
+        <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Possible duplicates</p><p className="text-2xl font-bold">{duplicateCount}</p></div>
+      </div>
+
       {requests.length === 0 && !error ? (
         <EmptyState icon={Handshake} title="No platform demo requests yet" description="Submissions from the public /get-started page will show up here." />
       ) : (
@@ -230,7 +246,7 @@ export default function DemoRequests() {
         open={deleteRequest !== null}
         onOpenChange={(open) => { if (!open) setDeleteRequest(null); }}
         title="Delete demo request?"
-        description={deleteRequest ? `This permanently removes the request from ${deleteRequest.fullName} (${deleteRequest.academyName}). This cannot be undone.` : undefined}
+        description={deleteRequest ? `This removes the request from active marketing lists and retains an audit record for administrators.` : undefined}
         confirmLabel="Delete request"
         destructive
         onConfirm={removeRequest}
