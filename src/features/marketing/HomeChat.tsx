@@ -178,8 +178,6 @@ const AUDIENCE_ICONS: Record<string, LucideIcon> = {
   coaching: Building2,
 };
 
-/** Session key so the "ask me" teaser nudges a visitor at most once per browser session. */
-const CHAT_TEASER_SEEN_KEY = "trn.chatTeaser.seen";
 /** The conversation survives a hop to /pricing and back within the same browser session. */
 const CHAT_MESSAGES_KEY = "trn.chat.messages";
 /** Set once the visitor has booked a demo from the chat, so the booking card isn't offered again. */
@@ -410,13 +408,12 @@ function ChatText({ text }: { text: string }) {
     centre's questions through the backend's Hetzner AI assistant (POST /api/marketing/chat — the API
     key never reaches the browser) and keeps WhatsApp/email/Request a Demo one tap away
     underneath. Questions can be typed or spoken (browser speech recognition, where supported);
-    a spoken question gets its reply read aloud too. The greeting is local and never sent, so the
+    spoken replies require the visitor to enable audio explicitly. The greeting is local and never sent, so the
     conversation the model sees always opens with the visitor. Separate from the FAQ-matching
     "Ask a Doubt" bot inside the logged-in portals (DoubtChatbot.tsx). */
 export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; openRequest?: number; onOpen?: () => void }) {
   const t = CHAT_T[lang];
   const [open, setOpen] = useState(false);
-  const [everOpened, setEverOpened] = useState(false);
   const [messages, setMessages] = useState<SalesChatTurn[]>(() => readSession<SalesChatTurn[]>(CHAT_MESSAGES_KEY, []));
   const [draft, setDraft] = useState("");
   // Demo booking. While the AI is answering, it books the demo itself: "Book my free demo" asks
@@ -429,12 +426,12 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
   const [leadStatus, setLeadStatus] = useState<"idle" | "sending" | "error" | "required">("idle");
   const [leadSentName, setLeadSentName] = useState<string | null>(() => readSession<string | null>(CHAT_LEAD_SENT_KEY, null));
   const [pending, setPending] = useState(false);
-  const [teaser, setTeaser] = useState(false);
-  const [hintIndex, setHintIndex] = useState(0);
   const [voiceSupported] = useState(() => speechRecognitionCtor() !== null);
   const [canSpeak] = useState(() => typeof window !== "undefined" && "speechSynthesis" in window);
   const [listening, setListening] = useState(false);
   const [speakReplies, setSpeakReplies] = useState(false);
+  const speakRepliesRef = useRef(speakReplies);
+  speakRepliesRef.current = speakReplies;
   const [voiceError, setVoiceError] = useState<string | null>(null);
   // Voice mode: the chat becomes a talking orb — tap the mic, speak, hear the answer, and it
   // listens again for a follow-up (once; a silent turn ends the loop). The transcript is the
@@ -445,7 +442,6 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
   modeRef.current = mode;
   const openRef = useRef(open);
   openRef.current = open;
-  const greetedRef = useRef(false);
   // Set when the visitor cuts the AI off (or the mic takes over) — an interrupted reply must not
   // reopen the mic by itself.
   const interruptedRef = useRef(false);
@@ -455,68 +451,6 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
   // send() closes over the current messages; the recognizer's callbacks outlive a render, so
   // they call through this ref to always reach the latest one.
   const sendRef = useRef<(text: string, viaVoice?: boolean) => void>(() => {});
-
-  // One nudge per session, a few seconds in, cycling through example questions so it's clear
-  // what can be asked — unless the visitor already opened the chat.
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem(CHAT_TEASER_SEEN_KEY) === "1") return;
-    } catch {
-      /* no storage — still show it once for this page view */
-    }
-    // On a phone the teaser would sit on top of the hero's own CTAs, so there it waits until
-    // the visitor has scrolled past the hero (or 15s), instead of 4s in.
-    const phone = window.matchMedia("(max-width: 639px)").matches;
-    const show = () => setTeaser(true);
-    const id = setTimeout(show, phone ? 15000 : 4000);
-    const onScroll = () => {
-      if (window.scrollY > window.innerHeight * 0.9) show();
-    };
-    if (phone) window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      clearTimeout(id);
-      window.removeEventListener("scroll", onScroll);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!teaser || open) return;
-    const id = setInterval(() => setHintIndex((i) => (i + 1) % t.teaserHints.length), 3500);
-    return () => clearInterval(id);
-  }, [teaser, open, t.teaserHints.length]);
-
-  // The greeting popup says hello out loud. Browsers only let a page speak after the visitor
-  // has clicked/tapped/typed on it, so if that hasn't happened yet it waits for the first
-  // interaction (while the popup is still showing) instead of failing silently.
-  useEffect(() => {
-    if (!teaser || open || !canSpeak || greetedRef.current) return;
-    const greet = () => {
-      if (greetedRef.current) return;
-      greetedRef.current = true;
-      say(t.voiceGreetingSpoken);
-    };
-    const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
-    if (activation?.hasBeenActive) {
-      greet();
-      return;
-    }
-    window.addEventListener("pointerdown", greet, { once: true });
-    window.addEventListener("keydown", greet, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", greet);
-      window.removeEventListener("keydown", greet);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- say() is recreated each render; this should only react to the popup showing
-  }, [teaser, open, canSpeak, t.voiceGreetingSpoken]);
-
-  function dismissTeaser() {
-    setTeaser(false);
-    try {
-      sessionStorage.setItem(CHAT_TEASER_SEEN_KEY, "1");
-    } catch {
-      /* nothing to persist to */
-    }
-  }
 
   useEffect(() => {
     writeSession(CHAT_MESSAGES_KEY, messages.slice(-30));
@@ -584,8 +518,9 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
   useEffect(() => {
     if (open) return;
     recognitionRef.current?.abort();
-    if (canSpeak && !teaser) window.speechSynthesis.cancel();
-  }, [open, canSpeak, teaser]);
+    setSpeakReplies(false);
+    if (canSpeak) window.speechSynthesis.cancel();
+  }, [open, canSpeak]);
   useEffect(
     () => () => {
       recognitionRef.current?.abort();
@@ -594,10 +529,8 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
     []
   );
 
-  function openChat(nextMode: "text" | "voice" = mode) {
-    dismissTeaser();
+  function openChat(nextMode: "text" | "voice" = "text") {
     if (!open) onOpen?.();
-    setEverOpened(true);
     setMode(nextMode);
     setOpen(true);
   }
@@ -613,7 +546,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
   /** Speaks a line and runs the orb's speaking state; in voice mode, optionally listens for
    *  the visitor's follow-up as soon as it finishes. */
   function say(text: string, listenAfter = false) {
-    if (!canSpeak) return;
+    if (!canSpeak || !openRef.current || !speakRepliesRef.current) return;
     interruptedRef.current = false;
     speak(text, lang, {
       onStart: () => setSpeaking(true),
@@ -630,12 +563,6 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
     setSpeaking(false);
   }
 
-  /** "Talk to me": open straight into voice mode with the mic already listening. */
-  function openVoice() {
-    openChat(voiceSupported ? "voice" : "text");
-    if (voiceSupported) startListening();
-  }
-
   function toggle() {
     if (open) {
       setOpen(false);
@@ -644,7 +571,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
     openChat();
   }
 
-  async function send(text: string, viaVoice = false) {
+  async function send(text: string, _viaVoice = false) {
     const question = text.trim().slice(0, 1000);
     if (!question || pending) return;
     const next: SalesChatTurn[] = [...messages, { role: "user", text: question }];
@@ -652,12 +579,9 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
     setMessages(next);
     setDraft("");
     setVoiceError(null);
-    // Asking out loud implies wanting to hear the answer; typing afterwards keeps whatever the
-    // speaker toggle says.
-    const readAloud = canSpeak && (viaVoice || speakReplies);
-    if (viaVoice && canSpeak) setSpeakReplies(true);
-
-    const listenAfter = viaVoice && modeRef.current === "voice";
+    // Speech is opt-in, including replies to questions dictated with the microphone.
+    const readAloud = canSpeak && speakReplies;
+    const listenAfter = false;
 
     if (!apiEnabled()) {
       setMessages([...next, { role: "assistant", text: t.offline }]);
@@ -683,11 +607,6 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
     }
   }
   sendRef.current = send;
-
-  function askFromTeaser(question: string) {
-    openChat();
-    void send(question);
-  }
 
   function toggleListening() {
     if (listening) {
@@ -746,9 +665,9 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
         <div
           role="dialog"
           aria-label={t.heading}
-          className="flex h-[min(720px,calc(100dvh-6rem))] w-[min(410px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-3xl border border-[#F6D9C3] bg-[#FFFAF6] shadow-[0_30px_70px_-20px_rgba(194,65,12,0.45)]"
+          className="flex h-[min(680px,calc(100dvh-6rem))] w-[min(410px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-3xl border border-[#EFE3D7] bg-[#FFFAF6] shadow-[0_24px_80px_-24px_rgba(60,35,20,0.3)]"
         >
-          <div className="flex items-center gap-3 bg-gradient-to-b from-[#FFF1E6] to-[#FFFAF6] px-4 pb-3 pt-4 text-[#1C1917]">
+          <div className="flex items-center gap-3 border-b border-[#EFE3D7] bg-white px-4 py-4 text-[#1C1917]">
             <MitoAvatar />
             <div className="min-w-0 flex-1">
               <p className="font-display truncate text-xl font-extrabold leading-tight tracking-[-0.02em] rtl:tracking-normal">{t.mitoLead} <span className="text-[#C2410C]">{t.mitoName}</span></p>
@@ -768,7 +687,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
             >
               {mode === "voice" ? <Keyboard className="h-4 w-4" /> : <AudioLines className="h-4 w-4" />}
             </button>
-            {canSpeak && mode === "text" && (
+            {canSpeak && (
               <button
                 type="button"
                 onClick={() => {
@@ -1076,60 +995,6 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
         </div>
       )}
 
-      {/* Greeting popup: the orb says hello (out loud where the browser allows), and the visitor
-          can talk straight away or type. Shows once per session; see the teaser effect above. */}
-      {teaser && !open && (
-        <div
-          role="dialog"
-          aria-label={t.voiceHi}
-          className="motion-safe:animate-slide-up relative w-[min(300px,calc(100vw-2.5rem))] border border-[#F1E6DC] p-4 shadow-pop"
-          style={{ background: HERO_BG }}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              stopSpeaking();
-              dismissTeaser();
-            }}
-            aria-label={t.teaserDismissAria}
-            className="absolute end-1.5 top-1.5 p-1 text-[#6B7280] hover:text-[#111]"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-          <div className="flex items-center gap-3 pe-4">
-            <AiOrb state={speaking ? "speaking" : "idle"} size={58} />
-            <div>
-              <p className="text-sm font-bold leading-snug text-[#111]">{t.voiceHi}</p>
-              <p className="mt-0.5 text-sm leading-snug text-[#333]">{t.voiceAsk}</p>
-            </div>
-          </div>
-          <button
-            key={hintIndex}
-            type="button"
-            onClick={() => askFromTeaser(t.teaserHints[hintIndex])}
-            className="motion-safe:animate-fade-in mt-3 block text-start text-xs font-semibold text-[#5B6472] hover:text-[#C2410C]"
-          >
-            {t.tryLabel} “{t.teaserHints[hintIndex]}”
-          </button>
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={openVoice}
-              className="flex h-10 flex-1 items-center justify-center gap-1.5 bg-[#EA580C] text-sm font-bold text-white transition-colors hover:bg-[#C2410C]"
-            >
-              <Mic className="h-4 w-4" /> {t.talkToMe}
-            </button>
-            <button
-              type="button"
-              onClick={() => openChat("text")}
-              className="flex h-10 items-center justify-center gap-1.5 border border-[#D9E1F0] bg-white px-3 text-sm font-semibold text-[#111] transition-colors hover:border-[#F97316]"
-            >
-              <Keyboard className="h-4 w-4" /> {t.typeInstead}
-            </button>
-          </div>
-        </div>
-      )}
-
       {open ? (
         <button
           type="button"
@@ -1146,24 +1011,15 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
           onClick={toggle}
           aria-label={t.toggleAria(false)}
           aria-expanded={false}
-          className="relative flex h-16 items-center gap-3 rounded-full bg-gradient-to-r from-[#FB8A1E] via-[#F2640F] to-[#D9480F] p-1.5 text-base text-white shadow-[0_18px_36px_-12px_rgba(234,88,12,0.7)] ring-1 ring-white/30 transition-transform hover:scale-[1.03] sm:pe-6"
+          className="relative flex h-16 items-center gap-3 rounded-full bg-[#C2410C] p-1.5 text-base text-white shadow-[0_18px_36px_-12px_rgba(234,88,12,0.7)] ring-1 ring-white/30 transition-transform hover:scale-[1.03] sm:pe-6"
         >
           <span className="relative flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-white p-[3px] shadow-[0_0_0_4px_rgba(255,255,255,0.35)]">
             <img src="/product/mito-avatar.webp" alt="" width={192} height={192} className={cn("h-full w-full rounded-full object-cover", speaking && "motion-safe:animate-pulse")} />
           </span>
           {/* Label only from sm up: on a phone the full pill covers the page's own buttons. */}
           <span className="relative hidden text-lg font-medium sm:inline">{t.launcher} <b className="font-extrabold">{t.launcherName}</b></span>
-          {voiceSupported && <Mic aria-hidden className="relative hidden h-5 w-5 sm:block" />}
-          {/* Unread badge while the teaser is out — a visible "someone's waiting" cue. */}
-          {teaser && !everOpened && (
-            <span
-              role="status"
-              aria-label={t.unreadAria}
-              className="absolute -end-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[#DC2626] text-[10px] font-bold text-white"
-            >
-              1
-            </span>
-          )}
+          <MessageSquare aria-hidden className="relative hidden h-5 w-5 sm:block" />
+
         </button>
       )}
     </div>
