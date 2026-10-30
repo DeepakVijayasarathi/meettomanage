@@ -13,6 +13,20 @@ export function TopicChip({ topic, className }: { topic: BlogTopic; className?: 
 }
 
 const BLOG_IMAGES: Record<string, string> = {
+  "admissions-crm-for-academies": "/blog/admissions-crm-for-academies.webp",
+  "interactive-whiteboard-activities-online-classes": "/blog/interactive-whiteboard-activities-online-classes.webp",
+  "gamification-online-classes-kids": "/blog/gamification-online-classes-kids.webp",
+  "reduce-no-shows-online-classes": "/blog/reduce-no-shows-online-classes.webp",
+  "multi-branch-coaching-institute-dashboard": "/blog/multi-branch-coaching-institute-dashboard.webp",
+  "tutor-grow-10-to-50-students": "/blog/tutor-grow-10-to-50-students.webp",
+  "zoom-vs-live-classroom-for-academies": "/blog/zoom-vs-live-classroom-for-academies.webp",
+  "automated-fee-collection-setup": "/blog/automated-fee-collection-setup.webp",
+  "whatsapp-groups-vs-parent-portal": "/blog/whatsapp-groups-vs-parent-portal.webp",
+  "demo-class-that-converts": "/blog/demo-class-that-converts.webp",
+  "online-coaching-software-checklist": "/blog/online-coaching-software-checklist.webp",
+  "time-spent-chasing-academy-fees": "/blog/time-spent-chasing-academy-fees.webp",
+  "why-demo-bookings-go-cold": "/blog/why-demo-bookings-go-cold.webp",
+  "more-demo-bookings-from-academy-website": "/blog/more-demo-bookings-from-academy-website.webp",
   "signs-academy-outgrown-spreadsheets": "/blog/signs-academy-outgrown-spreadsheets.webp",
   "demo-booking-to-enrolled-family": "/blog/demo-booking-to-enrolled-family.webp",
   "automatic-fee-suspension-payment-conversations": "/blog/automatic-fee-suspension-payment-conversations.webp",
