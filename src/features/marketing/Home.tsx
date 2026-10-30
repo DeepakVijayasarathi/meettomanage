@@ -148,7 +148,7 @@ export default function MarketingHome() {
   );
 
   return (
-    <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#1C1917]">
+    <div className="theme-light-scope marketing-square min-h-screen bg-white pb-20 text-[#1C1917] sm:pb-0">
       <style>{FX_CSS}</style>
       <Seo
         pageKey="home"
@@ -207,6 +207,18 @@ export default function MarketingHome() {
             ))}
           </ul>
         </section>
+
+        {/* REAL CUSTOMER PROOF: factual product use, linked to the full approved story. */}
+        {lang === "en" && <section aria-labelledby="customer-proof-heading" className="bg-[#FFF8F3] py-7">
+          <div className="mx-auto flex max-w-[1080px] flex-col items-center gap-5 px-5 text-center sm:flex-row sm:text-start">
+            <img src="/clients/thereader.png" alt="The Reader Nest logo" width={64} height={64} loading="lazy" className="h-16 w-16 shrink-0 rounded-full object-cover ring-1 ring-black/10" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#C2410C]">Customer story</p>
+              <h2 id="customer-proof-heading" className="font-display mt-1 text-lg font-extrabold tracking-[-0.02em] text-[#1C1917]">The Reader Nest runs enrolment, classes, worksheets, recordings and its parent dashboard in one platform.</h2>
+            </div>
+            <Link to="/customers/the-reader-nest" className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#E8C8AD] bg-white px-5 py-3 text-sm font-bold text-[#9A3412] transition-colors hover:bg-[#FFF3EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C]">Read the story <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
+          </div>
+        </section>}
 
         {/* NGO OFFER: the designed banner on wider English screens; the phone picture on small English screens; live text in Arabic, where the pictures' baked-in English would not read */}
         <section aria-labelledby="ngo-offer" className="bg-white pt-[clamp(40px,5vw,72px)]">
@@ -499,6 +511,12 @@ export default function MarketingHome() {
       </main>
 
       <MarketingFooter />
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#EBD9C8] bg-white/95 p-3 shadow-[0_-12px_30px_-22px_rgba(28,25,23,0.7)] backdrop-blur sm:hidden">
+        <div className="mx-auto flex max-w-lg gap-2">
+          <Link to="/get-started" className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#C2410C] px-4 text-sm font-bold text-white">Book free walkthrough <ArrowRight className="h-4 w-4" /></Link>
+          <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" aria-label="Chat with Meet to Manage on WhatsApp" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#E8C8AD] bg-white px-4 text-sm font-bold text-[#9A3412]"><MessageSquare className="h-4 w-4" /> WhatsApp</a>
+        </div>
+      </div>
       {chatReady && (
         <Suspense fallback={null}>
           <PromoPopup lang={lang} />

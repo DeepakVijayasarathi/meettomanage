@@ -54,7 +54,7 @@ const T = {
     errorCoach: "Enter your name.",
     errorAcademy: "Enter your name and academy name.",
     submitError: "Couldn't submit your request. Please try again.",
-    requestDemo: "Request a Demo",
+    requestDemo: "Book free walkthrough",
     fallbackName: "Independent coach",
     rights: (year: number) => `© ${year} Meet to Manage. All rights reserved.`,
     seoTitleCoach: "Request a Demo for Coaches — Meet to Manage",
@@ -114,7 +114,7 @@ const T = {
 /** Copy for the two-panel layout: the pitch on the left, the form on the right. */
 const PANEL = {
   en: {
-    eyebrow: "Request a demo",
+    eyebrow: "Free platform walkthrough",
     heading: ["See how Meet to Manage works for", "your academy."],
     sub: "Get a personalised walkthrough of live classes, admissions, fees and parent updates, as one platform.",
     features: [
@@ -123,9 +123,9 @@ const PANEL = {
       { title: "Fees & Payments", body: "Simple and secure" },
       { title: "Parent Updates", body: "Keep everyone informed" },
     ],
-    noCommit: "No commitment. We'll follow up at a convenient time.",
-    formTitle: "Request a Demo",
-    formSub: "Share a few details and we'll get in touch to schedule a demo for your academy.",
+    noCommit: "30 minutes. No payment details or commitment.",
+    formTitle: "Book your free walkthrough",
+    formSub: "Share a few details and we'll get in touch within one business day to find a convenient time.",
   },
   ar: {
     eyebrow: "اطلب عرضًا توضيحيًا",

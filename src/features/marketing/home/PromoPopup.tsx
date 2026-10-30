@@ -7,19 +7,18 @@ import { cn } from "@/lib/utils";
 const SEEN_KEY = "m2m.promo.seen";
 const DELAY_MS = 14000;
 
-/** What the popup says. Keep the offer wording to what the business can honour today: it is a free demo class, not a trial,
- *  because the plans carry no trial period. Change `badge`, `cta` and `note` here if a trial is added later. */
+/** Keep this offer aligned with the lead form: a free platform walkthrough, not a product trial. */
 const T = {
   en: {
-    badge: "Free demo class",
+    badge: "Free platform walkthrough",
     headline: ["Run your academy", "smarter."],
     sub: "Live classes, admissions, fees and parent updates, all in one place.",
     items: ["Live Classes", "Admissions", "Fees & Payments", "Parent Updates"],
-    cta: "Book my free demo",
+    cta: "Book my free walkthrough",
     watch: "Watch the full tour",
     note: "No payment details needed.",
     close: "Close",
-    label: "Offer: book a free demo class",
+    label: "Offer: book a free platform walkthrough",
   },
   ar: {
     badge: "حصة تجريبية مجانية",

@@ -51,8 +51,8 @@ export default function Customers() {
           ))}
           <li className="flex flex-col justify-center rounded-2xl border border-dashed border-[#E0CBB8] bg-[#FFF6EE] p-7">
             <h2 className="font-display text-xl font-extrabold tracking-[-0.02em]">Your centre could be next.</h2>
-            <p className="mt-2 text-[15px] leading-relaxed text-[#57534E]">Book a free demo class and see your own batches, fees and parent app running on one platform.</p>
-            <Link to="/get-started" className={cn(BTN_PRIMARY, "mt-5 w-fit")}>Book a free demo <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
+            <p className="mt-2 text-[15px] leading-relaxed text-[#57534E]">Book a free platform walkthrough and see how your batches, fees and parent app can run in one place.</p>
+            <Link to="/get-started" className={cn(BTN_PRIMARY, "mt-5 w-fit")}>Book free walkthrough <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
           </li>
         </ul>
       </section>
