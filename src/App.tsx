@@ -46,6 +46,8 @@ const MarketingAnalytics = lazy(() => import("@/features/marketingConsole/Market
 const MarketingDemoRequests = lazy(() => import("@/features/admin/DemoRequests"));
 const MarketingChats = lazy(() => import("@/features/marketingConsole/MarketingChats"));
 const MarketingVisitors = lazy(() => import("@/features/marketingConsole/MarketingVisitors"));
+const MarketingJourneys = lazy(() => import("@/features/marketingConsole/MarketingJourneys"));
+const MarketingVisitorDetail = lazy(() => import("@/features/marketingConsole/MarketingVisitorDetail"));
 const MarketingBlogPosts = lazy(() => import("@/features/admin/BlogPosts"));
 const ResetPin = lazy(() => import("@/features/auth/ResetPin"));
 const NotFound = lazy(() => import("@/features/auth/NotFound"));
@@ -393,6 +395,8 @@ export default function App() {
               <Route path="demo-requests" element={<MarketingDemoRequests />} />
               <Route path="chats" element={<MarketingChats />} />
               <Route path="visitors" element={<MarketingVisitors />} />
+              <Route path="journeys" element={<MarketingJourneys />} />
+              <Route path="journeys/:visitorId" element={<MarketingVisitorDetail />} />
               <Route path="blog-posts" element={<MarketingBlogPosts />} />
               <Route path="seo" element={<MarketingSeo />} />
               <Route path="tracking" element={<MarketingAnalytics />} />

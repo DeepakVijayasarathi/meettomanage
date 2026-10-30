@@ -21,9 +21,8 @@ import {
   listBlogPostsAdmin,
   updateBlogPost,
   type ApiBlogPost,
-  type ApiMarketingBlogIdea,
 } from "@/api/marketing";
-import { BlogInsights } from "./BlogInsights";
+import { BlogInsights, type BlogDraftPrefill } from "./BlogInsights";
 import { formatDate } from "@/lib/utils";
 
 const DEMO_POSTS: ApiBlogPost[] = [
@@ -76,14 +75,9 @@ export default function BlogPosts() {
     setCreating(true);
   }
 
-  /** New draft from an AI idea: its title, and its outline as "## " section headings to write under. */
-  function openDraft(idea: ApiMarketingBlogIdea) {
-    const sections = idea.outline.length > 0 ? idea.outline : ["Introduction", "Main points", "Next steps"];
-    setForm({
-      ...EMPTY_FORM,
-      title: idea.title,
-      content: sections.map((h) => `## ${h}\n\nWrite this section…`).join("\n\n"),
-    });
+  /** New, unpublished draft from an AI idea — its outline, or the full AI-written post — to review and edit. */
+  function openDraft(draft: BlogDraftPrefill) {
+    setForm({ ...EMPTY_FORM, title: draft.title, excerpt: draft.excerpt ?? "", content: draft.content, isPublished: false });
     setFormError(null);
     setCreating(true);
   }

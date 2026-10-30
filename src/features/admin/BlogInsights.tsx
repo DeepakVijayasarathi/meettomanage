@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Lightbulb, Loader2, PenLine, Sparkles, TrendingUp } from "lucide-react";
+import { Lightbulb, Loader2, PenLine, Sparkles, TrendingUp, Wand2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useApiData } from "@/api/hooks";
-import { getMarketingContentPerformance, suggestBlogPosts, type ApiMarketingBlogIdea, type ApiMarketingBlogIdeas, type ApiMarketingContentPerformance } from "@/api/marketing";
+import { getMarketingContentPerformance, suggestBlogPosts, writeBlogDraft, type ApiMarketingBlogIdea, type ApiMarketingBlogIdeas, type ApiMarketingContentPerformance } from "@/api/marketing";
 import { userMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -14,14 +14,38 @@ const WINDOWS = [30, 90] as const;
 
 /**
  * Blog Posts → what readers engage with (and act on), plus AI ideas for the next posts.
- * `onDraft` opens the New Post form pre-filled from an idea; nothing is published automatically.
+ * `onDraft` opens the New Post form pre-filled — with just the outline, or with a full AI-written
+ * draft. Nothing is saved or published automatically.
  */
-export function BlogInsights({ onDraft }: { onDraft: (idea: ApiMarketingBlogIdea) => void }) {
+export interface BlogDraftPrefill { title: string; excerpt?: string; content: string }
+
+const outlineDraft = (idea: ApiMarketingBlogIdea): BlogDraftPrefill => ({
+  title: idea.title,
+  content: (idea.outline.length > 0 ? idea.outline : ["Introduction", "Main points", "Next steps"]).map((h) => `## ${h}\n\nWrite this section…`).join("\n\n"),
+});
+
+export function BlogInsights({ onDraft }: { onDraft: (draft: BlogDraftPrefill) => void }) {
   const [days, setDays] = useState<(typeof WINDOWS)[number]>(30);
   const { data, loading, error } = useApiData(() => getMarketingContentPerformance(days), EMPTY, EMPTY, { cacheKey: `marketing-content-${days}`, ttlMs: 60_000 });
   const [ideas, setIdeas] = useState<ApiMarketingBlogIdeas | null>(null);
   const [ideasLoading, setIdeasLoading] = useState(false);
   const [ideasError, setIdeasError] = useState<string | null>(null);
+  const [writing, setWriting] = useState<number | null>(null);
+  const [writeError, setWriteError] = useState<string | null>(null);
+
+  async function write(idea: ApiMarketingBlogIdea, index: number) {
+    setWriting(index);
+    setWriteError(null);
+    try {
+      const draft = await writeBlogDraft(idea);
+      if (!draft.aiPowered) setWriteError("AI is unavailable right now, so the draft only has the outline.");
+      onDraft({ title: draft.title, excerpt: draft.excerpt, content: draft.content });
+    } catch (err) {
+      setWriteError(userMessage(err, "Couldn't write the draft right now."));
+    } finally {
+      setWriting(null);
+    }
+  }
 
   async function suggest() {
     setIdeasLoading(true);
@@ -98,6 +122,7 @@ export function BlogInsights({ onDraft }: { onDraft: (idea: ApiMarketingBlogIdea
         </CardHeader>
         <CardContent>
           {ideasError && <InlineAlert variant="warning" className="mb-3">{ideasError}</InlineAlert>}
+          {writeError && <InlineAlert variant="warning" className="mb-3">{writeError}</InlineAlert>}
           {!ideas && !ideasLoading && !ideasError && (
             <p className="text-sm text-muted-foreground">Click <b>Suggest</b> for five fresh post ideas, each with a search keyword, the reason, and an outline you can turn into a draft.</p>
           )}
@@ -105,11 +130,17 @@ export function BlogInsights({ onDraft }: { onDraft: (idea: ApiMarketingBlogIdea
           {ideas && ideas.ideas.length > 0 && (
             <div className="space-y-3">
               {!ideas.aiPowered && <p className="text-xs text-muted-foreground">AI is unavailable right now — these come from your measured data.</p>}
+              {writing !== null && <p className="text-xs text-muted-foreground">Writing a full draft takes about 30–60 seconds…</p>}
               {ideas.ideas.map((idea, i) => (
                 <div key={i} className="rounded-lg border p-3">
                   <div className="flex items-start justify-between gap-3">
                     <p className="font-medium leading-snug">{idea.title}</p>
-                    <Button size="sm" variant="outline" className="shrink-0" onClick={() => onDraft(idea)}><PenLine className="h-3.5 w-3.5" />Draft this</Button>
+                    <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
+                      <Button size="sm" onClick={() => void write(idea, i)} disabled={writing !== null} title="AI writes the full post (about 1,000 words) as a draft for you to edit">
+                        {writing === i ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}{writing === i ? "Writing…" : "Write with AI"}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => onDraft(outlineDraft(idea))} disabled={writing !== null}><PenLine className="h-3.5 w-3.5" />Outline only</Button>
+                    </div>
                   </div>
                   {idea.targetKeyword && <Badge variant="outline" className="mt-2 font-normal">🔎 {idea.targetKeyword}</Badge>}
                   {idea.why && <p className="mt-2 text-sm text-muted-foreground">{idea.why}</p>}

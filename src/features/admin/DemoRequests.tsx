@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Archive, ChevronDown, Download, Handshake, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -137,6 +138,14 @@ export default function DemoRequests() {
     setBusyId(null);
   }
 
+  // ?lead=<id> (from a visitor's journey page) opens that lead's workspace straight away.
+  const [searchParams] = useSearchParams();
+  const leadParam = searchParams.get("lead");
+  useEffect(() => {
+    if (leadParam && live) void openLead({ id: leadParam } as ApiPlatformDemoRequest);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the link's lead id changes
+  }, [leadParam]);
+
   async function openLead(row: ApiPlatformDemoRequest) {
     if (!live) return;
     setDetail(null); setRecommendation(null); setNotes(""); setDetailOpen(true);
@@ -199,7 +208,7 @@ export default function DemoRequests() {
       },
       {
         key: "score", header: "Lead", sortable: true, accessor: (row) => row.leadScore ?? 0,
-        render: (row) => <div><Badge variant={row.leadTemperature === "Hot" ? "destructive" : row.leadTemperature === "Warm" ? "warning" : "muted"}>{row.leadTemperature ?? "Cold"} · {row.leadScore ?? 0}</Badge>{row.isDuplicate && <p className="mt-1 text-xs text-warning">Possible duplicate</p>}</div>,
+        render: (row) => <div title={row.scoreReasons?.length ? `Why: ${row.scoreReasons.join(" · ")}` : undefined}><Badge variant={row.leadTemperature === "Hot" ? "destructive" : row.leadTemperature === "Warm" ? "warning" : "muted"}>{row.leadTemperature ?? "Cold"} · {row.leadScore ?? 0}</Badge>{row.scoreReasons?.[0] && <p className="mt-1 max-w-[11rem] truncate text-xs text-muted-foreground">{row.scoreReasons[0]}{row.scoreReasons.length > 1 ? ` +${row.scoreReasons.length - 1}` : ""}</p>}{row.isDuplicate && <p className="mt-1 text-xs text-warning">Possible duplicate</p>}</div>,
       },
       {
         key: "source", header: "Source", accessor: (row) => row.source ?? "Direct",
@@ -314,7 +323,7 @@ export default function DemoRequests() {
       />
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>{detail?.lead.fullName ?? "Lead workspace"}</DialogTitle><DialogDescription>{detail ? `${detail.lead.academyName} · ${detail.lead.workEmail} · ${detail.lead.phone}` : "Loading lead…"}</DialogDescription></DialogHeader>
         {!detail ? <Loader2 className="h-5 w-5 animate-spin" /> : <div className="space-y-5">
-          <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Score</p><p className="font-bold">{detail.lead.leadTemperature} · {detail.lead.leadScore}</p></div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Source</p><p className="font-bold">{detail.lead.source ?? "Direct"}</p></div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Status</p><p className="font-bold">{detail.lead.status}</p></div></div>
+          <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Score</p><p className="font-bold">{detail.lead.leadTemperature} · {detail.lead.leadScore}</p>{detail.lead.scoreReasons && detail.lead.scoreReasons.length > 0 && <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">{detail.lead.scoreReasons.map((r) => <li key={r}>{r}</li>)}</ul>}</div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Source</p><p className="font-bold">{detail.lead.source ?? "Direct"}</p></div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Status</p><p className="font-bold">{detail.lead.status}</p></div></div>
           <div><p className="mb-2 text-sm font-semibold">Internal notes</p><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} /><Button className="mt-2" size="sm" onClick={() => void saveNotes()}>Save notes</Button></div>
           <div className="rounded-xl border bg-primary/5 p-4"><div className="flex justify-between gap-3"><h3 className="font-semibold">AI next action</h3><Button size="sm" variant="outline" onClick={() => void analyzeLead()}><Sparkles className="h-4 w-4" />Analyze</Button></div>{recommendation && <div className="mt-3 space-y-2 text-sm"><p>{recommendation.summary}</p><p><b>Next:</b> {recommendation.nextAction}</p><p><b>{recommendation.suggestedChannel}:</b> {recommendation.suggestedMessage}</p></div>}</div>
           <div><h3 className="mb-2 font-semibold">Timeline</h3><div className="space-y-2">{detail.activity.map(a => <div key={a.id} className="rounded-lg border p-3 text-sm"><div className="flex justify-between gap-3"><b>{a.type}</b><span className="text-xs text-muted-foreground">{new Date(a.createdAtUtc).toLocaleString()}</span></div><p className="mt-1 text-muted-foreground">{a.detail}</p></div>)}</div></div>

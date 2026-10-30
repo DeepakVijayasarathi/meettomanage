@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Bot, CalendarCheck2, ChevronLeft, ChevronRight, Loader2, MessagesSquare, Search, User } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -23,7 +24,9 @@ export default function MarketingChats() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [bookedOnly, setBookedOnly] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // ?open=<id> (from a visitor's journey page) opens that conversation straight away.
+  const [searchParams] = useSearchParams();
+  const [openId, setOpenId] = useState<string | null>(() => searchParams.get("open"));
   const [detail, setDetail] = useState<ApiMarketingChatDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
 

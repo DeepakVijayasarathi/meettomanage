@@ -22,6 +22,8 @@ export interface ApiPlatformDemoRequest {
   leadScore?: number;
   leadTemperature?: "Hot" | "Warm" | "Cold";
   isDuplicate?: boolean;
+  /** Plain-language reasons behind leadScore (message, chat booking, website journey, recency). */
+  scoreReasons?: string[];
   assignedToUserId?: string | null;
   archivedAtUtc?: string | null;
 }
@@ -301,6 +303,7 @@ export interface ApiMarketingInsights {
 
 export interface ApiMarketingVisitorJourney {
   visitor: string;
+  visitorId: string;
   firstSeenUtc: string;
   lastSeenUtc: string;
   country: string | null;
@@ -331,6 +334,40 @@ export interface ApiMarketingVisitorJourneys {
   page: number;
   pageSize: number;
 }
+export interface ApiMarketingVisit {
+  startUtc: string;
+  endUtc: string;
+  source: string;
+  campaign: string | null;
+  device: string;
+  pages: { path: string; atUtc: string }[];
+  startedChat: boolean;
+}
+export interface ApiMarketingVisitorDetail {
+  visitorId: string;
+  visitor: string;
+  firstSeenUtc: string;
+  lastSeenUtc: string;
+  country: string | null;
+  pageViews: number;
+  distinctPages: number;
+  visits: ApiMarketingVisit[];
+  demoRequests: { id: string; fullName: string; academyName: string; status: string; createdAtUtc: string }[];
+  chats: ApiMarketingChatConversation[];
+}
+export interface ApiMarketingVisitorInsight {
+  summary: string;
+  interests: string[];
+  intent: "Hot" | "Warm" | "Cold";
+  intentReason: string;
+  nextActions: string[];
+  aiPowered: boolean;
+}
+/** One visitor's whole history: visits, pages in order, chats and demo requests. */
+export const getMarketingVisitorDetail = (visitorId: string) => apiFetch<ApiMarketingVisitorDetail>(`/api/marketing/analytics/visitors/${encodeURIComponent(visitorId)}`);
+/** AI read of one visitor: interests, buying intent and the next marketing actions. No names or contact details are sent. */
+export const analyzeMarketingVisitor = (visitorId: string) => apiFetch<ApiMarketingVisitorInsight>(`/api/marketing/analytics/visitors/${encodeURIComponent(visitorId)}/insight`, { method: "POST" });
+
 /** Marketing console → Visitors: each anonymous visitor's pages in order, for the same window as the dashboard. */
 export async function getMarketingVisitorJourneys(days: number, range: MarketingDateRange | null, page: number, country?: string | null): Promise<ApiMarketingVisitorJourneys> {
   const q = new URLSearchParams(analyticsQuery(days, range));
@@ -346,6 +383,13 @@ export interface ApiMarketingBlogIdea { title: string; targetKeyword: string; wh
 export interface ApiMarketingBlogIdeas { ideas: ApiMarketingBlogIdea[]; aiPowered: boolean; generatedAtUtc: string }
 /** Which blog posts readers engage with and act on, for the Blog Posts page. */
 export const getMarketingContentPerformance = (days: number) => apiFetch<ApiMarketingContentPerformance>(`/api/marketing/analytics/content?${analyticsQuery(days)}`);
+export interface ApiMarketingBlogDraft { title: string; excerpt: string; content: string; aiPowered: boolean }
+/** AI: a full draft (about 1,000 words) for one idea, in the blog's own format. Returned only — never saved or published. */
+export const writeBlogDraft = (idea: ApiMarketingBlogIdea) =>
+  apiFetch<ApiMarketingBlogDraft>("/api/marketing/analytics/blog-draft", {
+    method: "POST",
+    body: JSON.stringify({ title: idea.title, targetKeyword: idea.targetKeyword, why: idea.why, outline: idea.outline.slice(0, 8) }),
+  });
 /** AI: the next five blog post ideas, from content performance and visitors' chat questions. */
 export const suggestBlogPosts = (days: number) => apiFetch<ApiMarketingBlogIdeas>(`/api/marketing/analytics/blog-ideas?${analyticsQuery(days)}`, { method: "POST" });
 
