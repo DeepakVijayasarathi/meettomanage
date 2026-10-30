@@ -18,10 +18,12 @@ interface SeoProps {
   /** Set on routes with no real content of their own (404) so a crawler that renders the
    *  JS doesn't index them under the previous page's — or index.html's default — title. */
   noindex?: boolean;
+  /** schema.org structured data for this page (e.g. a BlogPosting). */
+  jsonLd?: Record<string, unknown>;
 }
 
 /** Per-route title, description, canonical and social-share tags (index.html carries the site-wide defaults a crawler sees before JS runs). */
-export function Seo({ pageKey, title: titleFallback, description: descriptionFallback, path, image = DEFAULT_IMAGE, type = "website", noindex = false }: SeoProps) {
+export function Seo({ pageKey, title: titleFallback, description: descriptionFallback, path, image = DEFAULT_IMAGE, type = "website", noindex = false, jsonLd }: SeoProps) {
   const title = useSeoOverride(pageKey ?? "", "title", titleFallback);
   const description = useSeoOverride(pageKey ?? "", "description", descriptionFallback);
   const url = `${SITE_URL}${path}`;
@@ -39,7 +41,7 @@ export function Seo({ pageKey, title: titleFallback, description: descriptionFal
   // two canonicals (or two descriptions) would conflict, so the defaults are dropped; Helmet's own tags carry data-rh.
   useEffect(() => {
     document.head
-      .querySelectorAll('link[rel="canonical"]:not([data-rh]), meta[name="description"]:not([data-rh]), meta[property^="og:"]:not([data-rh]), meta[name^="twitter:"]:not([data-rh])')
+      .querySelectorAll('link[rel="canonical"]:not([data-rh]), meta[name="description"]:not([data-rh]), meta[property^="og:"]:not([data-rh]), meta[name^="twitter:"]:not([data-rh]), script[data-prerender]')
       .forEach((el) => el.remove());
   }, [path, title, description]);
 
@@ -59,6 +61,8 @@ export function Seo({ pageKey, title: titleFallback, description: descriptionFal
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
+      {type === "article" && jsonLd?.datePublished ? <meta property="article:published_time" content={String(jsonLd.datePublished)} /> : null}
+      {jsonLd && <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>}
     </Helmet>
   );
 }

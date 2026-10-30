@@ -17,6 +17,7 @@ import { getBlogPost, listBlogPosts, type ApiBlogPostDetail, type ApiBlogPostSum
 import { DEMO_BLOG_SUMMARIES, getDemoBlogPost } from "@/data/blogPosts";
 
 const WHATSAPP_URL = "https://wa.me/919344773231";
+const SITE_URL = "https://meettomanage.cloud";
 
 /** Page chrome only — the post itself (title/content/excerpt, from getBlogPost()/
  *  getDemoBlogPost()) is real editorial content and stays English-only here, same boundary
@@ -266,7 +267,26 @@ export default function BlogPost() {
           this route directly (or the loading/not-found states) got no meta tags at all,
           just index.html's site-wide defaults for every /blog/:slug URL. */}
       {post ? (
-        <Seo title={`${post.title} — Meet to Manage Blog`} description={post.excerpt} path={`/blog/${slug}`} type="article" />
+        <Seo
+          title={`${post.title} — Meet to Manage Blog`}
+          description={post.excerpt}
+          path={`/blog/${slug}`}
+          type="article"
+          image={blogImage(slug) ? `${SITE_URL}${blogImage(slug)}` : undefined}
+          jsonLd={{
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            headline: post.title.slice(0, 110),
+            description: post.excerpt,
+            datePublished: post.publishedAtUtc,
+            dateModified: post.publishedAtUtc,
+            mainEntityOfPage: `${SITE_URL}/blog/${slug}`,
+            url: `${SITE_URL}/blog/${slug}`,
+            ...(blogImage(slug) ? { image: `${SITE_URL}${blogImage(slug)}` } : {}),
+            author: { "@type": "Organization", name: "Meet to Manage", url: `${SITE_URL}/` },
+            publisher: { "@type": "Organization", name: "Meet to Manage", logo: { "@type": "ImageObject", url: `${SITE_URL}/logo-icon.png` } },
+          }}
+        />
       ) : (
         <Seo
           title="Blog — Meet to Manage"
