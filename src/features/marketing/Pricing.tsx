@@ -8,6 +8,7 @@ import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { detectMarketCurrency, formatMarketPrice, planPrice } from "@/lib/region";
 import { MarketingHero } from "./MarketingHero";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
@@ -46,10 +47,6 @@ const ENTRY_HIDDEN_FEATURES = ["feature_recordings", "feature_whatsapp"];
 
 function entitlement(plan: PublicPlan, key: string): number | undefined {
   return plan.entitlements.find((e) => e.key === key)?.value;
-}
-
-function formatPrice(amount: number, currency: string): string {
-  return new Intl.NumberFormat(currency === "INR" ? "en-IN" : "en-US", { style: "currency", currency, maximumFractionDigits: amount % 1 === 0 ? 0 : 2 }).format(amount);
 }
 
 const T = {
@@ -96,7 +93,7 @@ const T = {
       "Prices exclude applicable taxes such as GST.",
       "Pay yearly and save — the saving is shown on each plan.",
       "Change or cancel your plan any time from your admin panel. See our",
-      "Only INR prices are published for now. Need USD, AED or another currency? Ask us and we'll quote you.",
+      "Prices are shown in INR for India and USD everywhere else. Need AED or another currency? Ask us and we'll quote you.",
     ],
     termsLink: "Terms of Service",
     and: "and",
@@ -147,7 +144,7 @@ const T = {
       "الأسعار لا تشمل الضرائب المطبقة مثل ضريبة السلع والخدمات.",
       "ادفع سنويًا ووفّر — يظهر التوفير على كل خطة.",
       "يمكنك تغيير خطتك أو إلغاؤها في أي وقت من لوحة الإدارة. اطلع على",
-      "تُنشر حاليًا أسعار الروبية الهندية فقط. تحتاج الدولار أو الدرهم أو عملة أخرى؟ اسألنا وسنرسل لك عرضًا.",
+      "تُعرض الأسعار بالروبية الهندية في الهند وبالدولار الأمريكي في بقية الدول. تحتاج الدرهم أو عملة أخرى؟ اسألنا وسنرسل لك عرضًا.",
     ],
     termsLink: "شروط الخدمة",
     and: "و",
@@ -237,6 +234,7 @@ export default function Pricing() {
   const [cycle, setCycle] = useState<Cycle>("Month");
   const [plans, setPlans] = useState<PublicPlan[]>(FALLBACK_PLANS);
   const [loading, setLoading] = useState(apiEnabled());
+  const currency = useMemo(detectMarketCurrency, []);
 
   // The billing system is the source of truth for prices and limits; the fallback only shows if it can't be reached.
   useEffect(() => {
@@ -250,9 +248,9 @@ export default function Pricing() {
   }, []);
 
   const visible = useMemo(() => {
-    const monthly = (p: PublicPlan) => p.prices.find((x) => x.billingInterval === "Month" && x.currency === "INR")?.amount ?? Number.MAX_SAFE_INTEGER;
-    return plans.filter((p) => p.prices.some((x) => x.currency === "INR")).sort((a, b) => monthly(a) - monthly(b));
-  }, [plans]);
+    const monthly = (p: PublicPlan) => planPrice(p, "Month", currency)?.amount ?? Number.MAX_SAFE_INTEGER;
+    return plans.filter((p) => p.prices.some((x) => x.currency === "INR" || x.currency === currency)).sort((a, b) => monthly(a) - monthly(b));
+  }, [plans, currency]);
   const popularCode = visible.length > 1 ? visible[visible.length - 1].code : null;
 
   function limitLines(plan: PublicPlan, entry: boolean): string[] {
@@ -294,8 +292,8 @@ export default function Pricing() {
           {visible.map((plan, index) => {
             // The entry plan is marketed without recordings or WhatsApp notifications.
             const entry = index === 0 && visible.length > 1;
-            const month = plan.prices.find((p) => p.billingInterval === "Month" && p.currency === "INR");
-            const year = plan.prices.find((p) => p.billingInterval === "Year" && p.currency === "INR");
+            const month = planPrice(plan, "Month", currency);
+            const year = planPrice(plan, "Year", currency);
             const chosen = cycle === "Year" && year ? year : month ?? year!;
             const shownCycle: Cycle = chosen === year ? "Year" : "Month";
             const freeMonths = month && year ? Math.round(12 - year.amount / month.amount) : 0;
@@ -305,7 +303,7 @@ export default function Pricing() {
                 icon={plan.code === popularCode ? Rocket : Layers}
                 eyebrow={t.eyebrow}
                 name={plan.name}
-                price={formatPrice(chosen.amount, chosen.currency)}
+                price={formatMarketPrice(chosen.amount, chosen.currency)}
                 priceNote={t.perCycle[shownCycle]}
                 badge={shownCycle === "Year" && freeMonths > 0 ? t.monthsFree(freeMonths) : undefined}
                 description={plan.description}

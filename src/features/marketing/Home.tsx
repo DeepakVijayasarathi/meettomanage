@@ -9,6 +9,7 @@ import { useBrand } from "@/lib/branding";
 import { useLang } from "@/lib/i18n";
 import { useLightBrandScope } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { detectMarketCurrency, formatMarketPrice, INR_PER_USD } from "@/lib/region";
 import { ChaosToOne } from "./ChaosToOne";
 import { MarketingFooter } from "./MarketingFooter";
 import { BTN_PRIMARY, MarketingNav } from "./MarketingNav";
@@ -115,7 +116,10 @@ export default function MarketingHome() {
   const [aiOpenRequest, setAiOpenRequest] = useState(0);
   const [chatReady, setChatReady] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [fromPrice, setFromPrice] = useState(2999);
+  const currency = useMemo(detectMarketCurrency, []);
+  const [fromInr, setFromInr] = useState(2999);
+  const [fromUsd, setFromUsd] = useState<number | null>(null);
+  const fromPrice = currency === "USD" ? fromUsd ?? Math.round(fromInr / INR_PER_USD) : fromInr;
 
   // The cheapest live monthly price, so the teaser can never drift from what billing charges.
   useEffect(() => {
@@ -123,8 +127,12 @@ export default function MarketingHome() {
     let active = true;
     saasPublic.plans()
       .then((plans) => {
-        const prices = plans.flatMap((p) => p.prices.filter((x) => x.billingInterval === "Month" && x.currency === "INR").map((x) => x.amount));
-        if (active && prices.length > 0) setFromPrice(Math.min(...prices));
+        const monthly = (code: string) => plans.flatMap((p) => p.prices.filter((x) => x.billingInterval === "Month" && x.currency === code).map((x) => x.amount));
+        const inr = monthly("INR");
+        const usd = monthly("USD");
+        if (!active) return;
+        if (inr.length > 0) setFromInr(Math.min(...inr));
+        if (usd.length > 0) setFromUsd(Math.min(...usd));
       })
       .catch(() => undefined);
     return () => { active = false; };
@@ -141,10 +149,10 @@ export default function MarketingHome() {
     () =>
       JSON.stringify([
         { "@context": "https://schema.org", "@type": "Organization", name: "Meet to Manage", url: "https://meettomanage.cloud", logo: "https://meettomanage.cloud/logo-icon.png", email: "info@infinityuniquers.com", parentOrganization: { "@type": "Organization", name: "Infinity Uniquers" } },
-        { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", description: COPY.en.hero.sub, offers: { "@type": "Offer", priceCurrency: "INR", price: fromPrice, url: "https://meettomanage.cloud/pricing" } },
+        { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", description: COPY.en.hero.sub, offers: { "@type": "Offer", priceCurrency: currency, price: fromPrice, url: "https://meettomanage.cloud/pricing" } },
         { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: COPY.en.faq.items.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
       ]),
-    [fromPrice],
+    [fromPrice, currency],
   );
 
   return (
@@ -450,7 +458,7 @@ export default function MarketingHome() {
                 </div>
                 <div className="md:border-s md:border-[#F2D5BF] md:ps-10 lg:ps-8">
                   <p className="text-sm font-semibold text-[#57534E]">{c.pricing.from}</p>
-                  <p className="font-display mt-1 text-[clamp(2.6rem,4vw,3.4rem)] font-extrabold leading-none tracking-[-0.03em] text-[#C2410C]">₹{fromPrice.toLocaleString("en-IN")}</p>
+                  <p className="font-display mt-1 text-[clamp(2.6rem,4vw,3.4rem)] font-extrabold leading-none tracking-[-0.03em] text-[#C2410C]">{formatMarketPrice(fromPrice, currency)}</p>
                   <p className="mt-1.5 text-sm font-semibold text-[#57534E]">{c.pricing.perMonth}</p>
                   <Link to="/pricing" className={cn(BTN_PRIMARY, "mt-6 w-full rounded-2xl sm:w-auto")}>{c.pricing.cta} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
                 </div>
