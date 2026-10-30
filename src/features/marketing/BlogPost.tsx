@@ -196,7 +196,59 @@ export default function BlogPost() {
   const topic = post ? topicOf({ slug, title: post.title }) : null;
   const progress = useScrollProgress();
   const [copied, setCopied] = useState(false);
+  const [activeHeading, setActiveHeading] = useState("");
   const pageUrl = `${window.location.origin}/blog/${slug}`;
+
+  useEffect(() => {
+    if (headings.length === 0) return;
+    setActiveHeading(headings[0].id);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (visible?.target.id) setActiveHeading(visible.target.id);
+      },
+      { rootMargin: "-96px 0px -65% 0px", threshold: [0, 1] }
+    );
+    headings.forEach((heading) => {
+      const element = document.getElementById(heading.id);
+      if (element) observer.observe(element);
+    });
+    return () => observer.disconnect();
+  }, [slug, headings.map((heading) => heading.id).join("|")]);
+
+  const tableOfContents = headings.length > 1 ? (
+    <nav aria-label={t.onThisPage} className="border border-[#E2E7EF] bg-white p-5 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.35)] sm:p-6">
+      <div className="flex items-center justify-between gap-4 border-b border-[#E8ECF2] pb-4">
+        <p className="font-display text-sm font-extrabold uppercase tracking-[0.08em] text-[#111] rtl:tracking-normal">{t.onThisPage}</p>
+        <span className="text-xs font-bold text-[#8A94A4]">{headings.length} sections</span>
+      </div>
+      <ol className="mt-3 flex flex-col">
+        {headings.map((heading, index) => {
+          const active = activeHeading === heading.id;
+          return (
+            <li key={heading.id}>
+              <a
+                href={`#${heading.id}`}
+                aria-current={active ? "location" : undefined}
+                className={cn(
+                  "group flex items-start gap-3 border-s-2 py-3 ps-3 text-sm leading-snug transition-colors",
+                  FOCUS_RING,
+                  active ? "border-[#F97316] bg-[#FFF7ED] font-bold text-[#9A3412]" : "border-transparent text-[#5B6472] hover:border-[#FDBA74] hover:bg-[#FFFBF7] hover:text-[#111]"
+                )}
+              >
+                <span className={cn("mt-px font-mono text-[11px] font-bold", active ? "text-[#EA580C]" : "text-[#9AA3B1] group-hover:text-[#EA580C]")}>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span>{heading.text}</span>
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  ) : null;
 
   async function copyLink() {
     try {
@@ -266,7 +318,7 @@ export default function BlogPost() {
         </section>
       )}
 
-      <div className="mx-auto max-w-[1160px] px-5 py-[clamp(40px,5vw,72px)]">
+      <div className="mx-auto max-w-[1160px] px-5 py-[clamp(36px,5vw,72px)]">
         {loading ? (
           <div className="flex justify-center py-16 text-[#5B6472]">
             <Loader2 className="h-6 w-6 animate-spin" />
@@ -279,21 +331,23 @@ export default function BlogPost() {
             description={live && error ? t.notFoundLoadError(error) : t.notFoundMoved}
           />
         ) : (
-          <div className="grid grid-cols-1 gap-14 lg:grid-cols-[minmax(0,1fr)_300px]">
-            <article className="min-w-0 max-w-[720px]">
+          <>
+            {tableOfContents && <div className="mb-9 lg:hidden">{tableOfContents}</div>}
+            <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,720px)_320px] lg:justify-between">
+            <article className="min-w-0">
               <div className="flex flex-col gap-6">
                 {blocks.map((block, i) =>
                   block.kind === "heading" ? (
                     <h2
                       key={i}
                       id={block.id}
-                      className="font-display mt-6 flex scroll-mt-24 items-start gap-3 text-[clamp(1.375rem,2vw,1.75rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#111] first:mt-0 rtl:tracking-normal"
+                      className="font-display mt-8 flex scroll-mt-28 items-start gap-3 border-t border-[#E8ECF2] pt-8 text-[clamp(1.5rem,2.4vw,2rem)] font-extrabold leading-[1.25] tracking-[-0.025em] text-[#111] first:mt-0 first:border-t-0 first:pt-0 rtl:tracking-normal"
                     >
                       <span className="mt-[0.2em] h-[0.9em] w-1 shrink-0 bg-[linear-gradient(180deg,#F97316,#F53BA6)]" aria-hidden />
                       {block.text}
                     </h2>
                   ) : block.kind === "list" ? (
-                    <ul key={i} className="flex flex-col gap-3 border border-[#F1E6DC] bg-[#FFFBF7] p-5 sm:p-6">
+                    <ul key={i} className="flex flex-col gap-3 border-s-4 border-[#F97316] bg-[#FFF8F1] p-5 sm:p-7">
                       {block.items.map((item, j) => (
                         <li key={j} className="flex items-start gap-3 text-[clamp(1rem,1.3vw,1.0625rem)] leading-[1.65] text-[#333]">
                           <span className="mt-[0.25em] flex h-5 w-5 shrink-0 items-center justify-center bg-[#EA580C] text-white">
@@ -308,8 +362,8 @@ export default function BlogPost() {
                       key={i}
                       className={
                         i === firstTextIndex
-                          ? "text-[clamp(1.125rem,1.6vw,1.3125rem)] leading-[1.7] text-[#1F2430]"
-                          : "text-[clamp(1rem,1.3vw,1.125rem)] leading-[1.8] text-[#333]"
+                          ? "border-s-4 border-[#F97316] ps-5 text-[clamp(1.125rem,1.6vw,1.3125rem)] font-medium leading-[1.75] text-[#1F2430]"
+                          : "text-[clamp(1.0625rem,1.3vw,1.125rem)] leading-[1.9] text-[#343A46]"
                       }
                     >
                       {renderInline(block.text)}
@@ -362,26 +416,7 @@ export default function BlogPost() {
 
             <aside className="hidden lg:block">
               <div className="sticky top-24 flex flex-col gap-6">
-                {headings.length > 1 && (
-                  <nav aria-label={t.onThisPage} className="border border-[#E6EAF2] p-5">
-                    <p className={EYEBROW}>{t.onThisPage}</p>
-                    <ul className="mt-3 flex flex-col">
-                      {headings.map((h) => (
-                        <li key={h.id}>
-                          <a
-                            href={`#${h.id}`}
-                            className={cn(
-                              "block border-s-2 border-transparent py-1.5 ps-3 text-sm leading-snug text-[#5B6472] hover:border-[#F97316] hover:text-[#111]",
-                              FOCUS_RING
-                            )}
-                          >
-                            {h.text}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </nav>
-                )}
+                {tableOfContents}
                 <div className="relative overflow-hidden bg-[#0D1024] p-6 text-white">
                   <div className="absolute inset-0 opacity-70" style={{ background: DARK_GLOW }} aria-hidden />
                   <div className="relative">
@@ -403,6 +438,7 @@ export default function BlogPost() {
               </div>
             </aside>
           </div>
+          </>
         )}
       </div>
 
