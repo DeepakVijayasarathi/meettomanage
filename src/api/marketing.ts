@@ -368,6 +368,33 @@ export const getMarketingVisitorDetail = (visitorId: string) => apiFetch<ApiMark
 /** AI read of one visitor: interests, buying intent and the next marketing actions. No names or contact details are sent. */
 export const analyzeMarketingVisitor = (visitorId: string) => apiFetch<ApiMarketingVisitorInsight>(`/api/marketing/analytics/visitors/${encodeURIComponent(visitorId)}/insight`, { method: "POST" });
 
+export interface ApiMarketingPageBehaviour { path: string; visitors: number; views: number; exits: number; exitRate: number; avgSeconds: number | null }
+export interface ApiMarketingSiteBehaviour {
+  days: number; startDate: string; endDate: string;
+  visitors: number; visits: number; singlePageVisits: number; returningVisitors: number; chatVisitors: number; bookedVisitors: number;
+  funnel: { name: string; visitors: number }[];
+  pages: ApiMarketingPageBehaviour[];
+  devices: ApiNamedCount[];
+  sources: ApiNamedCount[];
+}
+export interface ApiMarketingSiteImprovements {
+  summary: string;
+  behaviour: string[];
+  improvements: { page: string; problem: string; fix: string; impact: "High" | "Medium" | "Low" }[];
+  aiPowered: boolean;
+}
+function behaviourQuery(days: number, range: MarketingDateRange | null, country?: string | null) {
+  const q = new URLSearchParams(analyticsQuery(days, range));
+  if (country) q.set("country", country);
+  return q.toString();
+}
+/** Funnel to a booking, and per-page exit rate and time on page, for the Visitors page. */
+export const getMarketingSiteBehaviour = (days: number, range: MarketingDateRange | null, country?: string | null) =>
+  apiFetch<ApiMarketingSiteBehaviour>(`/api/marketing/analytics/behaviour?${behaviourQuery(days, range, country)}`);
+/** AI: how visitors behave and what to improve on the site, ranked by impact on demo bookings. */
+export const suggestSiteImprovements = (days: number, range: MarketingDateRange | null, country?: string | null) =>
+  apiFetch<ApiMarketingSiteImprovements>(`/api/marketing/analytics/improvements?${behaviourQuery(days, range, country)}`, { method: "POST" });
+
 /** Marketing console → Visitors: each anonymous visitor's pages in order, for the same window as the dashboard. */
 export async function getMarketingVisitorJourneys(days: number, range: MarketingDateRange | null, page: number, country?: string | null): Promise<ApiMarketingVisitorJourneys> {
   const q = new URLSearchParams(analyticsQuery(days, range));
