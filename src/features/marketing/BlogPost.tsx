@@ -9,7 +9,7 @@ import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { CTA_ORANGE, EYEBROW, FOCUS_RING, HERO_BG } from "./styles";
-import { PostCard, TopicChip } from "./blogMeta";
+import { blogImage, PostCard, TopicChip } from "./blogMeta";
 import { formatDate, topicOf } from "./blogTopics";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -251,6 +251,17 @@ export default function BlogPost() {
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-[clamp(1rem,1.4vw,1.1875rem)] leading-relaxed text-[#444]">{post.excerpt}</p>
             <p className="mt-6 text-sm font-semibold text-[#5B6472]">{t.byline}</p>
+            {blogImage(slug) && (
+              <figure className="mt-10 overflow-hidden border border-black/10 bg-[#111827] shadow-[0_24px_60px_-32px_rgba(17,17,17,0.5)]">
+                <img
+                  src={blogImage(slug)}
+                  alt={`Illustration for ${post.title}`}
+                  className="aspect-[3/2] w-full object-cover"
+                  loading="eager"
+                  decoding="async"
+                />
+              </figure>
+            )}
           </div>
         </section>
       )}

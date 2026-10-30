@@ -12,9 +12,33 @@ export function TopicChip({ topic, className }: { topic: BlogTopic; className?: 
   );
 }
 
-/** Gradient cover with a faint grid and the topic's icon — stands in for a post image. */
-export function PostCover({ topic, className, large }: { topic: BlogTopic; className?: string; large?: boolean }) {
+const BLOG_IMAGES: Record<string, string> = {
+  "signs-academy-outgrown-spreadsheets": "/blog/signs-academy-outgrown-spreadsheets.webp",
+  "demo-booking-to-enrolled-family": "/blog/demo-booking-to-enrolled-family.webp",
+  "automatic-fee-suspension-payment-conversations": "/blog/automatic-fee-suspension-payment-conversations.webp",
+};
+
+export function blogImage(slug: string): string | undefined {
+  return BLOG_IMAGES[slug];
+}
+
+/** Editorial artwork when available, with the topic treatment as a fallback. */
+export function PostCover({ topic, slug, title, className, large }: { topic: BlogTopic; slug?: string; title?: string; className?: string; large?: boolean }) {
   const { icon: Icon, gradient } = TOPIC_STYLES[topic];
+  const image = slug ? blogImage(slug) : undefined;
+  if (image) {
+    return (
+      <div className={cn("relative overflow-hidden bg-[#111827]", className)}>
+        <img
+          src={image}
+          alt={title ? `Illustration for ${title}` : ""}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          loading={large ? "eager" : "lazy"}
+          decoding="async"
+        />
+      </div>
+    );
+  }
   return (
     <div className={cn("relative overflow-hidden", className)} style={{ background: gradient }} aria-hidden>
       <div
@@ -54,7 +78,7 @@ export function PostCard({ post, readMinutes }: { post: CardPost; readMinutes: (
         FOCUS_RING
       )}
     >
-      <PostCover topic={topic} className="h-40" />
+      <PostCover topic={topic} slug={post.slug} title={post.title} className="h-40" />
       <div className="flex flex-1 flex-col p-6">
         <TopicChip topic={topic} className="self-start" />
         <h3 className="font-display mt-4 text-xl font-extrabold leading-snug tracking-[-0.02em] text-[#111] group-hover:text-[#C2410C] rtl:tracking-normal">

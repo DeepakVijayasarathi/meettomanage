@@ -136,7 +136,7 @@ export default function BlogList() {
                   FOCUS_RING
                 )}
               >
-                <PostCover topic={topicOf(featured)} large className="min-h-[220px] lg:min-h-[340px]" />
+                <PostCover topic={topicOf(featured)} slug={featured.slug} title={featured.title} large className="min-h-[220px] lg:min-h-[340px]" />
                 <div className="flex flex-col justify-center p-7 sm:p-10">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-lg bg-[#111] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white rtl:tracking-normal">{t.latest}</span>
