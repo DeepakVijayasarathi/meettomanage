@@ -43,6 +43,7 @@ import {
   Activity,
   MessageCircleQuestion,
   Handshake,
+  MessagesSquare,
   Search,
   Newspaper,
   LifeBuoy,
@@ -143,6 +144,7 @@ const MARKETING_NAV: NavSection[] = [
     items: [
       { label: "Dashboard", to: "/marketing", icon: LayoutDashboard, end: true },
       { label: "Demo Requests", to: "/marketing/demo-requests", icon: Handshake },
+      { label: "Chats", to: "/marketing/chats", icon: MessagesSquare },
       { label: "Blog Posts", to: "/marketing/blog-posts", icon: Newspaper },
     ],
   },

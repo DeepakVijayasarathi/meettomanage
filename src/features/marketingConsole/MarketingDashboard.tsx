@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useApiData } from "@/api/hooks";
-import { getMarketingDashboard, getMarketingInsights, getMarketingReportSettings, listMarketingCampaignBudgets, saveMarketingCampaignBudget, saveMarketingReportSettings, type ApiMarketingCampaignBudget, type ApiMarketingDashboard, type ApiMarketingInsights, type ApiMarketingReportSetting, type ApiMarketingTotals, type ApiNamedCount } from "@/api/marketing";
+import { getMarketingDashboard, getMarketingInsights, getMarketingReportSettings, listMarketingCampaignBudgets, saveMarketingCampaignBudget, saveMarketingReportSettings, type ApiMarketingCampaignBudget, type ApiMarketingDashboard, type ApiMarketingInsights, type ApiMarketingReportSetting, type ApiMarketingTotals, type ApiNamedCount, type MarketingDateRange } from "@/api/marketing";
 import { userMessage } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -17,7 +17,10 @@ import { cn, formatDate } from "@/lib/utils";
 const VISITORS_COLOR = "#1F6FE0";
 const PAGE_VIEWS_COLOR = "#D9620B";
 
-const RANGES = [7, 30, 90] as const;
+const RANGES = [1, 7, 30, 90] as const;
+const rangeLabel = (r: number) => (r === 1 ? "Today" : `${r} days`);
+/** A local calendar day as "YYYY-MM-DD" (the date inputs' format). */
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 const EMPTY: ApiMarketingDashboard = {
   days: 30,
@@ -96,12 +99,18 @@ const DEVICE_LABEL: Record<string, string> = { desktop: "Desktop", mobile: "Mobi
 
 export default function MarketingDashboard() {
   const [days, setDays] = useState<(typeof RANGES)[number]>(30);
+  // Custom from–to range; null = the preset buttons are in charge.
+  const [custom, setCustom] = useState<MarketingDateRange | null>(null);
+  const [customOpen, setCustomOpen] = useState(false);
+  const today = ymd(new Date());
+  const [draft, setDraft] = useState<MarketingDateRange>(() => { const d = new Date(); d.setDate(d.getDate() - 6); return { from: ymd(d), to: ymd(new Date()) }; });
   const [showTable, setShowTable] = useState(true);
   const [insights, setInsights] = useState<ApiMarketingInsights | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const { data, loading, error } = useApiData(() => getMarketingDashboard(days), EMPTY, undefined, { cacheKey: `marketing-dashboard-${days}`, ttlMs: 60_000 });
+  const rangeKey = custom ? `${custom.from}_${custom.to}` : String(days);
+  const { data, loading, error } = useApiData(() => getMarketingDashboard(days, custom), EMPTY, undefined, { cacheKey: `marketing-dashboard-${rangeKey}`, ttlMs: 60_000 });
   const campaignState = useApiData<ApiMarketingCampaignBudget[]>(listMarketingCampaignBudgets, [], undefined, { cacheKey: "marketing-campaign-budgets", ttlMs: 30_000 });
   const reportState = useApiData<ApiMarketingReportSetting>(getMarketingReportSettings, { enabled: false, frequency: "Weekly", recipientEmail: "", retentionDays: 400, lastSentAtUtc: null }, undefined, { cacheKey: "marketing-report-settings", ttlMs: 30_000 });
   const [reportForm, setReportForm] = useState(reportState.data);
@@ -117,13 +126,22 @@ export default function MarketingDashboard() {
   const selectedDay = daily[selectedIndex];
   const previousDay = selectedIndex > 0 ? daily[selectedIndex - 1] : undefined;
   const hasTraffic = daily.some((d) => d.pageViews > 0);
-  const exactRange = data.startDate && data.endDate ? `${localDate(data.startDate)} – ${localDate(data.endDate)}` : `Last ${days} days`;
+  const exactRange = data.startDate && data.endDate
+    ? (data.startDate === data.endDate ? localDate(data.startDate) : `${localDate(data.startDate)} – ${localDate(data.endDate)}`)
+    : custom ? `${localDate(custom.from)} – ${localDate(custom.to)}` : days === 1 ? "Today" : `Last ${days} days`;
+  const periodLabel = custom ? "selected period's" : days === 1 ? "today's" : `${days}-day`;
+
+  function pickRange(r: (typeof RANGES)[number] | null, range: MarketingDateRange | null = null) {
+    if (r !== null) setDays(r);
+    setCustom(range);
+    setSelectedDate(null); setInsights(null); setInsightsError(null);
+  }
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "local time";
 
   async function analyze() {
     setInsightsLoading(true);
     setInsightsError(null);
-    try { setInsights(await getMarketingInsights(days)); }
+    try { setInsights(await getMarketingInsights(days, custom)); }
     catch (err) { setInsightsError(userMessage(err, "Could not generate the analysis.")); }
     finally { setInsightsLoading(false); }
   }
@@ -171,22 +189,58 @@ export default function MarketingDashboard() {
         <div className="relative flex flex-col gap-6">
           <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
             <div><div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-orange-300"><span className="h-2 w-2 rounded-full bg-[#F05A0A] shadow-[0_0_0_5px_rgba(240,90,10,0.16)]" />Live growth pulse</div><h2 className="max-w-2xl text-2xl font-bold tracking-tight sm:text-3xl">Turn website attention into qualified academy conversations.</h2><p className="mt-2 text-sm text-slate-300">{exactRange} · {timeZone}</p></div>
-            <div role="group" aria-label="Date range" className="inline-flex self-start rounded-xl border border-white/15 bg-white/5 p-1 backdrop-blur">
-            {RANGES.map((r) => (
+            <div className="flex flex-col items-start gap-2 lg:items-end">
+            <div role="group" aria-label="Date range" className="inline-flex flex-wrap self-start rounded-xl border border-white/15 bg-white/5 p-1 backdrop-blur lg:self-end">
+            {RANGES.map((r) => {
+              const active = !custom && !customOpen && days === r;
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => { setCustomOpen(false); pickRange(r); }}
+                  aria-pressed={active}
+                  className={cn(
+                    "rounded-lg px-3.5 py-2 text-sm font-semibold transition-all",
+                    active ? "bg-[#F05A0A] text-white shadow-lg" : "text-slate-300 hover:bg-white/10 hover:text-white"
+                  )}
+                >
+                  {rangeLabel(r)}
+                </button>
+              );
+            })}
               <button
-                key={r}
                 type="button"
-                onClick={() => { setDays(r); setSelectedDate(null); setInsights(null); setInsightsError(null); }}
-                aria-pressed={days === r}
+                onClick={() => setCustomOpen((o) => !o)}
+                aria-pressed={!!custom || customOpen}
+                aria-expanded={customOpen}
                 className={cn(
                   "rounded-lg px-3.5 py-2 text-sm font-semibold transition-all",
-                  days === r ? "bg-[#F05A0A] text-white shadow-lg" : "text-slate-300 hover:bg-white/10 hover:text-white"
+                  custom || customOpen ? "bg-[#F05A0A] text-white shadow-lg" : "text-slate-300 hover:bg-white/10 hover:text-white"
                 )}
               >
-                {r} days
+                Custom
               </button>
-            ))}
-          </div>
+            </div>
+            {customOpen && (
+              <form
+                className="flex flex-wrap items-end gap-2 rounded-xl border border-white/15 bg-white/5 p-2 backdrop-blur"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!draft.from || !draft.to) return;
+                  const [from, to] = draft.from <= draft.to ? [draft.from, draft.to] : [draft.to, draft.from];
+                  pickRange(null, { from, to });
+                }}
+              >
+                <label className="flex flex-col text-xs text-slate-300">From
+                  <input type="date" required max={today} value={draft.from} onChange={(e) => setDraft((d) => ({ ...d, from: e.target.value }))} className="mt-1 h-9 rounded-md border border-white/20 bg-white/10 px-2 text-sm text-white [color-scheme:dark]" />
+                </label>
+                <label className="flex flex-col text-xs text-slate-300">To
+                  <input type="date" required max={today} value={draft.to} onChange={(e) => setDraft((d) => ({ ...d, to: e.target.value }))} className="mt-1 h-9 rounded-md border border-white/20 bg-white/10 px-2 text-sm text-white [color-scheme:dark]" />
+                </label>
+                <button type="submit" className="h-9 rounded-md bg-[#F05A0A] px-3 text-sm font-semibold text-white hover:bg-[#d94f08]">Apply</button>
+              </form>
+            )}
+            </div>
           </div>
           <div className="grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
             {[
@@ -215,7 +269,7 @@ export default function MarketingDashboard() {
         </CardHeader>
         <CardContent>
           {insightsError && <p role="alert" className="text-sm text-destructive">{insightsError}</p>}
-          {!insights && !insightsError && <p className="text-sm text-muted-foreground">Generate a concise diagnosis and prioritized actions from the {days}-day data.</p>}
+          {!insights && !insightsError && <p className="text-sm text-muted-foreground">Generate a concise diagnosis and prioritized actions from the {periodLabel} data.</p>}
           {insights && <div className="space-y-4 text-sm">
             <div className="flex flex-wrap items-center gap-2"><p className="font-medium">{insights.summary}</p><span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{insights.aiPowered ? "Hetzner AI" : "Measured-data fallback"}</span></div>
             <div className="grid gap-4 md:grid-cols-2">

@@ -109,7 +109,7 @@ export interface SalesChatTurn {
  * 20 turns and must start with the visitor, so older turns are trimmed from the front.
  * `bookedName` is set when the assistant booked a platform demo during this turn.
  */
-export async function askSalesAssistant(conversation: SalesChatTurn[], attribution?: { visitorId?: string; source?: string; medium?: string; campaign?: string; landingPath?: string }): Promise<{ reply: string; bookedName: string | null }> {
+export async function askSalesAssistant(conversation: SalesChatTurn[], attribution?: { visitorId?: string; source?: string; medium?: string; campaign?: string; landingPath?: string }, conversationId?: string): Promise<{ reply: string; bookedName: string | null }> {
   // A failed turn leaves two visitor messages back to back; merge same-role runs so the
   // conversation still alternates visitor/assistant the way the model expects.
   const merged: { role: SalesChatTurn["role"]; text: string }[] = [];
@@ -123,10 +123,35 @@ ${text}`.slice(-1000);
   while (messages.length > 0 && messages[0].role !== "user") messages = messages.slice(1);
   const res = await apiFetch<{ reply: string; bookedName?: string | null }>("/api/marketing/chat", {
     method: "POST",
-    body: JSON.stringify({ messages, attribution }),
+    body: JSON.stringify({ messages, attribution, conversationId }),
   });
   return { reply: res.reply, bookedName: res.bookedName ?? null };
 }
+
+// --- Website chat log (marketing console → Chats) ---
+
+export interface ApiMarketingChatConversation {
+  id: string;
+  startedAtUtc: string;
+  lastMessageAtUtc: string;
+  messageCount: number;
+  firstMessage: string;
+  source: string | null;
+  campaign: string | null;
+  landingPath: string | null;
+  bookedName: string | null;
+}
+export interface ApiMarketingChatDetail {
+  conversation: ApiMarketingChatConversation;
+  messages: { role: "user" | "assistant"; text: string; createdAtUtc: string }[];
+}
+export async function listMarketingChats(input: { page: number; pageSize?: number; search?: string; bookedOnly?: boolean }): Promise<ApiPaged<ApiMarketingChatConversation>> {
+  const q = new URLSearchParams({ page: String(input.page), pageSize: String(input.pageSize ?? 25) });
+  if (input.search) q.set("search", input.search);
+  if (input.bookedOnly) q.set("bookedOnly", "true");
+  return apiFetch<ApiPaged<ApiMarketingChatConversation>>(`/api/marketing/chats?${q}`);
+}
+export const getMarketingChat = (id: string) => apiFetch<ApiMarketingChatDetail>(`/api/marketing/chats/${id}`);
 
 export async function translateMarketingText(texts: string[], targetLanguage: string): Promise<string[]> {
   const response = await apiFetch<{ translations: string[] }>("/api/marketing/translate", {
@@ -252,10 +277,18 @@ export interface ApiMarketingDashboard {
 
 export interface ApiMarketingPerformance { name: string; visitors: number; leads: number; converted: number; leadConversionRate: number; conversionRate: number }
 
-/** Marketing console only — first-party analytics for the last `days` days, in the browser's own calendar days. */
-export async function getMarketingDashboard(days: number): Promise<ApiMarketingDashboard> {
-  const tzOffsetMinutes = -new Date().getTimezoneOffset();
-  return apiFetch<ApiMarketingDashboard>(`/api/marketing/analytics?days=${days}&tzOffsetMinutes=${tzOffsetMinutes}`);
+/** A custom date range, as "YYYY-MM-DD" local calendar days (inclusive). */
+export interface MarketingDateRange { from: string; to: string }
+
+function analyticsQuery(days: number, range?: MarketingDateRange | null): string {
+  const q = new URLSearchParams({ days: String(days), tzOffsetMinutes: String(-new Date().getTimezoneOffset()) });
+  if (range) { q.set("from", range.from); q.set("to", range.to); }
+  return q.toString();
+}
+
+/** Marketing console only — first-party analytics for the last `days` days (or a custom range), in the browser's own calendar days. */
+export async function getMarketingDashboard(days: number, range?: MarketingDateRange | null): Promise<ApiMarketingDashboard> {
+  return apiFetch<ApiMarketingDashboard>(`/api/marketing/analytics?${analyticsQuery(days, range)}`);
 }
 
 export interface ApiMarketingInsights {
@@ -266,7 +299,6 @@ export interface ApiMarketingInsights {
   generatedAtUtc: string;
 }
 
-export async function getMarketingInsights(days: number): Promise<ApiMarketingInsights> {
-  const tzOffsetMinutes = -new Date().getTimezoneOffset();
-  return apiFetch<ApiMarketingInsights>(`/api/marketing/analytics/insights?days=${days}&tzOffsetMinutes=${tzOffsetMinutes}`);
+export async function getMarketingInsights(days: number, range?: MarketingDateRange | null): Promise<ApiMarketingInsights> {
+  return apiFetch<ApiMarketingInsights>(`/api/marketing/analytics/insights?${analyticsQuery(days, range)}`);
 }

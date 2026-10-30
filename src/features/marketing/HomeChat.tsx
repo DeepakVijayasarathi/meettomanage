@@ -184,6 +184,17 @@ const AUDIENCE_ICONS: Record<string, LucideIcon> = {
 const CHAT_MESSAGES_KEY = "trn.chat.messages";
 /** Set once the visitor has booked a demo from the chat, so the booking card isn't offered again. */
 const CHAT_LEAD_SENT_KEY = "trn.chat.leadSent";
+/** Random id for this browser session's conversation, so the marketing console can show it as one chat. */
+const CHAT_ID_KEY = "trn.chat.id";
+
+function chatConversationId(): string {
+  let id = readSession<string | null>(CHAT_ID_KEY, null);
+  if (!id || !/^[A-Za-z0-9-]{8,64}$/.test(id)) {
+    id = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    writeSession(CHAT_ID_KEY, id);
+  }
+  return id;
+}
 
 function readSession<T>(key: string, fallback: T): T {
   try {
@@ -674,7 +685,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
       const { reply, bookedName } = await askSalesAssistant(next, {
         visitorId: marketingVisitorId(), source: attribution.utmSource ?? attribution.referrerHost,
         medium: attribution.utmMedium, campaign: attribution.utmCampaign, landingPath: window.location.pathname,
-      });
+      }, chatConversationId());
       setMessages((m) => [...m, { role: "assistant", text: reply }]);
       if (bookedName) {
         recordBooking(bookedName);
