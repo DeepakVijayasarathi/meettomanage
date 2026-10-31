@@ -14,6 +14,7 @@ import { ChaosToOne } from "./ChaosToOne";
 import { MarketingFooter } from "./MarketingFooter";
 import { BTN_PRIMARY, MarketingNav } from "./MarketingNav";
 import { OpenSourceStrip } from "./OpenSourceStrip";
+import { FreeGamesPromo } from "./games/FreeGamesPromo";
 import { SALES_WHATSAPP_URL } from "./WalkthroughCta";
 import { COPY } from "./home/copy";
 import { ExplainerVideo } from "./home/ExplainerVideo";
@@ -252,6 +253,7 @@ export default function MarketingHome() {
         </section>}
 
         {lang === "en" && <section className="bg-white px-5 py-[clamp(32px,4vw,56px)]"><OpenSourceStrip /></section>}
+        {lang === "en" && <FreeGamesPromo />}
 
         {/* PROOF: what it's built on */}
         <section aria-label={c.proof.label} className="border-y border-[#EFE3D7] bg-white py-7">

@@ -37,7 +37,7 @@ export default function PhonicsSolution() {
           <Link to="/customers/the-reader-nest" className={LINK}>their story</Link> or meet <Link to="/customers/alphabet" className={LINK}>Alphabet, a Jolly Phonics and storytelling academy</Link>. See how the{" "}
           <Link to="/solutions/live-class-software-for-institutes" className={LINK}>live classroom</Link> and{" "}
           <Link to="/solutions/fee-management-software-for-coaching-centres" className={LINK}>fee management</Link> work, or check the{" "}
-          <Link to="/pricing" className={LINK}>pricing</Link>.
+          <Link to="/pricing" className={LINK}>pricing</Link>. Families can also try our <Link to="/free-games" className={LINK}>free alphabet, phonics and listening games</Link> without creating an account.
         </>
       }
     />

@@ -64,6 +64,7 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
     { label: c.nav.customers, href: "/customers", route: true },
     { label: c.nav.pricing, href: "/pricing", route: true },
     { label: c.nav.blog, href: "/blog", route: true },
+    { label: lang === "ar" ? "ألعاب مجانية" : "Free games", href: "/free-games", route: true },
   ];
 
   // The current page or section is shown in orange with an underline. On the home page the first section link is active until another hash is chosen.
@@ -78,17 +79,17 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
   return (
     // While the mobile menu is open the header (and its panel) must sit above the home page's sticky CTA bar and chat bubble, which share z-40.
     <header className={cn("sticky top-0 border-b bg-white transition-shadow", open ? "z-50" : "z-40", scrolled ? "border-[#F6E3D3] shadow-[0_14px_34px_-22px_rgba(194,65,12,0.45)]" : "border-transparent")}>
-      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-5 sm:h-[84px]">
+      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-4 px-5 sm:h-[84px]">
         <Link to="/" aria-label={`${brand.name} home`} className="shrink-0">
           <img src="/logo-full.webp" alt={brand.name} width={420} height={150} className="h-11 w-auto object-contain mix-blend-multiply sm:h-[68px]" />
         </Link>
 
-        <nav aria-label="Primary" className="hidden items-center gap-6 whitespace-nowrap lg:flex">
+        <nav aria-label="Primary" className="hidden items-center gap-4 whitespace-nowrap xl:flex 2xl:gap-5">
           {links.map((l, i) => (l.route ? <Link key={l.href} to={l.href} aria-current={isActive(l, i) ? "page" : undefined} className={linkClass(isActive(l, i))}>{l.label}</Link> : <a key={l.href} href={l.href} aria-current={isActive(l, i) ? "true" : undefined} className={linkClass(isActive(l, i))}>{l.label}</a>))}
         </nav>
 
         <div className="flex items-center gap-2">
-          <span aria-hidden="true" className="me-3 hidden h-8 w-px bg-[#EBD9C8] lg:block" />
+          <span aria-hidden="true" className="me-3 hidden h-8 w-px bg-[#EBD9C8] xl:block" />
           <LanguageToggle className="hidden sm:inline-flex" />
           <Link to="/login" className="hidden whitespace-nowrap px-3 py-2 text-sm font-semibold text-[#1C1917] hover:text-[#C2410C] sm:inline-flex">{c.nav.signIn}</Link>
           <Link to="/get-started" className={cn(BTN_PRIMARY, "hidden whitespace-nowrap !rounded-full bg-gradient-to-r from-[#EA580C] to-[#C2410C] shadow-[0_12px_24px_-12px_rgba(194,65,12,0.8)] hover:from-[#C2410C] hover:to-[#9A3412] sm:inline-flex")}>
@@ -97,7 +98,7 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
           <button
             ref={menuButtonRef}
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#D9C9BA] text-[#1C1917] transition-colors hover:bg-[#FFF6EE] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C] lg:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#D9C9BA] text-[#1C1917] transition-colors hover:bg-[#FFF6EE] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C] xl:hidden"
             aria-expanded={open}
             aria-controls="mobile-menu"
             aria-label={open ? c.nav.closeMenu : c.nav.menu}
@@ -110,7 +111,7 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
 
       {open && (
         // Full-height panel under the header: long menus scroll inside it and the call to action stays pinned at the bottom.
-        <div id="mobile-menu" ref={panelRef} className="animate-in fade-in slide-in-from-top-2 fixed inset-x-0 bottom-0 top-16 z-30 duration-200 motion-reduce:animate-none overflow-y-auto overscroll-contain border-t border-[#F6E3D3] bg-white sm:top-[84px] lg:hidden">
+        <div id="mobile-menu" ref={panelRef} className="animate-in fade-in slide-in-from-top-2 fixed inset-x-0 bottom-0 top-16 z-30 duration-200 motion-reduce:animate-none overflow-y-auto overscroll-contain border-t border-[#F6E3D3] bg-white sm:top-[84px] xl:hidden">
           <nav aria-label="Mobile" className="mx-auto flex min-h-full max-w-[1200px] flex-col px-5">
             <ul className="flex-1 py-2">
               {links.map((l, index) => {

@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { NetworkStatus } from "@/components/NetworkStatus";
 import { NotificationPanel } from "@/components/NotificationPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -50,6 +51,16 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
 
       <div className="ml-auto flex items-center gap-2">
         <NetworkStatus />
+        <Button
+          variant="outline"
+          className="h-10 gap-2 rounded-full px-3"
+          aria-label="Start product tour"
+          title="Product tour: a guided walk through your menu"
+          onClick={() => window.dispatchEvent(new Event(START_TOUR_EVENT))}
+        >
+          <Compass className="h-[18px] w-[18px]" />
+          <span className="hidden sm:inline">Product tour</span>
+        </Button>
         <ThemeToggle />
         <NotificationPanel />
         <DropdownMenu>

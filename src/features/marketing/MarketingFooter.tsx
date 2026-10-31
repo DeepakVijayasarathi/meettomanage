@@ -31,6 +31,7 @@ export function MarketingFooter() {
             <li><Link to="/login" className={LINK}>{f.signIn}</Link></li>
             <li><Link to="/blog" className={LINK}>{f.blog}</Link></li>
             <li><Link to="/resources" className={LINK}>Free coaching centre templates</Link></li>
+            <li><Link to="/free-games" className={LINK}>Free alphabet & phonics games</Link></li>
             <li><Link to="/solutions/live-class-software-for-institutes" className={LINK}>Live class software</Link></li>
             <li><Link to="/solutions/online-attendance-software-for-institutes" className={LINK}>Attendance software</Link></li>
             <li><Link to="/solutions/fee-management-software-for-coaching-centres" className={LINK}>Fee management software</Link></li>

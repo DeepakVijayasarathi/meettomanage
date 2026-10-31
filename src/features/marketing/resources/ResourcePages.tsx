@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { PageShell } from "../PageShell";
 import { WalkthroughCta } from "../WalkthroughCta";
 import { RESOURCE_GUIDES } from "./content";
+import { ResourceShare } from "./ResourceShare";
 import NotFound from "@/features/auth/NotFound";
 
 const SITE = "https://meettomanage.cloud";
@@ -82,6 +83,7 @@ export function ResourceGuidePage({ slug }: { slug: string }) {
           <p className="text-xs font-bold uppercase tracking-wider text-[#A4431B]">Free {guide.download.format} download</p>
           <p className="mt-3 text-sm leading-relaxed text-[#625A53]">Keep your own copy. No account or email required.</p>
           <a href={guide.download.href} download={guide.download.filename} onClick={() => recordDownload(guide.slug, guide.download.filename)} className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#C2410C] px-4 py-3 text-sm font-bold text-white hover:bg-[#9A3412] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2410C]"><ArrowDownToLine aria-hidden="true" className="h-4 w-4 shrink-0" />Download template</a>
+          <ResourceShare key={guide.slug} title={guide.title} slug={guide.slug} />
           <nav aria-label="On this page" className="mt-7 border-t border-[#EEDACB] pt-5">
             <p className="text-xs font-bold text-[#4F453D]">On this page</p>
             <ul className="mt-3 space-y-3 text-sm text-[#786B60]">{guide.sections.map(s => <li key={s.id}><a href={"#"+s.id} className="hover:text-[#C2410C]">{s.title}</a></li>)}</ul>

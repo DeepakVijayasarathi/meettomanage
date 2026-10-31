@@ -215,6 +215,11 @@ export default function BlogPost() {
   const headings = blocks.filter((b): b is Extract<Block, { kind: "heading" }> => b.kind === "heading");
   const firstTextIndex = blocks.findIndex((b) => b.kind === "text");
   const topic = post ? topicOf({ slug, title: post.title }) : null;
+  const relatedTemplate = topic === "Billing"
+    ? { to: "/resources/coaching-centre-fee-tracker", title: "Put the fee workflow into practice.", body: "A free CSV starter for invoices, part payments and credits, with a worked example. No signup required.", label: "Get the free fee tracker" }
+    : topic === "Teaching" || (topic === "Operations" && /teacher|schedul|leave|batch/i.test(`${slug} ${post?.title ?? ""}`))
+      ? { to: "/resources/teacher-handover-checklist", title: "Make the next class handover clearer.", body: "A free editable checklist for session details, lesson resources and after-class follow-up. No signup required.", label: "Get the teacher-handover checklist" }
+      : null;
   const progress = useScrollProgress();
   const [copied, setCopied] = useState(false);
   const [activeHeading, setActiveHeading] = useState("");
@@ -412,6 +417,13 @@ export default function BlogPost() {
                   )
                 )}
               </div>
+
+              {relatedTemplate && <aside aria-label="Related free template" className="mt-10 rounded-2xl border border-[#EEDACB] bg-[#FFF6EE] p-6 sm:p-7">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#A4431B]">Free coaching centre resource</p>
+                <h2 className="font-display mt-3 text-xl font-extrabold leading-tight text-[#1C1917]">{relatedTemplate.title}</h2>
+                <p className="mt-3 text-sm leading-relaxed text-[#625A53]">{relatedTemplate.body}</p>
+                <Link to={relatedTemplate.to} className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]">{relatedTemplate.label}<ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" /></Link>
+              </aside>}
 
               <div className="mt-12 flex flex-wrap items-center gap-3 border-y border-[#E6EAF2] py-5">
                 <span className="me-2 text-sm font-bold text-[#111]">{t.share}</span>

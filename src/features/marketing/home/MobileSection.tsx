@@ -7,8 +7,8 @@ import { Phone } from "./Phone";
 const EYEBROW = "text-xs font-bold uppercase tracking-[0.12em] text-[#C2410C] rtl:tracking-normal";
 const H2 = "font-display text-[clamp(1.65rem,3vw,2.5rem)] font-extrabold leading-[1.08] tracking-[-0.035em] text-[#1C1917] rtl:tracking-normal";
 const SHOTS = ["/product/app-home.webp", "/product/app-classes.webp", "/product/app-fees.webp"];
-// Centre phone sits higher and in front; the side phones tuck behind and tilt away.
-const LAYOUT = ["-me-5 mt-12 -rotate-3 scale-[0.92]", "z-10 -mt-2", "-ms-5 mt-12 rotate-3 scale-[0.92]"];
+// Stagger the phones without overlapping their screens or labels.
+const LAYOUT = ["mt-10 -rotate-2", "z-10", "mt-10 rotate-2"];
 
 /** The parent app: three real screens fanned out beside what a family can do with it. */
 export function MobileSection({ c }: { c: HomeCopy["app"] }) {
@@ -32,19 +32,17 @@ export function MobileSection({ c }: { c: HomeCopy["app"] }) {
           </ul>
         </div>
 
-        <div>
-          <div className="relative mx-auto flex max-w-[600px] items-start justify-center">
+        <div className="min-w-0">
+          <div className="relative mx-auto grid w-full max-w-[520px] grid-cols-[1fr_1.06fr_1fr] items-start gap-2 px-2 pb-3 pt-4 sm:gap-3 sm:px-3">
             <div aria-hidden="true" className="absolute inset-x-[8%] top-[10%] h-[80%] rounded-full bg-[#FDBA74]/40 blur-[70px]" />
             {SHOTS.map((src, i) => (
-              <Reveal key={src} delay={i * 140} className={cn("relative w-[33%]", LAYOUT[i])}>
-                <div className={i === 1 ? "mx-float" : undefined}>
-                  <Phone src={src} alt={c.alts[i]} />
-                </div>
+              <Reveal key={src} delay={i * 140} className={cn("relative min-w-0", LAYOUT[i])}>
+                <Phone src={src} alt={c.alts[i]} />
                 <p className="mt-3 text-center text-xs font-bold text-[#57534E]">{c.labels[i]}</p>
               </Reveal>
             ))}
           </div>
-          <p className="mt-6 text-center text-xs font-medium text-[#6B6560]">{c.caption}</p>
+          <p className="mx-auto mt-5 max-w-[420px] text-center text-xs font-medium leading-relaxed text-[#6B6560]">{c.caption}</p>
         </div>
       </div>
     </section>

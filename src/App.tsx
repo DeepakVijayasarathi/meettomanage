@@ -59,6 +59,10 @@ const CaseStudyAlphabet = lazy(() => import("@/features/marketing/CaseStudyAlpha
 const ResourceLibrary = lazy(() => import("@/features/marketing/resources/ResourcePages").then(m => ({ default: m.ResourceLibrary })));
 const FeeTrackerGuide = lazy(() => import("@/features/marketing/resources/ResourcePages").then(m => ({ default: m.FeeTrackerGuide })));
 const TeacherHandoverGuide = lazy(() => import("@/features/marketing/resources/ResourcePages").then(m => ({ default: m.TeacherHandoverGuide })));
+const FreeGames = lazy(() => import("@/features/marketing/games/FreeGames"));
+const AlphabetGamePage = lazy(() => import("@/features/marketing/games/FreeGames").then(m => ({ default: m.AlphabetGamePage })));
+const PhonicsGamePage = lazy(() => import("@/features/marketing/games/FreeGames").then(m => ({ default: m.PhonicsGamePage })));
+const WordSoundsGamePage = lazy(() => import("@/features/marketing/games/FreeGames").then(m => ({ default: m.WordSoundsGamePage })));
 const Careers = lazy(() => import("@/features/marketing/Careers"));
 const Docs = lazy(() => import("@/features/marketing/Docs"));
 const NICHE_SLUGS = ["english-grammar-class-software", "art-class-software", "yoga-class-software", "abacus-class-software"];
@@ -234,6 +238,10 @@ export default function App() {
             <Route path="/resources" element={<MarketingTranslationLayer><ResourceLibrary /></MarketingTranslationLayer>} />
             <Route path="/resources/coaching-centre-fee-tracker" element={<MarketingTranslationLayer><FeeTrackerGuide /></MarketingTranslationLayer>} />
             <Route path="/resources/teacher-handover-checklist" element={<MarketingTranslationLayer><TeacherHandoverGuide /></MarketingTranslationLayer>} />
+            <Route path="/free-games" element={<MarketingTranslationLayer><FreeGames /></MarketingTranslationLayer>} />
+            <Route path="/free-games/alphabet" element={<MarketingTranslationLayer><AlphabetGamePage /></MarketingTranslationLayer>} />
+            <Route path="/free-games/phonics" element={<MarketingTranslationLayer><PhonicsGamePage /></MarketingTranslationLayer>} />
+            <Route path="/free-games/word-sounds" element={<MarketingTranslationLayer><WordSoundsGamePage /></MarketingTranslationLayer>} />
             <Route path="/solutions/live-class-software-for-institutes" element={<MarketingTranslationLayer><LiveClassSolution /></MarketingTranslationLayer>} />
             <Route path="/solutions/online-attendance-software-for-institutes" element={<MarketingTranslationLayer><AttendanceSolution /></MarketingTranslationLayer>} />
             <Route path="/solutions/fee-management-software-for-coaching-centres" element={<MarketingTranslationLayer><FeeManagementSolution /></MarketingTranslationLayer>} />

@@ -8,12 +8,16 @@
 - Contextual links from the homepage, blog, fee-management, attendance and live-class pages, plus the shared footer.
 - Dedicated titles, descriptions, canonicals, breadcrumbs, article metadata and sitemap entries. The resource pages are included in HTML prerendering.
 - Page views use the site's existing analytics. A download emits `resource_download` through the existing Google Analytics tag, with the resource slug and filename, when that tag is configured. No new tracking service is installed.
+- Relevant billing and teaching articles include contextual links to the fee tracker or handover checklist.
+- Resource pages include copy-link controls and native sharing where the browser supports it. Sharing uses tagged public links and emits `resource_share` through the existing Google Analytics setup after successful copy/share.
+- `marketing/resource-launch-kit.md` contains draft LinkedIn posts, WhatsApp copy and an email newsletter with campaign links. Nothing has been posted or sent.
 
 The resources are manual tools. They do not import records into Meet to Manage, reconcile payments or update schedules automatically. All example records are fictional.
 
 ## Release and measure
 
 1. Publish the reviewed website build through the normal deployment process.
+   The root `Jenkinsfile` declares a `githubPush()` trigger and deploys a main checkout. A push may publish automatically when that webhook is enabled; `.github/workflows/ci.yml` runs quality checks only. Check the actual Jenkins job before treating a push as a harmless CI run.
 2. Inspect all three resource URLs in Google Search Console and submit the existing sitemap index at `https://meettomanage.cloud/sitemap.xml`.
 3. Record the current baseline before evaluating changes: organic clicks and impressions by landing page and query; website enquiries and walkthrough bookings; resource downloads.
 4. Compare equivalent periods after indexing, allowing for seasonality and changes to other campaigns. Use query and landing-page data to decide what to improve next. A new page or sitemap entry does not guarantee indexing or rankings.
