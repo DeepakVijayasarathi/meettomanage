@@ -1,10 +1,10 @@
 // Public marketing pages that get their own prerendered HTML. Keep in sync with each page's <Seo> and public/sitemap.xml.
 export const PAGES = [
-  { path: "/pricing", title: "Pricing — Meet to Manage", description: "One simple price per academy, with live classes, admissions, fee collection and a parent app included. Pay monthly or yearly." },
+  { path: "/pricing", title: "Pricing: Academy Management Software Plans | Meet to Manage", description: "One simple price per academy with live classes, admissions, automatic fee collection and a parent app included. Pay monthly or yearly. Book a free demo." },
   { path: "/get-started", title: "Request a Demo — Meet to Manage", description: "Running an academy? See how Meet to Manage's live classroom, scheduling, admissions and billing work together — request a platform demo." },
-  { path: "/demo", title: "Book a Free Demo — Meet to Manage", description: "Book a free demo class and see how Meet to Manage's live classroom, scheduling and billing work together." },
-  { path: "/store", title: "Course Catalogue — Meet to Manage", description: "Browse current courses and book a free demo class — no account needed." },
-  { path: "/blog", title: "Blog — Meet to Manage", description: "Practical notes on running a modern academy: admissions, billing automation, scheduling and more." },
+  { path: "/demo", title: "Book a Free Live Demo Class | Meet to Manage", description: "Book a free live demo class and see how lessons run in the Meet to Manage virtual classroom, with whiteboard, quizzes and recordings. No account needed." },
+  { path: "/store", title: "Live Online Courses & Free Demo Classes | Meet to Manage", description: "Browse live online courses and book a free demo class in minutes. No account needed. Meet the teacher and try the live classroom before you enrol." },
+  { path: "/blog", title: "Academy Growth & Management Blog | Meet to Manage", description: "Practical guides for coaching centres and online academies on admissions, fee collection, scheduling, parent communication and student retention." },
   { path: "/blog/signs-academy-outgrown-spreadsheets", type: "article", title: "5 signs your academy has outgrown spreadsheets — Meet to Manage Blog", description: "Spreadsheets and a WhatsApp group get a small academy through its first year. Here's how to tell you've outgrown them." },
   { path: "/blog/demo-booking-to-enrolled-family", type: "article", title: "What actually happens between a demo booking and an enrolled family — Meet to Manage Blog", description: "What happens between a demo booking and an enrolled family, and how to make each step reliable." },
   { path: "/blog/automatic-fee-suspension-payment-conversations", type: "article", title: "How automatic fee-suspension turns an awkward conversation into a non-event — Meet to Manage Blog", description: "How automatic fee suspension removes the awkward payment conversation between academy and parents." },
