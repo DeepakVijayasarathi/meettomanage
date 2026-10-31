@@ -24,6 +24,8 @@ const pct = (n: number, of: number) => (of === 0 ? "0%" : `${Math.round((n * 100
 const EMPTY_BEHAVIOUR: ApiMarketingSiteBehaviour = {
   days: 7, startDate: "", endDate: "", visitors: 0, visits: 0, singlePageVisits: 0, returningVisitors: 0, chatVisitors: 0, bookedVisitors: 0,
   formStartedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, formSubmittedVisitors: 0, whatsAppVisitors: 0,
+  exitIntentShownVisitors: 0, exitIntentSubmittedVisitors: 0, experiments: [],
+  signInClickedVisitors: 0, demoLoginVisitors: 0, demoLogins: [], signInFrom: [],
   funnel: [], pages: [], devices: [], sources: [],
 };
 const IMPACT_STYLE = { High: "bg-destructive/10 text-destructive", Medium: "bg-warning/15 text-warning", Low: "bg-muted text-muted-foreground" } as const;
@@ -130,6 +132,82 @@ export default function MarketingVisitors() {
           <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
             <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Form completion:</b> {pct(b.formSubmittedVisitors, b.formStartedVisitors)}</p>
             <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Form abandonment:</b> {pct(b.formAbandonedVisitors, b.formStartedVisitors)}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Pricing exit popup and A/B tests</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            The popup opens when a /pricing visitor heads for the exit. Get Started copy test: a = original, b = outcome-led. Preview either with ?variant=a or ?variant=b.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2 text-sm sm:grid-cols-3">
+            <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Popup shown:</b> {b.exitIntentShownVisitors ?? 0}</p>
+            <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Leads captured:</b> {b.exitIntentSubmittedVisitors ?? 0}</p>
+            <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Capture rate:</b> {pct(b.exitIntentSubmittedVisitors ?? 0, b.exitIntentShownVisitors ?? 0)}</p>
+          </div>
+          {(b.experiments ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No A/B test traffic in this period.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs text-muted-foreground">
+                  <tr><th className="py-1.5 pr-3 font-medium">Test</th><th className="pr-3 font-medium">Variant</th><th className="pr-3 text-right font-medium">Saw it</th><th className="pr-3 text-right font-medium">Started form</th><th className="pr-3 text-right font-medium">Submitted</th><th className="text-right font-medium">Submit rate</th></tr>
+                </thead>
+                <tbody>
+                  {b.experiments.map((x) => (
+                    <tr key={`${x.experiment}:${x.variant}`} className="border-t">
+                      <td className="py-1.5 pr-3 font-mono text-xs">{x.experiment}</td>
+                      <td className="pr-3 font-semibold">{x.variant.toUpperCase()}</td>
+                      <td className="pr-3 text-right">{x.visitors}</td>
+                      <td className="pr-3 text-right">{x.formStarted}</td>
+                      <td className="pr-3 text-right">{x.formSubmitted}</td>
+                      <td className="text-right font-semibold">{x.conversionRate}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {b.experiments.some((x) => x.visitors < 100) && (
+                <p className="mt-2 text-xs text-muted-foreground">Too early to pick a winner: wait until each variant has at least 100 visitors and the gap holds for a week or more.</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Sign in and demo logins</CardTitle>
+          <p className="text-xs text-muted-foreground">Visitors who clicked "Sign in" in the website menu, and which demo accounts they tried on the login page.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2 text-sm sm:grid-cols-3">
+            <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Clicked Sign in:</b> {b.signInClickedVisitors ?? 0}</p>
+            <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Tried a demo login:</b> {b.demoLoginVisitors ?? 0}</p>
+            <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Demo logins per Sign in click:</b> {pct(b.demoLoginVisitors ?? 0, b.signInClickedVisitors ?? 0)}</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              { title: "Demo role tried", rows: b.demoLogins ?? [], empty: "No demo logins in this period.", mono: false },
+              { title: "Sign in clicked from", rows: b.signInFrom ?? [], empty: "No Sign in clicks in this period.", mono: true },
+            ].map((list) => (
+              <div key={list.title}>
+                <p className="mb-1.5 text-xs font-semibold text-muted-foreground">{list.title}</p>
+                {list.rows.length === 0 ? <p className="text-sm text-muted-foreground">{list.empty}</p> : (
+                  <ul className="space-y-1 text-sm">
+                    {list.rows.map((r) => (
+                      <li key={r.name} className="flex justify-between gap-3 border-b py-1 last:border-0">
+                        <span className={cn("capitalize", list.mono && "font-mono text-xs normal-case")}>{r.name}</span>
+                        <span className="font-semibold">{r.count}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
