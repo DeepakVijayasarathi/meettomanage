@@ -51,6 +51,8 @@ export default function LiveClassSolution() {
           <p className="mt-3 text-[15px] leading-relaxed text-[#57534E]">
             The live classroom is one part of the platform. A class connects straight to attendance, invoices and reports, and families join from the
             parent app. Read about <Link to="/solutions/online-attendance-software-for-institutes" className="font-semibold text-[#C2410C] underline">attendance</Link>,{" "}
+            <Link to="/solutions/fee-management-software-for-coaching-centres" className="font-semibold text-[#C2410C] underline">fee management</Link>,{" "}
+            <Link to="/solutions/phonics-live-class-software" className="font-semibold text-[#C2410C] underline">teaching phonics online</Link>,{" "}
             see <Link to="/pricing" className="font-semibold text-[#C2410C] underline">pricing</Link>, or{" "}
             <Link to="/customers" className="font-semibold text-[#C2410C] underline">how other centres use it</Link>.
           </p>

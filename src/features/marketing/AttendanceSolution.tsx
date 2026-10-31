@@ -51,7 +51,7 @@ export default function AttendanceSolution() {
         <div className="mx-auto mt-10 max-w-[1000px] px-5">
           <p className="text-[15px] leading-relaxed text-[#57534E]">
             Attendance is one part of the platform. The same system runs your live classes, admissions, fee collection and parent communication, so
-            there is one record per student instead of several spreadsheets. See <Link to="/pricing" className="font-semibold text-[#C2410C] underline">pricing</Link> or{" "}
+            there is one record per student instead of several spreadsheets. Learn about <Link to="/solutions/fee-management-software-for-coaching-centres" className="font-semibold text-[#C2410C] underline">fee management</Link>, see <Link to="/pricing" className="font-semibold text-[#C2410C] underline">pricing</Link> or{" "}
             <Link to="/customers" className="font-semibold text-[#C2410C] underline">how other centres use it</Link>.
           </p>
           <Link to="/get-started" className={cn(BTN_PRIMARY, "mt-6 w-fit")}>
