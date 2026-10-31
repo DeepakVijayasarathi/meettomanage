@@ -27,19 +27,30 @@ Academy Management Software, Coaching Centre Software, Live Classroom, Student A
 
 ## Launch post
 
-Running a coaching centre should not mean managing five different tools.
+Running a coaching centre should not mean juggling five different tools.
 
-Meet to Manage brings live classes, admissions, scheduling, fee collection, attendance and parent communication into one connected platform.
+One tool for classes. Another for admissions. Spreadsheets for fees. Messages everywhere.
 
-Spend less time chasing spreadsheets and payment updates—and more time helping students learn.
+That daily switching costs time—and makes it easier for enquiries, payments and parent updates to fall through the gaps.
+
+Meet to Manage brings the work together:
+
+✅ Interactive live classes
+✅ Enquiries, demos and admissions
+✅ Batch scheduling and attendance
+✅ Automated fee collection
+✅ Recordings and parent communication
+
+Your team gets one clear workflow. Parents get one reliable experience. You get more time to grow the academy.
 
 Explore the platform and book a free walkthrough:
 https://meettomanage.cloud/get-started
 
-#CoachingCentre #AcademyManagement #EducationTechnology #OnlineTeaching #EdTech
+#CoachingCentre #AcademyManagement #EdTech #OnlineTeaching #EducationBusiness
 
 ## Assets
 
 - `meettomanage-linkedin-logo.png` — 400 × 400 profile logo
 - `meettomanage-linkedin-banner.png` — 1128 × 191 company-page banner
+- `meettomanage-linkedin-launch-post.png` — 1200 × 628 launch-post image
 
