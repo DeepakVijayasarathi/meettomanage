@@ -418,29 +418,41 @@ export default function Pricing() {
           </PlanCard>
         </div>
 
-        <div className={cn(CARD, "mt-6 flex flex-col gap-6 p-7 sm:p-8 lg:flex-row lg:items-center lg:gap-10")}>
-          <div className="flex-1">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#166534] rtl:tracking-normal">{t.free.eyebrow}</p>
+        <div className="relative isolate mt-6 overflow-hidden rounded-3xl bg-[#C2410C] text-white shadow-[0_20px_50px_-30px_rgba(194,65,12,0.4)]">
+          <img
+            src="/product/free-plan-banner-orange.webp"
+            srcSet="/product/free-plan-banner-orange-1200.webp 1200w, /product/free-plan-banner-orange.webp 2164w"
+            sizes="(min-width: 1160px) 1120px, calc(100vw - 40px)"
+            alt="Illustration of a teacher and students in an online classroom on a laptop."
+            width={2164}
+            height={727}
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 -z-10 hidden h-full w-full object-cover object-right lg:block rtl:-scale-x-100"
+          />
+          <div className="relative p-7 sm:p-8 lg:w-[49%] lg:p-10">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-orange-100 rtl:tracking-normal">{t.free.eyebrow}</p>
             <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{t.free.name}</h2>
-              <p className="font-display text-xl font-extrabold text-[#166534] rtl:tracking-normal">{t.free.price}</p>
+              <h2 className="font-display text-3xl font-extrabold tracking-[-0.02em] text-white rtl:tracking-normal">{t.free.name}</h2>
+              <p className="font-display text-2xl font-extrabold text-[#FEF08A] rtl:tracking-normal">{t.free.price}</p>
             </div>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#333]">{t.free.description}</p>
-          </div>
-          <ul className="flex flex-col gap-2.5">
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-orange-50">{t.free.description}</p>
+          <ul className="mt-5 flex flex-col gap-2.5">
             {t.free.limits.map((line) => (
               <li key={line} className="flex items-start gap-2.5">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#166534]" />
-                <span className="text-sm leading-relaxed text-[#111]">{line}</span>
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#FEF08A]" />
+                <span className="text-sm leading-relaxed text-white">{line}</span>
               </li>
             ))}
           </ul>
           <Link
             to="/signup"
-            className={cn(CTA_DARK, "w-full shrink-0 !rounded-2xl lg:w-auto")}
+            className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-full bg-white px-6 py-3.5 text-sm font-bold text-[#C2410C] transition-colors hover:bg-orange-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white sm:w-auto"
           >
             {t.free.cta} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
           </Link>
+          </div>
+          <img src="/product/free-plan-classroom.webp" srcSet="/product/free-plan-classroom-320.webp 320w, /product/free-plan-classroom.webp 640w" sizes="(min-width: 1024px) 0px, (min-width: 1160px) 1120px, calc(100vw - 40px)" alt="" width={640} height={640} loading="lazy" decoding="async" className="block aspect-[4/3] w-full object-cover lg:hidden" />
         </div>
 
         <div className="mx-auto mt-12 flex max-w-2xl flex-col items-center gap-4 text-center">

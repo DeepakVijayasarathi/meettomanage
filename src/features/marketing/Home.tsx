@@ -177,8 +177,8 @@ export default function MarketingHome() {
           <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[680px] bg-[radial-gradient(55%_70%_at_30%_0%,#FFE6D0,transparent)]" />
           <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[560px] opacity-60 [background-image:radial-gradient(#F4C9A4_1px,transparent_1px)] [background-size:26px_26px] [mask-image:radial-gradient(60%_80%_at_30%_0%,#000,transparent)]" />
           <div className="relative mx-auto grid max-w-[1280px] items-center gap-12 px-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-6">
-            <div className="text-center lg:text-start">
-              <h1 className="font-display text-[clamp(1.8rem,3.1vw,2.7rem)] font-extrabold leading-[1.05] tracking-[-0.04em] text-[#1C1917] rtl:tracking-normal">
+            <div className="min-w-0 text-start">
+              <h1 className="font-display text-balance text-[clamp(2rem,3.35vw,3rem)] font-extrabold leading-[1.08] tracking-[-0.045em] text-[#1C1917] rtl:tracking-normal">
                 {c.hero.words.map((word, i) => {
                   const accent = c.hero.accent.includes(i);
                   return (
@@ -189,15 +189,15 @@ export default function MarketingHome() {
                   );
                 })}
               </h1>
-              <p className="mx-fade-up mx-auto mt-6 max-w-[560px] text-[clamp(1.0625rem,1.4vw,1.2rem)] leading-relaxed text-[#57534E] lg:mx-0" style={{ animationDelay: "0.55s" }}>{c.hero.sub}</p>
+              <p className="mx-fade-up mt-5 max-w-[510px] text-[clamp(1rem,1.25vw,1.125rem)] leading-[1.8] text-[#6B625B]" style={{ animationDelay: "0.55s" }}>{c.hero.sub}</p>
 
               <div className="mt-8">
                 <AccessForm c={c.hero.form} watch={{ label: c.hero.watch, cta: c.hero.demo }} />
               </div>
 
-              <ul className="mx-fade-up mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium text-[#57534E] lg:justify-start" style={{ animationDelay: "0.85s" }}>
+              <ul className="mx-fade-up mt-7 grid gap-x-5 gap-y-3 border-t border-[#EBD9CA] pt-5 text-xs font-medium text-[#57534E] sm:grid-cols-2" style={{ animationDelay: "0.85s" }}>
                 {c.hero.trust.map((item) => (
-                  <li key={item} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 shrink-0 text-[#EA580C]" /> {item}</li>
+                  <li key={item} className="flex items-center gap-2.5"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FFF0E3]"><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5 text-[#C2410C]" /></span>{item}</li>
                 ))}
               </ul>
             </div>

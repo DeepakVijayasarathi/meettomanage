@@ -33,7 +33,7 @@ export const COPY: Record<Lang, HomeCopy> = {
       trust: ["One login, 8 role-based portals", "Parent mobile app included", "Live classroom, fees and admissions"],
       form: { label: "Your email or mobile number", placeholder: "Your email or mobile number", note: "Free 30-minute platform walkthrough. No payment details.", invalid: "Enter a valid email address or mobile number." },
       room: {
-        alt: "A Meet to Manage live class: a teacher and three children on screen waving and giving a thumbs up, a Great job reward, a student joining, and the parent app on a phone showing the next class and a Join class button",
+        alt: "Illustration of four children in a live classroom on a laptop, beside a parent app showing the next class, practice, attendance and teacher feedback",
         caption: "A live class on Meet to Manage. Illustration with sample names.",
       },
     },

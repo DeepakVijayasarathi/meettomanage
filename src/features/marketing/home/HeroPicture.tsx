@@ -32,17 +32,18 @@ export function HeroPicture({ c }: { c: HomeCopy["hero"]["room"] }) {
 
   return (
     <figure ref={ref} className="relative mx-auto w-full max-w-[860px]">
-      <div style={{ transform: `perspective(1800px) rotateX(${(1 - p) * 6}deg) translateY(${(1 - p) * 26}px) scale(${0.97 + 0.03 * p})`, transformOrigin: "50% 100%" }} className="will-change-transform">
+      <div aria-hidden="true" className="pointer-events-none absolute -inset-6 rounded-full bg-[radial-gradient(ellipse_at_center,#FED7AA80,transparent_70%)] blur-2xl" />
+      <div style={{ transform: `perspective(1800px) rotateX(${(1 - p) * 6}deg) translateY(${(1 - p) * 26}px) scale(${0.97 + 0.03 * p})`, transformOrigin: "50% 100%" }} className="relative rounded-[28px] border border-[#EED8C6] bg-white/90 p-1.5 shadow-[0_24px_60px_-28px_rgba(111,61,29,0.35)] will-change-transform sm:p-2">
         <img
-          src="/product/hero-classroom.webp"
-          srcSet="/product/hero-classroom-768.webp 768w, /product/hero-classroom.webp 1536w"
-          sizes="(min-width: 1024px) 52vw, 100vw"
+          src="/product/hero-classroom-v2.webp"
+          srcSet="/product/hero-classroom-v2-768.webp 768w, /product/hero-classroom-v2.webp 1536w"
+          sizes="(min-width: 1280px) 650px, (min-width: 1024px) 52vw, calc(100vw - 56px)"
           alt={c.alt}
           width={1536}
           height={1024}
           decoding="async"
           fetchPriority="high"
-          className="block h-auto w-full rounded-2xl"
+          className="block h-auto w-full rounded-[22px]"
         />
       </div>
       <figcaption className="mt-3 text-center text-xs font-medium text-[#6B6560]">{c.caption}</figcaption>
