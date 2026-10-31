@@ -64,9 +64,9 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
 
   return (
     <header className={cn("sticky top-0 z-40 border-b bg-white transition-shadow", scrolled ? "border-[#F6E3D3] shadow-[0_14px_34px_-22px_rgba(194,65,12,0.45)]" : "border-transparent")}>
-      <div className="mx-auto flex h-[84px] max-w-[1200px] items-center justify-between gap-4 px-5">
+      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-5 sm:h-[84px]">
         <Link to="/" aria-label={`${brand.name} home`} className="shrink-0">
-          <img src="/logo-full.webp" alt={brand.name} width={420} height={150} className="h-14 w-auto object-contain mix-blend-multiply sm:h-[68px]" />
+          <img src="/logo-full.webp" alt={brand.name} width={420} height={150} className="h-11 w-auto object-contain mix-blend-multiply sm:h-[68px]" />
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-6 whitespace-nowrap lg:flex">
@@ -83,7 +83,7 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
           <button
             ref={menuButtonRef}
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center border border-[#D9C9BA] text-[#1C1917] lg:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#D9C9BA] text-[#1C1917] transition-colors hover:bg-[#FFF6EE] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C] lg:hidden"
             aria-expanded={open}
             aria-controls="mobile-menu"
             aria-label={open ? c.nav.closeMenu : c.nav.menu}
@@ -95,20 +95,41 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
       </div>
 
       {open && (
-        <div id="mobile-menu" className="border-t border-[#E2E8F0] bg-white lg:hidden">
-          <nav aria-label="Mobile" className="mx-auto flex max-w-[1200px] flex-col px-5 py-3">
-            {links.map((l, index) => {
-              const cls = "border-b border-[#EEF2F7] py-3.5 text-base font-semibold text-[#1C1917]";
-              return l.route ? (
-                <Link ref={index === 0 ? firstMobileLinkRef : undefined} key={l.href} to={l.href} className={cls} onClick={() => setOpen(false)}>{l.label}</Link>
-              ) : (
-                <a ref={index === 0 ? firstMobileLinkRef : undefined} key={l.href} href={l.href} className={cls} onClick={() => setOpen(false)}>{l.label}</a>
-              );
-            })}
-            <div className="flex flex-col gap-3 py-4">
-              <Link to="/get-started" className={BTN_PRIMARY} onClick={() => setOpen(false)}>{c.nav.demo}</Link>
-              <Link to="/login" className="inline-flex justify-center border border-[#D9C9BA] py-3.5 text-sm font-bold text-[#1C1917]" onClick={() => setOpen(false)}>{c.nav.signIn}</Link>
-              <LanguageToggle className="sm:hidden" />
+        // Full-height panel under the header: long menus scroll inside it and the call to action stays pinned at the bottom.
+        <div id="mobile-menu" className="fixed inset-x-0 bottom-0 top-16 z-30 overflow-y-auto overscroll-contain border-t border-[#F6E3D3] bg-white sm:top-[84px] lg:hidden">
+          <nav aria-label="Mobile" className="mx-auto flex min-h-full max-w-[1200px] flex-col px-5">
+            <ul className="flex-1 py-2">
+              {links.map((l, index) => {
+                const active = isActive(l, index);
+                const cls = cn(
+                  "flex min-h-[56px] items-center justify-between border-b border-[#F3EAE0] text-lg font-semibold transition-colors active:bg-[#FFF6EE]",
+                  active ? "text-[#C2410C]" : "text-[#1C1917]"
+                );
+                const inner = (
+                  <>
+                    {l.label}
+                    <ArrowRight className={cn("h-4 w-4 shrink-0 rtl:-scale-x-100", active ? "text-[#C2410C]" : "text-[#A8A29E]")} aria-hidden="true" />
+                  </>
+                );
+                return (
+                  <li key={l.href}>
+                    {l.route ? (
+                      <Link ref={index === 0 ? firstMobileLinkRef : undefined} to={l.href} aria-current={active ? "page" : undefined} className={cls} onClick={() => setOpen(false)}>{inner}</Link>
+                    ) : (
+                      <a ref={index === 0 ? firstMobileLinkRef : undefined} href={l.href} aria-current={active ? "true" : undefined} className={cls} onClick={() => setOpen(false)}>{inner}</a>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="sticky bottom-0 flex flex-col gap-3 border-t border-[#F3EAE0] bg-white pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
+              <Link to="/get-started" className={cn(BTN_PRIMARY, "w-full !rounded-2xl bg-gradient-to-r from-[#EA580C] to-[#C2410C] py-4 text-base")} onClick={() => setOpen(false)}>
+                {c.nav.demo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+              </Link>
+              <div className="flex items-center gap-3">
+                <Link to="/login" className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-2xl border border-[#D9C9BA] text-sm font-bold text-[#1C1917] hover:bg-[#FFF6EE]" onClick={() => setOpen(false)}>{c.nav.signIn}</Link>
+                <LanguageToggle className="sm:hidden" />
+              </div>
             </div>
           </nav>
         </div>
