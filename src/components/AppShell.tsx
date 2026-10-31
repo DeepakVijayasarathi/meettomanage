@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { AppTour } from "@/components/AppTour";
+import { ScreenshotGuard } from "@/lib/screenshotGuard";
 import { FloatingNotes } from "@/components/FloatingNotes";
 import { DoubtChatbot } from "@/components/DoubtChatbot";
 import { ParentFeedbackPrompt } from "@/components/ParentFeedbackPrompt";
@@ -209,6 +210,7 @@ export function AppShell({ role, children }: AppShellProps) {
         onPrepare={() => { setCollapsed(false); setMobileOpen(true); }}
         onFinish={() => setMobileOpen(false)}
       />
+      <ScreenshotGuard />
       <FloatingNotes role={role} />
       <DoubtChatbot role={role} />
       {role === "parent" && <ParentFeedbackPrompt />}

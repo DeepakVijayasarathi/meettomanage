@@ -67,3 +67,17 @@ export async function changePin(currentPin: string, newPin: string): Promise<voi
 export async function endViewAs(): Promise<void> {
   await apiFetch<void>("/api/auth/view-as/end", { method: "POST" });
 }
+
+/** Re-checks the signed-in user's own PIN before a sensitive change, without touching the stored login. */
+export async function verifyOwnPin(pin: string): Promise<boolean> {
+  const me = await apiFetch<LoginResponse>("/api/auth/me");
+  try {
+    await apiFetch<LoginResponse>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: me.user.email, pin }),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Bell, Building2, CalendarOff, CheckCircle2, CreditCard, Eye, EyeOff, Globe2, ListTree, Loader2, Mail, MessageCircle, Palette, Pencil, Plug, Plus, Puzzle, Save, Settings2, ShieldAlert, StickyNote, Trash2, type LucideIcon, Video, Wallet, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { SecuritySettings } from "./SecuritySettings";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -169,6 +170,7 @@ const SETTINGS_TABS = new Set([
   "payroll",
   "leave",
   "integrations",
+  "security",
 ]);
 
 export default function AdminSettings() {
@@ -303,11 +305,18 @@ export default function AdminSettings() {
           <TabsTrigger value="integrations" className="gap-1.5">
             <Plug className="h-4 w-4" /> Integrations
           </TabsTrigger>
+          <TabsTrigger value="security" className="gap-1.5">
+            <ShieldAlert className="h-4 w-4" /> Security
+          </TabsTrigger>
         </TabsList>
         <p className="mb-4 mt-2 text-xs text-muted-foreground">
           <ShieldAlert className="mr-1 inline h-3 w-3 align-[-1px] text-warning-foreground" />
           Payroll and Integrations hold live payout rates and payment-gateway credentials — double-check before changing them. Leave Policy sets how many classes a teacher may self-cancel each month.
         </p>
+
+        <TabsContent value="security">
+          <SecuritySettings />
+        </TabsContent>
 
         <TabsContent value="general">
           <Card>
