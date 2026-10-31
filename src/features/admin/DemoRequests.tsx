@@ -212,7 +212,7 @@ export default function DemoRequests() {
       },
       {
         key: "source", header: "Source", accessor: (row) => row.source ?? "Direct",
-        render: (row) => <div className="text-sm"><p>{row.source ?? "Direct"}</p>{row.campaign && <p className="text-xs text-muted-foreground">{row.campaign}</p>}</div>,
+        render: (row) => <div className="text-sm"><p>{row.source ?? "Direct"}</p>{row.campaign && <p className="text-xs text-muted-foreground">{row.campaign}</p>}{row.landingPath && <p className="font-mono text-xs text-muted-foreground">from {row.landingPath}</p>}</div>,
       },
       {
         key: "followUp", header: "Follow-up", sortable: true, accessor: (row) => row.nextFollowUpAtUtc ?? "",

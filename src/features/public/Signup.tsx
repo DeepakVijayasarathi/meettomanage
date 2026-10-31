@@ -1,10 +1,40 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useLightBrandScope } from "@/lib/theme";
 import { formatMoney, saasPublic, type PublicPlan } from "@/api/saas";
 import { requestPlatformDemo } from "@/api/marketing";
+import { marketingAttribution, marketingVisitorId, trackDemoBooked, trackMarketingEvent, trackMarketingPageView } from "@/lib/analytics";
+import { markDemoBooked } from "@/features/marketing/chatTeaser";
+
+/** Saves a signup as a lead in the marketing console, linked to the visitor's journey and traffic source. */
+function saveSignupLead(input: { fullName: string; academyName: string; workEmail: string; phone: string; message: string }) {
+  const attribution = marketingAttribution();
+  return requestPlatformDemo({
+    ...input,
+    visitorId: marketingVisitorId(),
+    source: attribution.utmSource ?? attribution.referrerHost,
+    medium: attribution.utmMedium,
+    campaign: attribution.utmCampaign,
+    landingPath: window.location.pathname,
+  });
+}
+
+/** Form funnel events (started / abandoned) for the marketing console. Returns the "started" handler and a "submitted" marker. */
+function useFormFunnel() {
+  const started = useRef(false);
+  const submitted = useRef(false);
+  useEffect(() => {
+    const abandoned = () => { if (started.current && !submitted.current) trackMarketingEvent("form_abandoned"); };
+    window.addEventListener("pagehide", abandoned);
+    return () => { window.removeEventListener("pagehide", abandoned); abandoned(); };
+  }, []);
+  return {
+    onStart: () => { if (!started.current) { started.current = true; trackMarketingEvent("form_started"); } },
+    onSubmitted: () => { submitted.current = true; trackMarketingEvent("form_submitted"); markDemoBooked(); void trackDemoBooked(window.location.pathname); },
+  };
+}
 
 const field = "w-full rounded-xl border border-brand-ink/15 bg-white px-4 py-3 text-sm text-brand-ink outline-none transition placeholder:text-brand-ink/40 focus:border-primary focus:ring-4 focus:ring-primary/20";
 
@@ -14,19 +44,20 @@ function AccessRequest() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const funnel = useFormFunnel();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true); setError("");
     try {
-      await requestPlatformDemo({
+      await saveSignupLead({
         fullName: form.fullName.trim(),
         academyName: form.academyName.trim(),
         workEmail: form.workEmail.trim(),
         phone: form.phone.trim(),
         message: "Account request from the signup page: please create my workspace and send my login.",
-        landingPath: window.location.pathname,
       });
+      funnel.onSubmitted();
       setSent(true);
     } catch (err) { setError(err instanceof Error ? err.message : "Could not send your request. Please try again."); }
     finally { setBusy(false); }
@@ -38,7 +69,7 @@ function AccessRequest() {
     <p className="text-sm text-brand-ink/70">Our team will set up your workspace and send your login details to {form.workEmail}.</p>
   </div>;
 
-  return <form onSubmit={submit} className="space-y-5">
+  return <form onSubmit={submit} onFocus={funnel.onStart} className="space-y-5">
     <div className="text-center"><h1 className="text-2xl font-semibold text-brand-ink sm:text-3xl">Request your account</h1>
       <p className="mt-2 text-sm text-brand-ink/70">Tell us about your academy. Our team creates your workspace and sends your login details by e-mail.</p></div>
     {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
@@ -68,6 +99,10 @@ export default function Signup() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [created, setCreated] = useState<string | null>(null);
+  const funnel = useFormFunnel();
+
+  // /signup isn't a marketing page (no <Seo>), so count its visit here for the console.
+  useEffect(() => { void trackMarketingPageView("/signup", "Sign up"); }, []);
 
   useEffect(() => {
     void saasPublic.settings().then(setSettings).catch(() => setSettings({ enabled: false, trialDays: 14, platformName: "Meet to Manage" }));
@@ -89,6 +124,15 @@ export default function Signup() {
     try {
       const result = await saasPublic.signup({ ...form, code: form.code.trim().toLowerCase(), organizationName: form.organizationName.trim(), adminEmail: form.adminEmail.trim() });
       setCreated(result.loginPath);
+      // The workspace exists now; also list the new academy as a lead in the marketing console.
+      funnel.onSubmitted();
+      void saveSignupLead({
+        fullName: form.organizationName.trim(),
+        academyName: form.organizationName.trim(),
+        workEmail: form.adminEmail.trim(),
+        phone: "",
+        message: `Self-service signup: created workspace /t/${result.tenantCode} on a free trial.`,
+      }).catch(() => undefined);
     } catch (err) { setError(err instanceof Error ? err.message : "Could not create your workspace."); }
     finally { setBusy(false); }
   }
@@ -102,7 +146,7 @@ export default function Signup() {
         <h1 className="text-2xl font-semibold text-brand-ink">Your workspace is ready</h1>
         <p className="text-sm text-brand-ink/70">Sign in with the e-mail and PIN you just chose. Your {settings?.trialDays ?? 14}-day free trial has started.</p>
         <a href={created} className="inline-block rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground">Go to sign in</a>
-      </div> : settings && !settings.enabled ? <AccessRequest /> : <form onSubmit={submit} className="space-y-5">
+      </div> : settings && !settings.enabled ? <AccessRequest /> : <form onSubmit={submit} onFocus={funnel.onStart} className="space-y-5">
         <div className="text-center"><h1 className="text-2xl font-semibold text-brand-ink sm:text-3xl">Start your free trial</h1>
           <p className="mt-2 text-sm text-brand-ink/70">{settings?.trialDays ?? 14} days of {name}, no card needed. Set up your academy in minutes.</p></div>
         {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
