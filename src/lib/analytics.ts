@@ -204,7 +204,9 @@ function isAutomatedBrowser(): boolean {
 }
 
 /** First-party beacon to the marketing console's own dashboard; never blocks or throws. */
-function beacon(type: "page_view" | "chat_started", path: string) {
+export type MarketingEventType = "page_view" | "chat_started" | "form_started" | "form_validation_failed" | "form_abandoned" | "form_submitted" | "whatsapp_clicked";
+
+function beacon(type: MarketingEventType, path: string) {
   if (!apiEnabled() || isAutomatedBrowser()) return;
   void apiFetch<void>("/api/marketing/track", {
     method: "POST",
@@ -218,6 +220,11 @@ function beacon(type: "page_view" | "chat_started", path: string) {
 /** The visitor sent their first message to the sales chat assistant. */
 export function trackChatStarted(): void {
   beacon("chat_started", window.location.pathname);
+}
+
+/** Anonymous first-party funnel signal for the Marketing Console. */
+export function trackMarketingEvent(type: Exclude<MarketingEventType, "page_view" | "chat_started">, path = window.location.pathname): void {
+  beacon(type, path);
 }
 
 /** Called by each public marketing page (via <Seo>) once it renders. */

@@ -372,6 +372,7 @@ export interface ApiMarketingPageBehaviour { path: string; visitors: number; vie
 export interface ApiMarketingSiteBehaviour {
   days: number; startDate: string; endDate: string;
   visitors: number; visits: number; singlePageVisits: number; returningVisitors: number; chatVisitors: number; bookedVisitors: number;
+  formStartedVisitors: number; formValidationFailedVisitors: number; formAbandonedVisitors: number; formSubmittedVisitors: number; whatsAppVisitors: number;
   funnel: { name: string; visitors: number }[];
   pages: ApiMarketingPageBehaviour[];
   devices: ApiNamedCount[];

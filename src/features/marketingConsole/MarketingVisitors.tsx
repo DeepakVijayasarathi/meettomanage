@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarCheck2, Footprints, Loader2, MessageCircle, Repeat, Sparkles, Users, Wrench } from "lucide-react";
+import { ArrowRight, CalendarCheck2, CircleAlert, Footprints, FormInput, Loader2, MessageCircle, Repeat, Send, Sparkles, Users, Wrench } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import { VisitorFilterBar } from "./VisitorFilterBar";
 const pct = (n: number, of: number) => (of === 0 ? "0%" : `${Math.round((n * 100) / of)}%`);
 const EMPTY_BEHAVIOUR: ApiMarketingSiteBehaviour = {
   days: 7, startDate: "", endDate: "", visitors: 0, visits: 0, singlePageVisits: 0, returningVisitors: 0, chatVisitors: 0, bookedVisitors: 0,
+  formStartedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, formSubmittedVisitors: 0, whatsAppVisitors: 0,
   funnel: [], pages: [], devices: [], sources: [],
 };
 const IMPACT_STYLE = { High: "bg-destructive/10 text-destructive", Medium: "bg-warning/15 text-warning", Low: "bg-muted text-muted-foreground" } as const;
@@ -105,6 +106,33 @@ export default function MarketingVisitors() {
           </div>
         ))}
       </div>
+
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Demo form conversion</CardTitle>
+          <p className="text-xs text-muted-foreground">First-party events from Get Started. New tracking begins from this release, so older periods show zero.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {[
+              { label: "Started form", value: b.formStartedVisitors, icon: FormInput },
+              { label: "Validation issue", value: b.formValidationFailedVisitors, icon: CircleAlert },
+              { label: "Abandoned", value: b.formAbandonedVisitors, icon: Footprints },
+              { label: "Submitted", value: b.formSubmittedVisitors, icon: Send },
+              { label: "WhatsApp clicked", value: b.whatsAppVisitors, icon: MessageCircle },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg border bg-muted/20 p-3">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">{item.label}<item.icon className="h-4 w-4" /></div>
+                <p className="mt-1 text-xl font-bold">{item.value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+            <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Form completion:</b> {pct(b.formSubmittedVisitors, b.formStartedVisitors)}</p>
+            <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Form abandonment:</b> {pct(b.formAbandonedVisitors, b.formStartedVisitors)}</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="mb-4 border-primary/30">
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-2">

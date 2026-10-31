@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, CheckCircle2, CreditCard, Landmark, Loader2, Mail, MessageCircle, MessageSquare, Phone, User, Users, Video, type LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { MarketingNav } from "./MarketingNav";
 import { CTA_DARK, CTA_ORANGE } from "./styles";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
-import { marketingAttribution, marketingVisitorId, trackDemoBooked } from "@/lib/analytics";
+import { marketingAttribution, marketingVisitorId, trackDemoBooked, trackMarketingEvent } from "@/lib/analytics";
 import { markDemoBooked } from "./chatTeaser";
 
 const T = {
@@ -188,14 +188,35 @@ export default function GetStarted() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const startedRef = useRef(false);
+  const submittedRef = useRef(false);
+
+  function markFormStarted() {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    trackMarketingEvent("form_started");
+  }
+
+  useEffect(() => {
+    const abandoned = () => {
+      if (startedRef.current && !submittedRef.current) trackMarketingEvent("form_abandoned");
+    };
+    window.addEventListener("pagehide", abandoned);
+    return () => {
+      window.removeEventListener("pagehide", abandoned);
+      abandoned();
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.fullName.trim()) {
+      trackMarketingEvent("form_validation_failed");
       setError(t.errorCoach);
       return;
     }
     if (!form.workEmail.trim() && !form.phone.trim()) {
+      trackMarketingEvent("form_validation_failed");
       setError(lang === "en" ? "Enter an email address or WhatsApp number so we can contact you." : "أدخل بريدًا إلكترونيًا أو رقم واتساب لنتواصل معك.");
       return;
     }
@@ -219,6 +240,8 @@ export default function GetStarted() {
         medium: attribution.utmMedium, campaign: attribution.utmCampaign, landingPath: window.location.pathname,
       });
       markDemoBooked();
+      submittedRef.current = true;
+      trackMarketingEvent("form_submitted");
       void trackDemoBooked(window.location.pathname);
       setSubmitted(true);
     } catch (err) {
@@ -283,7 +306,7 @@ export default function GetStarted() {
                 <>
                   <h2 className="font-display text-[clamp(1.6rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em] text-[#1C1917] rtl:tracking-normal">{pc.formTitle}</h2>
                   <p className="mt-2 max-w-[44ch] text-[15px] leading-relaxed text-[#57534E]">{pc.formSub}</p>
-                  <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+                  <form onSubmit={handleSubmit} onFocus={markFormStarted} className="mt-6 flex flex-col gap-4">
                     <div className="grid gap-1.5">
                       <Label htmlFor="gs-fullName" className="font-semibold text-[#1C1917]">{t.yourName} <span aria-hidden className="text-[#C2410C]">*</span></Label>
                       <Field icon={User}>
@@ -328,6 +351,7 @@ export default function GetStarted() {
                       href="https://wa.me/919344773231?text=I%27d%20like%20a%20free%20Meet%20to%20Manage%20walkthrough."
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => trackMarketingEvent("whatsapp_clicked")}
                       className="inline-flex items-center justify-center gap-2 text-sm font-bold text-[#166534] underline decoration-[#22C55E]/40 underline-offset-4 hover:decoration-[#166534]"
                     >
                       <MessageSquare className="h-4 w-4" /> {lang === "en" ? "Prefer WhatsApp? Chat with us" : "تفضل واتساب؟ تحدث معنا"}
