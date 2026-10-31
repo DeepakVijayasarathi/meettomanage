@@ -16,6 +16,11 @@ const STORIES = [
   },
 ];
 
+/** Customers without a published story yet: logo and what they teach only, nothing we can't stand behind. */
+const CLIENTS = [
+  { name: "Alphabet", logo: "/clients/alphabet.webp", line: "Jolly Phonics & Storytelling", tags: ["Jolly Phonics", "Storytelling"] },
+];
+
 export default function Customers() {
   return (
     <PageShell
@@ -49,6 +54,18 @@ export default function Customers() {
                 </ul>
                 <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-[#C2410C]">Read the story <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 rtl:-scale-x-100" /></span>
               </Link>
+            </li>
+          ))}
+          {CLIENTS.map((c) => (
+            <li key={c.name} className="flex h-full flex-col rounded-2xl border border-[#EFE3D7] bg-white p-7">
+              <div className="mb-6 flex aspect-[16/10] w-full items-center justify-center rounded-xl bg-white ring-1 ring-black/5">
+                <img src={c.logo} alt={`${c.name} — ${c.line} logo`} width={800} height={400} loading="lazy" className="h-auto w-4/5 object-contain" />
+              </div>
+              <h2 className="font-display text-xl font-extrabold tracking-[-0.02em]">{c.name}</h2>
+              <p className="mt-2 flex-1 text-[15px] leading-relaxed text-[#57534E]">{c.line}</p>
+              <ul className="mt-4 flex flex-wrap gap-2">
+                {c.tags.map((t) => <li key={t} className="rounded-full bg-[#FFEBDD] px-3 py-1 text-xs font-semibold text-[#9A3412]">{t}</li>)}
+              </ul>
             </li>
           ))}
           <li className="flex flex-col justify-center rounded-2xl border border-dashed border-[#E0CBB8] bg-[#FFF6EE] p-7">
