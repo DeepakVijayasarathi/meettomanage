@@ -11,6 +11,21 @@ export interface ApiPlatformDemoRequest {
   message: string | null;
   status: ApiPlatformDemoRequestStatus;
   createdAtUtc: string;
+  source?: string | null;
+  medium?: string | null;
+  campaign?: string | null;
+  landingPath?: string | null;
+  assignedTo?: string | null;
+  nextFollowUpAtUtc?: string | null;
+  lastContactedAtUtc?: string | null;
+  internalNotes?: string | null;
+  leadScore?: number;
+  leadTemperature?: "Hot" | "Warm" | "Cold";
+  isDuplicate?: boolean;
+  /** Plain-language reasons behind leadScore (message, chat booking, website journey, recency). */
+  scoreReasons?: string[];
+  assignedToUserId?: string | null;
+  archivedAtUtc?: string | null;
 }
 
 /**
@@ -24,6 +39,11 @@ export async function requestPlatformDemo(input: {
   phone: string;
   academyName: string;
   message?: string;
+  visitorId?: string;
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  landingPath?: string;
 }): Promise<ApiPlatformDemoRequest> {
   return apiFetch<ApiPlatformDemoRequest>("/api/marketing/demo-requests", {
     method: "POST",
@@ -47,6 +67,35 @@ export async function updatePlatformDemoRequestStatus(
   });
 }
 
+export async function deletePlatformDemoRequest(id: string): Promise<void> {
+  await apiFetch<void>(`/api/marketing/demo-requests/${id}`, { method: "DELETE" });
+}
+
+export async function updatePlatformDemoRequest(id: string, input: { status?: ApiPlatformDemoRequestStatus; assignedTo?: string; assignedToUserId?: string; nextFollowUpAtUtc?: string; internalNotes?: string }): Promise<ApiPlatformDemoRequest> {
+  return apiFetch<ApiPlatformDemoRequest>(`/api/marketing/demo-requests/${id}`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+export interface ApiMarketingLeadActivity { id: string; type: string; detail: string; createdAtUtc: string }
+export interface ApiMarketingLeadDetail { lead: ApiPlatformDemoRequest; activity: ApiMarketingLeadActivity[] }
+export interface ApiPaged<T> { items: T[]; totalCount: number; page: number; pageSize: number }
+export async function listPlatformDemoRequestsPaged(input: { page: number; pageSize?: number; search?: string; status?: ApiPlatformDemoRequestStatus; overdueOnly?: boolean; archivedOnly?: boolean }): Promise<ApiPaged<ApiPlatformDemoRequest>> {
+  const q = new URLSearchParams({ page: String(input.page), pageSize: String(input.pageSize ?? 25) });
+  if (input.search) q.set("search", input.search); if (input.status) q.set("status", input.status);
+  if (input.overdueOnly) q.set("overdueOnly", "true"); if (input.archivedOnly) q.set("archivedOnly", "true");
+  return apiFetch<ApiPaged<ApiPlatformDemoRequest>>(`/api/marketing/demo-requests/paged?${q}`);
+}
+export const getMarketingLead = (id: string) => apiFetch<ApiMarketingLeadDetail>(`/api/marketing/demo-requests/${id}`);
+export const getMarketingLeadRecommendation = (id: string) => apiFetch<{ summary: string; nextAction: string; suggestedChannel: string; suggestedMessage: string; aiPowered: boolean }>(`/api/marketing/demo-requests/${id}/recommendation`);
+export async function bulkUpdateMarketingLeads(input: { ids: string[]; status?: ApiPlatformDemoRequestStatus; nextFollowUpAtUtc?: string; archive?: boolean }): Promise<void> { await apiFetch("/api/marketing/demo-requests/bulk", { method: "POST", body: JSON.stringify(input) }); }
+export async function restoreMarketingLead(id: string): Promise<void> { await apiFetch(`/api/marketing/demo-requests/${id}/restore`, { method: "POST" }); }
+
+export interface ApiMarketingCampaignBudget { id: string; campaign: string; spend: number; currency: string; wonRevenue: number | null; startDate: string; endDate: string; leads: number; converted: number; costPerLead: number | null; costPerAcquisition: number | null; returnOnAdSpend: number | null }
+export const listMarketingCampaignBudgets = () => apiFetch<ApiMarketingCampaignBudget[]>("/api/marketing/demo-requests/campaigns");
+export const saveMarketingCampaignBudget = (input: Partial<ApiMarketingCampaignBudget>) => apiFetch<ApiMarketingCampaignBudget>("/api/marketing/demo-requests/campaigns", { method: "PUT", body: JSON.stringify(input) });
+export interface ApiMarketingReportSetting { enabled: boolean; frequency: "Daily" | "Weekly"; recipientEmail: string; retentionDays: number; lastSentAtUtc: string | null }
+export const getMarketingReportSettings = () => apiFetch<ApiMarketingReportSetting>("/api/marketing/demo-requests/settings");
+export const saveMarketingReportSettings = (input: ApiMarketingReportSetting) => apiFetch<ApiMarketingReportSetting>("/api/marketing/demo-requests/settings", { method: "PUT", body: JSON.stringify(input) });
+
 // --- Sales chat ---
 
 /** One message in the homepage chat. `failed` marks a locally shown error, never sent. */
@@ -62,7 +111,7 @@ export interface SalesChatTurn {
  * 20 turns and must start with the visitor, so older turns are trimmed from the front.
  * `bookedName` is set when the assistant booked a platform demo during this turn.
  */
-export async function askSalesAssistant(conversation: SalesChatTurn[]): Promise<{ reply: string; bookedName: string | null }> {
+export async function askSalesAssistant(conversation: SalesChatTurn[], attribution?: { visitorId?: string; source?: string; medium?: string; campaign?: string; landingPath?: string }, conversationId?: string): Promise<{ reply: string; bookedName: string | null }> {
   // A failed turn leaves two visitor messages back to back; merge same-role runs so the
   // conversation still alternates visitor/assistant the way the model expects.
   const merged: { role: SalesChatTurn["role"]; text: string }[] = [];
@@ -76,9 +125,42 @@ ${text}`.slice(-1000);
   while (messages.length > 0 && messages[0].role !== "user") messages = messages.slice(1);
   const res = await apiFetch<{ reply: string; bookedName?: string | null }>("/api/marketing/chat", {
     method: "POST",
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, attribution, conversationId }),
   });
   return { reply: res.reply, bookedName: res.bookedName ?? null };
+}
+
+// --- Website chat log (marketing console → Chats) ---
+
+export interface ApiMarketingChatConversation {
+  id: string;
+  startedAtUtc: string;
+  lastMessageAtUtc: string;
+  messageCount: number;
+  firstMessage: string;
+  source: string | null;
+  campaign: string | null;
+  landingPath: string | null;
+  bookedName: string | null;
+}
+export interface ApiMarketingChatDetail {
+  conversation: ApiMarketingChatConversation;
+  messages: { role: "user" | "assistant"; text: string; createdAtUtc: string }[];
+}
+export async function listMarketingChats(input: { page: number; pageSize?: number; search?: string; bookedOnly?: boolean }): Promise<ApiPaged<ApiMarketingChatConversation>> {
+  const q = new URLSearchParams({ page: String(input.page), pageSize: String(input.pageSize ?? 25) });
+  if (input.search) q.set("search", input.search);
+  if (input.bookedOnly) q.set("bookedOnly", "true");
+  return apiFetch<ApiPaged<ApiMarketingChatConversation>>(`/api/marketing/chats?${q}`);
+}
+export const getMarketingChat = (id: string) => apiFetch<ApiMarketingChatDetail>(`/api/marketing/chats/${id}`);
+
+export async function translateMarketingText(texts: string[], targetLanguage: string): Promise<string[]> {
+  const response = await apiFetch<{ translations: string[] }>("/api/marketing/translate", {
+    method: "POST",
+    body: JSON.stringify({ texts, targetLanguage }),
+  });
+  return response.translations;
 }
 
 // --- Blog ---
@@ -181,7 +263,7 @@ export interface ApiMarketingDashboard {
   endDate: string;
   totals: ApiMarketingTotals;
   previous: ApiMarketingTotals;
-  daily: { date: string; pageViews: number; visitors: number; demoRequests: number }[];
+  daily: { date: string; pageViews: number; visitors: number; demoRequests: number; chatsStarted: number; conversionRate: number; pagesPerVisitor: number }[];
   topPages: ApiNamedCount[];
   topBlogPosts: ApiNamedCount[];
   sources: ApiNamedCount[];
@@ -190,10 +272,155 @@ export interface ApiMarketingDashboard {
   countries: ApiNamedCount[];
   devices: ApiNamedCount[];
   demoRequestsByStatus: ApiNamedCount[];
+  sourceQuality: ApiMarketingPerformance[];
+  campaignPerformance: ApiMarketingPerformance[];
+  landingPagePerformance: ApiMarketingPerformance[];
 }
 
-/** Marketing console only — first-party analytics for the last `days` days, in the browser's own calendar days. */
-export async function getMarketingDashboard(days: number): Promise<ApiMarketingDashboard> {
-  const tzOffsetMinutes = -new Date().getTimezoneOffset();
-  return apiFetch<ApiMarketingDashboard>(`/api/marketing/analytics?days=${days}&tzOffsetMinutes=${tzOffsetMinutes}`);
+export interface ApiMarketingPerformance { name: string; visitors: number; leads: number; converted: number; leadConversionRate: number; conversionRate: number }
+
+/** A custom date range, as "YYYY-MM-DD" local calendar days (inclusive). */
+export interface MarketingDateRange { from: string; to: string }
+
+function analyticsQuery(days: number, range?: MarketingDateRange | null): string {
+  const q = new URLSearchParams({ days: String(days), tzOffsetMinutes: String(-new Date().getTimezoneOffset()) });
+  if (range) { q.set("from", range.from); q.set("to", range.to); }
+  return q.toString();
+}
+
+/** Marketing console only — first-party analytics for the last `days` days (or a custom range), in the browser's own calendar days. */
+export async function getMarketingDashboard(days: number, range?: MarketingDateRange | null): Promise<ApiMarketingDashboard> {
+  return apiFetch<ApiMarketingDashboard>(`/api/marketing/analytics?${analyticsQuery(days, range)}`);
+}
+
+export interface ApiMarketingInsights {
+  summary: string;
+  observations: string[];
+  nextActions: string[];
+  aiPowered: boolean;
+  generatedAtUtc: string;
+}
+
+export interface ApiMarketingVisitorJourney {
+  visitor: string;
+  visitorId: string;
+  firstSeenUtc: string;
+  lastSeenUtc: string;
+  country: string | null;
+  device: string;
+  source: string;
+  campaign: string | null;
+  pageViews: number;
+  pages: { path: string; atUtc: string }[];
+  startedChat: boolean;
+  bookedDemo: boolean;
+  returnVisits: number;
+}
+export interface ApiMarketingVisitorJourneys {
+  days: number;
+  startDate: string;
+  endDate: string;
+  totalVisitors: number;
+  singlePageVisitors: number;
+  returningVisitors: number;
+  chatVisitors: number;
+  bookedVisitors: number;
+  countries: ApiNamedCount[];
+  entryPages: ApiNamedCount[];
+  exitPages: ApiNamedCount[];
+  topJourneys: ApiNamedCount[];
+  visitsByHour: ApiNamedCount[];
+  visitors: ApiMarketingVisitorJourney[];
+  page: number;
+  pageSize: number;
+}
+export interface ApiMarketingVisit {
+  startUtc: string;
+  endUtc: string;
+  source: string;
+  campaign: string | null;
+  device: string;
+  pages: { path: string; atUtc: string }[];
+  startedChat: boolean;
+}
+export interface ApiMarketingVisitorDetail {
+  visitorId: string;
+  visitor: string;
+  firstSeenUtc: string;
+  lastSeenUtc: string;
+  country: string | null;
+  pageViews: number;
+  distinctPages: number;
+  visits: ApiMarketingVisit[];
+  demoRequests: { id: string; fullName: string; academyName: string; status: string; createdAtUtc: string }[];
+  chats: ApiMarketingChatConversation[];
+}
+export interface ApiMarketingVisitorInsight {
+  summary: string;
+  interests: string[];
+  intent: "Hot" | "Warm" | "Cold";
+  intentReason: string;
+  nextActions: string[];
+  aiPowered: boolean;
+}
+/** One visitor's whole history: visits, pages in order, chats and demo requests. */
+export const getMarketingVisitorDetail = (visitorId: string) => apiFetch<ApiMarketingVisitorDetail>(`/api/marketing/analytics/visitors/${encodeURIComponent(visitorId)}`);
+/** AI read of one visitor: interests, buying intent and the next marketing actions. No names or contact details are sent. */
+export const analyzeMarketingVisitor = (visitorId: string) => apiFetch<ApiMarketingVisitorInsight>(`/api/marketing/analytics/visitors/${encodeURIComponent(visitorId)}/insight`, { method: "POST" });
+
+export interface ApiMarketingPageBehaviour { path: string; visitors: number; views: number; exits: number; exitRate: number; avgSeconds: number | null }
+export interface ApiMarketingSiteBehaviour {
+  days: number; startDate: string; endDate: string;
+  visitors: number; visits: number; singlePageVisits: number; returningVisitors: number; chatVisitors: number; bookedVisitors: number;
+  formStartedVisitors: number; formValidationFailedVisitors: number; formAbandonedVisitors: number; formSubmittedVisitors: number; whatsAppVisitors: number;
+  funnel: { name: string; visitors: number }[];
+  pages: ApiMarketingPageBehaviour[];
+  devices: ApiNamedCount[];
+  sources: ApiNamedCount[];
+}
+export interface ApiMarketingSiteImprovements {
+  summary: string;
+  behaviour: string[];
+  improvements: { page: string; problem: string; fix: string; impact: "High" | "Medium" | "Low" }[];
+  aiPowered: boolean;
+}
+function behaviourQuery(days: number, range: MarketingDateRange | null, country?: string | null) {
+  const q = new URLSearchParams(analyticsQuery(days, range));
+  if (country) q.set("country", country);
+  return q.toString();
+}
+/** Funnel to a booking, and per-page exit rate and time on page, for the Visitors page. */
+export const getMarketingSiteBehaviour = (days: number, range: MarketingDateRange | null, country?: string | null) =>
+  apiFetch<ApiMarketingSiteBehaviour>(`/api/marketing/analytics/behaviour?${behaviourQuery(days, range, country)}`);
+/** AI: how visitors behave and what to improve on the site, ranked by impact on demo bookings. */
+export const suggestSiteImprovements = (days: number, range: MarketingDateRange | null, country?: string | null) =>
+  apiFetch<ApiMarketingSiteImprovements>(`/api/marketing/analytics/improvements?${behaviourQuery(days, range, country)}`, { method: "POST" });
+
+/** Marketing console → Visitors: each anonymous visitor's pages in order, for the same window as the dashboard. */
+export async function getMarketingVisitorJourneys(days: number, range: MarketingDateRange | null, page: number, country?: string | null): Promise<ApiMarketingVisitorJourneys> {
+  const q = new URLSearchParams(analyticsQuery(days, range));
+  q.set("page", String(page));
+  q.set("pageSize", "25");
+  if (country) q.set("country", country);
+  return apiFetch<ApiMarketingVisitorJourneys>(`/api/marketing/analytics/visitors?${q}`);
+}
+
+export interface ApiMarketingContentStat { path: string; title: string | null; readers: number; views: number; wentOn: number; toBuyingPages: number; bookedDemo: number }
+export interface ApiMarketingContentPerformance { days: number; startDate: string; endDate: string; blogReaders: number; posts: ApiMarketingContentStat[] }
+export interface ApiMarketingBlogIdea { title: string; targetKeyword: string; why: string; outline: string[] }
+export interface ApiMarketingBlogIdeas { ideas: ApiMarketingBlogIdea[]; aiPowered: boolean; generatedAtUtc: string }
+/** Which blog posts readers engage with and act on, for the Blog Posts page. */
+export const getMarketingContentPerformance = (days: number) => apiFetch<ApiMarketingContentPerformance>(`/api/marketing/analytics/content?${analyticsQuery(days)}`);
+export interface ApiMarketingBlogDraft { title: string; excerpt: string; content: string; aiPowered: boolean }
+/** AI: a full draft (about 1,000 words) for one idea, in the blog's own format. Returned only — never saved or published. */
+export const writeBlogDraft = (idea: ApiMarketingBlogIdea) =>
+  apiFetch<ApiMarketingBlogDraft>("/api/marketing/analytics/blog-draft", {
+    method: "POST",
+    body: JSON.stringify({ title: idea.title, targetKeyword: idea.targetKeyword, why: idea.why, outline: idea.outline.slice(0, 8) }),
+  });
+/** AI: the next five blog post ideas, from content performance and visitors' chat questions. */
+export const suggestBlogPosts = (days: number) => apiFetch<ApiMarketingBlogIdeas>(`/api/marketing/analytics/blog-ideas?${analyticsQuery(days)}`, { method: "POST" });
+
+export async function getMarketingInsights(days: number, range?: MarketingDateRange | null): Promise<ApiMarketingInsights> {
+  return apiFetch<ApiMarketingInsights>(`/api/marketing/analytics/insights?${analyticsQuery(days, range)}`);
 }

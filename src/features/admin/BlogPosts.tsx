@@ -22,6 +22,7 @@ import {
   updateBlogPost,
   type ApiBlogPost,
 } from "@/api/marketing";
+import { BlogInsights, type BlogDraftPrefill } from "./BlogInsights";
 import { formatDate } from "@/lib/utils";
 
 const DEMO_POSTS: ApiBlogPost[] = [
@@ -70,6 +71,13 @@ export default function BlogPosts() {
 
   function openCreate() {
     setForm(EMPTY_FORM);
+    setFormError(null);
+    setCreating(true);
+  }
+
+  /** New, unpublished draft from an AI idea — its outline, or the full AI-written post — to review and edit. */
+  function openDraft(draft: BlogDraftPrefill) {
+    setForm({ ...EMPTY_FORM, title: draft.title, excerpt: draft.excerpt ?? "", content: draft.content, isPublished: false });
     setFormError(null);
     setCreating(true);
   }
@@ -232,6 +240,8 @@ export default function BlogPosts() {
           </button>
         </InlineAlert>
       )}
+
+      {live && <BlogInsights onDraft={openDraft} />}
 
       {posts.length === 0 && !error ? (
         <EmptyState icon={Newspaper} title="No blog posts yet" description="Create your first post to publish it to /blog." />

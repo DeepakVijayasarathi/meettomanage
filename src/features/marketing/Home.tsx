@@ -27,6 +27,7 @@ import { Showcase } from "./home/Showcase";
 // The offer popup loads after the page is interactive and shows once per visit.
 const PromoPopup = lazy(() => import("./home/PromoPopup").then((m) => ({ default: m.PromoPopup })));
 const ChatWidget = lazy(() => import("./HomeChat").then((m) => ({ default: m.ChatWidget })));
+const SALES_WHATSAPP_URL = "https://wa.me/919344773231?text=I%27d%20like%20to%20see%20Meet%20to%20Manage%20for%20my%20coaching%20centre.";
 
 /** One mark per item in the "built on" strip, in the same order as the copy. Cashfree has no logo in the open icon set we
  *  use, so it (like email and SMS, which are channels rather than brands) gets a plain icon instead of a made-up logo. */
@@ -149,7 +150,7 @@ export default function MarketingHome() {
     () =>
       JSON.stringify([
         { "@context": "https://schema.org", "@type": "Organization", name: "Meet to Manage", url: "https://meettomanage.cloud", logo: "https://meettomanage.cloud/logo-icon.png", email: "info@infinityuniquers.com", parentOrganization: { "@type": "Organization", name: "Infinity Uniquers" } },
-        { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", description: COPY.en.hero.sub, offers: { "@type": "Offer", priceCurrency: currency, price: fromPrice, url: "https://meettomanage.cloud/pricing" } },
+        { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", description: COPY.en.hero.sub, featureList: ["Interactive live classes", "Admissions CRM", "Batch scheduling and attendance", "Automated fee collection", "Parent mobile app", "Academy reports"], offers: { "@type": "Offer", priceCurrency: currency, price: fromPrice, url: "https://meettomanage.cloud/pricing" } },
         { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: COPY.en.faq.items.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
       ]),
     [fromPrice, currency],
@@ -160,8 +161,8 @@ export default function MarketingHome() {
       <style>{FX_CSS}</style>
       <Seo
         pageKey="home"
-        title="Meet to Manage — Online Coaching Software for Abacus, Phonics & Tuition Centres"
-        description="Automate live classes, fee collection, admissions and parent updates. Meet to Manage is the LMS and virtual classroom built for abacus, phonics and online tuition centres."
+        title="Coaching Centre Management Software | Meet to Manage"
+        description="Manage live classes, admissions, fees and parent updates in one platform built for tuition, abacus and phonics centres. Book a free demo."
         path="/"
       />
       <Helmet><script type="application/ld+json">{jsonLd}</script></Helmet>
@@ -203,6 +204,50 @@ export default function MarketingHome() {
             <HeroPicture c={c.hero.room} />
           </div>
         </section>
+
+        {/* SEARCH-INTENT LANDING BLOCK: crawlable, useful answers and direct paths to conversion. */}
+        {lang === "en" && <section aria-labelledby="academy-software-heading" className="border-y border-[#F2DFCE] bg-[#FFF8F3] py-[clamp(56px,6vw,88px)] text-[#1C1917]">
+          <div className="mx-auto max-w-[1200px] px-5">
+            <div className="grid items-end gap-8 lg:grid-cols-[1fr_auto]">
+              <div className="max-w-[780px]">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#C2410C]">Built for growing education businesses</p>
+                <h2 id="academy-software-heading" className="font-display mt-4 text-[clamp(1.75rem,3.2vw,2.75rem)] font-extrabold leading-[1.08] tracking-[-0.035em]">
+                  Coaching centre management software for classes, admissions and fees.
+                </h2>
+                <p className="mt-5 max-w-[720px] text-lg leading-relaxed text-[#57534E]">
+                  Meet to Manage connects the work that usually lives across video apps, spreadsheets and message threads. Your team follows one workflow from the first enquiry to the next paid class.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+                <Link to="/get-started" className={cn(BTN_PRIMARY, "justify-center px-7 py-3.5")}>Book a free walkthrough <ArrowRight className="h-4 w-4" /></Link>
+                <a href={SALES_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D9C9BA] bg-white px-7 py-3.5 text-sm font-bold text-[#166534] shadow-sm transition-colors hover:border-[#86C99A] hover:bg-[#F0FDF4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166534]">
+                  <MessageSquare className="h-4 w-4" /> Ask on WhatsApp
+                </a>
+              </div>
+            </div>
+
+            <div className="mt-12 grid gap-4 md:grid-cols-3">
+              <Link to="/solutions/live-class-software-for-institutes" className="group rounded-2xl border border-[#EFE3D7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(194,65,12,0.45)] transition-all hover:-translate-y-1 hover:border-[#F4B98C]">
+                <Video className="h-7 w-7 text-[#EA580C]" />
+                <h3 className="mt-5 font-display text-xl font-extrabold">Live class software</h3>
+                <p className="mt-2 leading-relaxed text-[#57534E]">Interactive video, whiteboard, activities, recordings and one-click joining from the teacher and parent portals.</p>
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]">Explore live classes <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+              </Link>
+              <Link to="/solutions/online-attendance-software-for-institutes" className="group rounded-2xl border border-[#EFE3D7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(194,65,12,0.45)] transition-all hover:-translate-y-1 hover:border-[#F4B98C]">
+                <GraduationCap className="h-7 w-7 text-[#EA580C]" />
+                <h3 className="mt-5 font-display text-xl font-extrabold">Admissions and attendance</h3>
+                <p className="mt-2 leading-relaxed text-[#57534E]">Track enquiries, demos, enrolments and attendance without losing the history in private messages or spreadsheets.</p>
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]">Explore attendance <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+              </Link>
+              <Link to="/pricing" className="group rounded-2xl border border-[#EFE3D7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(194,65,12,0.45)] transition-all hover:-translate-y-1 hover:border-[#F4B98C]">
+                <CreditCard className="h-7 w-7 text-[#EA580C]" />
+                <h3 className="mt-5 font-display text-xl font-extrabold">Fee collection and parent app</h3>
+                <p className="mt-2 leading-relaxed text-[#57534E]">Create invoices, send reminders and give parents one place for payments, schedules, updates and recordings.</p>
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]">See plans and pricing <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+              </Link>
+            </div>
+          </div>
+        </section>}
 
         {/* PROOF: what it's built on */}
         <section aria-label={c.proof.label} className="border-y border-[#EFE3D7] bg-white py-7">

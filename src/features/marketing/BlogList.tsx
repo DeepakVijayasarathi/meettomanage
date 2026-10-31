@@ -81,8 +81,8 @@ export default function BlogList() {
     <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#171B22]">
       <Seo
         pageKey="blog"
-        title="Blog — Meet to Manage"
-        description="Practical notes on running a modern academy: admissions, billing automation, scheduling and more."
+        title="Academy Growth & Management Blog | Meet to Manage"
+        description="Practical guides for coaching centres and online academies on admissions, fee collection, scheduling, parent communication and student retention."
         path="/blog"
       />
 

@@ -273,8 +273,8 @@ export default function Pricing() {
     <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#171B22]">
       <Seo
         pageKey="pricing"
-        title="Pricing — Meet to Manage"
-        description="One simple price per academy, with live classes, admissions, fee collection and a parent app included. Pay monthly or yearly."
+        title="Pricing: Academy Management Software Plans | Meet to Manage"
+        description="One simple price per academy with live classes, admissions, automatic fee collection and a parent app included. Pay monthly or yearly. Book a free demo."
         path="/pricing"
       />
 

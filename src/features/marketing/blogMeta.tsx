@@ -63,7 +63,9 @@ const BLOG_IMAGES: Record<string, string> = {
 };
 
 export function blogImage(slug: string): string | undefined {
-  return BLOG_IMAGES[slug];
+  // Campaign posts use the same slug as their checked-in WebP cover, so newly
+  // scheduled posts do not need a code release just to extend this lookup.
+  return BLOG_IMAGES[slug] ?? `/blog/${slug}.webp`;
 }
 
 /** Editorial artwork when available, with the topic treatment as a fallback. */

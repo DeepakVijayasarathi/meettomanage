@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { Link } from "react-router-dom";
 import {
   AtSign, Building2, Check, Copy, CreditCard, Database, ExternalLink, ListTree, Loader2,
-  MoreHorizontal, PauseCircle, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Smartphone, Users,
+  MoreHorizontal, PauseCircle, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Smartphone, Trash2, Users,
 } from "lucide-react";
 
 import PlatformShell, { usePlatformAdmin } from "./PlatformShell";
@@ -63,6 +63,8 @@ function TenantManagement() {
   const [draft, setDraft] = useState<Draft>(empty);
   const [retry, setRetry] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
+  const [deleting, setDeleting] = useState<Tenant | null>(null);
+  const [confirmCode, setConfirmCode] = useState("");
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -117,6 +119,15 @@ function TenantManagement() {
       + (skipped.length ? ` ${skipped.length} phone number${skipped.length === 1 ? " is" : "s are"} shared by several users and was left unregistered (those users can still sign in with their email): ${skipped.map(k => k.replace("phone:", "")).join(", ")}.` : "")
       + " You can activate this client when the import is ready.");
   }, "Could not synchronize logins.");
+
+  const confirmDelete = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!deleting) return;
+    const target = deleting;
+    await run(() => request(`/tenants/${target.id}`, token, "DELETE", { confirmCode }), "Could not delete the client.",
+      `${target.name} and all of its data were permanently deleted.`);
+    setDeleting(null); setConfirmCode("");
+  };
 
   const counts = useMemo(() => ({
     total: tenants.length,
@@ -222,6 +233,8 @@ function TenantManagement() {
                     {t.status === "Active" ? <><PauseCircle className="h-4 w-4" />Suspend client</> : <><Play className="h-4 w-4" />Activate client</>}</DropdownMenuItem>}
                   {t.status === "Suspended" && <DropdownMenuItem disabled={busy} onSelect={() => { void synchronize(t); }}><RefreshCw className="h-4 w-4" />Sync imported logins</DropdownMenuItem>}
                   {needsSetup(t) && <DropdownMenuItem disabled={busy} onSelect={() => openRetry(t)}><RotateCcw className="h-4 w-4" />Retry setup</DropdownMenuItem>}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem disabled={busy} className="text-destructive focus:text-destructive" onSelect={() => { setConfirmCode(""); setDeleting(t); }}><Trash2 className="h-4 w-4" />Delete client and all data</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -229,6 +242,27 @@ function TenantManagement() {
         })}
       </ul>
     </section>
+
+    <Dialog open={!!deleting} onOpenChange={o => { if (!busy && !o) { setDeleting(null); setConfirmCode(""); } }}>
+      <DialogContent className="max-w-md">
+        <form onSubmit={confirmDelete} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Delete {deleting?.name}?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes the client's database (students, teachers, classes, fees, recordings records, settings) and its subscription, invoices and sign-in records. It cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="delete-confirm">Type <span className="font-mono font-semibold">{deleting?.code}</span> to confirm</Label>
+            <Input id="delete-confirm" autoComplete="off" value={confirmCode} onChange={e => setConfirmCode(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => { setDeleting(null); setConfirmCode(""); }}>Cancel</Button>
+            <Button variant="destructive" disabled={busy || confirmCode !== deleting?.code}>{busy ? <Loader2 className="animate-spin" /> : <Trash2 />}Delete permanently</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
 
     <Dialog open={dialogOpen} onOpenChange={o => { if (!busy) setDialogOpen(o); }}>
       <DialogContent className="max-w-2xl">

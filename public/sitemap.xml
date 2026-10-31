@@ -1,95 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://meettomanage.cloud/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <!-- Primary conversion pages linked from every header/footer/CTA — previously missing
-       from this file even though they carry more commercial intent than /demo or /store
-       below. -->
-  <url>
-    <loc>https://meettomanage.cloud/solutions/live-class-software-for-institutes</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/solutions/online-attendance-software-for-institutes</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/pricing</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/get-started</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/store</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <!-- Not linked from any on-site nav (the "Book a Class Demo" CTA that used to point here
-       was intentionally removed — see git history), so it no longer earns a competing
-       priority against the pages above. Left in rather than removed since the URL is still
-       live and valid; lower priority/changefreq reflects that it's not a primary funnel step. -->
-  <url>
-    <loc>https://meettomanage.cloud/demo</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/blog</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/blog/signs-academy-outgrown-spreadsheets</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/blog/demo-booking-to-enrolled-family</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/blog/automatic-fee-suspension-payment-conversations</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/policy</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/customers</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/customers/the-reader-nest</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/careers</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/privacy</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
-  </url>
-  <url>
-    <loc>https://meettomanage.cloud/legal/terms</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
-  </url>
-</urlset>
+<!-- Sitemap index: fixed site pages, plus every published blog post. sitemap-blog.xml is
+     generated live by the API (proxied by nginx.conf), so a scheduled post is listed the
+     moment it goes live without a redeploy. -->
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>https://meettomanage.cloud/sitemap-pages.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>https://meettomanage.cloud/sitemap-blog.xml</loc>
+  </sitemap>
+</sitemapindex>

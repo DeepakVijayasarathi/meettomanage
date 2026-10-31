@@ -47,8 +47,8 @@ export default function Demo() {
     <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#171B22]">
       <Seo
         pageKey="demo"
-        title="Book a Free Demo — Meet to Manage"
-        description="Book a free demo class and see how Meet to Manage's live classroom, scheduling and billing work together."
+        title="Book a Free Live Demo Class | Meet to Manage"
+        description="Book a free live demo class and see how lessons run in the Meet to Manage virtual classroom, with whiteboard, quizzes and recordings. No account needed."
         path="/demo"
       />
 

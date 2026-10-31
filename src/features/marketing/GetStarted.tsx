@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, CheckCircle2, CreditCard, Landmark, Loader2, Mail, MessageCircle, MessageSquare, Phone, User, Users, Video, type LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import { MarketingNav } from "./MarketingNav";
 import { CTA_DARK, CTA_ORANGE } from "./styles";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
+import { marketingAttribution, marketingVisitorId, trackDemoBooked, trackMarketingEvent } from "@/lib/analytics";
+import { markDemoBooked } from "./chatTeaser";
 
 const T = {
   en: {
@@ -186,11 +188,36 @@ export default function GetStarted() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const startedRef = useRef(false);
+  const submittedRef = useRef(false);
+
+  function markFormStarted() {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    trackMarketingEvent("form_started");
+  }
+
+  useEffect(() => {
+    const abandoned = () => {
+      if (startedRef.current && !submittedRef.current) trackMarketingEvent("form_abandoned");
+    };
+    window.addEventListener("pagehide", abandoned);
+    return () => {
+      window.removeEventListener("pagehide", abandoned);
+      abandoned();
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.fullName.trim() || (!isCoach && !form.academyName.trim())) {
-      setError(isCoach ? t.errorCoach : t.errorAcademy);
+    if (!form.fullName.trim()) {
+      trackMarketingEvent("form_validation_failed");
+      setError(t.errorCoach);
+      return;
+    }
+    if (!form.workEmail.trim() && !form.phone.trim()) {
+      trackMarketingEvent("form_validation_failed");
+      setError(lang === "en" ? "Enter an email address or WhatsApp number so we can contact you." : "أدخل بريدًا إلكترونيًا أو رقم واتساب لنتواصل معك.");
       return;
     }
 
@@ -202,13 +229,20 @@ export default function GetStarted() {
     setSubmitting(true);
     setError(null);
     try {
+      const attribution = marketingAttribution();
       await requestPlatformDemo({
         fullName: form.fullName,
         workEmail: form.workEmail,
         phone: form.phone,
         academyName: form.academyName.trim() || t.fallbackName,
         message: form.message || undefined,
+        visitorId: marketingVisitorId(), source: attribution.utmSource ?? attribution.referrerHost,
+        medium: attribution.utmMedium, campaign: attribution.utmCampaign, landingPath: window.location.pathname,
       });
+      markDemoBooked();
+      submittedRef.current = true;
+      trackMarketingEvent("form_submitted");
+      void trackDemoBooked(window.location.pathname);
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.submitError);
@@ -272,7 +306,7 @@ export default function GetStarted() {
                 <>
                   <h2 className="font-display text-[clamp(1.6rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em] text-[#1C1917] rtl:tracking-normal">{pc.formTitle}</h2>
                   <p className="mt-2 max-w-[44ch] text-[15px] leading-relaxed text-[#57534E]">{pc.formSub}</p>
-                  <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+                  <form onSubmit={handleSubmit} onFocus={markFormStarted} className="mt-6 flex flex-col gap-4">
                     <div className="grid gap-1.5">
                       <Label htmlFor="gs-fullName" className="font-semibold text-[#1C1917]">{t.yourName} <span aria-hidden className="text-[#C2410C]">*</span></Label>
                       <Field icon={User}>
@@ -281,22 +315,22 @@ export default function GetStarted() {
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="grid gap-1.5">
-                        <Label htmlFor="gs-workEmail" className="font-semibold text-[#1C1917]">{t.workEmail} <span aria-hidden className="text-[#C2410C]">*</span></Label>
+                        <Label htmlFor="gs-workEmail" className="font-semibold text-[#1C1917]">{t.workEmail} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
                         <Field icon={Mail}>
-                          <Input id="gs-workEmail" type="email" required className={FIELD} value={form.workEmail} onChange={(e) => setForm((f) => ({ ...f, workEmail: e.target.value }))} placeholder={t.emailPlaceholder} />
+                          <Input id="gs-workEmail" type="email" autoComplete="email" className={FIELD} value={form.workEmail} onChange={(e) => setForm((f) => ({ ...f, workEmail: e.target.value }))} placeholder={t.emailPlaceholder} />
                         </Field>
                       </div>
                       <div className="grid gap-1.5">
-                        <Label htmlFor="gs-phone" className="font-semibold text-[#1C1917]">{t.phone} <span aria-hidden className="text-[#C2410C]">*</span></Label>
+                        <Label htmlFor="gs-phone" className="font-semibold text-[#1C1917]">{lang === "en" ? "WhatsApp number" : t.phone} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
                         <Field icon={Phone}>
-                          <Input id="gs-phone" type="tel" required className={FIELD} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t.phonePlaceholder} />
+                          <Input id="gs-phone" type="tel" autoComplete="tel" className={FIELD} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t.phonePlaceholder} />
                         </Field>
                       </div>
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="gs-academyName" className="font-semibold text-[#1C1917]">{isCoach ? t.academyNameCoach : t.academyNameAcademy}{!isCoach && <span aria-hidden className="text-[#C2410C]"> *</span>}</Label>
+                      <Label htmlFor="gs-academyName" className="font-semibold text-[#1C1917]">{isCoach ? t.academyNameCoach : t.academyNameAcademy} {!isCoach && <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span>}</Label>
                       <Field icon={Landmark}>
-                        <Input id="gs-academyName" required={!isCoach} className={FIELD} value={form.academyName} onChange={(e) => setForm((f) => ({ ...f, academyName: e.target.value }))} placeholder={isCoach ? t.academyPlaceholderCoach : t.academyPlaceholderAcademy} />
+                        <Input id="gs-academyName" autoComplete="organization" className={FIELD} value={form.academyName} onChange={(e) => setForm((f) => ({ ...f, academyName: e.target.value }))} placeholder={isCoach ? t.academyPlaceholderCoach : t.academyPlaceholderAcademy} />
                       </Field>
                     </div>
                     <div className="grid gap-1.5">
@@ -310,6 +344,18 @@ export default function GetStarted() {
                     <button type="submit" disabled={submitting} className={cn(CTA_ORANGE, "mt-1 h-14 w-full !rounded-2xl text-base normal-case tracking-normal shadow-[0_16px_30px_-14px_rgba(194,65,12,0.8)]")}>
                       {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{t.requestDemo} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
                     </button>
+                    <p className="text-center text-xs leading-relaxed text-[#78716C]">
+                      {lang === "en" ? "We only use these details to arrange your walkthrough." : "نستخدم هذه التفاصيل فقط لترتيب العرض التوضيحي."}
+                    </p>
+                    <a
+                      href="https://wa.me/919344773231?text=I%27d%20like%20a%20free%20Meet%20to%20Manage%20walkthrough."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => trackMarketingEvent("whatsapp_clicked")}
+                      className="inline-flex items-center justify-center gap-2 text-sm font-bold text-[#166534] underline decoration-[#22C55E]/40 underline-offset-4 hover:decoration-[#166534]"
+                    >
+                      <MessageSquare className="h-4 w-4" /> {lang === "en" ? "Prefer WhatsApp? Chat with us" : "تفضل واتساب؟ تحدث معنا"}
+                    </a>
                   </form>
                 </>
               )}

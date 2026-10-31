@@ -10,6 +10,7 @@
  * ignored rather than injected.
  */
 import { apiEnabled, apiFetch } from "@/lib/api";
+import { countryFromTimeZone } from "@/lib/timezoneCountry";
 import { getPublicSettings, toSettingsMap } from "@/api/settings";
 
 export const ANALYTICS_KEYS = {
@@ -121,7 +122,18 @@ export type MarketingAttribution = {
   utmCampaign?: string;
 };
 
+/**
+ * Where the visitor is, without an IP address. The browser's time zone is the reliable signal:
+ * its language is not — most Indian browsers say "en-US", which used to count them as US
+ * visitors. The language's region is only a fallback for zones that name no country (UTC).
+ */
 export function browserCountry(): string | undefined {
+  try {
+    const fromZone = countryFromTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    if (fromZone) return fromZone;
+  } catch {
+    /* fall through to the language */
+  }
   try {
     const region = new Intl.Locale(navigator.language).region;
     return region?.toUpperCase();
@@ -131,7 +143,7 @@ export function browserCountry(): string | undefined {
 }
 
 /** Random per-browser id for counting unique visitors on the first-party dashboard; identifies no one. */
-function visitorId(): string {
+export function marketingVisitorId(): string {
   try {
     let id = localStorage.getItem(VISITOR_KEY);
     if (!id) {
@@ -164,7 +176,7 @@ export function marketingAttribution(): MarketingAttribution {
     utmMedium: params.get("utm_medium") ?? undefined,
     utmCampaign: params.get("utm_campaign") ?? undefined,
   };
-  const hasCurrent = Object.values(current).some(Boolean);
+  const hasCurrent = Boolean(referrerHost || current.utmSource || current.utmMedium || current.utmCampaign);
   try {
     if (hasCurrent) {
       sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(current));
@@ -178,13 +190,28 @@ export function marketingAttribution(): MarketingAttribution {
   return current;
 }
 
+/**
+ * True in a browser driven by automation (Puppeteer, Playwright, Selenium — SEO audits and
+ * scrapers). They often send a normal Chrome user agent, so the server's bot filter misses
+ * them; one such crawl once added 36 "US visitors" in an hour, one page each.
+ */
+function isAutomatedBrowser(): boolean {
+  try {
+    return navigator.webdriver === true;
+  } catch {
+    return false;
+  }
+}
+
 /** First-party beacon to the marketing console's own dashboard; never blocks or throws. */
-function beacon(type: "page_view" | "chat_started", path: string) {
-  if (!apiEnabled()) return;
+export type MarketingEventType = "page_view" | "chat_started" | "form_started" | "form_validation_failed" | "form_abandoned" | "form_submitted" | "whatsapp_clicked";
+
+function beacon(type: MarketingEventType, path: string) {
+  if (!apiEnabled() || isAutomatedBrowser()) return;
   void apiFetch<void>("/api/marketing/track", {
     method: "POST",
     keepalive: true,
-    body: JSON.stringify({ type, path, visitorId: visitorId(), country: browserCountry(), ...marketingAttribution() }),
+    body: JSON.stringify({ type, path, visitorId: marketingVisitorId(), country: browserCountry(), ...marketingAttribution() }),
   }).catch(() => {
     /* analytics must never get in a visitor's way */
   });
@@ -193,6 +220,11 @@ function beacon(type: "page_view" | "chat_started", path: string) {
 /** The visitor sent their first message to the sales chat assistant. */
 export function trackChatStarted(): void {
   beacon("chat_started", window.location.pathname);
+}
+
+/** Anonymous first-party funnel signal for the Marketing Console. */
+export function trackMarketingEvent(type: Exclude<MarketingEventType, "page_view" | "chat_started">, path = window.location.pathname): void {
+  beacon(type, path);
 }
 
 /** Called by each public marketing page (via <Seo>) once it renders. */
@@ -205,4 +237,15 @@ export async function trackMarketingPageView(path: string, title: string): Promi
   window.gtag?.("event", "page_view", { page_path: path, page_location: location, page_title: title });
   if (ids.gtm) window.dataLayer?.push({ event: "marketing_page_view", page_path: path, page_title: title });
   window.fbq?.("track", "PageView");
+}
+
+/** A real platform-demo request was saved. The first-party dashboard counts the request itself;
+ * these standard events make the same conversion visible in configured ad/analytics tools. */
+export async function trackDemoBooked(path: string): Promise<void> {
+  await load();
+  if (!ids.ga && !ids.gtm && !ids.pixel) return;
+  install();
+  window.gtag?.("event", "generate_lead", { lead_source: "website", page_path: path });
+  if (ids.gtm) window.dataLayer?.push({ event: "marketing_generate_lead", page_path: path });
+  window.fbq?.("track", "Lead");
 }
