@@ -58,6 +58,9 @@ const CaseStudyReaderNest = lazy(() => import("@/features/marketing/CaseStudyRea
 const CaseStudyAlphabet = lazy(() => import("@/features/marketing/CaseStudyAlphabet"));
 const Careers = lazy(() => import("@/features/marketing/Careers"));
 const Docs = lazy(() => import("@/features/marketing/Docs"));
+const NICHE_SLUGS = ["english-grammar-class-software", "art-class-software", "yoga-class-software", "abacus-class-software"];
+const NichePages = NICHE_SLUGS.map((_, i) => lazy(() => import("@/features/marketing/NicheSolutions").then((m) => ({ default: m.NICHE_ROUTES[i].Page }))));
+const ClassplusAlternative = lazy(() => import("@/features/marketing/ClassplusAlternative"));
 const LiveClassSolution = lazy(() => import("@/features/marketing/LiveClassSolution"));
 const AttendanceSolution = lazy(() => import("@/features/marketing/AttendanceSolution"));
 const FeeManagementSolution = lazy(() => import("@/features/marketing/FeeManagementSolution"));
@@ -230,6 +233,8 @@ export default function App() {
             <Route path="/solutions/fee-management-software-for-coaching-centres" element={<MarketingTranslationLayer><FeeManagementSolution /></MarketingTranslationLayer>} />
             <Route path="/solutions/phonics-live-class-software" element={<MarketingTranslationLayer><PhonicsSolution /></MarketingTranslationLayer>} />
             <Route path="/docs" element={<MarketingTranslationLayer><Docs /></MarketingTranslationLayer>} />
+            <Route path="/alternatives/classplus-alternative-for-coaching-centres" element={<MarketingTranslationLayer><ClassplusAlternative /></MarketingTranslationLayer>} />
+            {NICHE_SLUGS.map((slug, i) => { const Page = NichePages[i]; return <Route key={slug} path={`/solutions/${slug}`} element={<MarketingTranslationLayer><Page /></MarketingTranslationLayer>} />; })}
             <Route path="/careers" element={<MarketingTranslationLayer><Careers /></MarketingTranslationLayer>} />
             <Route path="/privacy" element={<MarketingTranslationLayer><PlatformPrivacy /></MarketingTranslationLayer>} />
             <Route path="/legal/terms" element={<MarketingTranslationLayer><PlatformTerms /></MarketingTranslationLayer>} />
