@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Building2, CheckCircle2, Layers, Minus, Rocket } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, Layers, MessageCircle, Minus, Rocket } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { saasPublic, type PublicPlan } from "@/api/saas";
 import { apiEnabled } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
+import { trackMarketingEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { detectMarketCurrency, formatMarketPrice, planPrice } from "@/lib/region";
 import { MarketingHero } from "./MarketingHero";
@@ -79,7 +80,10 @@ const T = {
       feature_custom_domain: "Custom domain",
       feature_api_access: "API access",
     } as Record<string, string>,
-    planCta: "Request a Demo",
+    planCta: "Book free walkthrough",
+    reassure: "Free 30-minute platform walkthrough. No payment details.",
+    trial: { cta: (n: number) => `Start ${n}-day free trial`, note: "No card needed.", or: "Or book a free walkthrough" },
+    help: { title: "Not sure which plan fits your academy?", body: "Tell us your student count and we'll recommend one.", cta: "Chat on WhatsApp" },
     own: {
       eyebrow: "Own it outright",
       name: "Own Brand, Own Software",
@@ -131,6 +135,9 @@ const T = {
       feature_api_access: "الوصول عبر API",
     } as Record<string, string>,
     planCta: "اطلب عرضًا توضيحيًا",
+    reassure: "جولة مجانية لمدة 30 دقيقة. بلا تفاصيل دفع.",
+    trial: { cta: (n: number) => `ابدأ تجربة مجانية لمدة ${n} يومًا`, note: "لا حاجة لبطاقة.", or: "أو احجز جولة مجانية" },
+    help: { title: "لست متأكدًا أي خطة تناسب أكاديميتك؟", body: "أخبرنا بعدد طلابك وسنوصي لك بخطة.", cta: "تحدث عبر واتساب" },
     own: {
       eyebrow: "امتلكه بالكامل",
       name: "علامتك، برنامجك",
@@ -188,10 +195,13 @@ interface CardProps {
   ctaLabel: string;
   ctaTo: string;
   popularLabel: string;
+  note?: string;
+  secondary?: { label: string; to: string };
+  onCtaClick?: () => void;
   children: React.ReactNode;
 }
 
-function PlanCard({ eyebrow, name, price, priceNote, badge, description, highlighted, icon: Icon, ctaLabel, ctaTo, popularLabel, children }: CardProps) {
+function PlanCard({ eyebrow, name, price, priceNote, badge, description, highlighted, icon: Icon, ctaLabel, ctaTo, popularLabel, note, secondary, onCtaClick, children }: CardProps) {
   return (
     <div className={cn(CARD, "relative flex flex-col overflow-hidden p-8 sm:p-9", highlighted && "lg:-mt-4 lg:pb-12")}>
       {highlighted && <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ background: ACCENT_GRADIENT }} />}
@@ -206,9 +216,11 @@ function PlanCard({ eyebrow, name, price, priceNote, badge, description, highlig
       {badge && <p className="mt-3 inline-flex w-fit items-center rounded-full bg-[#FFF3EA] px-3 py-1.5 text-xs font-semibold text-[#C2410C]">{badge}</p>}
       {description && <p className="mt-4 text-sm leading-relaxed text-[#333]">{description}</p>}
       <div className="mt-6 flex flex-1 flex-col gap-5 border-t border-[#D9E1F0] pt-6">{children}</div>
-      <Link to={ctaTo} className={cn(highlighted ? CTA_ORANGE : CTA_DARK, "mt-8 w-full !rounded-2xl")}>
+      <Link to={ctaTo} onClick={onCtaClick} className={cn(highlighted ? CTA_ORANGE : CTA_DARK, "mt-8 w-full !rounded-2xl")}>
         {ctaLabel} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
       </Link>
+      {note && <p className="mt-3 text-center text-xs text-[#5B6472]">{note}</p>}
+      {secondary && <Link to={secondary.to} className="mt-3 text-center text-sm font-semibold text-[#C2410C] hover:underline">{secondary.label}</Link>}
     </div>
   );
 }
@@ -235,6 +247,8 @@ export default function Pricing() {
   const [plans, setPlans] = useState<PublicPlan[]>(FALLBACK_PLANS);
   const [loading, setLoading] = useState(apiEnabled());
   const currency = useMemo(detectMarketCurrency, []);
+  // Self-service trial length comes from the same setting the /signup page uses; 0 or disabled hides the trial button.
+  const [trialDays, setTrialDays] = useState(0);
 
   // The billing system is the source of truth for prices and limits; the fallback only shows if it can't be reached.
   useEffect(() => {
@@ -244,6 +258,15 @@ export default function Pricing() {
       .then((list) => { if (active && list.length > 0) setPlans(list); })
       .catch(() => undefined)
       .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!apiEnabled()) return;
+    let active = true;
+    saasPublic.settings()
+      .then((s) => { if (active && s.enabled && s.trialDays > 0) setTrialDays(s.trialDays); })
+      .catch(() => undefined);
     return () => { active = false; };
   }, []);
 
@@ -296,6 +319,7 @@ export default function Pricing() {
             const year = planPrice(plan, "Year", currency);
             const chosen = cycle === "Year" && year ? year : month ?? year!;
             const shownCycle: Cycle = chosen === year ? "Year" : "Month";
+            const walkthroughTo = `/get-started?plan=${encodeURIComponent(plan.code)}&cycle=${shownCycle}`;
             const freeMonths = month && year ? Math.round(12 - year.amount / month.amount) : 0;
             return (
               <PlanCard
@@ -308,9 +332,11 @@ export default function Pricing() {
                 badge={shownCycle === "Year" && freeMonths > 0 ? t.monthsFree(freeMonths) : undefined}
                 description={plan.description}
                 highlighted={plan.code === popularCode}
-                ctaLabel={t.planCta}
-                ctaTo="/get-started"
+                ctaLabel={trialDays > 0 ? t.trial.cta(trialDays) : t.planCta}
+                ctaTo={trialDays > 0 ? "/signup" : walkthroughTo}
                 popularLabel={t.popular}
+                note={trialDays > 0 ? t.trial.note : t.reassure}
+                secondary={trialDays > 0 ? { label: t.trial.or, to: walkthroughTo } : undefined}
               >
                 <div>
                   <p className="mb-3 text-xs font-bold uppercase tracking-[0.08em] text-[#5B6472] rtl:tracking-normal">{t.limitsTitle}</p>
@@ -349,7 +375,21 @@ export default function Pricing() {
           </PlanCard>
         </div>
 
-        <div className="mx-auto mt-14 flex max-w-2xl flex-col gap-2 text-center text-sm text-[#5B6472]">
+        <div className="mx-auto mt-12 flex max-w-2xl flex-col items-center gap-3 rounded-2xl border border-[#EFE3D7] bg-[#FFF8F2] px-6 py-6 text-center">
+          <p className="font-display text-lg font-extrabold text-[#111] rtl:tracking-normal">{t.help.title}</p>
+          <p className="text-sm text-[#5B6472]">{t.help.body}</p>
+          <a
+            href="https://wa.me/919344773231?text=Which%20Meet%20to%20Manage%20plan%20fits%20my%20academy%3F"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackMarketingEvent("whatsapp_clicked")}
+            className={cn(CTA_DARK, "!rounded-2xl")}
+          >
+            <MessageCircle className="h-4 w-4" /> {t.help.cta}
+          </a>
+        </div>
+
+        <div className="mx-auto mt-10 flex max-w-2xl flex-col gap-2 text-center text-sm text-[#5B6472]">
           <p>{t.notes[0]}</p>
           <p>{t.notes[1]}</p>
           <p>

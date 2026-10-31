@@ -181,7 +181,12 @@ export default function GetStarted() {
   const [form, setForm] = useState(() => {
     const contact = (searchParams.get("contact") ?? "").trim().slice(0, 120);
     // ?offer=ngo comes from the homepage's "Free for NGOs" banner; the team confirms eligibility from this note.
-    const base = searchParams.get("offer") === "ngo" ? { ...EMPTY_FORM, message: "NGO / non-profit offer: please confirm eligibility and next steps." } : EMPTY_FORM;
+    // ?plan=&cycle= come from the pricing page, so the team knows which plan the visitor was weighing.
+    const plan = (searchParams.get("plan") ?? "").replace(/[^a-z0-9-]/gi, "").slice(0, 40);
+    const cycle = searchParams.get("cycle") === "Year" ? "yearly" : "monthly";
+    const base = searchParams.get("offer") === "ngo"
+      ? { ...EMPTY_FORM, message: "NGO / non-profit offer: please confirm eligibility and next steps." }
+      : plan ? { ...EMPTY_FORM, message: `Interested in the ${plan} plan (${cycle} billing).` } : EMPTY_FORM;
     if (!contact) return base;
     return contact.includes("@") ? { ...base, workEmail: contact } : { ...base, phone: contact };
   });
