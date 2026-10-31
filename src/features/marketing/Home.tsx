@@ -276,22 +276,29 @@ export default function MarketingHome() {
           </div>
         </section>}
 
-        {/* NGO OFFER: the designed banner on wider English screens; the phone picture on small English screens; live text in Arabic, where the pictures' baked-in English would not read */}
+        {/* NGO OFFER: mobile artwork with readable live copy; designed desktop banner in English. */}
         <section aria-labelledby="ngo-offer" className="bg-white pt-[clamp(40px,5vw,72px)]">
           <div className="mx-auto max-w-[1200px] px-5">
             {lang === "en" && (
               <Reveal className="md:hidden">
                 <Link
                   to="/get-started?offer=ngo"
-                  className="block overflow-hidden rounded-3xl shadow-[0_24px_60px_-30px_rgba(194,65,12,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2410C]"
+                  className="group block overflow-hidden rounded-3xl bg-[#C2410C] text-white shadow-[0_24px_60px_-30px_rgba(194,65,12,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2410C]"
                 >
+                  <div className="p-6 sm:p-8">
+                    <p className="text-xs font-bold uppercase tracking-wider text-orange-50">{c.ngo.eyebrow}</p>
+                    <h2 id="ngo-offer-mobile" className="font-display mt-4 text-3xl font-extrabold leading-tight tracking-tight">Free for <span className="text-[#FEF08A]">NGOs.</span></h2>
+                    <p className="mt-3 text-base leading-relaxed text-orange-50">{c.ngo.body}</p>
+                    <p className="mt-3 text-sm font-semibold text-white">{c.ngo.note}</p>
+                    <span className="mt-5 inline-flex min-h-12 items-center gap-3 rounded-full bg-white px-5 py-3 text-sm font-bold text-[#C2410C]">{c.ngo.cta} <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                  </div>
                   <img
-                    src="/product/ngo-offer-mobile-768.webp"
-                    srcSet="/product/ngo-offer-mobile-768.webp 768w, /product/ngo-offer-mobile.webp 1536w"
-                    sizes="100vw"
-                    alt={`${c.ngo.heading} ${c.ngo.body} ${c.ngo.note} ${c.ngo.cta}`}
-                    width={1536}
-                    height={1024}
+                    src="/product/ngo-mobile-v2.webp"
+                    srcSet="/product/ngo-mobile-v2-480.webp 480w, /product/ngo-mobile-v2.webp 960w"
+                    sizes="(min-width: 768px) 0px, calc(100vw - 40px)"
+                    alt="Volunteer teacher helping three children learn together using a laptop."
+                    width={960}
+                    height={720}
                     loading="lazy"
                     decoding="async"
                     className="block h-auto w-full"
@@ -303,18 +310,25 @@ export default function MarketingHome() {
               <Reveal className="hidden md:block">
                 <Link
                   to="/get-started?offer=ngo"
-                  className="group block overflow-hidden rounded-3xl shadow-[0_24px_60px_-30px_rgba(194,65,12,0.55)] transition-transform duration-300 hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2410C]"
+                  className="group relative isolate block overflow-hidden rounded-3xl bg-[#C2410C] text-white shadow-[0_24px_60px_-30px_rgba(194,65,12,0.55)] transition-transform duration-300 hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2410C]"
                 >
+                  <div className="relative z-10 w-[48%] p-8 lg:p-10">
+                    <p className="text-xs font-bold uppercase tracking-wider text-orange-50">{c.ngo.eyebrow}</p>
+                    <h2 className="font-display mt-3 text-4xl font-extrabold leading-tight tracking-tight">Free for <span className="text-[#FEF08A]">NGOs.</span></h2>
+                    <p className="mt-3 text-base leading-relaxed text-orange-50">{c.ngo.body}</p>
+                    <p className="mt-3 text-sm font-semibold">{c.ngo.note}</p>
+                    <span className="mt-5 inline-flex min-h-12 items-center gap-3 rounded-full bg-white px-5 py-3 text-sm font-bold text-[#C2410C]">{c.ngo.cta} <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                  </div>
                   <img
-                    src="/product/ngo-offer.webp"
-                    srcSet="/product/ngo-offer-1100.webp 1100w, /product/ngo-offer.webp 2055w"
-                    sizes="1160px"
-                    alt={`${c.ngo.heading} ${c.ngo.body} ${c.ngo.note} ${c.ngo.cta}`}
-                    width={2055}
-                    height={500}
+                    src="/product/ngo-children-desktop.webp"
+                    srcSet="/product/ngo-children-desktop-1200.webp 1200w, /product/ngo-children-desktop.webp 2170w"
+                    sizes="(min-width: 1200px) 1160px, calc(100vw - 40px)"
+                    alt="Three children learning together using a laptop."
+                    width={2170}
+                    height={725}
                     loading="lazy"
                     decoding="async"
-                    className="block h-auto w-full"
+                    className="absolute inset-x-0 top-0 -z-10 h-[116%] w-full object-cover object-right-top"
                   />
                 </Link>
               </Reveal>

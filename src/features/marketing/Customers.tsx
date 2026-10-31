@@ -5,21 +5,26 @@ import { BTN_PRIMARY } from "./MarketingNav";
 import { PageShell } from "./PageShell";
 import { PricingLink } from "./PricingLink";
 
-/** Customer stories. Only stories a customer has agreed to, and facts we can stand behind, belong here. */
+/** Customer stories and profiles based on available customer details. */
 const STORIES = [
   {
     slug: "the-reader-nest",
     name: "The Reader Nest",
     logo: "/clients/thereader.png",
     image: "/clients/reader-nest/reading-photo.webp",
+    imageAlt: "AI-generated illustrative scene of a mother helping a child read",
     teaser: "Every great classroom has a story behind it. Discover how The Reader Nest partnered with MeetToManage to build a learning platform around educators, students and parents.",
     tags: ["Phonics", "Public speaking", "One-to-one and group classes"],
   },
-];
-
-/** Customers without a published story yet: logo and what they teach only, nothing we can't stand behind. */
-const CLIENTS = [
-  { name: "Alphabet", logo: "/clients/alphabet.webp", line: "Jolly Phonics & Storytelling", tags: ["Jolly Phonics", "Storytelling"] },
+  {
+    slug: "alphabet",
+    name: "Alphabet",
+    logo: "/clients/alphabet.webp",
+    image: "/images/landing/phonics-class.webp",
+    imageAlt: "AI-generated illustrative scene of a phonics lesson",
+    teaser: "A world of sounds, stories and possibility. Meet Alphabet, a Jolly Phonics and storytelling academy in the Meet to Manage customer community.",
+    tags: ["Jolly Phonics", "Storytelling"],
+  },
 ];
 
 export default function Customers() {
@@ -46,8 +51,8 @@ export default function Customers() {
           {STORIES.map((s) => (
             <li key={s.slug}>
               <Link to={`/customers/${s.slug}`} className="group flex h-full flex-col rounded-2xl border border-[#EFE3D7] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#F2B98A] hover:shadow-[0_24px_50px_-28px_rgba(194,65,12,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C]">
-                <img src={s.image} alt="AI-generated illustrative scene of a mother helping a child read" width={1536} height={1024} loading="lazy" className="mb-6 aspect-[16/10] w-full rounded-xl object-cover object-[center_40%]" />
-                <img src={s.logo} alt={`${s.name} logo`} width={56} height={56} loading="lazy" className="h-14 w-14 rounded-full object-cover ring-1 ring-black/10" />
+                <img src={s.image} alt={s.imageAlt} width={1536} height={1024} loading="lazy" className="mb-6 aspect-[16/10] w-full rounded-xl object-cover object-[center_40%]" />
+                <img src={s.logo} alt={`${s.name} logo`} width={s.slug === "alphabet" ? 112 : 56} height={56} loading="lazy" className={cn("h-14 ring-1 ring-black/10", s.slug === "alphabet" ? "w-28 rounded-lg object-contain" : "w-14 rounded-full object-cover")} />
                 <h2 className="font-display mt-5 text-xl font-extrabold tracking-[-0.02em]">{s.name}</h2>
                 <p className="mt-2 flex-1 text-[15px] leading-relaxed text-[#57534E]">{s.teaser}</p>
                 <ul className="mt-4 flex flex-wrap gap-2">
@@ -55,18 +60,6 @@ export default function Customers() {
                 </ul>
                 <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-[#C2410C]">Read the story <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 rtl:-scale-x-100" /></span>
               </Link>
-            </li>
-          ))}
-          {CLIENTS.map((c) => (
-            <li key={c.name} className="flex h-full flex-col rounded-2xl border border-[#EFE3D7] bg-white p-7">
-              <div className="mb-6 flex aspect-[16/10] w-full items-center justify-center rounded-xl bg-white ring-1 ring-black/5">
-                <img src={c.logo} alt={`${c.name} — ${c.line} logo`} width={800} height={400} loading="lazy" className="h-auto w-4/5 object-contain" />
-              </div>
-              <h2 className="font-display text-xl font-extrabold tracking-[-0.02em]">{c.name}</h2>
-              <p className="mt-2 flex-1 text-[15px] leading-relaxed text-[#57534E]">{c.line}</p>
-              <ul className="mt-4 flex flex-wrap gap-2">
-                {c.tags.map((t) => <li key={t} className="rounded-full bg-[#FFEBDD] px-3 py-1 text-xs font-semibold text-[#9A3412]">{t}</li>)}
-              </ul>
             </li>
           ))}
           <li className="flex flex-col justify-center rounded-2xl border border-dashed border-[#E0CBB8] bg-[#FFF6EE] p-7">

@@ -1,5 +1,6 @@
 // Public marketing pages that get their own prerendered HTML. Keep in sync with each page's <Seo> and public/sitemap.xml.
 export const PAGES = [
+  { path: "/customers/alphabet", type: "article", title: "Alphabet Customer Story - Meet to Manage", description: "Meet Alphabet, a Jolly Phonics and storytelling academy in the Meet to Manage customer community. Explore its teaching focus and the tools built for educators." },
   { path: "/pricing", title: "Pricing: Academy Management Software Plans | Meet to Manage", description: "One simple price per academy with live classes, admissions, automatic fee collection and a parent app included. Pay monthly or yearly. Book a free demo." },
   { path: "/get-started", title: "Request a Demo — Meet to Manage", description: "Running an academy? See how Meet to Manage's live classroom, scheduling, admissions and billing work together — request a platform demo." },
   { path: "/demo", title: "Book a Free Live Demo Class | Meet to Manage", description: "Book a free live demo class and see how lessons run in the Meet to Manage virtual classroom, with whiteboard, quizzes and recordings. No account needed." },

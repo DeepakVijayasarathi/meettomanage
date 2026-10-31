@@ -55,6 +55,7 @@ const AdmissionPayment = lazy(() => import("@/features/public/AdmissionPayment")
 const Terms = lazy(() => import("@/features/public/Terms"));
 const Customers = lazy(() => import("@/features/marketing/Customers"));
 const CaseStudyReaderNest = lazy(() => import("@/features/marketing/CaseStudyReaderNest"));
+const CaseStudyAlphabet = lazy(() => import("@/features/marketing/CaseStudyAlphabet"));
 const Careers = lazy(() => import("@/features/marketing/Careers"));
 const LiveClassSolution = lazy(() => import("@/features/marketing/LiveClassSolution"));
 const AttendanceSolution = lazy(() => import("@/features/marketing/AttendanceSolution"));
@@ -222,6 +223,7 @@ export default function App() {
             <Route path="/policy" element={<MarketingTranslationLayer><PrivacyPolicy /></MarketingTranslationLayer>} />
             <Route path="/customers" element={<MarketingTranslationLayer><Customers /></MarketingTranslationLayer>} />
             <Route path="/customers/the-reader-nest" element={<MarketingTranslationLayer><CaseStudyReaderNest /></MarketingTranslationLayer>} />
+            <Route path="/customers/alphabet" element={<MarketingTranslationLayer><CaseStudyAlphabet /></MarketingTranslationLayer>} />
             <Route path="/solutions/live-class-software-for-institutes" element={<MarketingTranslationLayer><LiveClassSolution /></MarketingTranslationLayer>} />
             <Route path="/solutions/online-attendance-software-for-institutes" element={<MarketingTranslationLayer><AttendanceSolution /></MarketingTranslationLayer>} />
             <Route path="/solutions/fee-management-software-for-coaching-centres" element={<MarketingTranslationLayer><FeeManagementSolution /></MarketingTranslationLayer>} />
