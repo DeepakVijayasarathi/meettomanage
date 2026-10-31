@@ -81,14 +81,6 @@ ${text}`.slice(-1000);
   return { reply: res.reply, bookedName: res.bookedName ?? null };
 }
 
-export async function translateMarketingText(texts: string[], targetLanguage: string): Promise<string[]> {
-  const response = await apiFetch<{ translations: string[] }>("/api/marketing/translate", {
-    method: "POST",
-    body: JSON.stringify({ texts, targetLanguage }),
-  });
-  return response.translations;
-}
-
 // --- Blog ---
 
 export interface ApiBlogPostSummary {

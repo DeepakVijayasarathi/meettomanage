@@ -1,6 +1,12 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
+# Headless Chromium for scripts/prerender-body.mjs, which renders the public marketing pages into the
+# build output so crawlers read real page text. If it is missing or fails, the build still succeeds
+# and those pages keep their metadata-only HTML.
+RUN apk add --no-cache chromium
+ENV PRERENDER_CHROME=/usr/bin/chromium-browser
+
 COPY package.json package-lock.json ./
 RUN npm ci
 

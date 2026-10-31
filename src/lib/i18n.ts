@@ -3,11 +3,10 @@
  * pattern as theme.ts (useSyncExternalStore, not a Context provider) — nothing new to
  * wrap the app in, consistent with how theme/branding state already works here.
  *
- * Persisted under the "trn." localStorage namespace as "trn.lang": "en" | "ar". Unlike
- * theme (which defaults to the OS preference), language defaults to "en" and never
- * auto-detects the browser locale — an English-speaking visitor whose OS happens to be
- * set to Arabic shouldn't be silently switched; Arabic is an explicit choice via the
- * language switcher.
+ * Persisted under the "trn." localStorage namespace as "trn.lang": "en" | "ar". On a first
+ * visit (nothing stored) the language is picked from the browser's language list
+ * (navigator.languages), falling back to "en" when none is supported. Any explicit choice
+ * in the language switcher is stored and always wins over detection afterwards.
  *
  * Setting the language also flips `<html dir>` between "ltr"/"rtl" and toggles the
  * `lang-ar` class on <body> (index.css uses it to swap in an Arabic-capable font stack —
@@ -54,13 +53,25 @@ export const MARKETING_LOCALES: readonly MarketingLocale[] = [
 const LANG_KEY = "trn.lang";
 const LOCALE_KEY = "trn.marketingLocale";
 
+/** First supported language in the browser's preference order, or "en". */
+function detectBrowserLocale(): string {
+  if (typeof navigator === "undefined") return "en";
+  for (const tag of navigator.languages?.length ? navigator.languages : [navigator.language]) {
+    const base = tag?.toLowerCase().split("-")[0];
+    if (MARKETING_LOCALES.some((item) => item.code === base)) return base;
+  }
+  return "en";
+}
+
 function getStoredLang(): Lang {
   if (typeof window === "undefined") return "en";
   try {
-    return localStorage.getItem(LANG_KEY) === "ar" ? "ar" : "en";
+    const stored = localStorage.getItem(LANG_KEY);
+    if (stored) return stored === "ar" ? "ar" : "en";
   } catch {
     return "en";
   }
+  return detectBrowserLocale() === "ar" ? "ar" : "en";
 }
 
 function applyLangAttributes(next: Lang) {
@@ -75,7 +86,9 @@ function getStoredMarketingLocale(): string {
   if (typeof window === "undefined") return "en";
   try {
     const stored = localStorage.getItem(LOCALE_KEY);
-    return MARKETING_LOCALES.some((item) => item.code === stored) ? stored! : lang;
+    if (MARKETING_LOCALES.some((item) => item.code === stored)) return stored!;
+    // An older "trn.lang" choice without a locale means the visitor already picked en/ar explicitly.
+    return localStorage.getItem(LANG_KEY) ? lang : detectBrowserLocale();
   } catch { return lang; }
 }
 let marketingLocale = getStoredMarketingLocale();

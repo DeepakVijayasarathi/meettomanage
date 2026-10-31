@@ -1,0 +1,19 @@
+// Public marketing pages that get their own prerendered HTML. Keep in sync with each page's <Seo> and public/sitemap.xml.
+export const PAGES = [
+  { path: "/pricing", title: "Pricing — Meet to Manage", description: "One simple price per academy, with live classes, admissions, fee collection and a parent app included. Pay monthly or yearly." },
+  { path: "/get-started", title: "Request a Demo — Meet to Manage", description: "Running an academy? See how Meet to Manage's live classroom, scheduling, admissions and billing work together — request a platform demo." },
+  { path: "/demo", title: "Book a Free Demo — Meet to Manage", description: "Book a free demo class and see how Meet to Manage's live classroom, scheduling and billing work together." },
+  { path: "/store", title: "Course Catalogue — Meet to Manage", description: "Browse current courses and book a free demo class — no account needed." },
+  { path: "/blog", title: "Blog — Meet to Manage", description: "Practical notes on running a modern academy: admissions, billing automation, scheduling and more." },
+  { path: "/blog/signs-academy-outgrown-spreadsheets", type: "article", title: "5 signs your academy has outgrown spreadsheets — Meet to Manage Blog", description: "Spreadsheets and a WhatsApp group get a small academy through its first year. Here's how to tell you've outgrown them." },
+  { path: "/blog/demo-booking-to-enrolled-family", type: "article", title: "What actually happens between a demo booking and an enrolled family — Meet to Manage Blog", description: "What happens between a demo booking and an enrolled family, and how to make each step reliable." },
+  { path: "/blog/automatic-fee-suspension-payment-conversations", type: "article", title: "How automatic fee-suspension turns an awkward conversation into a non-event — Meet to Manage Blog", description: "How automatic fee suspension removes the awkward payment conversation between academy and parents." },
+  { path: "/customers", title: "Customers and Case Studies — Meet to Manage", description: "How online coaching centres use Meet to Manage for live classes, enrolment, fee collection and a parent app." },
+  { path: "/customers/the-reader-nest", type: "article", title: "The Reader Nest Customer Story — Meet to Manage", description: "How The Reader Nest partnered with MeetToManage to bring admissions, live classrooms, teacher scheduling and parent access together in a customised learning platform." },
+  { path: "/solutions/live-class-software-for-institutes", title: "Live Class Software for Institutes and Online Coaching — Meet to Manage", description: "Run live classes and meetings with video, shared whiteboard, quizzes, screen sharing and recordings. Attendance, fees and the parent app are built in." },
+  { path: "/solutions/online-attendance-software-for-institutes", title: "Online Attendance Software for Institutes — Meet to Manage", description: "Attendance is recorded when students join the live class and shown to parents on their dashboard. One platform for classes, attendance, fees and reports." },
+  { path: "/careers", title: "Careers — Meet to Manage", description: "Work on the platform online coaching centres use for live classes, fees and parent apps. See open roles or send an open application." },
+  { path: "/privacy", title: "Privacy Policy — Meet to Manage", description: "How Meet to Manage collects, uses, shares and protects information about academies, teachers, parents and students." },
+  { path: "/legal/terms", title: "Terms of Service — Meet to Manage", description: "The terms that apply when an academy, school or coach subscribes to Meet to Manage: plans and billing, cancellation, acceptable use and data." },
+  { path: "/policy", title: "Privacy Policy — Meet to Manage", description: "How Infinity Uniquers collects, uses, stores, shares and protects information across Meet to Manage and Infinity Client Finder." },
+];
