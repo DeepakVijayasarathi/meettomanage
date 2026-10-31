@@ -63,7 +63,8 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
     );
 
   return (
-    <header className={cn("sticky top-0 z-40 border-b bg-white transition-shadow", scrolled ? "border-[#F6E3D3] shadow-[0_14px_34px_-22px_rgba(194,65,12,0.45)]" : "border-transparent")}>
+    // While the mobile menu is open the header (and its panel) must sit above the home page's sticky CTA bar and chat bubble, which share z-40.
+    <header className={cn("sticky top-0 border-b bg-white transition-shadow", open ? "z-50" : "z-40", scrolled ? "border-[#F6E3D3] shadow-[0_14px_34px_-22px_rgba(194,65,12,0.45)]" : "border-transparent")}>
       <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-5 sm:h-[84px]">
         <Link to="/" aria-label={`${brand.name} home`} className="shrink-0">
           <img src="/logo-full.webp" alt={brand.name} width={420} height={150} className="h-11 w-auto object-contain mix-blend-multiply sm:h-[68px]" />
