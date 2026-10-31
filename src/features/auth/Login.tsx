@@ -18,6 +18,7 @@ import { toFrontendRole } from "@/api/types";
 import { cn, safeInternalPath } from "@/lib/utils";
 import { isTenantPortal, takeDiscoveredEmail } from "@/lib/tenantDiscovery";
 import { setSessionTenant } from "@/lib/tenantPath";
+import { trackMarketingEvent } from "@/lib/analytics";
 import type { Role } from "@/types";
 
 
@@ -161,6 +162,8 @@ export default function Login() {
     setPin(account.pin);
     setRole(account.role);
     setRemember(rememberMe);
+    // Shows on the marketing console which demo roles visitors try.
+    trackMarketingEvent("demo_login_clicked", "/login", `demo-login:${account.role}`);
 
     if (!apiEnabled()) {
       enterDemoAs(account.role, account.homePathOverride);

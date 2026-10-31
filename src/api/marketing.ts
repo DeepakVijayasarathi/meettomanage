@@ -377,6 +377,9 @@ export interface ApiMarketingSiteBehaviour {
   formStartedVisitors: number; formValidationFailedVisitors: number; formAbandonedVisitors: number; formSubmittedVisitors: number; whatsAppVisitors: number;
   exitIntentShownVisitors: number; exitIntentSubmittedVisitors: number;
   experiments: ApiMarketingExperimentVariant[];
+  signInClickedVisitors: number; demoLoginVisitors: number;
+  /** Demo-account clicks by role, and the pages "Sign in" clicks came from (counts are unique visitors). */
+  demoLogins: ApiNamedCount[]; signInFrom: ApiNamedCount[];
   funnel: { name: string; visitors: number }[];
   pages: ApiMarketingPageBehaviour[];
   devices: ApiNamedCount[];
