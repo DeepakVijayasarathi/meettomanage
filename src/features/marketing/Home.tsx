@@ -198,44 +198,44 @@ export default function MarketingHome() {
         </section>
 
         {/* SEARCH-INTENT LANDING BLOCK: crawlable, useful answers and direct paths to conversion. */}
-        {lang === "en" && <section aria-labelledby="academy-software-heading" className="bg-[#171B22] py-[clamp(56px,6vw,88px)] text-white">
+        {lang === "en" && <section aria-labelledby="academy-software-heading" className="border-y border-[#F2DFCE] bg-[#FFF8F3] py-[clamp(56px,6vw,88px)] text-[#1C1917]">
           <div className="mx-auto max-w-[1200px] px-5">
             <div className="grid items-end gap-8 lg:grid-cols-[1fr_auto]">
               <div className="max-w-[780px]">
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#FDBA74]">Built for growing education businesses</p>
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#C2410C]">Built for growing education businesses</p>
                 <h2 id="academy-software-heading" className="font-display mt-4 text-[clamp(1.75rem,3.2vw,2.75rem)] font-extrabold leading-[1.08] tracking-[-0.035em]">
                   Coaching centre management software for classes, admissions and fees.
                 </h2>
-                <p className="mt-5 max-w-[720px] text-lg leading-relaxed text-[#D6D3D1]">
+                <p className="mt-5 max-w-[720px] text-lg leading-relaxed text-[#57534E]">
                   Meet to Manage connects the work that usually lives across video apps, spreadsheets and message threads. Your team follows one workflow from the first enquiry to the next paid class.
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
                 <Link to="/get-started" className={cn(BTN_PRIMARY, "justify-center px-7 py-3.5")}>Book a free walkthrough <ArrowRight className="h-4 w-4" /></Link>
-                <a href={SALES_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 px-7 py-3.5 text-sm font-bold text-white transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                <a href={SALES_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D9C9BA] bg-white px-7 py-3.5 text-sm font-bold text-[#166534] shadow-sm transition-colors hover:border-[#86C99A] hover:bg-[#F0FDF4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166534]">
                   <MessageSquare className="h-4 w-4" /> Ask on WhatsApp
                 </a>
               </div>
             </div>
 
             <div className="mt-12 grid gap-4 md:grid-cols-3">
-              <Link to="/solutions/live-class-software-for-institutes" className="group rounded-2xl border border-white/10 bg-white/[0.06] p-6 transition-colors hover:border-[#F97316]/60 hover:bg-white/[0.1]">
-                <Video className="h-7 w-7 text-[#FB923C]" />
+              <Link to="/solutions/live-class-software-for-institutes" className="group rounded-2xl border border-[#EFE3D7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(194,65,12,0.45)] transition-all hover:-translate-y-1 hover:border-[#F4B98C]">
+                <Video className="h-7 w-7 text-[#EA580C]" />
                 <h3 className="mt-5 font-display text-xl font-extrabold">Live class software</h3>
-                <p className="mt-2 leading-relaxed text-[#D6D3D1]">Interactive video, whiteboard, activities, recordings and one-click joining from the teacher and parent portals.</p>
-                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#FDBA74]">Explore live classes <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                <p className="mt-2 leading-relaxed text-[#57534E]">Interactive video, whiteboard, activities, recordings and one-click joining from the teacher and parent portals.</p>
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]">Explore live classes <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </Link>
-              <Link to="/solutions/online-attendance-software-for-institutes" className="group rounded-2xl border border-white/10 bg-white/[0.06] p-6 transition-colors hover:border-[#F97316]/60 hover:bg-white/[0.1]">
-                <GraduationCap className="h-7 w-7 text-[#FB923C]" />
+              <Link to="/solutions/online-attendance-software-for-institutes" className="group rounded-2xl border border-[#EFE3D7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(194,65,12,0.45)] transition-all hover:-translate-y-1 hover:border-[#F4B98C]">
+                <GraduationCap className="h-7 w-7 text-[#EA580C]" />
                 <h3 className="mt-5 font-display text-xl font-extrabold">Admissions and attendance</h3>
-                <p className="mt-2 leading-relaxed text-[#D6D3D1]">Track enquiries, demos, enrolments and attendance without losing the history in private messages or spreadsheets.</p>
-                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#FDBA74]">Explore attendance <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                <p className="mt-2 leading-relaxed text-[#57534E]">Track enquiries, demos, enrolments and attendance without losing the history in private messages or spreadsheets.</p>
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]">Explore attendance <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </Link>
-              <Link to="/pricing" className="group rounded-2xl border border-white/10 bg-white/[0.06] p-6 transition-colors hover:border-[#F97316]/60 hover:bg-white/[0.1]">
-                <CreditCard className="h-7 w-7 text-[#FB923C]" />
+              <Link to="/pricing" className="group rounded-2xl border border-[#EFE3D7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(194,65,12,0.45)] transition-all hover:-translate-y-1 hover:border-[#F4B98C]">
+                <CreditCard className="h-7 w-7 text-[#EA580C]" />
                 <h3 className="mt-5 font-display text-xl font-extrabold">Fee collection and parent app</h3>
-                <p className="mt-2 leading-relaxed text-[#D6D3D1]">Create invoices, send reminders and give parents one place for payments, schedules, updates and recordings.</p>
-                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#FDBA74]">See plans and pricing <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                <p className="mt-2 leading-relaxed text-[#57534E]">Create invoices, send reminders and give parents one place for payments, schedules, updates and recordings.</p>
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]">See plans and pricing <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </Link>
             </div>
           </div>
