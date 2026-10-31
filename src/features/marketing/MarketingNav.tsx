@@ -23,6 +23,7 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
   const location = useLocation();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const firstMobileLinkRef = useRef<HTMLAnchorElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -30,9 +31,21 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
     document.body.style.overflow = "hidden";
     firstMobileLinkRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setOpen(false);
-      menuButtonRef.current?.focus();
+      if (e.key === "Escape") {
+        setOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      // Keep Tab inside the menu (its close button plus the panel) so focus can't wander onto the page behind it.
+      const inside = Array.from(panelRef.current?.querySelectorAll<HTMLElement>("a[href],button:not([disabled]),select") ?? []);
+      const stops = [menuButtonRef.current, ...inside].filter((el): el is HTMLElement => !!el);
+      const first = stops[0];
+      const last = stops[stops.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+      else if (!stops.includes(active as HTMLElement)) { e.preventDefault(); first.focus(); }
     };
     window.addEventListener("keydown", onKey);
     return () => {
@@ -97,7 +110,7 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
 
       {open && (
         // Full-height panel under the header: long menus scroll inside it and the call to action stays pinned at the bottom.
-        <div id="mobile-menu" className="fixed inset-x-0 bottom-0 top-16 z-30 overflow-y-auto overscroll-contain border-t border-[#F6E3D3] bg-white sm:top-[84px] lg:hidden">
+        <div id="mobile-menu" ref={panelRef} className="animate-in fade-in slide-in-from-top-2 fixed inset-x-0 bottom-0 top-16 z-30 duration-200 motion-reduce:animate-none overflow-y-auto overscroll-contain border-t border-[#F6E3D3] bg-white sm:top-[84px] lg:hidden">
           <nav aria-label="Mobile" className="mx-auto flex min-h-full max-w-[1200px] flex-col px-5">
             <ul className="flex-1 py-2">
               {links.map((l, index) => {
