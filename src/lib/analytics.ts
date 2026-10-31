@@ -231,3 +231,14 @@ export async function trackMarketingPageView(path: string, title: string): Promi
   if (ids.gtm) window.dataLayer?.push({ event: "marketing_page_view", page_path: path, page_title: title });
   window.fbq?.("track", "PageView");
 }
+
+/** A real platform-demo request was saved. The first-party dashboard counts the request itself;
+ * these standard events make the same conversion visible in configured ad/analytics tools. */
+export async function trackDemoBooked(path: string): Promise<void> {
+  await load();
+  if (!ids.ga && !ids.gtm && !ids.pixel) return;
+  install();
+  window.gtag?.("event", "generate_lead", { lead_source: "website", page_path: path });
+  if (ids.gtm) window.dataLayer?.push({ event: "marketing_generate_lead", page_path: path });
+  window.fbq?.("track", "Lead");
+}

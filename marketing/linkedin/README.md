@@ -44,7 +44,7 @@ Meet to Manage brings the work together:
 Your team gets one clear workflow. Parents get one reliable experience. You get more time to grow the academy.
 
 Explore the platform and book a free walkthrough:
-https://meettomanage.cloud/get-started
+https://meettomanage.cloud/get-started?utm_source=linkedin&utm_medium=organic-social&utm_campaign=linkedin-launch
 
 #CoachingCentre #AcademyManagement #EdTech #OnlineTeaching #EducationBusiness
 

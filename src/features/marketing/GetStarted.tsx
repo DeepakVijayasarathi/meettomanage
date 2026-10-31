@@ -13,7 +13,7 @@ import { MarketingNav } from "./MarketingNav";
 import { CTA_DARK, CTA_ORANGE } from "./styles";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
-import { marketingAttribution, marketingVisitorId } from "@/lib/analytics";
+import { marketingAttribution, marketingVisitorId, trackDemoBooked } from "@/lib/analytics";
 import { markDemoBooked } from "./chatTeaser";
 
 const T = {
@@ -191,8 +191,12 @@ export default function GetStarted() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.fullName.trim() || (!isCoach && !form.academyName.trim())) {
-      setError(isCoach ? t.errorCoach : t.errorAcademy);
+    if (!form.fullName.trim()) {
+      setError(t.errorCoach);
+      return;
+    }
+    if (!form.workEmail.trim() && !form.phone.trim()) {
+      setError(lang === "en" ? "Enter an email address or WhatsApp number so we can contact you." : "أدخل بريدًا إلكترونيًا أو رقم واتساب لنتواصل معك.");
       return;
     }
 
@@ -215,6 +219,7 @@ export default function GetStarted() {
         medium: attribution.utmMedium, campaign: attribution.utmCampaign, landingPath: window.location.pathname,
       });
       markDemoBooked();
+      void trackDemoBooked(window.location.pathname);
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.submitError);
@@ -287,22 +292,22 @@ export default function GetStarted() {
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="grid gap-1.5">
-                        <Label htmlFor="gs-workEmail" className="font-semibold text-[#1C1917]">{t.workEmail} <span aria-hidden className="text-[#C2410C]">*</span></Label>
+                        <Label htmlFor="gs-workEmail" className="font-semibold text-[#1C1917]">{t.workEmail} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
                         <Field icon={Mail}>
-                          <Input id="gs-workEmail" type="email" required className={FIELD} value={form.workEmail} onChange={(e) => setForm((f) => ({ ...f, workEmail: e.target.value }))} placeholder={t.emailPlaceholder} />
+                          <Input id="gs-workEmail" type="email" autoComplete="email" className={FIELD} value={form.workEmail} onChange={(e) => setForm((f) => ({ ...f, workEmail: e.target.value }))} placeholder={t.emailPlaceholder} />
                         </Field>
                       </div>
                       <div className="grid gap-1.5">
-                        <Label htmlFor="gs-phone" className="font-semibold text-[#1C1917]">{t.phone} <span aria-hidden className="text-[#C2410C]">*</span></Label>
+                        <Label htmlFor="gs-phone" className="font-semibold text-[#1C1917]">{lang === "en" ? "WhatsApp number" : t.phone} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
                         <Field icon={Phone}>
-                          <Input id="gs-phone" type="tel" required className={FIELD} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t.phonePlaceholder} />
+                          <Input id="gs-phone" type="tel" autoComplete="tel" className={FIELD} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t.phonePlaceholder} />
                         </Field>
                       </div>
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="gs-academyName" className="font-semibold text-[#1C1917]">{isCoach ? t.academyNameCoach : t.academyNameAcademy}{!isCoach && <span aria-hidden className="text-[#C2410C]"> *</span>}</Label>
+                      <Label htmlFor="gs-academyName" className="font-semibold text-[#1C1917]">{isCoach ? t.academyNameCoach : t.academyNameAcademy} {!isCoach && <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span>}</Label>
                       <Field icon={Landmark}>
-                        <Input id="gs-academyName" required={!isCoach} className={FIELD} value={form.academyName} onChange={(e) => setForm((f) => ({ ...f, academyName: e.target.value }))} placeholder={isCoach ? t.academyPlaceholderCoach : t.academyPlaceholderAcademy} />
+                        <Input id="gs-academyName" autoComplete="organization" className={FIELD} value={form.academyName} onChange={(e) => setForm((f) => ({ ...f, academyName: e.target.value }))} placeholder={isCoach ? t.academyPlaceholderCoach : t.academyPlaceholderAcademy} />
                       </Field>
                     </div>
                     <div className="grid gap-1.5">
@@ -316,6 +321,17 @@ export default function GetStarted() {
                     <button type="submit" disabled={submitting} className={cn(CTA_ORANGE, "mt-1 h-14 w-full !rounded-2xl text-base normal-case tracking-normal shadow-[0_16px_30px_-14px_rgba(194,65,12,0.8)]")}>
                       {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{t.requestDemo} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
                     </button>
+                    <p className="text-center text-xs leading-relaxed text-[#78716C]">
+                      {lang === "en" ? "We only use these details to arrange your walkthrough." : "نستخدم هذه التفاصيل فقط لترتيب العرض التوضيحي."}
+                    </p>
+                    <a
+                      href="https://wa.me/919344773231?text=I%27d%20like%20a%20free%20Meet%20to%20Manage%20walkthrough."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 text-sm font-bold text-[#166534] underline decoration-[#22C55E]/40 underline-offset-4 hover:decoration-[#166534]"
+                    >
+                      <MessageSquare className="h-4 w-4" /> {lang === "en" ? "Prefer WhatsApp? Chat with us" : "تفضل واتساب؟ تحدث معنا"}
+                    </a>
                   </form>
                 </>
               )}
