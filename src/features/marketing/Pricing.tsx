@@ -82,6 +82,7 @@ const T = {
     } as Record<string, string>,
     planCta: "Book free walkthrough",
     reassure: "Free 30-minute platform walkthrough. No payment details.",
+    trusted: { title: "Used by coaching centres including", all: "See all customers" },
     trial: { cta: (n: number) => `Start ${n}-day free trial`, note: "No card needed.", or: "Or book a free walkthrough" },
     help: { title: "Not sure which plan fits your academy?", body: "Tell us your student count and we'll recommend one.", cta: "Chat on WhatsApp" },
     own: {
@@ -136,6 +137,7 @@ const T = {
     } as Record<string, string>,
     planCta: "اطلب عرضًا توضيحيًا",
     reassure: "جولة مجانية لمدة 30 دقيقة. بلا تفاصيل دفع.",
+    trusted: { title: "يستخدمها مراكز تعليمية منها", all: "عرض كل العملاء" },
     trial: { cta: (n: number) => `ابدأ تجربة مجانية لمدة ${n} يومًا`, note: "لا حاجة لبطاقة.", or: "أو احجز جولة مجانية" },
     help: { title: "لست متأكدًا أي خطة تناسب أكاديميتك؟", body: "أخبرنا بعدد طلابك وسنوصي لك بخطة.", cta: "تحدث عبر واتساب" },
     own: {
@@ -274,6 +276,28 @@ export default function Pricing() {
     const monthly = (p: PublicPlan) => planPrice(p, "Month", currency)?.amount ?? Number.MAX_SAFE_INTEGER;
     return plans.filter((p) => p.prices.some((x) => x.currency === "INR" || x.currency === currency)).sort((a, b) => monthly(a) - monthly(b));
   }, [plans, currency]);
+  // Structured data always states INR, the currency academies are actually billed in, whatever the visitor sees on screen.
+  const jsonLd = useMemo(() => {
+    const offers = visible.flatMap((p) =>
+      p.prices.filter((x) => x.currency === "INR").map((x) => ({
+        "@type": "Offer",
+        name: `${p.name} (${x.billingInterval === "Year" ? "yearly" : "monthly"})`,
+        price: x.amount,
+        priceCurrency: "INR",
+        url: "https://meettomanage.cloud/pricing",
+      })),
+    );
+    return {
+      "@context": "https://schema.org",
+      "@graph": [
+        { "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", offers },
+        { "@type": "BreadcrumbList", itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: "https://meettomanage.cloud/" },
+          { "@type": "ListItem", position: 2, name: "Pricing", item: "https://meettomanage.cloud/pricing" },
+        ] },
+      ],
+    };
+  }, [visible]);
   const popularCode = visible.length > 1 ? visible[visible.length - 1].code : null;
 
   function limitLines(plan: PublicPlan, entry: boolean): string[] {
@@ -299,6 +323,7 @@ export default function Pricing() {
         title="Pricing: Academy Management Software Plans | Meet to Manage"
         description="One simple price per academy with live classes, admissions, automatic fee collection and a parent app included. Pay monthly or yearly. Book a free demo."
         path="/pricing"
+        jsonLd={jsonLd}
       />
 
       <MarketingNav />
@@ -373,6 +398,16 @@ export default function Pricing() {
           >
             <Bullets items={t.own.features} />
           </PlanCard>
+        </div>
+
+        <div className="mx-auto mt-12 flex max-w-2xl flex-col items-center gap-4 text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5B6472] rtl:tracking-normal">{t.trusted.title}</p>
+          <Link to="/customers" className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2410C]">
+            <img src="/clients/thereader.png" alt="The Reader Nest" width={56} height={56} loading="lazy" className="h-14 w-14 rounded-full object-cover ring-1 ring-black/10" />
+            <img src="/clients/alphabet.webp" alt="Alphabet — Jolly Phonics & Storytelling" width={800} height={400} loading="lazy" className="h-14 w-auto object-contain" />
+          </Link>
+          <p className="text-sm text-[#5B6472]"><span>Razorpay payments</span> · <span>Cashfree payments</span></p>
+          <Link to="/customers" className="text-sm font-semibold text-[#C2410C] hover:underline">{t.trusted.all}</Link>
         </div>
 
         <div className="mx-auto mt-12 flex max-w-2xl flex-col items-center gap-3 rounded-2xl border border-[#EFE3D7] bg-[#FFF8F2] px-6 py-6 text-center">

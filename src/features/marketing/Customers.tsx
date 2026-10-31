@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BTN_PRIMARY } from "./MarketingNav";
 import { PageShell } from "./PageShell";
+import { PricingLink } from "./PricingLink";
 
 /** Customer stories. Only stories a customer has agreed to, and facts we can stand behind, belong here. */
 const STORIES = [
@@ -72,6 +73,7 @@ export default function Customers() {
             <h2 className="font-display text-xl font-extrabold tracking-[-0.02em]">Your centre could be next.</h2>
             <p className="mt-2 text-[15px] leading-relaxed text-[#57534E]">Book a free platform walkthrough and see how your batches, fees and parent app can run in one place.</p>
             <Link to="/get-started" className={cn(BTN_PRIMARY, "mt-5 w-fit")}>Book free walkthrough <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
+            <PricingLink className="w-fit text-[#C2410C] hover:text-[#9A3412] focus-visible:outline-[#C2410C]" />
           </li>
         </ul>
       </section>

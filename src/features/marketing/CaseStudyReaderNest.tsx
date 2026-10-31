@@ -1,3 +1,4 @@
+import { PricingLink } from "./PricingLink";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ExternalLink, BookOpen, Check, Sparkles } from "lucide-react";
 import { PageShell } from "./PageShell";
@@ -175,6 +176,7 @@ export default function CaseStudyReaderNest() {
           <h2 className="font-display mx-auto mt-5 max-w-[680px] text-[clamp(1.9rem,3.5vw,3rem)] font-bold leading-[1.15] tracking-[-0.04em]">Your academy has a story.<br /><span className="font-serif font-normal italic text-white">Let's build what comes next.</span></h2>
           <p className="mx-auto mt-5 max-w-[530px] text-[15px] leading-relaxed text-[#FFF6EE]">Bring admissions, live classrooms and everyday operations together with a platform that understands your academy.</p>
           <Link to="/get-started" className="relative mt-8 inline-flex items-center justify-center gap-3 rounded-full bg-white px-7 py-4 text-sm font-bold text-[#9A3412] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">Book your free walkthrough <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
+          <div className="relative"><PricingLink className="text-white/90 hover:text-white focus-visible:outline-white" /></div>
         </section>
       </article>
     </PageShell>

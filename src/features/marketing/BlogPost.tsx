@@ -1,3 +1,4 @@
+import { PricingLink } from "./PricingLink";
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AlertCircle, ArrowRight, Check, Clock, Link2, Linkedin, Loader2, MessageCircle } from "lucide-react";
@@ -439,6 +440,7 @@ export default function BlogPost() {
                   <Link to="/get-started" className={cn(CTA_ORANGE, "mt-7")}>
                     {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
                   </Link>
+                  <div><PricingLink className="text-white/80 hover:text-white focus-visible:outline-white" /></div>
                 </div>
               </div>
             </article>

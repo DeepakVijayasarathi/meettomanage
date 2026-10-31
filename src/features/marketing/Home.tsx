@@ -150,10 +150,10 @@ export default function MarketingHome() {
     () =>
       JSON.stringify([
         { "@context": "https://schema.org", "@type": "Organization", name: "Meet to Manage", url: "https://meettomanage.cloud", logo: "https://meettomanage.cloud/logo-icon.png", email: "info@infinityuniquers.com", parentOrganization: { "@type": "Organization", name: "Infinity Uniquers" } },
-        { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", description: COPY.en.hero.sub, featureList: ["Interactive live classes", "Admissions CRM", "Batch scheduling and attendance", "Automated fee collection", "Parent mobile app", "Academy reports"], offers: { "@type": "Offer", priceCurrency: currency, price: fromPrice, url: "https://meettomanage.cloud/pricing" } },
+        { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", description: COPY.en.hero.sub, featureList: ["Interactive live classes", "Admissions CRM", "Batch scheduling and attendance", "Automated fee collection", "Parent mobile app", "Academy reports"], offers: { "@type": "Offer", priceCurrency: "INR", price: fromInr, url: "https://meettomanage.cloud/pricing" } },
         { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: COPY.en.faq.items.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
       ]),
-    [fromPrice, currency],
+    [fromInr],
   );
 
   return (

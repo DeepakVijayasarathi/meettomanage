@@ -1,3 +1,4 @@
+import { PricingLink } from "./PricingLink";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, Clock, Loader2 } from "lucide-react";
@@ -177,6 +178,7 @@ export default function BlogList() {
                 <Link to="/get-started" className={cn(CTA_ORANGE, "mt-7")}>
                   {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
                 </Link>
+                <div><PricingLink className="text-white/80 hover:text-white focus-visible:outline-white" /></div>
               </div>
             </div>
           </>
