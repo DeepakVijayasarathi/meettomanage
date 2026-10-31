@@ -163,7 +163,7 @@ export default function MarketingHome() {
       <style>{FX_CSS}</style>
       <Seo
         pageKey="home"
-        title="Coaching Centre Management Software | Meet to Manage"
+        title="School and Coaching Centre Management Software | Meet to Manage"
         description="Manage live classes, admissions, fees and parent updates in one platform built for tuition, abacus and phonics centres. Book a free demo."
         path="/"
       />

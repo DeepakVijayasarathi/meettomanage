@@ -65,7 +65,7 @@ const PhonicsGamePage = lazy(() => import("@/features/marketing/games/FreeGames"
 const WordSoundsGamePage = lazy(() => import("@/features/marketing/games/FreeGames").then(m => ({ default: m.WordSoundsGamePage })));
 const Careers = lazy(() => import("@/features/marketing/Careers"));
 const Docs = lazy(() => import("@/features/marketing/Docs"));
-const NICHE_SLUGS = ["english-grammar-class-software", "art-class-software", "yoga-class-software", "abacus-class-software"];
+const NICHE_SLUGS = ["english-grammar-class-software", "art-class-software", "yoga-class-software", "abacus-class-software", "online-whiteboard-for-teaching"];
 const NichePages = NICHE_SLUGS.map((_, i) => lazy(() => import("@/features/marketing/NicheSolutions").then((m) => ({ default: m.NICHE_ROUTES[i].Page }))));
 const ClassplusAlternative = lazy(() => import("@/features/marketing/ClassplusAlternative"));
 const LiveClassSolution = lazy(() => import("@/features/marketing/LiveClassSolution"));

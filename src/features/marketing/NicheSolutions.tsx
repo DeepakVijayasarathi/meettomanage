@@ -95,6 +95,23 @@ const NICHES: Niche[] = [
     closingHeading: "Built for maths centres",
     closing: "Abacus Teacher Training is also in the catalogue for centres that train their own teachers.",
   },
+  {
+    slug: "online-whiteboard-for-teaching",
+    eyebrow: "For online teachers",
+    title: "An online whiteboard for teaching live classes.",
+    sub: "Write, draw and explain on a shared whiteboard every student sees, then keep attendance, fees and the parent app in the same place.",
+    seoTitle: "Online Whiteboard for Teaching | Meet to Manage",
+    seoDescription: "A shared online whiteboard for live teaching, with slides, screen sharing, quizzes and recordings. Attendance, fees and a parent app are built in.",
+    name: "Online whiteboard for teaching",
+    specific: [
+      { title: "A whiteboard the whole class sees", body: "Write, draw and work through examples on a shared board during the live class." },
+      { title: "Full screen when you need space", body: "Open the whiteboard full screen for longer explanations and worked problems." },
+      { title: "Slides and screen sharing", body: "Present slides or share your screen, and mark them up as you teach." },
+      { title: "Quizzes after the explanation", body: "Check understanding with live questions from a reusable quiz bank." },
+    ],
+    closingHeading: "More than a whiteboard",
+    closing: "Recordings let students replay the explanation after class.",
+  },
 ];
 
 function makePage(n: Niche) {

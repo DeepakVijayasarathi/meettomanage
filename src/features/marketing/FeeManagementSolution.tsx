@@ -24,7 +24,7 @@ export default function FeeManagementSolution() {
       title="Fee management software for coaching centres and online academies."
       sub="Plans, automatic invoices, online and cash payments, reminders and refunds in one place, connected to classes and the parent app."
       seo={{
-        title: "Fee Management Software for Coaching Centres — Meet to Manage",
+        title: "Fee Management Software for Coaching Centres and Schools | Meet to Manage",
         description: "Automatic invoices, online fee collection through Razorpay or Cashfree, part payments, cash confirmation, reminders and refunds. Built into your classes and parent app.",
         path: "/solutions/fee-management-software-for-coaching-centres",
       }}

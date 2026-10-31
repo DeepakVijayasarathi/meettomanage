@@ -21,7 +21,7 @@ const SEO_PAGES = [
 
 /** Same fallbacks each page's own <Seo> passes, shown until a value is saved. */
 const SEO_DEFAULTS: Record<string, string> = {
-  "seo.home.title": "Coaching Centre Management Software | Meet to Manage",
+  "seo.home.title": "School and Coaching Centre Management Software | Meet to Manage",
   "seo.home.description": "Manage live classes, admissions, fees and parent updates in one platform built for tuition, abacus and phonics centres. Book a free demo.",
   "seo.pricing.title": "Pricing: Academy Management Software Plans | Meet to Manage",
   "seo.pricing.description": "One simple price per academy with live classes, admissions, automatic fee collection and a parent app included. Pay monthly or yearly. Book a free demo.",
