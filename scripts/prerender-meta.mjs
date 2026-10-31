@@ -38,6 +38,13 @@ const NAV = [
 ];
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const BLOG_TITLE_SUFFIX = " | Meet to Manage";
+const blogSeoTitle = (title) => {
+  const available = 60 - BLOG_TITLE_SUFFIX.length;
+  if (title.length <= available) return `${title}${BLOG_TITLE_SUFFIX}`;
+  const shortened = title.slice(0, available - 1).replace(/\s+\S*$/, "").replace(/[\s:;,.-]+$/, "");
+  return `${shortened || title.slice(0, available - 1)}…${BLOG_TITLE_SUFFIX}`;
+};
 
 /** Page title without the " — Meet to Manage…" or " | Meet to Manage" suffix, for the visible heading. */
 const heading = (title) => title.replace(/\s+[—|]\s+Meet to Manage.*$/, "");
@@ -143,7 +150,7 @@ async function blogPages() {
       pages.push({
         path: `/blog/${p.slug}`,
         type: "article",
-        title: `${p.title} — Meet to Manage Blog`,
+        title: blogSeoTitle(p.title),
         description: p.excerpt ?? "",
         publishedAt: p.publishedAtUtc,
         image: existsSync(path.join(dist, cover)) ? cover : undefined,

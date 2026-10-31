@@ -152,8 +152,8 @@ export default function MarketingHome() {
       <style>{FX_CSS}</style>
       <Seo
         pageKey="home"
-        title="Online Coaching Software & Academy Management | Meet to Manage"
-        description="Run live classes, automate fee collection, manage admissions and keep parents updated in one app. Built for tuition, abacus and phonics centres. Book a free demo."
+        title="Coaching Centre Management Software | Meet to Manage"
+        description="Manage live classes, admissions, fees and parent updates in one platform built for tuition, abacus and phonics centres. Book a free demo."
         path="/"
       />
       <Helmet><script type="application/ld+json">{jsonLd}</script></Helmet>

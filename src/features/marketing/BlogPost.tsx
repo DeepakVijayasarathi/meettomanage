@@ -18,6 +18,15 @@ import { DEMO_BLOG_SUMMARIES, getDemoBlogPost } from "@/data/blogPosts";
 
 const WHATSAPP_URL = "https://wa.me/919344773231";
 const SITE_URL = "https://meettomanage.cloud";
+const BLOG_TITLE_SUFFIX = " | Meet to Manage";
+
+/** Keep search-result titles concise without changing the visible editorial headline. */
+function blogSeoTitle(title: string): string {
+  const available = 60 - BLOG_TITLE_SUFFIX.length;
+  if (title.length <= available) return `${title}${BLOG_TITLE_SUFFIX}`;
+  const shortened = title.slice(0, available - 1).replace(/\s+\S*$/, "").replace(/[\s:;,.-]+$/, "");
+  return `${shortened || title.slice(0, available - 1)}…${BLOG_TITLE_SUFFIX}`;
+}
 
 /** Page chrome only — the post itself (title/content/excerpt, from getBlogPost()/
  *  getDemoBlogPost()) is real editorial content and stays English-only here, same boundary
@@ -268,7 +277,7 @@ export default function BlogPost() {
           just index.html's site-wide defaults for every /blog/:slug URL. */}
       {post ? (
         <Seo
-          title={`${post.title} — Meet to Manage Blog`}
+          title={blogSeoTitle(post.title)}
           description={post.excerpt}
           path={`/blog/${slug}`}
           type="article"

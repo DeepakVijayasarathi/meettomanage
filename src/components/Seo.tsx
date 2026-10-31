@@ -57,10 +57,13 @@ export function Seo({ pageKey, title: titleFallback, description: descriptionFal
       <meta property="og:description" content={description} />
       <meta property="og:url" content={url} />
       <meta property="og:image" content={image} />
+      <meta property="og:image:alt" content={`${title} — Meet to Manage`} />
+      <meta property="og:locale" content="en_IN" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
+      <meta name="twitter:image:alt" content={`${title} — Meet to Manage`} />
       {type === "article" && jsonLd?.datePublished ? <meta property="article:published_time" content={String(jsonLd.datePublished)} /> : null}
       {jsonLd && <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>}
     </Helmet>
