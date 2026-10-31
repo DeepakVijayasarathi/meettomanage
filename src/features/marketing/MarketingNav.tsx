@@ -5,6 +5,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { useBrand } from "@/lib/branding";
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { trackMarketingEvent } from "@/lib/analytics";
 import { COPY } from "./home/copy";
 import { useScrolled } from "./home/fxCore";
 
@@ -90,7 +91,7 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
         <div className="flex items-center gap-2">
           <span aria-hidden="true" className="me-3 hidden h-8 w-px bg-[#EBD9C8] lg:block" />
           <LanguageToggle className="hidden sm:inline-flex" />
-          <Link to="/login" className="hidden whitespace-nowrap px-3 py-2 text-sm font-semibold text-[#1C1917] hover:text-[#C2410C] sm:inline-flex">{c.nav.signIn}</Link>
+          <Link to="/login" onClick={() => trackMarketingEvent("signin_clicked")} className="hidden whitespace-nowrap px-3 py-2 text-sm font-semibold text-[#1C1917] hover:text-[#C2410C] sm:inline-flex">{c.nav.signIn}</Link>
           <Link to="/get-started" className={cn(BTN_PRIMARY, "hidden whitespace-nowrap !rounded-full bg-gradient-to-r from-[#EA580C] to-[#C2410C] shadow-[0_12px_24px_-12px_rgba(194,65,12,0.8)] hover:from-[#C2410C] hover:to-[#9A3412] sm:inline-flex")}>
             {c.nav.demo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
           </Link>
@@ -141,7 +142,7 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
                 {c.nav.demo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
               </Link>
               <div className="flex items-center gap-3">
-                <Link to="/login" className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-2xl border border-[#D9C9BA] text-sm font-bold text-[#1C1917] hover:bg-[#FFF6EE]" onClick={() => setOpen(false)}>{c.nav.signIn}</Link>
+                <Link to="/login" className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-2xl border border-[#D9C9BA] text-sm font-bold text-[#1C1917] hover:bg-[#FFF6EE]" onClick={() => { trackMarketingEvent("signin_clicked"); setOpen(false); }}>{c.nav.signIn}</Link>
                 <LanguageToggle className="sm:hidden" />
               </div>
             </div>

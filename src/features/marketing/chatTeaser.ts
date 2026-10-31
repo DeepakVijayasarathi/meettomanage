@@ -28,6 +28,15 @@ export function markTeaserSeen() {
   }
 }
 
+/** True once this browser has booked a demo (chat, form or popup). */
+export function demoAlreadyBooked(): boolean {
+  try {
+    return localStorage.getItem(CHAT_TEASER_SEEN_KEY) === BOOKED;
+  } catch {
+    return false;
+  }
+}
+
 /** The visitor booked a demo (chat or form): they're already a lead, so never show it again. */
 export function markDemoBooked() {
   try {

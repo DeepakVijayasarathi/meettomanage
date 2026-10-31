@@ -15,6 +15,7 @@ import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
 import { marketingAttribution, marketingVisitorId, trackDemoBooked, trackMarketingEvent } from "@/lib/analytics";
 import { markDemoBooked } from "./chatTeaser";
+import { experimentVariant } from "@/lib/experiments";
 
 const T = {
   en: {
@@ -145,6 +146,38 @@ const PANEL = {
   },
 };
 
+/**
+ * A/B test on the academy (non-coach) copy: "a" is the panel copy above, "b" is this
+ * outcome-led version. Visitors are split 50/50 by their analytics id and the bucket rides on
+ * every form event, so the Marketing Console's Visitors page can compare submit rates.
+ * Preview a bucket with ?variant=a or ?variant=b. To end the test, keep the winner and
+ * delete the loser plus the experiment plumbing in GetStarted.
+ */
+const EXPERIMENT = "getstarted-copy";
+const VARIANTS = ["a", "b"] as const;
+type Variant = (typeof VARIANTS)[number];
+
+const PANEL_B = {
+  en: {
+    eyebrow: "Free 30-minute walkthrough",
+    heading: ["Run classes, admissions and fees from", "one dashboard."],
+    sub: "We'll show you, on a sample academy like yours, how an enquiry becomes an enrolled, fee-paying student. Bring your questions about branches, staff and the tools you use today.",
+    noCommit: "No payment details and no commitment, just answers for your academy.",
+    formTitle: "Get your free walkthrough",
+    formSub: "Leave an email or WhatsApp number and we'll reply within one business day to pick a time.",
+    cta: "Show me how it works",
+  },
+  ar: {
+    eyebrow: "جولة مجانية لمدة 30 دقيقة",
+    heading: ["أدِر الحصص والقبول والرسوم من", "لوحة واحدة."],
+    sub: "سنريك على أكاديمية نموذجية تشبه أكاديميتك كيف يتحول الاستفسار إلى طالب مسجّل يدفع الرسوم. أحضر أسئلتك عن الفروع والفريق والأدوات التي تستخدمها اليوم.",
+    noCommit: "بلا بيانات دفع وبلا التزام، فقط إجابات تخص أكاديميتك.",
+    formTitle: "احصل على جولتك المجانية",
+    formSub: "اترك بريدًا إلكترونيًا أو رقم واتساب وسنرد خلال يوم عمل واحد لتحديد موعد.",
+    cta: "أرني كيف تعمل",
+  },
+};
+
 const PANEL_TILES = [
   { icon: Video, bg: "from-[#FFF3EA] to-[#FFDFC8]", fg: "#C2410C" },
   { icon: Users, bg: "from-[#FFF3EA] to-[#FFDFC8]", fg: "#C2410C" },
@@ -170,13 +203,16 @@ export default function GetStarted() {
   const live = apiEnabled();
   const [lang] = useLang();
   const t = T[lang];
-  const pc = PANEL[lang];
   // ?for=coach arrives from the homepage's "Influencers & personal-brand coaches" Solutions
   // card and the Pricing page's Pay As You Grow plan — same form and same sales-assisted
   // flow underneath, just reframed so a solo coach isn't greeted with "academy owners" copy
   // or forced to invent an academy name they don't have.
   const [searchParams] = useSearchParams();
   const isCoach = searchParams.get("for") === "coach";
+  // Coaches see their own copy, so only academy visitors join the copy test.
+  const [variant] = useState<Variant>(() => experimentVariant(EXPERIMENT, VARIANTS));
+  const tag = isCoach ? undefined : `${EXPERIMENT}:${variant}`;
+  const pc = { ...PANEL[lang], cta: t.requestDemo, ...(tag && variant === "b" ? PANEL_B[lang] : {}) };
   // The homepage hero hands over whatever the visitor typed (an email or a mobile number) as ?contact=.
   const [form, setForm] = useState(() => {
     const contact = (searchParams.get("contact") ?? "").trim().slice(0, 120);
@@ -195,16 +231,22 @@ export default function GetStarted() {
   const [submitted, setSubmitted] = useState(false);
   const startedRef = useRef(false);
   const submittedRef = useRef(false);
+  const tagRef = useRef(tag);
 
   function markFormStarted() {
     if (startedRef.current) return;
     startedRef.current = true;
-    trackMarketingEvent("form_started");
+    trackMarketingEvent("form_started", undefined, tag);
   }
 
   useEffect(() => {
+    tagRef.current = tag;
+    if (tag) trackMarketingEvent("experiment_viewed", undefined, tag);
+  }, [tag]);
+
+  useEffect(() => {
     const abandoned = () => {
-      if (startedRef.current && !submittedRef.current) trackMarketingEvent("form_abandoned");
+      if (startedRef.current && !submittedRef.current) trackMarketingEvent("form_abandoned", undefined, tagRef.current);
     };
     window.addEventListener("pagehide", abandoned);
     return () => {
@@ -216,12 +258,12 @@ export default function GetStarted() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.fullName.trim()) {
-      trackMarketingEvent("form_validation_failed");
+      trackMarketingEvent("form_validation_failed", undefined, tag);
       setError(t.errorCoach);
       return;
     }
     if (!form.workEmail.trim() && !form.phone.trim()) {
-      trackMarketingEvent("form_validation_failed");
+      trackMarketingEvent("form_validation_failed", undefined, tag);
       setError(lang === "en" ? "Enter an email address or WhatsApp number so we can contact you." : "أدخل بريدًا إلكترونيًا أو رقم واتساب لنتواصل معك.");
       return;
     }
@@ -246,7 +288,7 @@ export default function GetStarted() {
       });
       markDemoBooked();
       submittedRef.current = true;
-      trackMarketingEvent("form_submitted");
+      trackMarketingEvent("form_submitted", undefined, tag);
       void trackDemoBooked(window.location.pathname);
       setSubmitted(true);
     } catch (err) {
@@ -347,7 +389,7 @@ export default function GetStarted() {
                     </div>
                     {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
                     <button type="submit" disabled={submitting} className={cn(CTA_ORANGE, "mt-1 h-14 w-full !rounded-2xl text-base normal-case tracking-normal shadow-[0_16px_30px_-14px_rgba(194,65,12,0.8)]")}>
-                      {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{t.requestDemo} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
+                      {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{pc.cta} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
                     </button>
                     <p className="text-center text-xs leading-relaxed text-[#78716C]">
                       {lang === "en" ? "We only use these details to arrange your walkthrough." : "نستخدم هذه التفاصيل فقط لترتيب العرض التوضيحي."}
@@ -356,7 +398,7 @@ export default function GetStarted() {
                       href="https://wa.me/919344773231?text=I%27d%20like%20a%20free%20Meet%20to%20Manage%20walkthrough."
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={() => trackMarketingEvent("whatsapp_clicked")}
+                      onClick={() => trackMarketingEvent("whatsapp_clicked", undefined, tag)}
                       className="inline-flex items-center justify-center gap-2 text-sm font-bold text-[#166534] underline decoration-[#22C55E]/40 underline-offset-4 hover:decoration-[#166534]"
                     >
                       <MessageSquare className="h-4 w-4" /> {lang === "en" ? "Prefer WhatsApp? Chat with us" : "تفضل واتساب؟ تحدث معنا"}
