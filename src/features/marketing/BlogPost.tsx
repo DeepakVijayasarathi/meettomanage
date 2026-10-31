@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { CTA_ORANGE, EYEBROW, FOCUS_RING, HERO_BG } from "./styles";
 import { blogImage, PostCard, TopicChip } from "./blogMeta";
 import { formatDate, topicOf } from "./blogTopics";
-import { apiEnabled } from "@/lib/api";
+import { ApiError, apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { getBlogPost, listBlogPosts, type ApiBlogPostDetail, type ApiBlogPostSummary } from "@/api/marketing";
 import { DEMO_BLOG_SUMMARIES, getDemoBlogPost } from "@/data/blogPosts";
@@ -169,29 +169,39 @@ export default function BlogPost() {
   // between posts changes `slug` without remounting this component (same route element),
   // so it's a poor fit here. Plain state that re-derives/re-fetches whenever `slug` changes
   // works correctly in both demo and live mode instead.
-  const [post, setPost] = useState<ApiBlogPostDetail | null>(() => (live ? null : getDemoBlogPost(slug) ?? null));
-  const [loading, setLoading] = useState(live);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    slug: string;
+    post: ApiBlogPostDetail | null;
+    loading: boolean;
+    error: string | null;
+    notFound: boolean;
+  }>({ slug, post: null, loading: live, error: null, notFound: false });
+  // A route changes before its effect runs. Key the result by slug so even that
+  // first render cannot pair the previous article with the new canonical URL.
+  const current = result.slug === slug;
+  const post = live ? (current ? result.post : null) : getDemoBlogPost(slug) ?? null;
+  const loading = live && (!current || result.loading);
+  const error = live && current ? result.error : null;
+  const notFound = live ? current && result.notFound : !post;
 
   useEffect(() => {
-    if (!live) {
-      setPost(getDemoBlogPost(slug) ?? null);
-      return;
-    }
+    if (!live) return;
     let cancelled = false;
-    setLoading(true);
+    setResult({ slug, post: null, loading: true, error: null, notFound: false });
     getBlogPost(slug)
       .then((p) => {
         if (!cancelled) {
-          setPost(p);
-          setError(null);
+          setResult({ slug, post: p, loading: false, error: null, notFound: false });
         }
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Request failed");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setResult({
+          slug,
+          post: null,
+          loading: false,
+          error: err instanceof Error ? err.message : "Request failed",
+          notFound: err instanceof ApiError && err.status === 404,
+        });
       });
     return () => {
       cancelled = true;
@@ -302,6 +312,7 @@ export default function BlogPost() {
           title="Blog — Meet to Manage"
           description="Practical notes on running a modern academy: admissions, billing automation and scheduling."
           path={`/blog/${slug}`}
+          noindex={!loading && notFound}
         />
       )}
 

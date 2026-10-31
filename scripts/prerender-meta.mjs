@@ -16,6 +16,7 @@ const dist = path.resolve(import.meta.dirname, "../dist");
 
 
 const NAV = [
+  ["/resources", "Free coaching centre templates"],
   ["/", "Home"], ["/pricing", "Pricing"], ["/demo", "Book a free demo"], ["/get-started", "Request a platform demo"],
   ["/store", "Course catalogue"], ["/blog", "Blog"], ["/customers", "Customers"], ["/solutions/live-class-software-for-institutes", "Live class software"], ["/solutions/online-attendance-software-for-institutes", "Attendance software"], ["/docs", "Documentation"], ["/careers", "Careers"],
 ];

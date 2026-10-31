@@ -92,6 +92,10 @@ export default function BlogList() {
       <MarketingHero eyebrow={t.eyebrow} title={t.heading} sub={t.sub} />
 
       <section className="mx-auto max-w-[1200px] px-5 py-[clamp(40px,5vw,72px)]">
+        <div className="mb-10 flex flex-col items-start justify-between gap-4 rounded-2xl border border-[#F0D4BD] bg-[#FFF6EE] p-6 sm:flex-row sm:items-center">
+          <div><h2 className="font-display text-lg font-extrabold text-[#1C1917]">Put the process into practice.</h2><p className="mt-1 text-sm leading-relaxed text-[#625A53]">Free fee-tracker and teacher-handover templates, with examples and instructions.</p></div>
+          <Link to="/resources" className="inline-flex shrink-0 items-center gap-2 text-sm font-bold text-[#C2410C]">Browse free templates <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
+        </div>
         {live && error && (
           <InlineAlert variant="warning" className="mb-8">
             {t.loadError(error)}{" "}

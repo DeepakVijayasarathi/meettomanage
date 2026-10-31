@@ -100,6 +100,7 @@ export default function AttendanceSolution() {
             there is one record per student instead of several spreadsheets. Learn about <Link to="/solutions/fee-management-software-for-coaching-centres" className={LINK}>fee management</Link>, see <Link to="/pricing" className={LINK}>pricing</Link> or{" "}
             <Link to="/customers" className={LINK}>how other centres use it</Link>. Comparing tools? Read our <Link to="/alternatives/classplus-alternative-for-coaching-centres" className={LINK}>Classplus alternative guide</Link>.
           </p>
+          <p className="mt-4 text-[15px] leading-relaxed text-[#57534E]">Covering a class when a teacher is away? Use the <Link to="/resources/teacher-handover-checklist" className={LINK}>teacher-handover checklist</Link> to confirm the session, resource version and attendance follow-up.</p>
           <WalkthroughCta className="mt-6" />
         </div>
       </section>

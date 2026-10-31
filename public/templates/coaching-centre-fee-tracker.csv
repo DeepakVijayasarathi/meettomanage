@@ -1,0 +1,4 @@
+Invoice ID,Learner ID,Batch,Billing period,Due date,Currency,Fee amount,Amount received,Outstanding,Credit,Status,Last reminder,Next action
+SAMPLE-001,LEARNER-001,Phonics A,2026-10,2026-10-10,INR,3000,1000,2000,0,Part-paid,2026-10-21,Confirm next instalment date
+SAMPLE-002,LEARNER-002,Abacus B,2026-10,2026-10-10,INR,2500,2500,0,0,Paid,,Match payment reference and file receipt
+SAMPLE-003,LEARNER-003,Tuition C,2026-10,2026-10-10,INR,2000,2200,0,200,Overpaid,,Review credit with family before applying it

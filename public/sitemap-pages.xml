@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+    <loc>https://meettomanage.cloud/resources</loc>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://meettomanage.cloud/resources/coaching-centre-fee-tracker</loc>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://meettomanage.cloud/resources/teacher-handover-checklist</loc>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://meettomanage.cloud/docs</loc>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
     <loc>https://meettomanage.cloud/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>

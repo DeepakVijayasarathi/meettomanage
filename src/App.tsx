@@ -56,6 +56,9 @@ const Terms = lazy(() => import("@/features/public/Terms"));
 const Customers = lazy(() => import("@/features/marketing/Customers"));
 const CaseStudyReaderNest = lazy(() => import("@/features/marketing/CaseStudyReaderNest"));
 const CaseStudyAlphabet = lazy(() => import("@/features/marketing/CaseStudyAlphabet"));
+const ResourceLibrary = lazy(() => import("@/features/marketing/resources/ResourcePages").then(m => ({ default: m.ResourceLibrary })));
+const FeeTrackerGuide = lazy(() => import("@/features/marketing/resources/ResourcePages").then(m => ({ default: m.FeeTrackerGuide })));
+const TeacherHandoverGuide = lazy(() => import("@/features/marketing/resources/ResourcePages").then(m => ({ default: m.TeacherHandoverGuide })));
 const Careers = lazy(() => import("@/features/marketing/Careers"));
 const Docs = lazy(() => import("@/features/marketing/Docs"));
 const NICHE_SLUGS = ["english-grammar-class-software", "art-class-software", "yoga-class-software", "abacus-class-software"];
@@ -228,6 +231,9 @@ export default function App() {
             <Route path="/customers" element={<MarketingTranslationLayer><Customers /></MarketingTranslationLayer>} />
             <Route path="/customers/the-reader-nest" element={<MarketingTranslationLayer><CaseStudyReaderNest /></MarketingTranslationLayer>} />
             <Route path="/customers/alphabet" element={<MarketingTranslationLayer><CaseStudyAlphabet /></MarketingTranslationLayer>} />
+            <Route path="/resources" element={<MarketingTranslationLayer><ResourceLibrary /></MarketingTranslationLayer>} />
+            <Route path="/resources/coaching-centre-fee-tracker" element={<MarketingTranslationLayer><FeeTrackerGuide /></MarketingTranslationLayer>} />
+            <Route path="/resources/teacher-handover-checklist" element={<MarketingTranslationLayer><TeacherHandoverGuide /></MarketingTranslationLayer>} />
             <Route path="/solutions/live-class-software-for-institutes" element={<MarketingTranslationLayer><LiveClassSolution /></MarketingTranslationLayer>} />
             <Route path="/solutions/online-attendance-software-for-institutes" element={<MarketingTranslationLayer><AttendanceSolution /></MarketingTranslationLayer>} />
             <Route path="/solutions/fee-management-software-for-coaching-centres" element={<MarketingTranslationLayer><FeeManagementSolution /></MarketingTranslationLayer>} />

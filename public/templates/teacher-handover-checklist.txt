@@ -1,0 +1,64 @@
+MEET TO MANAGE - TEACHER LEAVE HANDOVER CHECKLIST
+Free working template: https://meettomanage.cloud/resources/teacher-handover-checklist
+
+Create one copy for each session needing cover. Use the minimum information
+the covering teacher needs. Do not include passwords or private meeting tokens.
+
+SESSION DETAILS
+Batch / course:
+Session date (YYYY-MM-DD):
+Start and end time:
+Time zone (for example Asia/Kolkata):
+Usual teacher:
+Covering teacher:
+Coordinator responsible for approval:
+Approved class access location (portal / calendar entry):
+
+BEFORE CLASS
+[ ] Confirm the covering teacher has accepted the session and time zone.
+[ ] Confirm staff access through the approved portal. Never share a login.
+[ ] Share the lesson objective and where the previous class stopped.
+[ ] Identify the worksheet / slides / activity, including version or page.
+[ ] Share essential learner support notes through the approved staff channel.
+[ ] Confirm who will tell families about any change and by when.
+[ ] Check whether recording is available and appropriate for this session.
+[ ] Name a coordinator to contact if access or classroom tools fail.
+
+Lesson objective:
+Previous class stopped at:
+Resource title / version / page:
+Planned activities and approximate timings:
+Essential support notes and approved location:
+Coordinator contact through approved staff channel:
+
+DURING CLASS
+[ ] Open the correct session and verify the batch.
+[ ] Check audio, video and the resource before learners join.
+[ ] Follow the agreed joining / waiting-room process.
+[ ] Check attendance and note any joining issues.
+[ ] Record lesson progress and the practice task assigned.
+
+AFTER CLASS
+[ ] Confirm attendance records and flag discrepancies to the coordinator.
+[ ] Record the topic and pages actually completed.
+[ ] Save the practice task and resource version for the next teacher.
+[ ] Share a concise update through the agreed parent communication process.
+[ ] Record open questions, access issues and the owner of each follow-up.
+[ ] Return the handover to the usual teacher / coordinator.
+
+Completed topic / pages:
+Practice task:
+Open issue / owner / due date:
+Next lesson should start at:
+Handover completed by / date and time:
+Acknowledged by / date and time:
+
+EXAMPLE (FICTIONAL)
+Batch: Phonics A
+Session: 2026-11-05, 17:00-17:45, Asia/Kolkata
+Objective: Blend short words using the sounds practised in the previous class.
+Resource: Blending practice v2, pages 3-4.
+After-class note: Page 3 completed; begin the next lesson at page 4.
+
+This is a manual checklist, not an automatic import or scheduling tool.
+Adapt the fields to your own teaching and communication process.

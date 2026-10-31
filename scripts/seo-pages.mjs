@@ -1,5 +1,8 @@
 // Public marketing pages that get their own prerendered HTML. Keep in sync with each page's <Seo> and public/sitemap.xml.
 export const PAGES = [
+  { path: "/resources", title: "Free Coaching Centre Templates | Meet to Manage", description: "Download free coaching centre templates: a fee tracker CSV and teacher-handover checklist. Worked examples, setup instructions and no signup required." },
+  { path: "/resources/coaching-centre-fee-tracker", type: "article", title: "Free Coaching Centre Fee Tracker Template | Meet to Manage", description: "Download a free CSV fee tracker for your coaching centre. Track invoices, partial payments, outstanding fees and credits with a worked example." },
+  { path: "/resources/teacher-handover-checklist", type: "article", title: "Free Teacher Handover Checklist | Meet to Manage", description: "Download a practical teacher handover checklist for coaching classes. Prepare a substitute teacher, confirm the lesson and record what happened afterwards." },
   { path: "/customers/alphabet", type: "article", title: "Alphabet Customer Story - Meet to Manage", description: "Meet Alphabet, a Jolly Phonics and storytelling academy in the Meet to Manage customer community. Explore its teaching focus and the tools built for educators." },
   { path: "/pricing", title: "Pricing: Academy Management Software Plans | Meet to Manage", description: "One simple price per academy with live classes, admissions, automatic fee collection and a parent app included. Pay monthly or yearly. Book a free demo." },
   { path: "/get-started", title: "Request a Demo — Meet to Manage", description: "Running an academy? See how Meet to Manage's live classroom, scheduling, admissions and billing work together — request a platform demo." },

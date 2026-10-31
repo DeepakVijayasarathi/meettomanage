@@ -247,6 +247,7 @@ export default function MarketingHome() {
                 <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]">See plans and pricing <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </Link>
             </div>
+            <p className="mt-7 text-sm leading-relaxed text-[#625A53]">Organising your centre manually? Start with our <Link to="/resources/coaching-centre-fee-tracker" className="font-semibold text-[#C2410C] underline underline-offset-4">free fee-tracker template</Link> or <Link to="/resources/teacher-handover-checklist" className="font-semibold text-[#C2410C] underline underline-offset-4">teacher-handover checklist</Link>, with worked examples and no signup required.</p>
           </div>
         </section>}
 

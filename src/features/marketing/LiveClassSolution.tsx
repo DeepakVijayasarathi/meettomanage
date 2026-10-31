@@ -57,6 +57,7 @@ export default function LiveClassSolution() {
             <Link to="/customers" className="font-semibold text-[#C2410C] underline">how other centres use it</Link>.
           </p>
           <WalkthroughCta className="mt-6" />
+          <p className="mt-5 text-[15px] leading-relaxed text-[#57534E]">Preparing a covering teacher? Download the <Link to="/resources/teacher-handover-checklist" className="font-semibold text-[#C2410C] underline">free teacher-handover checklist</Link> for session details, resources and after-class follow-up.</p>
         </div>
       </section>
     </PageShell>
