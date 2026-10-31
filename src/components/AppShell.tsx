@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
+import { AppTour } from "@/components/AppTour";
 import { FloatingNotes } from "@/components/FloatingNotes";
 import { DoubtChatbot } from "@/components/DoubtChatbot";
 import { ParentFeedbackPrompt } from "@/components/ParentFeedbackPrompt";
@@ -150,6 +151,8 @@ export function AppShell({ role, children }: AppShellProps) {
     "--primary-foreground": "0 0% 100%",
   } as CSSProperties;
 
+  const navSections = (apiSections ?? NAV_BY_ROLE[role]).map(section => ({ ...section, items: section.items.filter(item => mitoConfiguration?.enabled !== false || !item.to.endsWith("/mito")) })).filter(section => section.items.length > 0);
+
   if (apiEnabled() && isParentAccount && shellBlocked) {
     return <AccountSuspendedScreen childId={blockedChild?.childId} onRecheck={recheckSuspension} />;
   }
@@ -166,7 +169,7 @@ export function AppShell({ role, children }: AppShellProps) {
         Skip to content
       </a>
       <Sidebar
-        sections={(apiSections ?? NAV_BY_ROLE[role]).map(section => ({ ...section, items: section.items.filter(item => mitoConfiguration?.enabled !== false || !item.to.endsWith("/mito")) })).filter(section => section.items.length > 0)}
+        sections={navSections}
         roleLabel={meta.label}
         roleHex={meta.hex}
         mobileOpen={mobileOpen}
@@ -199,6 +202,13 @@ export function AppShell({ role, children }: AppShellProps) {
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
+      <AppTour
+        role={role}
+        roleLabel={meta.label}
+        sections={navSections}
+        onPrepare={() => { setCollapsed(false); setMobileOpen(true); }}
+        onFinish={() => setMobileOpen(false)}
+      />
       <FloatingNotes role={role} />
       <DoubtChatbot role={role} />
       {role === "parent" && <ParentFeedbackPrompt />}

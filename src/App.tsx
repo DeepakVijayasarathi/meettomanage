@@ -57,6 +57,7 @@ const Customers = lazy(() => import("@/features/marketing/Customers"));
 const CaseStudyReaderNest = lazy(() => import("@/features/marketing/CaseStudyReaderNest"));
 const CaseStudyAlphabet = lazy(() => import("@/features/marketing/CaseStudyAlphabet"));
 const Careers = lazy(() => import("@/features/marketing/Careers"));
+const Docs = lazy(() => import("@/features/marketing/Docs"));
 const LiveClassSolution = lazy(() => import("@/features/marketing/LiveClassSolution"));
 const AttendanceSolution = lazy(() => import("@/features/marketing/AttendanceSolution"));
 const FeeManagementSolution = lazy(() => import("@/features/marketing/FeeManagementSolution"));
@@ -228,6 +229,7 @@ export default function App() {
             <Route path="/solutions/online-attendance-software-for-institutes" element={<MarketingTranslationLayer><AttendanceSolution /></MarketingTranslationLayer>} />
             <Route path="/solutions/fee-management-software-for-coaching-centres" element={<MarketingTranslationLayer><FeeManagementSolution /></MarketingTranslationLayer>} />
             <Route path="/solutions/phonics-live-class-software" element={<MarketingTranslationLayer><PhonicsSolution /></MarketingTranslationLayer>} />
+            <Route path="/docs" element={<MarketingTranslationLayer><Docs /></MarketingTranslationLayer>} />
             <Route path="/careers" element={<MarketingTranslationLayer><Careers /></MarketingTranslationLayer>} />
             <Route path="/privacy" element={<MarketingTranslationLayer><PlatformPrivacy /></MarketingTranslationLayer>} />
             <Route path="/legal/terms" element={<MarketingTranslationLayer><PlatformTerms /></MarketingTranslationLayer>} />

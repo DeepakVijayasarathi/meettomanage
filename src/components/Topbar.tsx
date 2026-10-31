@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, LogOut, User, Settings } from "lucide-react";
+import { Menu, LogOut, User, Settings, Compass } from "lucide-react";
+import { START_TOUR_EVENT } from "@/components/AppTour";
 import { AccountDialog } from "@/components/AccountDialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -70,6 +71,9 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openAccount("preferences")}>
               <Settings /> Preferences
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.dispatchEvent(new Event(START_TOUR_EVENT))}>
+              <Compass /> Product tour
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

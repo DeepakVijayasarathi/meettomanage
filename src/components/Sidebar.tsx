@@ -90,6 +90,7 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
                     return (
                       <NavLink
                         key={item.to}
+                        data-tour={item.to}
                         to={item.to}
                         end={item.end}
                         onClick={onClose}

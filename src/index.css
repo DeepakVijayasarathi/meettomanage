@@ -312,3 +312,8 @@
   letter-spacing: -0.022em;
   font-variant-numeric: tabular-nums;
 }
+
+/* Product-tour screenshots: shown as a background (no <img> to save), unselectable, and hidden when printed. */
+.tour-shot { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.tour-shot[data-obscured="true"] > .tour-shot-img { filter: blur(24px); }
+@media print { .tour-shot { display: none !important; } }
