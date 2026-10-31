@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MarketingTranslationLayer } from "@/components/MarketingTranslationLayer";
 import { Toaster } from "@/components/ui/toaster";
@@ -208,6 +209,7 @@ export default function App() {
   return (
     <TooltipProvider delayDuration={200}>
       <BrowserRouter basename={tenantPath() || undefined}>
+        <ScrollToTop />
         <AppErrorBoundary>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
