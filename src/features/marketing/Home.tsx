@@ -13,6 +13,8 @@ import { detectMarketCurrency, formatMarketPrice, INR_PER_USD } from "@/lib/regi
 import { ChaosToOne } from "./ChaosToOne";
 import { MarketingFooter } from "./MarketingFooter";
 import { BTN_PRIMARY, MarketingNav } from "./MarketingNav";
+import { OpenSourceStrip } from "./OpenSourceStrip";
+import { SALES_WHATSAPP_URL } from "./WalkthroughCta";
 import { COPY } from "./home/copy";
 import { ExplainerVideo } from "./home/ExplainerVideo";
 import { CountUp, Reveal } from "./home/fx";
@@ -27,7 +29,6 @@ import { Showcase } from "./home/Showcase";
 // The offer popup loads after the page is interactive and shows once per visit.
 const PromoPopup = lazy(() => import("./home/PromoPopup").then((m) => ({ default: m.PromoPopup })));
 const ChatWidget = lazy(() => import("./HomeChat").then((m) => ({ default: m.ChatWidget })));
-const SALES_WHATSAPP_URL = "https://wa.me/919344773231?text=I%27d%20like%20to%20see%20Meet%20to%20Manage%20for%20my%20coaching%20centre.";
 
 /** One mark per item in the "built on" strip, in the same order as the copy. Cashfree has no logo in the open icon set we
  *  use, so it (like email and SMS, which are channels rather than brands) gets a plain icon instead of a made-up logo. */
@@ -248,6 +249,8 @@ export default function MarketingHome() {
             </div>
           </div>
         </section>}
+
+        {lang === "en" && <section className="bg-white px-5 py-[clamp(32px,4vw,56px)]"><OpenSourceStrip /></section>}
 
         {/* PROOF: what it's built on */}
         <section aria-label={c.proof.label} className="border-y border-[#EFE3D7] bg-white py-7">

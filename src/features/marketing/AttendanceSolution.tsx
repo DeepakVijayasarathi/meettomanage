@@ -1,8 +1,6 @@
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { BTN_PRIMARY } from "./MarketingNav";
 import { PageShell } from "./PageShell";
+import { WalkthroughCta } from "./WalkthroughCta";
 
 /** Only claims the product actually supports belong here: attendance is marked when a student opens the class link, parents see an attendance percentage, and staff get attendance reports. */
 const POINTS = [
@@ -54,9 +52,7 @@ export default function AttendanceSolution() {
             there is one record per student instead of several spreadsheets. Learn about <Link to="/solutions/fee-management-software-for-coaching-centres" className="font-semibold text-[#C2410C] underline">fee management</Link>, see <Link to="/pricing" className="font-semibold text-[#C2410C] underline">pricing</Link> or{" "}
             <Link to="/customers" className="font-semibold text-[#C2410C] underline">how other centres use it</Link>.
           </p>
-          <Link to="/get-started" className={cn(BTN_PRIMARY, "mt-6 w-fit")}>
-            Book a free walkthrough <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
-          </Link>
+          <WalkthroughCta className="mt-6" />
         </div>
       </section>
     </PageShell>

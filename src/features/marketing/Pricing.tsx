@@ -83,7 +83,15 @@ const T = {
     planCta: "Book free walkthrough",
     reassure: "Free 30-minute platform walkthrough. No payment details.",
     trusted: { title: "Used by coaching centres including", all: "See all customers" },
-    trial: { cta: (n: number) => `Start ${n}-day free trial`, note: "No card needed.", or: "Or book a free walkthrough" },
+    trial: { cta: (n: number) => `Start ${n % 30 === 0 ? `${n / 30}-month` : `${n}-day`} free trial`, note: "No card needed.", or: "Or book a free walkthrough" },
+    free: {
+      eyebrow: "Open source · Free",
+      name: "Free",
+      price: "Free forever",
+      description: "Run live classes at no cost. Upgrade when you need recordings, more classes, attendance, fees or the parent app.",
+      limits: ["1 class at a time", "30 classes a month", "No recordings"],
+      cta: "Get a free account",
+    },
     help: { title: "Not sure which plan fits your academy?", body: "Tell us your student count and we'll recommend one.", cta: "Chat on WhatsApp" },
     own: {
       eyebrow: "Own it outright",
@@ -139,6 +147,14 @@ const T = {
     reassure: "جولة مجانية لمدة 30 دقيقة. بلا تفاصيل دفع.",
     trusted: { title: "يستخدمها مراكز تعليمية منها", all: "عرض كل العملاء" },
     trial: { cta: (n: number) => `ابدأ تجربة مجانية لمدة ${n} يومًا`, note: "لا حاجة لبطاقة.", or: "أو احجز جولة مجانية" },
+    free: {
+      eyebrow: "مفتوح المصدر · مجاني",
+      name: "مجاني",
+      price: "مجاني دائمًا",
+      description: "شغّل حصصًا مباشرة دون تكلفة. رقِّ خطتك عندما تحتاج إلى التسجيلات أو مزيد من الحصص أو الحضور أو الرسوم أو تطبيق أولياء الأمور.",
+      limits: ["حصة واحدة في كل مرة", "30 حصة شهريًا", "بدون تسجيلات"],
+      cta: "احصل على حساب مجاني",
+    },
     help: { title: "لست متأكدًا أي خطة تناسب أكاديميتك؟", body: "أخبرنا بعدد طلابك وسنوصي لك بخطة.", cta: "تحدث عبر واتساب" },
     own: {
       eyebrow: "امتلكه بالكامل",
@@ -346,6 +362,8 @@ export default function Pricing() {
             const shownCycle: Cycle = chosen === year ? "Year" : "Month";
             const walkthroughTo = `/get-started?plan=${encodeURIComponent(plan.code)}&cycle=${shownCycle}`;
             const freeMonths = month && year ? Math.round(12 - year.amount / month.amount) : 0;
+            // A trial length set on the plan itself (Platform > Plans) wins over the site-wide signup setting.
+            const planTrialDays = trialDays > 0 ? (plan.trialDays > 0 ? plan.trialDays : trialDays) : 0;
             return (
               <PlanCard
                 key={plan.id}
@@ -357,11 +375,11 @@ export default function Pricing() {
                 badge={shownCycle === "Year" && freeMonths > 0 ? t.monthsFree(freeMonths) : undefined}
                 description={plan.description}
                 highlighted={plan.code === popularCode}
-                ctaLabel={trialDays > 0 ? t.trial.cta(trialDays) : t.planCta}
-                ctaTo={trialDays > 0 ? "/signup" : walkthroughTo}
+                ctaLabel={planTrialDays > 0 ? t.trial.cta(planTrialDays) : t.planCta}
+                ctaTo={planTrialDays > 0 ? "/signup" : walkthroughTo}
                 popularLabel={t.popular}
-                note={trialDays > 0 ? t.trial.note : t.reassure}
-                secondary={trialDays > 0 ? { label: t.trial.or, to: walkthroughTo } : undefined}
+                note={planTrialDays > 0 ? t.trial.note : t.reassure}
+                secondary={planTrialDays > 0 ? { label: t.trial.or, to: walkthroughTo } : undefined}
               >
                 <div>
                   <p className="mb-3 text-xs font-bold uppercase tracking-[0.08em] text-[#5B6472] rtl:tracking-normal">{t.limitsTitle}</p>
@@ -398,6 +416,31 @@ export default function Pricing() {
           >
             <Bullets items={t.own.features} />
           </PlanCard>
+        </div>
+
+        <div className={cn(CARD, "mt-6 flex flex-col gap-6 p-7 sm:p-8 lg:flex-row lg:items-center lg:gap-10")}>
+          <div className="flex-1">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#166534] rtl:tracking-normal">{t.free.eyebrow}</p>
+            <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{t.free.name}</h2>
+              <p className="font-display text-xl font-extrabold text-[#166534] rtl:tracking-normal">{t.free.price}</p>
+            </div>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#333]">{t.free.description}</p>
+          </div>
+          <ul className="flex flex-col gap-2.5">
+            {t.free.limits.map((line) => (
+              <li key={line} className="flex items-start gap-2.5">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#166534]" />
+                <span className="text-sm leading-relaxed text-[#111]">{line}</span>
+              </li>
+            ))}
+          </ul>
+          <Link
+            to="/signup"
+            className={cn(CTA_DARK, "w-full shrink-0 !rounded-2xl lg:w-auto")}
+          >
+            {t.free.cta} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+          </Link>
         </div>
 
         <div className="mx-auto mt-12 flex max-w-2xl flex-col items-center gap-4 text-center">

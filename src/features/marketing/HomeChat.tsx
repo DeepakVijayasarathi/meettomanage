@@ -1018,8 +1018,6 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
           </span>
           {/* Label only from sm up: on a phone the full pill covers the page's own buttons. */}
           <span className="relative hidden text-lg font-medium sm:inline">{t.launcher} <b className="font-extrabold">{t.launcherName}</b></span>
-          <MessageSquare aria-hidden className="relative hidden h-5 w-5 sm:block" />
-
         </button>
       )}
     </div>

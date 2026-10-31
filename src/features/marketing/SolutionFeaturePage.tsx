@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { BTN_PRIMARY } from "./MarketingNav";
 import { PageShell } from "./PageShell";
+import { WalkthroughCta } from "./WalkthroughCta";
 
 export interface SolutionFeature { title: string; body: string }
 
@@ -48,9 +46,7 @@ export function SolutionFeaturePage({ eyebrow, title, sub, seo, name, features, 
         <div className="mx-auto mt-10 max-w-[1000px] px-5">
           <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em]">{closingHeading}</h2>
           <p className="mt-3 text-[15px] leading-relaxed text-[#57534E]">{closing}</p>
-          <Link to="/get-started" className={cn(BTN_PRIMARY, "mt-6 w-fit")}>
-            Book a free walkthrough <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
-          </Link>
+          <WalkthroughCta className="mt-6" />
         </div>
       </section>
     </PageShell>

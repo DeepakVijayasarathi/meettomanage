@@ -4,8 +4,59 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useLightBrandScope } from "@/lib/theme";
 import { formatMoney, saasPublic, type PublicPlan } from "@/api/saas";
+import { requestPlatformDemo } from "@/api/marketing";
 
 const field = "w-full rounded-xl border border-brand-ink/15 bg-white px-4 py-3 text-sm text-brand-ink outline-none transition placeholder:text-brand-ink/40 focus:border-primary focus:ring-4 focus:ring-primary/20";
+
+/** Shown while self-service signup is switched off: the request goes to the team's lead queue, and the team creates the login. */
+function AccessRequest() {
+  const [form, setForm] = useState({ fullName: "", academyName: "", workEmail: "", phone: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true); setError("");
+    try {
+      await requestPlatformDemo({
+        fullName: form.fullName.trim(),
+        academyName: form.academyName.trim(),
+        workEmail: form.workEmail.trim(),
+        phone: form.phone.trim(),
+        message: "Account request from the signup page: please create my workspace and send my login.",
+        landingPath: window.location.pathname,
+      });
+      setSent(true);
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not send your request. Please try again."); }
+    finally { setBusy(false); }
+  }
+
+  if (sent) return <div className="space-y-3 text-center" role="status">
+    <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" />
+    <h1 className="text-2xl font-semibold text-brand-ink">Request received</h1>
+    <p className="text-sm text-brand-ink/70">Our team will set up your workspace and send your login details to {form.workEmail}.</p>
+  </div>;
+
+  return <form onSubmit={submit} className="space-y-5">
+    <div className="text-center"><h1 className="text-2xl font-semibold text-brand-ink sm:text-3xl">Request your account</h1>
+      <p className="mt-2 text-sm text-brand-ink/70">Tell us about your academy. Our team creates your workspace and sends your login details by e-mail.</p></div>
+    {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+    <div className="grid gap-4 sm:grid-cols-2">
+      <label className="block space-y-1.5 text-sm font-medium text-brand-ink"><span>Your name</span>
+        <input required maxLength={120} autoComplete="name" placeholder="e.g. Priya Sharma" className={field} value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} /></label>
+      <label className="block space-y-1.5 text-sm font-medium text-brand-ink"><span>Academy name</span>
+        <input required maxLength={200} placeholder="e.g. Bright Minds Academy" className={field} value={form.academyName} onChange={e => setForm({ ...form, academyName: e.target.value })} /></label>
+      <label className="block space-y-1.5 text-sm font-medium text-brand-ink"><span>E-mail</span>
+        <input type="email" required autoComplete="email" placeholder="you@youracademy.com" className={field} value={form.workEmail} onChange={e => setForm({ ...form, workEmail: e.target.value })} /></label>
+      <label className="block space-y-1.5 text-sm font-medium text-brand-ink"><span>Phone / WhatsApp</span>
+        <input type="tel" required autoComplete="tel" placeholder="+91 98765 43210" className={field} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></label>
+    </div>
+    <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-60">
+      {busy ? <><Loader2 className="h-4 w-4 animate-spin" />Sending…</> : "Send request"}</button>
+    <p className="text-center text-xs text-brand-ink/60">Prefer to talk first? <Link to="/demo" className="font-medium text-primary underline-offset-4 hover:underline">Book a free walkthrough</Link>.</p>
+  </form>;
+}
 
 /** Public self-service signup (/signup): creates an academy workspace on a free trial. */
 export default function Signup() {
@@ -51,10 +102,7 @@ export default function Signup() {
         <h1 className="text-2xl font-semibold text-brand-ink">Your workspace is ready</h1>
         <p className="text-sm text-brand-ink/70">Sign in with the e-mail and PIN you just chose. Your {settings?.trialDays ?? 14}-day free trial has started.</p>
         <a href={created} className="inline-block rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground">Go to sign in</a>
-      </div> : settings && !settings.enabled ? <div className="space-y-3 text-center">
-        <h1 className="text-2xl font-semibold text-brand-ink">Signup is by invitation</h1>
-        <p className="text-sm text-brand-ink/70">Self-service signup is not open yet. <Link to="/demo" className="font-medium text-primary underline-offset-4 hover:underline">Request a demo</Link> and we will set up your workspace.</p>
-      </div> : <form onSubmit={submit} className="space-y-5">
+      </div> : settings && !settings.enabled ? <AccessRequest /> : <form onSubmit={submit} className="space-y-5">
         <div className="text-center"><h1 className="text-2xl font-semibold text-brand-ink sm:text-3xl">Start your free trial</h1>
           <p className="mt-2 text-sm text-brand-ink/70">{settings?.trialDays ?? 14} days of {name}, no card needed. Set up your academy in minutes.</p></div>
         {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}

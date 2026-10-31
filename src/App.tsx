@@ -211,6 +211,7 @@ export default function App() {
             <Route path="/platform/audit-log" element={<PlatformAuditLog />} />
             <Route path="/platform/operations" element={<PlatformOperations />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/register" element={<Navigate to="/signup" replace />} />
             <Route path="/" element={<MarketingTranslationLayer><MarketingHome /></MarketingTranslationLayer>} />
             <Route path="/store" element={<MarketingTranslationLayer><Store /></MarketingTranslationLayer>} />
             <Route path="/demo" element={<MarketingTranslationLayer><Demo /></MarketingTranslationLayer>} />

@@ -24,9 +24,37 @@ export function Showcase({ tabs, base = "/product" }: { tabs: Tab[]; base?: stri
     return () => window.clearTimeout(id);
   }, [active, paused, tabs.length]);
 
+  // On the horizontal (mobile) strip, keep the selected tab in view. Scrolls the strip only, never the page.
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const list = listRef.current;
+    const tab = list?.children[active] as HTMLElement | undefined;
+    if (!list || !tab || list.scrollWidth <= list.clientWidth) return;
+    const rtl = getComputedStyle(list).direction === "rtl";
+    const offset = tab.offsetLeft - (list.clientWidth - tab.offsetWidth) / 2;
+    list.scrollTo({ left: rtl ? offset - list.offsetLeft : offset, behavior: reduced.current ? "auto" : "smooth" });
+  }, [active]);
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    const rtl = document.documentElement.dir === "rtl";
+    const next = e.key === "ArrowRight" ? (rtl ? -1 : 1) : e.key === "ArrowLeft" ? (rtl ? 1 : -1) : e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+    if (!next) return;
+    e.preventDefault();
+    const i = (active + next + tabs.length) % tabs.length;
+    setActive(i);
+    (listRef.current?.children[i] as HTMLElement | undefined)?.focus();
+  };
+
   return (
     <div className="grid items-start gap-8 lg:grid-cols-[340px_1fr] lg:gap-12" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
-      <div role="tablist" aria-label="Platform tour" aria-orientation="vertical" className="flex gap-2 overflow-x-auto lg:flex-col lg:gap-0 lg:overflow-visible">
+      <div
+        ref={listRef}
+        role="tablist"
+        aria-label="Platform tour"
+        aria-orientation="vertical"
+        onKeyDown={onKeyDown}
+        className="-mx-5 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:snap-none lg:flex-col lg:gap-0 lg:overflow-visible lg:px-0 lg:pb-0"
+      >
         {tabs.map((tab, i) => {
           const on = i === active;
           return (
@@ -40,15 +68,15 @@ export function Showcase({ tabs, base = "/product" }: { tabs: Tab[]; base?: stri
               tabIndex={on ? 0 : -1}
               onClick={() => setActive(i)}
               className={cn(
-                "relative shrink-0 border border-[#EFE3D7] bg-white px-5 py-4 text-start transition-colors lg:border-0 lg:border-s-2 lg:bg-transparent lg:py-5",
-                on ? "border-[#1C1917] lg:border-s-[#1C1917]" : "text-[#57534E] hover:text-[#1C1917] lg:border-s-[#EFE3D7]",
+                "relative shrink-0 snap-center whitespace-nowrap rounded-full border border-[#EFE3D7] bg-white px-5 py-2.5 text-start transition-colors lg:whitespace-normal lg:rounded-none lg:border-0 lg:border-s-2 lg:bg-transparent lg:py-5",
+                on ? "border-[#1C1917] bg-[#1C1917] lg:border-s-[#1C1917] lg:bg-transparent" : "text-[#57534E] hover:text-[#1C1917] lg:border-s-[#EFE3D7]",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C]"
               )}
             >
-              <span className={cn("block text-base font-bold", on ? "text-[#1C1917]" : "text-[#44403C]")}>{tab.title}</span>
+              <span className={cn("block text-sm font-bold lg:text-base", on ? "text-white lg:text-[#1C1917]" : "text-[#44403C]")}>{tab.title}</span>
               <span className={cn("hidden overflow-hidden text-[15px] leading-relaxed text-[#57534E] motion-safe:transition-all motion-safe:duration-500 lg:block", on ? "mt-2 max-h-40 opacity-100" : "max-h-0 opacity-0")}>{tab.body}</span>
               {on && !paused && !reduced.current && (
-                <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden lg:inset-y-0 lg:start-[-2px] lg:h-auto lg:w-0.5">
+                <span aria-hidden="true" className="absolute inset-x-5 bottom-0 h-0.5 overflow-hidden rounded-full lg:inset-x-auto lg:inset-y-0 lg:start-[-2px] lg:h-auto lg:w-0.5">
                   <span key={`${active}-${paused}`} className="mx-progress block h-full w-full bg-[#C2410C] lg:origin-top" />
                 </span>
               )}
