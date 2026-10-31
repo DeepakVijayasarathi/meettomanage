@@ -24,12 +24,8 @@ const NAV = [
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const BLOG_TITLE_SUFFIX = " | Meet to Manage";
-const blogSeoTitle = (title) => {
-  const available = 60 - BLOG_TITLE_SUFFIX.length;
-  if (title.length <= available) return `${title}${BLOG_TITLE_SUFFIX}`;
-  const shortened = title.slice(0, available - 1).replace(/\s+\S*$/, "").replace(/[\s:;,.-]+$/, "");
-  return `${shortened || title.slice(0, available - 1)}…${BLOG_TITLE_SUFFIX}`;
-};
+/** Brand suffix only when it fits in ~60 characters; a long title stays whole (never cut with "…"), so its keywords stay in. */
+const blogSeoTitle = (title) => (title.length + BLOG_TITLE_SUFFIX.length <= 60 ? `${title}${BLOG_TITLE_SUFFIX}` : title);
 
 /** Page title without the " — Meet to Manage…" or " | Meet to Manage" suffix, for the visible heading. */
 const heading = (title) => title.replace(/\s+[—|]\s+Meet to Manage.*$/, "");
@@ -88,7 +84,7 @@ function render(shell, page) {
     const ld = {
       "@context": "https://schema.org",
       "@type": "BlogPosting",
-      headline: heading(page.title).slice(0, 110),
+      headline: (page.heading ?? heading(page.title)).slice(0, 110),
       description: page.description,
       datePublished: page.publishedAt,
       dateModified: page.publishedAt,
@@ -103,7 +99,7 @@ function render(shell, page) {
   // The boot screen (visible until React mounts, and all a non-JS crawler sees) carries the
   // home hero by default; give each page its own heading, summary and, for posts, the article.
   const body = page.contentHtml
-    ? `<main class="article"><h1>${esc(heading(page.title))}</h1><p class="lead">${desc}</p>${page.contentHtml}<p><a class="cta" href="/get-started">Book Demo</a></p></main>`
+    ? `<main class="article"><h1>${esc(page.heading ?? heading(page.title))}</h1><p class="lead">${desc}</p>${page.contentHtml}<p><a class="cta" href="/get-started">Book Demo</a></p></main>`
     : `<main><h1>${esc(heading(page.title))}</h1><p>${desc}</p><a class="cta" href="/get-started">Book Demo</a></main>`;
   swap(/(<div id="boot">[\s\S]*?)<main>[\s\S]*?<\/main>/, (a) => `${a}${body}`);
   const links = NAV.map(([href, label]) => `<li><a href="${href}">${esc(label)}</a></li>`).join("");
@@ -136,6 +132,8 @@ async function blogPages() {
         path: `/blog/${p.slug}`,
         type: "article",
         title: blogSeoTitle(p.title),
+        // The visible heading and article headline use the post's full title, not the search-result title.
+        heading: p.title,
         description: p.excerpt ?? "",
         publishedAt: p.publishedAtUtc,
         image: existsSync(path.join(dist, cover)) ? cover : undefined,

@@ -21,12 +21,9 @@ const WHATSAPP_URL = "https://wa.me/919344773231";
 const SITE_URL = "https://meettomanage.cloud";
 const BLOG_TITLE_SUFFIX = " | Meet to Manage";
 
-/** Keep search-result titles concise without changing the visible editorial headline. */
+/** Brand suffix only when it fits in ~60 characters; a long title stays whole (never cut with "…"), so its keywords stay in. Keep in sync with scripts/prerender-meta.mjs. */
 function blogSeoTitle(title: string): string {
-  const available = 60 - BLOG_TITLE_SUFFIX.length;
-  if (title.length <= available) return `${title}${BLOG_TITLE_SUFFIX}`;
-  const shortened = title.slice(0, available - 1).replace(/\s+\S*$/, "").replace(/[\s:;,.-]+$/, "");
-  return `${shortened || title.slice(0, available - 1)}…${BLOG_TITLE_SUFFIX}`;
+  return title.length + BLOG_TITLE_SUFFIX.length <= 60 ? `${title}${BLOG_TITLE_SUFFIX}` : title;
 }
 
 /** Page chrome only — the post itself (title/content/excerpt, from getBlogPost()/

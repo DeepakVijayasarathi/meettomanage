@@ -244,7 +244,7 @@ export default function PrivacyPolicy() {
   return (
     <div className="theme-light-scope marketing-square min-h-screen bg-white text-[#171B22]">
       <Seo
-        title="Privacy Policy — Meet to Manage"
+        title="Infinity Uniquers Privacy Policy — Meet to Manage"
         description="How Infinity Uniquers collects, uses, stores, shares and protects information across Meet to Manage and Infinity Client Finder."
         path="/policy"
       />

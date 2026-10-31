@@ -32,5 +32,5 @@ export const PAGES = [
   { path: "/careers", title: "Careers — Meet to Manage", description: "Work on the platform online coaching centres use for live classes, fees and parent apps. See open roles or send an open application." },
   { path: "/privacy", title: "Privacy Policy — Meet to Manage", description: "How Meet to Manage collects, uses, shares and protects information about academies, teachers, parents and students." },
   { path: "/legal/terms", title: "Terms of Service — Meet to Manage", description: "The terms that apply when an academy, school or coach subscribes to Meet to Manage: plans and billing, cancellation, acceptable use and data." },
-  { path: "/policy", title: "Privacy Policy — Meet to Manage", description: "How Infinity Uniquers collects, uses, stores, shares and protects information across Meet to Manage and Infinity Client Finder." },
+  { path: "/policy", title: "Infinity Uniquers Privacy Policy — Meet to Manage", description: "How Infinity Uniquers collects, uses, stores, shares and protects information across Meet to Manage and Infinity Client Finder." },
 ];
