@@ -24,6 +24,7 @@ const pct = (n: number, of: number) => (of === 0 ? "0%" : `${Math.round((n * 100
 const EMPTY_BEHAVIOUR: ApiMarketingSiteBehaviour = {
   days: 7, startDate: "", endDate: "", visitors: 0, visits: 0, singlePageVisits: 0, returningVisitors: 0, chatVisitors: 0, bookedVisitors: 0,
   formStartedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, formSubmittedVisitors: 0, whatsAppVisitors: 0,
+  exitIntentShownVisitors: 0, exitIntentSubmittedVisitors: 0, experiments: [],
   funnel: [], pages: [], devices: [], sources: [],
 };
 const IMPACT_STYLE = { High: "bg-destructive/10 text-destructive", Medium: "bg-warning/15 text-warning", Low: "bg-muted text-muted-foreground" } as const;
@@ -131,6 +132,48 @@ export default function MarketingVisitors() {
             <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Form completion:</b> {pct(b.formSubmittedVisitors, b.formStartedVisitors)}</p>
             <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Form abandonment:</b> {pct(b.formAbandonedVisitors, b.formStartedVisitors)}</p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Pricing exit popup and A/B tests</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            The popup opens when a /pricing visitor heads for the exit. Get Started copy test: a = original, b = outcome-led. Preview either with ?variant=a or ?variant=b.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2 text-sm sm:grid-cols-3">
+            <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Popup shown:</b> {b.exitIntentShownVisitors ?? 0}</p>
+            <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Leads captured:</b> {b.exitIntentSubmittedVisitors ?? 0}</p>
+            <p className="rounded-lg bg-muted/30 px-3 py-2"><b>Capture rate:</b> {pct(b.exitIntentSubmittedVisitors ?? 0, b.exitIntentShownVisitors ?? 0)}</p>
+          </div>
+          {(b.experiments ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No A/B test traffic in this period.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs text-muted-foreground">
+                  <tr><th className="py-1.5 pr-3 font-medium">Test</th><th className="pr-3 font-medium">Variant</th><th className="pr-3 text-right font-medium">Saw it</th><th className="pr-3 text-right font-medium">Started form</th><th className="pr-3 text-right font-medium">Submitted</th><th className="text-right font-medium">Submit rate</th></tr>
+                </thead>
+                <tbody>
+                  {b.experiments.map((x) => (
+                    <tr key={`${x.experiment}:${x.variant}`} className="border-t">
+                      <td className="py-1.5 pr-3 font-mono text-xs">{x.experiment}</td>
+                      <td className="pr-3 font-semibold">{x.variant.toUpperCase()}</td>
+                      <td className="pr-3 text-right">{x.visitors}</td>
+                      <td className="pr-3 text-right">{x.formStarted}</td>
+                      <td className="pr-3 text-right">{x.formSubmitted}</td>
+                      <td className="text-right font-semibold">{x.conversionRate}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {b.experiments.some((x) => x.visitors < 100) && (
+                <p className="mt-2 text-xs text-muted-foreground">Too early to pick a winner: wait until each variant has at least 100 visitors and the gap holds for a week or more.</p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

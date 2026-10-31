@@ -369,10 +369,14 @@ export const getMarketingVisitorDetail = (visitorId: string) => apiFetch<ApiMark
 export const analyzeMarketingVisitor = (visitorId: string) => apiFetch<ApiMarketingVisitorInsight>(`/api/marketing/analytics/visitors/${encodeURIComponent(visitorId)}/insight`, { method: "POST" });
 
 export interface ApiMarketingPageBehaviour { path: string; visitors: number; views: number; exits: number; exitRate: number; avgSeconds: number | null }
+/** One A/B test bucket: unique visitors who saw it, started the form, and submitted it. */
+export interface ApiMarketingExperimentVariant { experiment: string; variant: string; visitors: number; formStarted: number; formSubmitted: number; conversionRate: number }
 export interface ApiMarketingSiteBehaviour {
   days: number; startDate: string; endDate: string;
   visitors: number; visits: number; singlePageVisits: number; returningVisitors: number; chatVisitors: number; bookedVisitors: number;
   formStartedVisitors: number; formValidationFailedVisitors: number; formAbandonedVisitors: number; formSubmittedVisitors: number; whatsAppVisitors: number;
+  exitIntentShownVisitors: number; exitIntentSubmittedVisitors: number;
+  experiments: ApiMarketingExperimentVariant[];
   funnel: { name: string; visitors: number }[];
   pages: ApiMarketingPageBehaviour[];
   devices: ApiNamedCount[];

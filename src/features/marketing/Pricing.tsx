@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { MarketingHero } from "./MarketingHero";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
+import { PricingExitIntent } from "./PricingExitIntent";
 import { ACCENT_GRADIENT, CARD, CTA_DARK, CTA_ORANGE, HERO_OVERLAP } from "./styles";
 
 type Cycle = "Month" | "Year";
@@ -364,6 +365,7 @@ export default function Pricing() {
       </section>
 
       <MarketingFooter />
+      <PricingExitIntent />
     </div>
   );
 }

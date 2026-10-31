@@ -204,14 +204,15 @@ function isAutomatedBrowser(): boolean {
 }
 
 /** First-party beacon to the marketing console's own dashboard; never blocks or throws. */
-export type MarketingEventType = "page_view" | "chat_started" | "form_started" | "form_validation_failed" | "form_abandoned" | "form_submitted" | "whatsapp_clicked";
+export type MarketingEventType = "page_view" | "chat_started" | "form_started" | "form_validation_failed" | "form_abandoned" | "form_submitted" | "whatsapp_clicked"
+  | "exit_intent_shown" | "exit_intent_submitted" | "experiment_viewed";
 
-function beacon(type: MarketingEventType, path: string) {
+function beacon(type: MarketingEventType, path: string, variant?: string) {
   if (!apiEnabled() || isAutomatedBrowser()) return;
   void apiFetch<void>("/api/marketing/track", {
     method: "POST",
     keepalive: true,
-    body: JSON.stringify({ type, path, visitorId: marketingVisitorId(), country: browserCountry(), ...marketingAttribution() }),
+    body: JSON.stringify({ type, path, visitorId: marketingVisitorId(), country: browserCountry(), ...marketingAttribution(), variant }),
   }).catch(() => {
     /* analytics must never get in a visitor's way */
   });
@@ -222,9 +223,10 @@ export function trackChatStarted(): void {
   beacon("chat_started", window.location.pathname);
 }
 
-/** Anonymous first-party funnel signal for the Marketing Console. */
-export function trackMarketingEvent(type: Exclude<MarketingEventType, "page_view" | "chat_started">, path = window.location.pathname): void {
-  beacon(type, path);
+/** Anonymous first-party funnel signal for the Marketing Console. `variant` tags the event with
+ *  an A/B test bucket ("experiment:variant") so the console can compare buckets. */
+export function trackMarketingEvent(type: Exclude<MarketingEventType, "page_view" | "chat_started">, path = window.location.pathname, variant?: string): void {
+  beacon(type, path, variant);
 }
 
 /** Called by each public marketing page (via <Seo>) once it renders. */
