@@ -140,7 +140,7 @@ const T = {
       ],
     },
     trusted: { title: "Used by coaching centres including", all: "See all customers" },
-    trial: { cta: (n: number) => `Start ${n % 30 === 0 ? `${n / 30}-month` : `${n}-day`} free trial`, note: "Every module unlocked during the trial. No card needed.", or: "Or book a free walkthrough" },
+    trial: { cta: (n: number) => `Start ${n % 30 === 0 ? `${n / 30}-month` : `${n}-day`} free trial`, note: "Every module unlocked for the trial, then Free unless you upgrade. No card needed.", or: "Or book a free walkthrough" },
     help: { title: "Not sure which plan fits your academy?", body: "Tell us your student count and we'll recommend one.", cta: "Chat on WhatsApp" },
     own: {
       eyebrow: "Own it outright",
@@ -220,7 +220,7 @@ const T = {
       ],
     },
     trusted: { title: "يستخدمها مراكز تعليمية منها", all: "عرض كل العملاء" },
-    trial: { cta: (n: number) => `ابدأ تجربة مجانية لمدة ${n} يومًا`, note: "كل الوحدات متاحة خلال التجربة. لا حاجة لبطاقة.", or: "أو احجز جولة مجانية" },
+    trial: { cta: (n: number) => `ابدأ تجربة مجانية لمدة ${n} يومًا`, note: "كل الوحدات متاحة خلال التجربة، ثم الخطة المجانية ما لم ترقِّ. لا حاجة لبطاقة.", or: "أو احجز جولة مجانية" },
     help: { title: "لست متأكدًا أي خطة تناسب أكاديميتك؟", body: "أخبرنا بعدد طلابك وسنوصي لك بخطة.", cta: "تحدث عبر واتساب" },
     own: {
       eyebrow: "امتلكه بالكامل",

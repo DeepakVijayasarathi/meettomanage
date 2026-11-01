@@ -171,7 +171,7 @@ export default function Signup() {
             { code: settings.freePlanCode, title: `${settings.freePlanName ?? "Free"} plan`, badge: "Free forever",
               text: `Core modules${freeModules ? ` (${freeModules})` : ""}: students, courses, batches, live classes and content.${freeHighlights ? ` Up to ${freeHighlights}.` : ""}` },
             { code: "trial", title: `${trialDays}-day trial`, badge: "Everything",
-              text: "Every module and feature, including fees, payouts, reports and recordings. Pick a plan when it ends." },
+              text: "Every module and feature, including fees, payouts, reports and recordings. Afterwards you stay on Free unless you pick a plan." },
           ].map(option => <label key={option.code} className={`cursor-pointer rounded-2xl border p-4 text-sm transition ${choice === option.code ? "border-primary bg-primary/5 ring-4 ring-primary/15" : "border-brand-ink/15 hover:border-brand-ink/30"}`}>
             <input type="radio" name="plan" className="sr-only" checked={choice === option.code} onChange={() => setChoice(option.code)} />
             <span className="flex items-center justify-between gap-2"><span className="font-semibold text-brand-ink">{option.title}</span>
