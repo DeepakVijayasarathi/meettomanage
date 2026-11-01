@@ -120,6 +120,8 @@ export interface TenantSaasStatus {
   banner?: { level: "info" | "warning" | "danger"; message: string } | null;
   limits?: { key: string; label: string; unit: string; used: number; limit: number; percent: number }[];
   features?: { key: string; label: string; enabled: boolean }[];
+  /** Modules the plan includes or switches off (absent on older backends). */
+  modules?: { key: string; label: string; enabled: boolean }[];
   openInvoices?: { id: string; invoiceNumber: string; total: number; currency: string; dueAtUtc: string; paymentUrl: string | null }[];
   taxRatePercent?: number;
 }
@@ -142,7 +144,12 @@ export const saasTenant = {
 
 // ---------------------------------------------------------------- public (signup)
 
-export interface PublicPlan { id: string; code: string; name: string; description: string | null; trialDays: number; prices: { id: string; billingInterval: BillingInterval; currency: string; amount: number }[]; entitlements: { key: string; value: number }[] }
+export interface PublicPlan { id: string; code: string; name: string; description: string | null; trialDays: number; isFree?: boolean; prices: { id: string; billingInterval: BillingInterval; currency: string; amount: number }[]; entitlements: { key: string; value: number }[] }
+
+export interface SignupSettings { enabled: boolean; trialDays: number; platformName: string; freePlanCode?: string | null; freePlanName?: string | null }
+
+/** Module switches are entitlements named module_*; a plan that doesn't mention one includes it. */
+export const isModuleKey = (key: string) => key.startsWith("module_");
 
 const publicBase = () => (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "") + "/api/platform/public";
 
@@ -156,11 +163,11 @@ async function publicRequest<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const saasPublic = {
-  settings: () => publicRequest<{ enabled: boolean; trialDays: number; platformName: string }>("/signup/settings"),
+  settings: () => publicRequest<SignupSettings>("/signup/settings"),
   plans: () => publicRequest<PublicPlan[]>("/plans"),
   checkCode: (code: string) => publicRequest<{ available: boolean; reason: string | null }>(`/signup/check-code?code=${encodeURIComponent(code)}`),
-  signup: (body: { organizationName: string; code: string; adminEmail: string; adminPin: string; acceptTerms: boolean }) =>
-    publicRequest<{ tenantCode: string; loginPath: string }>("/signup", { method: "POST", body: JSON.stringify(body) }),
+  signup: (body: { organizationName: string; code: string; adminEmail: string; adminPin: string; acceptTerms: boolean; planCode?: string }) =>
+    publicRequest<{ tenantCode: string; loginPath: string; planCode?: string; planName?: string }>("/signup", { method: "POST", body: JSON.stringify(body) }),
 };
 
 export function formatMoney(amount: number, currency = "INR"): string {

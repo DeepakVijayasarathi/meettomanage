@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useLightBrandScope } from "@/lib/theme";
-import { formatMoney, saasPublic, type PublicPlan } from "@/api/saas";
+import { formatMoney, isModuleKey, saasPublic, type PublicPlan, type SignupSettings } from "@/api/saas";
 import { requestPlatformDemo } from "@/api/marketing";
 import { marketingAttribution, marketingVisitorId, trackDemoBooked, trackMarketingEvent, trackMarketingPageView } from "@/lib/analytics";
 import { markDemoBooked } from "@/features/marketing/chatTeaser";
@@ -89,23 +89,25 @@ function AccessRequest() {
   </form>;
 }
 
-/** Public self-service signup (/signup): creates an academy workspace on a free trial. */
+/** Public self-service signup (/signup): creates an academy workspace on the Free plan or a free trial. */
 export default function Signup() {
   useLightBrandScope();
-  const [settings, setSettings] = useState<{ enabled: boolean; trialDays: number; platformName: string } | null>(null);
+  const [settings, setSettings] = useState<SignupSettings | null>(null);
   const [plans, setPlans] = useState<PublicPlan[]>([]);
   const [form, setForm] = useState({ organizationName: "", code: "", adminEmail: "", adminPin: "", acceptTerms: false });
   const [codeNote, setCodeNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [created, setCreated] = useState<string | null>(null);
+  // "free" plan code, or "trial". Free is the default when the platform offers one.
+  const [choice, setChoice] = useState<string | null>(null);
   const funnel = useFormFunnel();
 
   // /signup isn't a marketing page (no <Seo>), so count its visit here for the console.
   useEffect(() => { void trackMarketingPageView("/signup", "Sign up"); }, []);
 
   useEffect(() => {
-    void saasPublic.settings().then(setSettings).catch(() => setSettings({ enabled: false, trialDays: 14, platformName: "Meet to Manage" }));
+    void saasPublic.settings().then(value => { setSettings(value); setChoice(c => c ?? value.freePlanCode ?? "trial"); }).catch(() => setSettings({ enabled: false, trialDays: 14, platformName: "Meet to Manage" }));
     void saasPublic.plans().then(setPlans).catch(() => setPlans([]));
   }, []);
 
@@ -122,7 +124,7 @@ export default function Signup() {
     event.preventDefault();
     setBusy(true); setError("");
     try {
-      const result = await saasPublic.signup({ ...form, code: form.code.trim().toLowerCase(), organizationName: form.organizationName.trim(), adminEmail: form.adminEmail.trim() });
+      const result = await saasPublic.signup({ ...form, planCode: choice ?? undefined, code: form.code.trim().toLowerCase(), organizationName: form.organizationName.trim(), adminEmail: form.adminEmail.trim() });
       setCreated(result.loginPath);
       // The workspace exists now; also list the new academy as a lead in the marketing console.
       funnel.onSubmitted();
@@ -131,24 +133,48 @@ export default function Signup() {
         academyName: form.organizationName.trim(),
         workEmail: form.adminEmail.trim(),
         phone: "",
-        message: `Self-service signup: created workspace /t/${result.tenantCode} on a free trial.`,
+        message: `Self-service signup: created workspace /t/${result.tenantCode} on ${isFree ? `the ${result.planName ?? "Free"} plan` : "a free trial"}.`,
       }).catch(() => undefined);
     } catch (err) { setError(err instanceof Error ? err.message : "Could not create your workspace."); }
     finally { setBusy(false); }
   }
 
   const name = settings?.platformName ?? "Meet to Manage";
+  const trialDays = settings?.trialDays ?? 14;
+  const freePlan = plans.find(p => p.code === settings?.freePlanCode);
+  const isFree = !!settings?.freePlanCode && choice === settings.freePlanCode;
+  const freeLimit = (key: string, unit: string) => {
+    const value = freePlan?.entitlements.find(e => e.key === key)?.value;
+    return value === undefined || value < 0 ? null : `${value} ${unit}`;
+  };
+  const freeHighlights = [freeLimit("max_students", "students"), freeLimit("max_staff", "staff accounts")].filter(Boolean).join(" · ");
+  const freeModules = freePlan?.entitlements.filter(e => isModuleKey(e.key) && e.value === 1).length ?? 0;
+  const paidPrices = plans.flatMap(p => p.prices.filter(x => x.billingInterval === "Month" && x.amount > 0).map(x => x.amount));
   return <div className="theme-light-scope min-h-screen bg-brand-cream px-4 py-10">
     <div className="mx-auto w-full max-w-2xl rounded-3xl bg-white p-6 shadow-[0_24px_70px_-24px_rgba(43,32,20,0.22)] ring-1 ring-brand-ink/[0.04] sm:p-10">
       <Logo className="mb-6 justify-center" />
       {created ? <div className="space-y-4 text-center" role="status">
         <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" />
         <h1 className="text-2xl font-semibold text-brand-ink">Your workspace is ready</h1>
-        <p className="text-sm text-brand-ink/70">Sign in with the e-mail and PIN you just chose. Your {settings?.trialDays ?? 14}-day free trial has started.</p>
+        <p className="text-sm text-brand-ink/70">Sign in with the e-mail and PIN you just chose. {isFree ? `You're on the ${settings?.freePlanName ?? "Free"} plan: free forever, upgrade any time from Billing.` : `Your ${trialDays}-day free trial has started.`}</p>
         <a href={created} className="inline-block rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground">Go to sign in</a>
       </div> : settings && !settings.enabled ? <AccessRequest /> : <form onSubmit={submit} onFocus={funnel.onStart} className="space-y-5">
-        <div className="text-center"><h1 className="text-2xl font-semibold text-brand-ink sm:text-3xl">Start your free trial</h1>
-          <p className="mt-2 text-sm text-brand-ink/70">{settings?.trialDays ?? 14} days of {name}, no card needed. Set up your academy in minutes.</p></div>
+        <div className="text-center"><h1 className="text-2xl font-semibold text-brand-ink sm:text-3xl">{settings?.freePlanCode ? "Create your free account" : "Start your free trial"}</h1>
+          <p className="mt-2 text-sm text-brand-ink/70">{settings?.freePlanCode ? `Use ${name} free, no card needed.` : `${trialDays} days of ${name}, no card needed.`} Set up your academy in minutes.</p></div>
+        {settings?.freePlanCode && <fieldset className="grid gap-3 sm:grid-cols-2">
+          <legend className="sr-only">Choose how to start</legend>
+          {[
+            { code: settings.freePlanCode, title: `${settings.freePlanName ?? "Free"} plan`, badge: "Free forever",
+              text: `Core modules${freeModules ? ` (${freeModules})` : ""}: students, courses, batches, live classes and content.${freeHighlights ? ` Up to ${freeHighlights}.` : ""}` },
+            { code: "trial", title: `${trialDays}-day trial`, badge: "Everything",
+              text: "Every module and feature, including fees, payouts, reports and recordings. Pick a plan when it ends." },
+          ].map(option => <label key={option.code} className={`cursor-pointer rounded-2xl border p-4 text-sm transition ${choice === option.code ? "border-primary bg-primary/5 ring-4 ring-primary/15" : "border-brand-ink/15 hover:border-brand-ink/30"}`}>
+            <input type="radio" name="plan" className="sr-only" checked={choice === option.code} onChange={() => setChoice(option.code)} />
+            <span className="flex items-center justify-between gap-2"><span className="font-semibold text-brand-ink">{option.title}</span>
+              <span className="rounded-full bg-brand-ink/5 px-2 py-0.5 text-xs font-medium text-brand-ink/70">{option.badge}</span></span>
+            <span className="mt-1.5 block text-brand-ink/70">{option.text}</span>
+          </label>)}
+        </fieldset>}
         {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
         <label className="block space-y-1.5 text-sm font-medium text-brand-ink"><span>Academy name</span>
           <input required maxLength={200} className={field} value={form.organizationName} onChange={e => setForm({ ...form, organizationName: e.target.value })} /></label>
@@ -166,7 +192,7 @@ export default function Signup() {
           <span>I agree to the <Link to="/terms" className="font-medium text-primary underline-offset-4 hover:underline">Terms &amp; Conditions</Link> and the <Link to="/policy" className="font-medium text-primary underline-offset-4 hover:underline">Privacy Policy</Link>.</span></label>
         <button disabled={busy || codeNote?.ok === false} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-60">
           {busy ? <><Loader2 className="h-4 w-4 animate-spin" />Creating your workspace… this can take a minute</> : "Create my workspace"}</button>
-        {plans.length > 0 && <p className="text-center text-xs text-brand-ink/60">After the trial, plans start at {formatMoney(Math.min(...plans.flatMap(p => p.prices.filter(x => x.billingInterval === "Month").map(x => x.amount))))}/month + GST.</p>}
+        {paidPrices.length > 0 && <p className="text-center text-xs text-brand-ink/60">{isFree ? "Need more? Paid" : "After the trial, paid"} plans start at {formatMoney(Math.min(...paidPrices))}/month + GST.</p>}
       </form>}
     </div>
   </div>;

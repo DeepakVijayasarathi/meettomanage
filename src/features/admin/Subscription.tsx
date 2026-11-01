@@ -125,6 +125,8 @@ export default function AdminSubscription() {
             <Progress value={unlimited ? 0 : l.percent} indicatorClassName={tone} aria-label={`${l.label} usage`} />
           </div>;
         })}
+        {(s.modules?.length ?? 0) > 0 && <div className="space-y-2 pt-1"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Modules</p>
+          <div className="flex flex-wrap gap-2">{s.modules!.map(m => <Badge key={m.key} variant={m.enabled ? "success" : "muted"}>{m.enabled ? <CheckCircle2 className="mr-1 h-3 w-3" /> : null}{m.label}{m.enabled ? "" : " (upgrade to unlock)"}</Badge>)}</div></div>}
         <div className="flex flex-wrap gap-2 pt-1">{s.features!.map(f => <Badge key={f.key} variant={f.enabled ? "success" : "muted"}>{f.enabled ? <CheckCircle2 className="mr-1 h-3 w-3" /> : null}{f.label}{f.enabled ? "" : " (not included)"}</Badge>)}</div>
       </CardContent></Card>
     </div>

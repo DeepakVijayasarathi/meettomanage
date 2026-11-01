@@ -1,7 +1,7 @@
 import { useCallback, useState, type FormEvent } from "react";
 import { Loader2, Plus, Pencil, EyeOff } from "lucide-react";
 import PlatformShell, { usePlatformAdmin } from "./PlatformShell";
-import { saasPlatform, formatMoney, type EntitlementDef, type PlanInput, type PlanView } from "@/api/saas";
+import { saasPlatform, formatMoney, isModuleKey, type EntitlementDef, type PlanInput, type PlanView } from "@/api/saas";
 import { Hero, Notices, Pill, inputClass, labelClass, panel, primaryButton, smallButton, useLoader, describeLimit } from "./saasUi";
 
 type Draft = {
@@ -10,10 +10,13 @@ type Draft = {
   values: Record<string, number>;
 };
 
+/** Default for a key the plan doesn't store: limits unlimited, features off, modules on. */
+const defaultValue = (d: EntitlementDef) => d.type === "Number" ? -1 : isModuleKey(d.key) ? 1 : 0;
+
 const blank = (catalog: EntitlementDef[]): Draft => ({
   code: "", name: "", description: "", isPublic: true, isActive: true, trialDays: 0, sortOrder: 10,
   monthly: { amount: "", isActive: true }, yearly: { amount: "", isActive: true },
-  values: Object.fromEntries(catalog.map(d => [d.key, d.type === "Bool" ? 0 : -1])),
+  values: Object.fromEntries(catalog.map(d => [d.key, defaultValue(d)])),
 });
 
 export default function Plans() {
@@ -31,7 +34,7 @@ function PlanManagement() {
 
   function edit(plan: PlanView) {
     const price = (interval: "Month" | "Year") => plan.prices.find(p => p.billingInterval === interval && p.isActive);
-    const values = Object.fromEntries(catalog.data.map(d => [d.key, d.type === "Bool" ? 0 : -1]));
+    const values = Object.fromEntries(catalog.data.map(d => [d.key, defaultValue(d)]));
     for (const e of plan.entitlements) values[e.key] = e.value;
     setDraft({
       id: plan.id, code: plan.code, name: plan.name, description: plan.description ?? "", isPublic: plan.isPublic, isActive: plan.isActive,
@@ -54,7 +57,7 @@ function PlanManagement() {
     const body: PlanInput = {
       code: draft.code.trim(), name: draft.name.trim(), description: draft.description.trim() || null, isPublic: draft.isPublic, isActive: draft.isActive,
       trialDays: draft.trialDays, sortOrder: draft.sortOrder, prices,
-      entitlements: catalog.data.map(d => ({ key: d.key, value: draft.values[d.key] ?? 0 })),
+      entitlements: catalog.data.map(d => ({ key: d.key, value: draft.values[d.key] ?? defaultValue(d) })),
     };
     try {
       if (draft.id) await saasPlatform.updatePlan(token, draft.id, body); else await saasPlatform.createPlan(token, body);
@@ -86,12 +89,20 @@ function PlanManagement() {
       <div>
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">Limits &amp; features</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {catalog.data.map(def => def.type === "Bool"
+          {catalog.data.filter(d => !isModuleKey(d.key)).map(def => def.type === "Bool"
             ? <label key={def.key} className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm"><input type="checkbox" checked={draft.values[def.key] === 1} onChange={e => set({ values: { ...draft.values, [def.key]: e.target.checked ? 1 : 0 } })} />{def.label}</label>
             : <label key={def.key} className={`${labelClass} rounded-xl border border-border p-3`}><span>{def.label} <span className="font-normal text-muted-foreground">({def.unit}; -1 = unlimited)</span></span>
               <input type="number" min={-1} className={inputClass} value={draft.values[def.key] ?? -1} onChange={e => set({ values: { ...draft.values, [def.key]: Number(e.target.value) } })} /></label>)}
         </div>
       </div>
+      {catalog.data.some(d => isModuleKey(d.key)) && <div>
+        <h3 className="mb-1 text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">Modules</h3>
+        <p className="mb-3 text-xs text-muted-foreground">Unticked modules are hidden from the sidebar and blocked for everyone in the academy, Admins included.</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {catalog.data.filter(d => isModuleKey(d.key)).map(def => <label key={def.key} className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm">
+            <input type="checkbox" checked={(draft.values[def.key] ?? 1) === 1} onChange={e => set({ values: { ...draft.values, [def.key]: e.target.checked ? 1 : 0 } })} />{def.label.replace(/^Module: /, "")}</label>)}
+        </div>
+      </div>}
       <div className="flex flex-wrap items-center gap-4">
         <button disabled={busy} className={primaryButton}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}{busy ? "Saving…" : "Save plan"}</button>
         <button type="button" disabled={busy} className="text-sm font-medium text-muted-foreground underline-offset-4 hover:underline" onClick={() => setDraft(null)}>Cancel</button>
@@ -117,7 +128,12 @@ function PlanManagement() {
             const v = plan.entitlements.find(e => e.key === d.key)?.value;
             return v === undefined ? null : <li key={d.key}>{d.label}: <b className="text-foreground">{describeLimit(v, d.unit)}</b></li>;
           })}
-          <li>Features: {catalog.data.filter(d => d.type === "Bool" && plan.entitlements.find(e => e.key === d.key)?.value === 1).map(d => d.label).join(", ") || "none"}</li>
+          <li>Features: {catalog.data.filter(d => d.type === "Bool" && !isModuleKey(d.key) && plan.entitlements.find(e => e.key === d.key)?.value === 1).map(d => d.label).join(", ") || "none"}</li>
+          {(() => {
+            const modules = catalog.data.filter(d => isModuleKey(d.key));
+            const off = modules.filter(d => plan.entitlements.find(e => e.key === d.key)?.value === 0);
+            return modules.length > 0 && <li>Modules: <b className="text-foreground">{off.length === 0 ? "all" : `${modules.length - off.length} of ${modules.length}`}</b></li>;
+          })()}
         </ul>
         <div className="mt-4 flex items-center justify-between"><span className="text-xs text-muted-foreground">{plan.subscribers} subscriber{plan.subscribers === 1 ? "" : "s"}</span>
           <button className={smallButton} onClick={() => edit(plan)}><Pencil className="h-3 w-3" />Edit</button></div>
