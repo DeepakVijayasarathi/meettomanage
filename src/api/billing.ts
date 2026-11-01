@@ -145,6 +145,21 @@ export interface ApiPaymentLink {
   amountDue: number;
 }
 
+/** A one-off invoice (e.g. an exam fee or books) for a parent, optionally tied to a child and course. */
+export interface CreateInvoiceInput {
+  parentProfileId: string;
+  childId?: string | null;
+  courseId?: string | null;
+  departmentId: string;
+  amount: number;
+  /** yyyy-MM-dd */
+  dueDate: string;
+}
+
+export async function createInvoice(input: CreateInvoiceInput): Promise<{ id: string; invoiceNumber: string }> {
+  return apiFetch<{ id: string; invoiceNumber: string }>("/api/invoices", { method: "POST", body: JSON.stringify(input) });
+}
+
 export async function createPaymentLink(invoiceId: string): Promise<ApiPaymentLink> {
   return apiFetch<ApiPaymentLink>(`/api/invoices/${invoiceId}/payment-link`, { method: "POST" });
 }

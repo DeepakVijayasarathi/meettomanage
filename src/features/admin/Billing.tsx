@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, FileText, IndianRupee, Loader2, TimerReset, Undo2 } from "lucide-react";
+import { AlertTriangle, FileText, IndianRupee, Loader2, Plus, TimerReset, Undo2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InvoiceDetailDialog } from "@/components/InvoiceDetailDialog";
+import { NewInvoiceDialog } from "@/components/NewInvoiceDialog";
 import { INVOICES } from "@/data/invoices";
 import { useApiData } from "@/api/hooks";
 import { apiEnabled, userMessage } from "@/lib/api";
@@ -57,6 +58,7 @@ export default function AdminBilling() {
   // screen filters, sorts and totals client-side, so it takes one full page and lets
   // DataTable paginate that in the browser; `totalCount` is what tells us when the page
   // no longer covers the whole table, so the KPI figures below can say so.
+  const [newInvoiceOpen, setNewInvoiceOpen] = useState(false);
   const { data: invoiceData, loading: invoicesLoading, error: invoicesError, reload } = useApiData(
     () => listInvoiceRows(toFrontendInvoice),
     { rows: INVOICES, totalCount: INVOICES.length },
@@ -302,7 +304,9 @@ export default function AdminBilling() {
         eyebrow="Finance"
         title="Billing & Finance"
         description="Track packages, invoices, receipts and refunds across every parent account."
+        actions={apiEnabled() ? <Button onClick={() => setNewInvoiceOpen(true)}><Plus className="mr-1.5 h-4 w-4" />New invoice</Button> : undefined}
       />
+      <NewInvoiceDialog open={newInvoiceOpen} onOpenChange={setNewInvoiceOpen} onCreated={() => reload()} />
 
       {live && invoicesError && (
         <InlineAlert variant="warning" className="mb-4">
