@@ -15,8 +15,8 @@ export function MarketingFooter() {
 
   return (
     <footer className="border-t border-[#EFE3D7] bg-[#FFFBF7] text-[#57534E]">
-      <div className="mx-auto grid max-w-[1200px] gap-12 px-5 py-16 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
-        <div>
+      <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-x-6 gap-y-10 px-5 py-14 sm:py-16 md:grid-cols-4 lg:grid-cols-[1.3fr_1fr_1fr_1fr_1fr] lg:gap-x-8">
+        <div className="col-span-2 md:col-span-4 lg:col-span-1">
           <img src="/logo-full.webp" alt={brand.name} width={420} height={150} loading="lazy" className="h-14 w-auto object-contain mix-blend-multiply" />
           <p className="mt-4 max-w-xs text-sm leading-relaxed">{f.tagline}</p>
         </div>
@@ -24,47 +24,62 @@ export function MarketingFooter() {
         <nav aria-label={f.company}>
           <p className={HEAD}>{f.company}</p>
           <ul className="mt-4 flex flex-col">
+            <li><Link to="/signup?plan=free" className={LINK}>{f.freeAccount}</Link></li>
+            <li><Link to="/demo-login" className={LINK}>{f.liveDemo}</Link></li>
             <li><Link to="/get-started" className={LINK}>{f.demo}</Link></li>
-            <li><Link to="/portal-select" className={LINK}>{f.portals}</Link></li>
-            <li><Link to="/customers" className={LINK}>{f.customers}</Link></li>
             <li><Link to="/pricing" className={LINK}>{f.pricing}</Link></li>
+            <li><Link to="/portal-select" className={LINK}>{f.portals}</Link></li>
             <li><Link to="/login" className={LINK}>{f.signIn}</Link></li>
-            <li><Link to="/blog" className={LINK}>{f.blog}</Link></li>
-            <li><Link to="/resources" className={LINK}>Free coaching centre templates</Link></li>
-            <li><Link to="/free-games" className={LINK}>Free alphabet & phonics games</Link></li>
+          </ul>
+        </nav>
+
+        <nav aria-label={f.solutions}>
+          <p className={HEAD}>{f.solutions}</p>
+          <ul className="mt-4 flex flex-col">
             <li><Link to="/solutions/live-class-software-for-institutes" className={LINK}>Live class software</Link></li>
             <li><Link to="/solutions/online-attendance-software-for-institutes" className={LINK}>Attendance software</Link></li>
             <li><Link to="/solutions/fee-management-software-for-coaching-centres" className={LINK}>Fee management software</Link></li>
             <li><Link to="/solutions/phonics-live-class-software" className={LINK}>Phonics class software</Link></li>
             <li><Link to="/alternatives/classplus-alternative-for-coaching-centres" className={LINK}>Classplus alternative</Link></li>
+          </ul>
+        </nav>
+
+        <nav aria-label={f.resources}>
+          <p className={HEAD}>{f.resources}</p>
+          <ul className="mt-4 flex flex-col">
+            <li><Link to="/customers" className={LINK}>{f.customers}</Link></li>
+            <li><Link to="/blog" className={LINK}>{f.blog}</Link></li>
+            <li><Link to="/resources" className={LINK}>Free coaching centre templates</Link></li>
+            <li><Link to="/free-games" className={LINK}>Free alphabet & phonics games</Link></li>
             <li><Link to="/docs" className={LINK}>Documentation</Link></li>
             <li><Link to="/careers" className={LINK}>{f.careers}</Link></li>
           </ul>
         </nav>
 
-        <nav aria-label={f.legal}>
-          <p className={HEAD}>{f.legal}</p>
-          <ul className="mt-4 flex flex-col">
-            <li><Link to="/legal/terms" className={LINK}>{f.terms}</Link></li>
-            <li><Link to="/privacy" className={LINK}>{f.privacy}</Link></li>
-            <li><Link to="/policy" className={LINK}>{f.clientFinder}</Link></li>
-          </ul>
-        </nav>
-
-        <div>
-          <p className={HEAD}>{f.contact}</p>
-          <ul className="mt-4 flex flex-col">
-            <li>
-              <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" className={`${LINK} inline-flex items-center gap-2`}>
-                <MessageCircle className="h-4 w-4" /> {f.whatsapp}
-              </a>
-            </li>
-            <li>
-              <a href="mailto:info@infinityuniquers.com" className={`${LINK} inline-flex items-center gap-2`}>
-                <Mail className="h-4 w-4" /> info@infinityuniquers.com
-              </a>
-            </li>
-          </ul>
+        <div className="flex flex-col gap-10">
+          <nav aria-label={f.legal}>
+            <p className={HEAD}>{f.legal}</p>
+            <ul className="mt-4 flex flex-col">
+              <li><Link to="/legal/terms" className={LINK}>{f.terms}</Link></li>
+              <li><Link to="/privacy" className={LINK}>{f.privacy}</Link></li>
+              <li><Link to="/policy" className={LINK}>{f.clientFinder}</Link></li>
+            </ul>
+          </nav>
+          <div>
+            <p className={HEAD}>{f.contact}</p>
+            <ul className="mt-4 flex flex-col">
+              <li>
+                <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" className={`${LINK} inline-flex items-center gap-2`}>
+                  <MessageCircle className="h-4 w-4 shrink-0" /> {f.whatsapp}
+                </a>
+              </li>
+              <li>
+                <a href="mailto:info@infinityuniquers.com" className={`${LINK} inline-flex items-center gap-2`}>
+                  <Mail className="h-4 w-4 shrink-0" /> <span>info@<wbr />infinityuniquers.com</span>
+                </a>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
       <div className="border-t border-[#EFE3D7]">

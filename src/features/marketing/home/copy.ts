@@ -14,10 +14,10 @@ export interface HomeCopy {
   video: { eyebrow: string; heading: string; sub: string };
   metrics: { to: number; suffix?: string; label: string }[];
   security: { eyebrow: string; heading: string; sub: string; items: { title: string; body: string }[]; note: string; terms: string; privacy: string };
-  pricing: { eyebrow: string; heading: string; sub: string; from: string; perMonth: string; cta: string; points: string[] };
+  pricing: { eyebrow: string; heading: string; sub: string; from: string; perMonth: string; cta: string; free: string; points: string[] };
   faq: { eyebrow: string; heading: string; items: { q: string; a: string }[] };
-  cta: { heading: string; sub: string; demo: string; ask: string; signIn: string };
-  footer: { tagline: string; careers: string; customers: string; company: string; legal: string; contact: string; whatsapp: string; terms: string; privacy: string; clientFinder: string; portals: string; blog: string; pricing: string; signIn: string; demo: string; rights: (year: number) => string };
+  cta: { heading: string; sub: string; demo: string; ask: string; signIn: string; free: string };
+  footer: { tagline: string; careers: string; customers: string; company: string; legal: string; contact: string; whatsapp: string; terms: string; privacy: string; clientFinder: string; portals: string; blog: string; pricing: string; signIn: string; demo: string; liveDemo: string; freeAccount: string; solutions: string; resources: string; rights: (year: number) => string };
 }
 
 export const COPY: Record<Lang, HomeCopy> = {
@@ -126,10 +126,11 @@ export const COPY: Record<Lang, HomeCopy> = {
       eyebrow: "Pricing",
       heading: "One simple price per centre.",
       sub: "Not per student. Pay monthly or yearly, and change plan whenever you grow.",
-      from: "Plans from",
+      from: "Start free. Paid plans from",
       perMonth: "per month",
       cta: "See all plans",
-      points: ["Live classes, admissions and fee collection included", "Parent mobile app included", "Your own branding"],
+      free: "Create free account",
+      points: ["Free plan: live classes, students and content", "Paid plans add admissions, fees and reports", "Your own branding on paid plans"],
     },
     faq: {
       eyebrow: "FAQ",
@@ -140,11 +141,12 @@ export const COPY: Record<Lang, HomeCopy> = {
         { q: "How long can families watch a class recording?", a: "Recordings stay available for the retention period of your plan, from the same app families already use to check schedules and pay fees." },
         { q: "What happens when a fee is late?", a: "Invoices are created automatically and reminders go out. Access can pause when a payment is overdue and returns the moment the family pays, with no manual follow-up." },
         { q: "Is the walkthrough really free?", a: "Yes. There is no payment or commitment. Our team shows you the live classroom, admissions, fees and parent app, then answers questions about your centre's workflow." },
-        { q: "How is pricing structured?", a: "One price per centre based on the plan, not per student. See the pricing page for the current plans and limits." },
+        { q: "How is pricing structured?", a: "One price per centre based on the plan, not per student. You can start on the Free plan at no cost and upgrade when you need admissions, fees or reports. See the pricing page for the current plans and limits." },
       ],
     },
-    cta: { heading: "See how your centre could run from one place.", sub: "Book a free 30-minute platform walkthrough. No payment details, no commitment.", demo: "Book free walkthrough", ask: "Ask our AI", signIn: "Already a customer? Sign in" },
+    cta: { heading: "See how your centre could run from one place.", sub: "Book a free 30-minute platform walkthrough. No payment details, no commitment.", demo: "Book free walkthrough", ask: "Ask our AI", signIn: "Already a customer? Sign in", free: "Create a free account" },
     footer: {
+      liveDemo: "Live demo", freeAccount: "Create free account", solutions: "Solutions", resources: "Resources",
       tagline: "Live teaching, admissions, billing and reporting in one platform for online coaching centres, academies and tutors.",
       careers: "Careers", customers: "Customers",
       company: "Get started", legal: "Legal", contact: "Contact", whatsapp: "WhatsApp us",
@@ -257,10 +259,11 @@ export const COPY: Record<Lang, HomeCopy> = {
       eyebrow: "الأسعار",
       heading: "سعر واحد بسيط لكل مركز.",
       sub: "وليس لكل طالب. ادفع شهريًا أو سنويًا، وغيّر خطتك متى نمت.",
-      from: "الخطط من",
+      from: "ابدأ مجانًا. الخطط المدفوعة من",
       perMonth: "شهريًا",
       cta: "شاهد كل الخطط",
-      points: ["الحصص المباشرة والقبول وتحصيل الرسوم مشمولة", "تطبيق أولياء الأمور مشمول", "هويتك التجارية الخاصة"],
+      free: "أنشئ حسابًا مجانيًا",
+      points: ["الخطة المجانية: الحصص المباشرة والطلاب والمحتوى", "الخطط المدفوعة تضيف القبول والرسوم والتقارير", "هويتك التجارية في الخطط المدفوعة"],
     },
     faq: {
       eyebrow: "الأسئلة الشائعة",
@@ -271,11 +274,12 @@ export const COPY: Record<Lang, HomeCopy> = {
         { q: "كم من الوقت يمكن للعائلات مشاهدة تسجيل الحصة؟", a: "تبقى التسجيلات متاحة طوال مدة الاحتفاظ في خطتك، من التطبيق نفسه الذي تستخدمه العائلات للجدول والرسوم." },
         { q: "ماذا يحدث عند تأخر الرسوم؟", a: "تُنشأ الفواتير تلقائيًا وتُرسل التذكيرات. قد يتوقف الوصول عند تأخر الدفع ويعود فور دفع العائلة دون متابعة يدوية." },
         { q: "هل العرض التجريبي مجاني فعلًا؟", a: "نعم. احجز حصة تجريبية مجانية دون بيانات دفع. سنطابقك مع معلم ونرسل رابط الانضمام بالبريد." },
-        { q: "كيف تُسعَّر الخدمة؟", a: "سعر واحد لكل مركز حسب الخطة، وليس لكل طالب. راجع صفحة الأسعار للخطط والحدود الحالية." },
+        { q: "كيف تُسعَّر الخدمة؟", a: "سعر واحد لكل مركز حسب الخطة، وليس لكل طالب. يمكنك البدء بالخطة المجانية دون تكلفة والترقية عند حاجتك للقبول أو الرسوم أو التقارير. راجع صفحة الأسعار للخطط والحدود الحالية." },
       ],
     },
-    cta: { heading: "أتمت عملك. ادخل العصر الجديد.", sub: "احجز عرضًا مجانيًا. دون بيانات دفع ودون التزام.", demo: "احجز عرضًا مجانيًا", ask: "اسأل مساعدنا الذكي", signIn: "عميل حالي؟ سجّل الدخول" },
+    cta: { heading: "أتمت عملك. ادخل العصر الجديد.", sub: "احجز عرضًا مجانيًا. دون بيانات دفع ودون التزام.", demo: "احجز عرضًا مجانيًا", ask: "اسأل مساعدنا الذكي", signIn: "عميل حالي؟ سجّل الدخول", free: "أنشئ حسابًا مجانيًا" },
     footer: {
+      liveDemo: "العرض التجريبي المباشر", freeAccount: "أنشئ حسابًا مجانيًا", solutions: "الحلول", resources: "الموارد",
       tagline: "تدريس مباشر وقبول وفوترة وتقارير في منصة واحدة لمراكز التدريب عبر الإنترنت والأكاديميات والمدرّسين.",
       careers: "الوظائف", customers: "العملاء",
       company: "ابدأ", legal: "قانوني", contact: "تواصل", whatsapp: "راسلنا على واتساب",

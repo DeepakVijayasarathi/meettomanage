@@ -124,13 +124,13 @@ export default function MarketingHome() {
   const [fromUsd, setFromUsd] = useState<number | null>(null);
   const fromPrice = currency === "USD" ? fromUsd ?? Math.round(fromInr / INR_PER_USD) : fromInr;
 
-  // The cheapest live monthly price, so the teaser can never drift from what billing charges.
+  // The cheapest paid monthly price (the Free plan is shown separately), so the teaser never drifts from billing.
   useEffect(() => {
     if (!apiEnabled()) return;
     let active = true;
     saasPublic.plans()
       .then((plans) => {
-        const monthly = (code: string) => plans.flatMap((p) => p.prices.filter((x) => x.billingInterval === "Month" && x.currency === code).map((x) => x.amount));
+        const monthly = (code: string) => plans.flatMap((p) => p.prices.filter((x) => x.billingInterval === "Month" && x.currency === code && x.amount > 0).map((x) => x.amount));
         const inr = monthly("INR");
         const usd = monthly("USD");
         if (!active) return;
@@ -159,7 +159,7 @@ export default function MarketingHome() {
   );
 
   return (
-    <div className="theme-light-scope marketing-square min-h-screen bg-white pb-20 text-[#1C1917] sm:pb-0">
+    <div className="theme-light-scope marketing-square min-h-screen bg-[#FFFBF7] pb-20 text-[#1C1917] sm:pb-0">
       <style>{FX_CSS}</style>
       <Seo
         pageKey="home"
@@ -257,9 +257,9 @@ export default function MarketingHome() {
         {lang === "en" && <FreeGamesPromo />}
 
         {/* PROOF: what it's built on */}
-        <section aria-label={c.proof.label} className="border-y border-[#EFE3D7] bg-white py-7">
+        <section aria-label={c.proof.label} className="border-b border-[#EFE3D7] bg-white py-7">
           <p className="mb-4 text-center text-xs font-bold uppercase tracking-[0.1em] text-[#6B6560] rtl:tracking-normal">{c.proof.label}</p>
-          <ul className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-center gap-x-12 gap-y-5 px-5">
+          <ul className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-center gap-x-7 gap-y-5 px-5 sm:gap-x-12">
             {c.proof.items.map((item, i) => (
               <li key={item} className="opacity-90 transition-opacity hover:opacity-100">
                 <ProofMark mark={PROOF_MARKS[i]} label={item} />
@@ -270,7 +270,7 @@ export default function MarketingHome() {
 
         {/* REAL CUSTOMER PROOF: factual product use, linked to the full approved story. */}
         {lang === "en" && <section aria-labelledby="customer-proof-heading" className="bg-[#FFF8F3] py-7">
-          <div className="mx-auto flex max-w-[1080px] flex-col items-center gap-5 px-5 text-center sm:flex-row sm:text-start">
+          <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-5 px-5 text-center sm:flex-row sm:text-start">
             <img src="/clients/thereader.png" alt="The Reader Nest logo" width={64} height={64} loading="lazy" className="h-16 w-16 shrink-0 rounded-full object-cover ring-1 ring-black/10" />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#C2410C]">Customer story</p>
@@ -379,7 +379,7 @@ export default function MarketingHome() {
 
             <Reveal className="mt-10 rounded-2xl bg-[#FFF3EA] px-6 py-6 sm:px-8">
               <p className="text-sm font-bold text-[#9A3412]">{c.autopilot.heading}</p>
-              <ul className="mt-3 flex flex-wrap gap-x-8 gap-y-2.5">
+              <ul className="mt-3 grid gap-x-6 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:flex xl:flex-wrap xl:justify-between">
                 {c.autopilot.items.map((item) => (
                   <li key={item} className="flex items-center gap-2 text-[15px] font-semibold text-[#1C1917]"><CheckCircle2 className="h-4 w-4 shrink-0 text-[#EA580C]" /> {item}</li>
                 ))}
@@ -438,17 +438,17 @@ export default function MarketingHome() {
         </section>
 
         {/* METRICS */}
-        <section aria-label="Platform facts" className="bg-white py-12">
-          <dl className="mx-auto grid max-w-[1200px] gap-4 px-5 sm:grid-cols-2 lg:grid-cols-4">
+        <section aria-label="Platform facts" className="bg-white py-10 sm:py-12">
+          <dl className="mx-auto grid max-w-[1200px] grid-cols-2 gap-3 px-5 sm:gap-4 lg:grid-cols-4">
             {c.metrics.map((m, i) => {
               const { icon: Icon, tint } = METRIC_STYLE[i];
               const t = TINTS[tint];
               return (
-                <Reveal key={m.label} delay={i * 90} className="group relative flex items-center gap-4 overflow-hidden rounded-2xl px-5 py-6">
+                <Reveal key={m.label} delay={i * 90} className="group relative flex flex-col items-start gap-3 overflow-hidden rounded-2xl px-4 py-5 sm:flex-row sm:items-center sm:gap-4 sm:px-5 sm:py-6">
                   <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, #fff 35%, ${t.wash})`, boxShadow: `0 1px 2px rgba(28,25,23,0.05), 0 18px 40px -26px ${t.shadow}` }} />
                   <div aria-hidden="true" className="pointer-events-none absolute -end-6 -top-6 h-24 w-24 rounded-full opacity-90" style={{ background: `linear-gradient(135deg, ${t.blob}, transparent)` }} />
                   <span className={"relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-b shadow-[0_6px_14px_-8px_rgba(28,25,23,0.45)] ring-1 ring-white " + t.tile} style={{ color: t.icon }}><Icon className="h-7 w-7" /></span>
-                  <span aria-hidden="true" className="relative h-12 w-px shrink-0" style={{ backgroundColor: t.dot }} />
+                  <span aria-hidden="true" className="relative hidden h-12 w-px shrink-0 sm:block" style={{ backgroundColor: t.dot }} />
                   <div className="relative min-w-0">
                     <dd className="font-display text-[clamp(1.9rem,3vw,2.5rem)] font-extrabold leading-none tracking-[-0.03em]" style={{ color: t.icon }}><CountUp to={m.to} suffix={m.suffix} /></dd>
                     <dt className="mt-1.5 text-sm font-medium leading-snug text-[#57534E]">{m.label}</dt>
@@ -526,7 +526,10 @@ export default function MarketingHome() {
                   <p className="text-sm font-semibold text-[#57534E]">{c.pricing.from}</p>
                   <p className="font-display mt-1 text-[clamp(2.6rem,4vw,3.4rem)] font-extrabold leading-none tracking-[-0.03em] text-[#C2410C]">{formatMarketPrice(fromPrice, currency)}</p>
                   <p className="mt-1.5 text-sm font-semibold text-[#57534E]">{c.pricing.perMonth}</p>
-                  <Link to="/pricing" className={cn(BTN_PRIMARY, "mt-6 w-full rounded-2xl sm:w-auto")}>{c.pricing.cta} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap md:flex-col xl:flex-row">
+                    <Link to="/pricing" className={cn(BTN_PRIMARY, "w-full rounded-2xl sm:w-auto")}>{c.pricing.cta} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
+                    <Link to="/signup?plan=free" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#E8C8AD] bg-white px-5 py-3 text-sm font-bold text-[#9A3412] transition-colors hover:bg-[#FFF3EA] sm:w-auto">{c.pricing.free}</Link>
+                  </div>
                 </div>
                 <div className="hidden lg:block" aria-hidden="true" />
               </div>
@@ -579,7 +582,11 @@ export default function MarketingHome() {
               <Link to="/get-started" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-7 py-4 text-[15px] font-bold text-[#9A3412] transition-colors hover:bg-[#FFF3EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">{c.cta.demo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
               <button type="button" onClick={() => { setChatReady(true); setAiOpenRequest((n) => n + 1); }} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/60 px-7 py-4 text-[15px] font-bold text-white transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"><Sparkles className="h-4 w-4" /> {c.cta.ask}</button>
             </div>
-            <p className="mt-6 text-sm"><Link to="/login" className="font-semibold text-white underline underline-offset-4">{c.cta.signIn}</Link></p>
+            <p className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">
+              <Link to="/signup?plan=free" className="font-semibold text-white underline underline-offset-4">{c.cta.free}</Link>
+              <Link to="/demo-login" className="font-semibold text-white underline underline-offset-4">{c.nav.liveDemo}</Link>
+              <Link to="/login" className="font-semibold text-white underline underline-offset-4">{c.cta.signIn}</Link>
+            </p>
           </Reveal>
         </section>
       </main>

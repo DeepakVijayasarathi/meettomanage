@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useLightBrandScope } from "@/lib/theme";
@@ -101,15 +101,19 @@ export default function Signup() {
   const [created, setCreated] = useState<string | null>(null);
   // "free" plan code, or "trial". Free is the default when the platform offers one.
   const [choice, setChoice] = useState<string | null>(null);
+  // From the pricing page: ?plan=free|trial, and ?for=<paid plan> when they came from a paid plan's trial button.
+  const [params] = useSearchParams();
+  const wantedPlan = params.get("plan");
+  const forPlan = params.get("for");
   const funnel = useFormFunnel();
 
   // /signup isn't a marketing page (no <Seo>), so count its visit here for the console.
   useEffect(() => { void trackMarketingPageView("/signup", "Sign up"); }, []);
 
   useEffect(() => {
-    void saasPublic.settings().then(value => { setSettings(value); setChoice(c => c ?? value.freePlanCode ?? "trial"); }).catch(() => setSettings({ enabled: false, trialDays: 14, platformName: "Meet to Manage" }));
+    void saasPublic.settings().then(value => { setSettings(value); setChoice(c => c ?? (wantedPlan === "trial" || !value.freePlanCode ? "trial" : value.freePlanCode)); }).catch(() => setSettings({ enabled: false, trialDays: 14, platformName: "Meet to Manage" }));
     void saasPublic.plans().then(setPlans).catch(() => setPlans([]));
-  }, []);
+  }, [wantedPlan]);
 
   async function checkCode() {
     const code = form.code.trim().toLowerCase();
@@ -175,6 +179,7 @@ export default function Signup() {
             <span className="mt-1.5 block text-brand-ink/70">{option.text}</span>
           </label>)}
         </fieldset>}
+        {choice === "trial" && forPlan && <p className="-mt-2 text-center text-xs text-brand-ink/60">The trial includes everything in the {forPlan.charAt(0).toUpperCase() + forPlan.slice(1)} plan. Choose it from Billing whenever you're ready.</p>}
         {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
         <label className="block space-y-1.5 text-sm font-medium text-brand-ink"><span>Academy name</span>
           <input required maxLength={200} className={field} value={form.organizationName} onChange={e => setForm({ ...form, organizationName: e.target.value })} /></label>

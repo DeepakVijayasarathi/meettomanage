@@ -184,7 +184,7 @@ export function ChaosToOne({ lang, brandName }: { lang: Lang; brandName: string 
           ref={ref}
           role="img"
           aria-label={t.stageLabel}
-          className="relative mt-12 h-[600px] overflow-hidden rounded-2xl border border-[#EFE3D7] bg-[#FFFBF7] md:h-[360px]"
+          className="relative mt-10 h-[480px] overflow-hidden rounded-2xl border border-[#EFE3D7] bg-[#FFFBF7] md:mt-12 md:h-[360px]"
         >
           {/* The mess: six real tools, each with a red badge, drifting loose. On merge they all
               collapse toward the centre, one after another. */}
