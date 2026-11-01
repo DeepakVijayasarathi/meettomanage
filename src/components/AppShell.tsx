@@ -15,7 +15,7 @@ import { apiEnabled } from "@/lib/api";
 import { useLocation, useNavigate } from "react-router-dom";
 import { setPlanLimitAction } from "@/hooks/use-toast";
 import { UsageNudge } from "@/components/UsageNudge";
-import { getMyMenu, listMenuItems, toNavSections } from "@/api/menus";
+import { getMyMenu, listMenuItems, toNavSections, type ApiMenuItem } from "@/api/menus";
 import { saasTenant } from "@/api/saas";
 import { sessionTenantCode, tenantPath } from "@/lib/tenantPath";
 import { PlanLockedScreen } from "@/components/PlanLockedScreen";
@@ -34,6 +34,18 @@ interface AppShellProps {
 }
 
 const COLLAPSE_KEY = "trn.sidebarCollapsed";
+const menuCacheKey = (role: Role) => `trn.menu:${sessionTenantCode() ?? tenantPath()}:${role}`;
+
+/** The academy's menu from earlier in this browser session, if any. */
+function cachedMenu(role: Role): NavSection[] | null {
+  if (!apiEnabled()) return null;
+  try {
+    const raw = sessionStorage.getItem(menuCacheKey(role));
+    return raw ? toNavSections(JSON.parse(raw) as ApiMenuItem[]) : null;
+  } catch {
+    return null;
+  }
+}
 /** Per academy, so one browser tab signing into another academy never reuses its locks. */
 const planLockKey = () => `trn.planLockedPages:${sessionTenantCode() ?? tenantPath()}`;
 
@@ -61,7 +73,11 @@ export function AppShell({ role, children }: AppShellProps) {
   // mock — has to be patched on after the fact. Fetched alongside the menu itself
   // (not a separate effect keyed off apiSections) so patching it can never retrigger
   // its own effect and loop.
-  const [apiSections, setApiSections] = useState<NavSection[] | null>(null);
+  // Seeded from this session's last menu (per academy and portal), so the sidebar shows the
+  // academy's real menu at once instead of briefly flashing the full built-in list, which on a
+  // Free plan includes locked pages and, for every academy, operator-only Server Monitoring.
+  const [apiSections, setApiSections] = useState<NavSection[] | null>(() => cachedMenu(role));
+  const [menuFailed, setMenuFailed] = useState(false);
 
   // Admin pages whose module the academy's plan switches off (path -> label), so opening
   // one directly shows an upgrade screen instead of a page full of permission errors.
@@ -127,14 +143,17 @@ export function AppShell({ role, children }: AppShellProps) {
           }
         }
         setApiSections(sections);
+        setMenuFailed(false);
+        try { sessionStorage.setItem(menuCacheKey(role), JSON.stringify(items)); } catch { /* storage blocked: no cache */ }
       })
       .catch(() => {
-        /* keep static nav (or, on a later re-fetch, whatever loaded last) */
+        // Keep whatever loaded last; with nothing loaded yet, fall back to the built-in list.
+        setMenuFailed(true);
       });
   }
 
   useEffect(() => {
-    setApiSections(null);
+    setApiSections(cachedMenu(role));
     if (!apiEnabled()) return;
     let cancelled = false;
     void fetchMenu(() => cancelled);
@@ -211,7 +230,9 @@ export function AppShell({ role, children }: AppShellProps) {
     "--primary-foreground": "0 0% 100%",
   } as CSSProperties;
 
-  const navSections = (apiSections ?? NAV_BY_ROLE[role]).map(section => ({ ...section, items: section.items.filter(item => mitoConfiguration?.enabled !== false || !item.to.endsWith("/mito")) })).filter(section => section.items.length > 0);
+  // With a live API, the built-in list is only a fallback for a menu that failed to load (not
+  // a placeholder while it loads), so a page the academy cannot use is never offered.
+  const navSections = (apiSections ?? (!apiEnabled() || menuFailed ? NAV_BY_ROLE[role] : [])).map(section => ({ ...section, items: section.items.filter(item => mitoConfiguration?.enabled !== false || !item.to.endsWith("/mito")) })).filter(section => section.items.length > 0);
 
   if (apiEnabled() && isParentAccount && shellBlocked) {
     return <AccountSuspendedScreen childId={blockedChild?.childId} onRecheck={recheckSuspension} />;
