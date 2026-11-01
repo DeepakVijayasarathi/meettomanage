@@ -138,7 +138,8 @@ export default function AdminDashboard() {
   );
   // The month-wise admissions/collections panel needs Reports; plans without it (Free) hide it.
   const { data: planStatus } = useApiData(() => (usingApi ? saasTenant.status() : Promise.resolve(null)), null, null);
-  const reportsInPlan = planStatus?.modules?.find((m) => m.key === "module_ReportsAnalytics")?.enabled !== false;
+  // Waits for the plan check, so a Free academy never requests (and is refused) the panel's data.
+  const reportsInPlan = !usingApi || (planStatus !== null && planStatus.modules?.find((m) => m.key === "module_ReportsAnalytics")?.enabled !== false);
   // Live aggregates replace the mock KPI block and charts when the API is configured
   const { data: dashboard, loading: dashboardLoading, error: dashboardError } = useApiData(
     () =>
