@@ -65,8 +65,13 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   { role: "student", email: "parent@meettomanage.cloud", pin: "6998", homePathOverride: "/student" },
 ];
 
-export default function Login() {
+/**
+ * mode "login" (/login, /t/<code>/login): the real sign-in form only.
+ * mode "demo" (/demo-login): one-click demo accounts, kept apart so customers never see them on their sign-in page.
+ */
+export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
   useLightBrandScope();
+  const demo = mode === "demo";
   const brand = useBrand();
   const tenantPortal = isTenantPortal();
   const [discoveredEmail] = useState(() => isTenantPortal() ? takeDiscoveredEmail() : "");
@@ -163,7 +168,7 @@ export default function Login() {
     setRole(account.role);
     setRemember(rememberMe);
     // Shows on the marketing console which demo roles visitors try.
-    trackMarketingEvent("demo_login_clicked", "/login", `demo-login:${account.role}`);
+    trackMarketingEvent("demo_login_clicked", "/demo-login", `demo-login:${account.role}`);
 
     if (!apiEnabled()) {
       enterDemoAs(account.role, account.homePathOverride);
@@ -221,11 +226,37 @@ export default function Login() {
             <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white shadow-pop ring-1 ring-[#EFE3D7] [@media(max-height:760px)]:h-11 [@media(max-height:760px)]:w-11`}>
               <img src={brand.logoUrl ?? "/logo-icon-128.webp"} alt={brand.name} className={`h-9 w-9 object-contain [@media(max-height:760px)]:h-7 [@media(max-height:760px)]:w-7`} />
             </div>
-            <h2 className={`font-display mt-2.5 text-3xl font-extrabold tracking-[-0.02em] text-[#1C1917] [@media(max-height:760px)]:mt-1.5 [@media(max-height:760px)]:text-2xl`}>Welcome back</h2>
-            <p className={`mt-1 text-sm text-[#57534E] [@media(max-height:760px)]:hidden`}>Sign in to your account and continue</p>
+            <h2 className={`font-display mt-2.5 text-3xl font-extrabold tracking-[-0.02em] text-[#1C1917] [@media(max-height:760px)]:mt-1.5 [@media(max-height:760px)]:text-2xl`}>{demo ? "Try the live demo" : "Welcome back"}</h2>
+            <p className={`mt-1 text-sm text-[#57534E] [@media(max-height:760px)]:hidden`}>{demo ? "Pick a role to explore a sample academy. No sign-up needed." : "Sign in to your account and continue"}</p>
           </div>
 
-          <div role="tablist" aria-label="Sign in as" className={`mt-4 grid grid-cols-4 gap-1 rounded-2xl bg-[#FFF3EA] p-1 [@media(max-height:760px)]:mt-2.5`}>
+          {demo ? (
+            <div className="mt-4 flex min-h-0 flex-1 flex-col gap-2 rounded-2xl bg-[#FFF6EE] p-3">
+              <p className="flex items-center gap-1.5 text-sm font-bold text-[#C2410C]"><Sparkles className="h-4 w-4" /> Choose a demo account</p>
+              <div className="grid min-h-[64px] flex-1 grid-cols-2 content-start gap-2 overflow-y-auto p-0.5 [scrollbar-width:thin]">
+                {DEMO_ACCOUNTS.map((account) => {
+                  const meta = ROLE_META[account.role];
+                  return (
+                    <button
+                      key={account.role}
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => handleDemoAccountClick(account)}
+                      className={cn("flex min-w-0 items-center gap-2.5 !rounded-xl bg-white px-2.5 py-3 text-start shadow-sm ring-1 ring-[#F6E3D3] transition-colors hover:ring-[#F97316] disabled:pointer-events-none disabled:opacity-50", submitting && role === account.role && "relative z-10 ring-2 ring-[#F97316]")}
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FFEBDD] text-[#C2410C]">
+                        {role === account.role && submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <meta.icon className="h-4 w-4" />}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-bold text-[#1C1917]">{DEMO_LABEL[account.role] ?? meta.shortLabel}</span>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-[#C2410C]" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (<>
+
+          {!apiEnabled() && <div role="tablist" aria-label="Sign in as" className={`mt-4 grid grid-cols-4 gap-1 rounded-2xl bg-[#FFF3EA] p-1 [@media(max-height:760px)]:mt-2.5`}>
             {ROLE_TABS.map((t) => {
               const Icon = ROLE_META[t.role].icon;
               const on = role === t.role;
@@ -242,7 +273,7 @@ export default function Login() {
                 </button>
               );
             })}
-          </div>
+          </div>}
 
           <form onSubmit={handleSubmit} className={`mt-4 flex min-h-0 flex-1 flex-col gap-3 [@media(max-height:760px)]:mt-2.5 [@media(max-height:760px)]:gap-2`}>
             <div className="flex flex-col gap-1.5">
@@ -296,37 +327,15 @@ export default function Login() {
               )}
             </Button>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-2xl bg-[#FFF6EE] p-3">
-              <p className="flex items-center justify-between gap-2 text-sm font-bold text-[#C2410C]">
-                <span className="flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> Try a demo account</span>
-                <span className="hidden text-[11px] font-medium text-[#57534E] sm:inline">Tap to sign in</span>
-              </p>
-              <div className="grid min-h-[64px] flex-1 grid-cols-2 content-start gap-2 overflow-y-auto p-0.5 [scrollbar-width:thin]">
-                {DEMO_ACCOUNTS.map((account) => {
-                  const meta = ROLE_META[account.role];
-                  return (
-                    <button
-                      key={account.role}
-                      type="button"
-                      disabled={submitting}
-                      onClick={() => handleDemoAccountClick(account)}
-                      title={account.email}
-                      className={cn("flex min-w-0 items-center gap-2.5 !rounded-xl bg-white px-2.5 py-2 text-start shadow-sm ring-1 ring-[#F6E3D3] transition-colors hover:ring-[#F97316] disabled:pointer-events-none disabled:opacity-50", role === account.role && "relative z-10 ring-2 ring-[#F97316]")}
-                    >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FFEBDD] text-[#C2410C]">
-                        {role === account.role && submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <meta.icon className="h-4 w-4" />}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-sm font-bold text-[#1C1917]">{DEMO_LABEL[account.role] ?? meta.shortLabel}</span>
-                      <span className="shrink-0 rounded-md bg-[#FFF3EA] px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-wider text-[#C2410C]">{account.pin}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </form>
+          </>)}
 
           <p className={`mt-2.5 shrink-0 text-center text-sm text-[#57534E] [@media(max-height:760px)]:mt-1.5`}>
-            New here? <Link to="/" className="font-semibold text-[#C2410C] hover:underline">Explore More</Link>
+            {demo
+              ? <>Already a customer? <Link to="/login" className="font-semibold text-[#C2410C] hover:underline">Sign in</Link></>
+              : tenantPortal
+                ? null
+                : <>New here? <Link to="/demo-login" className="font-semibold text-[#C2410C] hover:underline">Try the live demo</Link></>}
             {!apiEnabled() && <span className="block text-xs">Demo build with mock data: no credentials are verified.</span>}
           </p>
         </div>

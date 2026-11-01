@@ -321,3 +321,10 @@
 /* Academy "screenshot protection" setting: blur the app on capture shortcuts and never print it. */
 html.shot-guard.shot-hidden #root { filter: blur(28px); }
 @media print { html.shot-guard body { display: none !important; } }
+
+/* Marketing header "Live demo" button: shown only where the header has room for it
+   (between the tablet menu and the full desktop nav, and on wide screens). */
+.nav-live-demo { display: none; }
+@media (min-width: 1024px) and (max-width: 1279px), (min-width: 1680px) {
+  .nav-live-demo { display: inline-flex; }
+}

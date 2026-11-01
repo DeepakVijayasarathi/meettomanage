@@ -255,6 +255,7 @@ export default function App() {
             <Route path="/privacy" element={<MarketingTranslationLayer><PlatformPrivacy /></MarketingTranslationLayer>} />
             <Route path="/legal/terms" element={<MarketingTranslationLayer><PlatformTerms /></MarketingTranslationLayer>} />
             <Route path="/login" element={<Login />} />
+            <Route path="/demo-login" element={<Login mode="demo" />} />
             <Route path="/portal-select" element={<PortalSelect />} />
             <Route path="/forgot-pin" element={<ForgotPin />} />
             {/* Legacy path, kept as a redirect for old bookmarks/links. */}

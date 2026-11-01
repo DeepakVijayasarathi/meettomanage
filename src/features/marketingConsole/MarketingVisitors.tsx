@@ -181,7 +181,7 @@ export default function MarketingVisitors() {
       <Card className="mb-4">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Sign in and demo logins</CardTitle>
-          <p className="text-xs text-muted-foreground">Visitors who clicked "Sign in" in the website menu, and which demo accounts they tried on the login page.</p>
+          <p className="text-xs text-muted-foreground">Visitors who clicked "Sign in" in the website menu, and which demo accounts they tried on the live demo page.</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-2 text-sm sm:grid-cols-3">

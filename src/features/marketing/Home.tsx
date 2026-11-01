@@ -194,6 +194,7 @@ export default function MarketingHome() {
 
               <div className="mt-8">
                 <AccessForm c={c.hero.form} watch={{ label: c.hero.watch, cta: c.hero.demo }} />
+                <Link to="/demo-login" className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[#9A3412] underline-offset-4 hover:underline">{c.hero.liveDemo} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" /></Link>
               </div>
 
               <ul className="mx-fade-up mt-7 grid gap-x-5 gap-y-3 border-t border-[#EBD9CA] pt-5 text-xs font-medium text-[#57534E] sm:grid-cols-2" style={{ animationDelay: "0.85s" }}>

@@ -2,9 +2,9 @@ import type { Lang } from "@/lib/i18n";
 
 export interface HomeCopy {
   skip: string;
-  nav: { features: string; classroom: string; app: string; customers: string; pricing: string; faq: string; blog: string; signIn: string; demo: string; menu: string; closeMenu: string };
+  nav: { features: string; classroom: string; app: string; customers: string; pricing: string; faq: string; blog: string; signIn: string; liveDemo: string; demo: string; menu: string; closeMenu: string };
   ngo: { eyebrow: string; heading: string; body: string; cta: string; note: string };
-  hero: { words: string[]; accent: number[]; sub: string; demo: string; watch: string; trust: string[]; form: { label: string; placeholder: string; note: string; invalid: string }; room: { alt: string; caption: string } };
+  hero: { words: string[]; accent: number[]; sub: string; demo: string; liveDemo: string; watch: string; trust: string[]; form: { label: string; placeholder: string; note: string; invalid: string }; room: { alt: string; caption: string } };
   proof: { label: string; items: string[] };
   audience: { eyebrow: string; heading: string; sub: string; items: { key: string; title: string; body: string }[] };
   autopilot: { heading: string; items: string[] };
@@ -23,8 +23,9 @@ export interface HomeCopy {
 export const COPY: Record<Lang, HomeCopy> = {
   en: {
     skip: "Skip to main content",
-    nav: { features: "Platform", classroom: "Live classroom", app: "Mobile app", customers: "Customers", pricing: "Pricing", faq: "FAQ", blog: "Blog", signIn: "Sign in", demo: "Book free walkthrough", menu: "Open menu", closeMenu: "Close menu" },
+    nav: { features: "Platform", classroom: "Live classroom", app: "Mobile app", customers: "Customers", pricing: "Pricing", faq: "FAQ", blog: "Blog", signIn: "Sign in", liveDemo: "Live demo", demo: "Book free walkthrough", menu: "Open menu", closeMenu: "Close menu" },
     hero: {
+      liveDemo: "Or try the live demo now, no sign-up",
       words: ["Run", "your", "coaching", "centre", "from", "one", "place."],
       accent: [5, 6],
       sub: "Replace scattered video calls, spreadsheets and fee follow-ups with one platform for live classes, admissions, payments and parent updates.",
@@ -153,8 +154,9 @@ export const COPY: Record<Lang, HomeCopy> = {
   },
   ar: {
     skip: "انتقل إلى المحتوى الرئيسي",
-    nav: { features: "المنصة", classroom: "الفصل المباشر", app: "تطبيق الجوال", customers: "العملاء", pricing: "الأسعار", faq: "الأسئلة", blog: "المدونة", signIn: "تسجيل الدخول", demo: "احجز عرضًا", menu: "فتح القائمة", closeMenu: "إغلاق القائمة" },
+    nav: { features: "المنصة", classroom: "الفصل المباشر", app: "تطبيق الجوال", customers: "العملاء", pricing: "الأسعار", faq: "الأسئلة", blog: "المدونة", signIn: "تسجيل الدخول", liveDemo: "عرض تجريبي مباشر", demo: "احجز عرضًا", menu: "فتح القائمة", closeMenu: "إغلاق القائمة" },
     hero: {
+      liveDemo: "أو جرّب العرض التجريبي المباشر الآن دون تسجيل",
       words: ["أتمت", "عملك.", "ادخل", "العصر", "الجديد", "للتدريب", "عبر", "الإنترنت."],
       accent: [3, 4],
       sub: "فصلك الافتراضي الخاص، مع تحصيل الرسوم والقبول وتطبيق لأولياء الأمور، كلها تعمل تلقائيًا لتقضي يومك في التدريس.",
