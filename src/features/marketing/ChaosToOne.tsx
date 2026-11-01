@@ -4,6 +4,9 @@ import { useInView } from "@/hooks/useInView";
 import type { Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { H2, LEAD } from "./styles";
+// Keyframes only register when the visitor has not asked for reduced motion; with it on, the
+// stage jumps straight to the merged state (see `start`).
+import KEYFRAMES from "./chaosToOne.css?inline";
 
 const EYEBROW = "text-xs font-bold uppercase tracking-[0.12em] text-[#C2410C] rtl:tracking-normal";
 
@@ -53,21 +56,6 @@ const T = {
     stageLabel: "رسم متحرك: ست أدوات متفرقة تندمج في نظام واحد يتولى الرسوم والاستفسارات وتحديثات أولياء الأمور ومستحقات المعلمين",
   },
 };
-
-/** Keyframes only register when the visitor hasn't asked for reduced motion; with it on, the
- *  stage jumps straight to the merged state (see `start`). */
-const KEYFRAMES = `
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes m2m-drift { 0%,100% { transform: translate(0,0) } 25% { transform: translate(4px,-7px) } 50% { transform: translate(-4px,-2px) } 75% { transform: translate(-5px,5px) } }
-  @keyframes m2m-ping { 0%,100% { transform: scale(1) } 50% { transform: scale(1.25) } }
-  @keyframes m2m-dash { to { stroke-dashoffset: -14 } }
-  @keyframes m2m-glow { 0%,100% { box-shadow: 0 20px 60px -20px rgba(234,88,12,.28) } 50% { box-shadow: 0 24px 80px -14px rgba(234,88,12,.4) } }
-  .m2m-drift { animation: m2m-drift 5s ease-in-out infinite }
-  .m2m-ping { animation: m2m-ping 1.6s ease-in-out infinite }
-  .m2m-flow { stroke-dasharray: 6 8; animation: m2m-dash .8s linear infinite }
-  .m2m-glow { animation: m2m-glow 3s ease-in-out infinite }
-}
-`;
 
 function reducedMotion(): boolean {
   return typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -227,7 +215,7 @@ export function ChaosToOne({ lang, brandName }: { lang: Lang; brandName: string 
               style={{ transitionDelay: merged ? "650ms" : "0ms" }}
             >
               <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 -z-10 hidden h-[250px] w-[250px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(249,115,22,0.16),transparent_68%)] md:block" />
-              <img src="/logo-icon-128.webp" alt="" width={56} height={56} className="mx-auto h-14 w-14 object-contain" />
+              <img src="/logo-icon-128.webp" alt={`${brandName} logo`} aria-hidden="true" width={56} height={56} className="mx-auto h-14 w-14 object-contain" />
               <p className="font-display mt-2 text-lg font-extrabold leading-tight text-[#111]">{brandName}</p>
               <p className="mt-0.5 text-xs font-bold uppercase tracking-[0.06em] text-[#16A34A] rtl:tracking-normal">{t.allIn}</p>
             </div>

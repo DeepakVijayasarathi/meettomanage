@@ -281,7 +281,7 @@ export default function MarketingHome() {
         </section>}
 
         {/* NGO OFFER: mobile artwork with readable live copy; designed desktop banner in English. */}
-        <section aria-labelledby="ngo-offer" className="bg-white pt-[clamp(40px,5vw,72px)]">
+        <section aria-labelledby={lang === "en" ? "ngo-offer-mobile" : "ngo-offer"} className="bg-white pt-[clamp(40px,5vw,72px)]">
           <div className="mx-auto max-w-[1200px] px-5">
             {lang === "en" && (
               <Reveal className="md:hidden">
@@ -337,7 +337,7 @@ export default function MarketingHome() {
                 </Link>
               </Reveal>
             )}
-            <Reveal className={cn("relative overflow-hidden rounded-3xl bg-[#C2410C] px-7 py-9 text-white sm:px-12 sm:py-11", lang === "en" && "hidden")}>
+            {lang !== "en" && <Reveal className="relative overflow-hidden rounded-3xl bg-[#C2410C] px-7 py-9 text-white sm:px-12 sm:py-11">
               <div aria-hidden="true" className="absolute inset-0 opacity-20 [background-image:radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px] [mask-image:radial-gradient(60%_100%_at_100%_50%,#000,transparent)]" />
               <div className="relative grid items-center gap-6 md:grid-cols-[1.5fr_auto]">
                 <div>
@@ -350,7 +350,7 @@ export default function MarketingHome() {
                   {c.ngo.cta} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
                 </Link>
               </div>
-            </Reveal>
+            </Reveal>}
           </div>
         </section>
 
@@ -496,7 +496,8 @@ export default function MarketingHome() {
             <Reveal className="relative overflow-hidden rounded-3xl border border-[#F6CDB2] bg-gradient-to-br from-[#FFF3EA] via-[#FFF8F3] to-white shadow-[0_1px_2px_rgba(194,65,12,0.06),0_30px_60px_-36px_rgba(194,65,12,0.4)]">
               <img
                 src="/product/pricing-girl.webp"
-                alt=""
+                alt="Student smiling while learning online"
+                aria-hidden="true"
                 width={932}
                 height={698}
                 loading="lazy"

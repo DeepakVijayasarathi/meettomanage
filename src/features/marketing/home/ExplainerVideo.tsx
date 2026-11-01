@@ -30,7 +30,7 @@ export function ExplainerVideo({ title }: { title: string }) {
           <img
             src={thumb}
             onError={() => setThumb(`https://i.ytimg.com/vi/${VIDEO_ID}/hqdefault.jpg`)}
-            alt=""
+            alt={`${title} video thumbnail`}
             width={1280}
             height={720}
             loading="lazy"
