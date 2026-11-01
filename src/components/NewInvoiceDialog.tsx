@@ -25,16 +25,27 @@ function inDays(days: number): string {
  * there was no way to raise one from Billing, only through package subscriptions.
  */
 export function NewInvoiceDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (open: boolean) => void; onCreated: () => void }) {
+  const [saving, setSaving] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!saving) onOpenChange(o); }}>
+      <DialogContent>
+        {/* Mounted only while open, so its lists load each time the dialog opens (and start fresh). */}
+        {open && <NewInvoiceForm onDone={() => onOpenChange(false)} onCreated={onCreated} saving={saving} setSaving={setSaving} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NewInvoiceForm({ onDone, onCreated, saving, setSaving }: { onDone: () => void; onCreated: () => void; saving: boolean; setSaving: (v: boolean) => void }) {
   const { toast } = useToast();
-  const { data: students } = useApiData(() => (open ? listStudents() : Promise.resolve([])), []);
-  const { data: courses } = useApiData(() => (open ? listCourses() : Promise.resolve([])), []);
-  const { data: departments } = useApiData(() => (open ? listDepartments(false) : Promise.resolve([])), []);
+  const { data: students } = useApiData(() => listStudents(), []);
+  const { data: courses } = useApiData(() => listCourses(), []);
+  const { data: departments } = useApiData(() => listDepartments(false), []);
   const [studentId, setStudentId] = useState("");
   const [courseId, setCourseId] = useState(NO_COURSE);
   const [departmentId, setDepartmentId] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState(() => inDays(7));
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const student = students.find((s) => s.id === studentId);
@@ -42,10 +53,6 @@ export function NewInvoiceDialog({ open, onOpenChange, onCreated }: { open: bool
   const effectiveDepartment = departmentId || departments[0]?.id || "";
   const amountValue = Number(amount);
   const valid = !!student?.parentId && !!effectiveDepartment && amountValue > 0 && !!dueDate;
-
-  function reset() {
-    setStudentId(""); setCourseId(NO_COURSE); setDepartmentId(""); setAmount(""); setDueDate(inDays(7)); setError(null);
-  }
 
   async function submit() {
     if (!student?.parentId) return;
@@ -60,8 +67,7 @@ export function NewInvoiceDialog({ open, onOpenChange, onCreated }: { open: bool
         dueDate,
       });
       toast({ variant: "success", title: "Invoice created", description: `${created.invoiceNumber} for ${student.name}'s family.` });
-      reset();
-      onOpenChange(false);
+      onDone();
       onCreated();
     } catch (err) {
       setError(userMessage(err, "Could not create the invoice."));
@@ -71,8 +77,7 @@ export function NewInvoiceDialog({ open, onOpenChange, onCreated }: { open: bool
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!saving) { onOpenChange(o); if (!o) reset(); } }}>
-      <DialogContent>
+    <>
         <DialogHeader>
           <DialogTitle>New invoice</DialogTitle>
           <DialogDescription>Bill a one-off amount, like an exam fee or books. Regular fees come from package subscriptions.</DialogDescription>
@@ -119,12 +124,11 @@ export function NewInvoiceDialog({ open, onOpenChange, onCreated }: { open: bool
           {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" disabled={saving} onClick={onDone}>Cancel</Button>
           <Button disabled={!valid || saving} onClick={() => { void submit(); }}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create invoice
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }
