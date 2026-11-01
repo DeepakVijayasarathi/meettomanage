@@ -15,6 +15,7 @@ import { apiEnabled } from "@/lib/api";
 import { useLocation } from "react-router-dom";
 import { getMyMenu, listMenuItems, toNavSections } from "@/api/menus";
 import { saasTenant } from "@/api/saas";
+import { sessionTenantCode, tenantPath } from "@/lib/tenantPath";
 import { PlanLockedScreen } from "@/components/PlanLockedScreen";
 import { listSuspensions } from "@/api/billing";
 import { getParentDashboard, type ApiParentDashboard } from "@/api/parentPortal";
@@ -31,6 +32,8 @@ interface AppShellProps {
 }
 
 const COLLAPSE_KEY = "trn.sidebarCollapsed";
+/** Per academy, so one browser tab signing into another academy never reuses its locks. */
+const planLockKey = () => `trn.planLockedPages:${sessionTenantCode() ?? tenantPath()}`;
 
 // Coordinator/Admission/Management/IT Admin aren't separate backend roles — they're
 // display portals a Sub Admin's assigned preset (RoleDefinition.DefaultRoute) routes to.
@@ -61,18 +64,29 @@ export function AppShell({ role, children }: AppShellProps) {
   // Admin pages whose module the academy's plan switches off (path -> label), so opening
   // one directly shows an upgrade screen instead of a page full of permission errors.
   const location = useLocation();
-  const [planLocked, setPlanLocked] = useState<Map<string, string>>(() => new Map());
+  // Remembered for the browser tab, so after the first check a locked page shows the upgrade
+  // screen straight away instead of first firing its (refused) data requests.
+  const [planLocked, setPlanLocked] = useState<Map<string, string>>(() => {
+    try {
+      const cached = role === "admin" ? sessionStorage.getItem(planLockKey()) : null;
+      return new Map(cached ? (JSON.parse(cached) as [string, string][]) : []);
+    } catch {
+      return new Map();
+    }
+  });
   useEffect(() => {
     if (!apiEnabled() || role !== "admin") return;
     let cancelled = false;
     Promise.all([listMenuItems("admin"), saasTenant.status()])
       .then(([items, status]) => {
-        if (cancelled || !status.managed) return;
-        const off = new Set((status.modules ?? []).filter((m) => !m.enabled).map((m) => m.key.replace(/^module_/, "")));
+        if (cancelled) return;
+        const off = new Set(status.managed ? (status.modules ?? []).filter((m) => !m.enabled).map((m) => m.key.replace(/^module_/, "")) : []);
         // Enrollment Review stays on every plan (mirrors EntitlementKeys.IsAnyPlanMenuPath on the API).
-        setPlanLocked(new Map(items
+        const entries = items
           .filter((i) => i.requiredModule && off.has(i.requiredModule) && !i.path.toLowerCase().endsWith("/enrollments"))
-          .map((i) => [i.path, i.label])));
+          .map((i): [string, string] => [i.path, i.label]);
+        setPlanLocked(new Map(entries));
+        try { sessionStorage.setItem(planLockKey(), JSON.stringify(entries)); } catch { /* storage blocked: just no cache */ }
       })
       .catch(() => undefined);
     return () => {
