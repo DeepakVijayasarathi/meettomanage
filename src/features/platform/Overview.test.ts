@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { needsAttention } from "./overviewAttention";
+import { needsAttention, recentSignups } from "./overviewAttention";
 import type { SubscriptionRow } from "@/api/saas";
 
 const now = new Date("2026-11-01T12:00:00Z").getTime();
@@ -21,5 +21,23 @@ describe("needsAttention", () => {
     expect(items[0].title).toBe("Late Co has an overdue payment");
     expect(items.map(i => i.title)).toContain("Trial Co's trial ends in 3 days");
     expect(items.map(i => i.title)).toContain("Late Co has 1 unpaid invoice");
+  });
+  it("flags closed academies, stalled signups and failed e-mails", () => {
+    const usage = { activeStudents: 0, staffCount: 1, storageMb: 0, sessionMinutesMonth: 0, sessionsMonth: 0, recordingsMonth: 0, date: "2026-11-01" };
+    const items = needsAttention(
+      [row({ tenantId: "c", tenantName: "Gone Co", status: "Cancelled" }), row({ tenantId: "n", tenantName: "Quiet Co", usage }), row({ tenantId: "y", tenantName: "Fresh Co", usage })],
+      now,
+      [{ id: "n", createdAtUtc: "2026-10-25T00:00:00Z" }, { id: "y", createdAtUtc: "2026-10-31T00:00:00Z" }],
+      [{ id: "r", tenantName: "X", tenantCode: "x", ruleKey: "trial_started", cycleKey: "c", channel: "email", recipient: "a@b.c", status: "Failed", attempts: 3, error: "Resend refused", createdAtUtc: "2026-10-31T00:00:00Z", sentAtUtc: null }],
+    );
+    const titles = items.map(i => i.title);
+    expect(titles[0]).toBe("1 billing e-mail failed to send this week");
+    expect(titles).toContain("Gone Co is closed");
+    expect(titles).toContain("Quiet Co hasn't started yet");
+    expect(titles).not.toContain("Fresh Co hasn't started yet"); // only 1 day old
+  });
+  it("lists academies that signed up in the last 7 days, newest first", () => {
+    const list = recentSignups([{ id: "old", createdAtUtc: "2026-10-01T00:00:00Z" }, { id: "a", createdAtUtc: "2026-10-30T00:00:00Z" }, { id: "b", createdAtUtc: "2026-11-01T08:00:00Z" }], now);
+    expect(list.map(t => t.id)).toEqual(["b", "a"]);
   });
 });
