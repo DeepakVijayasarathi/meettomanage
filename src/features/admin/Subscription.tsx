@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AlertTriangle, CheckCircle2, Download, ExternalLink, Info, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { AcademyDataCard } from "@/components/AcademyDataCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -189,6 +190,8 @@ export default function AdminSubscription() {
         <div className="flex items-end"><Button disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save details</Button></div>
       </form>
     </CardContent></Card>
+
+    <AcademyDataCard />
 
     <ConfirmDialog open={confirmCancel} onOpenChange={setConfirmCancel} title="Cancel your subscription?"
       description={`Your workspace stays fully available until ${formatDay(s.currentPeriodEndUtc)}. After that it is suspended, and your data is kept. You can resume any time before then.`}
