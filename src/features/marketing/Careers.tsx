@@ -28,7 +28,7 @@ export default function Careers() {
       title="Help online coaching centres run on autopilot."
       sub="Meet to Manage is built by Infinity Uniquers. If you like building useful software for teachers and families, we would like to hear from you."
       seo={{
-        title: "Careers — Meet to Manage",
+        title: "Careers at Meet to Manage: Build Software for Educators",
         description: "Work on the platform online coaching centres use for live classes, fees and parent apps. See open roles or send an open application.",
         path: "/careers",
       }}

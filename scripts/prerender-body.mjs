@@ -97,14 +97,23 @@ try {
       await page.setViewport({ width: 1280, height: 900 });
       await page.goto(origin + t.path, { waitUntil: "networkidle0", timeout: 30000 });
       await page.waitForSelector("main, h1", { timeout: 15000 });
-      const { inner, text } = await page.evaluate(() => ({ inner: document.getElementById("root").innerHTML, text: document.getElementById("root").innerText }));
+      const { inner, text, ld } = await page.evaluate(() => ({
+        inner: document.getElementById("root").innerHTML,
+        text: document.getElementById("root").innerText,
+        // Structured data the page adds through Helmet (FAQ, breadcrumbs, offers...). It sits in <head>, outside #root.
+        ld: [...document.head.querySelectorAll('script[type="application/ld+json"][data-rh]')].map((el) => el.textContent),
+      }));
       const words = text.split(/\s+/).filter(Boolean).length;
       if (words < MIN_WORDS || ERROR_MARKERS.some((re) => re.test(text))) throw new Error(`rendered ${words} words or an error state`);
       const html = await readFile(t.file, "utf8");
       // The real page text is now in the HTML, so the short noscript summary from prerender-meta would only repeat it.
-      await writeFile(t.file, injectRoot(html, inner).replace(/<noscript><h1>[\s\S]*?<\/noscript>/, ""));
+      let out = injectRoot(html, inner).replace(/<noscript><h1>[\s\S]*?<\/noscript>/, "");
+      // data-prerender: <Seo> removes these once the app mounts and Helmet adds its live copies, so they never appear twice.
+      const ldTags = ld.filter(Boolean).map((json) => `<script type="application/ld+json" data-prerender>${json.replace(/</g, "\\u003c")}</script>`);
+      if (ldTags.length) out = out.replace("</head>", () => `  ${ldTags.join("\n    ")}\n  </head>`);
+      await writeFile(t.file, out);
       wrote++;
-      console.log(`prerender-body: ${t.path} (${words} words)`);
+      console.log(`prerender-body: ${t.path} (${words} words, ${ldTags.length} structured-data blocks)`);
     } catch (e) {
       failures.push(`${t.path}: ${e.message}`);
       console.warn(`prerender-body: kept existing HTML for ${t.path} (${e.message})`);

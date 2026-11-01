@@ -158,7 +158,7 @@ export function PromoPopup({ lang }: { lang: Lang }) {
         <div aria-hidden="true" className="relative hidden min-h-[460px] items-center justify-center overflow-hidden md:flex">
           <div className="absolute bottom-6 start-1/2 h-24 w-64 -translate-x-1/2 rounded-[50%] bg-[#FFD9BD]/70 blur-xl" />
           <div className="absolute end-[-30px] top-6 h-56 w-56 rounded-full bg-[#FFE3CF]/80 blur-2xl" />
-          <img src="/product/mito-robot.webp" alt="" width={483} height={700} decoding="async" className="mx-float relative h-[420px] w-auto select-none object-contain drop-shadow-[0_24px_30px_rgba(194,65,12,0.25)]" />
+          <img src="/product/mito-robot.webp" alt="Mito, the Meet to Manage robot mascot" aria-hidden="true" width={483} height={700} decoding="async" className="mx-float relative h-[420px] w-auto select-none object-contain drop-shadow-[0_24px_30px_rgba(194,65,12,0.25)]" />
           {/* floating feature chips, in the page's language */}
           {[
             { i: 0, cls: "start-3 top-10 -rotate-3" },

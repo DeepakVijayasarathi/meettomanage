@@ -48,7 +48,7 @@ export default function ClassplusAlternative() {
           "@type": "WebPage",
           name: "Classplus alternative for coaching centres",
           url: "https://meettomanage.cloud/alternatives/classplus-alternative-for-coaching-centres",
-          about: { "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication" },
+          about: { "@id": "https://meettomanage.cloud/#software" },
         },
         {
           "@context": "https://schema.org",

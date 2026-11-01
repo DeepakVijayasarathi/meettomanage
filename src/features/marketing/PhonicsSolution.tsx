@@ -24,7 +24,7 @@ export default function PhonicsSolution() {
       title="Live class software for phonics and early-reading teachers."
       sub="Teach online with a shared whiteboard, quizzes, stars and recordings, and keep attendance, fees and the parent app in the same place."
       seo={{
-        title: "Live Class Software for Phonics and Early-Reading Teachers — Meet to Manage",
+        title: "Phonics Live Class Software for Teachers | Meet to Manage",
         description: "Teach phonics online with a shared whiteboard, live quizzes, stars, learning games and recordings. Attendance, fees and a parent app are built in.",
         path: "/solutions/phonics-live-class-software",
       }}

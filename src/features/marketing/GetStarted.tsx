@@ -333,7 +333,7 @@ export default function GetStarted() {
               </ul>
               <div aria-hidden="true" className="relative hidden w-[210px] shrink-0 self-stretch xl:block">
                 <div className="absolute bottom-1 start-1/2 h-5 w-32 -translate-x-1/2 rounded-[50%] bg-[#F4C9A4]/50 blur-md" />
-                <img src="/product/mito-robot.webp" alt="" width={483} height={700} loading="lazy" decoding="async" className="absolute bottom-2 start-1/2 h-[290px] w-auto max-w-none -translate-x-1/2 select-none rtl:-scale-x-100" />
+                <img src="/product/mito-robot.webp" alt="Mito, the Meet to Manage robot mascot" aria-hidden="true" width={483} height={700} loading="lazy" decoding="async" className="absolute bottom-2 start-1/2 h-[290px] w-auto max-w-none -translate-x-1/2 select-none rtl:-scale-x-100" />
               </div>
               </div>
               <p className="relative mt-8 flex items-center gap-3 border-t border-[#EFE3D7] pt-5 text-sm font-medium text-[#57534E]">

@@ -33,7 +33,7 @@ const NICHES: Niche[] = [
     title: "Online class software for English grammar and spoken English teachers.",
     sub: "Teach grammar live with a shared whiteboard, slides and quizzes, and keep attendance, fees and the parent app in the same place.",
     seoTitle: "Online English Grammar Class Software | Meet to Manage",
-    seoDescription: "Run English grammar and spoken English classes online with a shared whiteboard, slides, live quizzes and recordings. Attendance, fees and a parent app are built in.",
+    seoDescription: "Teach English grammar and spoken English online with a shared whiteboard, slides, live quizzes and recordings. Attendance, fees and a parent app are built in.",
     name: "Online class software for English grammar teachers",
     specific: [
       { title: "A shared whiteboard for sentences", body: "Write, underline and correct sentences together on a board the whole class sees." },
@@ -49,8 +49,8 @@ const NICHES: Niche[] = [
     eyebrow: "For art and craft teachers",
     title: "Online class software for drawing, painting and craft teachers.",
     sub: "Teach art live with video, a shared drawing board and recordings, and keep attendance, fees and the parent app in the same place.",
-    seoTitle: "Online Art Class Software for Drawing & Craft | Meet to Manage",
-    seoDescription: "Teach drawing, painting and craft classes online with live video, a shared whiteboard, screen sharing and recordings. Attendance, fees and a parent app are built in.",
+    seoTitle: "Online Art Class Software for Teachers | Meet to Manage",
+    seoDescription: "Teach drawing, painting and craft online with live video, a shared whiteboard, screen sharing and recordings. Attendance, fees and a parent app are built in.",
     name: "Online class software for art teachers",
     specific: [
       { title: "Live video of the work", body: "Students switch their camera on so you can see paper, brush and craft work as it happens." },
@@ -84,7 +84,7 @@ const NICHES: Niche[] = [
     title: "Online class software for abacus and Vedic maths teachers.",
     sub: "Teach abacus live with a shared whiteboard, speed quizzes and stars, and keep attendance, fees and the parent app in the same place.",
     seoTitle: "Online Abacus Class Software for Teachers | Meet to Manage",
-    seoDescription: "Teach abacus, Vedic maths and mental maths online with a shared whiteboard, live quizzes, a leaderboard and recordings. Attendance, fees and a parent app are built in.",
+    seoDescription: "Teach abacus, Vedic and mental maths online with a shared whiteboard, live quizzes, a leaderboard and recordings. Attendance, fees and parent app built in.",
     name: "Online class software for abacus teachers",
     specific: [
       { title: "A shared whiteboard for working", body: "Show bead positions and work through sums on a board every student sees." },

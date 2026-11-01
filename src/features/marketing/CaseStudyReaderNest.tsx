@@ -89,7 +89,7 @@ export default function CaseStudyReaderNest() {
     <PageShell
       eyebrow="Customer story"
       title="Every Great Classroom Has a Story Behind It"
-      seo={{ title: "The Reader Nest Customer Story - Meet to Manage", description: "How The Reader Nest partnered with MeetToManage to bring admissions, live classrooms, teacher scheduling and parent access together in a customised learning platform.", path: "/customers/the-reader-nest", type: "article" }}
+      seo={{ title: "The Reader Nest Customer Story | Meet to Manage", description: "How The Reader Nest brought admissions, live classrooms, teacher scheduling and parent access together in one customised platform with Meet to Manage.", path: "/customers/the-reader-nest", type: "article" }}
       jsonLd={{
         "@context": "https://schema.org", "@type": "Article",
         headline: "Every Great Classroom Has a Story Behind It",

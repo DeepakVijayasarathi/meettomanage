@@ -37,7 +37,7 @@ export default function Docs() {
         "@type": "TechArticle",
         headline: "Meet to Manage documentation",
         url: "https://meettomanage.cloud/docs",
-        about: { "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication" },
+        about: { "@id": "https://meettomanage.cloud/#software" },
       }}
     >
       <div className="mx-auto grid max-w-[1180px] gap-10 px-5 pb-[clamp(64px,7vw,104px)] lg:grid-cols-[260px_1fr]">

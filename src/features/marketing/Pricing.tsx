@@ -377,7 +377,8 @@ export default function Pricing() {
     return {
       "@context": "https://schema.org",
       "@graph": [
-        { "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", offers },
+        // Google rejects a SoftwareApplication with no offers, so it is left out until the plans have loaded.
+        ...(offers.length ? [{ "@type": "SoftwareApplication", "@id": "https://meettomanage.cloud/#software", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", offers }] : []),
         { "@type": "BreadcrumbList", itemListElement: [
           { "@type": "ListItem", position: 1, name: "Home", item: "https://meettomanage.cloud/" },
           { "@type": "ListItem", position: 2, name: "Pricing", item: "https://meettomanage.cloud/pricing" },
@@ -409,7 +410,7 @@ export default function Pricing() {
       <Seo
         pageKey="pricing"
         title="Pricing: Academy Management Software Plans | Meet to Manage"
-        description="One simple price per academy with live classes, admissions, automatic fee collection and a parent app included. Start free, or pay monthly or yearly. Create your academy in minutes."
+        description="One simple price per academy with live classes, admissions, automatic fee collection and a parent app included. Start free, or pay monthly or yearly."
         path="/pricing"
         jsonLd={jsonLd}
       />

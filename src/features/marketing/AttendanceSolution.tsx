@@ -40,8 +40,8 @@ export default function AttendanceSolution() {
       title="Online attendance software for coaching centres and institutes."
       sub="Record attendance from the live class itself and show it to parents, without registers or spreadsheets."
       seo={{
-        title: "Online Attendance Software for Coaching Centres | Meet to Manage",
-        description: "Online attendance software for coaching centres and institutes. Attendance is recorded when students join the live class and shown to parents. Fees and reports included.",
+        title: "Online Attendance Software for Institutes | Meet to Manage",
+        description: "Online attendance software for coaching centres. Attendance is recorded when students join the live class and shown to parents, with fees and reports built in.",
         path: "/solutions/online-attendance-software-for-institutes",
       }}
       jsonLd={[
@@ -50,7 +50,7 @@ export default function AttendanceSolution() {
           "@type": "WebPage",
           name: "Online attendance software for coaching centres and institutes",
           url: "https://meettomanage.cloud/solutions/online-attendance-software-for-institutes",
-          about: { "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication" },
+          about: { "@id": "https://meettomanage.cloud/#software" },
         },
         {
           "@context": "https://schema.org",

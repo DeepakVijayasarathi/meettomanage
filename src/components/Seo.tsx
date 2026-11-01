@@ -43,7 +43,9 @@ export function Seo({ pageKey, title: titleFallback, description: descriptionFal
     document.head
       .querySelectorAll('link[rel="canonical"]:not([data-rh]), meta[name="description"]:not([data-rh]), meta[property^="og:"]:not([data-rh]), meta[name^="twitter:"]:not([data-rh]), script[data-prerender]')
       .forEach((el) => el.remove());
-  }, [path, title, description]);
+    // A noindex page must not also carry index.html's "index, follow".
+    if (noindex) document.head.querySelectorAll('meta[name="robots"]:not([data-rh])').forEach((el) => el.remove());
+  }, [path, title, description, noindex]);
 
   return (
     <Helmet>
@@ -57,13 +59,13 @@ export function Seo({ pageKey, title: titleFallback, description: descriptionFal
       <meta property="og:description" content={description} />
       <meta property="og:url" content={url} />
       <meta property="og:image" content={image} />
-      <meta property="og:image:alt" content={`${title} — Meet to Manage`} />
+      <meta property="og:image:alt" content={title} />
       <meta property="og:locale" content="en_IN" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
-      <meta name="twitter:image:alt" content={`${title} — Meet to Manage`} />
+      <meta name="twitter:image:alt" content={title} />
       {type === "article" && jsonLd?.datePublished ? <meta property="article:published_time" content={String(jsonLd.datePublished)} /> : null}
       {jsonLd && <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>}
     </Helmet>

@@ -24,7 +24,7 @@ const SEO_DEFAULTS: Record<string, string> = {
   "seo.home.title": "School and Coaching Centre Management Software | Meet to Manage",
   "seo.home.description": "Manage live classes, admissions, fees and parent updates in one platform built for tuition, abacus and phonics centres. Book a free demo.",
   "seo.pricing.title": "Pricing: Academy Management Software Plans | Meet to Manage",
-  "seo.pricing.description": "One simple price per academy with live classes, admissions, automatic fee collection and a parent app included. Pay monthly or yearly. Book a free demo.",
+  "seo.pricing.description": "One simple price per academy with live classes, admissions, automatic fee collection and a parent app included. Start free, or pay monthly or yearly.",
   "seo.store.title": "Live Online Courses & Free Demo Classes | Meet to Manage",
   "seo.store.description": "Browse live online courses and book a free demo class in minutes. No account needed. Meet the teacher and try the live classroom before you enrol.",
   "seo.demo.title": "Book a Free Live Demo Class | Meet to Manage",

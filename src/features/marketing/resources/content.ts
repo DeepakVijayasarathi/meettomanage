@@ -109,7 +109,7 @@ export const RESOURCE_GUIDES: ResourceGuide[] = [
   {
     slug: "teacher-handover-checklist",
     title: "Teacher leave handover checklist for coaching centres",
-    seoTitle: "Teacher Handover Checklist for Coaching Centres | Meet to Manage",
+    seoTitle: "Free Teacher Handover Checklist | Meet to Manage",
     description: "Download a practical teacher handover checklist for coaching classes. Prepare a substitute teacher, confirm the lesson and record what happened afterwards.",
     category: "Teaching and scheduling",
     intro: [

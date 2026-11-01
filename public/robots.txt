@@ -1,4 +1,27 @@
 User-agent: *
 Allow: /
 
+# Signed-in portals and private links (payment, recording, guest-join tokens) have nothing to index.
+# /login and the PIN pages stay crawlable on purpose: they send a noindex header, which crawlers can
+# only see if they are allowed to fetch the page.
+Disallow: /admin
+Disallow: /itadmin
+Disallow: /executive
+Disallow: /teacher
+Disallow: /parent
+Disallow: /subadmin
+Disallow: /admission
+Disallow: /coordinator
+Disallow: /management
+Disallow: /student
+Disallow: /staff
+Disallow: /platform
+Disallow: /marketing
+Disallow: /pay/
+Disallow: /recording/
+Disallow: /join/
+Disallow: /meet/
+Disallow: /guest-join
+Disallow: /view-as
+
 Sitemap: https://meettomanage.cloud/sitemap.xml

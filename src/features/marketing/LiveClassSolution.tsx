@@ -24,7 +24,7 @@ export default function LiveClassSolution() {
       title="Live class software for institutes and online coaching centres."
       sub="Video, whiteboard, quizzes and recordings in one room, connected to attendance, fees and the parent app."
       seo={{
-        title: "Live Class Software for Institutes and Online Coaching — Meet to Manage",
+        title: "Live Class Software for Coaching Institutes | Meet to Manage",
         description: "Run live classes and meetings with video, shared whiteboard, quizzes, screen sharing and recordings. Attendance, fees and the parent app are built in.",
         path: "/solutions/live-class-software-for-institutes",
       }}
@@ -33,7 +33,7 @@ export default function LiveClassSolution() {
         "@type": "WebPage",
         name: "Live class software for institutes",
         url: "https://meettomanage.cloud/solutions/live-class-software-for-institutes",
-        about: { "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication" },
+        about: { "@id": "https://meettomanage.cloud/#software" },
       }}
     >
       <section className="bg-white pb-[clamp(64px,7vw,104px)]">

@@ -148,10 +148,22 @@ async function blogPages() {
 }
 
 // Live posts replace the hand-written fallback entries for the same path.
-for (const post of await blogPages()) {
+const posts = await blogPages();
+for (const post of posts) {
   const i = PAGES.findIndex((p) => p.path === post.path);
   if (i >= 0) PAGES[i] = post;
   else PAGES.push(post);
+}
+
+// The blog index loads its list from the API, so prerender-body skips it and crawlers that don't run
+// JavaScript saw an empty page with no links to any post. List every post here instead, newest first.
+const blogIndex = PAGES.find((p) => p.path === "/blog");
+if (blogIndex && posts.length) {
+  const items = [...posts]
+    .sort((a, b) => String(b.publishedAt ?? "").localeCompare(String(a.publishedAt ?? "")))
+    .map((p) => `<li><h2><a href="${p.path}">${esc(p.heading ?? p.title)}</a></h2>${p.description ? `<p>${esc(p.description)}</p>` : ""}</li>`)
+    .join("");
+  blogIndex.contentHtml = `<ul class="post-list">${items}</ul>`;
 }
 
 // Marketing console → SEO overrides, so crawlers that don't run JavaScript see the same

@@ -151,8 +151,9 @@ export default function MarketingHome() {
   const jsonLd = useMemo(
     () =>
       JSON.stringify([
-        { "@context": "https://schema.org", "@type": "Organization", name: "Meet to Manage", url: "https://meettomanage.cloud", logo: "https://meettomanage.cloud/logo-icon.png", email: "info@infinityuniquers.com", parentOrganization: { "@type": "Organization", name: "Infinity Uniquers" } },
-        { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", description: COPY.en.hero.sub, featureList: ["Interactive live classes", "Admissions CRM", "Batch scheduling and attendance", "Automated fee collection", "Parent mobile app", "Academy reports"], offers: { "@type": "Offer", priceCurrency: "INR", price: fromInr, url: "https://meettomanage.cloud/pricing" } },
+        // Same @id as the Organization in index.html, so search engines merge the two instead of seeing two companies.
+        { "@context": "https://schema.org", "@type": "Organization", "@id": "https://meettomanage.cloud/#organization", name: "Meet to Manage", url: "https://meettomanage.cloud/", logo: "https://meettomanage.cloud/logo-icon.png", email: "info@infinityuniquers.com", parentOrganization: { "@type": "Organization", name: "Infinity Uniquers" } },
+        { "@context": "https://schema.org", "@type": "SoftwareApplication", "@id": "https://meettomanage.cloud/#software", url: "https://meettomanage.cloud/", publisher: { "@id": "https://meettomanage.cloud/#organization" }, name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", description: COPY.en.hero.sub, featureList: ["Interactive live classes", "Admissions CRM", "Batch scheduling and attendance", "Automated fee collection", "Parent mobile app", "Academy reports"], offers: { "@type": "Offer", priceCurrency: "INR", price: fromInr, url: "https://meettomanage.cloud/pricing" } },
         { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: COPY.en.faq.items.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
       ]),
     [fromInr],

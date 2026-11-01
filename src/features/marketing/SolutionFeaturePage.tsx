@@ -31,7 +31,7 @@ export function SolutionFeaturePage({ eyebrow, title, sub, seo, name, features, 
         "@type": "WebPage",
         name,
         url: `https://meettomanage.cloud${seo.path}`,
-        about: { "@type": "SoftwareApplication", name: "Meet to Manage", applicationCategory: "EducationalApplication" },
+        about: { "@id": "https://meettomanage.cloud/#software" },
       }}
     >
       <section className="bg-white pb-[clamp(64px,7vw,104px)]">
