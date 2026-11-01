@@ -107,7 +107,9 @@ export function AppShell({ role, children }: AppShellProps) {
     return () => {
       cancelled = true;
     };
-  }, [role]);
+  // Re-checked on each session refresh (permissions change), so an upgrade or downgrade shows
+  // without a full reload instead of the remembered locks going stale.
+  }, [role, permissions]);
   const lockedLabel = planLocked.get(location.pathname.replace(/\/+$/, "") || "/");
 
   function fetchMenu(onCancelled: () => boolean) {
