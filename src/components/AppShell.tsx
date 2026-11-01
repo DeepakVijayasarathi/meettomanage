@@ -69,7 +69,10 @@ export function AppShell({ role, children }: AppShellProps) {
       .then(([items, status]) => {
         if (cancelled || !status.managed) return;
         const off = new Set((status.modules ?? []).filter((m) => !m.enabled).map((m) => m.key.replace(/^module_/, "")));
-        setPlanLocked(new Map(items.filter((i) => i.requiredModule && off.has(i.requiredModule)).map((i) => [i.path, i.label])));
+        // Enrollment Review stays on every plan (mirrors EntitlementKeys.IsAnyPlanMenuPath on the API).
+        setPlanLocked(new Map(items
+          .filter((i) => i.requiredModule && off.has(i.requiredModule) && !i.path.toLowerCase().endsWith("/enrollments"))
+          .map((i) => [i.path, i.label])));
       })
       .catch(() => undefined);
     return () => {
