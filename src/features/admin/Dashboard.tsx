@@ -61,6 +61,7 @@ import { useBrand } from "@/lib/branding";
 import { useMemo } from "react";
 import { useApiData } from "@/api/hooks";
 import { getDashboardSummary } from "@/api/reports";
+import { saasTenant } from "@/api/saas";
 import { listSessions, todayWindow, toFrontendSession } from "@/api/sessions";
 import type { ClassSession } from "@/types";
 
@@ -135,6 +136,9 @@ export default function AdminDashboard() {
         .sort((a, b) => a.startTime.localeCompare(b.startTime)),
     [usingApi, apiSessions, todayKey]
   );
+  // The month-wise admissions/collections panel needs Reports; plans without it (Free) hide it.
+  const { data: planStatus } = useApiData(() => (usingApi ? saasTenant.status() : Promise.resolve(null)), null, null);
+  const reportsInPlan = planStatus?.modules?.find((m) => m.key === "module_ReportsAnalytics")?.enabled !== false;
   // Live aggregates replace the mock KPI block and charts when the API is configured
   const { data: dashboard, loading: dashboardLoading, error: dashboardError } = useApiData(
     () =>
@@ -288,7 +292,7 @@ export default function AdminDashboard() {
         </div>
       </section>
 
-      <MonthlyNumbersPanel />
+      {reportsInPlan && <MonthlyNumbersPanel />}
 
       {/* Charts grid */}
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">

@@ -12,7 +12,10 @@ import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { hexToHslTriple } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
-import { getMyMenu, toNavSections } from "@/api/menus";
+import { useLocation } from "react-router-dom";
+import { getMyMenu, listMenuItems, toNavSections } from "@/api/menus";
+import { saasTenant } from "@/api/saas";
+import { PlanLockedScreen } from "@/components/PlanLockedScreen";
 import { listSuspensions } from "@/api/billing";
 import { getParentDashboard, type ApiParentDashboard } from "@/api/parentPortal";
 import { useApiData } from "@/api/hooks";
@@ -55,8 +58,30 @@ export function AppShell({ role, children }: AppShellProps) {
   // its own effect and loop.
   const [apiSections, setApiSections] = useState<NavSection[] | null>(null);
 
+  // Admin pages whose module the academy's plan switches off (path -> label), so opening
+  // one directly shows an upgrade screen instead of a page full of permission errors.
+  const location = useLocation();
+  const [planLocked, setPlanLocked] = useState<Map<string, string>>(() => new Map());
+  useEffect(() => {
+    if (!apiEnabled() || role !== "admin") return;
+    let cancelled = false;
+    Promise.all([listMenuItems("admin"), saasTenant.status()])
+      .then(([items, status]) => {
+        if (cancelled || !status.managed) return;
+        const off = new Set((status.modules ?? []).filter((m) => !m.enabled).map((m) => m.key.replace(/^module_/, "")));
+        setPlanLocked(new Map(items.filter((i) => i.requiredModule && off.has(i.requiredModule)).map((i) => [i.path, i.label])));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [role]);
+  const lockedLabel = planLocked.get(location.pathname.replace(/\/+$/, "") || "/");
+
   function fetchMenu(onCancelled: () => boolean) {
-    return Promise.all([getMyMenu(), role === "admin" ? listSuspensions("Active") : Promise.resolve(null)])
+    // The badge count is optional: on a plan without Finance it's refused (403), and that
+    // must not throw away the menu itself and fall back to the full static list.
+    return Promise.all([getMyMenu(), role === "admin" ? listSuspensions("Active").catch(() => null) : Promise.resolve(null)])
       .then(([items, activeSuspensions]) => {
         if (onCancelled() || items.length === 0) return;
         const sections = toNavSections(items);
@@ -200,7 +225,7 @@ export function AppShell({ role, children }: AppShellProps) {
         >
           <TimezoneMismatchBanner />
           {role === "admin" && <SubscriptionBanner />}
-          <PageTransition>{children}</PageTransition>
+          {lockedLabel ? <PlanLockedScreen label={lockedLabel} /> : <PageTransition>{children}</PageTransition>}
         </main>
       </div>
       <AppTour

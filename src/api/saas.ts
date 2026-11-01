@@ -129,17 +129,17 @@ export interface TenantPlan { id: string; code: string; name: string; descriptio
 export interface BillingProfile { legalName: string | null; billingEmail: string | null; billingPhone: string | null; gstin: string | null; address: string | null; state: string | null }
 
 export const saasTenant = {
-  status: () => apiFetch<TenantSaasStatus>("/saas-billing/status"),
-  banner: () => apiFetch<{ banner: TenantSaasStatus["banner"] }>("/saas-billing/banner"),
-  plans: () => apiFetch<TenantPlan[]>("/saas-billing/plans"),
-  changePlan: (planPriceId: string) => apiFetch<PlanChangeResult>("/saas-billing/change-plan", { method: "POST", body: JSON.stringify({ planPriceId }) }),
-  cancel: () => apiFetch<void>("/saas-billing/cancel", { method: "POST", body: JSON.stringify({}) }),
-  resume: () => apiFetch<PlanChangeResult>("/saas-billing/resume", { method: "POST" }),
-  invoices: () => apiFetch<InvoiceRow[]>("/saas-billing/invoices"),
-  payLink: (id: string) => apiFetch<{ paymentUrl: string | null }>(`/saas-billing/invoices/${id}/pay-link`, { method: "POST" }),
-  downloadInvoice: (id: string, number: string) => downloadFile(`/saas-billing/invoices/${id}/pdf`, `${number}.pdf`),
-  profile: () => apiFetch<BillingProfile>("/saas-billing/profile"),
-  saveProfile: (body: BillingProfile) => apiFetch<void>("/saas-billing/profile", { method: "PUT", body: JSON.stringify(body) }),
+  status: () => apiFetch<TenantSaasStatus>("/api/saas-billing/status"),
+  banner: () => apiFetch<{ banner: TenantSaasStatus["banner"] }>("/api/saas-billing/banner"),
+  plans: () => apiFetch<TenantPlan[]>("/api/saas-billing/plans"),
+  changePlan: (planPriceId: string) => apiFetch<PlanChangeResult>("/api/saas-billing/change-plan", { method: "POST", body: JSON.stringify({ planPriceId }) }),
+  cancel: () => apiFetch<void>("/api/saas-billing/cancel", { method: "POST", body: JSON.stringify({}) }),
+  resume: () => apiFetch<PlanChangeResult>("/api/saas-billing/resume", { method: "POST" }),
+  invoices: () => apiFetch<InvoiceRow[]>("/api/saas-billing/invoices"),
+  payLink: (id: string) => apiFetch<{ paymentUrl: string | null }>(`/api/saas-billing/invoices/${id}/pay-link`, { method: "POST" }),
+  downloadInvoice: (id: string, number: string) => downloadFile(`/api/saas-billing/invoices/${id}/pdf`, `${number}.pdf`),
+  profile: () => apiFetch<BillingProfile>("/api/saas-billing/profile"),
+  saveProfile: (body: BillingProfile) => apiFetch<void>("/api/saas-billing/profile", { method: "PUT", body: JSON.stringify(body) }),
 };
 
 // ---------------------------------------------------------------- public (signup)

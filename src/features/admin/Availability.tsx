@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TEACHERS } from "@/data/users";
 import { SESSIONS } from "@/data/sessions";
 import { LEAVE_REQUESTS } from "@/data/leaves";
-import { apiEnabled } from "@/lib/api";
+import { ApiError, apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listHolidays, listLeave, toFrontendLeave } from "@/api/academicOps";
 import { listTeacherOptions } from "@/api/batches";
@@ -66,7 +66,8 @@ export default function AdminAvailability() {
   const today = format(now, "yyyy-MM-dd");
 
   const { data: apiLeaves, loading: leavesLoading, error: leavesError, reload } = useApiData<LeaveRequest[]>(
-    () => listLeave().then((items) => items.map(toFrontendLeave)),
+    // Leave belongs to the Leave module; on a plan without it (403) show the roster with no leave rather than an error.
+    () => listLeave().then((items) => items.map(toFrontendLeave)).catch((err: unknown) => (err instanceof ApiError && err.status === 403 ? [] : Promise.reject(err))),
     LEAVE_REQUESTS
   );
   const { data: apiTeachers, loading: teachersLoading, error: teachersError } = useApiData(() => listTeacherOptions(), [], undefined, { cacheKey: "teacherOptions" });
