@@ -61,7 +61,7 @@ export interface ReminderLogRow {
   status: "Pending" | "Sent" | "Failed" | "Skipped"; attempts: number; error: string | null; createdAtUtc: string; sentAtUtc: string | null;
 }
 export interface EmailTemplateRow { key: string; title: string; subject: string; body: string; isActive: boolean }
-export interface BillingSettings { gateway: string; smtpConfigured: boolean; signupEnabled: boolean; graceDays: number; taxRatePercent: number }
+export interface BillingSettings { gateway: string; smtpConfigured: boolean; emailDelivery?: "SMTP" | "Resend" | "None"; signupEnabled: boolean; graceDays: number; taxRatePercent: number }
 export interface PlanChangeResult { outcome: "invoice" | "scheduled" | "applied"; invoiceId: string | null; paymentUrl: string | null; message: string }
 
 // ---------------------------------------------------------------- platform operator

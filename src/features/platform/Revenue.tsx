@@ -34,7 +34,11 @@ function RevenueDashboard() {
     <Notices error={error || summary.error} notice={notice} />
     <div className="flex flex-wrap items-center gap-3">
       <button disabled={busy} className={primaryButton} onClick={() => { void runCycle(); }}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Run billing cycle now</button>
-      {settings.data && <p className="text-xs text-muted-foreground">Gateway: <b>{settings.data.gateway}</b> · Reminder e-mail: <b className={settings.data.smtpConfigured ? "text-emerald-700" : "text-amber-700"}>{settings.data.smtpConfigured ? "configured" : "SMTP not configured, reminders are logged but not delivered"}</b> · Grace: {settings.data.graceDays} days · GST {settings.data.taxRatePercent}% · Self-signup: {settings.data.signupEnabled ? "on" : "off"}</p>}
+      {settings.data && <p className="text-xs text-muted-foreground">Gateway: <b>{settings.data.gateway}</b> · Reminder e-mail: {(() => {
+        // Older APIs only report SMTP; newer ones say which channel actually delivers (SMTP, Resend or none).
+        const via = settings.data.emailDelivery ?? (settings.data.smtpConfigured ? "SMTP" : "None");
+        return <b className={via === "None" ? "text-amber-700" : "text-emerald-700"}>{via === "None" ? "not configured, reminders are logged but not delivered" : `delivered via ${via}`}</b>;
+      })()} · Grace: {settings.data.graceDays} days · GST {settings.data.taxRatePercent}% · Self-signup: {settings.data.signupEnabled ? "on" : "off"}</p>}
     </div>
     {s && <>
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
