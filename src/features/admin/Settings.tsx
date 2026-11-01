@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Bell, Building2, CalendarOff, CheckCircle2, CreditCard, Eye, EyeOff, Globe2, ListTree, Loader2, Mail, MessageCircle, Palette, Pencil, Plug, Plus, Puzzle, Save, Settings2, ShieldAlert, StickyNote, Trash2, type LucideIcon, Video, Wallet, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { SecuritySettings } from "./SecuritySettings";
@@ -34,6 +34,7 @@ import { apiEnabled, userMessage } from "@/lib/api";
 import { getStorageStatus, setStorageProvider, startStorageSync, type ApiStorageStatus } from "@/api/storage";
 import { useSession } from "@/state/session";
 import { useApiData } from "@/api/hooks";
+import { saasTenant } from "@/api/saas";
 import { getSettings, toSettingsMap, updateSettings, type SettingCategory, type UpdateSettingItem } from "@/api/settings";
 import { getBrand, setBrand } from "@/lib/branding";
 import {
@@ -200,6 +201,9 @@ export default function AdminSettings() {
   }
 
   const { data: apiSettings } = useApiData(getSettings, []);
+  // Own branding is a plan feature (white-label); plans without it keep the default look.
+  const { data: planStatus } = useApiData(() => (apiEnabled() ? saasTenant.status().catch(() => null) : Promise.resolve(null)), null, null);
+  const brandingLocked = !!planStatus?.managed && planStatus.features?.find((f) => f.key === "feature_white_label")?.enabled === false;
 
   useEffect(() => {
     if (apiSettings.length === 0) return;
@@ -428,6 +432,12 @@ export default function AdminSettings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-6">
+              {brandingLocked && (
+                <InlineAlert variant="info">
+                  Your own logo, name and colours are part of the paid plans. Your {planStatus?.planName} plan uses the standard look.{" "}
+                  <Link to="/admin/subscription" className="font-semibold underline underline-offset-4">See plans</Link>
+                </InlineAlert>
+              )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="grid gap-1.5">
                   <Label htmlFor="brand-name">Brand name</Label>
