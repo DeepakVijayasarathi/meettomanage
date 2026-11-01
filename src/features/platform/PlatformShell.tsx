@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useConsoleView, type ConsoleView } from "./consoleView";
 import {
-  AtSign, BellRing, Building2, ChevronDown, Eye, EyeOff, Gauge, History, Layers, ListTree, Loader2, LogOut, Receipt, Settings2, ShieldCheck, TrendingUp,
+  AtSign, BellRing, Building2, ChevronDown, Eye, EyeOff, Gauge, History, Layers, LayoutDashboard, ListTree, Loader2, LogOut, Receipt, Settings2, ShieldCheck, TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -14,12 +15,13 @@ export function usePlatformAdmin() {
   return session;
 }
 
-type NavItem = { to: string; label: string; icon: LucideIcon; hint: string };
+type NavItem = { to: string; label: string; icon: LucideIcon; hint: string; /** Shown in the Simple view too. */ simple?: boolean };
 const groups: { title: string; items: NavItem[] }[] = [
   {
     title: "Workspaces",
     items: [
-      { to: "/platform/tenants", label: "Tenant management", icon: Building2, hint: "Create and manage client workspaces" },
+      { to: "/platform/overview", label: "Overview", icon: LayoutDashboard, hint: "What needs your attention today", simple: true },
+      { to: "/platform/tenants", label: "Tenant management", icon: Building2, hint: "Create and manage client workspaces", simple: true },
       { to: "/platform/menus", label: "Menu management", icon: ListTree, hint: "Shape each client's navigation" },
       { to: "/platform/configuration", label: "Tenant configuration", icon: Settings2, hint: "Branding, integrations and settings" },
       { to: "/platform/email-mappings", label: "Simple SSO", icon: AtSign, hint: "One sign-in page for every client" },
@@ -31,13 +33,20 @@ const groups: { title: string; items: NavItem[] }[] = [
     title: "Billing",
     items: [
       { to: "/platform/plans", label: "Plans", icon: Layers, hint: "Prices, limits and features" },
-      { to: "/platform/subscriptions", label: "Subscriptions & invoices", icon: Receipt, hint: "Trials, renewals and payments" },
-      { to: "/platform/revenue", label: "Revenue", icon: TrendingUp, hint: "MRR, churn and collections" },
+      { to: "/platform/subscriptions", label: "Subscriptions & invoices", icon: Receipt, hint: "Trials, renewals and payments", simple: true },
+      { to: "/platform/revenue", label: "Revenue", icon: TrendingUp, hint: "MRR, churn and collections", simple: true },
       { to: "/platform/reminders", label: "Auto-reminders", icon: BellRing, hint: "Billing e-mails and delivery log" },
     ],
   },
 ];
 const allItems = groups.flatMap(g => g.items);
+
+/** The nav for a view; an advanced page opened directly (a link or bookmark) stays visible while it is open. */
+function visibleGroups(view: ConsoleView, pathname: string) {
+  return groups
+    .map(g => ({ ...g, items: g.items.filter(i => view === "advanced" || i.simple || pathname.startsWith(i.to)) }))
+    .filter(g => g.items.length > 0);
+}
 
 /** Keeps the console on its light "Atelier" theme (index.css) for as long as it is mounted. */
 function useConsoleTheme() {
@@ -71,6 +80,8 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+  const [view, setView] = useConsoleView();
   useEffect(() => {
     const update = () => { setToken(sessionStorage.getItem(PLATFORM_TOKEN_KEY) ?? ""); setEmail(sessionStorage.getItem(PLATFORM_EMAIL_KEY) ?? ""); };
     window.addEventListener(PLATFORM_SESSION_EVENT, update);
@@ -124,14 +135,22 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
   </div>;
 
   const initials = (email.split("@")[0] || "TA").slice(0, 2).toUpperCase();
+  const nav = visibleGroups(view, location.pathname);
+  const advancedOnlyOpen = view === "simple" && !allItems.some(i => i.simple && location.pathname.startsWith(i.to)) && allItems.some(i => location.pathname.startsWith(i.to));
   return <SessionContext.Provider value={{ token, email }}>
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border bg-card/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between gap-4 px-5 sm:px-8">
-          <Link to="/platform/tenants" className="flex items-center gap-3">
+          <Link to="/platform/overview" className="flex items-center gap-3">
             <BrandMark size="h-9 w-9" />
             <span><span className="console-heading block text-[17px] font-semibold leading-tight">Meet to Manage</span><span className="block text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Platform administration</span></span>
           </Link>
+          <div className="flex items-center gap-3">
+          <div role="radiogroup" aria-label="Console view" className="flex rounded-full border border-border bg-muted/60 p-0.5 text-xs font-semibold">
+            {(["simple", "advanced"] as const).map(v => <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => setView(v)}
+              title={v === "simple" ? "Everyday pages: overview, academies, billing and revenue" : "Every page, including plans, menus, SSO, operations and logs"}
+              className={`rounded-full px-3 py-1.5 capitalize transition ${view === v ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{v}</button>)}
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button aria-label="Tenant Admin profile menu" className="flex items-center gap-3 rounded-full border border-border bg-card py-1.5 pl-1.5 pr-3 shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
@@ -142,17 +161,18 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuLabel>Tenant Admin profile</DropdownMenuLabel><DropdownMenuSeparator />
-              {allItems.map(item => <DropdownMenuItem key={item.to} onClick={() => navigate(item.to)}><item.icon className="h-4 w-4" />{item.label}</DropdownMenuItem>)}
+              {nav.flatMap(g => g.items).map(item => <DropdownMenuItem key={item.to} onClick={() => navigate(item.to)}><item.icon className="h-4 w-4" />{item.label}</DropdownMenuItem>)}
               <DropdownMenuSeparator /><DropdownMenuItem onClick={clearPlatformSession}><LogOut className="h-4 w-4" />Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
       </header>
 
       <div className="mx-auto grid min-w-0 max-w-[1500px] gap-8 px-5 py-8 sm:px-8 lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
           <nav aria-label="Administration" className="min-w-0 space-y-6">
-            {groups.map(group => <div key={group.title} className="min-w-0">
+            {nav.map(group => <div key={group.title} className="min-w-0">
               <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{group.title}</p>
               <ul className="flex w-full max-w-full gap-1 overflow-x-auto lg:block lg:space-y-0.5 lg:overflow-visible">
                 {group.items.map(item => <li key={item.to} className="shrink-0">
@@ -166,9 +186,18 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
               </ul>
             </div>)}
           </nav>
-          <p className="mt-8 hidden border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground lg:block">Changes apply to the client you select. Each client keeps its own workspace and configuration.</p>
+          <p className="mt-8 hidden border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground lg:block">
+            {view === "simple"
+              ? <>Simple view shows the everyday pages. <button type="button" className="font-semibold text-primary underline-offset-4 hover:underline" onClick={() => setView("advanced")}>Switch to Advanced</button> for plans, menus, SSO, operations and logs.</>
+              : "Changes apply to the client you select. Each client keeps its own workspace and configuration."}
+          </p>
         </aside>
-        <main className="min-w-0 space-y-6">{children}</main>
+        <main className="min-w-0 space-y-6">
+          {advancedOnlyOpen && <p className="rounded-lg border border-border bg-muted/50 px-4 py-2.5 text-xs text-muted-foreground">
+            This is an Advanced page. <button type="button" className="font-semibold text-primary underline-offset-4 hover:underline" onClick={() => setView("advanced")}>Switch to Advanced</button> to keep it in the menu.
+          </p>}
+          {children}
+        </main>
       </div>
     </div>
   </SessionContext.Provider>;

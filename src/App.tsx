@@ -12,6 +12,7 @@ import { BrandLoader } from "@/components/BrandLoader";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { tenantPath } from "@/lib/tenantPath";
 const PlatformTenants = lazy(() => import("@/features/platform/Tenants"));
+const PlatformOverview = lazy(() => import("@/features/platform/Overview"));
 const PlatformMenus = lazy(() => import("@/features/platform/Menus"));
 const PlatformConfiguration = lazy(() => import("@/features/platform/Configuration"));
 const PlatformEmailMappings = lazy(() => import("@/features/platform/EmailMappings"));
@@ -214,7 +215,8 @@ export default function App() {
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/platform/tenants" element={<PlatformTenants />} />
-            <Route path="/platform" element={<Navigate to="/platform/tenants" replace />} />
+            <Route path="/platform/overview" element={<PlatformOverview />} />
+            <Route path="/platform" element={<Navigate to="/platform/overview" replace />} />
             <Route path="/platform/menus" element={<PlatformMenus />} />
             <Route path="/platform/configuration" element={<PlatformConfiguration />} />
             <Route path="/platform/email-mappings" element={<PlatformEmailMappings />} />
