@@ -12,7 +12,9 @@ import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { hexToHslTriple } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { setPlanLimitAction } from "@/hooks/use-toast";
+import { UsageNudge } from "@/components/UsageNudge";
 import { getMyMenu, listMenuItems, toNavSections } from "@/api/menus";
 import { saasTenant } from "@/api/saas";
 import { sessionTenantCode, tenantPath } from "@/lib/tenantPath";
@@ -64,6 +66,15 @@ export function AppShell({ role, children }: AppShellProps) {
   // Admin pages whose module the academy's plan switches off (path -> label), so opening
   // one directly shows an upgrade screen instead of a page full of permission errors.
   const location = useLocation();
+  const navigate = useNavigate();
+  // Plan-limit errors anywhere in the admin portal get a "See plans" button (see hooks/use-toast.ts).
+  useEffect(() => {
+    if (role !== "admin") return;
+    setPlanLimitAction({ label: "See plans", onClick: () => navigate("/admin/subscription") });
+    return () => setPlanLimitAction(null);
+  }, [role, navigate]);
+  // The fullest metered limit at 80%+ (e.g. 3 of 3 staff), shown as an upgrade nudge.
+  const [usageNudge, setUsageNudge] = useState<{ label: string; used: number; limit: number; unit: string; planName: string } | null>(null);
   // Remembered for the browser tab, so after the first check a locked page shows the upgrade
   // screen straight away instead of first firing its (refused) data requests.
   const [planLocked, setPlanLocked] = useState<Map<string, string>>(() => {
@@ -86,6 +97,10 @@ export function AppShell({ role, children }: AppShellProps) {
           .filter((i) => i.requiredModule && off.has(i.requiredModule) && !i.path.toLowerCase().endsWith("/enrollments"))
           .map((i): [string, string] => [i.path, i.label]);
         setPlanLocked(new Map(entries));
+        const fullest = status.managed
+          ? (status.limits ?? []).filter((l) => l.limit > 0 && l.used / l.limit >= 0.8).sort((a, b) => b.used / b.limit - a.used / a.limit)[0]
+          : undefined;
+        setUsageNudge(fullest ? { label: fullest.label, used: fullest.used, limit: fullest.limit, unit: fullest.unit, planName: status.planName ?? "current" } : null);
         try { sessionStorage.setItem(planLockKey(), JSON.stringify(entries)); } catch { /* storage blocked: just no cache */ }
       })
       .catch(() => undefined);
@@ -242,6 +257,7 @@ export function AppShell({ role, children }: AppShellProps) {
         >
           <TimezoneMismatchBanner />
           {role === "admin" && <SubscriptionBanner />}
+          {role === "admin" && usageNudge && !lockedLabel && <UsageNudge nudge={usageNudge} onUpgrade={() => navigate("/admin/subscription")} />}
           {lockedLabel ? <PlanLockedScreen label={lockedLabel} /> : <PageTransition>{children}</PageTransition>}
         </main>
       </div>

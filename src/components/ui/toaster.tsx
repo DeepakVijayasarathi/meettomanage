@@ -33,6 +33,15 @@ export function Toaster() {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">{t.title}</p>
             {t.description && <p className="mt-0.5 text-xs opacity-90">{t.description}</p>}
+            {t.action && (
+              <button
+                type="button"
+                onClick={() => { t.action!.onClick(); dismiss(t.id); }}
+                className="mt-2 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                {t.action.label}
+              </button>
+            )}
           </div>
           <button
             type="button"

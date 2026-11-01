@@ -58,10 +58,11 @@ import {
 import { SESSIONS } from "@/data/sessions";
 import { apiEnabled } from "@/lib/api";
 import { useBrand } from "@/lib/branding";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useApiData } from "@/api/hooks";
 import { getDashboardSummary } from "@/api/reports";
 import { saasTenant } from "@/api/saas";
+import { GettingStarted } from "@/components/GettingStarted";
 import { listSessions, todayWindow, toFrontendSession } from "@/api/sessions";
 import type { ClassSession } from "@/types";
 
@@ -193,6 +194,8 @@ export default function AdminDashboard() {
   // "bad" 0. Distinguish that first-run state from a real computed zero so a fresh account
   // reads as "waiting for activity" instead of "everything is broken".
   const isFreshAccount = !dashboardLoading && !dashboardError && kpis.totalStudents === 0;
+  // The "Get started" checklist replaces the plain fresh-account note while it is showing.
+  const [checklistShown, setChecklistShown] = useState(false);
   const emptyDetail = isFreshAccount ? "No activity yet" : undefined;
 
   // Headline volume + money — the numbers that answer "how big is the business right now".
@@ -227,7 +230,8 @@ export default function AdminDashboard() {
       />
       <PayoutApprovalsBanner />
 
-      {isFreshAccount && (
+      <GettingStarted onVisibility={setChecklistShown} />
+      {isFreshAccount && !checklistShown && (
         <div className="mb-6 flex flex-col gap-4 rounded-xl border border-primary/20 bg-primary/5 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-4 ring-primary/5">

@@ -4,6 +4,7 @@
  */
 import { authStorage, clearAuthStorage, getViewAs } from "@/lib/authStorage";
 import { apiTenantPath } from "@/lib/tenantPath";
+import { notePlanLimitMessage } from "@/hooks/use-toast";
 
 const API_ROOT: string = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 /** Read per request: a single-URL login sets the tenant after this module has loaded. */
@@ -174,7 +175,9 @@ async function fetchApi<T>(path: string, init: RequestInit | undefined, tenantSc
 
   if (!response.ok) {
     // Backend errors arrive as RFC 7807 ProblemDetails
-    throw new ApiError(response.status, await readProblemMessage(response));
+    const message = await readProblemMessage(response);
+    if (response.status === 402) notePlanLimitMessage(message);
+    throw new ApiError(response.status, message);
   }
 
   // Some endpoints return 200 with no body (e.g. MonitoringController.BroadcastReload's
