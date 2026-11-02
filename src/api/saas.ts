@@ -62,6 +62,9 @@ export interface ReminderLogRow {
 }
 export interface EmailTemplateRow { key: string; title: string; subject: string; body: string; isActive: boolean }
 export interface BillingSettings { gateway: string; smtpConfigured: boolean; emailDelivery?: "SMTP" | "Resend" | "None"; signupEnabled: boolean; graceDays: number; taxRatePercent: number }
+/** Operator rules (Platform console → Rules). */
+export interface PlatformRules { notStartedAfterDays: number; trialEndingWindowDays: number; usageWarningPercent: number; trialFallbackPlanCode: string | null }
+
 export interface PlanChangeResult { outcome: "invoice" | "scheduled" | "applied"; invoiceId: string | null; paymentUrl: string | null; message: string }
 
 // ---------------------------------------------------------------- platform operator
@@ -98,6 +101,8 @@ export const saasPlatform = {
     platformRequest<void>(`/email-templates/${key}`, token, "PUT", body),
   runCycle: (token: string) => platformRequest<{ billingRan: boolean; usageRan: boolean }>("/billing/run-cycle", token, "POST"),
   settings: (token: string) => platformRequest<BillingSettings>("/billing/settings", token),
+  rules: (token: string) => platformRequest<{ rules: PlatformRules; fallbackPlans: { code: string; name: string }[] }>("/rules", token),
+  saveRules: (token: string, rules: PlatformRules) => platformRequest<PlatformRules>("/rules", token, "PUT", rules),
 };
 
 /** Fetches a platform PDF with the operator token and opens it in a new tab. */
@@ -124,6 +129,8 @@ export interface TenantSaasStatus {
   modules?: { key: string; label: string; enabled: boolean }[];
   openInvoices?: { id: string; invoiceNumber: string; total: number; currency: string; dueAtUtc: string; paymentUrl: string | null }[];
   taxRatePercent?: number;
+  /** Share of a plan limit at which the upgrade banner appears (Platform console → Rules). */
+  usageWarningPercent?: number;
 }
 export interface TenantPlan { id: string; code: string; name: string; description: string | null; prices: { id: string; billingInterval: BillingInterval; currency: string; amount: number }[]; entitlements: { key: string; value: number }[] }
 export interface BillingProfile { legalName: string | null; billingEmail: string | null; billingPhone: string | null; gstin: string | null; address: string | null; state: string | null }

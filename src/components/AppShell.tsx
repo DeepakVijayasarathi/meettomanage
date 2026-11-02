@@ -114,7 +114,7 @@ export function AppShell({ role, children }: AppShellProps) {
           .map((i): [string, string] => [i.path, i.label]);
         setPlanLocked(new Map(entries));
         const fullest = status.managed
-          ? (status.limits ?? []).filter((l) => l.limit > 0 && l.used / l.limit >= 0.8).sort((a, b) => b.used / b.limit - a.used / a.limit)[0]
+          ? (status.limits ?? []).filter((l) => l.limit > 0 && l.used / l.limit >= (status.usageWarningPercent ?? 80) / 100).sort((a, b) => b.used / b.limit - a.used / a.limit)[0]
           : undefined;
         setUsageNudge(fullest ? { label: fullest.label, used: fullest.used, limit: fullest.limit, unit: fullest.unit, planName: status.planName ?? "current" } : null);
         try { sessionStorage.setItem(planLockKey(), JSON.stringify(entries)); } catch { /* storage blocked: just no cache */ }

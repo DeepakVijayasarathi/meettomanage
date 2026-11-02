@@ -15,7 +15,11 @@ const order: Record<Attention["tone"], number> = { bad: 0, warn: 1, info: 2 };
  * What an operator should look at today: payment problems, trials ending, unpaid invoices, academies that closed
  * themselves (data waiting to be deleted), signups that never got started, and billing e-mail that failed to send.
  */
-export function needsAttention(rows: SubscriptionRow[], now = Date.now(), tenants: TenantAge[] = [], reminders: ReminderLogRow[] = []): Attention[] {
+/** The Rules that drive the list (Platform console → Rules), with the built-in defaults. */
+export type AttentionRules = { notStartedAfterDays: number; trialEndingWindowDays: number };
+const DEFAULT_RULES: AttentionRules = { notStartedAfterDays: NOT_STARTED_AFTER_DAYS, trialEndingWindowDays: 7 };
+
+export function needsAttention(rows: SubscriptionRow[], now = Date.now(), tenants: TenantAge[] = [], reminders: ReminderLogRow[] = [], rules: AttentionRules = DEFAULT_RULES): Attention[] {
   const created = new Map(tenants.map(t => [t.id, t.createdAtUtc ? new Date(t.createdAtUtc).getTime() : null]));
   const items: Attention[] = [];
   for (const s of rows) {
@@ -27,7 +31,7 @@ export function needsAttention(rows: SubscriptionRow[], now = Date.now(), tenant
       items.push({ key: `${s.tenantId}:closed`, tone: "info", title: `${s.tenantName} is closed`, detail: "Its data is kept. Delete the workspace in Tenant management once your retention period has passed.", to: "/platform/tenants", action: "Tenant management" });
     if (s.status === "Trialing" && s.trialEndsAtUtc) {
       const days = Math.ceil((new Date(s.trialEndsAtUtc).getTime() - now) / DAY);
-      if (days <= 7) items.push({ key: `${s.tenantId}:trial`, tone: "warn", title: `${s.tenantName}'s trial ends ${days <= 0 ? "today" : `in ${days} day${days === 1 ? "" : "s"}`}`, detail: `Ends ${formatDay(s.trialEndsAtUtc)}; then it moves to Free`, to: "/platform/subscriptions", action: "Extend or assign" });
+      if (days <= rules.trialEndingWindowDays) items.push({ key: `${s.tenantId}:trial`, tone: "warn", title: `${s.tenantName}'s trial ends ${days <= 0 ? "today" : `in ${days} day${days === 1 ? "" : "s"}`}`, detail: `Ends ${formatDay(s.trialEndsAtUtc)}; then it moves to Free`, to: "/platform/subscriptions", action: "Extend or assign" });
     }
     if (s.openInvoices > 0)
       items.push({ key: `${s.tenantId}:invoice`, tone: "warn", title: `${s.tenantName} has ${s.openInvoices} unpaid invoice${s.openInvoices === 1 ? "" : "s"}`, detail: formatMoney(s.openAmount), to: "/platform/subscriptions", action: "See invoices" });
@@ -35,7 +39,7 @@ export function needsAttention(rows: SubscriptionRow[], now = Date.now(), tenant
     const signedUp = created.get(s.tenantId);
     if (signedUp && (s.planCode === "free" || s.status === "Trialing") && s.usage && s.usage.activeStudents === 0 && s.usage.sessionsMonth === 0) {
       const age = Math.floor((now - signedUp) / DAY);
-      if (age >= NOT_STARTED_AFTER_DAYS)
+      if (age >= rules.notStartedAfterDays)
         items.push({ key: `${s.tenantId}:notstarted`, tone: "info", title: `${s.tenantName} hasn't started yet`, detail: `Signed up ${age} days ago; no students or classes so far (as of ${formatDay(s.usage.date)}). A quick call often helps.`, to: `/platform/operations?tenant=${s.tenantId}`, action: "Open operations" });
     }
   }

@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type FormEvent, type Re
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useConsoleView, type ConsoleView } from "./consoleView";
 import {
-  AtSign, BellRing, Building2, ChevronDown, Eye, EyeOff, Gauge, History, Layers, LayoutDashboard, ListTree, Loader2, LogOut, Receipt, Settings2, ShieldCheck, TrendingUp,
+  AtSign, BellRing, Building2, ChevronDown, Eye, EyeOff, Gauge, History, Layers, LayoutDashboard, ListTree, Loader2, LogOut, Receipt, Settings2, ShieldCheck, SlidersHorizontal, TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -36,6 +36,7 @@ const groups: { title: string; items: NavItem[] }[] = [
       { to: "/platform/subscriptions", label: "Subscriptions & invoices", icon: Receipt, hint: "Trials, renewals and payments", simple: true },
       { to: "/platform/revenue", label: "Revenue", icon: TrendingUp, hint: "MRR, churn and collections", simple: true },
       { to: "/platform/reminders", label: "Auto-reminders", icon: BellRing, hint: "Billing e-mails and delivery log" },
+      { to: "/platform/rules", label: "Rules", icon: SlidersHorizontal, hint: "Trial end, limit warnings and alerts" },
     ],
   },
 ];

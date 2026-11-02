@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, ArrowRight, Building2, CheckCircle2, Clock, Info, Receipt, Sparkles, TrendingUp } from "lucide-react";
 import PlatformShell, { usePlatformAdmin } from "./PlatformShell";
-import { saasPlatform, formatDay, formatMoney, type ReminderLogRow, type RevenueSummary, type SubscriptionRow } from "@/api/saas";
+import { saasPlatform, formatDay, formatMoney, type PlatformRules, type ReminderLogRow, type RevenueSummary, type SubscriptionRow } from "@/api/saas";
 import { platformRequest, type PlatformTenant } from "@/api/platform";
 import { needsAttention, recentSignups } from "./overviewAttention";
 import { Hero, Notices, StatCard, panel, primaryButton, smallButton, useLoader } from "./saasUi";
@@ -16,9 +16,10 @@ function PlatformOverview() {
   const revenue = useLoader(useCallback(() => saasPlatform.revenue(token), [token]), null as RevenueSummary | null);
   const subs = useLoader(useCallback(() => saasPlatform.subscriptions(token), [token]), [] as SubscriptionRow[]);
   const tenants = useLoader(useCallback(() => platformRequest<PlatformTenant[]>("/tenants", token), [token]), [] as PlatformTenant[]);
+  const rules = useLoader(useCallback(() => saasPlatform.rules(token).then((r) => r.rules).catch(() => null), [token]), null as PlatformRules | null);
   const reminders = useLoader(useCallback(() => saasPlatform.reminders(token).catch(() => [] as ReminderLogRow[]), [token]), [] as ReminderLogRow[]);
   const r = revenue.data;
-  const attention = needsAttention(subs.data, Date.now(), tenants.data, reminders.data);
+  const attention = needsAttention(subs.data, Date.now(), tenants.data, reminders.data, rules.data ?? undefined);
   const newAcademies = recentSignups(tenants.data);
   const planOf = (id: string) => subs.data.find(s => s.tenantId === id);
   const academies = subs.data.length;
@@ -38,7 +39,7 @@ function PlatformOverview() {
       <h2 className="console-heading flex items-center gap-2 text-lg font-semibold"><AlertTriangle className="h-5 w-5 text-[hsl(var(--console-brass))]" />Needs your attention</h2>
       {!subs.loaded ? <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
         : attention.length === 0
-          ? <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-emerald-600" />Nothing needs your attention: no overdue payments, trials ending this week, unpaid invoices, closed academies, stalled signups or failed e-mails.</p>
+          ? <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-emerald-600" />Nothing needs your attention: no overdue payments, trials ending soon, unpaid invoices, closed academies, stalled signups or failed e-mails.</p>
           : <ul className="mt-4 divide-y divide-border">
             {attention.map(a => <li key={a.key} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <span className="flex items-start gap-3">

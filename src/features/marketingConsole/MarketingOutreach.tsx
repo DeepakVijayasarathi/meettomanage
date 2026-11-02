@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, Mail, Pause, Pencil, Play, Plus, Send, Trash2, Upload, UserPlus } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Mail, Pause, Pencil, Play, Plus, Send, Settings2, Trash2, Upload, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import { userMessage } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import {
   outreachApi, PROSPECT_STATUSES, prospectsFromCsv,
-  type Campaign, type CampaignInput, type ImportResult, type OutreachSummary, type Prospect, type ProspectInput, type ProspectStatus,
+  type Campaign, type CampaignInput, type ImportResult, type OutreachSettings, type OutreachSummary, type Prospect, type ProspectInput, type ProspectStatus,
 } from "@/api/outreach";
 
 const ALL = "all";
@@ -30,14 +30,7 @@ export default function MarketingOutreach() {
   const loadSummary = useCallback(() => outreachApi.summary().then(setSummary).catch(() => undefined), []);
   useEffect(() => { void loadSummary(); }, [loadSummary]);
 
-  async function editLimit() {
-    const value = window.prompt("Most cold e-mails to send per day (1–500). Start low with a new sending address.", String(summary?.dailyLimit ?? 50));
-    if (!value) return;
-    const n = Number(value);
-    if (!Number.isInteger(n) || n < 1 || n > 500) { toast({ variant: "error", title: "Enter a whole number from 1 to 500" }); return; }
-    try { await outreachApi.setDailyLimit(n); toast({ variant: "success", title: "Daily limit saved" }); void loadSummary(); }
-    catch (err) { toast({ variant: "error", title: "Couldn't save", description: userMessage(err, "Please try again.") }); }
-  }
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div>
@@ -59,7 +52,7 @@ export default function MarketingOutreach() {
           {summary && (
             <div className="flex items-center gap-3 text-sm">
               <span><b>{summary.sentToday}</b> of <b>{summary.dailyLimit}</b> sent today</span>
-              <Button size="sm" variant="outline" onClick={() => { void editLimit(); }}>Change limit</Button>
+              <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}><Settings2 className="mr-1.5 h-3.5 w-3.5" />Settings</Button>
             </div>
           )}
         </CardContent>
@@ -73,7 +66,70 @@ export default function MarketingOutreach() {
         <TabsContent value="prospects" className="mt-4"><ProspectsTab onChange={loadSummary} /></TabsContent>
         <TabsContent value="campaigns" className="mt-4"><CampaignsTab summary={summary} onChange={loadSummary} /></TabsContent>
       </Tabs>
+      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} onSaved={() => { setSettingsOpen(false); void loadSummary(); toast({ variant: "success", title: "Cold e-mail settings saved" }); }} />}
     </div>
+  );
+}
+
+const TIME_ZONES = ["Asia/Kolkata", "Asia/Dubai", "Asia/Singapore", "Asia/Riyadh", "Europe/London", "America/New_York", "Australia/Sydney"];
+
+/** Every cold e-mail setting: who it's from, when and how much it sends, and the compliance footer. */
+function SettingsDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState<OutreachSettings | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { outreachApi.settings().then(setForm).catch((err) => setError(userMessage(err, "Couldn't load the settings."))); }, []);
+  const set = <K extends keyof OutreachSettings>(k: K, v: OutreachSettings[K]) => setForm((f) => (f ? { ...f, [k]: v } : f));
+  const num = (k: keyof OutreachSettings) => (e: ChangeEvent<HTMLInputElement>) => set(k, Number(e.target.value) as never);
+
+  async function save() {
+    if (!form) return;
+    setSaving(true); setError(null);
+    try { await outreachApi.saveSettings({ ...form, replyTo: form.replyTo?.trim() ? form.replyTo.trim() : null }); onSaved(); }
+    catch (err) { setError(userMessage(err, "Couldn't save the settings.")); }
+    finally { setSaving(false); }
+  }
+
+  const zones = form && !TIME_ZONES.includes(form.timeZoneId) ? [form.timeZoneId, ...TIME_ZONES] : TIME_ZONES;
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o && !saving) onClose(); }}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Cold e-mail settings</DialogTitle>
+          <DialogDescription>Applies to every campaign. The sender address must be on a domain verified in your e-mail provider (Resend).</DialogDescription>
+        </DialogHeader>
+        {!form ? <p className="py-6 text-center text-sm text-muted-foreground">{error ?? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading…</>}</p> : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:col-span-2">Sender</p>
+            <div className="grid gap-1.5"><Label htmlFor="s-name">Sender name</Label><Input id="s-name" maxLength={80} value={form.fromName} onChange={(e) => set("fromName", e.target.value)} /></div>
+            <div className="grid gap-1.5"><Label htmlFor="s-from">Sender address</Label><Input id="s-from" type="email" value={form.fromAddress} onChange={(e) => set("fromAddress", e.target.value)} /></div>
+            <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="s-reply">Replies go to (leave empty to use the sender address)</Label><Input id="s-reply" type="email" value={form.replyTo ?? ""} onChange={(e) => set("replyTo", e.target.value)} /></div>
+
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:col-span-2">Sending</p>
+            <div className="grid gap-1.5"><Label htmlFor="s-limit">Most e-mails per day</Label><Input id="s-limit" type="number" min={1} max={500} value={form.dailyLimit} onChange={num("dailyLimit")} /></div>
+            <div className="grid gap-1.5"><Label htmlFor="s-tz">Time zone</Label>
+              <Select value={form.timeZoneId} onValueChange={(v) => set("timeZoneId", v)}>
+                <SelectTrigger id="s-tz"><SelectValue /></SelectTrigger>
+                <SelectContent>{zones.map((z) => <SelectItem key={z} value={z}>{z}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5"><Label htmlFor="s-start">Send from (hour, 0–23)</Label><Input id="s-start" type="number" min={0} max={23} value={form.windowStartHour} onChange={num("windowStartHour")} /></div>
+            <div className="grid gap-1.5"><Label htmlFor="s-end">Send until (hour, 1–24)</Label><Input id="s-end" type="number" min={1} max={24} value={form.windowEndHour} onChange={num("windowEndHour")} /></div>
+            <div className="grid gap-1.5"><Label htmlFor="s-gap">Shortest gap between e-mails (days)</Label><Input id="s-gap" type="number" min={1} max={30} value={form.minFollowUpDays} onChange={num("minFollowUpDays")} /></div>
+            <div className="grid gap-1.5"><Label htmlFor="s-fail">Failed attempts before "bounced"</Label><Input id="s-fail" type="number" min={1} max={10} value={form.maxFailuresPerStep} onChange={num("maxFailuresPerStep")} /></div>
+
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:col-span-2">Footer (added to every e-mail, above and below the unsubscribe link)</p>
+            <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="s-footer">Why they're getting this</Label><Textarea id="s-footer" rows={2} maxLength={500} value={form.footerText} onChange={(e) => set("footerText", e.target.value)} /></div>
+            <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="s-company">Company name and location</Label><Input id="s-company" maxLength={200} value={form.companyLine} onChange={(e) => set("companyLine", e.target.value)} /></div>
+            {error && <p role="alert" className="text-sm font-medium text-destructive sm:col-span-2">{error}</p>}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" disabled={saving} onClick={onClose}>Cancel</Button>
+          <Button disabled={saving || !form} onClick={() => { void save(); }}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

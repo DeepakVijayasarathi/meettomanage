@@ -26,6 +26,13 @@ export interface OutreachSummary {
   prospects: { status: ProspectStatus; count: number }[];
 }
 
+/** Every cold e-mail setting (saved in the console, else the server's configuration, else defaults). */
+export interface OutreachSettings {
+  fromName: string; fromAddress: string; replyTo: string | null; dailyLimit: number;
+  windowStartHour: number; windowEndHour: number; timeZoneId: string;
+  footerText: string; companyLine: string; minFollowUpDays: number; maxFailuresPerStep: number;
+}
+
 export interface Prospect {
   id: string; email: string; firstName: string | null; academyName: string | null; city: string | null; phone: string | null;
   source: string | null; notes: string | null; status: ProspectStatus; lastContactedAtUtc: string | null; createdAtUtc: string;
@@ -49,7 +56,8 @@ const json = (method: string, body?: unknown): RequestInit => ({ method, body: b
 
 export const outreachApi = {
   summary: () => apiFetch<OutreachSummary>(`${base}/summary`),
-  setDailyLimit: (dailyLimit: number) => apiFetch<void>(`${base}/settings`, json("PUT", { dailyLimit })),
+  settings: () => apiFetch<OutreachSettings>(`${base}/settings`),
+  saveSettings: (settings: OutreachSettings) => apiFetch<OutreachSettings>(`${base}/settings`, json("PUT", settings)),
   prospects: (q: { status?: ProspectStatus | ""; search?: string; page?: number }) => {
     const p = new URLSearchParams({ page: String(q.page ?? 1), pageSize: "50" });
     if (q.status) p.set("status", q.status);

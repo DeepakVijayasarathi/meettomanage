@@ -40,4 +40,13 @@ describe("needsAttention", () => {
     const list = recentSignups([{ id: "old", createdAtUtc: "2026-10-01T00:00:00Z" }, { id: "a", createdAtUtc: "2026-10-30T00:00:00Z" }, { id: "b", createdAtUtc: "2026-11-01T08:00:00Z" }], now);
     expect(list.map(t => t.id)).toEqual(["b", "a"]);
   });
+  it("follows the Rules for the trial window and the 'not started' age", () => {
+    const usage = { activeStudents: 0, staffCount: 1, storageMb: 0, sessionMinutesMonth: 0, sessionsMonth: 0, recordingsMonth: 0, date: "2026-11-01" };
+    const rows = [row({ tenantId: "t", tenantName: "Trial Co", status: "Trialing", trialEndsAtUtc: "2026-11-11T12:00:00Z" }), row({ tenantId: "q", tenantName: "Quiet Co", usage })];
+    const tenants = [{ id: "q", createdAtUtc: "2026-10-29T00:00:00Z" }];
+    // defaults (7-day window, 3 days to start): trial 10 days out isn't flagged, Quiet Co (3 days) is
+    expect(needsAttention(rows, now, tenants).map((i) => i.title)).toEqual(["Quiet Co hasn't started yet"]);
+    // wider window, more patience
+    expect(needsAttention(rows, now, tenants, [], { trialEndingWindowDays: 14, notStartedAfterDays: 5 }).map((i) => i.title)).toEqual(["Trial Co's trial ends in 10 days"]);
+  });
 });
