@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useApiData } from "@/api/hooks";
-import { getMarketingContentPerformance, suggestBlogPosts, writeBlogDraft, type ApiMarketingBlogIdea, type ApiMarketingBlogIdeas, type ApiMarketingContentPerformance } from "@/api/marketing";
+import { analyzeBlogPerformance, getMarketingContentPerformance, suggestBlogPosts, writeBlogDraft, type ApiMarketingBlogAnalysis, type ApiMarketingBlogIdea, type ApiMarketingBlogIdeas, type ApiMarketingContentPerformance } from "@/api/marketing";
 import { userMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +32,9 @@ export function BlogInsights({ onDraft }: { onDraft: (draft: BlogDraftPrefill) =
   const [ideasError, setIdeasError] = useState<string | null>(null);
   const [writing, setWriting] = useState<number | null>(null);
   const [writeError, setWriteError] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<ApiMarketingBlogAnalysis | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   async function write(idea: ApiMarketingBlogIdea, index: number) {
     setWriting(index);
@@ -57,6 +60,14 @@ export function BlogInsights({ onDraft }: { onDraft: (draft: BlogDraftPrefill) =
     } finally {
       setIdeasLoading(false);
     }
+  }
+
+  async function analyze() {
+    setAnalysisLoading(true);
+    setAnalysisError(null);
+    try { setAnalysis(await analyzeBlogPerformance(days)); }
+    catch (err) { setAnalysisError(userMessage(err, "Couldn't analyze blog performance right now.")); }
+    finally { setAnalysisLoading(false); }
   }
 
   const top = data.posts.slice(0, 8);
@@ -94,7 +105,7 @@ export function BlogInsights({ onDraft }: { onDraft: (draft: BlogDraftPrefill) =
                   <div className="flex items-start justify-between gap-3 text-sm">
                     <a href={p.path} target="_blank" rel="noreferrer" className="line-clamp-1 font-medium hover:underline">{name(p)}</a>
                     <span className="shrink-0 text-xs text-muted-foreground">
-                      {p.readers} {p.readers === 1 ? "reader" : "readers"}
+                      {p.views} views · {p.readers} {p.readers === 1 ? "reader" : "readers"} · {p.readers ? Math.round((p.wentOn / p.readers) * 100) : 0}% continued
                       {p.toBuyingPages > 0 && <span className="ml-1 font-semibold text-success">· {p.toBuyingPages} → pricing/demo</span>}
                       {p.bookedDemo > 0 && <span className="ml-1 font-semibold text-success">· {p.bookedDemo} booked</span>}
                     </span>
@@ -153,6 +164,18 @@ export function BlogInsights({ onDraft }: { onDraft: (draft: BlogDraftPrefill) =
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="xl:col-span-2">
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-3">
+          <div><CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" />AI content performance analysis</CardTitle><CardDescription>Hetzner AI reviews measured reader behaviour and recommends actions to increase demo bookings. It never invents missing numbers.</CardDescription></div>
+          <Button size="sm" onClick={() => void analyze()} disabled={analysisLoading}>{analysisLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{analysis ? "Analyze again" : "Analyze performance"}</Button>
+        </CardHeader>
+        <CardContent>
+          {analysisError && <InlineAlert variant="warning">{analysisError}</InlineAlert>}
+          {!analysis && !analysisLoading && !analysisError && <p className="text-sm text-muted-foreground">Run the analysis to see winning topics, content gaps, and a prioritized editorial plan for the selected period.</p>}
+          {analysis && <div className="space-y-4"><div className="rounded-lg bg-primary/5 p-4 text-sm"><p className="font-semibold">Executive summary</p><p className="mt-1 text-muted-foreground">{analysis.executiveSummary}</p>{!analysis.aiPowered && <Badge variant="outline" className="mt-2">Measured-data fallback</Badge>}</div><div className="grid gap-4 md:grid-cols-3">{([['Winning patterns', analysis.winningPatterns], ['Content gaps', analysis.contentGaps], ['Next actions', analysis.nextActions]] as const).map(([title, items]) => <div key={title} className="rounded-lg border p-4"><p className="font-semibold">{title}</p>{items.length ? <ul className="mt-2 list-disc space-y-1.5 pl-4 text-sm text-muted-foreground">{items.map((item, i) => <li key={i}>{item}</li>)}</ul> : <p className="mt-2 text-sm text-muted-foreground">Not enough data yet.</p>}</div>)}</div></div>}
         </CardContent>
       </Card>
     </div>

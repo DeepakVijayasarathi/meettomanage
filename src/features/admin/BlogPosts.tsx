@@ -68,6 +68,12 @@ export default function BlogPosts() {
   const [deleteTarget, setDeleteTarget] = useState<ApiBlogPost | null>(null);
 
   const open = creating || editing !== null;
+  const publication = useMemo(() => ({
+    total: posts.length,
+    published: posts.filter((p) => p.status === "Published").length,
+    scheduled: posts.filter((p) => p.status === "Scheduled").length,
+    drafts: posts.filter((p) => p.status === "Draft").length,
+  }), [posts]);
 
   function openCreate() {
     setForm(EMPTY_FORM);
@@ -240,6 +246,12 @@ export default function BlogPosts() {
           </button>
         </InlineAlert>
       )}
+
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {([['All articles', publication.total], ['Published', publication.published], ['Scheduled', publication.scheduled], ['Drafts', publication.drafts]] as const).map(([label, value]) => (
+          <div key={label} className="rounded-xl border bg-card p-4 shadow-sm"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></div>
+        ))}
+      </div>
 
       {live && <BlogInsights onDraft={openDraft} />}
 

@@ -414,10 +414,12 @@ export async function getMarketingVisitorJourneys(days: number, range: Marketing
 
 export interface ApiMarketingContentStat { path: string; title: string | null; readers: number; views: number; wentOn: number; toBuyingPages: number; bookedDemo: number }
 export interface ApiMarketingContentPerformance { days: number; startDate: string; endDate: string; blogReaders: number; posts: ApiMarketingContentStat[] }
+export interface ApiMarketingBlogAnalysis { executiveSummary: string; winningPatterns: string[]; contentGaps: string[]; nextActions: string[]; aiPowered: boolean; generatedAtUtc: string }
 export interface ApiMarketingBlogIdea { title: string; targetKeyword: string; why: string; outline: string[] }
 export interface ApiMarketingBlogIdeas { ideas: ApiMarketingBlogIdea[]; aiPowered: boolean; generatedAtUtc: string }
 /** Which blog posts readers engage with and act on, for the Blog Posts page. */
 export const getMarketingContentPerformance = (days: number) => apiFetch<ApiMarketingContentPerformance>(`/api/marketing/analytics/content?${analyticsQuery(days)}`);
+export const analyzeBlogPerformance = (days: number) => apiFetch<ApiMarketingBlogAnalysis>(`/api/marketing/analytics/content-analysis?${analyticsQuery(days)}`, { method: "POST" });
 export interface ApiMarketingBlogDraft { title: string; excerpt: string; content: string; aiPowered: boolean }
 /** AI: a full draft (about 1,000 words) for one idea, in the blog's own format. Returned only — never saved or published. */
 export const writeBlogDraft = (idea: ApiMarketingBlogIdea) =>
