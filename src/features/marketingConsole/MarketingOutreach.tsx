@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, Mail, Pause, Pencil, Play, Plus, Send, Settings2, Trash2, Upload, UserPlus } from "lucide-react";
+import { AlertTriangle, BarChart3, CheckCircle2, Loader2, Mail, Pause, Pencil, Play, Plus, Send, Settings2, Sparkles, Trash2, Upload, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ import { formatDate } from "@/lib/utils";
 import {
   outreachApi, PROSPECT_STATUSES, prospectsFromCsv,
   type Campaign, type CampaignInput, type ImportResult, type OutreachSettings, type OutreachSummary, type Prospect, type ProspectInput, type ProspectStatus,
+  type OutreachAnalytics, type OutreachAiInsights, type RegionCount,
+  type PipelineStage, type ProspectDetail, type RecipientFilter,
 } from "@/api/outreach";
 
 const ALL = "all";
@@ -62,9 +64,11 @@ export default function MarketingOutreach() {
         <TabsList>
           <TabsTrigger value="prospects">Prospects</TabsTrigger>
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+          <TabsTrigger value="regions">Regional dashboard</TabsTrigger>
         </TabsList>
         <TabsContent value="prospects" className="mt-4"><ProspectsTab onChange={loadSummary} /></TabsContent>
         <TabsContent value="campaigns" className="mt-4"><CampaignsTab summary={summary} onChange={loadSummary} /></TabsContent>
+        <TabsContent value="regions" className="mt-4"><RegionalDashboard /></TabsContent>
       </Tabs>
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} onSaved={() => { setSettingsOpen(false); void loadSummary(); toast({ variant: "success", title: "Cold e-mail settings saved" }); }} />}
     </div>
@@ -138,20 +142,26 @@ function SettingsDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
 function ProspectsTab({ onChange }: { onChange: () => void }) {
   const { toast } = useToast();
   const [status, setStatus] = useState<string>(ALL);
+  const [region, setRegion] = useState<string>(ALL);
+  const [regions, setRegions] = useState<RegionCount[]>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ total: number; items: Prospect[] }>({ total: 0, items: [] });
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [detailProspect, setDetailProspect] = useState<Prospect | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { setData(await outreachApi.prospects({ status: status === ALL ? "" : (status as ProspectStatus), search, page })); }
+    try { setData(await outreachApi.prospects({ status: status === ALL ? "" : (status as ProspectStatus), region: region === ALL ? "" : region, search, page })); }
     catch (err) { toast({ variant: "error", title: "Couldn't load prospects", description: userMessage(err, "Please try again.") }); }
     finally { setLoading(false); }
-  }, [status, search, page, toast]);
+  }, [status, region, search, page, toast]);
   useEffect(() => { const t = setTimeout(() => { void load(); }, 250); return () => clearTimeout(t); }, [load]);
+  useEffect(() => { outreachApi.regions().then(setRegions).catch(() => undefined); }, [data.total]);
 
   async function setProspectStatus(p: Prospect, next: ProspectStatus) {
     try { await outreachApi.updateProspect(p.id, { status: next }); void load(); onChange(); }
@@ -163,6 +173,24 @@ function ProspectsTab({ onChange }: { onChange: () => void }) {
     try { await outreachApi.deleteProspect(p.id); void load(); onChange(); }
     catch (err) { toast({ variant: "error", title: "Couldn't remove", description: userMessage(err, "Please try again.") }); }
   }
+
+  async function bulkDelete() {
+    const ids = [...selected];
+    if (!ids.length || !window.confirm(`Remove ${ids.length} selected prospect${ids.length === 1 ? "" : "s"}? They will be stopped in active campaigns.`)) return;
+    setBulkBusy(true);
+    try {
+      const result = await outreachApi.bulkDeleteProspects(ids);
+      setSelected(new Set()); void load(); onChange();
+      toast({ variant: "success", title: `${result.deleted} prospect${result.deleted === 1 ? "" : "s"} removed` });
+    } catch (err) { toast({ variant: "error", title: "Bulk delete failed", description: userMessage(err, "Please try again.") }); }
+    finally { setBulkBusy(false); }
+  }
+
+  const pageIds = data.items.map((p) => p.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const togglePage = () => setSelected((current) => {
+    const next = new Set(current); if (allPageSelected) pageIds.forEach((id) => next.delete(id)); else pageIds.forEach((id) => next.add(id)); return next;
+  });
 
   const pages = Math.max(1, Math.ceil(data.total / 50));
   return (
@@ -177,7 +205,12 @@ function ProspectsTab({ onChange }: { onChange: () => void }) {
               {PROSPECT_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={region} onValueChange={(v) => { setRegion(v); setPage(1); }}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="All regions" /></SelectTrigger>
+            <SelectContent><SelectItem value={ALL}>All regions</SelectItem>{regions.map((r) => <SelectItem key={r.region} value={r.region}>{r.region} ({r.count})</SelectItem>)}</SelectContent>
+          </Select>
           <div className="ms-auto flex gap-2">
+            {selected.size > 0 && <Button variant="destructive" disabled={bulkBusy} onClick={() => void bulkDelete()}>{bulkBusy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1.5 h-4 w-4" />}Delete selected ({selected.size})</Button>}
             <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="mr-1.5 h-4 w-4" />Import CSV</Button>
             <Button onClick={() => setAddOpen(true)}><UserPlus className="mr-1.5 h-4 w-4" />Add prospect</Button>
           </div>
@@ -186,13 +219,15 @@ function ProspectsTab({ onChange }: { onChange: () => void }) {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr><th className="py-2 pr-3">Prospect</th><th className="py-2 pr-3">Academy</th><th className="py-2 pr-3">Status</th><th className="py-2 pr-3">Last e-mailed</th><th className="py-2" /></tr>
+              <tr><th className="w-10 py-2 pr-2"><input type="checkbox" aria-label="Select all prospects on this page" checked={allPageSelected} onChange={togglePage} /></th><th className="py-2 pr-3">Prospect</th><th className="py-2 pr-3">Academy</th><th className="py-2 pr-3">Score</th><th className="py-2 pr-3">Status</th><th className="py-2 pr-3">Last e-mailed</th><th className="py-2" /></tr>
             </thead>
             <tbody className="divide-y">
               {data.items.map((p) => (
                 <tr key={p.id}>
+                  <td className="py-2.5 pr-2"><input type="checkbox" aria-label={`Select ${p.email}`} checked={selected.has(p.id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(p.id)) next.delete(p.id); else next.add(p.id); return next; })} /></td>
                   <td className="py-2.5 pr-3"><div className="font-medium">{p.firstName || "—"}</div><div className="text-xs text-muted-foreground">{p.email}</div></td>
-                  <td className="py-2.5 pr-3"><div>{p.academyName || "—"}</div><div className="text-xs text-muted-foreground">{[p.city, p.source].filter(Boolean).join(" · ")}</div></td>
+                  <td className="py-2.5 pr-3"><div>{p.academyName || "—"}</div><div className="text-xs text-muted-foreground">{[p.region, p.city, p.source].filter(Boolean).join(" · ")}</div></td>
+                  <td className="py-2.5 pr-3"><Badge variant={p.leadScore >= 70 ? "success" : p.leadScore >= 45 ? "secondary" : "outline"}>{p.leadScore}</Badge></td>
                   <td className="py-2.5 pr-3">
                     {p.status === "Unsubscribed"
                       ? <Badge variant="muted">Unsubscribed</Badge>
@@ -202,7 +237,7 @@ function ProspectsTab({ onChange }: { onChange: () => void }) {
                       </Select>}
                   </td>
                   <td className="py-2.5 pr-3 text-muted-foreground">{p.lastContactedAtUtc ? formatDate(p.lastContactedAtUtc) : "—"}</td>
-                  <td className="py-2.5 text-right"><Button size="sm" variant="ghost" aria-label={`Remove ${p.email}`} onClick={() => { void remove(p); }}><Trash2 className="h-4 w-4" /></Button></td>
+                  <td className="py-2.5 text-right"><Button size="sm" variant="ghost" onClick={() => setDetailProspect(p)}>View</Button><Button size="sm" variant="ghost" aria-label={`Remove ${p.email}`} onClick={() => { void remove(p); }}><Trash2 className="h-4 w-4" /></Button></td>
                 </tr>
               ))}
             </tbody>
@@ -222,13 +257,14 @@ function ProspectsTab({ onChange }: { onChange: () => void }) {
       </CardContent>
       <AddProspectDialog open={addOpen} onOpenChange={setAddOpen} onAdded={() => { void load(); onChange(); }} />
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={() => { void load(); onChange(); }} />
+      {detailProspect && <ProspectDetailDialog prospect={detailProspect} onClose={() => setDetailProspect(null)} onChanged={() => { void load(); onChange(); }} />}
     </Card>
   );
 }
 
 function AddProspectDialog({ open, onOpenChange, onAdded }: { open: boolean; onOpenChange: (o: boolean) => void; onAdded: () => void }) {
   const { toast } = useToast();
-  const empty: ProspectInput = { email: "", firstName: "", academyName: "", city: "", phone: "", source: "" };
+  const empty: ProspectInput = { email: "", firstName: "", academyName: "", city: "", region: "", phone: "", source: "" };
   const [form, setForm] = useState<ProspectInput>(empty);
   const [saving, setSaving] = useState(false);
   const set = (k: keyof ProspectInput) => (e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
@@ -249,6 +285,7 @@ function AddProspectDialog({ open, onOpenChange, onAdded }: { open: boolean; onO
           <div className="grid gap-1.5"><Label htmlFor="p-name">First name</Label><Input id="p-name" value={form.firstName ?? ""} onChange={set("firstName")} /></div>
           <div className="grid gap-1.5"><Label htmlFor="p-academy">Academy</Label><Input id="p-academy" value={form.academyName ?? ""} onChange={set("academyName")} /></div>
           <div className="grid gap-1.5"><Label htmlFor="p-city">City</Label><Input id="p-city" value={form.city ?? ""} onChange={set("city")} /></div>
+          <div className="grid gap-1.5"><Label htmlFor="p-region">Region</Label><Input id="p-region" placeholder="e.g. Chennai, Delhi NCR" value={form.region ?? ""} onChange={set("region")} /></div>
           <div className="grid gap-1.5"><Label htmlFor="p-phone">Phone</Label><Input id="p-phone" value={form.phone ?? ""} onChange={set("phone")} /></div>
           <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="p-source">Where you found them</Label><Input id="p-source" placeholder="e.g. Justdial, event, referral" value={form.source ?? ""} onChange={set("source")} /></div>
         </div>
@@ -259,6 +296,31 @@ function AddProspectDialog({ open, onOpenChange, onAdded }: { open: boolean; onO
       </DialogContent>
     </Dialog>
   );
+}
+
+const PIPELINE_STAGES: PipelineStage[] = ["New", "Qualified", "Contacted", "Replied", "DemoBooked", "Trial", "Negotiation", "Won", "Lost"];
+
+function ProspectDetailDialog({ prospect, onClose, onChanged }: { prospect: Prospect; onClose: () => void; onChanged: () => void }) {
+  const { toast } = useToast();
+  const [data, setData] = useState<ProspectDetail | null>(null);
+  const [note, setNote] = useState("");
+  const [task, setTask] = useState({ title: "", assignedTo: prospect.assignedTo ?? "", due: "" });
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => outreachApi.prospectDetail(prospect.id).then(setData).catch((err) => toast({ variant: "error", title: "Couldn't load prospect", description: userMessage(err) })), [prospect.id, toast]);
+  useEffect(() => { void load(); }, [load]);
+  async function update(patch: Parameters<typeof outreachApi.updateProspect>[1]) { setBusy(true); try { await outreachApi.updateProspect(prospect.id, patch); await load(); onChanged(); } finally { setBusy(false); } }
+  async function addNote() { if (!note.trim()) return; setBusy(true); try { await outreachApi.addNote(prospect.id, note.trim()); setNote(""); await load(); } finally { setBusy(false); } }
+  async function addTask() { if (!task.title.trim() || !task.due) return; setBusy(true); try { await outreachApi.addTask(prospect.id, task.title.trim(), new Date(task.due).toISOString(), task.assignedTo); setTask({ ...task, title: "", due: "" }); await load(); onChanged(); } finally { setBusy(false); } }
+  async function rescore() { setBusy(true); try { await outreachApi.rescore(prospect.id); await load(); onChanged(); toast({ variant: "success", title: "Lead score refreshed" }); } finally { setBusy(false); } }
+  return <Dialog open onOpenChange={(o) => !o && onClose()}><DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto"><DialogHeader><DialogTitle>{data?.prospect.academyName || prospect.email}</DialogTitle><DialogDescription>{prospect.email} · {[data?.prospect.region, data?.prospect.city].filter(Boolean).join(" · ")}</DialogDescription></DialogHeader>
+    {!data ? <p className="p-8 text-center"><Loader2 className="inline h-5 w-5 animate-spin" /></p> : <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-4"><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Lead score</p><p className="text-2xl font-bold">{data.prospect.leadScore}</p><p className="text-xs text-muted-foreground">{data.prospect.scoreReason || "Limited profile data"}</p><Button className="mt-2" size="sm" variant="outline" disabled={busy} onClick={() => void rescore()}><Sparkles className="h-3.5 w-3.5" />Rescore</Button></div>
+        <div className="grid gap-1.5 rounded-lg border p-3"><Label>Pipeline stage</Label><Select value={data.prospect.pipelineStage} onValueChange={(v) => void update({ pipelineStage: v as PipelineStage })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{PIPELINE_STAGES.map((s) => <SelectItem key={s} value={s}>{s.replace(/([A-Z])/g, " $1").trim()}</SelectItem>)}</SelectContent></Select></div>
+        <div className="grid gap-1.5 rounded-lg border p-3"><Label>Owner</Label><Input defaultValue={data.prospect.assignedTo ?? ""} placeholder="Team member" onBlur={(e) => void update({ assignedTo: e.target.value })} /></div>
+        <div className="grid gap-1.5 rounded-lg border p-3"><Label>Next action</Label><Input type="datetime-local" defaultValue={data.prospect.nextActionAtUtc?.slice(0, 16) ?? ""} onBlur={(e) => e.target.value && void update({ nextActionAtUtc: new Date(e.target.value).toISOString() })} /></div></div>
+      <div className="grid gap-5 lg:grid-cols-2"><div><h3 className="mb-2 font-semibold">Tasks</h3><div className="mb-3 grid gap-2 sm:grid-cols-3"><Input placeholder="Follow-up task" value={task.title} onChange={(e) => setTask({ ...task, title: e.target.value })} /><Input placeholder="Owner" value={task.assignedTo} onChange={(e) => setTask({ ...task, assignedTo: e.target.value })} /><Input type="datetime-local" value={task.due} onChange={(e) => setTask({ ...task, due: e.target.value })} /><Button size="sm" disabled={busy || !task.title || !task.due} onClick={() => void addTask()}>Add task</Button></div><div className="space-y-2">{data.tasks.map((t) => <div key={t.id} className="flex items-center justify-between rounded-lg border p-3 text-sm"><div><p className={t.completedAtUtc ? "line-through text-muted-foreground" : "font-medium"}>{t.title}</p><p className="text-xs text-muted-foreground">{t.assignedTo || "Unassigned"} · {formatDate(t.dueAtUtc)}</p></div>{!t.completedAtUtc && <Button size="sm" variant="outline" onClick={async () => { await outreachApi.completeTask(t.id); await load(); }}>Complete</Button>}</div>)}</div></div>
+        <div><h3 className="mb-2 font-semibold">Activity timeline</h3><div className="mb-3 flex gap-2"><Textarea rows={2} placeholder="Add an internal note…" value={note} onChange={(e) => setNote(e.target.value)} /><Button size="sm" disabled={busy || !note.trim()} onClick={() => void addNote()}>Add note</Button></div><div className="max-h-72 space-y-2 overflow-y-auto">{data.activities.map((a) => <div key={a.id} className="rounded-lg border p-3 text-sm"><div className="flex justify-between gap-3"><Badge variant="outline">{a.type}</Badge><span className="text-xs text-muted-foreground">{formatDate(a.createdAtUtc)}</span></div>{a.subject && <p className="mt-2 font-medium">{a.subject}</p>}<p className="mt-1 whitespace-pre-wrap text-muted-foreground">{a.detail}</p>{a.createdBy && <p className="mt-1 text-xs text-muted-foreground">by {a.createdBy}</p>}</div>)}</div></div></div>
+    </div>}<DialogFooter><Button variant="outline" onClick={onClose}>Close</Button></DialogFooter></DialogContent></Dialog>;
 }
 
 function ImportDialog({ open, onOpenChange, onImported }: { open: boolean; onOpenChange: (o: boolean) => void; onImported: () => void }) {
@@ -290,7 +352,7 @@ function ImportDialog({ open, onOpenChange, onImported }: { open: boolean; onOpe
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Import prospects</DialogTitle>
-          <DialogDescription>A CSV with a header row. Columns are matched by name: Email (required), First name, Academy, City, Phone, Source. Duplicates and anyone who unsubscribed are skipped.</DialogDescription>
+          <DialogDescription>A CSV with a header row. Columns are matched by name: Email (required), First name, Academy, City, Region, Phone, Source and Notes. Region-wise files can be imported directly.</DialogDescription>
         </DialogHeader>
         {result ? (
           <div className="space-y-2 text-sm">
@@ -300,7 +362,7 @@ function ImportDialog({ open, onOpenChange, onImported }: { open: boolean; onOpe
         ) : (
           <div className="space-y-3">
             <Input type="file" accept=".csv,text/csv" onChange={(e) => { void readFile(e); }} />
-            <Textarea rows={7} placeholder={"Email,First name,Academy,City\nanita@sunriseabacus.in,Anita,Sunrise Abacus,Chennai"} value={text} onChange={(e) => setText(e.target.value)} className="font-mono text-xs" />
+            <Textarea rows={7} placeholder={"Email,First name,Academy,City,Region\nanita@sunriseabacus.in,Anita,Sunrise Abacus,Chennai,Chennai"} value={text} onChange={(e) => setText(e.target.value)} className="font-mono text-xs" />
             <div className="grid gap-1.5"><Label htmlFor="imp-source">Where these contacts came from (for rows without a Source)</Label><Input id="imp-source" placeholder="e.g. Justdial, Chennai, Nov 2026" value={source} onChange={(e) => setSource(e.target.value)} /></div>
             <p className={`text-xs ${parsed.missingEmailColumn ? "text-destructive" : "text-muted-foreground"}`}>
               {parsed.missingEmailColumn ? "No \"Email\" column found in the header row." : `${parsed.rows.length} row${parsed.rows.length === 1 ? "" : "s"} ready to import.`}
@@ -316,6 +378,49 @@ function ImportDialog({ open, onOpenChange, onImported }: { open: boolean; onOpe
   );
 }
 
+// ---------------------------------------------------------------- regional analytics
+
+function RegionalDashboard() {
+  const { toast } = useToast();
+  const [data, setData] = useState<OutreachAnalytics | null>(null);
+  const [insights, setInsights] = useState<OutreachAiInsights | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
+  useEffect(() => {
+    outreachApi.analytics().then(setData).catch((err) => toast({ variant: "error", title: "Couldn't load regional analytics", description: userMessage(err) })).finally(() => setLoading(false));
+  }, [toast]);
+  async function analyze() {
+    setAnalyzing(true);
+    try { setInsights(await outreachApi.analyticsInsights()); }
+    catch (err) { toast({ variant: "error", title: "AI analysis unavailable", description: userMessage(err) }); }
+    finally { setAnalyzing(false); }
+  }
+  if (loading) return <Card><CardContent className="p-10 text-center text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading regional performance…</CardContent></Card>;
+  if (!data) return null;
+  const rate = (value: number, total: number) => total ? `${Math.round(value * 1000 / total) / 10}%` : "0%";
+  return <div className="space-y-5">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      {[["Prospects", data.totals.total], ["Contacted", data.totals.contacted], ["Replies", data.totals.replied], ["Interested", data.totals.interested], ["Bounced", data.totals.bounced]].map(([label, value]) =>
+        <Card key={String(label)}><CardContent className="p-4"><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold tabular-nums">{value}</p></CardContent></Card>)}
+    </div>
+    <div className="grid gap-4 lg:grid-cols-2"><Card><CardContent className="p-5"><h2 className="mb-3 font-semibold">Sales pipeline</h2><div className="grid grid-cols-3 gap-2 sm:grid-cols-5">{(data.pipeline ?? []).map((p) => <div key={p.stage} className="rounded-lg bg-muted/50 p-3 text-center"><p className="text-xl font-bold">{p.count}</p><p className="text-xs text-muted-foreground">{p.stage.replace(/([A-Z])/g, " $1").trim()}</p></div>)}</div></CardContent></Card>
+      <Card><CardContent className="p-5"><h2 className="mb-3 font-semibold">Overdue team tasks</h2>{(data.overdueTasks ?? []).length === 0 ? <p className="text-sm text-muted-foreground">No overdue follow-ups.</p> : <div className="max-h-52 space-y-2 overflow-y-auto">{data.overdueTasks.map((t) => <div key={t.id} className="flex items-center justify-between rounded-lg border p-3 text-sm"><div><p className="font-medium">{t.title}</p><p className="text-xs text-muted-foreground">{t.academyName || t.email} · {t.region || "Unassigned"} · {t.assignedTo || "Unassigned"}</p></div><Button size="sm" variant="outline" onClick={async () => { await outreachApi.completeTask(t.id); setData(await outreachApi.analytics()); }}>Complete</Button></div>)}</div>}</CardContent></Card></div>
+    <Card><CardContent className="p-5">
+      <div className="mb-4 flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /><div><h2 className="font-semibold">Performance by region</h2><p className="text-xs text-muted-foreground">Use volume and response rates together when choosing the next campaign.</p></div></div>
+      <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-sm"><thead className="border-b text-left text-xs uppercase text-muted-foreground"><tr><th className="py-2">Region</th><th className="text-right">Leads</th><th className="text-right">New</th><th className="text-right">Contacted</th><th className="text-right">Replies</th><th className="text-right">Reply rate</th><th className="text-right">Interested</th><th className="text-right">Bounced</th></tr></thead><tbody className="divide-y">{data.regions.map((r) => <tr key={r.region}><td className="py-2.5 font-medium">{r.region}</td><td className="text-right">{r.total}</td><td className="text-right">{r.newCount}</td><td className="text-right">{r.contacted}</td><td className="text-right">{r.replied}</td><td className="text-right font-medium">{rate(r.replied + r.interested, r.contacted + r.replied + r.interested)}</td><td className="text-right">{r.interested}</td><td className="text-right">{r.bounced}</td></tr>)}</tbody></table></div>
+    </CardContent></Card>
+    <Card><CardContent className="p-5">
+      <div className="mb-4"><h2 className="font-semibold">Recent replies</h2><p className="text-xs text-muted-foreground">Prospects marked Replied or Interested appear here for follow-up.</p></div>
+      {(data.recentReplies ?? []).length === 0 ? <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">No replies recorded yet. Change a prospect's status to Replied when an email response arrives.</p> :
+        <div className="overflow-x-auto"><table className="w-full min-w-[680px] text-sm"><thead className="border-b text-left text-xs uppercase text-muted-foreground"><tr><th className="py-2">Contact</th><th>Academy</th><th>Region</th><th>Status</th><th>Updated</th></tr></thead><tbody className="divide-y">{data.recentReplies.map((reply) => <tr key={reply.id}><td className="py-2.5"><div className="font-medium">{reply.firstName || "—"}</div><div className="text-xs text-muted-foreground">{reply.email}</div></td><td>{reply.academyName || "—"}</td><td>{reply.region || reply.city || "Unassigned"}</td><td><Badge variant={reply.status === "Interested" ? "success" : "secondary"}>{statusLabel(reply.status)}</Badge></td><td className="text-muted-foreground">{formatDate(reply.repliedAtUtc)}</td></tr>)}</tbody></table></div>}
+    </CardContent></Card>
+    <Card className="border-primary/20 bg-gradient-to-br from-primary/[0.06] to-card"><CardContent className="p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold"><Sparkles className="h-4 w-4 text-primary" />AI regional analysis</h2><p className="mt-1 text-xs text-muted-foreground">Uses aggregate regional counts only—no names, emails, or phone numbers are sent to AI.</p></div><Button size="sm" onClick={() => void analyze()} disabled={analyzing}>{analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{insights ? "Refresh analysis" : "Analyze regions"}</Button></div>
+      {!insights ? <p className="mt-4 text-sm text-muted-foreground">Generate targeting priorities, observations, and recommended next actions.</p> : <div className="mt-4 space-y-4 text-sm"><div className="flex flex-wrap gap-2"><p className="font-medium">{insights.summary}</p><Badge variant="outline">{insights.aiPowered ? "Hetzner AI" : "Data fallback"}</Badge></div><div className="grid gap-4 md:grid-cols-2"><div><h3 className="mb-2 font-semibold">What the data says</h3><ul className="list-disc space-y-1.5 ps-5 text-muted-foreground">{insights.observations.map((x) => <li key={x}>{x}</li>)}</ul></div><div><h3 className="mb-2 font-semibold">Recommended actions</h3><ol className="list-decimal space-y-1.5 ps-5 text-muted-foreground">{insights.nextActions.map((x) => <li key={x}>{x}</li>)}</ol></div></div></div>}
+    </CardContent></Card>
+  </div>;
+}
+
 // ---------------------------------------------------------------- campaigns
 
 function CampaignsTab({ summary, onChange }: { summary: OutreachSummary | null; onChange: () => void }) {
@@ -324,6 +429,7 @@ function CampaignsTab({ summary, onChange }: { summary: OutreachSummary | null; 
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Campaign | "new" | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [audienceCampaign, setAudienceCampaign] = useState<Campaign | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -357,9 +463,8 @@ function CampaignsTab({ summary, onChange }: { summary: OutreachSummary | null; 
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" disabled={busyId === c.id} onClick={() => setEditing(c)}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button>
-                <Button size="sm" variant="outline" disabled={busyId === c.id || newCount === 0} title={newCount === 0 ? "No New prospects to add" : undefined}
-                  onClick={() => { void act(c.id, () => outreachApi.enroll(c.id).then((r) => { if (r.enrolled === 0) throw new Error("No New prospects to add."); }), "New prospects added"); }}>
-                  <UserPlus className="mr-1 h-3.5 w-3.5" />Add {newCount} New
+                <Button size="sm" variant="outline" disabled={busyId === c.id || newCount === 0} title={newCount === 0 ? "No New prospects to add" : undefined} onClick={() => setAudienceCampaign(c)}>
+                  <UserPlus className="mr-1 h-3.5 w-3.5" />Choose audience
                 </Button>
                 <Button size="sm" variant="outline" disabled={busyId === c.id} onClick={() => {
                   const to = window.prompt("Send a test of the first e-mail to:", "");
@@ -382,8 +487,25 @@ function CampaignsTab({ summary, onChange }: { summary: OutreachSummary | null; 
         </Card>
       ))}
       {editing && <CampaignEditor campaign={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
+      {audienceCampaign && <AudienceDialog campaign={audienceCampaign} onClose={() => setAudienceCampaign(null)} onEnrolled={() => { setAudienceCampaign(null); void load(); onChange(); }} />}
     </div>
   );
+}
+
+function AudienceDialog({ campaign, onClose, onEnrolled }: { campaign: Campaign; onClose: () => void; onEnrolled: () => void }) {
+  const { toast } = useToast();
+  const [regions, setRegions] = useState<RegionCount[]>([]);
+  const [filter, setFilter] = useState<RecipientFilter>({ region: null, minScore: 40, stages: ["New", "Qualified"] });
+  const [preview, setPreview] = useState<{ count: number; sample: { id: string; email: string; academyName: string | null; region: string | null; leadScore: number }[] } | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { outreachApi.regions().then(setRegions).catch(() => undefined); }, []);
+  const runPreview = useCallback(async () => { setBusy(true); try { setPreview(await outreachApi.previewRecipients(campaign.id, filter)); } catch (err) { toast({ variant: "error", title: "Couldn't preview audience", description: userMessage(err) }); } finally { setBusy(false); } }, [campaign.id, filter, toast]);
+  useEffect(() => { void runPreview(); }, [runPreview]);
+  async function enroll() { setBusy(true); try { const result = await outreachApi.enroll(campaign.id, [], filter); toast({ variant: "success", title: `${result.enrolled} prospects enrolled` }); onEnrolled(); } catch (err) { toast({ variant: "error", title: "Couldn't enroll audience", description: userMessage(err) }); } finally { setBusy(false); } }
+  return <Dialog open onOpenChange={(o) => !o && onClose()}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Audience · {campaign.name}</DialogTitle><DialogDescription>Target qualified prospects and preview the exact audience before enrollment.</DialogDescription></DialogHeader><div className="grid gap-3 sm:grid-cols-2"><div className="grid gap-1.5"><Label>Region</Label><Select value={filter.region || ALL} onValueChange={(v) => setFilter({ ...filter, region: v === ALL ? null : v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value={ALL}>All regions</SelectItem>{regions.map((r) => <SelectItem key={r.region} value={r.region}>{r.region} ({r.count})</SelectItem>)}</SelectContent></Select></div><div className="grid gap-1.5"><Label>Minimum lead score</Label><Input type="number" min={0} max={100} value={filter.minScore ?? 0} onChange={(e) => setFilter({ ...filter, minScore: Number(e.target.value) })} /></div></div>
+    <div><Label>Pipeline stages</Label><div className="mt-2 flex flex-wrap gap-2">{PIPELINE_STAGES.slice(0, 4).map((stage) => <label key={stage} className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm"><input type="checkbox" checked={filter.stages?.includes(stage) ?? false} onChange={(e) => setFilter({ ...filter, stages: e.target.checked ? [...(filter.stages ?? []), stage] : (filter.stages ?? []).filter((x) => x !== stage) })} />{stage}</label>)}</div></div>
+    <div className="rounded-lg border p-4"><p className="font-semibold">{busy && !preview ? "Calculating…" : `${preview?.count ?? 0} matching prospects`}</p><div className="mt-3 max-h-48 space-y-2 overflow-y-auto">{preview?.sample.map((p) => <div key={p.id} className="flex justify-between text-sm"><span>{p.academyName || p.email} <span className="text-muted-foreground">· {p.region || "Unassigned"}</span></span><Badge variant="outline">{p.leadScore}</Badge></div>)}</div></div>
+    <DialogFooter><Button variant="outline" onClick={onClose}>Cancel</Button><Button disabled={busy || !preview?.count} onClick={() => void enroll()}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}Enroll {preview?.count ?? 0}</Button></DialogFooter></DialogContent></Dialog>;
 }
 
 const STARTER: CampaignInput = {

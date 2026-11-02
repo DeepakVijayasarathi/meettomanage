@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/api";
 
 export type ProspectStatus = "New" | "Contacted" | "Replied" | "Interested" | "NotInterested" | "Unsubscribed" | "Bounced";
 export type CampaignStatus = "Draft" | "Active" | "Paused" | "Completed";
+export type PipelineStage = "New" | "Qualified" | "Contacted" | "Replied" | "DemoBooked" | "Trial" | "Negotiation" | "Won" | "Lost";
 
 export const PROSPECT_STATUSES: { value: ProspectStatus; label: string }[] = [
   { value: "New", label: "New" },
@@ -34,11 +35,20 @@ export interface OutreachSettings {
 }
 
 export interface Prospect {
-  id: string; email: string; firstName: string | null; academyName: string | null; city: string | null; phone: string | null;
+  id: string; email: string; firstName: string | null; academyName: string | null; city: string | null; region: string | null; phone: string | null;
   source: string | null; notes: string | null; status: ProspectStatus; lastContactedAtUtc: string | null; createdAtUtc: string;
+  leadScore: number; scoreReason: string | null; pipelineStage: PipelineStage; assignedTo: string | null; nextActionAtUtc: string | null;
 }
 
-export interface ProspectInput { email: string; firstName?: string | null; academyName?: string | null; city?: string | null; phone?: string | null; source?: string | null; notes?: string | null }
+export interface ProspectInput { email: string; firstName?: string | null; academyName?: string | null; city?: string | null; region?: string | null; phone?: string | null; source?: string | null; notes?: string | null }
+
+export interface RegionCount { region: string; count: number }
+export interface RegionPerformance { region: string; total: number; newCount: number; contacted: number; replied: number; interested: number; bounced: number }
+export interface OutreachReply { id: string; email: string; firstName: string | null; academyName: string | null; city: string | null; region: string | null; status: ProspectStatus; lastContactedAtUtc: string | null; repliedAtUtc: string }
+export interface OutreachAnalytics { totals: { total: number; contacted: number; replied: number; interested: number; bounced: number }; regions: RegionPerformance[]; pipeline: { stage: PipelineStage; count: number }[]; overdueTasks: { id: string; prospectId: string; title: string; assignedTo: string | null; dueAtUtc: string; email: string; academyName: string | null; region: string | null }[]; recentReplies: OutreachReply[] }
+export interface OutreachAiInsights { summary: string; observations: string[]; nextActions: string[]; aiPowered: boolean; generatedAtUtc: string }
+export interface ProspectDetail { prospect: Prospect; activities: { id: string; type: string; subject: string | null; detail: string | null; createdBy: string | null; createdAtUtc: string }[]; tasks: { id: string; title: string; assignedTo: string | null; dueAtUtc: string; completedAtUtc: string | null }[] }
+export interface RecipientFilter { region?: string | null; minScore?: number | null; stages?: PipelineStage[] }
 
 export interface ImportResult { added: number; skipped: { email: string; reason: string }[] }
 
@@ -58,20 +68,31 @@ export const outreachApi = {
   summary: () => apiFetch<OutreachSummary>(`${base}/summary`),
   settings: () => apiFetch<OutreachSettings>(`${base}/settings`),
   saveSettings: (settings: OutreachSettings) => apiFetch<OutreachSettings>(`${base}/settings`, json("PUT", settings)),
-  prospects: (q: { status?: ProspectStatus | ""; search?: string; page?: number }) => {
+  prospects: (q: { status?: ProspectStatus | ""; search?: string; region?: string; page?: number }) => {
     const p = new URLSearchParams({ page: String(q.page ?? 1), pageSize: "50" });
     if (q.status) p.set("status", q.status);
     if (q.search?.trim()) p.set("search", q.search.trim());
+    if (q.region?.trim()) p.set("region", q.region.trim());
     return apiFetch<{ total: number; page: number; pageSize: number; items: Prospect[] }>(`${base}/prospects?${p}`);
   },
   addProspect: (input: ProspectInput) => apiFetch<ImportResult>(`${base}/prospects`, json("POST", input)),
   importProspects: (rows: ProspectInput[], source?: string) => apiFetch<ImportResult>(`${base}/prospects/import`, json("POST", { rows, source: source || null })),
-  updateProspect: (id: string, patch: { status?: ProspectStatus; notes?: string }) => apiFetch<void>(`${base}/prospects/${id}`, json("PUT", patch)),
+  updateProspect: (id: string, patch: { status?: ProspectStatus; pipelineStage?: PipelineStage; notes?: string; assignedTo?: string; nextActionAtUtc?: string }) => apiFetch<void>(`${base}/prospects/${id}`, json("PUT", patch)),
+  prospectDetail: (id: string) => apiFetch<ProspectDetail>(`${base}/prospects/${id}`),
+  addNote: (id: string, detail: string) => apiFetch<void>(`${base}/prospects/${id}/notes`, json("POST", { detail })),
+  addTask: (id: string, title: string, dueAtUtc: string, assignedTo?: string) => apiFetch<void>(`${base}/prospects/${id}/tasks`, json("POST", { title, dueAtUtc, assignedTo: assignedTo || null })),
+  completeTask: (id: string) => apiFetch<void>(`${base}/tasks/${id}/complete`, json("POST")),
+  rescore: (id: string) => apiFetch<{ leadScore: number; scoreReason: string }>(`${base}/prospects/${id}/rescore`, json("POST")),
   deleteProspect: (id: string) => apiFetch<void>(`${base}/prospects/${id}`, json("DELETE")),
+  bulkDeleteProspects: (prospectIds: string[]) => apiFetch<{ deleted: number }>(`${base}/prospects/bulk-delete`, json("POST", { prospectIds })),
+  regions: () => apiFetch<RegionCount[]>(`${base}/regions`),
+  analytics: () => apiFetch<OutreachAnalytics>(`${base}/analytics`),
+  analyticsInsights: () => apiFetch<OutreachAiInsights>(`${base}/analytics/insights`),
   campaigns: () => apiFetch<Campaign[]>(`${base}/campaigns`),
   createCampaign: (input: CampaignInput) => apiFetch<{ id: string }>(`${base}/campaigns`, json("POST", input)),
   updateCampaign: (id: string, input: CampaignInput) => apiFetch<void>(`${base}/campaigns/${id}`, json("PUT", input)),
-  enroll: (id: string, prospectIds: string[] = []) => apiFetch<{ enrolled: number }>(`${base}/campaigns/${id}/enroll`, json("POST", { prospectIds })),
+  enroll: (id: string, prospectIds: string[] = [], filter: RecipientFilter = {}) => apiFetch<{ enrolled: number }>(`${base}/campaigns/${id}/enroll`, json("POST", { prospectIds, ...filter })),
+  previewRecipients: (id: string, filter: RecipientFilter) => apiFetch<{ count: number; sample: { id: string; email: string; academyName: string | null; region: string | null; leadScore: number }[] }>(`${base}/campaigns/${id}/preview`, json("POST", { prospectIds: [], ...filter })),
   setStatus: (id: string, status: "Active" | "Paused") => apiFetch<void>(`${base}/campaigns/${id}/status`, json("POST", { status })),
   test: (id: string, email: string, step = 1) => apiFetch<void>(`${base}/campaigns/${id}/test`, json("POST", { email, step })),
   deleteCampaign: (id: string) => apiFetch<void>(`${base}/campaigns/${id}`, json("DELETE")),
@@ -108,6 +129,7 @@ const HEADER_ALIASES: Record<keyof Omit<ProspectInput, "notes"> | "notes", strin
   firstName: ["first name", "firstname", "name", "contact", "contact name", "owner"],
   academyName: ["academy", "academy name", "centre", "center", "institute", "school", "company", "business"],
   city: ["city", "location", "town"],
+  region: ["region", "area", "territory", "market"],
   phone: ["phone", "mobile", "phone number", "whatsapp"],
   source: ["source"],
   notes: ["notes", "note", "comments"],
@@ -129,7 +151,7 @@ export function prospectsFromCsv(text: string): { rows: ProspectInput[]; missing
   const rows = data
     .map((r) => ({
       email: (pick(r, index.email) ?? "").toLowerCase(),
-      firstName: pick(r, index.firstName), academyName: pick(r, index.academyName), city: pick(r, index.city),
+      firstName: pick(r, index.firstName), academyName: pick(r, index.academyName), city: pick(r, index.city), region: pick(r, index.region),
       phone: pick(r, index.phone), source: pick(r, index.source), notes: pick(r, index.notes),
     }))
     .filter((r) => r.email);
