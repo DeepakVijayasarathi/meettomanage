@@ -49,6 +49,9 @@ export interface OutreachAnalytics { totals: { total: number; contacted: number;
 export interface OutreachAiInsights { summary: string; observations: string[]; nextActions: string[]; aiPowered: boolean; generatedAtUtc: string }
 export interface ProspectDetail { prospect: Prospect; activities: { id: string; type: string; subject: string | null; detail: string | null; createdBy: string | null; createdAtUtc: string }[]; tasks: { id: string; title: string; assignedTo: string | null; dueAtUtc: string; completedAtUtc: string | null }[] }
 export interface RecipientFilter { region?: string | null; minScore?: number | null; stages?: PipelineStage[] }
+export interface TodayItem { id: string; email: string; firstName: string | null; academyName: string | null; region: string | null; leadScore: number; pipelineStage: PipelineStage; scoreReason?: string | null; nextActionAtUtc?: string | null }
+export interface TodayDashboard { hotLeads: TodayItem[]; replies: TodayItem[]; tasks: { id: string; prospectId: string; title: string; assignedTo: string | null; dueAtUtc: string; email: string; academyName: string | null; region: string | null }[]; generatedAtUtc: string }
+export interface ReplyItem { id: string; prospectId: string; subject: string | null; detail: string | null; createdAtUtc: string; email: string; firstName: string | null; academyName: string | null; region: string | null; status: ProspectStatus; pipelineStage: PipelineStage }
 
 export interface ImportResult { added: number; restored: number; skipped: { email: string; reason: string }[] }
 
@@ -88,6 +91,9 @@ export const outreachApi = {
   regions: () => apiFetch<RegionCount[]>(`${base}/regions`),
   analytics: () => apiFetch<OutreachAnalytics>(`${base}/analytics`),
   analyticsInsights: () => apiFetch<OutreachAiInsights>(`${base}/analytics/insights`),
+  today: () => apiFetch<TodayDashboard>(`${base}/today`),
+  replies: () => apiFetch<ReplyItem[]>(`${base}/replies`),
+  draftMessage: (id: string, purpose: "first-contact" | "reply") => apiFetch<{ message: string }>(`${base}/prospects/${id}/draft`, json("POST", { purpose })),
   campaigns: () => apiFetch<Campaign[]>(`${base}/campaigns`),
   createCampaign: (input: CampaignInput) => apiFetch<{ id: string }>(`${base}/campaigns`, json("POST", input)),
   updateCampaign: (id: string, input: CampaignInput) => apiFetch<void>(`${base}/campaigns/${id}`, json("PUT", input)),

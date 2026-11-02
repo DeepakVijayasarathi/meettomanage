@@ -18,6 +18,7 @@ import {
   type Campaign, type CampaignInput, type ImportResult, type OutreachSettings, type OutreachSummary, type Prospect, type ProspectInput, type ProspectStatus,
   type OutreachAnalytics, type OutreachAiInsights, type RegionCount,
   type PipelineStage, type ProspectDetail, type RecipientFilter,
+  type TodayDashboard, type ReplyItem,
 } from "@/api/outreach";
 
 const ALL = "all";
@@ -60,14 +61,18 @@ export default function MarketingOutreach() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="prospects">
+      <Tabs defaultValue="today">
         <TabsList>
-          <TabsTrigger value="prospects">Prospects</TabsTrigger>
+          <TabsTrigger value="today">Today</TabsTrigger>
+          <TabsTrigger value="prospects">Leads</TabsTrigger>
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
-          <TabsTrigger value="regions">Regional dashboard</TabsTrigger>
+          <TabsTrigger value="replies">Replies</TabsTrigger>
+          <TabsTrigger value="regions">Analytics</TabsTrigger>
         </TabsList>
+        <TabsContent value="today" className="mt-4"><TodayTab /></TabsContent>
         <TabsContent value="prospects" className="mt-4"><ProspectsTab onChange={loadSummary} /></TabsContent>
         <TabsContent value="campaigns" className="mt-4"><CampaignsTab summary={summary} onChange={loadSummary} /></TabsContent>
+        <TabsContent value="replies" className="mt-4"><RepliesTab /></TabsContent>
         <TabsContent value="regions" className="mt-4"><RegionalDashboard /></TabsContent>
       </Tabs>
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} onSaved={() => { setSettingsOpen(false); void loadSummary(); toast({ variant: "success", title: "Cold e-mail settings saved" }); }} />}
@@ -135,6 +140,37 @@ function SettingsDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       </DialogContent>
     </Dialog>
   );
+}
+
+// ---------------------------------------------------------------- AI sales copilot
+
+function AiDraftDialog({ prospectId, purpose, title, onClose }: { prospectId: string; purpose: "first-contact" | "reply"; title: string; onClose: () => void }) {
+  const { toast } = useToast();
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { outreachApi.draftMessage(prospectId, purpose).then((r) => setMessage(r.message)).catch((err) => toast({ variant: "error", title: "Couldn't create AI draft", description: userMessage(err) })).finally(() => setLoading(false)); }, [prospectId, purpose, toast]);
+  return <Dialog open onOpenChange={(o) => !o && onClose()}><DialogContent><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>AI uses verified business details and conversation context. Review before sending.</DialogDescription></DialogHeader>{loading ? <p className="p-8 text-center"><Loader2 className="inline h-5 w-5 animate-spin" /></p> : <Textarea rows={9} value={message} onChange={(e) => setMessage(e.target.value)} />}<DialogFooter><Button variant="outline" onClick={onClose}>Close</Button><Button disabled={!message} onClick={async () => { await navigator.clipboard.writeText(message); toast({ variant: "success", title: "Draft copied" }); }}>Copy message</Button></DialogFooter></DialogContent></Dialog>;
+}
+
+function TodayTab() {
+  const { toast } = useToast();
+  const [data, setData] = useState<TodayDashboard | null>(null);
+  const [draft, setDraft] = useState<{ id: string; purpose: "first-contact" | "reply"; title: string } | null>(null);
+  const load = useCallback(() => outreachApi.today().then(setData).catch((err) => toast({ variant: "error", title: "Couldn't load today's sales queue", description: userMessage(err) })), [toast]);
+  useEffect(() => { void load(); }, [load]);
+  if (!data) return <Card><CardContent className="p-10 text-center"><Loader2 className="inline h-5 w-5 animate-spin" /></CardContent></Card>;
+  return <div className="space-y-5"><div className="grid gap-3 sm:grid-cols-3">{[["Hot leads", data.hotLeads.length], ["Replies to handle", data.replies.length], ["Open tasks", data.tasks.length]].map(([label, n]) => <Card key={String(label)}><CardContent className="p-5"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-1 text-3xl font-bold">{n}</p></CardContent></Card>)}</div>
+    <div className="grid gap-5 xl:grid-cols-2"><Card><CardContent className="p-5"><h2 className="mb-1 font-semibold">Best leads to contact</h2><p className="mb-4 text-xs text-muted-foreground">Highest-fit new and qualified academies.</p><div className="space-y-2">{data.hotLeads.map((lead) => <div key={lead.id} className="flex items-center justify-between gap-3 rounded-lg border p-3"><div><p className="font-medium">{lead.academyName || lead.email}</p><p className="text-xs text-muted-foreground">{lead.region || "Unassigned"} · {lead.scoreReason || "Qualified profile"}</p></div><div className="flex items-center gap-2"><Badge variant="success">{lead.leadScore}</Badge><Button size="sm" onClick={() => setDraft({ id: lead.id, purpose: "first-contact", title: `AI message · ${lead.academyName || lead.email}` })}><Sparkles className="h-3.5 w-3.5" />Draft</Button></div></div>)}{data.hotLeads.length === 0 && <p className="text-sm text-muted-foreground">No qualified leads waiting.</p>}</div></CardContent></Card>
+      <Card><CardContent className="p-5"><h2 className="mb-1 font-semibold">Replies needing action</h2><p className="mb-4 text-xs text-muted-foreground">Respond quickly to interested academies.</p><div className="space-y-2">{data.replies.map((lead) => <div key={lead.id} className="flex items-center justify-between gap-3 rounded-lg border p-3"><div><p className="font-medium">{lead.academyName || lead.email}</p><p className="text-xs text-muted-foreground">{lead.region || "Unassigned"} · next action {lead.nextActionAtUtc ? formatDate(lead.nextActionAtUtc) : "now"}</p></div><Button size="sm" onClick={() => setDraft({ id: lead.id, purpose: "reply", title: `AI reply · ${lead.academyName || lead.email}` })}><Sparkles className="h-3.5 w-3.5" />Reply</Button></div>)}{data.replies.length === 0 && <p className="text-sm text-muted-foreground">No replies waiting.</p>}</div></CardContent></Card></div>
+    <Card><CardContent className="p-5"><h2 className="mb-3 font-semibold">Follow-up queue</h2><div className="space-y-2">{data.tasks.map((task) => <div key={task.id} className="flex items-center justify-between rounded-lg border p-3 text-sm"><div><p className="font-medium">{task.title}</p><p className="text-xs text-muted-foreground">{task.academyName || task.email} · {task.assignedTo || "Unassigned"} · {formatDate(task.dueAtUtc)}</p></div><Button size="sm" variant="outline" onClick={async () => { await outreachApi.completeTask(task.id); await load(); }}>Complete</Button></div>)}{data.tasks.length === 0 && <p className="text-sm text-muted-foreground">No open follow-ups.</p>}</div></CardContent></Card>{draft && <AiDraftDialog prospectId={draft.id} purpose={draft.purpose} title={draft.title} onClose={() => setDraft(null)} />}</div>;
+}
+
+function RepliesTab() {
+  const { toast } = useToast();
+  const [items, setItems] = useState<ReplyItem[] | null>(null);
+  const [draft, setDraft] = useState<ReplyItem | null>(null);
+  useEffect(() => { outreachApi.replies().then(setItems).catch((err) => toast({ variant: "error", title: "Couldn't load replies", description: userMessage(err) })); }, [toast]);
+  return <Card><CardContent className="p-5"><div className="mb-4"><h2 className="font-semibold">Reply inbox</h2><p className="text-xs text-muted-foreground">Incoming replies automatically stop follow-ups and appear here.</p></div>{items === null ? <p className="p-8 text-center"><Loader2 className="inline h-5 w-5 animate-spin" /></p> : items.length === 0 ? <p className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">No synchronized replies yet.</p> : <div className="space-y-3">{items.map((reply) => <div key={reply.id} className="rounded-lg border p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold">{reply.academyName || reply.firstName || reply.email}</p><p className="text-xs text-muted-foreground">{reply.email} · {reply.region || "Unassigned"} · {formatDate(reply.createdAtUtc)}</p></div><div className="flex gap-2"><Badge variant="secondary">{reply.status}</Badge><Button size="sm" onClick={() => setDraft(reply)}><Sparkles className="h-3.5 w-3.5" />Draft reply</Button></div></div>{reply.subject && <p className="mt-3 text-sm font-medium">{reply.subject}</p>}<p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{reply.detail}</p></div>)}</div>}{draft && <AiDraftDialog prospectId={draft.prospectId} purpose="reply" title={`AI reply · ${draft.academyName || draft.email}`} onClose={() => setDraft(null)} />}</CardContent></Card>;
 }
 
 // ---------------------------------------------------------------- prospects
