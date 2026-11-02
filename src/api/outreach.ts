@@ -63,6 +63,8 @@ export interface Campaign {
 }
 
 export interface CampaignInput { name: string; steps: { delayDays: number; subject: string; body: string }[] }
+export interface CampaignAiBrief { audience: string; region?: string | null; goal: string; offer?: string | null; tone: "Warm" | "Professional" | "Direct" }
+export interface CampaignAiDraft extends CampaignInput { strategy: string; aiPowered: boolean }
 
 const base = "/api/marketing/outreach";
 const json = (method: string, body?: unknown): RequestInit => ({ method, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -95,6 +97,7 @@ export const outreachApi = {
   replies: () => apiFetch<ReplyItem[]>(`${base}/replies`),
   draftMessage: (id: string, purpose: "first-contact" | "reply") => apiFetch<{ message: string }>(`${base}/prospects/${id}/draft`, json("POST", { purpose })),
   campaigns: () => apiFetch<Campaign[]>(`${base}/campaigns`),
+  draftCampaign: (brief: CampaignAiBrief) => apiFetch<CampaignAiDraft>(`${base}/campaigns/ai-draft`, json("POST", brief)),
   createCampaign: (input: CampaignInput) => apiFetch<{ id: string }>(`${base}/campaigns`, json("POST", input)),
   updateCampaign: (id: string, input: CampaignInput) => apiFetch<void>(`${base}/campaigns/${id}`, json("PUT", input)),
   enroll: (id: string, prospectIds: string[] = [], filter: RecipientFilter = {}) => apiFetch<{ enrolled: number }>(`${base}/campaigns/${id}/enroll`, json("POST", { prospectIds, ...filter })),
