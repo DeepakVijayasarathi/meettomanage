@@ -1,5 +1,5 @@
 import type { Role } from "@/types";
-import {
+import { Send,
   LayoutDashboard,
   Users,
   ShieldCheck,
@@ -147,6 +147,7 @@ const MARKETING_NAV: NavSection[] = [
       { label: "Dashboard", to: "/marketing", icon: LayoutDashboard, end: true },
       { label: "Demo Requests", to: "/marketing/demo-requests", icon: Handshake },
       { label: "Chats", to: "/marketing/chats", icon: MessagesSquare },
+      { label: "Cold email", to: "/marketing/outreach", icon: Send },
       { label: "Blog Posts", to: "/marketing/blog-posts", icon: Newspaper },
     ],
   },
