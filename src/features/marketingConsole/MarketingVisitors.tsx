@@ -115,6 +115,7 @@ export default function MarketingVisitors() {
           <p className="text-xs text-muted-foreground">First-party events from Get Started. New tracking begins from this release, so older periods show zero.</p>
         </CardHeader>
         <CardContent>
+          {b.visitors > 0 && b.visitors < 20 && <InlineAlert variant="info" className="mb-3">Only {b.visitors} visitors are available. Results will show measurement guidance, not speculative page fixes. At least 20 visitors are required before behavioural comparisons begin.</InlineAlert>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {[
               { label: "Started form", value: b.formStartedVisitors, icon: FormInput },
@@ -238,12 +239,12 @@ export default function MarketingVisitors() {
                 </div>
               )}
               <div>
-                <p className="mb-2 font-semibold">Fix first</p>
+                <p className="mb-2 font-semibold">{b.visitors < 20 ? "Next measurement steps" : "Fix first"}</p>
                 <ol className="space-y-2">
                   {tips.improvements.map((t, i) => (
                     <li key={i} className="rounded-lg border p-3">
                       <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-bold text-muted-foreground">{i + 1}.</span>
+                        <span className="text-xs font-bold text-muted-foreground">Priority {i + 1}</span>
                         <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", IMPACT_STYLE[t.impact])}>{t.impact} impact</span>
                         {t.page && <Badge variant="outline" className="font-mono font-normal">{t.page}</Badge>}
                       </div>
