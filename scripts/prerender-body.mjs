@@ -95,6 +95,10 @@ try {
       // Only the local build is allowed: no API, analytics or Jitsi calls from the build machine.
       page.on("request", (req) => (req.url().startsWith(origin) || req.url().startsWith("data:") ? req.continue() : req.abort()));
       await page.setViewport({ width: 1280, height: 900 });
+      // Prices and other regional details follow the visitor's time zone. Render as the main market (India, INR,
+      // matching the structured data) rather than the build server's UTC, which showed USD to every crawler and
+      // made the HTML differ from what Indian visitors' browsers render, forcing a full re-render on load.
+      await page.emulateTimezone("Asia/Kolkata");
       await page.goto(origin + t.path, { waitUntil: "networkidle0", timeout: 30000 });
       await page.waitForSelector("main, h1", { timeout: 15000 });
       const { inner, text, ld } = await page.evaluate(() => ({

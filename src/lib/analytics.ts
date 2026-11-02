@@ -64,11 +64,24 @@ function load(): Promise<void> {
   return loaded;
 }
 
+declare global {
+  interface Window {
+    /** From index.html: runs the callback on the first interaction, or 4 s after the page has loaded. */
+    __m2mAfterLoad?: (cb: () => void) => void;
+  }
+}
+
+/** Tag libraries are large (GTM alone is ~90 KB) and only drain the queues set up below, so they wait until
+ *  the page is usable rather than competing with it for bandwidth on mobile. Calls made meanwhile are queued. */
 function addScript(src: string) {
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = src;
-  document.head.appendChild(script);
+  const inject = () => {
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = src;
+    document.head.appendChild(script);
+  };
+  if (window.__m2mAfterLoad) window.__m2mAfterLoad(inject);
+  else inject();
 }
 
 function install() {
