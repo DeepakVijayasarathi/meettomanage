@@ -51,7 +51,10 @@ export interface ProspectDetail { prospect: Prospect; activities: { id: string; 
 export interface RecipientFilter { region?: string | null; minScore?: number | null; stages?: PipelineStage[] }
 export interface TodayItem { id: string; email: string; firstName: string | null; academyName: string | null; region: string | null; leadScore: number; pipelineStage: PipelineStage; scoreReason?: string | null; nextActionAtUtc?: string | null }
 export interface TodayDashboard { hotLeads: TodayItem[]; replies: TodayItem[]; tasks: { id: string; prospectId: string; title: string; assignedTo: string | null; dueAtUtc: string; email: string; academyName: string | null; region: string | null }[]; generatedAtUtc: string }
-export interface ReplyItem { id: string; prospectId: string; subject: string | null; detail: string | null; createdAtUtc: string; email: string; firstName: string | null; academyName: string | null; region: string | null; status: ProspectStatus; pipelineStage: PipelineStage }
+export type ReplyIntent = "Interested" | "Pricing" | "DemoRequest" | "Question" | "Objection" | "NotInterested" | "Unsubscribe" | "AutoReply";
+export interface ReplyItem { id: string; prospectId: string; subject: string | null; detail: string | null; createdAtUtc: string; email: string; firstName: string | null; academyName: string | null; region: string | null; status: ProspectStatus; pipelineStage: PipelineStage; intent: ReplyIntent; urgency: "High" | "Normal" | "Low"; handled: boolean; ageHours: number }
+export interface ReplyInbox { total: number; needsResponse: number; overdue: number; interested: number; items: ReplyItem[] }
+export interface ReplyAnalysis { intent: ReplyIntent; sentiment: "Positive" | "Neutral" | "Negative"; urgency: "High" | "Normal" | "Low"; summary: string; nextAction: string; suggestedReply: string; aiPowered: boolean }
 
 export interface ImportResult { added: number; restored: number; skipped: { email: string; reason: string }[] }
 
@@ -94,7 +97,9 @@ export const outreachApi = {
   analytics: () => apiFetch<OutreachAnalytics>(`${base}/analytics`),
   analyticsInsights: () => apiFetch<OutreachAiInsights>(`${base}/analytics/insights`),
   today: () => apiFetch<TodayDashboard>(`${base}/today`),
-  replies: () => apiFetch<ReplyItem[]>(`${base}/replies`),
+  replies: () => apiFetch<ReplyInbox>(`${base}/replies`),
+  analyzeReply: (id: string) => apiFetch<ReplyAnalysis>(`${base}/replies/${id}/analyze`, json("POST")),
+  markReplyHandled: (id: string) => apiFetch<void>(`${base}/replies/${id}/handled`, json("POST")),
   draftMessage: (id: string, purpose: "first-contact" | "reply") => apiFetch<{ message: string }>(`${base}/prospects/${id}/draft`, json("POST", { purpose })),
   campaigns: () => apiFetch<Campaign[]>(`${base}/campaigns`),
   draftCampaign: (brief: CampaignAiBrief) => apiFetch<CampaignAiDraft>(`${base}/campaigns/ai-draft`, json("POST", brief)),
