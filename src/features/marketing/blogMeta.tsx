@@ -78,7 +78,9 @@ export function PostCover({ topic, slug, title, className, large }: { topic: Blo
         <img
           loading={large ? "eager" : "lazy"}
           src={image}
-          alt={title ? `Illustration for ${title}` : ""}
+          alt={title ? `Featured image for ${title}` : ""}
+          width={1536}
+          height={1024}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           decoding="async"
         />

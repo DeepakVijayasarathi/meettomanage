@@ -207,11 +207,24 @@ export default function BlogPost() {
 
   const { data: otherPosts } = useApiData<ApiBlogPostSummary[]>(() => listBlogPosts(), DEMO_BLOG_SUMMARIES);
 
-  const more = otherPosts.filter((p) => p.slug !== slug).slice(0, 3);
   const blocks = useMemo(() => (post ? parseMarkdownLite(post.content) : []), [post]);
   const headings = blocks.filter((b): b is Extract<Block, { kind: "heading" }> => b.kind === "heading");
   const firstTextIndex = blocks.findIndex((b) => b.kind === "text");
   const topic = post ? topicOf({ slug, title: post.title }) : null;
+  const more = useMemo(() => {
+    const candidates = otherPosts.filter((candidate) => candidate.slug !== slug);
+    if (!topic) return candidates.slice(0, 3);
+    return candidates
+      .map((candidate, index) => ({
+        candidate,
+        index,
+        sameTopic: topicOf(candidate) === topic,
+      }))
+      .sort((a, b) => Number(b.sameTopic) - Number(a.sameTopic) || a.index - b.index)
+      .slice(0, 3)
+      .map(({ candidate }) => candidate);
+  }, [otherPosts, slug, topic]);
+  const wordCount = post ? post.content.trim().split(/\s+/).filter(Boolean).length : 0;
   const relatedTemplate = topic === "Billing"
     ? { to: "/resources/coaching-centre-fee-tracker", title: "Put the fee workflow into practice.", body: "A free CSV starter for invoices, part payments and credits, with a worked example. No signup required.", label: "Get the free fee tracker" }
     : topic === "Teaching" || (topic === "Operations" && /teacher|schedul|leave|batch/i.test(`${slug} ${post?.title ?? ""}`))
@@ -304,6 +317,18 @@ export default function BlogPost() {
             dateModified: post.publishedAtUtc,
             mainEntityOfPage: `${SITE_URL}/blog/${slug}`,
             url: `${SITE_URL}/blog/${slug}`,
+            inLanguage: "en-IN",
+            articleSection: topic ?? "Academy management",
+            wordCount,
+            isPartOf: { "@type": "Blog", name: "Meet to Manage Blog", url: `${SITE_URL}/blog` },
+            breadcrumb: {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+                { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/blog` },
+                { "@type": "ListItem", position: 3, name: post.title, item: `${SITE_URL}/blog/${slug}` },
+              ],
+            },
             ...(blogImage(slug) ? { image: `${SITE_URL}${blogImage(slug)}` } : {}),
             author: { "@type": "Organization", name: "Meet to Manage", url: `${SITE_URL}/` },
             publisher: { "@type": "Organization", name: "Meet to Manage", logo: { "@type": "ImageObject", url: `${SITE_URL}/logo-icon.png` } },
@@ -333,6 +358,13 @@ export default function BlogPost() {
       {post && topic && (
         <section className="border-b border-[#F1E6DC]" style={{ background: HERO_BG }}>
           <div className="mx-auto max-w-[860px] px-5 py-[clamp(48px,6vw,88px)] text-center">
+            <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold text-[#6B7280]">
+              <Link to="/" className="hover:text-[#C2410C]">Home</Link>
+              <span aria-hidden>/</span>
+              <Link to="/blog" className="hover:text-[#C2410C]">Blog</Link>
+              <span aria-hidden>/</span>
+              <span aria-current="page" className="max-w-[36ch] truncate text-[#374151]">{post.title}</span>
+            </nav>
             <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-semibold text-[#5B6472]">
               <TopicChip topic={topic} />
               <span>{formatDate(post.publishedAtUtc)}</span>
@@ -351,7 +383,9 @@ export default function BlogPost() {
                 <img
                   loading="eager"
                   src={blogImage(slug)}
-                  alt={`Illustration for ${post.title}`}
+                  alt={`Featured image for ${post.title}`}
+                  width={1536}
+                  height={1024}
                   className="aspect-[3/2] w-full object-cover"
                   decoding="async"
                 />

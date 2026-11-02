@@ -90,6 +90,17 @@ function render(shell, page) {
       dateModified: page.publishedAt,
       mainEntityOfPage: url,
       url,
+      inLanguage: "en-IN",
+      ...(page.wordCount ? { wordCount: page.wordCount } : {}),
+      isPartOf: { "@type": "Blog", name: "Meet to Manage Blog", url: `${SITE}/blog` },
+      breadcrumb: {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE}/` },
+          { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE}/blog` },
+          { "@type": "ListItem", position: 3, name: page.heading ?? heading(page.title), item: url },
+        ],
+      },
       ...(image ? { image } : {}),
       author: { "@type": "Organization", name: "Meet to Manage", url: `${SITE}/` },
       publisher: { "@type": "Organization", name: "Meet to Manage", logo: { "@type": "ImageObject", url: `${SITE}/logo-icon.png` } },
@@ -122,8 +133,11 @@ async function blogPages() {
     const pages = [];
     for (const p of posts) {
       let contentHtml = "";
+      let wordCount = 0;
       try {
-        contentHtml = markdownToHtml((await getJson(`${API}/api/blog/${p.slug}`)).content ?? "");
+        const content = (await getJson(`${API}/api/blog/${p.slug}`)).content ?? "";
+        contentHtml = markdownToHtml(content);
+        wordCount = content.trim().split(/\s+/).filter(Boolean).length;
       } catch (err) {
         console.warn(`prerender-meta: no body for ${p.slug} (${err.message})`);
       }
@@ -136,6 +150,7 @@ async function blogPages() {
         heading: p.title,
         description: p.excerpt ?? "",
         publishedAt: p.publishedAtUtc,
+        wordCount,
         image: existsSync(path.join(dist, cover)) ? cover : undefined,
         contentHtml,
       });
