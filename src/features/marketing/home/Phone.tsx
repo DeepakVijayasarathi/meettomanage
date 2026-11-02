@@ -7,7 +7,7 @@ export function Phone({ src, alt, className }: { src: string; alt: string; class
       <div aria-hidden="true" className="relative h-5 sm:h-6">
         <span className="absolute start-1/2 top-1.5 h-2 w-[30%] -translate-x-1/2 rounded-full bg-[#1C1917] sm:h-2.5" />
       </div>
-      <img src={src.replace(".webp", "-390.webp")} srcSet={`${src.replace(".webp", "-390.webp")} 390w, ${src} 780w`} sizes="(min-width: 1024px) 170px, (min-width: 600px) 160px, 30vw" alt={alt} width={780} height={1688} loading="lazy" decoding="async" className="block h-auto w-full" />
+      <img loading="lazy" src={src.replace(".webp", "-390.webp")} srcSet={`${src.replace(".webp", "-390.webp")} 390w, ${src} 780w`} sizes="(min-width: 1024px) 170px, (min-width: 600px) 160px, 30vw" alt={alt} width={780} height={1688} decoding="async" className="block h-auto w-full" />
     </div>
   );
 }

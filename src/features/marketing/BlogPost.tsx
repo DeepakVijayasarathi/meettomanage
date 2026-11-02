@@ -349,10 +349,10 @@ export default function BlogPost() {
             {blogImage(slug) && (
               <figure className="mt-10 overflow-hidden border border-black/10 bg-[#111827] shadow-[0_24px_60px_-32px_rgba(17,17,17,0.5)]">
                 <img
+                  loading="eager"
                   src={blogImage(slug)}
                   alt={`Illustration for ${post.title}`}
                   className="aspect-[3/2] w-full object-cover"
-                  loading="eager"
                   decoding="async"
                 />
               </figure>

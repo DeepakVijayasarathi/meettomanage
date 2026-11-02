@@ -97,7 +97,7 @@ export function Showcase({ tabs, base = "/product" }: { tabs: Tab[]; base?: stri
                 aria-hidden={i !== active}
                 className={cn("absolute inset-0 motion-safe:transition-opacity motion-safe:duration-700", i === active ? "opacity-100" : "pointer-events-none opacity-0")}
               >
-                <img src={`${base}/${tab.key}-1312.webp`} srcSet={`${base}/${tab.key}-1312.webp 1312w, ${base}/${tab.key}.webp 1605w`} sizes="(min-width: 1024px) 800px, 100vw" alt={tab.alt} width={1605} height={980} loading="lazy" decoding="async" className="h-full w-full object-contain" />
+                <img loading="lazy" src={`${base}/${tab.key}-1312.webp`} srcSet={`${base}/${tab.key}-1312.webp 1312w, ${base}/${tab.key}.webp 1605w`} sizes="(min-width: 1024px) 800px, 100vw" alt={tab.alt} width={1605} height={980} decoding="async" className="h-full w-full object-contain" />
               </div>
             ))}
           </div>

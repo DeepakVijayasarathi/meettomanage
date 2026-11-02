@@ -17,7 +17,7 @@ export function MarketingFooter() {
     <footer className="border-t border-[#EFE3D7] bg-[#FFFBF7] text-[#57534E]">
       <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-x-6 gap-y-10 px-5 py-14 sm:py-16 md:grid-cols-4 lg:grid-cols-[1.3fr_1fr_1fr_1fr_1fr] lg:gap-x-8">
         <div className="col-span-2 md:col-span-4 lg:col-span-1">
-          <img src="/logo-full.webp" alt={brand.name} width={420} height={150} loading="lazy" className="h-14 w-auto object-contain mix-blend-multiply" />
+          <img loading="lazy" src="/logo-full.webp" alt={brand.name} width={420} height={150} className="h-14 w-auto object-contain mix-blend-multiply" />
           <p className="mt-4 max-w-xs text-sm leading-relaxed">{f.tagline}</p>
         </div>
 
@@ -87,7 +87,7 @@ export function MarketingFooter() {
           <p className="text-xs font-medium text-[#6B6560]">{f.rights(new Date().getFullYear())}</p>
           <p className="flex items-center gap-2 text-xs font-medium text-[#6B6560]">
             {lang === "ar" ? "إحدى منتجات" : "A product of"}
-            <img src="/infinity-uniquers-logo.png" alt="Infinity Uniquers" width={351} height={150} loading="lazy" className="h-7 w-auto object-contain" />
+            <img loading="lazy" src="/infinity-uniquers-logo.png" alt="Infinity Uniquers" width={351} height={150} className="h-7 w-auto object-contain" />
             <span className="font-bold text-[#1C1917]">Infinity Uniquers</span>
           </p>
         </div>

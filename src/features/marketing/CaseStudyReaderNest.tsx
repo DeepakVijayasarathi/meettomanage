@@ -152,12 +152,12 @@ export default function CaseStudyReaderNest() {
                 {index === 3 ? <div className="mt-8 grid gap-4 sm:grid-cols-2">{section.paragraphs.filter((_, i) => i % 2 === 0).map((title, i) => <div key={title} className={"rounded-2xl border border-[#E9E2D7] bg-[#FFF6EE] p-6 " + (i === 4 ? "sm:col-span-2" : "")}><span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FFEBDD] text-[#C2410C]"><Check className="h-4 w-4" /></span><h3 className="mt-4 text-base font-bold leading-snug text-[#332C24]">{title.slice(2, -2)}</h3><p className="mt-3 text-sm leading-[1.85] text-[#70675C]">{section.paragraphs[i * 2 + 1]}</p></div>)}</div>
                   : section.paragraphs.map((paragraph, i) => paragraph.startsWith("**") ? <p key={i} className="font-serif mt-8 border-s-2 border-[#B34B26] bg-[#FFF6EE] px-6 py-7 text-[24px] italic leading-relaxed text-[#804526]">{paragraph.slice(2, -2)}</p> : <p key={i} className={TEXT}>{paragraph}</p>)}
                 {index === 0 && <figure className="mt-8 overflow-hidden rounded-2xl border border-[#EEE6DC]">
-                  <img src="/clients/reader-nest/teacher-photo.webp" alt="AI-generated illustrative scene of an educator teaching online" width={1536} height={1024} loading="lazy" className="aspect-[3/2] w-full object-cover" />
+                  <img loading="lazy" src="/clients/reader-nest/teacher-photo.webp" alt="AI-generated illustrative scene of an educator teaching online" width={1536} height={1024} className="aspect-[3/2] w-full object-cover" />
                   <figcaption className="flex flex-wrap items-center justify-between gap-2 bg-[#FFF6EE] px-5 py-4 text-xs"><span className="font-semibold text-[#665647]">More confidence. More possibility.</span><span className="text-[#827669]">AI-generated illustrative image</span></figcaption>
                 </figure>}
                 {index === 2 && <figure className="mt-9 overflow-hidden rounded-2xl border border-[#E5DDD1] bg-[#F7F3EB] p-3 sm:p-5">
                   <div className="mb-4 flex items-center gap-1.5" aria-hidden="true"><span className="h-2 w-2 rounded-full bg-[#D8BBA7]" /><span className="h-2 w-2 rounded-full bg-[#E2CCAB]" /><span className="h-2 w-2 rounded-full bg-[#C7CCB6]" /><span className="ms-2 text-[10px] tracking-wide text-[#8D7A67]">THE TECHNOLOGY BEHIND THE TEACHING</span></div>
-                  <img src="/product/classroom-1200.webp" alt="MeetToManage live classroom interface" width={1200} loading="lazy" className="h-auto w-full rounded-lg" />
+                  <img loading="lazy" src="/product/classroom-1200.webp" alt="MeetToManage live classroom interface" width={1200} className="h-auto w-full rounded-lg" />
                   <figcaption className="pt-4 text-center text-xs text-[#827669]">MeetToManage live classroom. Product illustration.</figcaption>
                 </figure>}
               </section>

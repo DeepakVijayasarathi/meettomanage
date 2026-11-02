@@ -207,7 +207,10 @@
         try { arabic = localStorage.getItem("trn.lang") === "ar"; } catch (e) {}
         if (boot && (location.pathname !== "/" || arabic)) boot.parentNode.removeChild(boot);
         // Tells the home page its headline is already on screen, so it doesn't replay the intro animation.
-        else if (boot) document.documentElement.classList.add("has-boot");
+        // In production the boot screen is replaced by the fully prerendered page (scripts/prerender-body.mjs),
+        // which counts too: replaying the fade-ins when React mounts made the hero text "appear" seconds late
+        // and pushed Largest Contentful Paint from about 2.5 s to 5 s on mobile.
+        else if (boot || (location.pathname === "/" && document.getElementById("root").firstElementChild)) document.documentElement.classList.add("has-boot");
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>

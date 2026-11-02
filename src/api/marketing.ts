@@ -86,6 +86,7 @@ export async function listPlatformDemoRequestsPaged(input: { page: number; pageS
 }
 export const getMarketingLead = (id: string) => apiFetch<ApiMarketingLeadDetail>(`/api/marketing/demo-requests/${id}`);
 export const getMarketingLeadRecommendation = (id: string) => apiFetch<{ summary: string; nextAction: string; suggestedChannel: string; suggestedMessage: string; aiPowered: boolean }>(`/api/marketing/demo-requests/${id}/recommendation`);
+export const logMarketingLeadActivity = (id: string, input: { type: string; detail: string }) => apiFetch<ApiMarketingLeadActivity>(`/api/marketing/demo-requests/${id}/activity`, { method: "POST", body: JSON.stringify(input) });
 export async function bulkUpdateMarketingLeads(input: { ids: string[]; status?: ApiPlatformDemoRequestStatus; nextFollowUpAtUtc?: string; archive?: boolean }): Promise<void> { await apiFetch("/api/marketing/demo-requests/bulk", { method: "POST", body: JSON.stringify(input) }); }
 export async function restoreMarketingLead(id: string): Promise<void> { await apiFetch(`/api/marketing/demo-requests/${id}/restore`, { method: "POST" }); }
 

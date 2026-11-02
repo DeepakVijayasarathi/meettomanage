@@ -14,16 +14,16 @@ export function OpenSourceStrip({ className }: { className?: string }) {
           <span className="mt-5 inline-flex min-h-12 items-center gap-3 rounded-full bg-white px-5 py-3 text-sm font-bold text-[#C2410C]">See How It Works <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
         </div>
         <div className="relative aspect-[4/3] overflow-hidden md:hidden" aria-hidden="true">
-          <img src="/images/live-class-mobile-v2.webp" srcSet="/images/live-class-mobile-v2-480.webp 480w, /images/live-class-mobile-v2.webp 960w" sizes="(min-width: 768px) 0px, calc(100vw - 40px)" alt="Teacher running a free live online class with student video tiles" width={960} height={720} loading="lazy" decoding="async" className="block h-full w-full object-cover" />
+          <img loading="lazy" src="/images/live-class-mobile-v2.webp" srcSet="/images/live-class-mobile-v2-480.webp 480w, /images/live-class-mobile-v2.webp 960w" sizes="(min-width: 768px) 0px, calc(100vw - 40px)" alt="Teacher running a free live online class with student video tiles" width={960} height={720} decoding="async" className="block h-full w-full object-cover" />
         </div>
         <img
+          loading="lazy"
           src="/images/live-class-banner-v2.webp"
           srcSet="/images/live-class-banner-v2-1200.webp 1200w, /images/live-class-banner-v2.webp 2172w"
           sizes="(min-width: 1200px) 1160px, calc(100vw - 40px)"
           alt="Teacher leading an online class on a laptop, with student video tiles, attendance and learning progress."
           width={2172}
           height={724}
-          loading="lazy"
           decoding="async"
           className="absolute inset-0 -z-10 hidden h-full w-full object-cover object-right md:block"
         />

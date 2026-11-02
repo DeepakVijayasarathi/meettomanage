@@ -272,7 +272,7 @@ export default function MarketingHome() {
         {/* REAL CUSTOMER PROOF: factual product use, linked to the full approved story. */}
         {lang === "en" && <section aria-labelledby="customer-proof-heading" className="bg-[#FFF8F3] py-7">
           <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-5 px-5 text-center sm:flex-row sm:text-start">
-            <img src="/clients/thereader.png" alt="The Reader Nest logo" width={64} height={64} loading="lazy" className="h-16 w-16 shrink-0 rounded-full object-cover ring-1 ring-black/10" />
+            <img loading="lazy" src="/clients/thereader.png" alt="The Reader Nest logo" width={64} height={64} className="h-16 w-16 shrink-0 rounded-full object-cover ring-1 ring-black/10" />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#C2410C]">Customer story</p>
               <h2 id="customer-proof-heading" className="font-display mt-1 text-lg font-extrabold tracking-[-0.02em] text-[#1C1917]">The Reader Nest runs enrolment, classes, worksheets, recordings and its parent dashboard in one platform.</h2>
@@ -298,13 +298,13 @@ export default function MarketingHome() {
                     <span className="mt-5 inline-flex min-h-12 items-center gap-3 rounded-full bg-white px-5 py-3 text-sm font-bold text-[#C2410C]">{c.ngo.cta} <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
                   </div>
                   <img
+                    loading="lazy"
                     src="/product/ngo-mobile-v2.webp"
                     srcSet="/product/ngo-mobile-v2-480.webp 480w, /product/ngo-mobile-v2.webp 960w"
                     sizes="(min-width: 768px) 0px, calc(100vw - 40px)"
                     alt="Volunteer teacher helping three children learn together using a laptop."
                     width={960}
                     height={720}
-                    loading="lazy"
                     decoding="async"
                     className="block h-auto w-full"
                   />
@@ -325,13 +325,13 @@ export default function MarketingHome() {
                     <span className="mt-5 inline-flex min-h-12 items-center gap-3 rounded-full bg-white px-5 py-3 text-sm font-bold text-[#C2410C]">{c.ngo.cta} <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
                   </div>
                   <img
+                    loading="lazy"
                     src="/product/ngo-children-desktop.webp"
                     srcSet="/product/ngo-children-desktop-1200.webp 1200w, /product/ngo-children-desktop.webp 2170w"
                     sizes="(min-width: 1200px) 1160px, calc(100vw - 40px)"
                     alt="Three children learning together using a laptop."
                     width={2170}
                     height={725}
-                    loading="lazy"
                     decoding="async"
                     className="absolute inset-x-0 top-0 -z-10 h-[116%] w-full object-cover object-right-top"
                   />
@@ -496,12 +496,12 @@ export default function MarketingHome() {
           <div className="mx-auto max-w-[1200px] px-5">
             <Reveal className="relative overflow-hidden rounded-3xl border border-[#F6CDB2] bg-gradient-to-br from-[#FFF3EA] via-[#FFF8F3] to-white shadow-[0_1px_2px_rgba(194,65,12,0.06),0_30px_60px_-36px_rgba(194,65,12,0.4)]">
               <img
+                loading="lazy"
                 src="/product/pricing-girl.webp"
                 alt="Student smiling while learning online"
                 aria-hidden="true"
                 width={932}
                 height={698}
-                loading="lazy"
                 decoding="async"
                 className="pointer-events-none absolute bottom-0 end-0 hidden h-[88%] w-auto select-none lg:block rtl:-scale-x-100"
               />

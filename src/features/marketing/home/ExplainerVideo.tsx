@@ -28,12 +28,12 @@ export function ExplainerVideo({ title }: { title: string }) {
           className="group absolute inset-0 flex items-center justify-center focus-visible:outline focus-visible:outline-4 focus-visible:-outline-offset-4 focus-visible:outline-[#FDBA74]"
         >
           <img
+            loading="lazy"
             src={thumb}
             onError={() => setThumb(`https://i.ytimg.com/vi/${VIDEO_ID}/hqdefault.jpg`)}
             alt={`${title} video thumbnail`}
             width={1280}
             height={720}
-            loading="lazy"
             decoding="async"
             className="absolute inset-0 h-full w-full object-cover"
           />

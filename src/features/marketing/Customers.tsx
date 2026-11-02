@@ -51,8 +51,8 @@ export default function Customers() {
           {STORIES.map((s) => (
             <li key={s.slug}>
               <Link to={`/customers/${s.slug}`} className="group flex h-full flex-col rounded-2xl border border-[#EFE3D7] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#F2B98A] hover:shadow-[0_24px_50px_-28px_rgba(194,65,12,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C]">
-                <img src={s.image} alt={s.imageAlt} width={1536} height={1024} loading="lazy" className="mb-6 aspect-[16/10] w-full rounded-xl object-cover object-[center_40%]" />
-                <img src={s.logo} alt={`${s.name} logo`} width={s.slug === "alphabet" ? 112 : 56} height={56} loading="lazy" className={cn("h-14 ring-1 ring-black/10", s.slug === "alphabet" ? "w-28 rounded-lg object-contain" : "w-14 rounded-full object-cover")} />
+                <img loading="lazy" src={s.image} alt={s.imageAlt} width={1536} height={1024} className="mb-6 aspect-[16/10] w-full rounded-xl object-cover object-[center_40%]" />
+                <img loading="lazy" src={s.logo} alt={`${s.name} logo`} width={s.slug === "alphabet" ? 112 : 56} height={56} className={cn("h-14 ring-1 ring-black/10", s.slug === "alphabet" ? "w-28 rounded-lg object-contain" : "w-14 rounded-full object-cover")} />
                 <h2 className="font-display mt-5 text-xl font-extrabold tracking-[-0.02em]">{s.name}</h2>
                 <p className="mt-2 flex-1 text-[15px] leading-relaxed text-[#57534E]">{s.teaser}</p>
                 <ul className="mt-4 flex flex-wrap gap-2">

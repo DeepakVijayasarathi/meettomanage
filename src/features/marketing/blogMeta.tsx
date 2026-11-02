@@ -76,10 +76,10 @@ export function PostCover({ topic, slug, title, className, large }: { topic: Blo
     return (
       <div className={cn("relative overflow-hidden bg-[#111827]", className)}>
         <img
+          loading={large ? "eager" : "lazy"}
           src={image}
           alt={title ? `Illustration for ${title}` : ""}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          loading={large ? "eager" : "lazy"}
           decoding="async"
         />
       </div>

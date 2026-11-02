@@ -13,13 +13,13 @@ export function LiveSection({ c }: { c: HomeCopy["live"] }) {
       <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-5 lg:grid-cols-[1.3fr_1fr] lg:gap-16">
         <Reveal className="relative order-2 lg:order-1">
           <img
+            loading="lazy"
             src="/product/hero-classroom.webp"
             srcSet="/product/hero-classroom-768.webp 768w, /product/hero-classroom.webp 1536w"
             sizes="(min-width: 1024px) 700px, 100vw"
             alt={c.alt}
             width={1536}
             height={1024}
-            loading="lazy"
             decoding="async"
             className="block h-auto w-full rounded-2xl shadow-[0_1px_2px_rgba(28,25,23,0.06),0_30px_70px_-35px_rgba(194,65,12,0.45)]"
           />
