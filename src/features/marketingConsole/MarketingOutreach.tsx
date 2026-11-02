@@ -341,7 +341,7 @@ function ImportDialog({ open, onOpenChange, onImported }: { open: boolean; onOpe
     try {
       const r = await outreachApi.importProspects(parsed.rows, source.trim());
       setResult(r); onImported();
-      toast({ variant: "success", title: `${r.added} prospect${r.added === 1 ? "" : "s"} added`, description: r.skipped.length ? `${r.skipped.length} skipped` : undefined });
+      toast({ variant: "success", title: `${r.added} added, ${r.restored} restored`, description: r.skipped.length ? `${r.skipped.length} skipped` : undefined });
     } catch (err) { toast({ variant: "error", title: "Import failed", description: userMessage(err, "Please try again.") }); }
     finally { setBusy(false); }
   }
@@ -356,7 +356,7 @@ function ImportDialog({ open, onOpenChange, onImported }: { open: boolean; onOpe
         </DialogHeader>
         {result ? (
           <div className="space-y-2 text-sm">
-            <p><b>{result.added}</b> added, <b>{result.skipped.length}</b> skipped.</p>
+            <p><b>{result.added}</b> added, <b>{result.restored}</b> restored, <b>{result.skipped.length}</b> skipped.</p>
             {result.skipped.length > 0 && <ul className="max-h-48 overflow-y-auto rounded-md border p-2 text-xs">{result.skipped.map((s, i) => <li key={i}><span className="font-mono">{s.email || "(blank)"}</span>: {s.reason}</li>)}</ul>}
           </div>
         ) : (

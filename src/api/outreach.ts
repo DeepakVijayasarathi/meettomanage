@@ -50,7 +50,7 @@ export interface OutreachAiInsights { summary: string; observations: string[]; n
 export interface ProspectDetail { prospect: Prospect; activities: { id: string; type: string; subject: string | null; detail: string | null; createdBy: string | null; createdAtUtc: string }[]; tasks: { id: string; title: string; assignedTo: string | null; dueAtUtc: string; completedAtUtc: string | null }[] }
 export interface RecipientFilter { region?: string | null; minScore?: number | null; stages?: PipelineStage[] }
 
-export interface ImportResult { added: number; skipped: { email: string; reason: string }[] }
+export interface ImportResult { added: number; restored: number; skipped: { email: string; reason: string }[] }
 
 export interface CampaignStep { order: number; delayDays: number; subject: string; body: string }
 
