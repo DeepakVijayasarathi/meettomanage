@@ -16,6 +16,10 @@ vi.mock("@/lib/api", () => ({
 }));
 vi.mock("@/lib/theme", () => ({ useLightBrandScope: vi.fn() }));
 vi.mock("@/lib/i18n", () => ({ useLang: () => ["en"] }));
+vi.mock("@/lib/analytics", () => ({
+  marketingVisitorId: () => "test-visitor",
+  trackMarketingEvent: vi.fn(),
+}));
 vi.mock("@/components/Seo", () => ({
   Seo: ({ title, path, noindex = false }: { title: string; path: string; noindex?: boolean }) => (
     <div data-testid="seo" data-title={title} data-path={path} data-noindex={String(noindex)} />

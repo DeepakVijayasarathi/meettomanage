@@ -8,6 +8,8 @@ import { MarketingNav } from "./MarketingNav";
 import { EmptyState } from "@/components/EmptyState";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
+import { experimentVariant } from "@/lib/experiments";
+import { trackMarketingEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { CTA_ORANGE, EYEBROW, FOCUS_RING, HERO_BG } from "./styles";
 import { blogImage, PostCard, TopicChip } from "./blogMeta";
@@ -20,6 +22,8 @@ import { DEMO_BLOG_SUMMARIES, getDemoBlogPost } from "@/data/blogPosts";
 const WHATSAPP_URL = "https://wa.me/919344773231";
 const SITE_URL = "https://meettomanage.cloud";
 const BLOG_TITLE_SUFFIX = " | Meet to Manage";
+const BLOG_CTA_EXPERIMENT = "blog-cta";
+const BLOG_CTA_VARIANTS = ["a", "b"] as const;
 
 /** Brand suffix only when it fits in ~60 characters; a long title stays whole (never cut with "…"), so its keywords stay in. Keep in sync with scripts/prerender-meta.mjs. */
 function blogSeoTitle(title: string): string {
@@ -211,6 +215,7 @@ export default function BlogPost() {
   const headings = blocks.filter((b): b is Extract<Block, { kind: "heading" }> => b.kind === "heading");
   const firstTextIndex = blocks.findIndex((b) => b.kind === "text");
   const topic = post ? topicOf({ slug, title: post.title }) : null;
+  const [ctaVariant] = useState(() => experimentVariant(BLOG_CTA_EXPERIMENT, BLOG_CTA_VARIANTS));
   const more = useMemo(() => {
     const candidates = otherPosts.filter((candidate) => candidate.slug !== slug);
     if (!topic) return candidates.slice(0, 3);
@@ -225,6 +230,38 @@ export default function BlogPost() {
       .map(({ candidate }) => candidate);
   }, [otherPosts, slug, topic]);
   const wordCount = post ? post.content.trim().split(/\s+/).filter(Boolean).length : 0;
+  const conversionCta = useMemo(() => {
+    const generic = { heading: t.ctaHeading, body: t.ctaSub, outcome: t.requestDemo };
+    if (lang !== "en" || !post || !topic) return generic;
+    const haystack = `${slug} ${post.title}`.toLowerCase();
+    if (/multi-branch|second-branch|branch/.test(haystack)) return {
+      heading: "See every branch without chasing separate reports",
+      body: "Walk through one owner dashboard for enrolments, fees, classes and staff across locations.",
+      outcome: "Show me the multi-branch view",
+    };
+    if (topic === "Billing" || /fee|payment|invoice|revenue|collection/.test(haystack)) return {
+      heading: "See how much fee chasing you can remove",
+      body: "Walk through automatic invoices, reminders, payment tracking and parent receipts using your current fee process.",
+      outcome: "Show me fee automation",
+    };
+    if (topic === "Admissions" || /crm|enrol|admission|demo booking|lead/.test(haystack)) return {
+      heading: "See the enquiry-to-enrolment workflow",
+      body: "Walk through lead follow-up, demo assignment and enrolment handoff without spreadsheets or missed callbacks.",
+      outcome: "Show me the admissions workflow",
+    };
+    if (/kpi|report|dashboard|roi|performance/.test(haystack)) return {
+      heading: "Turn your weekly numbers into an action list",
+      body: "See the owner dashboard that connects attendance, collections, enrolments and teacher activity.",
+      outcome: "Show me the owner dashboard",
+    };
+    if (topic === "Teaching") return {
+      heading: "Connect better classes to measurable business results",
+      body: "See how attendance, recordings, parent visibility and teacher activity appear in one operating view.",
+      outcome: "Show me the complete workflow",
+    };
+    return generic;
+  }, [lang, post, slug, t.ctaHeading, t.ctaSub, t.requestDemo, topic]);
+  const demoPath = `/get-started?exp=${BLOG_CTA_EXPERIMENT}&variant=${ctaVariant}&from=${encodeURIComponent(slug)}`;
   const relatedTemplate = topic === "Billing"
     ? { to: "/resources/coaching-centre-fee-tracker", title: "Put the fee workflow into practice.", body: "A free CSV starter for invoices, part payments and credits, with a worked example. No signup required.", label: "Get the free fee tracker" }
     : topic === "Teaching" || (topic === "Operations" && /teacher|schedul|leave|batch/i.test(`${slug} ${post?.title ?? ""}`))
@@ -253,6 +290,11 @@ export default function BlogPost() {
     });
     return () => observer.disconnect();
   }, [slug, headings.map((heading) => heading.id).join("|")]);
+
+  useEffect(() => {
+    if (!post) return;
+    trackMarketingEvent("experiment_viewed", `/blog/${slug}`, `${BLOG_CTA_EXPERIMENT}:${ctaVariant}`);
+  }, [ctaVariant, post, slug]);
 
   const tableOfContents = headings.length > 1 ? (
     <nav aria-label={t.onThisPage} className="border border-[#E2E7EF] bg-white p-5 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.35)] sm:p-6">
@@ -489,10 +531,10 @@ export default function BlogPost() {
               <div className="relative mt-12 overflow-hidden bg-[#0D1024] px-6 py-12 text-center text-white sm:px-12">
                 <div className="absolute inset-0 opacity-60" style={{ background: DARK_GLOW }} aria-hidden />
                 <div className="relative">
-                  <h3 className="font-display text-[clamp(1.5rem,2.4vw,2.125rem)] font-extrabold leading-tight tracking-[-0.02em] rtl:tracking-normal">{t.ctaHeading}</h3>
-                  <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-white/80">{t.ctaSub}</p>
-                  <Link to="/get-started" className={cn(CTA_ORANGE, "mt-7")}>
-                    {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+                  <h3 className="font-display text-[clamp(1.5rem,2.4vw,2.125rem)] font-extrabold leading-tight tracking-[-0.02em] rtl:tracking-normal">{conversionCta.heading}</h3>
+                  <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-white/80">{conversionCta.body}</p>
+                  <Link to={demoPath} className={cn(CTA_ORANGE, "mt-7")}>
+                    {ctaVariant === "a" ? t.requestDemo : conversionCta.outcome} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
                   </Link>
                   <div><PricingLink className="text-white/80 hover:text-white focus-visible:outline-white" /></div>
                 </div>
@@ -505,10 +547,10 @@ export default function BlogPost() {
                 <div className="relative overflow-hidden bg-[#0D1024] p-6 text-white">
                   <div className="absolute inset-0 opacity-70" style={{ background: DARK_GLOW }} aria-hidden />
                   <div className="relative">
-                    <p className="font-display text-lg font-extrabold leading-snug">{t.sideHeading}</p>
-                    <p className="mt-2 text-sm leading-relaxed text-white/75">{t.sideSub}</p>
-                    <Link to="/get-started" className={cn(CTA_ORANGE, "mt-5 w-full min-w-0 px-4 py-3 text-sm")}>
-                      {t.sideCta}
+                    <p className="font-display text-lg font-extrabold leading-snug">{conversionCta.heading}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-white/75">{conversionCta.body}</p>
+                    <Link to={demoPath} className={cn(CTA_ORANGE, "mt-5 w-full min-w-0 px-4 py-3 text-sm")}>
+                      {ctaVariant === "a" ? t.sideCta : conversionCta.outcome}
                     </Link>
                     <a
                       href={WHATSAPP_URL}

@@ -211,8 +211,14 @@ export default function GetStarted() {
   const isCoach = searchParams.get("for") === "coach";
   // Coaches see their own copy, so only academy visitors join the copy test.
   const [variant] = useState<Variant>(() => experimentVariant(EXPERIMENT, VARIANTS));
-  const tag = isCoach ? undefined : `${EXPERIMENT}:${variant}`;
-  const pc = { ...PANEL[lang], cta: t.requestDemo, ...(tag && variant === "b" ? PANEL_B[lang] : {}) };
+  const incomingExperiment = (searchParams.get("exp") ?? "").toLowerCase();
+  const incomingVariant = searchParams.get("variant");
+  const incomingTag = /^[a-z0-9-]{1,40}$/.test(incomingExperiment) && VARIANTS.includes(incomingVariant as Variant)
+    ? `${incomingExperiment}:${incomingVariant}`
+    : undefined;
+  const effectiveVariant: Variant = incomingTag ? incomingVariant as Variant : variant;
+  const tag = isCoach ? undefined : incomingTag ?? `${EXPERIMENT}:${variant}`;
+  const pc = { ...PANEL[lang], cta: t.requestDemo, ...(tag && effectiveVariant === "b" ? PANEL_B[lang] : {}) };
   // The homepage hero hands over whatever the visitor typed (an email or a mobile number) as ?contact=.
   const [form, setForm] = useState(() => {
     const contact = (searchParams.get("contact") ?? "").trim().slice(0, 120);
