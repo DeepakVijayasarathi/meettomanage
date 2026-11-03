@@ -81,6 +81,11 @@ export interface GrowthDashboard {
   dormant: { id: string; email: string; academyName: string | null; region: string | null; leadScore: number; inactiveSinceUtc: string }[];
   recommendedActions: string[];
 }
+export interface OutreachHistory {
+  totals: { attempts: number; sent: number; failed: number; replies: number };
+  alerts: { level: "Error" | "Warning"; title: string; detail: string }[];
+  items: { id: string; prospectId: string; type: "CampaignEmail" | "ManualEmail" | "ReplySent" | "ReplyReceived"; occurredAtUtc: string; email: string; academyName: string | null; region: string | null; subject: string | null; detail: string | null; status: "Sent" | "Failed" | "Received"; canRetry: boolean }[];
+}
 
 const base = "/api/marketing/outreach";
 const json = (method: string, body?: unknown): RequestInit => ({ method, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -111,6 +116,8 @@ export const outreachApi = {
   analyticsInsights: () => apiFetch<OutreachAiInsights>(`${base}/analytics/insights`),
   growth: () => apiFetch<GrowthDashboard>(`${base}/growth`),
   growthAiPlan: () => apiFetch<OutreachAiInsights>(`${base}/growth/ai-plan`),
+  history: () => apiFetch<OutreachHistory>(`${base}/history`),
+  retrySend: (id: string) => apiFetch<void>(`${base}/history/${id}/retry`, json("POST")),
   reactivate: (prospectIds: string[]) => apiFetch<{ queued: number }>(`${base}/growth/reactivate`, json("POST", { prospectIds })),
   today: () => apiFetch<TodayDashboard>(`${base}/today`),
   replies: () => apiFetch<ReplyInbox>(`${base}/replies`),
