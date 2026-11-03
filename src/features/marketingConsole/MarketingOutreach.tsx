@@ -66,7 +66,7 @@ export default function MarketingOutreach() {
           <TabsTrigger value="today">Today</TabsTrigger>
           <TabsTrigger value="prospects">Leads</TabsTrigger>
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
-          <TabsTrigger value="replies">Replies</TabsTrigger>
+          <TabsTrigger value="replies" className="gap-1.5">Replies<span className={`h-2 w-2 rounded-full ${summary?.replySyncReady && summary?.imapSyncReady ? "bg-success" : "bg-warning"}`} title={summary?.replySyncReady && summary?.imapSyncReady ? "Zoho mailbox synchronization ready" : "Zoho IMAP credentials are not configured"} /></TabsTrigger>
           <TabsTrigger value="regions">Analytics</TabsTrigger>
         </TabsList>
         <TabsContent value="today" className="mt-4"><TodayTab /></TabsContent>

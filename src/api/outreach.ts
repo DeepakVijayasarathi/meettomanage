@@ -18,6 +18,8 @@ export const PROSPECT_STATUSES: { value: ProspectStatus; label: string }[] = [
 
 export interface OutreachSummary {
   ready: boolean;
+  replySyncReady: boolean;
+  imapSyncReady: boolean;
   notReadyReason: string | null;
   from: string;
   replyTo: string | null;
