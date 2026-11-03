@@ -71,6 +71,16 @@ export interface Campaign {
 export interface CampaignInput { name: string; steps: { delayDays: number; subject: string; body: string }[] }
 export interface CampaignAiBrief { audience: string; region?: string | null; goal: string; offer?: string | null; tone: "Warm" | "Professional" | "Direct" }
 export interface CampaignAiDraft extends CampaignInput { strategy: string; aiPowered: boolean }
+export interface GrowthDashboard {
+  generatedAtUtc: string;
+  forecast: { averageCustomerValue: number; expectedWins: number; weightedRevenue: number; currency: string };
+  sourcePerformance: { source: string; leads: number; contacted: number; replies: number; demos: number; won: number }[];
+  segments: { segment: string; leads: number; qualified: number; replies: number }[];
+  objections: { name: string; count: number }[];
+  deliverability: { healthy: number; bounced: number; unsubscribed: number; incompleteProfiles: number };
+  dormant: { id: string; email: string; academyName: string | null; region: string | null; leadScore: number; inactiveSinceUtc: string }[];
+  recommendedActions: string[];
+}
 
 const base = "/api/marketing/outreach";
 const json = (method: string, body?: unknown): RequestInit => ({ method, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -99,6 +109,8 @@ export const outreachApi = {
   regions: () => apiFetch<RegionCount[]>(`${base}/regions`),
   analytics: () => apiFetch<OutreachAnalytics>(`${base}/analytics`),
   analyticsInsights: () => apiFetch<OutreachAiInsights>(`${base}/analytics/insights`),
+  growth: () => apiFetch<GrowthDashboard>(`${base}/growth`),
+  reactivate: (prospectIds: string[]) => apiFetch<{ queued: number }>(`${base}/growth/reactivate`, json("POST", { prospectIds })),
   today: () => apiFetch<TodayDashboard>(`${base}/today`),
   replies: () => apiFetch<ReplyInbox>(`${base}/replies`),
   analyzeReply: (id: string) => apiFetch<ReplyAnalysis>(`${base}/replies/${id}/analyze`, json("POST")),
@@ -106,6 +118,7 @@ export const outreachApi = {
   replyThread: (id: string) => apiFetch<ReplyThreadMessage[]>(`${base}/replies/${id}/thread`),
   sendReply: (id: string, subject: string, body: string) => apiFetch<void>(`${base}/replies/${id}/send`, json("POST", { subject, body })),
   draftMessage: (id: string, purpose: "first-contact" | "reply") => apiFetch<{ message: string }>(`${base}/prospects/${id}/draft`, json("POST", { purpose })),
+  sendProspectMessage: (id: string, purpose: "first-contact" | "reply", subject: string, body: string) => apiFetch<void>(`${base}/prospects/${id}/send`, json("POST", { purpose, subject, body })),
   campaigns: () => apiFetch<Campaign[]>(`${base}/campaigns`),
   draftCampaign: (brief: CampaignAiBrief) => apiFetch<CampaignAiDraft>(`${base}/campaigns/ai-draft`, json("POST", brief)),
   createCampaign: (input: CampaignInput) => apiFetch<{ id: string }>(`${base}/campaigns`, json("POST", input)),
