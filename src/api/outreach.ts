@@ -110,6 +110,7 @@ export const outreachApi = {
   analytics: () => apiFetch<OutreachAnalytics>(`${base}/analytics`),
   analyticsInsights: () => apiFetch<OutreachAiInsights>(`${base}/analytics/insights`),
   growth: () => apiFetch<GrowthDashboard>(`${base}/growth`),
+  growthAiPlan: () => apiFetch<OutreachAiInsights>(`${base}/growth/ai-plan`),
   reactivate: (prospectIds: string[]) => apiFetch<{ queued: number }>(`${base}/growth/reactivate`, json("POST", { prospectIds })),
   today: () => apiFetch<TodayDashboard>(`${base}/today`),
   replies: () => apiFetch<ReplyInbox>(`${base}/replies`),
