@@ -50,12 +50,15 @@ export interface OutreachReply { id: string; email: string; firstName: string | 
 export interface OutreachAnalytics { totals: { total: number; contacted: number; replied: number; interested: number; bounced: number }; regions: RegionPerformance[]; pipeline: { stage: PipelineStage; count: number }[]; overdueTasks: { id: string; prospectId: string; title: string; assignedTo: string | null; dueAtUtc: string; email: string; academyName: string | null; region: string | null }[]; recentReplies: OutreachReply[] }
 export interface OutreachAiInsights { summary: string; observations: string[]; nextActions: string[]; aiPowered: boolean; generatedAtUtc: string }
 export interface ProspectDetail { prospect: Prospect; activities: { id: string; type: string; subject: string | null; detail: string | null; createdBy: string | null; createdAtUtc: string }[]; tasks: { id: string; title: string; assignedTo: string | null; dueAtUtc: string; completedAtUtc: string | null }[] }
-export interface RecipientFilter { region?: string | null; minScore?: number | null; stages?: PipelineStage[] }
+export interface RecipientFilter { region?: string | null; minScore?: number | null; stages?: PipelineStage[]; excludeContactedDays?: number }
 export interface TodayItem { id: string; email: string; firstName: string | null; academyName: string | null; region: string | null; leadScore: number; pipelineStage: PipelineStage; scoreReason?: string | null; nextActionAtUtc?: string | null }
 export interface TodayDashboard { hotLeads: TodayItem[]; replies: TodayItem[]; tasks: { id: string; prospectId: string; title: string; assignedTo: string | null; dueAtUtc: string; email: string; academyName: string | null; region: string | null }[]; generatedAtUtc: string }
 export type ReplyIntent = "Interested" | "Pricing" | "DemoRequest" | "Question" | "Objection" | "NotInterested" | "Unsubscribe" | "AutoReply";
 export interface ReplyItem { id: string; prospectId: string; subject: string | null; detail: string | null; createdAtUtc: string; email: string; firstName: string | null; academyName: string | null; region: string | null; status: ProspectStatus; pipelineStage: PipelineStage; intent: ReplyIntent; urgency: "High" | "Normal" | "Low"; handled: boolean; ageHours: number; responseHours: number | null }
 export interface ReplyInbox { total: number; needsResponse: number; overdue: number; interested: number; averageResponseHours: number | null; items: ReplyItem[] }
+export interface ReplySyncStatus { configured: boolean; isRunning: boolean; lastAttemptAtUtc: string | null; lastSuccessAtUtc: string | null; lastError: string | null; messagesChecked: number; repliesImported: number; duplicatesSkipped: number; unmatchedSkipped: number; failedMessages: number; healthy: boolean; alert: string | null }
+export interface ReplySyncRun { id: string; trigger: "Automatic" | "Manual"; status: "Running" | "Succeeded" | "Partial" | "Failed"; startedAtUtc: string; completedAtUtc: string | null; messagesChecked: number; repliesImported: number; duplicatesSkipped: number; unmatchedSkipped: number; failedMessages: number; error: string | null }
+export interface UnmatchedReply { id: string; from: string; subject: string | null; body: string; threadReferences: string | null; receivedAtUtc: string }
 export interface ReplyAnalysis { intent: ReplyIntent; sentiment: "Positive" | "Neutral" | "Negative"; urgency: "High" | "Normal" | "Low"; summary: string; nextAction: string; suggestedReply: string; aiPowered: boolean }
 export interface ReplyThreadMessage { id: string; direction: "Inbound" | "Outbound"; subject: string | null; detail: string | null; createdAtUtc: string; createdBy: string | null }
 
@@ -121,6 +124,13 @@ export const outreachApi = {
   reactivate: (prospectIds: string[]) => apiFetch<{ queued: number }>(`${base}/growth/reactivate`, json("POST", { prospectIds })),
   today: () => apiFetch<TodayDashboard>(`${base}/today`),
   replies: () => apiFetch<ReplyInbox>(`${base}/replies`),
+  replySyncStatus: () => apiFetch<ReplySyncStatus>(`${base}/replies/sync-status`),
+  syncRepliesNow: () => apiFetch<ReplySyncStatus>(`${base}/replies/sync-now`, json("POST")),
+  testReplyConnection: () => apiFetch<{ success: boolean; message: string }>(`${base}/replies/test-connection`, json("POST")),
+  replySyncHistory: () => apiFetch<ReplySyncRun[]>(`${base}/replies/sync-history`),
+  unmatchedReplies: () => apiFetch<UnmatchedReply[]>(`${base}/replies/unmatched`),
+  linkUnmatchedReply: (id: string, prospectId: string) => apiFetch<void>(`${base}/replies/unmatched/${id}/link`, json("POST", { prospectId })),
+  dismissUnmatchedReply: (id: string) => apiFetch<void>(`${base}/replies/unmatched/${id}`, json("DELETE")),
   analyzeReply: (id: string) => apiFetch<ReplyAnalysis>(`${base}/replies/${id}/analyze`, json("POST")),
   markReplyHandled: (id: string) => apiFetch<void>(`${base}/replies/${id}/handled`, json("POST")),
   replyThread: (id: string) => apiFetch<ReplyThreadMessage[]>(`${base}/replies/${id}/thread`),
@@ -132,7 +142,7 @@ export const outreachApi = {
   createCampaign: (input: CampaignInput) => apiFetch<{ id: string }>(`${base}/campaigns`, json("POST", input)),
   updateCampaign: (id: string, input: CampaignInput) => apiFetch<void>(`${base}/campaigns/${id}`, json("PUT", input)),
   enroll: (id: string, prospectIds: string[] = [], filter: RecipientFilter = {}) => apiFetch<{ enrolled: number }>(`${base}/campaigns/${id}/enroll`, json("POST", { prospectIds, ...filter })),
-  previewRecipients: (id: string, filter: RecipientFilter) => apiFetch<{ count: number; sample: { id: string; email: string; academyName: string | null; region: string | null; leadScore: number }[] }>(`${base}/campaigns/${id}/preview`, json("POST", { prospectIds: [], ...filter })),
+  previewRecipients: (id: string, filter: RecipientFilter) => apiFetch<{ count: number; sample: { id: string; email: string; academyName: string | null; region: string | null; leadScore: number }[]; excludedOverlap: number; excludedRecent: number; cooldownDays: number }>(`${base}/campaigns/${id}/preview`, json("POST", { prospectIds: [], ...filter })),
   setStatus: (id: string, status: "Active" | "Paused") => apiFetch<void>(`${base}/campaigns/${id}/status`, json("POST", { status })),
   test: (id: string, email: string, step = 1) => apiFetch<void>(`${base}/campaigns/${id}/test`, json("POST", { email, step })),
   deleteCampaign: (id: string) => apiFetch<void>(`${base}/campaigns/${id}`, json("DELETE")),
