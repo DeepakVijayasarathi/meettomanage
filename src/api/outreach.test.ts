@@ -10,7 +10,7 @@ describe("outreach CSV import", () => {
     const csv = "﻿City,Academy,E-mail,Name\nChennai,Sunrise Abacus,Anita@Sunrise.in,Anita\nMadurai,No Mail Academy,,Ravi\n";
     const { rows, missingEmailColumn } = prospectsFromCsv(csv);
     expect(missingEmailColumn).toBe(false);
-    expect(rows).toEqual([{ email: "anita@sunrise.in", firstName: "Anita", academyName: "Sunrise Abacus", city: "Chennai", phone: null, source: null, notes: null }]);
+    expect(rows).toEqual([{ email: "anita@sunrise.in", firstName: "Anita", academyName: "Sunrise Abacus", city: "Chennai", phone: null, region: null, source: null, notes: null }]);
   });
 
   it("says when there is no e-mail column", () => {
