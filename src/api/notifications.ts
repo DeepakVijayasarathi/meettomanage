@@ -14,7 +14,9 @@ type ApiNotificationType =
   | "AttendanceUpdate"
   | "PerformanceSummary"
   | "PayoutStatement"
-  | "General";
+  | "General"
+  | "Homework"
+  | "TestResult";
 
 export interface ApiNotification {
   id: string;
@@ -33,6 +35,9 @@ export interface ApiNotification {
   /** Set when this is one recipient's copy of a Bulk Email — lets the parent
    *  Notifications page offer a reply box under it. */
   bulkEmailRecipientId: string | null;
+  /** What a tap should open ("invoice", "class", "report", "ticket", "homework", ...), set by the backend. */
+  targetType?: string | null;
+  targetId?: string | null;
   /** True once the parent has already replied to this Bulk Email. */
   hasReplied: boolean;
 }
@@ -56,6 +61,20 @@ const TONE_BY_TYPE: Record<ApiNotificationType, NotificationItem["type"]> = {
   DelayedSessionAlert: "warning",
   NoShowAlert: "danger",
   FeeSuspension: "danger",
+  Homework: "info",
+  TestResult: "success",
+};
+
+/** Parent pages for each backend notification target. */
+const PARENT_ROUTE_BY_TARGET: Record<string, string> = {
+  homework: "/parent/homework",
+  invoice: "/parent/billing",
+  class: "/parent/schedule",
+  ticket: "/parent/support",
+  report: "/parent",
+  resource: "/parent/resources",
+  recording: "/parent/recordings",
+  home: "/parent",
 };
 
 /**
@@ -121,7 +140,8 @@ const ROUTE_BY_TEMPLATE_KEY: Record<string, string> = {
 
 /** Resolves the click-through route for one notification, or undefined if there's
  *  nowhere more specific to send the viewer than wherever they already are. */
-function routeFor(type: ApiNotificationType, templateKey: string | null, role: Role | null): string | undefined {
+function routeFor(type: ApiNotificationType, templateKey: string | null, role: Role | null, targetType?: string | null): string | undefined {
+  if (role === "parent" && targetType && PARENT_ROUTE_BY_TARGET[targetType]) return PARENT_ROUTE_BY_TARGET[targetType];
   // Goes to both Admin and Admission, whose report pages live under different portals.
   if (templateKey === "parent-feedback-received") return role === "admission" ? "/admission/parent-feedback" : "/admin/parent-feedback";
   if (templateKey && ROUTE_BY_TEMPLATE_KEY[templateKey]) return ROUTE_BY_TEMPLATE_KEY[templateKey];
@@ -152,7 +172,7 @@ export function toNotificationItem(n: ApiNotification, role: Role | null = null)
     time: relativeTime(n.createdAtUtc),
     read: n.isRead,
     type: TONE_BY_TYPE[n.type] ?? "info",
-    route: routeFor(n.type, n.templateKey, role),
+    route: routeFor(n.type, n.templateKey, role, n.targetType),
   };
 }
 

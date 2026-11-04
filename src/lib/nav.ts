@@ -51,6 +51,7 @@ import { Send,
   LifeBuoy,
   Radar,
   Gamepad2,
+  BookOpenCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -79,6 +80,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Sessions", to: "/admin/sessions", icon: CalendarClock },
       { label: "Recordings", to: "/admin/recordings", icon: Video },
       { label: "Quiz Bank", to: "/admin/quiz-bank", icon: Sparkles },
+      { label: "Homework & Tests", to: "/admin/homework", icon: BookOpenCheck },
       { label: "Activity Bank", to: "/admin/activity-bank", icon: PencilRuler },
     ],
   },
@@ -177,6 +179,7 @@ export const TEACHER_NAV: NavSection[] = [
       { label: "My Classes", to: "/teacher/classes", icon: CalendarClock },
       { label: "My Students", to: "/teacher/students", icon: Users },
       { label: "Attendance & Records", to: "/teacher/attendance", icon: ClipboardList },
+      { label: "Homework & Tests", to: "/teacher/homework", icon: BookOpenCheck },
       { label: "Recordings", to: "/teacher/recordings", icon: Video },
       { label: "Demo Feedback", to: "/teacher/demo-feedback", icon: ClipboardCheck, badge: "1" },
       { label: "Student Doubts", to: "/teacher/doubts", icon: MessageCircleQuestion },
@@ -202,6 +205,7 @@ export const PARENT_NAV: NavSection[] = [
     title: "Learning",
     items: [
       { label: "Schedule & Live Class", to: "/parent/schedule", icon: CalendarClock },
+      { label: "Homework & Tests", to: "/parent/homework", icon: BookOpenCheck },
       { label: "Resources", to: "/parent/resources", icon: FolderOpen },
       { label: "Recordings", to: "/parent/recordings", icon: Video },
       { label: "Student View", to: "/student", icon: Sparkles },

@@ -130,6 +130,8 @@ const TeacherDashboard = lazy(() => import("@/features/teacher/Dashboard"));
 const TeacherMyClasses = lazy(() => import("@/features/teacher/MyClasses"));
 const TeacherStudents = lazy(() => import("@/features/teacher/Students"));
 const TeacherAttendance = lazy(() => import("@/features/teacher/Attendance"));
+const HomeworkManager = lazy(() => import("@/features/shared/HomeworkManager"));
+const ParentHomework = lazy(() => import("@/features/parent/Homework"));
 const TeacherDemoFeedback = lazy(() => import("@/features/teacher/DemoFeedback"));
 const TeacherLeave = lazy(() => import("@/features/teacher/Leave"));
 const TeacherPayout = lazy(() => import("@/features/teacher/Payout"));
@@ -339,6 +341,7 @@ export default function App() {
               <Route path="courses" element={<AdminCourses />} />
               <Route path="departments" element={<AdminDepartments />} />
               <Route path="quiz-bank" element={<AdminQuizQuestions />} />
+              <Route path="homework" element={<HomeworkManager scope="staff" />} />
               <Route path="activity-bank" element={<AdminActivityBank />} />
               <Route path="learning-plugins" element={<LearningPlugins />} />
               <Route path="batches" element={<AdminBatches />} />
@@ -501,6 +504,7 @@ export default function App() {
               <Route path="classes" element={<TeacherMyClasses />} />
               <Route path="students" element={<TeacherStudents />} />
               <Route path="attendance" element={<TeacherAttendance />} />
+              <Route path="homework" element={<HomeworkManager scope="teacher" />} />
               <Route path="recordings" element={<TeacherRecordings />} />
               <Route path="demo-feedback" element={<TeacherDemoFeedback />} />
               <Route path="doubts" element={<TeacherDoubts />} />
@@ -514,6 +518,7 @@ export default function App() {
               <Route index element={<ParentDashboard />} />
               <Route path="enrollment" element={<ParentEnrollment />} />
               <Route path="schedule" element={<ParentSchedule />} />
+              <Route path="homework" element={<ParentHomework />} />
               <Route path="resources" element={<ParentResources />} />
               <Route path="recordings" element={<ParentRecordings />} />
               <Route path="billing" element={<ParentBilling />} />
