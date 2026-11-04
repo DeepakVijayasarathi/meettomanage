@@ -55,6 +55,9 @@ export interface LoginResponse {
   permissions: string[];
   /** Route to navigate to right after login — the user's role default, or their portal home. */
   defaultRoute: string;
+  /** True when the PIN was right but an authenticator code is still needed; no session is issued yet. */
+  requiresTwoFactor?: boolean;
+  twoFactorChallenge?: string | null;
 }
 
 const ROLE_FROM_API: Record<ApiRole, Role> = {

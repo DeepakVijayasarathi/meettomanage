@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChildSchedulePreferenceSummary } from "@/components/ChildSchedulePreferenceSummary";
 import { useSearchParams } from "react-router-dom";
-import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, MonitorSmartphone, Plus, ShieldCheck, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
+import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, MonitorSmartphone, Plus, ShieldCheck, ShieldOff, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
 import { useBrand } from "@/lib/branding";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
+import { resetUserTwoFactor } from "@/api/auth";
 import { InlineAlert } from "@/components/InlineAlert";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { UserStatusBadge, FeeStatusBadge } from "@/components/StatusBadge";
@@ -507,6 +508,18 @@ export default function AdminUsers() {
   const [resettingPin, setResettingPin] = useState(false);
   const [pinResult, setPinResult] = useState<{ ok: true; pin: string } | { ok: false; message: string } | null>(null);
   const [pinCopied, setPinCopied] = useState(false);
+
+  // Two-step sign-in reset: for staff who lost their phone and recovery codes.
+  async function handleResetTwoFactor() {
+    if (!detailUser || !apiEnabled()) return;
+    if (!window.confirm(`Turn off two-step sign-in for ${detailUser.name}? They'll sign in with just their PIN until they set it up again.`)) return;
+    try {
+      await resetUserTwoFactor(detailUser.id);
+      toast({ variant: "success", title: "Two-step sign-in reset", description: `${detailUser.name} can now sign in with their PIN and set it up again.` });
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't reset two-step sign-in", description: userMessage(err, "Please try again.") });
+    }
+  }
 
   async function handleResetPin() {
     if (!detailUser) return;
@@ -1120,6 +1133,12 @@ export default function AdminUsers() {
                     {resettingPin ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
                     Reset PIN
                   </Button>
+                  {detailUser.role !== "parent" && apiEnabled() && (
+                    <Button size="sm" variant="outline" onClick={handleResetTwoFactor} title="For staff who lost the phone with their authenticator app">
+                      <ShieldOff className="h-3.5 w-3.5" />
+                      Reset two-step sign-in
+                    </Button>
+                  )}
                   {/* Troubleshoot without the parent's PIN: their portal, read-only, 30 minutes. */}
                   {detailUser.role === "parent" && (
                     <Button size="sm" variant="outline" onClick={handleViewAsParent} title="Open this parent's portal read-only in a new tab, for 30 minutes">

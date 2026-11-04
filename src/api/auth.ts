@@ -6,9 +6,36 @@ export async function login(email: string, pin: string): Promise<LoginResponse> 
     method: "POST",
     body: JSON.stringify({ email, pin }),
   });
+  // Two-step accounts get a challenge, not a session, until the code step succeeds.
+  if (!response.requiresTwoFactor) setAccessToken(response.accessToken);
+  return response;
+}
+
+/** Second sign-in step: the challenge from login() plus a 6-digit authenticator code or a recovery code. */
+export async function completeTwoFactorLogin(challenge: string, code: string): Promise<LoginResponse> {
+  const response = await apiFetch<LoginResponse>("/api/auth/login/two-factor", {
+    method: "POST",
+    body: JSON.stringify({ challenge, code: code.trim() }),
+  });
   setAccessToken(response.accessToken);
   return response;
 }
+
+export interface TwoFactorStatus {
+  available: boolean;
+  enabled: boolean;
+  enabledAtUtc: string | null;
+  recoveryCodesLeft: number;
+}
+
+export const getTwoFactorStatus = () => apiFetch<TwoFactorStatus>("/api/auth/two-factor");
+export const beginTwoFactorSetup = () => apiFetch<{ secret: string; otpAuthUri: string }>("/api/auth/two-factor/setup", { method: "POST" });
+export const enableTwoFactor = (code: string) =>
+  apiFetch<{ recoveryCodes: string[] }>("/api/auth/two-factor/enable", { method: "POST", body: JSON.stringify({ code: code.trim() }) });
+export const disableTwoFactor = (code: string) =>
+  apiFetch<void>("/api/auth/two-factor/disable", { method: "POST", body: JSON.stringify({ code: code.trim() }) });
+/** Admin: clears another staff member's two-step sign-in after they lose their phone. */
+export const resetUserTwoFactor = (userId: string) => apiFetch<void>(`/api/users/${userId}/reset-two-factor`, { method: "POST" });
 
 /** The marketing account belongs to the platform, not to any academy tenant. */
 export async function loginMarketing(email: string, pin: string): Promise<LoginResponse> {

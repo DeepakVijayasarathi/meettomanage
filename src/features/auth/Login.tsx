@@ -13,7 +13,9 @@ import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
 import { apiEnabled, getAccessToken, setAccessToken, userMessage } from "@/lib/api";
 import { getRemember, setRemember } from "@/lib/authStorage";
-import { login } from "@/api/auth";
+import { completeTwoFactorLogin, login } from "@/api/auth";
+import type { LoginResponse } from "@/api/types";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toFrontendRole } from "@/api/types";
 import { cn, safeInternalPath } from "@/lib/utils";
 import { isTenantPortal, takeDiscoveredEmail } from "@/lib/tenantDiscovery";
@@ -80,6 +82,9 @@ export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
   const [pin, setPin] = useState(apiEnabled() ? "" : "1234");
   const [showPin, setShowPin] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Set after a correct PIN on an account with two-step sign-in; holds what's needed to finish signing in.
+  const [twoFactor, setTwoFactor] = useState<{ challenge: string; homeOverride?: string } | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
   const [rememberMe, setRememberMe] = useState(getRemember());
   const {
     role: sessionRole,
@@ -129,24 +134,12 @@ export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
     setSubmitting(true);
     try {
       const response = await login(loginEmail, loginPin);
-      const frontendRole = toFrontendRole(response.user.role);
-      // The marketing team signs in only through its own console login, never this
-      // academy-facing one — drop the token it was just issued instead of letting it in.
-      if (frontendRole === "marketing") {
-        setAccessToken(null);
-        throw new Error("Sign in failed. Please check your email and PIN.");
+      if (response.requiresTwoFactor && response.twoFactorChallenge) {
+        setTwoFactorCode("");
+        setTwoFactor({ challenge: response.twoFactorChallenge, homeOverride });
+        return;
       }
-      // Persist the resolved organisation for every login, including /t/<code>.
-      // Besides prefixing calls made from the single /login URL, this lets startup
-      // reject a remembered tenant-A session opened under tenant B's portal.
-      setSessionTenant(response.tenantCode ?? null);
-      const homePath = homeOverride ?? safeInternalPath(response.defaultRoute) ?? ROLE_META[frontendRole].homePath;
-      setSessionRole(frontendRole);
-      setUserName(response.user.fullName);
-      setPermissions(response.permissions);
-      setHomePath(homePath);
-      setTimeZoneId(response.user.timeZoneId);
-      navigate(from ?? homePath);
+      finishLogin(response, homeOverride);
     } catch (err) {
       // Shown as a popup so it can't be missed (and doesn't push the form around on a one-screen page).
       toast({ variant: "error", title: "Sign in failed", description: userMessage(err, "Sign in failed. Please try again.") });
@@ -157,6 +150,48 @@ export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function submitTwoFactor(e: React.FormEvent) {
+    e.preventDefault();
+    if (!twoFactor) return;
+    setSubmitting(true);
+    try {
+      const response = await completeTwoFactorLogin(twoFactor.challenge, twoFactorCode);
+      setTwoFactor(null);
+      finishLogin(response, twoFactor.homeOverride);
+    } catch (err) {
+      toast({ variant: "error", title: "Code not accepted", description: userMessage(err, "Please try again.") });
+      setTwoFactorCode("");
+      // An expired challenge can't be retried; send them back to the PIN.
+      if (err instanceof Error && /expired|Too many/i.test(err.message)) {
+        setTwoFactor(null);
+        setPin("");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function finishLogin(response: LoginResponse, homeOverride?: string) {
+    const frontendRole = toFrontendRole(response.user.role);
+    // The marketing team signs in only through its own console login, never this
+    // academy-facing one — drop the token it was just issued instead of letting it in.
+    if (frontendRole === "marketing") {
+      setAccessToken(null);
+      throw new Error("Sign in failed. Please check your email and PIN.");
+    }
+    // Persist the resolved organisation for every login, including /t/<code>.
+    // Besides prefixing calls made from the single /login URL, this lets startup
+    // reject a remembered tenant-A session opened under tenant B's portal.
+    setSessionTenant(response.tenantCode ?? null);
+    const homePath = homeOverride ?? safeInternalPath(response.defaultRoute) ?? ROLE_META[frontendRole].homePath;
+    setSessionRole(frontendRole);
+    setUserName(response.user.fullName);
+    setPermissions(response.permissions);
+    setHomePath(homePath);
+    setTimeZoneId(response.user.timeZoneId);
+    navigate(from ?? homePath);
   }
 
   // Clicking a listed account fills the form (for visual feedback / consistency with
@@ -328,6 +363,24 @@ export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
             </Button>
 
           </form>
+          <Dialog open={!!twoFactor} onOpenChange={(open) => { if (!open) setTwoFactor(null); }}>
+            <DialogContent className="max-w-sm">
+              <form onSubmit={submitTwoFactor} className="flex flex-col gap-4">
+                <DialogHeader>
+                  <DialogTitle>Enter your sign-in code</DialogTitle>
+                  <DialogDescription>Open your authenticator app and enter the 6-digit code, or use one of your recovery codes.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="two-factor-code">Code</Label>
+                  <Input id="two-factor-code" autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={12} value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)} />
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setTwoFactor(null)}>Cancel</Button>
+                  <Button type="submit" disabled={submitting || twoFactorCode.trim().length < 6}>{submitting ? "Checking…" : "Sign in"}</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
           </>)}
 
           <p className={`mt-2.5 shrink-0 text-center text-sm text-[#57534E] [@media(max-height:760px)]:mt-1.5`}>

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getAccessToken, setAccessToken } from "@/lib/api";
 import { beginViewAsStorage } from "@/lib/authStorage";
-import { getCurrentUser } from "./auth";
+import { completeTwoFactorLogin, getCurrentUser, login } from "./auth";
 
 function meResponse(accessToken: string) {
   return new Response(
@@ -46,5 +46,33 @@ describe("getCurrentUser", () => {
 
     expect(await pending).toBeNull();
     expect(getAccessToken()).toBe("parent-view-as");
+  });
+});
+
+describe("two-step sign-in", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+
+  it("keeps no session after the PIN step, and stores it once the code is accepted", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(json({ accessToken: "", requiresTwoFactor: true, twoFactorChallenge: "c1", permissions: [], defaultRoute: "" }));
+    const first = await login("admin@test.com", "1234");
+    expect(first.requiresTwoFactor).toBe(true);
+    expect(getAccessToken()).toBeNull();
+
+    vi.mocked(fetch).mockResolvedValueOnce(json({ accessToken: "admin-token", permissions: [], defaultRoute: "/admin", user: { firstName: "A", lastName: "B", role: "Admin" } }));
+    await completeTwoFactorLogin("c1", " 123456 ");
+    expect(getAccessToken()).toBe("admin-token");
+    const body = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
+    expect(body).toEqual({ challenge: "c1", code: "123456" });
   });
 });

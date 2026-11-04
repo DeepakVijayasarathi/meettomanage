@@ -10,6 +10,7 @@ import { apiEnabled, userMessage } from "@/lib/api";
 import { useSession } from "@/state/session";
 import { getMyAccount, getMyMeetingRoomShortLink, updateMyAccount } from "@/api/account";
 import { changePin } from "@/api/auth";
+import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 import { getCalendarFeedUrl } from "@/api/sessions";
 import { displayEmail } from "@/lib/parentLogin";
 
@@ -160,7 +161,7 @@ export function AccountDialog({
           <TabsList className="w-full">
             <TabsTrigger value="profile" className="flex-1">Profile</TabsTrigger>
             <TabsTrigger value="preferences" className="flex-1">Preferences</TabsTrigger>
-            <TabsTrigger value="pin" className="flex-1">Change PIN</TabsTrigger>
+            <TabsTrigger value="pin" className="flex-1">Security</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="mt-4 flex flex-col gap-4">
@@ -249,6 +250,7 @@ export function AccountDialog({
             <Button onClick={submitPinChange} disabled={!pinValid || pinBusy} className="self-start">
               {pinBusy ? "Changing…" : "Change PIN"}
             </Button>
+            {apiEnabled() && <TwoFactorSettings />}
           </TabsContent>
         </Tabs>
 
