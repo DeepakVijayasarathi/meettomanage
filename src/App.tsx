@@ -131,6 +131,7 @@ const TeacherMyClasses = lazy(() => import("@/features/teacher/MyClasses"));
 const TeacherStudents = lazy(() => import("@/features/teacher/Students"));
 const TeacherAttendance = lazy(() => import("@/features/teacher/Attendance"));
 const HomeworkManager = lazy(() => import("@/features/shared/HomeworkManager"));
+const MitoInsights = lazy(() => import("@/features/shared/MitoInsights"));
 const ParentHomework = lazy(() => import("@/features/parent/Homework"));
 const TeacherDemoFeedback = lazy(() => import("@/features/teacher/DemoFeedback"));
 const TeacherLeave = lazy(() => import("@/features/teacher/Leave"));
@@ -342,6 +343,7 @@ export default function App() {
               <Route path="departments" element={<AdminDepartments />} />
               <Route path="quiz-bank" element={<AdminQuizQuestions />} />
               <Route path="homework" element={<HomeworkManager scope="staff" />} />
+              <Route path="mito-insights" element={<MitoInsights scope="staff" />} />
               <Route path="activity-bank" element={<AdminActivityBank />} />
               <Route path="learning-plugins" element={<LearningPlugins />} />
               <Route path="batches" element={<AdminBatches />} />
@@ -505,6 +507,7 @@ export default function App() {
               <Route path="students" element={<TeacherStudents />} />
               <Route path="attendance" element={<TeacherAttendance />} />
               <Route path="homework" element={<HomeworkManager scope="teacher" />} />
+              <Route path="mito-review" element={<MitoInsights scope="teacher" />} />
               <Route path="recordings" element={<TeacherRecordings />} />
               <Route path="demo-feedback" element={<TeacherDemoFeedback />} />
               <Route path="doubts" element={<TeacherDoubts />} />

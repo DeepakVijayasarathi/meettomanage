@@ -124,6 +124,7 @@ export const ADMIN_NAV: NavSection[] = [
     items: [
       { label: "Reports & Analytics", to: "/admin/reports", icon: BarChart3 },
       { label: "AI Insights", to: "/admin/ai-insights", icon: Sparkles },
+      { label: "Mito Insights", to: "/admin/mito-insights", icon: Sparkles },
       { label: "Bulk Email", to: "/admin/bulk-email", icon: Mail },
       { label: "Bulk Email History", to: "/admin/bulk-email/history", icon: History },
       { label: "Email Templates", to: "/admin/email-templates", icon: FileText },
@@ -180,6 +181,7 @@ export const TEACHER_NAV: NavSection[] = [
       { label: "My Students", to: "/teacher/students", icon: Users },
       { label: "Attendance & Records", to: "/teacher/attendance", icon: ClipboardList },
       { label: "Homework & Tests", to: "/teacher/homework", icon: BookOpenCheck },
+      { label: "Mito Review", to: "/teacher/mito-review", icon: Sparkles },
       { label: "Recordings", to: "/teacher/recordings", icon: Video },
       { label: "Demo Feedback", to: "/teacher/demo-feedback", icon: ClipboardCheck, badge: "1" },
       { label: "Student Doubts", to: "/teacher/doubts", icon: MessageCircleQuestion },

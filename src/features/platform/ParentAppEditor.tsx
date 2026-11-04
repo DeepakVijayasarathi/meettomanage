@@ -13,7 +13,7 @@ export const APP_EDITOR_KEYS = new Set(["app.webBaseUrl", "app.announcement", "a
   "app.maintenance.startsAtUtc", "app.maintenance.endsAtUtc", "app.minimumVersion", "app.forceUpgrade", "app.quickActions",
   "app.features.classes", "app.features.fees", "app.features.updates", "app.features.reports", "app.features.resources", "app.features.recordings",
   "app.features.enrollment", "app.features.support", "app.features.feedback", "app.features.mito", "app.mito.chatEnabled", "app.mito.quizEnabled",
-  "app.mito.voiceEnabled", "app.mito.modes.doubt", "app.mito.modes.plan", "app.mito.modes.review", "app.mito.displayName", "app.mito.welcomeMessage"]);
+  "app.mito.voiceEnabled", "app.mito.modes.doubt", "app.mito.modes.plan", "app.mito.modes.review", "app.mito.displayName", "app.mito.welcomeMessage", "app.mito.dailyLimit"]);
 
 /** Defaults for keys a client has never saved. Not public: only a signed-in family reads them, through the app config endpoint. */
 export const APP_DEFAULTS: Record<string, string> = { "app.webBaseUrl": "", "app.announcement": "", "app.joinOpensMinutesBefore": "10",
@@ -24,7 +24,7 @@ Object.assign(APP_DEFAULTS, {
   ...Object.fromEntries(["classes", "fees", "updates", "reports", "resources", "recordings", "enrollment", "support", "feedback", "mito"].map(x => [`app.features.${x}`, "true"])),
   "app.mito.chatEnabled": "true", "app.mito.quizEnabled": "true", "app.mito.voiceEnabled": "true",
   "app.mito.modes.doubt": "true", "app.mito.modes.plan": "true", "app.mito.modes.review": "true",
-  "app.mito.displayName": "Mito", "app.mito.welcomeMessage": "",
+  "app.mito.displayName": "Mito", "app.mito.welcomeMessage": "", "app.mito.dailyLimit": "40",
 });
 
 const isHttp = (value: string) => { try { const u = new URL(value); return u.protocol === "https:" || u.protocol === "http:"; } catch { return false; } };
@@ -126,6 +126,7 @@ export default function ParentAppEditor({ values, set, disabled, tenantId, token
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-1.5"><Label htmlFor="mito-display-name">Assistant name</Label><Input id="mito-display-name" maxLength={40} disabled={disabled} placeholder="Mito" value={values["app.mito.displayName"] ?? ""} onChange={e => set("app.mito.displayName", e.target.value)} /></div>
+        <div className="grid gap-1.5"><Label htmlFor="mito-daily-limit">Questions per student per day (0 = no limit)</Label><Input id="mito-daily-limit" type="number" min={0} max={1000} disabled={disabled || values["app.features.mito"] === "false"} value={values["app.mito.dailyLimit"] ?? "40"} onChange={e => set("app.mito.dailyLimit", e.target.value.replace(/\D/g, "").slice(0, 4))} /></div>
         <div className="grid gap-1.5"><Label htmlFor="mito-welcome">Welcome message</Label><Input id="mito-welcome" maxLength={240} disabled={disabled} placeholder="Ask me a learning question or let's plan your day." value={values["app.mito.welcomeMessage"] ?? ""} onChange={e => set("app.mito.welcomeMessage", e.target.value)} /></div>
       </div>
     </div>
