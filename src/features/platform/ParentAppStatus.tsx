@@ -10,6 +10,8 @@ type Status = {
   versions: { version: string; platform: string; installations: number; lastSeenAtUtc: string }[];
   errors: { category: string; installations: number; lastSeenAtUtc: string }[];
   trend: { date: string; activeFamilies: number }[];
+  /** Scrubbed, grouped app errors (newest backends only). */
+  crashes?: { name: string; message: string; context: string | null; stackTop: string | null; fatal: boolean; occurrences: number; appVersion: string; platform: string; firstSeenAtUtc: string; lastSeenAtUtc: string }[];
   readiness: { access: boolean; branding: boolean; portal: boolean; support: boolean; welcome: boolean };
 };
 
@@ -47,6 +49,7 @@ export default function ParentAppStatus({ tenantId, token }: { tenantId: string;
   const platforms = data?.platforms ?? [];
   const versions = data?.versions ?? [];
   const errors = data?.errors ?? [];
+  const crashes = data?.crashes ?? [];
   const maxTrend = useMemo(() => Math.max(1, ...trend.map(x => x.activeFamilies)), [trend]);
 
   if (loading && !data) return <div className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground" role="status">Loading real-time mobile app status…</div>;
@@ -90,6 +93,23 @@ export default function ParentAppStatus({ tenantId, token }: { tenantId: string;
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="overflow-hidden rounded-xl border bg-card"><div className="border-b px-4 py-3"><h4 className="text-sm font-semibold">Version adoption</h4><p className="text-xs text-muted-foreground">Latest-version adoption: {adoptionStats.latestVersionPercent}%</p></div><div className="divide-y">{versions.length ? versions.slice(0, 8).map(row => <div key={`${row.platform}-${row.version}`} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 text-xs"><div><span className="font-semibold">v{row.version}</span><span className="ml-2 capitalize text-muted-foreground">{row.platform}</span></div><span>{row.installations} installs</span><span className="text-muted-foreground">{relative(row.lastSeenAtUtc)}</span></div>) : <Empty text="Versions appear after the updated app reports in" />}</div></div>
       <div className="overflow-hidden rounded-xl border bg-card"><div className="border-b px-4 py-3"><h4 className="text-sm font-semibold">Operational signals</h4><p className="text-xs text-muted-foreground">Last sync {relative(active.lastSuccessfulSyncAtUtc)}</p></div><div className="divide-y">{errors.length ? errors.map(row => <div key={row.category} className="flex items-center justify-between gap-3 px-4 py-3 text-xs"><span className="inline-flex items-center gap-2 capitalize"><AlertCircle className="h-4 w-4 text-amber-600" />{row.category}</span><span>{row.installations} installs · {relative(row.lastSeenAtUtc)}</span></div>) : <Empty text="No installation-level error signals in this period" />}</div></div>
+    </div>
+    <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="border-b px-4 py-3"><h4 className="text-sm font-semibold">Top app errors</h4><p className="text-xs text-muted-foreground">Grouped by cause; personal details are removed before storage</p></div>
+      <div className="divide-y">{crashes.length ? crashes.map(row => (
+        <details key={`${row.name}-${row.appVersion}-${row.platform}-${row.firstSeenAtUtc}`} className="group px-4 py-3 text-xs">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2">
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <AlertCircle className={`h-4 w-4 shrink-0 ${row.fatal ? "text-red-600" : "text-amber-600"}`} />
+              <span className="font-semibold">{row.name}</span>
+              <span className="truncate text-muted-foreground">{row.message}</span>
+            </span>
+            <span className="whitespace-nowrap text-muted-foreground">{row.fatal ? "Crash · " : ""}{row.occurrences}× · v{row.appVersion} <span className="capitalize">{row.platform}</span> · {relative(row.lastSeenAtUtc)}</span>
+          </summary>
+          {row.context && <p className="mt-2 text-muted-foreground">Where: {row.context}</p>}
+          {row.stackTop && <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-muted/60 p-2 font-mono text-[11px]">{row.stackTop}</pre>}
+        </details>
+      )) : <Empty text="No app errors reported in this period" />}</div>
     </div>
     <p className="text-[11px] text-muted-foreground">Privacy: aggregates use random app installation IDs. Hardware identifiers, family names, contacts, tokens, messages, and form content are not collected.</p>
   </section>;
