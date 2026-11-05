@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ChangeEvent } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ChangeEvent } from "react";
 import { AlertTriangle, BarChart3, CheckCircle2, Loader2, Mail, Pause, Pencil, Play, Plus, RefreshCw, Send, Settings2, Sparkles, Trash2, Upload, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { userMessage } from "@/lib/api";
@@ -24,6 +25,10 @@ import {
 } from "@/api/outreach";
 
 const ALL = "all";
+type AiControls = Pick<OutreachSettings, "aiEnabled" | "aiLeadQualification" | "aiMessageDrafting" | "aiCampaignGeneration" | "aiReplyAssistant" | "aiInsights">;
+const DEFAULT_AI: AiControls = { aiEnabled: true, aiLeadQualification: true, aiMessageDrafting: true, aiCampaignGeneration: true, aiReplyAssistant: true, aiInsights: true };
+const AiControlsContext = createContext<AiControls>(DEFAULT_AI);
+const useAiControls = () => useContext(AiControlsContext);
 const statusLabel = (s: ProspectStatus) => PROSPECT_STATUSES.find((x) => x.value === s)?.label ?? s;
 const statusVariant = (s: ProspectStatus) =>
   s === "Interested" || s === "Replied" ? "success" : s === "Unsubscribed" || s === "Bounced" || s === "NotInterested" ? "muted" : s === "Contacted" ? "secondary" : "outline";
@@ -33,13 +38,15 @@ export default function MarketingOutreach() {
   const { toast } = useToast();
   const [summary, setSummary] = useState<OutreachSummary | null>(null);
   const [mailHealth, setMailHealth] = useState<ReplySyncStatus | null>(null);
+  const [aiControls, setAiControls] = useState<AiControls>(DEFAULT_AI);
   const loadSummary = useCallback(() => outreachApi.summary().then(setSummary).catch(() => undefined), []);
-  useEffect(() => { void loadSummary(); const check = () => outreachApi.replySyncStatus().then(setMailHealth).catch(() => undefined); void check(); const timer = window.setInterval(check, 60000); return () => window.clearInterval(timer); }, [loadSummary]);
+  const loadAiControls = useCallback(() => outreachApi.settings().then(setAiControls).catch(() => undefined), []);
+  useEffect(() => { void loadSummary(); void loadAiControls(); const check = () => outreachApi.replySyncStatus().then(setMailHealth).catch(() => undefined); void check(); const timer = window.setInterval(check, 60000); return () => window.clearInterval(timer); }, [loadSummary, loadAiControls]);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
-    <div>
+    <AiControlsContext.Provider value={aiControls}><div>
       <PageHeader eyebrow="Marketing workspace" title="Sales outreach" description="Prioritize the right academies, send reviewed campaigns, handle replies, and move interested leads toward a demo." />
 
       <Card className="mb-6">
@@ -57,7 +64,7 @@ export default function MarketingOutreach() {
           </div>
           {summary && (
             <div className="flex items-center gap-3 text-sm">
-              <Badge variant={mailHealth?.healthy ? "success" : "outline"}>{mailHealth?.healthy ? "Mailbox healthy" : mailHealth?.configured ? "Mailbox attention" : "Mailbox not configured"}</Badge>
+              <Badge variant={aiControls.aiEnabled ? "secondary" : "outline"}>{aiControls.aiEnabled ? "AI enabled" : "AI disabled"}</Badge><Badge variant={mailHealth?.healthy ? "success" : "outline"}>{mailHealth?.healthy ? "Mailbox healthy" : mailHealth?.configured ? "Mailbox attention" : "Mailbox not configured"}</Badge>
               <span><b>{summary.sentToday}</b> of <b>{summary.dailyLimit}</b> sent today</span>
               <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}><Settings2 className="mr-1.5 h-3.5 w-3.5" />Settings</Button>
             </div>
@@ -81,8 +88,8 @@ export default function MarketingOutreach() {
         <TabsContent value="insights" className="mt-4"><InsightsTab /></TabsContent>
         <TabsContent value="history" className="mt-4"><HistoryTab /></TabsContent>
       </Tabs>
-      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} onSaved={() => { setSettingsOpen(false); void loadSummary(); toast({ variant: "success", title: "Cold e-mail settings saved" }); }} />}
-    </div>
+      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} onSaved={() => { setSettingsOpen(false); void loadSummary(); void loadAiControls(); toast({ variant: "success", title: "Cold e-mail settings saved" }); }} />}
+    </div></AiControlsContext.Provider>
   );
 }
 
@@ -110,8 +117,8 @@ function SettingsDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     <Dialog open onOpenChange={(o) => { if (!o && !saving) onClose(); }}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Cold e-mail settings</DialogTitle>
-          <DialogDescription>Applies to every campaign. The sender address must be on a domain verified in your e-mail provider (Resend).</DialogDescription>
+          <DialogTitle>Marketing Console settings</DialogTitle>
+          <DialogDescription>Control outreach sending and choose exactly which AI-assisted features your team can use.</DialogDescription>
         </DialogHeader>
         {!form ? <p className="py-6 text-center text-sm text-muted-foreground">{error ?? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading…</>}</p> : (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -132,6 +139,23 @@ function SettingsDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
             <div className="grid gap-1.5"><Label htmlFor="s-end">Send until (hour, 1–24)</Label><Input id="s-end" type="number" min={1} max={24} value={form.windowEndHour} onChange={num("windowEndHour")} /></div>
             <div className="grid gap-1.5"><Label htmlFor="s-gap">Shortest gap between e-mails (days)</Label><Input id="s-gap" type="number" min={1} max={30} value={form.minFollowUpDays} onChange={num("minFollowUpDays")} /></div>
             <div className="grid gap-1.5"><Label htmlFor="s-fail">Failed attempts before "bounced"</Label><Input id="s-fail" type="number" min={1} max={10} value={form.maxFailuresPerStep} onChange={num("maxFailuresPerStep")} /></div>
+
+            <div className="mt-2 rounded-xl border bg-muted/20 p-4 sm:col-span-2"><div className="flex items-start justify-between gap-4"><div><p className="font-semibold">Email operations</p><p className="text-xs text-muted-foreground">Master control for outbound email and inbound reply synchronization.</p></div><Switch checked={form.emailEnabled} onCheckedChange={(value) => set("emailEnabled", value)} aria-label="Enable email operations" /></div></div>
+            <div className="grid gap-2 sm:col-span-2 sm:grid-cols-2">{([
+              ["campaignSendingEnabled", "Campaign delivery", "Scheduled campaign emails and retries"],
+              ["manualEmailEnabled", "Manual emails", "Reviewed one-off emails from a lead"],
+              ["replySendingEnabled", "Approved replies", "Human-approved responses to prospects"],
+              ["replySyncEnabled", "Reply synchronization", "IMAP and webhook inbound reply monitoring"],
+            ] as const).map(([key, title, description]) => <div key={key} className={`flex items-start justify-between gap-3 rounded-lg border p-3 ${!form.emailEnabled ? "opacity-50" : ""}`}><div><p className="text-sm font-medium">{title}</p><p className="text-xs text-muted-foreground">{description}</p></div><Switch checked={form[key]} disabled={!form.emailEnabled} onCheckedChange={(value) => set(key, value)} aria-label={`Enable ${title}`} /></div>)}</div>
+
+            <div className="mt-2 rounded-xl border bg-muted/20 p-4 sm:col-span-2"><div className="flex items-start justify-between gap-4"><div><p className="font-semibold">Marketing AI</p><p className="text-xs text-muted-foreground">Master control for every AI-assisted marketing feature. Sending and reply synchronization continue when AI is off.</p></div><Switch checked={form.aiEnabled} onCheckedChange={(value) => set("aiEnabled", value)} aria-label="Enable marketing AI" /></div></div>
+            <div className="grid gap-2 sm:col-span-2 sm:grid-cols-2">{([
+              ["aiLeadQualification", "Lead qualification", "AI lead analysis and score explanations"],
+              ["aiMessageDrafting", "Message drafting", "Personalized first emails and replies"],
+              ["aiCampaignGeneration", "Campaign generation", "AI-generated campaign sequences"],
+              ["aiReplyAssistant", "Reply assistant", "Reply intent analysis and suggested responses"],
+              ["aiInsights", "Insights and briefing", "Regional analysis and daily sales plans"],
+            ] as const).map(([key, title, description]) => <div key={key} className={`flex items-start justify-between gap-3 rounded-lg border p-3 ${!form.aiEnabled ? "opacity-50" : ""}`}><div><p className="text-sm font-medium">{title}</p><p className="text-xs text-muted-foreground">{description}</p></div><Switch checked={form[key]} disabled={!form.aiEnabled} onCheckedChange={(value) => set(key, value)} aria-label={`Enable ${title}`} /></div>)}</div>
 
             <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:col-span-2">Footer (added to every e-mail, above and below the unsubscribe link)</p>
             <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="s-footer">Why they're getting this</Label><Textarea id="s-footer" rows={2} maxLength={500} value={form.footerText} onChange={(e) => set("footerText", e.target.value)} /></div>
@@ -163,6 +187,7 @@ function AiDraftDialog({ prospectId, purpose, title, onClose }: { prospectId: st
 
 function TodayTab() {
   const { toast } = useToast();
+  const ai = useAiControls();
   const [data, setData] = useState<TodayDashboard | null>(null);
   const [briefing, setBriefing] = useState<OutreachAiInsights | null>(null);
   const [briefingBusy, setBriefingBusy] = useState(false);
@@ -172,7 +197,7 @@ function TodayTab() {
   async function buildBriefing() { setBriefingBusy(true); try { setBriefing(await outreachApi.growthAiPlan()); } catch (err) { toast({ variant: "error", title: "AI briefing unavailable", description: userMessage(err) }); } finally { setBriefingBusy(false); } }
   if (!data) return <Card><CardContent className="p-10 text-center"><Loader2 className="inline h-5 w-5 animate-spin" /></CardContent></Card>;
   return <div className="space-y-5">
-    <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/[0.07] via-background to-background"><CardContent className="p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="max-w-2xl"><div className="mb-2 flex items-center gap-2"><span className="rounded-lg bg-primary/10 p-2"><Sparkles className="h-4 w-4 text-primary" /></span><div><h2 className="font-semibold">AI sales briefing</h2><p className="text-xs text-muted-foreground">A focused plan generated from aggregate pipeline performance—not private contact details.</p></div></div>{!briefing && <p className="mt-3 text-sm text-muted-foreground">Ask AI what deserves attention today before drafting emails or starting another campaign.</p>}</div><Button disabled={briefingBusy} onClick={() => void buildBriefing()}>{briefingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{briefing ? "Refresh briefing" : "Build today's plan"}</Button></div>{briefing && <div className="mt-5"><div className="mb-3 flex flex-wrap items-center gap-2"><p className="font-medium">{briefing.summary}</p><Badge variant="outline">{briefing.aiPowered ? "AI generated" : "Data-guided"}</Badge></div><div className="grid gap-3 lg:grid-cols-2"><div className="rounded-xl border bg-background/80 p-4"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">What AI noticed</p><ul className="space-y-2 text-sm">{briefing.observations.slice(0, 3).map((x) => <li key={x} className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /><span>{x}</span></li>)}</ul></div><div className="rounded-xl border bg-background/80 p-4"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Best next actions</p><ol className="space-y-2 text-sm">{briefing.nextActions.slice(0, 3).map((x, i) => <li key={x} className="flex gap-2"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">{i + 1}</span><span>{x}</span></li>)}</ol></div></div></div>}</CardContent></Card>
+    <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/[0.07] via-background to-background"><CardContent className="p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="max-w-2xl"><div className="mb-2 flex items-center gap-2"><span className="rounded-lg bg-primary/10 p-2"><Sparkles className="h-4 w-4 text-primary" /></span><div><h2 className="font-semibold">AI sales briefing</h2><p className="text-xs text-muted-foreground">{!ai.aiEnabled || !ai.aiInsights ? "Disabled in Marketing Console settings." : "A focused plan generated from aggregate pipeline performance—not private contact details."}</p></div></div>{!briefing && ai.aiEnabled && ai.aiInsights && <p className="mt-3 text-sm text-muted-foreground">Ask AI what deserves attention today before drafting emails or starting another campaign.</p>}</div><Button disabled={briefingBusy || !ai.aiEnabled || !ai.aiInsights} onClick={() => void buildBriefing()}>{briefingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{briefing ? "Refresh briefing" : "Build today's plan"}</Button></div>{briefing && <div className="mt-5"><div className="mb-3 flex flex-wrap items-center gap-2"><p className="font-medium">{briefing.summary}</p><Badge variant="outline">{briefing.aiPowered ? "AI generated" : "Data-guided"}</Badge></div><div className="grid gap-3 lg:grid-cols-2"><div className="rounded-xl border bg-background/80 p-4"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">What AI noticed</p><ul className="space-y-2 text-sm">{briefing.observations.slice(0, 3).map((x) => <li key={x} className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /><span>{x}</span></li>)}</ul></div><div className="rounded-xl border bg-background/80 p-4"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Best next actions</p><ol className="space-y-2 text-sm">{briefing.nextActions.slice(0, 3).map((x, i) => <li key={x} className="flex gap-2"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">{i + 1}</span><span>{x}</span></li>)}</ol></div></div></div>}</CardContent></Card>
     <div className="grid gap-3 sm:grid-cols-3">{[["Hot leads", data.hotLeads.length], ["Replies to handle", data.replies.length], ["Open tasks", data.tasks.length]].map(([label, n]) => <Card key={String(label)}><CardContent className="p-5"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-1 text-3xl font-bold">{n}</p></CardContent></Card>)}</div>
     <div className="grid gap-5 xl:grid-cols-2"><Card><CardContent className="p-5"><h2 className="mb-1 font-semibold">Best leads to contact</h2><p className="mb-4 text-xs text-muted-foreground">Highest-fit new and qualified academies.</p><div className="space-y-2">{data.hotLeads.map((lead) => <div key={lead.id} className="flex items-center justify-between gap-3 rounded-lg border p-3"><div><p className="font-medium">{lead.academyName || lead.email}</p><p className="text-xs text-muted-foreground">{lead.region || "Unassigned"} · {lead.scoreReason || "Qualified profile"}</p></div><div className="flex items-center gap-2"><Badge variant="success">{lead.leadScore}</Badge><Button size="sm" onClick={() => setDraft({ id: lead.id, purpose: "first-contact", title: `AI message · ${lead.academyName || lead.email}` })}><Sparkles className="h-3.5 w-3.5" />Draft</Button></div></div>)}{data.hotLeads.length === 0 && <p className="text-sm text-muted-foreground">No qualified leads waiting.</p>}</div></CardContent></Card>
       <Card><CardContent className="p-5"><h2 className="mb-1 font-semibold">Replies needing action</h2><p className="mb-4 text-xs text-muted-foreground">Respond quickly to interested academies.</p><div className="space-y-2">{data.replies.map((lead) => <div key={lead.id} className="flex items-center justify-between gap-3 rounded-lg border p-3"><div><p className="font-medium">{lead.academyName || lead.email}</p><p className="text-xs text-muted-foreground">{lead.region || "Unassigned"} · next action {lead.nextActionAtUtc ? formatDate(lead.nextActionAtUtc) : "now"}</p></div><Button size="sm" onClick={() => setDraft({ id: lead.id, purpose: "reply", title: `AI reply · ${lead.academyName || lead.email}` })}><Sparkles className="h-3.5 w-3.5" />Reply</Button></div>)}{data.replies.length === 0 && <p className="text-sm text-muted-foreground">No replies waiting.</p>}</div></CardContent></Card></div>

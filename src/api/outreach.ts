@@ -34,6 +34,10 @@ export interface OutreachSettings {
   fromName: string; fromAddress: string; replyTo: string | null; dailyLimit: number;
   windowStartHour: number; windowEndHour: number; timeZoneId: string;
   footerText: string; companyLine: string; minFollowUpDays: number; maxFailuresPerStep: number;
+  emailEnabled: boolean; campaignSendingEnabled: boolean; manualEmailEnabled: boolean;
+  replySendingEnabled: boolean; replySyncEnabled: boolean;
+  aiEnabled: boolean; aiLeadQualification: boolean; aiMessageDrafting: boolean;
+  aiCampaignGeneration: boolean; aiReplyAssistant: boolean; aiInsights: boolean;
 }
 
 export interface Prospect {
