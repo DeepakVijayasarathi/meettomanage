@@ -136,6 +136,7 @@ const MitoInsights = lazy(() => import("@/features/shared/MitoInsights"));
 const ParentCertificates = lazy(() => import("@/features/parent/Certificates"));
 const AdminCertificates = lazy(() => import("@/features/admin/Certificates"));
 const VerifyCertificate = lazy(() => import("@/features/public/VerifyCertificate"));
+const Waitlist = lazy(() => import("@/features/admission/Waitlist"));
 const ParentHomework = lazy(() => import("@/features/parent/Homework"));
 const TeacherDemoFeedback = lazy(() => import("@/features/teacher/DemoFeedback"));
 const TeacherLeave = lazy(() => import("@/features/teacher/Leave"));
@@ -352,6 +353,7 @@ export default function App() {
               <Route path="homework" element={<HomeworkManager scope="staff" />} />
               <Route path="mito-insights" element={<MitoInsights scope="staff" />} />
               <Route path="certificates" element={<AdminCertificates />} />
+              <Route path="waitlist" element={<Waitlist />} />
               <Route path="activity-bank" element={<AdminActivityBank />} />
               <Route path="learning-plugins" element={<LearningPlugins />} />
               <Route path="batches" element={<AdminBatches />} />
@@ -605,6 +607,7 @@ export default function App() {
               <Route path="demo-feedback" element={<AdmissionDemoFeedback />} />
               <Route path="leads" element={<AdmissionLeads />} />
               <Route path="payments" element={<AdmissionPayments />} />
+              <Route path="waitlist" element={<Waitlist />} />
               <Route path="conversion" element={<AdmissionConversion />} />
               <Route path="reports" element={<AdmissionReports />} />
               <Route path="parent-feedback" element={<ParentFeedbackReport />} />
