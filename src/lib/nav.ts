@@ -52,6 +52,7 @@ import { Send,
   Radar,
   Gamepad2,
   BookOpenCheck,
+  Award,
   type LucideIcon,
 } from "lucide-react";
 
@@ -81,6 +82,7 @@ export const ADMIN_NAV: NavSection[] = [
       { label: "Recordings", to: "/admin/recordings", icon: Video },
       { label: "Quiz Bank", to: "/admin/quiz-bank", icon: Sparkles },
       { label: "Homework & Tests", to: "/admin/homework", icon: BookOpenCheck },
+      { label: "Certificates", to: "/admin/certificates", icon: Award },
       { label: "Activity Bank", to: "/admin/activity-bank", icon: PencilRuler },
     ],
   },
@@ -208,6 +210,7 @@ export const PARENT_NAV: NavSection[] = [
     items: [
       { label: "Schedule & Live Class", to: "/parent/schedule", icon: CalendarClock },
       { label: "Homework & Tests", to: "/parent/homework", icon: BookOpenCheck },
+      { label: "Certificates", to: "/parent/certificates", icon: Award },
       { label: "Resources", to: "/parent/resources", icon: FolderOpen },
       { label: "Recordings", to: "/parent/recordings", icon: Video },
       { label: "Student View", to: "/student", icon: Sparkles },

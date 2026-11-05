@@ -75,6 +75,7 @@ const PARENT_ROUTE_BY_TARGET: Record<string, string> = {
   resource: "/parent/resources",
   recording: "/parent/recordings",
   home: "/parent",
+  certificate: "/parent/certificates",
 };
 
 /**

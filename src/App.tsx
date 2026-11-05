@@ -133,6 +133,9 @@ const TeacherStudents = lazy(() => import("@/features/teacher/Students"));
 const TeacherAttendance = lazy(() => import("@/features/teacher/Attendance"));
 const HomeworkManager = lazy(() => import("@/features/shared/HomeworkManager"));
 const MitoInsights = lazy(() => import("@/features/shared/MitoInsights"));
+const ParentCertificates = lazy(() => import("@/features/parent/Certificates"));
+const AdminCertificates = lazy(() => import("@/features/admin/Certificates"));
+const VerifyCertificate = lazy(() => import("@/features/public/VerifyCertificate"));
 const ParentHomework = lazy(() => import("@/features/parent/Homework"));
 const TeacherDemoFeedback = lazy(() => import("@/features/teacher/DemoFeedback"));
 const TeacherLeave = lazy(() => import("@/features/teacher/Leave"));
@@ -273,6 +276,8 @@ export default function App() {
             <Route path="/reset-pin" element={<ResetPin />} />
             {/* Anonymous payment page behind an admission counsellor's payment link (T&C first). */}
             <Route path="/pay/:token" element={<AdmissionPayment />} />
+            {/* Public check behind a completion certificate's QR code. */}
+            <Route path="/verify/:code" element={<VerifyCertificate />} />
             {/* Full Terms & Conditions and Refund Policy, linked from every payment screen. */}
             <Route path="/terms" element={<Terms />} />
 
@@ -346,6 +351,7 @@ export default function App() {
               <Route path="quiz-bank" element={<AdminQuizQuestions />} />
               <Route path="homework" element={<HomeworkManager scope="staff" />} />
               <Route path="mito-insights" element={<MitoInsights scope="staff" />} />
+              <Route path="certificates" element={<AdminCertificates />} />
               <Route path="activity-bank" element={<AdminActivityBank />} />
               <Route path="learning-plugins" element={<LearningPlugins />} />
               <Route path="batches" element={<AdminBatches />} />
@@ -524,6 +530,7 @@ export default function App() {
               <Route path="enrollment" element={<ParentEnrollment />} />
               <Route path="schedule" element={<ParentSchedule />} />
               <Route path="homework" element={<ParentHomework />} />
+              <Route path="certificates" element={<ParentCertificates />} />
               <Route path="resources" element={<ParentResources />} />
               <Route path="recordings" element={<ParentRecordings />} />
               <Route path="billing" element={<ParentBilling />} />
