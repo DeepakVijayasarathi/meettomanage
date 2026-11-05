@@ -49,6 +49,9 @@ export function InvoiceDetailDialog({
               <Field label="Parent" value={invoice.parentName} />
               <Field label="Department" value={invoice.department} />
               <Field label="Amount" value={formatCurrency(invoice.amount)} />
+              {(invoice.discountAmount ?? 0) > 0 && (
+                <Field label={invoice.discountLabel ?? "Discount"} value={`- ${formatCurrency(invoice.discountAmount ?? 0)} (before: ${formatCurrency(invoice.amount + (invoice.discountAmount ?? 0))})`} />
+              )}
               <Field label="Issued On" value={formatDate(invoice.issuedOn, "long")} />
               <Field label="Due On" value={formatDate(invoice.dueOn, "long")} />
               <Field label="Status" value={<FeeStatusBadge status={invoice.status} />} />

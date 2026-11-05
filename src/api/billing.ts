@@ -24,6 +24,9 @@ export interface ApiInvoice {
   departmentName: string;
   amount: number;
   amountPaid: number;
+  /** Already taken off `amount`; 0 when none. */
+  discountAmount?: number;
+  discountLabel?: string | null;
   currency: string;
   status: ApiInvoiceStatus;
   dueDate: string;
@@ -62,6 +65,8 @@ export function toFrontendInvoice(invoice: ApiInvoice): Invoice {
     department: invoice.departmentName,
     amount: invoice.amount,
     amountPaid: invoice.amountPaid,
+    discountAmount: invoice.discountAmount ?? 0,
+    discountLabel: invoice.discountLabel ?? null,
     status: INVOICE_STATUS_FROM_API[invoice.status],
     issuedOn: invoice.issuedAtUtc.slice(0, 10),
     dueOn: invoice.dueDate,

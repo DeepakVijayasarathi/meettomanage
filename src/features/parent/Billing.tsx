@@ -6,6 +6,7 @@ import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { FeeStatusBadge } from "@/components/StatusBadge";
 import { PayNowModal } from "@/components/PayNowModal";
+import { PromoCodeCard } from "@/features/parent/PromoCodeCard";
 import { InvoiceDetailDialog } from "@/components/InvoiceDetailDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -183,6 +184,8 @@ export default function ParentBilling() {
         <KpiCard label="Paid this year" value={formatCurrency(totalPaid)} icon={CheckCircle2} tone="success" loading={invoicesLoading} />
         <KpiCard label="Next due date" value={nextDue ? formatDate(nextDue.dueOn, "short") : "—"} icon={ReceiptText} tone="primary" loading={invoicesLoading} />
       </div>
+
+      {apiEnabled() && <PromoCodeCard invoices={invoices} onApplied={reloadInvoices} />}
 
       <Card className="mt-6">
         <CardHeader>

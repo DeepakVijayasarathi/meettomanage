@@ -145,6 +145,9 @@ export interface Invoice {
   amount: number;
   /** Amount settled so far; balance due = amount - amountPaid. Present in API mode. */
   amountPaid?: number;
+  /** Discount already taken off `amount` (promo code or sibling discount). */
+  discountAmount?: number;
+  discountLabel?: string | null;
   status: "paid" | "pending" | "overdue" | "partial" | "cancelled";
   issuedOn: string;
   dueOn: string;

@@ -137,6 +137,7 @@ const ParentCertificates = lazy(() => import("@/features/parent/Certificates"));
 const AdminCertificates = lazy(() => import("@/features/admin/Certificates"));
 const VerifyCertificate = lazy(() => import("@/features/public/VerifyCertificate"));
 const Waitlist = lazy(() => import("@/features/admission/Waitlist"));
+const Discounts = lazy(() => import("@/features/admin/Discounts"));
 const ParentHomework = lazy(() => import("@/features/parent/Homework"));
 const TeacherDemoFeedback = lazy(() => import("@/features/teacher/DemoFeedback"));
 const TeacherLeave = lazy(() => import("@/features/teacher/Leave"));
@@ -354,6 +355,7 @@ export default function App() {
               <Route path="mito-insights" element={<MitoInsights scope="staff" />} />
               <Route path="certificates" element={<AdminCertificates />} />
               <Route path="waitlist" element={<Waitlist />} />
+              <Route path="discounts" element={<Discounts />} />
               <Route path="activity-bank" element={<AdminActivityBank />} />
               <Route path="learning-plugins" element={<LearningPlugins />} />
               <Route path="batches" element={<AdminBatches />} />
