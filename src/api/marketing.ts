@@ -251,6 +251,10 @@ export interface ApiMarketingTotals {
   visitors: number;
   chatsStarted: number;
   demoRequests: number;
+  formStartedVisitors: number;
+  formSubmittedVisitors: number;
+  formValidationFailedVisitors: number;
+  formAbandonedVisitors: number;
   chatBookings: number;
   conversionRate: number;
   pagesPerVisitor: number;

@@ -108,7 +108,7 @@ export default function CaseStudyReaderNest() {
                 <h1 className="font-display mt-6 max-w-[620px] text-[clamp(2.6rem,4.5vw,4.3rem)] font-extrabold leading-[1.06] tracking-[-0.055em] text-[#26231E]">Every great classroom has <span className="font-serif font-normal italic text-[#B34B26]">a story</span> behind it.</h1>
                 <p className="mt-6 max-w-[490px] text-[17px] leading-[1.85] text-[#70675C]">How The Reader Nest and MeetToManage brought educators, students and parents together around what matters most: the joy of learning.</p>
                 <div className="mt-8 flex items-center gap-3.5 border-t border-[#E5DCCD] pt-6">
-                  <img src="/clients/thereader.png" alt="The Reader Nest logo" width={48} height={48} className="h-12 w-12 rounded-full bg-white object-cover ring-1 ring-[#E5DCCD]" />
+                  <img src="/clients/thereader-128.webp" alt="The Reader Nest logo" width={48} height={48} className="h-12 w-12 rounded-full bg-white object-cover ring-1 ring-[#E5DCCD]" />
                   <div><p className="text-sm font-bold text-[#29251F]">The Reader Nest</p><p className="mt-1 text-xs text-[#786D60]">Founded by Akanksha Nagar</p></div>
                 </div>
                 <a href="#story-section-0" className="mt-7 inline-flex items-center gap-3 rounded-full bg-[#C2410C] px-6 py-3.5 text-sm font-bold text-white transition-colors hover:bg-[#9A3412] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#B6441D]">Discover their story <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></a>

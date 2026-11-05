@@ -26,9 +26,38 @@ const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, 
 const BLOG_TITLE_SUFFIX = " | Meet to Manage";
 const NO_SHOWS_SLUG = "reduce-no-shows-online-classes";
 const NO_SHOWS_DESCRIPTION = "A practical guide for Indian coaching centres and online academies to reduce student and demo-class no-shows with reminders, attendance tracking and clear follow-up.";
+const BLOG_SEARCH_TITLES = {
+  "single-subject-academy-growth-playbook": "Growth Playbook for Phonics, Maths and Coding Academies",
+  "whatsapp-automation-for-coaching-centres": "WhatsApp Automation for Coaching Centres",
+  "class-recordings-15-day-window": "Class Recordings: Why a 15-Day Window Works",
+  "online-counselling-mentoring-platform": "Online Counselling and Mentoring Platform",
+  "how-to-qualify-coaching-centre-leads-without-slowing-down-enrolment": "How to Qualify Coaching Centre Leads",
+  "the-demo-booking-follow-up-checklist-that-prevents-lost-admissions": "Demo Booking Follow-Up Checklist for Academies",
+  "hybrid-classes-for-schools": "Hybrid Classes for Schools Without the Chaos",
+  "interactive-whiteboard-activities-online-classes": "10 Interactive Whiteboard Activities for Online Classes",
+  "gamification-online-classes-kids": "Gamification for Kids' Online Classes",
+  "tutor-grow-10-to-50-students": "How Tutors Can Grow from 10 to 50 Students",
+  "zoom-vs-live-classroom-for-academies": "Zoom vs Live Classroom Software for Academies",
+  "automated-fee-collection-setup": "Automated Fee Collection Setup for Academies",
+  "online-coaching-software-checklist": "Online Coaching Software Checklist",
+  "automatic-fee-suspension-payment-conversations": "Automatic Fee Suspension for Late Payments",
+  "demo-booking-to-enrolled-family": "From Demo Booking to Enrolled Family",
+};
 const NO_SHOWS_CONTEXT = "<aside><h2>For coaching centres and online academies</h2><p>This guide is for academy owners and administrators in India who want fewer missed student classes and demo bookings. It focuses on parent reminders, class scheduling, attendance tracking and follow-up—not sports lessons or event ticketing.</p></aside>";
 /** Brand suffix only when it fits in ~60 characters; a long title stays whole (never cut with "…"), so its keywords stay in. */
-const blogSeoTitle = (title) => (title.length + BLOG_TITLE_SUFFIX.length <= 60 ? `${title}${BLOG_TITLE_SUFFIX}` : title);
+const blogSeoTitle = (title, slug) => {
+  const searchTitle = BLOG_SEARCH_TITLES[slug] ?? title;
+  return searchTitle.length + BLOG_TITLE_SUFFIX.length <= 60 ? `${searchTitle}${BLOG_TITLE_SUFFIX}` : searchTitle;
+};
+const blogSeoDescription = (post, content) => {
+  if (post.slug === NO_SHOWS_SLUG) return NO_SHOWS_DESCRIPTION;
+  const excerpt = String(post.excerpt ?? "").trim();
+  if (excerpt.length >= 70) return excerpt;
+  const plain = String(content ?? "").replace(/^##\s+.*$/gm, " ").replace(/[*_#-]+/g, " ").replace(/\s+/g, " ").trim();
+  if (plain.length <= 160) return plain || excerpt;
+  const cut = plain.slice(0, 157);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 120)).trim()}…`;
+};
 
 /** Page title without the " — Meet to Manage…" or " | Meet to Manage" suffix, for the visible heading. */
 const heading = (title) => title.replace(/\s+[—|]\s+Meet to Manage.*$/, "");
@@ -135,10 +164,11 @@ async function blogPages() {
     const posts = (await getJson(`${API}/api/blog`)).filter((p) => typeof p.slug === "string" && /^[a-z0-9-]+$/.test(p.slug));
     const pages = [];
     for (const p of posts) {
+      let content = "";
       let contentHtml = "";
       let wordCount = 0;
       try {
-        const content = (await getJson(`${API}/api/blog/${p.slug}`)).content ?? "";
+        content = (await getJson(`${API}/api/blog/${p.slug}`)).content ?? "";
         contentHtml = markdownToHtml(content);
         wordCount = content.trim().split(/\s+/).filter(Boolean).length;
       } catch (err) {
@@ -148,10 +178,10 @@ async function blogPages() {
       pages.push({
         path: `/blog/${p.slug}`,
         type: "article",
-        title: blogSeoTitle(p.title),
+        title: blogSeoTitle(p.title, p.slug),
         // The visible heading and article headline use the post's full title, not the search-result title.
         heading: p.title,
-        description: p.slug === NO_SHOWS_SLUG ? NO_SHOWS_DESCRIPTION : (p.excerpt ?? ""),
+        description: blogSeoDescription(p, content),
         publishedAt: p.publishedAtUtc,
         wordCount,
         image: existsSync(path.join(dist, cover)) ? cover : undefined,

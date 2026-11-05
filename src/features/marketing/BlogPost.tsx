@@ -26,10 +26,45 @@ const BLOG_CTA_EXPERIMENT = "blog-cta";
 const BLOG_CTA_VARIANTS = ["a", "b"] as const;
 const NO_SHOWS_SLUG = "reduce-no-shows-online-classes";
 const NO_SHOWS_DESCRIPTION = "A practical guide for Indian coaching centres and online academies to reduce student and demo-class no-shows with reminders, attendance tracking and clear follow-up.";
+const BLOG_SEARCH_TITLES: Record<string, string> = {
+  "single-subject-academy-growth-playbook": "Growth Playbook for Phonics, Maths and Coding Academies",
+  "whatsapp-automation-for-coaching-centres": "WhatsApp Automation for Coaching Centres",
+  "class-recordings-15-day-window": "Class Recordings: Why a 15-Day Window Works",
+  "online-counselling-mentoring-platform": "Online Counselling and Mentoring Platform",
+  "how-to-qualify-coaching-centre-leads-without-slowing-down-enrolment": "How to Qualify Coaching Centre Leads",
+  "the-demo-booking-follow-up-checklist-that-prevents-lost-admissions": "Demo Booking Follow-Up Checklist for Academies",
+  "hybrid-classes-for-schools": "Hybrid Classes for Schools Without the Chaos",
+  "interactive-whiteboard-activities-online-classes": "10 Interactive Whiteboard Activities for Online Classes",
+  "gamification-online-classes-kids": "Gamification for Kids' Online Classes",
+  "tutor-grow-10-to-50-students": "How Tutors Can Grow from 10 to 50 Students",
+  "zoom-vs-live-classroom-for-academies": "Zoom vs Live Classroom Software for Academies",
+  "automated-fee-collection-setup": "Automated Fee Collection Setup for Academies",
+  "online-coaching-software-checklist": "Online Coaching Software Checklist",
+  "automatic-fee-suspension-payment-conversations": "Automatic Fee Suspension for Late Payments",
+  "demo-booking-to-enrolled-family": "From Demo Booking to Enrolled Family",
+};
 
 /** Brand suffix only when it fits in ~60 characters; a long title stays whole (never cut with "…"), so its keywords stay in. Keep in sync with scripts/prerender-meta.mjs. */
-function blogSeoTitle(title: string): string {
-  return title.length + BLOG_TITLE_SUFFIX.length <= 60 ? `${title}${BLOG_TITLE_SUFFIX}` : title;
+function blogSeoTitle(title: string, slug: string): string {
+  const searchTitle = BLOG_SEARCH_TITLES[slug] ?? title;
+  return searchTitle.length + BLOG_TITLE_SUFFIX.length <= 60 ? `${searchTitle}${BLOG_TITLE_SUFFIX}` : searchTitle;
+}
+
+/** A few older API excerpts are only a word or two. Use the first useful article sentence
+ * rather than emitting an empty-looking search snippet; the stored excerpt still wins once
+ * it contains enough information. */
+function blogSeoDescription(post: ApiBlogPostDetail, slug: string): string {
+  if (slug === NO_SHOWS_SLUG) return NO_SHOWS_DESCRIPTION;
+  const excerpt = post.excerpt.trim();
+  if (excerpt.length >= 70) return excerpt;
+  const plain = post.content
+    .replace(/^##\s+.*$/gm, " ")
+    .replace(/[*_#•-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (plain.length <= 160) return plain || excerpt;
+  const cut = plain.slice(0, 157);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 120)).trim()}…`;
 }
 
 /** Page chrome only — the post itself (title/content/excerpt, from getBlogPost()/
@@ -232,6 +267,7 @@ export default function BlogPost() {
       .map(({ candidate }) => candidate);
   }, [otherPosts, slug, topic]);
   const wordCount = post ? post.content.trim().split(/\s+/).filter(Boolean).length : 0;
+  const seoDescription = post ? blogSeoDescription(post, slug) : "";
   const conversionCta = useMemo(() => {
     const generic = { heading: t.ctaHeading, body: t.ctaSub, outcome: t.requestDemo };
     if (lang !== "en" || !post || !topic) return generic;
@@ -347,8 +383,8 @@ export default function BlogPost() {
           just index.html's site-wide defaults for every /blog/:slug URL. */}
       {post ? (
         <Seo
-          title={blogSeoTitle(post.title)}
-          description={slug === NO_SHOWS_SLUG ? NO_SHOWS_DESCRIPTION : post.excerpt}
+          title={blogSeoTitle(post.title, slug)}
+          description={seoDescription}
           path={`/blog/${slug}`}
           type="article"
           image={blogImage(slug) ? `${SITE_URL}${blogImage(slug)}` : undefined}
@@ -356,7 +392,7 @@ export default function BlogPost() {
             "@context": "https://schema.org",
             "@type": "BlogPosting",
             headline: post.title.slice(0, 110),
-            description: slug === NO_SHOWS_SLUG ? NO_SHOWS_DESCRIPTION : post.excerpt,
+            description: seoDescription,
             datePublished: post.publishedAtUtc,
             dateModified: post.publishedAtUtc,
             mainEntityOfPage: `${SITE_URL}/blog/${slug}`,

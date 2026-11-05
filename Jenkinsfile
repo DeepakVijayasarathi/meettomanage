@@ -10,6 +10,10 @@ pipeline {
 
     triggers {
         githubPush()
+        // Blog posts are published from the API on a schedule. Rebuild shortly after the
+        // final daily publishing slot so every new article gets crawler-ready HTML instead
+        // of temporarily falling back to the homepage SPA shell.
+        cron('TZ=Asia/Kolkata\nH 14 * * *')
     }
 
     stages {

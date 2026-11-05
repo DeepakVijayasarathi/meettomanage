@@ -521,7 +521,7 @@ export default function Pricing() {
         <div className="mx-auto mt-12 flex max-w-2xl flex-col items-center gap-4 text-center">
           <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#5B6472] rtl:tracking-normal">{t.trusted.title}</p>
           <Link to="/customers" className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2410C]">
-            <img loading="lazy" src="/clients/thereader.png" alt="The Reader Nest" width={56} height={56} className="h-14 w-14 rounded-full object-cover ring-1 ring-black/10" />
+            <img loading="lazy" src="/clients/thereader-128.webp" alt="The Reader Nest" width={56} height={56} className="h-14 w-14 rounded-full object-cover ring-1 ring-black/10" />
             <img loading="lazy" src="/clients/alphabet.webp" alt="Alphabet — Jolly Phonics & Storytelling" width={800} height={400} className="h-14 w-auto object-contain" />
           </Link>
           <p className="text-sm text-[#5B6472]"><span>Razorpay payments</span> · <span>Cashfree payments</span></p>

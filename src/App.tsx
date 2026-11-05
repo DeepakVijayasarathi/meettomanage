@@ -76,6 +76,7 @@ const LiveClassSolution = lazy(() => import("@/features/marketing/LiveClassSolut
 const AttendanceSolution = lazy(() => import("@/features/marketing/AttendanceSolution"));
 const FeeManagementSolution = lazy(() => import("@/features/marketing/FeeManagementSolution"));
 const PhonicsSolution = lazy(() => import("@/features/marketing/PhonicsSolution"));
+const TuitionCentreSolution = lazy(() => import("@/features/marketing/TuitionCentreSolution"));
 const PlatformTerms = lazy(() => import("@/features/marketing/PlatformTerms"));
 const PlatformPrivacy = lazy(() => import("@/features/marketing/PlatformPrivacy"));
 
@@ -256,6 +257,7 @@ export default function App() {
             <Route path="/solutions/online-attendance-software-for-institutes" element={<MarketingTranslationLayer><AttendanceSolution /></MarketingTranslationLayer>} />
             <Route path="/solutions/fee-management-software-for-coaching-centres" element={<MarketingTranslationLayer><FeeManagementSolution /></MarketingTranslationLayer>} />
             <Route path="/solutions/phonics-live-class-software" element={<MarketingTranslationLayer><PhonicsSolution /></MarketingTranslationLayer>} />
+            <Route path="/solutions/tuition-centre-management-software" element={<MarketingTranslationLayer><TuitionCentreSolution /></MarketingTranslationLayer>} />
             <Route path="/docs" element={<MarketingTranslationLayer><Docs /></MarketingTranslationLayer>} />
             <Route path="/alternatives/classplus-alternative-for-coaching-centres" element={<MarketingTranslationLayer><ClassplusAlternative /></MarketingTranslationLayer>} />
             {NICHE_SLUGS.map((slug, i) => { const Page = NichePages[i]; return <Route key={slug} path={`/solutions/${slug}`} element={<MarketingTranslationLayer><Page /></MarketingTranslationLayer>} />; })}

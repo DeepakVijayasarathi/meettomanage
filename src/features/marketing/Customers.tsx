@@ -10,7 +10,7 @@ const STORIES = [
   {
     slug: "the-reader-nest",
     name: "The Reader Nest",
-    logo: "/clients/thereader.png",
+    logo: "/clients/thereader-128.webp",
     image: "/clients/reader-nest/reading-photo.webp",
     imageAlt: "AI-generated illustrative scene of a mother helping a child read",
     teaser: "Every great classroom has a story behind it. Discover how The Reader Nest partnered with MeetToManage to build a learning platform around educators, students and parents.",

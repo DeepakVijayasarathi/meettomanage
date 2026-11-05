@@ -24,7 +24,7 @@ export default function LiveClassSolution() {
       title="Live class software for coaching institutes and academies."
       sub="Run live classes in India with video, whiteboard, quizzes and recordings in one room, connected to attendance, fees and parent communication."
       seo={{
-        title: "Live Class Software for Coaching Institutes in India | Meet to Manage",
+        title: "Live Class Software for Coaching Institutes in India",
         description: "Run live classes, attendance, recordings, fees and parent communication in one platform. Built for coaching centres and academies in India.",
         path: "/solutions/live-class-software-for-institutes",
       }}

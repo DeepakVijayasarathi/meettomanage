@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, CalendarCheck2, ChevronLeft, ChevronRight, Eye, Loader2, MessageCircle, MousePointerClick, Sparkles, Table2, TrendingUp, Users, type LucideIcon } from "lucide-react";
+import { AlertTriangle, BarChart3, CalendarCheck2, CheckCircle2, ChevronLeft, ChevronRight, Eye, Info, Loader2, MessageCircle, MousePointerClick, Sparkles, Table2, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { KpiCard } from "@/components/KpiCard";
@@ -26,8 +26,8 @@ const EMPTY: ApiMarketingDashboard = {
   days: 30,
   startDate: "",
   endDate: "",
-  totals: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
-  previous: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
+  totals: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
+  previous: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
   daily: [],
   topPages: [],
   topBlogPosts: [],
@@ -174,6 +174,16 @@ export default function MarketingDashboard() {
   ];
   const supportingKpis = kpis.filter(k => ["Page views", "Chats started", "Pages / visitor", "Chat engagement"].includes(k.label));
   const demoTrend = change(t.demoRequests, p.demoRequests);
+  const formStarts = t.formStartedVisitors ?? 0;
+  const formSubmits = t.formSubmittedVisitors ?? 0;
+  const trackingHealth = formSubmits > t.demoRequests
+    ? { tone: "warning", label: "Needs verification", message: `${fmt(formSubmits)} visitor${formSubmits === 1 ? "" : "s"} submitted the form, but only ${fmt(t.demoRequests)} saved demo request${t.demoRequests === 1 ? "" : "s"} exist. Run one end-to-end test and inspect the API response.`, icon: AlertTriangle }
+    : t.demoRequests > 0
+      ? { tone: "success", label: "Conversion tracking active", message: "Saved demo requests confirm that the conversion path is recording successfully.", icon: CheckCircle2 }
+      : formStarts > 0
+        ? { tone: "warning", label: "Form activity detected", message: `${fmt(formStarts)} visitor${formStarts === 1 ? "" : "s"} started the form, but no saved demo request was recorded. Review validation failures and abandonments before changing the page.`, icon: AlertTriangle }
+        : { tone: "neutral", label: "No form attempts", message: "Page tracking is active, but nobody started the demo form in this period. Zero requests alone does not indicate a tracking failure.", icon: Info };
+  const TrackingIcon = trackingHealth.icon;
 
   return (
     <div>
@@ -260,11 +270,23 @@ export default function MarketingDashboard() {
         ))}
       </div>
 
+      <Card className={cn("mt-6 shadow-sm", trackingHealth.tone === "warning" && "border-amber-300/70 bg-amber-50/40 dark:bg-amber-950/10", trackingHealth.tone === "success" && "border-emerald-300/70 bg-emerald-50/40 dark:bg-emerald-950/10")}>
+        <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className={cn("mt-0.5 rounded-full bg-muted p-2", trackingHealth.tone === "warning" && "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300", trackingHealth.tone === "success" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300")}><TrackingIcon className="h-4 w-4" aria-hidden="true" /></span>
+            <div><p className="font-semibold">Tracking health · {trackingHealth.label}</p><p className="mt-1 text-sm text-muted-foreground">{trackingHealth.message}</p></div>
+          </div>
+          <dl className="grid shrink-0 grid-cols-3 gap-2 text-center text-sm">
+            {[["Form starts", formStarts], ["Submits", formSubmits], ["Saved demos", t.demoRequests]].map(([label, value]) => <div key={String(label)} className="min-w-20 rounded-lg border bg-background/80 px-3 py-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-bold tabular-nums">{fmt(Number(value))}</dd></div>)}
+          </dl>
+        </CardContent>
+      </Card>
+
       <Card className="mt-6 overflow-hidden border-primary/20 bg-gradient-to-br from-primary/[0.06] via-card to-card shadow-sm">
         <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
-          <div><CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" />Next moves</CardTitle><p className="mt-1 text-sm text-muted-foreground">Hetzner AI analyzes the selected period using only the aggregate figures shown here.</p></div>
+          <div><CardTitle className="flex items-center gap-2 text-base"><Sparkles aria-hidden="true" className="h-4 w-4 text-primary" />Next moves</CardTitle><p className="mt-1 text-sm text-muted-foreground">Hetzner AI analyzes the selected period using only the aggregate figures shown here.</p></div>
           <Button size="sm" onClick={() => void analyze()} disabled={loading || insightsLoading}>
-            {insightsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{insights ? "Refresh analysis" : "Analyze period"}
+            {insightsLoading ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Sparkles aria-hidden="true" className="h-4 w-4" />}{insights ? "Refresh analysis" : "Analyze period"}
           </Button>
         </CardHeader>
         <CardContent>

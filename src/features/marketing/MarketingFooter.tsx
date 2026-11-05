@@ -40,6 +40,7 @@ export function MarketingFooter() {
             <li><Link to="/solutions/online-attendance-software-for-institutes" className={LINK}>Attendance software</Link></li>
             <li><Link to="/solutions/fee-management-software-for-coaching-centres" className={LINK}>Fee management software</Link></li>
             <li><Link to="/solutions/phonics-live-class-software" className={LINK}>Phonics class software</Link></li>
+            <li><Link to="/solutions/tuition-centre-management-software" className={LINK}>Tuition centre software</Link></li>
             <li><Link to="/alternatives/classplus-alternative-for-coaching-centres" className={LINK}>Classplus alternative</Link></li>
           </ul>
         </nav>

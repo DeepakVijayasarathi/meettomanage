@@ -164,8 +164,8 @@ export default function MarketingHome() {
       <style>{FX_CSS}</style>
       <Seo
         pageKey="home"
-        title="School and Coaching Centre Management Software | Meet to Manage"
-        description="Manage live classes, admissions, fees and parent updates in one platform built for tuition, abacus and phonics centres. Book a free demo."
+        title="Coaching Institute Management Software India | Meet to Manage"
+        description="Manage live classes, admissions, fees, attendance and parent updates in one platform built for coaching institutes and tuition centres in India."
         path="/"
       />
       <Helmet><script type="application/ld+json">{jsonLd}</script></Helmet>
@@ -191,7 +191,7 @@ export default function MarketingHome() {
                   );
                 })}
               </h1>
-              <p className="mx-fade-up mt-5 max-w-[510px] text-[clamp(1rem,1.25vw,1.125rem)] leading-[1.8] text-[#6B625B]" style={{ animationDelay: "0.55s" }}>{c.hero.sub}</p>
+              <p className="mt-5 max-w-[510px] text-[clamp(1rem,1.25vw,1.125rem)] leading-[1.8] text-[#6B625B]">{c.hero.sub}</p>
 
               <div className="mt-8">
                 <AccessForm c={c.hero.form} watch={{ label: c.hero.watch, cta: c.hero.demo }} />
@@ -272,7 +272,7 @@ export default function MarketingHome() {
         {/* REAL CUSTOMER PROOF: factual product use, linked to the full approved story. */}
         {lang === "en" && <section aria-labelledby="customer-proof-heading" className="bg-[#FFF8F3] py-7">
           <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-5 px-5 text-center sm:flex-row sm:text-start">
-            <img loading="lazy" src="/clients/thereader.png" alt="The Reader Nest logo" width={64} height={64} className="h-16 w-16 shrink-0 rounded-full object-cover ring-1 ring-black/10" />
+            <img loading="lazy" src="/clients/thereader-128.webp" alt="The Reader Nest logo" width={64} height={64} className="h-16 w-16 shrink-0 rounded-full object-cover ring-1 ring-black/10" />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#C2410C]">Customer story</p>
               <h2 id="customer-proof-heading" className="font-display mt-1 text-lg font-extrabold tracking-[-0.02em] text-[#1C1917]">The Reader Nest runs enrolment, classes, worksheets, recordings and its parent dashboard in one platform.</h2>
@@ -373,6 +373,7 @@ export default function MarketingHome() {
                     <span className={"relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-b shadow-[0_6px_14px_-8px_rgba(28,25,23,0.45)] ring-1 ring-white transition-transform duration-300 group-hover:scale-105 " + TINTS[i % TINTS.length].tile} style={{ color: TINTS[i % TINTS.length].icon }}><Icon className="h-7 w-7" /></span>
                     <h3 className="font-display relative mt-6 text-xl font-extrabold tracking-[-0.02em] text-[#1C1917] rtl:tracking-normal">{item.title}</h3>
                     <p className="relative mt-2 text-[15px] leading-relaxed text-[#57534E]">{item.body}</p>
+                    {item.key === "tuition" && <Link to="/solutions/tuition-centre-management-software" className="relative mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-[#9A3412] underline-offset-4 hover:underline">Tuition centre software <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link>}
                   </Reveal>
                 );
               })}
@@ -440,7 +441,7 @@ export default function MarketingHome() {
 
         {/* METRICS */}
         <section aria-label="Platform facts" className="bg-white py-10 sm:py-12">
-          <dl className="mx-auto grid max-w-[1200px] grid-cols-2 gap-3 px-5 sm:gap-4 lg:grid-cols-4">
+          <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-3 px-5 sm:gap-4 lg:grid-cols-4">
             {c.metrics.map((m, i) => {
               const { icon: Icon, tint } = METRIC_STYLE[i];
               const t = TINTS[tint];
@@ -451,13 +452,13 @@ export default function MarketingHome() {
                   <span className={"relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-b shadow-[0_6px_14px_-8px_rgba(28,25,23,0.45)] ring-1 ring-white " + t.tile} style={{ color: t.icon }}><Icon className="h-7 w-7" /></span>
                   <span aria-hidden="true" className="relative hidden h-12 w-px shrink-0 sm:block" style={{ backgroundColor: t.dot }} />
                   <div className="relative min-w-0">
-                    <dd className="font-display text-[clamp(1.9rem,3vw,2.5rem)] font-extrabold leading-none tracking-[-0.03em]" style={{ color: t.icon }}><CountUp to={m.to} suffix={m.suffix} /></dd>
-                    <dt className="mt-1.5 text-sm font-medium leading-snug text-[#57534E]">{m.label}</dt>
+                    <p className="font-display text-[clamp(1.9rem,3vw,2.5rem)] font-extrabold leading-none tracking-[-0.03em]" style={{ color: t.icon }}><CountUp to={m.to} suffix={m.suffix} /></p>
+                    <p className="mt-1.5 text-sm font-medium leading-snug text-[#57534E]">{m.label}</p>
                   </div>
                 </Reveal>
               );
             })}
-          </dl>
+          </div>
         </section>
 
         {/* SECURITY */}
