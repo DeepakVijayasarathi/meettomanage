@@ -1,5 +1,6 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { AlertCircle, CheckCircle2, KeyRound, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -118,6 +119,10 @@ export default function ResetPin() {
 
   return (
     <div className="theme-light-scope flex min-h-screen items-center justify-center bg-brand-cream px-6">
+      <Helmet>
+        <title>Choose a new PIN | Meet to Manage</title>
+        <meta name="robots" content="noindex, follow" />
+      </Helmet>
       <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-[0_24px_70px_-24px_rgba(43,32,20,0.22)] ring-1 ring-brand-ink/[0.04]">
         <Logo className="mb-6 justify-center" />
 

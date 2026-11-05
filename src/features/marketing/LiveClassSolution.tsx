@@ -21,17 +21,17 @@ export default function LiveClassSolution() {
   return (
     <PageShell
       eyebrow="Live classroom"
-      title="Live class software for institutes and online coaching centres."
-      sub="Video, whiteboard, quizzes and recordings in one room, connected to attendance, fees and the parent app."
+      title="Live class software for coaching institutes and academies."
+      sub="Run live classes in India with video, whiteboard, quizzes and recordings in one room, connected to attendance, fees and parent communication."
       seo={{
-        title: "Live Class Software for Coaching Institutes | Meet to Manage",
-        description: "Run live classes and meetings with video, shared whiteboard, quizzes, screen sharing and recordings. Attendance, fees and the parent app are built in.",
+        title: "Live Class Software for Coaching Institutes in India | Meet to Manage",
+        description: "Run live classes, attendance, recordings, fees and parent communication in one platform. Built for coaching centres and academies in India.",
         path: "/solutions/live-class-software-for-institutes",
       }}
       jsonLd={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: "Live class software for institutes",
+        name: "Live class software for coaching institutes and academies in India",
         url: "https://meettomanage.cloud/solutions/live-class-software-for-institutes",
         about: { "@id": "https://meettomanage.cloud/#software" },
       }}

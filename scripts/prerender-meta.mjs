@@ -24,6 +24,9 @@ const NAV = [
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const BLOG_TITLE_SUFFIX = " | Meet to Manage";
+const NO_SHOWS_SLUG = "reduce-no-shows-online-classes";
+const NO_SHOWS_DESCRIPTION = "A practical guide for Indian coaching centres and online academies to reduce student and demo-class no-shows with reminders, attendance tracking and clear follow-up.";
+const NO_SHOWS_CONTEXT = "<aside><h2>For coaching centres and online academies</h2><p>This guide is for academy owners and administrators in India who want fewer missed student classes and demo bookings. It focuses on parent reminders, class scheduling, attendance tracking and follow-up—not sports lessons or event ticketing.</p></aside>";
 /** Brand suffix only when it fits in ~60 characters; a long title stays whole (never cut with "…"), so its keywords stay in. */
 const blogSeoTitle = (title) => (title.length + BLOG_TITLE_SUFFIX.length <= 60 ? `${title}${BLOG_TITLE_SUFFIX}` : title);
 
@@ -148,11 +151,11 @@ async function blogPages() {
         title: blogSeoTitle(p.title),
         // The visible heading and article headline use the post's full title, not the search-result title.
         heading: p.title,
-        description: p.excerpt ?? "",
+        description: p.slug === NO_SHOWS_SLUG ? NO_SHOWS_DESCRIPTION : (p.excerpt ?? ""),
         publishedAt: p.publishedAtUtc,
         wordCount,
         image: existsSync(path.join(dist, cover)) ? cover : undefined,
-        contentHtml,
+        contentHtml: p.slug === NO_SHOWS_SLUG ? `${NO_SHOWS_CONTEXT}${contentHtml}` : contentHtml,
       });
     }
     return pages;

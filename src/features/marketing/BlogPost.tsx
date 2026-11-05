@@ -24,6 +24,8 @@ const SITE_URL = "https://meettomanage.cloud";
 const BLOG_TITLE_SUFFIX = " | Meet to Manage";
 const BLOG_CTA_EXPERIMENT = "blog-cta";
 const BLOG_CTA_VARIANTS = ["a", "b"] as const;
+const NO_SHOWS_SLUG = "reduce-no-shows-online-classes";
+const NO_SHOWS_DESCRIPTION = "A practical guide for Indian coaching centres and online academies to reduce student and demo-class no-shows with reminders, attendance tracking and clear follow-up.";
 
 /** Brand suffix only when it fits in ~60 characters; a long title stays whole (never cut with "…"), so its keywords stay in. Keep in sync with scripts/prerender-meta.mjs. */
 function blogSeoTitle(title: string): string {
@@ -346,7 +348,7 @@ export default function BlogPost() {
       {post ? (
         <Seo
           title={blogSeoTitle(post.title)}
-          description={post.excerpt}
+          description={slug === NO_SHOWS_SLUG ? NO_SHOWS_DESCRIPTION : post.excerpt}
           path={`/blog/${slug}`}
           type="article"
           image={blogImage(slug) ? `${SITE_URL}${blogImage(slug)}` : undefined}
@@ -354,7 +356,7 @@ export default function BlogPost() {
             "@context": "https://schema.org",
             "@type": "BlogPosting",
             headline: post.title.slice(0, 110),
-            description: post.excerpt,
+            description: slug === NO_SHOWS_SLUG ? NO_SHOWS_DESCRIPTION : post.excerpt,
             datePublished: post.publishedAtUtc,
             dateModified: post.publishedAtUtc,
             mainEntityOfPage: `${SITE_URL}/blog/${slug}`,
@@ -455,6 +457,12 @@ export default function BlogPost() {
             <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,720px)_320px] lg:justify-between">
             <article className="min-w-0">
               <div className="flex flex-col gap-6">
+                {slug === NO_SHOWS_SLUG && (
+                  <aside className="border-s-4 border-[#F97316] bg-[#FFF8F1] p-5 text-[15px] leading-relaxed text-[#444] sm:p-7">
+                    <strong className="block text-[#111]">For coaching centres and online academies</strong>
+                    This guide is for academy owners and administrators in India who want fewer missed student classes and demo bookings. It focuses on parent reminders, class scheduling, attendance tracking and follow-up—not sports lessons or event ticketing.
+                  </aside>
+                )}
                 {blocks.map((block, i) =>
                   block.kind === "heading" ? (
                     <h2
