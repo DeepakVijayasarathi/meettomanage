@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { AppTour } from "@/components/AppTour";
+import { CommandPalette } from "@/components/CommandPalette";
 import { ScreenshotGuard } from "@/lib/screenshotGuard";
 import { FloatingNotes } from "@/components/FloatingNotes";
 import { DoubtChatbot } from "@/components/DoubtChatbot";
@@ -249,6 +250,7 @@ export function AppShell({ role, children }: AppShellProps) {
       >
         Skip to content
       </a>
+      <CommandPalette sections={navSections} />
       <Sidebar
         sections={navSections}
         roleLabel={meta.label}

@@ -95,9 +95,9 @@ export function NotificationPanel() {
     >
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
-          className="relative h-10 w-10 rounded-full"
+          className="relative h-9 w-9 rounded-md text-muted-foreground"
           aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ""}`}
         >
           <Bell className="h-[18px] w-[18px]" />

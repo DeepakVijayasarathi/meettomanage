@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, LogOut, User, Settings, Compass } from "lucide-react";
+import { Menu, LogOut, User, Settings, Compass, Search } from "lucide-react";
+import { OPEN_COMMAND_PALETTE_EVENT } from "@/lib/commandPalette";
 import { START_TOUR_EVENT } from "@/components/AppTour";
 import { AccountDialog } from "@/components/AccountDialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -38,7 +39,7 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur-md sm:px-6">
       <button
         onClick={onMenuClick}
         aria-label="Open menu"
@@ -47,19 +48,38 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
         <Menu className="h-5 w-5" />
       </button>
 
-      {title && <h2 className="hidden text-sm font-semibold text-foreground/80 md:block">{title}</h2>}
+      {title && <h2 className="hidden text-[13px] font-medium text-muted-foreground md:block">{title}</h2>}
 
-      <div className="ml-auto flex items-center gap-2">
+      <button
+        onClick={() => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))}
+        className="ml-2 hidden h-8 w-64 items-center gap-2 rounded-md border border-input bg-card px-2.5 text-[13px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground md:flex"
+        aria-label="Search pages and actions"
+      >
+        <Search className="h-3.5 w-3.5" />
+        <span className="flex-1 text-left">Search or jump to…</span>
+        <kbd className="rounded border bg-muted px-1.5 font-sans text-[10px] font-medium">Ctrl K</kbd>
+      </button>
+
+      <div className="ml-auto flex items-center gap-1.5">
         <NetworkStatus />
         <Button
-          variant="outline"
-          className="h-10 gap-2 rounded-full px-3"
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 rounded-md text-muted-foreground md:hidden"
+          aria-label="Search pages and actions"
+          onClick={() => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))}
+        >
+          <Search className="h-[18px] w-[18px]" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 rounded-md text-muted-foreground"
           aria-label="Start product tour"
           title="Product tour: a guided walk through your menu"
           onClick={() => window.dispatchEvent(new Event(START_TOUR_EVENT))}
         >
           <Compass className="h-[18px] w-[18px]" />
-          <span className="hidden sm:inline">Product tour</span>
         </Button>
         <ThemeToggle />
         <NotificationPanel />
@@ -69,7 +89,7 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
               aria-label={`Account menu for ${userName}`}
               className="ml-1 flex items-center gap-2 rounded-full pr-1 hover:bg-muted/60"
             >
-              <Avatar className="h-9 w-9">
+              <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary/10 text-primary">{getInitials(userName)}</AvatarFallback>
               </Avatar>
             </button>

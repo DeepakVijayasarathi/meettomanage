@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
-import { ChevronsLeft, ChevronsRight, X } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Search, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { OPEN_COMMAND_PALETTE_EVENT } from "@/lib/commandPalette";
 import type { NavSection } from "@/lib/nav";
-import { CHART_PALETTE } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -16,6 +16,12 @@ interface SidebarProps {
   onToggleCollapse: () => void;
 }
 
+const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+
+/**
+ * Quiet, light navigation rail: monochrome icons, compact rows, and the portal's role colour only on the
+ * active item, so the page content stays the focus.
+ */
 export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, collapsed, onToggleCollapse }: SidebarProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
   // onClose is an inline arrow from AppShell (new identity every render), so it's read
@@ -24,11 +30,7 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  // The mobile drawer is a modal overlay, but it's a plain <aside> rather than a Radix
-  // Dialog, so it had none of the modal behaviour: Escape did nothing, and focus stayed
-  // on the hamburger behind the overlay — tabbing walked the covered page underneath and
-  // never reached a single nav link. Handle it here instead of converting the whole
-  // sidebar to a Dialog, which would also change the always-on desktop rail.
+  // The mobile drawer is a modal overlay but a plain <aside>, so Escape and focus are handled here.
   useEffect(() => {
     if (!mobileOpen) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -43,109 +45,117 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
     };
   }, [mobileOpen]);
 
+  const openSearch = () => {
+    onClose();
+    window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT));
+  };
+
   return (
     <>
-      {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onClose} />}
+      {mobileOpen && <div className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-[2px] lg:hidden" onClick={onClose} />}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-sidebar text-sidebar-foreground transition-all duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
-          collapsed ? "lg:w-[76px]" : "lg:w-72"
+          collapsed ? "lg:w-[68px]" : "lg:w-64"
         )}
       >
-        <div className={cn("flex items-center px-5 py-5", collapsed ? "justify-center" : "justify-between")}>
-          <Logo variant="light" showWordmark={!collapsed} />
+        <div className={cn("flex h-14 items-center border-b border-sidebar-border px-4", collapsed ? "justify-center" : "justify-between")}>
+          <span className="dark:hidden"><Logo variant="dark" showWordmark={!collapsed} /></span>
+          <span className="hidden dark:inline-flex"><Logo variant="light" showWordmark={!collapsed} /></span>
           <button
             ref={closeRef}
             onClick={onClose}
             aria-label="Close menu"
-            className="rounded-md p-1 text-sidebar-foreground/70 hover:bg-white/10 lg:hidden"
+            className="rounded-md p-1 text-muted-foreground hover:bg-sidebar-accent lg:hidden"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {!collapsed && (
-          <div className="mx-4 mb-1 flex items-center gap-2 rounded-lg border border-sidebar-border bg-white/5 px-3 py-2">
-            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: roleHex }} />
-            <span className="truncate text-xs font-semibold text-sidebar-foreground/80">{roleLabel}</span>
-          </div>
-        )}
+        <div className={cn("flex flex-col gap-2 px-3 pt-3", collapsed && "items-center")}>
+          {!collapsed && (
+            <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
+              <span
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white"
+                style={{ backgroundColor: roleHex }}
+                aria-hidden
+              >
+                {roleLabel.charAt(0)}
+              </span>
+              <span className="truncate text-[13px] font-semibold text-foreground">{roleLabel}</span>
+            </div>
+          )}
+          <button
+            onClick={openSearch}
+            title={collapsed ? "Search (Ctrl K)" : undefined}
+            aria-label="Search pages and actions"
+            className={cn(
+              "flex items-center gap-2 rounded-lg border border-sidebar-border bg-background text-[13px] text-muted-foreground transition-colors hover:border-input hover:text-foreground",
+              collapsed ? "h-9 w-9 justify-center" : "h-9 px-2.5"
+            )}
+          >
+            <Search className="h-4 w-4 shrink-0" />
+            {!collapsed && (
+              <>
+                <span className="flex-1 text-left">Search…</span>
+                <kbd className="rounded border border-sidebar-border bg-muted px-1.5 font-sans text-[10px] font-medium">{isMac ? "⌘K" : "Ctrl K"}</kbd>
+              </>
+            )}
+          </button>
+        </div>
 
-        <nav className="mt-3 flex-1 overflow-y-auto px-3 pb-6">
-          {(() => {
-            // Running index across every item in every section, so each nav row gets its
-            // own distinct icon color from the shared chart palette (cycling once it runs
-            // out) instead of every icon reading as the same flat muted gray.
-            let iconIndex = 0;
-            return sections.map((section, idx) => (
-              <div key={idx} className="mb-4">
-                {section.title && !collapsed && (
-                  <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-wider text-sidebar-foreground/60">{section.title}</p>
-                )}
-                <div className={cn("flex flex-col gap-0.5", collapsed && "items-center")}>
-                  {section.items.map((item) => {
-                    const tint = CHART_PALETTE[iconIndex % CHART_PALETTE.length];
-                    iconIndex += 1;
-                    return (
-                      <NavLink
-                        key={item.to}
-                        data-tour={item.to}
-                        to={item.to}
-                        end={item.end}
-                        onClick={onClose}
-                        title={collapsed ? (item.badge ? `${item.label} (${item.badge})` : item.label) : undefined}
-                        className={({ isActive }) =>
-                          cn(
-                            "group relative flex items-center rounded-lg text-sm font-medium transition-colors",
-                            collapsed ? "h-11 w-11 shrink-0 justify-center" : "justify-between gap-2.5 px-3 py-2",
-                            isActive
-                              ? // text-primary-foreground is a fixed white app-wide (see AppShell's
-                                // accentStyle) — a product call for brand consistency, made knowing
-                                // it fails WCAG AA's 4.5:1 text-contrast minimum against a few
-                                // lighter role hexes (teacher's orange ~2.5:1, parent's green
-                                // ~3.2:1, subadmin/coordinator's teal similar).
-                                "bg-sidebar-accent text-primary-foreground shadow-soft"
-                              : "text-sidebar-foreground/70 hover:bg-white/10 hover:text-white"
-                          )
-                        }
-                        style={({ isActive }) => (isActive ? { backgroundColor: roleHex } : undefined)}
-                      >
-                        {({ isActive }) => (
-                          <>
-                            <span className={cn("flex min-w-0 items-center gap-2.5", collapsed && "justify-center")}>
-                              <span
-                                className={cn(
-                                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
-                                  // Active rows already sit on a solid role-colored background — a second,
-                                  // differently-tinted icon chip on top of that would clash, so the icon
-                                  // just inherits the row's own white text color there instead (see the
-                                  // isActive branch above).
-                                  !isActive && "group-hover:!bg-white/15 group-hover:!text-white"
-                                )}
-                                style={isActive ? undefined : { backgroundColor: `${tint}26`, color: tint }}
-                              >
-                                <item.icon className="h-4 w-4 shrink-0" />
-                              </span>
-                              {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
-                            </span>
-                            {item.badge && !collapsed && (
-                              <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/15 px-1 text-[10px] font-bold">
-                                {item.badge}
-                              </span>
-                            )}
-                            {item.badge && collapsed && (
-                              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-brand-pink" />
-                            )}
-                          </>
+        <nav className="mt-3 flex-1 overflow-y-auto px-3 pb-6" aria-label="Main">
+          {sections.map((section, idx) => (
+            <div key={idx} className="mb-4">
+              {section.title && !collapsed && (
+                <p className="mb-1 px-2 text-[11px] font-medium text-muted-foreground/80">{section.title}</p>
+              )}
+              {section.title && collapsed && idx > 0 && <div className="mx-auto mb-2 h-px w-6 bg-sidebar-border" />}
+              <div className={cn("flex flex-col gap-px", collapsed && "items-center")}>
+                {section.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    data-tour={item.to}
+                    to={item.to}
+                    end={item.end}
+                    onClick={onClose}
+                    title={collapsed ? (item.badge ? `${item.label} (${item.badge})` : item.label) : undefined}
+                    className={({ isActive }) =>
+                      cn(
+                        "group relative flex items-center rounded-md text-[13px] font-medium transition-colors",
+                        collapsed ? "h-9 w-9 shrink-0 justify-center" : "h-8 justify-between gap-2 px-2",
+                        isActive
+                          ? "bg-sidebar-accent text-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-foreground"
+                      )
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {isActive && !collapsed && (
+                          <span className="absolute -left-3 top-1.5 h-5 w-[3px] rounded-r-full" style={{ backgroundColor: roleHex }} aria-hidden />
                         )}
-                      </NavLink>
-                    );
-                  })}
-                </div>
+                        <span className={cn("flex min-w-0 items-center gap-2.5", collapsed && "justify-center")}>
+                          <item.icon
+                            className={cn("h-4 w-4 shrink-0", !isActive && "text-muted-foreground group-hover:text-foreground")}
+                            style={isActive ? { color: roleHex } : undefined}
+                          />
+                          {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
+                        </span>
+                        {item.badge && !collapsed && (
+                          <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                            {item.badge}
+                          </span>
+                        )}
+                        {item.badge && collapsed && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-brand-pink" />}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
               </div>
-            ));
-          })()}
+            </div>
+          ))}
         </nav>
 
         <button
@@ -153,8 +163,8 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
-            "mb-3 hidden items-center gap-2 rounded-lg text-xs font-semibold text-sidebar-foreground/60 transition-colors hover:bg-white/5 hover:text-sidebar-foreground lg:flex",
-            collapsed ? "mx-auto h-11 w-11 justify-center" : "mx-3 justify-start px-3 py-2"
+            "mb-3 hidden items-center gap-2 rounded-md text-xs font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground lg:flex",
+            collapsed ? "mx-auto h-9 w-9 justify-center" : "mx-3 justify-start px-2 py-2"
           )}
         >
           {collapsed ? <ChevronsRight className="h-4 w-4 shrink-0" /> : <ChevronsLeft className="h-4 w-4 shrink-0" />}

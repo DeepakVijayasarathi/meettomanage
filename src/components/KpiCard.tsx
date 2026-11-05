@@ -31,11 +31,11 @@ interface KpiCardProps {
 }
 
 const TONE_STYLES: Record<NonNullable<KpiCardProps["tone"]>, string> = {
-  primary: "bg-primary/10 text-primary ring-4 ring-primary/5",
-  success: "bg-success/15 text-success ring-4 ring-success/5",
-  warning: "bg-warning/20 text-warning-foreground ring-4 ring-warning/10",
-  destructive: "bg-destructive/10 text-destructive ring-4 ring-destructive/5",
-  neutral: "bg-muted text-muted-foreground ring-4 ring-muted",
+  primary: "bg-primary/10 text-primary",
+  success: "bg-success/15 text-success",
+  warning: "bg-warning/20 text-warning-foreground",
+  destructive: "bg-destructive/10 text-destructive",
+  neutral: "bg-muted text-muted-foreground",
 };
 
 export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "primary", className, loading, error, size = "default", onClick }: KpiCardProps) {
@@ -97,7 +97,7 @@ export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "prima
             </p>
           </div>
           {Icon && (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive ring-4 ring-destructive/5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
               <Icon className="h-5 w-5" />
             </span>
           )}
@@ -109,7 +109,7 @@ export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "prima
   return (
     <Card
       className={cn(
-        "group p-5 transition-shadow hover:shadow-pop",
+        "group p-4 transition-colors hover:border-foreground/15",
         onClick && "cursor-pointer hover:ring-2 hover:ring-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className
       )}
@@ -120,7 +120,7 @@ export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "prima
           {/* line-clamp-2, not truncate: a one-line ellipsis clips these titles mid-word
               ("Demo → Enrollment Co..."). Two lines fits every title in this app without
               growing the card for the common one-line case. */}
-          <p className="line-clamp-2 text-xs font-medium text-muted-foreground sm:text-sm">{label}</p>
+          <p className="line-clamp-2 text-[13px] font-medium text-muted-foreground">{label}</p>
           {/* break-words (not truncate): this is the one number the card exists to show —
               clipping it with an ellipsis on narrow grid columns (5-up KPI rows at typical
               desktop widths) hides the actual figure behind "₹4,86,2…". Wrapping to a
@@ -133,7 +133,7 @@ export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "prima
           <p
             ref={valueRef}
             className={cn(
-              "mt-1.5 font-bold leading-tight tracking-tight text-foreground",
+              "tabular mt-1.5 font-semibold leading-tight tracking-tight text-foreground",
               fitStep === 0 && (isLg ? "whitespace-nowrap text-2xl sm:text-3xl" : "whitespace-nowrap text-xl sm:text-2xl"),
               fitStep === 1 && "whitespace-nowrap text-lg sm:text-xl",
               fitStep === 2 && "whitespace-nowrap text-base sm:text-lg",
@@ -147,12 +147,12 @@ export function KpiCard({ label, value, detail, icon: Icon, trend, tone = "prima
         {Icon && (
           <span
             className={cn(
-              "flex shrink-0 items-center justify-center rounded-xl",
-              isLg ? "h-12 w-12" : "h-10 w-10",
+              "flex shrink-0 items-center justify-center rounded-md",
+              isLg ? "h-10 w-10" : "h-8 w-8",
               TONE_STYLES[tone]
             )}
           >
-            <Icon className={isLg ? "h-6 w-6" : "h-5 w-5"} />
+            <Icon className={isLg ? "h-5 w-5" : "h-4 w-4"} />
           </span>
         )}
       </div>
