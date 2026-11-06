@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowRight, MessageSquare } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { ArrowRight, CalendarClock, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackMarketingEvent } from "@/lib/analytics";
 import { saasPublic } from "@/api/saas";
@@ -26,6 +26,8 @@ function useTrialDays() {
 /** Calls to action for a solution page: a free trial (only when enabled), a walkthrough and WhatsApp. Stacks on mobile, wraps in a row from sm up. */
 export function WalkthroughCta({ className }: { className?: string }) {
   const trialDays = useTrialDays();
+  const location = useLocation();
+  const source = encodeURIComponent(location.pathname);
   return (
     <div className={cn("flex flex-col gap-3 sm:flex-row sm:flex-wrap", className)}>
       {trialDays > 0 && (
@@ -34,12 +36,18 @@ export function WalkthroughCta({ className }: { className?: string }) {
         </Link>
       )}
       <Link
-        to="/get-started"
+        to={`/get-started?from=${source}`}
         className={trialDays > 0
           ? cn(BTN_SECONDARY, "text-[#C2410C] hover:border-[#F4B98C] hover:bg-[#FFF8F3] focus-visible:outline-[#C2410C]")
           : cn(BTN_PRIMARY, "justify-center")}
       >
-        Book a free walkthrough {trialDays === 0 && <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />}
+        Book a free demo {trialDays === 0 && <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />}
+      </Link>
+      <Link
+        to={`/get-started?intent=call&from=${source}`}
+        className={cn(BTN_SECONDARY, "text-[#9A3412] hover:border-[#F4B98C] hover:bg-[#FFF8F3] focus-visible:outline-[#C2410C]")}
+      >
+        <CalendarClock className="h-4 w-4" /> Schedule a call
       </Link>
       <a
         href={SALES_WHATSAPP_URL}

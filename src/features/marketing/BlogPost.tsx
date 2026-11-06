@@ -79,7 +79,7 @@ const T = {
     notFoundMoved: "It may have been unpublished or moved.",
     ctaHeading: "See it running in your own academy",
     ctaSub: "A platform demo shows you exactly how scheduling, billing and admissions work together.",
-    requestDemo: "Request a Demo",
+    requestDemo: "Book a free demo",
     moreFromBlog: "More from the blog",
     byline: "By the Meet to Manage team",
     onThisPage: "On this page",

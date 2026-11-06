@@ -27,6 +27,7 @@ export function MarketingFooter() {
             <li><Link to="/signup?plan=free" className={LINK}>{f.freeAccount}</Link></li>
             <li><Link to="/demo-login" className={LINK}>{f.liveDemo}</Link></li>
             <li><Link to="/get-started" className={LINK}>{f.demo}</Link></li>
+            <li><Link to="/get-started?intent=call&from=footer" className={LINK}>{lang === "ar" ? "حدد موعد مكالمة" : "Schedule a call"}</Link></li>
             <li><Link to="/pricing" className={LINK}>{f.pricing}</Link></li>
             <li><Link to="/portal-select" className={LINK}>{f.portals}</Link></li>
             <li><Link to="/login" className={LINK}>{f.signIn}</Link></li>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ArrowRight, Menu, X } from "lucide-react";
+import { ArrowRight, CalendarClock, Menu, X } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useBrand } from "@/lib/branding";
 import { useLang } from "@/lib/i18n";
@@ -58,6 +58,8 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
   useEffect(() => setOpen(false), [location.pathname, location.hash]);
 
   const base = home ? "" : "/";
+  const bookingPath = `/get-started?from=${encodeURIComponent(location.pathname)}`;
+  const callPath = `/get-started?intent=call&from=${encodeURIComponent(location.pathname)}`;
   const links = [
     { label: c.nav.features, href: `${base}#features` },
     { label: c.nav.classroom, href: `${base}#classroom` },
@@ -94,8 +96,8 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
           <LanguageToggle className="hidden sm:inline-flex" />
           <Link to="/demo-login" className="nav-live-demo whitespace-nowrap rounded-full border border-[#E8C8AD] px-4 py-2 text-sm font-semibold text-[#9A3412] hover:bg-[#FFF6EE]">{c.nav.liveDemo}</Link>
           <Link to="/login" onClick={() => trackMarketingEvent("signin_clicked")} className="hidden whitespace-nowrap px-3 py-2 text-sm font-semibold text-[#1C1917] hover:text-[#C2410C] sm:inline-flex">{c.nav.signIn}</Link>
-          <Link to="/get-started" className={cn(BTN_PRIMARY, "hidden whitespace-nowrap !rounded-full bg-gradient-to-r from-[#EA580C] to-[#C2410C] shadow-[0_12px_24px_-12px_rgba(194,65,12,0.8)] hover:from-[#C2410C] hover:to-[#9A3412] sm:inline-flex")}>
-            {c.nav.demo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+          <Link to={bookingPath} className={cn(BTN_PRIMARY, "hidden whitespace-nowrap !rounded-full bg-gradient-to-r from-[#EA580C] to-[#C2410C] shadow-[0_12px_24px_-12px_rgba(194,65,12,0.8)] hover:from-[#C2410C] hover:to-[#9A3412] sm:inline-flex")}>
+            {lang === "ar" ? "احجز عرضاً مجانياً" : "Book free demo"} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
           </Link>
           <button
             ref={menuButtonRef}
@@ -140,8 +142,11 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
               })}
             </ul>
             <div className="sticky bottom-0 flex flex-col gap-3 border-t border-[#F3EAE0] bg-white pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
-              <Link to="/get-started" className={cn(BTN_PRIMARY, "w-full !rounded-2xl bg-gradient-to-r from-[#EA580C] to-[#C2410C] py-4 text-base")} onClick={() => setOpen(false)}>
-                {c.nav.demo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+              <Link to={bookingPath} className={cn(BTN_PRIMARY, "w-full !rounded-2xl bg-gradient-to-r from-[#EA580C] to-[#C2410C] py-4 text-base")} onClick={() => setOpen(false)}>
+                {lang === "ar" ? "احجز عرضاً مجانياً" : "Book free demo"} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+              </Link>
+              <Link to={callPath} className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-[#E8C8AD] text-sm font-bold text-[#9A3412] hover:bg-[#FFF6EE]" onClick={() => setOpen(false)}>
+                <CalendarClock className="h-4 w-4" />{lang === "ar" ? "حدد موعد مكالمة" : "Schedule a call"}
               </Link>
               <Link to="/demo-login" className="inline-flex min-h-[48px] w-full items-center justify-center rounded-2xl border border-[#E8C8AD] text-sm font-bold text-[#9A3412] hover:bg-[#FFF6EE]" onClick={() => setOpen(false)}>{c.nav.liveDemo}</Link>
               <div className="flex items-center gap-3">

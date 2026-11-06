@@ -65,7 +65,7 @@ export default function Customers() {
           <li className="flex flex-col justify-center rounded-2xl border border-dashed border-[#E0CBB8] bg-[#FFF6EE] p-7">
             <h2 className="font-display text-xl font-extrabold tracking-[-0.02em]">Your centre could be next.</h2>
             <p className="mt-2 text-[15px] leading-relaxed text-[#57534E]">Book a free platform walkthrough and see how your batches, fees and parent app can run in one place.</p>
-            <Link to="/get-started" className={cn(BTN_PRIMARY, "mt-5 w-fit")}>Book free walkthrough <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
+            <Link to="/get-started" className={cn(BTN_PRIMARY, "mt-5 w-fit")}>Book free demo <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
             <PricingLink className="w-fit text-[#C2410C] hover:text-[#9A3412] focus-visible:outline-[#C2410C]" />
           </li>
         </ul>

@@ -223,7 +223,7 @@ export default function MarketingHome() {
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-                <Link to="/get-started" className={cn(BTN_PRIMARY, "justify-center px-7 py-3.5")}>Book a free walkthrough <ArrowRight className="h-4 w-4" /></Link>
+                <Link to="/get-started" className={cn(BTN_PRIMARY, "justify-center px-7 py-3.5")}>Book a free demo <ArrowRight className="h-4 w-4" /></Link>
                 <a href={SALES_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D9C9BA] bg-white px-7 py-3.5 text-sm font-bold text-[#166534] shadow-sm transition-colors hover:border-[#86C99A] hover:bg-[#F0FDF4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166534]">
                   <MessageSquare className="h-4 w-4" /> Ask on WhatsApp
                 </a>

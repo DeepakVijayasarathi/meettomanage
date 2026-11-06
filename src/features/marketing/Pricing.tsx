@@ -111,7 +111,7 @@ const T = {
       feature_whatsapp: "WhatsApp notifications",
       feature_custom_domain: "Custom domain",
     } as Record<string, string>,
-    planCta: "Book free walkthrough",
+    planCta: "Book free demo",
     reassure: "Free 30-minute platform walkthrough. No payment details.",
     freeForever: "free forever",
     freeBadge: "FREE FOREVER",

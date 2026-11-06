@@ -23,13 +23,13 @@ export interface HomeCopy {
 export const COPY: Record<Lang, HomeCopy> = {
   en: {
     skip: "Skip to main content",
-    nav: { features: "Platform", classroom: "Live classroom", app: "Mobile app", customers: "Customers", pricing: "Pricing", faq: "FAQ", blog: "Blog", signIn: "Sign in", liveDemo: "Live demo", demo: "Book free walkthrough", menu: "Open menu", closeMenu: "Close menu" },
+    nav: { features: "Platform", classroom: "Live classroom", app: "Mobile app", customers: "Customers", pricing: "Pricing", faq: "FAQ", blog: "Blog", signIn: "Sign in", liveDemo: "Live demo", demo: "Book free demo", menu: "Open menu", closeMenu: "Close menu" },
     hero: {
       liveDemo: "Or try the live demo now, no sign-up",
       words: ["Run", "your", "coaching", "centre", "from", "one", "place."],
       accent: [5, 6],
       sub: "Replace scattered video calls, spreadsheets and fee follow-ups with one platform for live classes, admissions, payments and parent updates.",
-      demo: "Book free walkthrough",
+      demo: "Book free demo",
       watch: "Watch the walkthrough",
       trust: ["One login, 8 role-based portals", "Parent mobile app included", "Live classroom, fees and admissions"],
       form: { label: "Your email or mobile number", placeholder: "Your email or mobile number", note: "Free 30-minute platform walkthrough. No payment details.", invalid: "Enter a valid email address or mobile number." },
@@ -144,13 +144,13 @@ export const COPY: Record<Lang, HomeCopy> = {
         { q: "How is pricing structured?", a: "One price per centre based on the plan, not per student. You can start on the Free plan at no cost and upgrade when you need admissions, fees or reports. See the pricing page for the current plans and limits." },
       ],
     },
-    cta: { heading: "See how your centre could run from one place.", sub: "Book a free 30-minute platform walkthrough. No payment details, no commitment.", demo: "Book free walkthrough", ask: "Ask our AI", signIn: "Already a customer? Sign in", free: "Create a free account" },
+    cta: { heading: "See how your centre could run from one place.", sub: "Book a free 30-minute product demo. No payment details, no commitment.", demo: "Book free demo", ask: "Ask our AI", signIn: "Already a customer? Sign in", free: "Create a free account" },
     footer: {
       liveDemo: "Live demo", freeAccount: "Create free account", solutions: "Solutions", resources: "Resources",
       tagline: "Live teaching, admissions, billing and reporting in one platform for online coaching centres, academies and tutors.",
       careers: "Careers", customers: "Customers",
       company: "Get started", legal: "Legal", contact: "Contact", whatsapp: "WhatsApp us",
-      terms: "Terms of Service", privacy: "Privacy Policy", clientFinder: "Client Finder policy", portals: "Explore portals", blog: "Blog", pricing: "Pricing", signIn: "Sign in", demo: "Book free walkthrough",
+      terms: "Terms of Service", privacy: "Privacy Policy", clientFinder: "Client Finder policy", portals: "Explore portals", blog: "Blog", pricing: "Pricing", signIn: "Sign in", demo: "Book free demo",
       rights: (year) => `© ${year} Meet to Manage. All rights reserved.`,
     },
   },

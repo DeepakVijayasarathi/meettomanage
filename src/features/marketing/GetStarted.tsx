@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, CheckCircle2, CreditCard, Landmark, Loader2, Mail, MessageCircle, MessageSquare, Phone, User, Users, Video, type LucideIcon } from "lucide-react";
+import { ArrowRight, CalendarClock, CheckCircle2, CreditCard, Landmark, Loader2, Mail, MessageCircle, MessageSquare, Phone, PhoneCall, User, Users, Video, type LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,7 +57,7 @@ const T = {
     errorCoach: "Enter your name.",
     errorAcademy: "Enter your name and academy name.",
     submitError: "Couldn't submit your request. Please try again.",
-    requestDemo: "Book free walkthrough",
+    requestDemo: "Book free demo",
     fallbackName: "Independent coach",
     rights: (year: number) => `© ${year} Meet to Manage. All rights reserved.`,
     seoTitleCoach: "Request a Demo for Coaches — Meet to Manage",
@@ -117,7 +117,7 @@ const T = {
 /** Copy for the two-panel layout: the pitch on the left, the form on the right. */
 const PANEL = {
   en: {
-    eyebrow: "Free platform walkthrough",
+    eyebrow: "Free personalised demo",
     heading: ["See how Meet to Manage works for", "your academy."],
     sub: "Get a personalised walkthrough of live classes, admissions, fees and parent updates, as one platform.",
     features: [
@@ -127,7 +127,7 @@ const PANEL = {
       { title: "Parent Updates", body: "Keep everyone informed" },
     ],
     noCommit: "30 minutes. No payment details or commitment.",
-    formTitle: "Book your free walkthrough",
+    formTitle: "Book your free demo",
     formSub: "Share a few details and we'll get in touch within one business day to find a convenient time.",
   },
   ar: {
@@ -196,7 +196,13 @@ function Field({ icon: Icon, children }: { icon: LucideIcon; children: React.Rea
 }
 const FIELD = "h-12 w-full !rounded-xl border border-[#EBD9C8] bg-white ps-11 pe-3 text-sm text-[#1C1917] shadow-none placeholder:text-[#8A817A] focus:border-[#F97316] focus-visible:ring-2 focus-visible:ring-[#F97316]/25";
 
-const EMPTY_FORM = { fullName: "", workEmail: "", phone: "", academyName: "", message: "" };
+const EMPTY_FORM = { fullName: "", workEmail: "", phone: "", academyName: "", contactMethod: "Video call", preferredAt: "", message: "" };
+
+function localDateTimeMinimum() {
+  const date = new Date(Date.now() + 2 * 60 * 60 * 1000);
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
 
 export default function GetStarted() {
   useLightBrandScope();
@@ -209,6 +215,7 @@ export default function GetStarted() {
   // or forced to invent an academy name they don't have.
   const [searchParams] = useSearchParams();
   const isCoach = searchParams.get("for") === "coach";
+  const wantsCall = searchParams.get("intent") === "call";
   // Coaches see their own copy, so only academy visitors join the copy test.
   const [variant] = useState<Variant>(() => experimentVariant(EXPERIMENT, VARIANTS));
   const incomingExperiment = (searchParams.get("exp") ?? "").toLowerCase();
@@ -226,7 +233,9 @@ export default function GetStarted() {
     // ?plan=&cycle= come from the pricing page, so the team knows which plan the visitor was weighing.
     const plan = (searchParams.get("plan") ?? "").replace(/[^a-z0-9-]/gi, "").slice(0, 40);
     const cycle = searchParams.get("cycle") === "Year" ? "yearly" : "monthly";
-    const base = searchParams.get("offer") === "ngo"
+    const base = wantsCall
+      ? { ...EMPTY_FORM, message: "I would like to schedule a call about Meet to Manage." }
+      : searchParams.get("offer") === "ngo"
       ? { ...EMPTY_FORM, message: "NGO / non-profit offer: please confirm eligibility and next steps." }
       : plan ? { ...EMPTY_FORM, message: `Interested in the ${plan} plan (${cycle} billing).` } : EMPTY_FORM;
     if (!contact) return base;
@@ -283,14 +292,20 @@ export default function GetStarted() {
     setError(null);
     try {
       const attribution = marketingAttribution();
+      const scheduling = [
+        `Preferred contact: ${form.contactMethod}`,
+        form.preferredAt
+          ? `Preferred time: ${new Date(form.preferredAt).toLocaleString()} (${Intl.DateTimeFormat().resolvedOptions().timeZone})`
+          : "Preferred time: Please contact me to arrange",
+      ].join("\n");
       await requestPlatformDemo({
         fullName: form.fullName,
         workEmail: form.workEmail,
         phone: form.phone,
         academyName: form.academyName.trim() || t.fallbackName,
-        message: form.message || undefined,
+        message: `${scheduling}${form.message.trim() ? `\n\n${form.message.trim()}` : ""}`,
         visitorId: marketingVisitorId(), source: attribution.utmSource ?? attribution.referrerHost,
-        medium: attribution.utmMedium, campaign: attribution.utmCampaign, landingPath: window.location.pathname,
+        medium: attribution.utmMedium, campaign: attribution.utmCampaign, landingPath: `${window.location.pathname}${window.location.search}`,
       });
       markDemoBooked();
       submittedRef.current = true;
@@ -357,8 +372,8 @@ export default function GetStarted() {
                 </div>
               ) : (
                 <>
-                  <h2 className="font-display text-[clamp(1.6rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em] text-[#1C1917] rtl:tracking-normal">{pc.formTitle}</h2>
-                  <p className="mt-2 max-w-[44ch] text-[15px] leading-relaxed text-[#57534E]">{pc.formSub}</p>
+                  <h2 className="font-display text-[clamp(1.6rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em] text-[#1C1917] rtl:tracking-normal">{wantsCall ? (lang === "en" ? "Schedule your free call" : "حدد موعد مكالمتك المجانية") : pc.formTitle}</h2>
+                  <p className="mt-2 max-w-[44ch] text-[15px] leading-relaxed text-[#57534E]">{wantsCall ? (lang === "en" ? "Choose how and when you prefer to talk. We will confirm the exact time with you." : "اختر طريقة ووقت التواصل المناسبين لك، وسنؤكد الموعد معك.") : pc.formSub}</p>
                   <form onSubmit={handleSubmit} onFocus={markFormStarted} className="mt-6 flex flex-col gap-4">
                     <div className="grid gap-1.5">
                       <Label htmlFor="gs-fullName" className="font-semibold text-[#1C1917]">{t.yourName} <span aria-hidden className="text-[#C2410C]">*</span></Label>
@@ -386,6 +401,24 @@ export default function GetStarted() {
                         <Input id="gs-academyName" autoComplete="organization" className={FIELD} value={form.academyName} onChange={(e) => setForm((f) => ({ ...f, academyName: e.target.value }))} placeholder={isCoach ? t.academyPlaceholderCoach : t.academyPlaceholderAcademy} />
                       </Field>
                     </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="gs-contactMethod" className="font-semibold text-[#1C1917]">{lang === "en" ? "How should we meet?" : "كيف تفضل التواصل؟"}</Label>
+                        <Field icon={PhoneCall}>
+                          <select id="gs-contactMethod" className={FIELD} value={form.contactMethod} onChange={(e) => setForm((f) => ({ ...f, contactMethod: e.target.value }))}>
+                            <option>Video call</option>
+                            <option>Phone call</option>
+                            <option>WhatsApp call</option>
+                          </select>
+                        </Field>
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="gs-preferredAt" className="font-semibold text-[#1C1917]">{lang === "en" ? "Preferred date and time" : "التاريخ والوقت المفضلان"} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
+                        <Field icon={CalendarClock}>
+                          <Input id="gs-preferredAt" type="datetime-local" min={localDateTimeMinimum()} className={FIELD} value={form.preferredAt} onChange={(e) => setForm((f) => ({ ...f, preferredAt: e.target.value }))} />
+                        </Field>
+                      </div>
+                    </div>
                     <div className="grid gap-1.5">
                       <Label htmlFor="gs-message" className="font-semibold text-[#1C1917]">{t.anythingElse}</Label>
                       <div className="relative">
@@ -395,7 +428,7 @@ export default function GetStarted() {
                     </div>
                     {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
                     <button type="submit" disabled={submitting} className={cn(CTA_ORANGE, "mt-1 h-14 w-full !rounded-2xl text-base normal-case tracking-normal shadow-[0_16px_30px_-14px_rgba(194,65,12,0.8)]")}>
-                      {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{pc.cta} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
+                      {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{wantsCall ? (lang === "en" ? "Request this call" : "اطلب هذه المكالمة") : pc.cta} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
                     </button>
                     <p className="text-center text-xs leading-relaxed text-[#78716C]">
                       {lang === "en" ? "We only use these details to arrange your walkthrough." : "نستخدم هذه التفاصيل فقط لترتيب العرض التوضيحي."}
