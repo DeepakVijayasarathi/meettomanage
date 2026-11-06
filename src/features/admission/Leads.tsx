@@ -391,7 +391,7 @@ export default function AdmissionLeads() {
                 <Card className="bg-muted/30">
                   <CardContent className="p-4">
                     <div className="mb-2 flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Demo history</p>
+                      <p className="text-xs font-medium text-muted-foreground">Demo history</p>
                       <p className="text-xs font-semibold text-foreground">
                         {history.totalDemos} demo{history.totalDemos === 1 ? "" : "s"} · {history.enrolledCount} enrolled · ₹{history.totalPayable} payable
                       </p>

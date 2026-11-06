@@ -96,7 +96,7 @@ export default function AdminSubscription() {
 
     <div className="grid gap-4 lg:grid-cols-3">
       <Card className="lg:col-span-1"><CardContent className="space-y-3 p-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current plan</p>
+        <p className="text-xs font-medium text-muted-foreground">Current plan</p>
         <div className="flex items-center gap-2"><h2 className="text-2xl font-bold">{s.planName}</h2><Badge variant={STATUS_VARIANT[s.status!] ?? "muted"}>{s.status!.replace(/([a-z])([A-Z])/g, "$1 $2")}</Badge></div>
         {s.price && <p className="text-lg font-semibold">{formatMoney(s.price.amount, s.price.currency)}<span className="text-sm font-normal text-muted-foreground"> / {s.price.interval === "Month" ? "month" : "year"} + GST</span></p>}
         <dl className="space-y-1 text-sm text-muted-foreground">
@@ -112,7 +112,7 @@ export default function AdminSubscription() {
       </CardContent></Card>
 
       <Card className="lg:col-span-2"><CardContent className="space-y-4 p-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Usage</p>
+        <p className="text-xs font-medium text-muted-foreground">Usage</p>
         {highUsage.length > 0 && <div role="alert" className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${reachedUsage.length > 0 ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-warning/40 bg-warning/15"}`}>
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{reachedUsage.length > 0 ? "Usage limit reached" : "Approaching usage limit"}: {(reachedUsage.length > 0 ? reachedUsage : highUsage).map(l => `${l.label} (${Math.round(l.percent)}%)`).join(", ")}. {reachedUsage.length > 0 ? "Upgrade or reduce usage to continue." : "Consider upgrading before service is interrupted."}</span>
@@ -126,14 +126,14 @@ export default function AdminSubscription() {
             <Progress value={unlimited ? 0 : l.percent} indicatorClassName={tone} aria-label={`${l.label} usage`} />
           </div>;
         })}
-        {(s.modules?.length ?? 0) > 0 && <div className="space-y-2 pt-1"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Modules</p>
+        {(s.modules?.length ?? 0) > 0 && <div className="space-y-2 pt-1"><p className="text-xs font-medium text-muted-foreground">Modules</p>
           <div className="flex flex-wrap gap-2">{s.modules!.map(m => <Badge key={m.key} variant={m.enabled ? "success" : "muted"}>{m.enabled ? <CheckCircle2 className="mr-1 h-3 w-3" /> : null}{m.label}{m.enabled ? "" : " (upgrade to unlock)"}</Badge>)}</div></div>}
         <div className="flex flex-wrap gap-2 pt-1">{s.features!.map(f => <Badge key={f.key} variant={f.enabled ? "success" : "muted"}>{f.enabled ? <CheckCircle2 className="mr-1 h-3 w-3" /> : null}{f.label}{f.enabled ? "" : " (not included)"}</Badge>)}</div>
       </CardContent></Card>
     </div>
 
     {s.openInvoices!.length > 0 && <Card className="border-warning/50"><CardContent className="space-y-3 p-6">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment due</p>
+      <p className="text-xs font-medium text-muted-foreground">Payment due</p>
       {s.openInvoices!.map(i => <div key={i.id} className="flex flex-wrap items-center justify-between gap-3">
         <div><p className="font-medium">{i.invoiceNumber} · {formatMoney(i.total, i.currency)}</p><p className="text-xs text-muted-foreground">Due {formatDay(i.dueAtUtc)} (incl. GST)</p></div>
         <Button size="sm" disabled={busy} onClick={() => { void pay(i); }}><ExternalLink className="mr-1.5 h-3.5 w-3.5" />Pay now</Button></div>)}

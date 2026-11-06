@@ -267,7 +267,7 @@ export function DoubtChatbot({ role }: { role: Role }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "fixed bottom-[140px] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg outline-none transition-all hover:scale-105 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:bottom-[84px] sm:right-6",
+          "fixed bottom-[140px] right-4 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-primary shadow-md outline-none transition-colors hover:bg-accent hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:bottom-[84px] sm:right-6",
           coversContent && !open && "opacity-30",
           // See FloatingNotes' own comment: fading alone still swallowed clicks meant for an
           // interactive control underneath (e.g. a table's pagination arrow) at any opacity.
@@ -320,7 +320,7 @@ export function DoubtChatbot({ role }: { role: Role }) {
 
             {showSuggestions && (
               <div className="mt-1 flex flex-col gap-1.5">
-                <p className="px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Common questions</p>
+                <p className="px-0.5 text-[10px] font-medium text-muted-foreground">Common questions</p>
                 <div className="flex flex-wrap gap-1.5">
                   {faqs.slice(0, MAX_SUGGESTIONS).map((faq) => (
                     <button

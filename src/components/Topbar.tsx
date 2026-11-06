@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Menu, LogOut, User, Settings, Compass, Search } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { currentNavItem, type NavSection } from "@/lib/nav";
+import { ChevronRight, Menu, LogOut, User, Settings, Compass, Search } from "lucide-react";
 import { OPEN_COMMAND_PALETTE_EVENT } from "@/lib/commandPalette";
 import { START_TOUR_EVENT } from "@/components/AppTour";
 import { AccountDialog } from "@/components/AccountDialog";
@@ -25,9 +26,13 @@ import { exitViewAs } from "@/lib/viewAs";
 interface TopbarProps {
   onMenuClick: () => void;
   title?: string;
+  /** The portal's menu, used to name the current page in the breadcrumb. */
+  sections?: NavSection[];
 }
 
-export function Topbar({ onMenuClick, title }: TopbarProps) {
+export function Topbar({ onMenuClick, title, sections = [] }: TopbarProps) {
+  const { pathname } = useLocation();
+  const current = currentNavItem(sections, pathname);
   const { userName, logout } = useSession();
   const navigate = useNavigate();
   const [accountOpen, setAccountOpen] = useState(false);
@@ -48,7 +53,18 @@ export function Topbar({ onMenuClick, title }: TopbarProps) {
         <Menu className="h-5 w-5" />
       </button>
 
-      {title && <h2 className="hidden text-[13px] font-medium text-muted-foreground md:block">{title}</h2>}
+      <nav aria-label="Breadcrumb" className="hidden min-w-0 items-center gap-1.5 text-[13px] md:flex">
+        {title && <span className="truncate text-muted-foreground">{title}</span>}
+        {current?.section && (
+          <>
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+            <span className="hidden truncate text-muted-foreground lg:inline">{current.section}</span>
+            <ChevronRight className="hidden h-3.5 w-3.5 shrink-0 text-muted-foreground/60 lg:inline" />
+          </>
+        )}
+        {current && !current.section && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />}
+        {current && <span aria-current="page" className="truncate font-medium text-foreground">{current.label}</span>}
+      </nav>
 
       <button
         onClick={() => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))}

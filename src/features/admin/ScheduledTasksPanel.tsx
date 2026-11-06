@@ -125,7 +125,7 @@ export function ScheduledTasksPanel({ tasks }: { tasks: ScheduledTask[] }) {
         <div className="space-y-4 px-2 pb-4">
           {servers.map((server) => (
             <div key={server}>
-              <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{server}</p>
+              <p className="px-4 pb-1 text-xs font-medium text-muted-foreground">{server}</p>
               <Table>
                 <TableHeader>
                   <TableRow>

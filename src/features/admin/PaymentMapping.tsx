@@ -91,16 +91,16 @@ function DepartmentCard({ account, color, onEdit }: { account: ApiPaymentAccount
       <CardContent>
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div className="rounded-lg bg-muted/40 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Transactions</p>
+            <p className="text-xs font-medium text-muted-foreground">Transactions</p>
             <p className="mt-1 text-xl font-bold text-foreground">{account.transactionCount}</p>
           </div>
           <div className="rounded-lg bg-muted/40 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Collected</p>
+            <p className="text-xs font-medium text-muted-foreground">Total Collected</p>
             <p className="mt-1 text-xl font-bold text-foreground">{formatCurrency(account.totalCollected)}</p>
           </div>
         </div>
 
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recent Transactions</p>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">Recent Transactions</p>
         <div className="overflow-x-auto rounded-lg border border-border">
           <Table>
             <TableHeader>

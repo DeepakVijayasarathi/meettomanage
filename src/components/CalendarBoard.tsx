@@ -94,7 +94,7 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
       </div>
 
       <div className="overflow-hidden rounded-xl border border-border">
-        <div className="grid grid-cols-7 bg-muted/50 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <div className="grid grid-cols-7 bg-muted/50 text-center text-xs font-medium text-muted-foreground">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
             <div key={d} className="py-2">
               {d}

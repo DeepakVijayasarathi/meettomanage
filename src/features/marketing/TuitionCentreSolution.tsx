@@ -33,6 +33,7 @@ export default function TuitionCentreSolution() {
       closing={
         <>
           Meet to Manage connects the workflows that usually sit in separate registers and apps. Explore the built-in{" "}
+          <Link to="/solutions/coaching-centre-admission-crm" className={LINK}>admission CRM and demo booking</Link>,{" "}
           <Link to="/solutions/live-class-software-for-institutes" className={LINK}>live classroom</Link>,{" "}
           <Link to="/solutions/online-attendance-software-for-institutes" className={LINK}>attendance software</Link> and{" "}
           <Link to="/solutions/fee-management-software-for-coaching-centres" className={LINK}>fee management</Link>. Compare the{" "}

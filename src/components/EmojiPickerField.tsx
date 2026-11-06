@@ -46,7 +46,7 @@ export function EmojiPickerField({ value, onChange, className, ...aria }: EmojiP
         <div className="flex max-h-72 flex-col gap-3 overflow-y-auto pr-1">
           {EMOJI_GROUPS.map((group) => (
             <div key={group.label}>
-              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>
+              <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">{group.label}</p>
               <div className="grid grid-cols-8 gap-1">
                 {group.emoji.map((e) => (
                   <button

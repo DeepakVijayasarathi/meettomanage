@@ -77,15 +77,15 @@ export default function AdmissionDemoFeedback() {
                 </CardHeader>
                 <CardContent className="flex flex-col gap-2.5 pt-0 text-sm">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Academic Level</p>
+                    <p className="text-xs font-medium text-muted-foreground">Academic Level</p>
                     <p className="text-foreground">{f.academicLevel}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Strengths</p>
+                    <p className="text-xs font-medium text-muted-foreground">Strengths</p>
                     <p className="text-foreground">{f.strengths}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Improvement Areas</p>
+                    <p className="text-xs font-medium text-muted-foreground">Improvement Areas</p>
                     <p className="text-foreground">{f.improvementAreas}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 pt-1">

@@ -479,3 +479,15 @@ export const NAV_BY_ROLE: Record<Role, NavSection[]> = {
   executive: EXECUTIVE_NAV,
   marketing: MARKETING_NAV,
 };
+
+/** The menu entry for the current URL: the longest matching path, so /admin/bulk-email/history beats /admin/bulk-email. */
+export function currentNavItem(sections: NavSection[], pathname: string) {
+  let best: { section: string | undefined; label: string; to: string } | null = null;
+  for (const section of sections) {
+    for (const item of section.items) {
+      const matches = pathname === item.to || (!item.end && pathname.startsWith(`${item.to}/`));
+      if (matches && (!best || item.to.length > best.to.length)) best = { section: section.title ?? undefined, label: item.label, to: item.to };
+    }
+  }
+  return best;
+}

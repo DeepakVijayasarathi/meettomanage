@@ -188,12 +188,12 @@ export const ROLE_ORDER: Role[] = [
 
 /** Vivid, brand-derived multi-series palette for charts, KPI icon chips and legends. */
 export const CHART_PALETTE = [
-  "#1F6FE0", // blue
-  "#57B33B", // green
-  "#17A9C9", // cyan
-  "#F08A1D", // orange
-  "#8B5CF6", // violet
-  "#F53BA6", // pink
-  "#EAB308", // amber
-  "#0D9488", // teal
+  "#3B6FD4", // blue
+  "#4FA35A", // green
+  "#2A9FBA", // cyan
+  "#E28A36", // orange
+  "#8467E0", // violet
+  "#D35E9A", // pink
+  "#CFA233", // amber
+  "#2A8F86", // teal
 ];

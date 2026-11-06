@@ -319,7 +319,7 @@ export default function BlogPosts() {
             </div>
             {form.isPublished && (
               <fieldset className="grid gap-2 rounded-lg border border-border p-3">
-                <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">When</legend>
+                <legend className="px-1 text-xs font-medium text-muted-foreground">When</legend>
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="radio"

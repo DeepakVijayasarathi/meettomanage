@@ -261,7 +261,7 @@ export function AppShell({ role, children }: AppShellProps) {
         onToggleCollapse={() => setCollapsed((c) => !c)}
       />
       <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
-        <Topbar onMenuClick={() => setMobileOpen(true)} title={meta.label} />
+        <Topbar onMenuClick={() => setMobileOpen(true)} title={meta.label} sections={navSections} />
         {/* Reserves clearance below the last row of content so the fixed FloatingNotes button
             never sits on top of — and steals clicks from — bottom-right page chrome like
             DataTable's pagination controls. FloatingNotes' own footprint is bottom-20 + 48px

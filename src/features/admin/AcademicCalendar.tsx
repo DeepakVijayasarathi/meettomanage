@@ -254,28 +254,28 @@ export default function AdminAcademicCalendar() {
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
+                  <p className="text-xs font-medium text-muted-foreground">Status</p>
                   <div className="mt-1">
                     <SessionStatusBadge status={selected.status} />
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Type</p>
+                  <p className="text-xs font-medium text-muted-foreground">Type</p>
                   <p className="mt-1 font-medium capitalize text-foreground">{selected.type}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Teacher</p>
+                  <p className="text-xs font-medium text-muted-foreground">Teacher</p>
                   <p className="mt-1 font-medium text-foreground">{selected.teacherName}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Batch</p>
+                  <p className="text-xs font-medium text-muted-foreground">Batch</p>
                   {/* API sessions carry the batch name as the title; the mock lookup is demo-only */}
                   <p className="mt-1 font-medium text-foreground">
                     {selected.batchName ?? (selected.batchId ? getBatchById(selected.batchId)?.name ?? "—" : "—")}
                   </p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Students</p>
+                  <p className="text-xs font-medium text-muted-foreground">Students</p>
                   <p className="mt-1 font-medium text-foreground">
                     {selected.studentNames && selected.studentNames.length > 0
                       ? selected.studentNames.join(", ")
@@ -286,7 +286,7 @@ export default function AdminAcademicCalendar() {
                 </div>
                 {selected.status === "cancelled" && selected.cancellationReason && (
                   <div className="col-span-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cancelled by</p>
+                    <p className="text-xs font-medium text-muted-foreground">Cancelled by</p>
                     <p className="mt-1 font-medium text-foreground">{parseCancellation(selected.cancellationReason).who ?? "Not recorded"}</p>
                     {parseCancellation(selected.cancellationReason).details && (
                       <p className="mt-0.5 text-xs text-muted-foreground">{parseCancellation(selected.cancellationReason).details}</p>

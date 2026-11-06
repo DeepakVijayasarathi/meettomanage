@@ -158,9 +158,9 @@ export default function SubAdminPermissions() {
               <table className="w-full min-w-[720px] text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/40">
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Module</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Module</th>
                     {PERMISSION_ACTIONS_LABELS.map((action) => (
-                      <th key={action} className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <th key={action} className="px-4 py-3 text-center text-xs font-medium text-muted-foreground">
                         {action}
                       </th>
                     ))}
@@ -347,9 +347,9 @@ export default function SubAdminPermissions() {
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Module</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Module</th>
                   {ACTIONS.map((action) => (
-                    <th key={action} className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <th key={action} className="px-4 py-3 text-center text-xs font-medium text-muted-foreground">
                       {action}
                     </th>
                   ))}

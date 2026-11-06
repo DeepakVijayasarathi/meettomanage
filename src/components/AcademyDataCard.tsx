@@ -58,7 +58,7 @@ export function AcademyDataCard() {
     <Card>
       <CardContent className="space-y-4 p-6">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your academy's data</p>
+          <p className="text-xs font-medium text-muted-foreground">Your academy's data</p>
           <p className="mt-1 text-sm text-muted-foreground">Download everything your academy holds, or close the academy. Sign-in PINs are never exported.</p>
         </div>
         <div className="flex flex-wrap gap-2">

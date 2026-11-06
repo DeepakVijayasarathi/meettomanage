@@ -123,7 +123,7 @@ export function AdmissionPaymentPanel({
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Enrollment payment</p>
+      <p className="text-xs font-medium text-muted-foreground">Enrollment payment</p>
 
       {lead.conversionStage === "Ready for Enrollment" && (
         <InlineAlert variant="success" className="text-sm">

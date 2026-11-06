@@ -97,7 +97,7 @@ export function AccountSuspendedScreen({ childId, onRecheck }: { childId?: strin
           {targets.map((t) => (
             <div key={t.invoice.id} className="rounded-xl border border-border bg-muted/30 p-4">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                   <ReceiptText className="h-3.5 w-3.5" /> {targets.length > 1 ? t.childName : "Overdue — pay to unlock"}
                 </div>
               </div>

@@ -277,7 +277,7 @@ export default function AdmissionPayments() {
       )}
 
       <div className="mt-6">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground">
           Pending Cash Confirmations
         </h2>
         <p className="mb-3 text-xs text-muted-foreground">

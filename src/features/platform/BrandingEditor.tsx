@@ -59,7 +59,7 @@ export default function BrandingEditor({ values, set, disabled, tenantId, token,
     </div>
 
     <div className="rounded-xl border border-border p-4" aria-label="Brand preview">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live preview</p>
+      <p className="mb-3 text-xs font-medium text-muted-foreground">Live preview</p>
       <div className="overflow-hidden rounded-lg border border-border">
         <div className="flex items-center gap-3 px-4 py-3 text-white" style={{ backgroundColor: primary }}>
           <img src={logo || "/logo-icon.png"} alt="" className="h-8 w-8 rounded bg-white/90 object-contain p-0.5" />

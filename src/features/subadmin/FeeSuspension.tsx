@@ -182,11 +182,11 @@ export default function SubAdminFeeSuspension() {
 
                   <div className="flex items-center gap-6">
                     <div className="text-right">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Amount Due</p>
+                      <p className="text-xs font-medium text-muted-foreground">Amount Due</p>
                       <p className="text-base font-bold text-foreground">{invoice ? formatCurrency(invoice.amount) : "—"}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overdue By</p>
+                      <p className="text-xs font-medium text-muted-foreground">Overdue By</p>
                       <p className="flex items-center justify-end gap-1 text-base font-bold text-destructive">
                         <AlertOctagon className="h-4 w-4" />
                         {overdueDays !== null ? `${overdueDays}d` : "—"}

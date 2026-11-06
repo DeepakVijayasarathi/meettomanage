@@ -73,14 +73,19 @@ export function NetworkStatus() {
   const meta = META[status];
   const Icon = status === "offline" ? WifiOff : Wifi;
 
+  // Nothing to say while the connection is healthy; only slow or offline states take space.
+  if (status === "online") {
+    return <span role="status" aria-live="polite" className="sr-only">{meta.label}</span>;
+  }
+
   return (
     <div
       role="status"
       aria-live="polite"
       title={latency != null ? `${meta.label} · ${latency} ms to server` : meta.label}
-      className={cn("flex h-9 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium", meta.text)}
+      className={cn("flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium", meta.text)}
     >
-      <span className={cn("h-2 w-2 rounded-full", meta.dot, status !== "online" && "animate-pulse")} />
+      <span className={cn("h-2 w-2 rounded-full", meta.dot, "animate-pulse")} />
       <Icon className="h-3.5 w-3.5" />
       <span className="hidden sm:inline">{meta.label}</span>
     </div>

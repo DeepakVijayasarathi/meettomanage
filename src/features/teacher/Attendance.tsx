@@ -354,7 +354,7 @@ export default function TeacherAttendance() {
               </DialogHeader>
 
               <div className="flex flex-col gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attendance breakdown</p>
+                <p className="text-xs font-medium text-muted-foreground">Attendance breakdown</p>
                 {(selectedRecords ?? selected.childIds.map<AttendanceRecord>((id) => ({ childId: id, present: true }))).map((record) => {
                   const child = getChildById(record.childId);
                   return (
@@ -380,14 +380,14 @@ export default function TeacherAttendance() {
               </div>
 
               <div>
-                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Session notes</p>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Session notes</p>
                 <p className="rounded-lg bg-muted/50 p-3 text-sm text-foreground">
                   {(apiEnabled() ? selected.summary : SESSION_NOTES[selected.id]) ?? "No notes were recorded for this session."}
                 </p>
               </div>
 
               <div>
-                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment detail</p>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Payment detail</p>
                 {(() => {
                   const payment = paymentBySession[selected.id];
                   if (!payment) {

@@ -237,11 +237,11 @@ export default function MarketingHome() {
                 <p className="mt-2 leading-relaxed text-[#57534E]">Interactive video, whiteboard, activities, recordings and one-click joining from the teacher and parent portals.</p>
                 <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]">Explore live classes <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </Link>
-              <Link to="/solutions/online-attendance-software-for-institutes" className="group rounded-2xl border border-[#EFE3D7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(194,65,12,0.45)] transition-all hover:-translate-y-1 hover:border-[#F4B98C]">
+              <Link to="/solutions/coaching-centre-admission-crm" className="group rounded-2xl border border-[#EFE3D7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(194,65,12,0.45)] transition-all hover:-translate-y-1 hover:border-[#F4B98C]">
                 <GraduationCap className="h-7 w-7 text-[#EA580C]" />
                 <h3 className="mt-5 font-display text-xl font-extrabold">Admissions and attendance</h3>
                 <p className="mt-2 leading-relaxed text-[#57534E]">Track enquiries, demos, enrolments and attendance without losing the history in private messages or spreadsheets.</p>
-                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]">Explore attendance <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]">Explore admission CRM <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </Link>
               <Link to="/pricing" className="group rounded-2xl border border-[#EFE3D7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(194,65,12,0.45)] transition-all hover:-translate-y-1 hover:border-[#F4B98C]">
                 <CreditCard className="h-7 w-7 text-[#EA580C]" />

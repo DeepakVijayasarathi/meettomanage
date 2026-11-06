@@ -258,7 +258,7 @@ export default function AdminDashboard() {
 
       {/* Primary KPI tier — growth & revenue, given the most visual weight on the page */}
       <section>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Growth &amp; revenue</h2>
+        <h2 className="mb-3 text-xs font-medium text-muted-foreground">Growth &amp; revenue</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {primaryKpis.map((kpi) => (
             <KpiCard
@@ -279,7 +279,7 @@ export default function AdminDashboard() {
 
       {/* Secondary KPI tier — rates and quality signals, deliberately more compact */}
       <section className="mt-6">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Performance &amp; quality</h2>
+        <h2 className="mb-3 text-xs font-medium text-muted-foreground">Performance &amp; quality</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {secondaryKpis.map((kpi) => (
             <KpiCard

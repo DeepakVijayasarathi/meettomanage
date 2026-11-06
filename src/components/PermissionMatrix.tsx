@@ -82,7 +82,7 @@ export function PermissionMatrix({ modules, permissions, menusByModule, onToggle
             onCheckedChange={onToggleAll}
             aria-label="Select all permissions"
           />
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Select all modules</span>
+          <span className="text-xs font-medium text-muted-foreground">Select all modules</span>
         </div>
         {modules.map((mod, mi) => {
           const grant = findGrant(permissions, mod.value);
@@ -134,7 +134,7 @@ export function PermissionMatrix({ modules, permissions, menusByModule, onToggle
         <table className="w-full min-w-[720px] text-sm">
         <thead>
           <tr className="border-b border-border bg-muted/40">
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
               <div className="flex items-center gap-2.5">
                 <Checkbox
                   checked={triState(permissions.flatMap((p) => PERMISSION_ACTIONS.map((a) => p[a.key])))}
@@ -145,7 +145,7 @@ export function PermissionMatrix({ modules, permissions, menusByModule, onToggle
               </div>
             </th>
             {PERMISSION_ACTIONS.map((action) => (
-              <th key={action.key} className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <th key={action.key} className="px-4 py-3 text-center text-xs font-medium text-muted-foreground">
                 <div className="flex flex-col items-center gap-1.5">
                   <Checkbox
                     checked={triState(permissions.map((p) => p[action.key]))}

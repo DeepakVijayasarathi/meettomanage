@@ -525,23 +525,23 @@ export default function SubAdminEnrollments() {
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Age / Grade</p>
+                  <p className="text-xs font-medium text-muted-foreground">Age / Grade</p>
                   <p className="mt-1 font-medium text-foreground">
                     {detail.age} yrs · {gradeLabel(detail.grade)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Course</p>
+                  <p className="text-xs font-medium text-muted-foreground">Course</p>
                   <p className="mt-1 font-medium text-foreground">
                     {courseOptions.find((c) => c.id === detail.courseId)?.name ?? getCourseById(detail.courseId)?.name ?? "Course pending"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Batch Type</p>
+                  <p className="text-xs font-medium text-muted-foreground">Batch Type</p>
                   <p className="mt-1 font-medium text-foreground">{batchTypeLabel(detail.batchType)}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Schedule Preference</p>
+                  <p className="text-xs font-medium text-muted-foreground">Schedule Preference</p>
                   <p className="mt-1 font-medium text-foreground">
                     {detail.daysPerWeek ? `${detail.daysPerWeek} day${detail.daysPerWeek === 1 ? "" : "s"}/week · ` : ""}
                     {detail.timeZoneId && !isAcademyClock(detail.timeZoneId)
@@ -557,23 +557,23 @@ export default function SubAdminEnrollments() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preferred Start Date</p>
+                  <p className="text-xs font-medium text-muted-foreground">Preferred Start Date</p>
                   <p className="mt-1 font-medium text-foreground">{detail.startDate ? formatDate(detail.startDate, "long") : "—"}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
+                  <p className="text-xs font-medium text-muted-foreground">Parent</p>
                   <p className="mt-1 font-medium text-foreground">{detail.parentName ?? getParentById(detail.parentId)?.name ?? "—"}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent Contact</p>
+                  <p className="text-xs font-medium text-muted-foreground">Parent Contact</p>
                   <p className="mt-1 font-medium text-foreground">{detail.parentPhone ?? getParentById(detail.parentId)?.phone ?? "—"}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee Status</p>
+                  <p className="text-xs font-medium text-muted-foreground">Fee Status</p>
                   <p className="mt-1 font-medium capitalize text-foreground">{detail.feeStatus}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Form Status</p>
+                  <p className="text-xs font-medium text-muted-foreground">Form Status</p>
                   <div className="mt-1">
                     <Badge variant={isComplete(detail) ? "success" : "warning"}>{isComplete(detail) ? "Complete" : "Pending"}</Badge>
                   </div>
@@ -775,7 +775,7 @@ export default function SubAdminEnrollments() {
             </div>
 
             <div className="border-t border-border pt-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent &amp; contact</p>
+              <p className="mb-3 text-xs font-medium text-muted-foreground">Parent &amp; contact</p>
               <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1.5">
@@ -826,7 +826,7 @@ export default function SubAdminEnrollments() {
             </div>
 
             <div className="border-t border-border pt-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Schedule preferences</p>
+              <p className="mb-3 text-xs font-medium text-muted-foreground">Schedule preferences</p>
               <div className="flex flex-col gap-4">
                 <fieldset className="flex flex-col gap-1.5">
                   <legend className="mb-1.5 text-sm font-medium leading-none text-foreground/90">Preferred class days</legend>

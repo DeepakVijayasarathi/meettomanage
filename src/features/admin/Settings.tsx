@@ -545,7 +545,7 @@ export default function AdminSettings() {
               </div>
 
               <div className="rounded-xl border border-border p-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live Preview</p>
+                <p className="mb-3 text-xs font-medium text-muted-foreground">Live Preview</p>
                 <div className="flex items-center gap-3">
                   <span className="rounded-lg px-4 py-2 text-sm font-semibold text-white" style={{ backgroundColor: brandColor }}>
                     Primary Button
@@ -1052,7 +1052,7 @@ function MenuManager() {
                 const Icon = resolveMenuIcon(item.icon);
                 return (
                   <TableRow key={item.id} className={cn(!item.isActive && "opacity-50")}>
-                    <TableCell className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{item.section ?? "—"}</TableCell>
+                    <TableCell className="text-xs font-medium text-muted-foreground">{item.section ?? "—"}</TableCell>
                     <TableCell>
                       <span className="flex items-center gap-2 font-medium text-foreground">
                         <Icon className="h-4 w-4 text-muted-foreground" />
@@ -2176,7 +2176,7 @@ export function IntegrationsManager() {
           const Icon = meta.icon;
           return (
             <div key={category}>
-              <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <Icon className="h-3.5 w-3.5" /> {meta.label}
               </p>
               <div className="flex flex-col gap-1 rounded-xl border border-border">

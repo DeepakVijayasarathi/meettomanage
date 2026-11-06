@@ -834,23 +834,23 @@ export default function AdminBatches() {
               <Card className="bg-muted/30 p-4">
                 <CardContent className="grid grid-cols-2 gap-4 p-0 text-sm">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Enrolled</p>
+                    <p className="text-xs font-medium text-muted-foreground">Enrolled</p>
                     <p className="mt-1 font-semibold text-foreground">
                       {apiEnabled() ? roster.length : detail.enrolled} / {detail.capacity}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
+                    <p className="text-xs font-medium text-muted-foreground">Status</p>
                     <p className="mt-1 font-semibold capitalize text-foreground">{detail.status}</p>
                   </div>
                   {!apiEnabled() && (
                     <>
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Duration</p>
+                        <p className="text-xs font-medium text-muted-foreground">Duration</p>
                         <p className="mt-1 font-semibold text-foreground">{detail.duration} min</p>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Start Date</p>
+                        <p className="text-xs font-medium text-muted-foreground">Start Date</p>
                         {/* detail.startDate is "" until a schedule's been generated (same empty
                             value the card view above already guards) — formatDate on "" rendered
                             the literal text "Invalid Date" instead of a real placeholder. */}

@@ -273,7 +273,7 @@ function TicketList({
   if (tickets.length === 0) return null;
   return (
     <section>
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+      <h2 className="mb-2 text-sm font-medium text-muted-foreground">{title}</h2>
       <Card className="divide-y overflow-hidden p-0">
         {tickets.map((t) => (
           <button

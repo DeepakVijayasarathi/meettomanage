@@ -150,7 +150,7 @@ export default function SearchUsers() {
         <div className="flex flex-col gap-6">
           {userResults.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
                 Accounts ({userResults.length})
               </p>
               <div className="overflow-x-auto rounded-xl border border-border">
@@ -202,7 +202,7 @@ export default function SearchUsers() {
 
           {studentResults.length > 0 && (
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
                 Students ({studentResults.length})
               </p>
               <div className="overflow-x-auto rounded-xl border border-border">

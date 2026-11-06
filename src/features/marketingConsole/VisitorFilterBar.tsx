@@ -53,7 +53,7 @@ export function VisitorFilterBar({ filters, countries, period, onChange }: { fil
       )}
       {countries.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Country">
-          <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Country</span>
+          <span className="mr-1 text-xs font-medium text-muted-foreground">Country</span>
           <button type="button" aria-pressed={!country} onClick={() => { setCountry(null); setPage(1); onChange?.(); }}
             className={cn("rounded-full border px-2.5 py-1 text-xs font-medium", !country ? "border-primary bg-primary/10 text-primary" : "hover:bg-muted")}>
             All

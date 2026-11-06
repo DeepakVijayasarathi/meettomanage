@@ -342,13 +342,13 @@ export default function AdminBilling() {
 
         <TabsContent value="action" className="flex flex-col gap-8">
           <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground">
               Pending Cash Confirmations
             </h2>
             <CashConfirmationsPanel />
           </div>
           <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground">
               Pending Refund Requests
             </h2>
             <RefundRequestsPanel />
@@ -406,7 +406,7 @@ export default function AdminBilling() {
           <>
               {live && detail.apiId && (transactionsLoading || transactions.length > 0) && (
                 <div className="mt-4 flex flex-col gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payments</p>
+                  <p className="text-xs font-medium text-muted-foreground">Payments</p>
                   {transactionsLoading ? (
                     <p className="text-sm text-muted-foreground">Loading payment history…</p>
                   ) : (

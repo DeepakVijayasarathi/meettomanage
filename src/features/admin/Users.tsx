@@ -1063,26 +1063,26 @@ export default function AdminUsers() {
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Phone</p>
+                  <p className="text-xs font-medium text-muted-foreground">Phone</p>
                   <p className="mt-1 font-medium text-foreground">{detailUser.phone}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Role</p>
+                  <p className="text-xs font-medium text-muted-foreground">Role</p>
                   <p className="mt-1 font-medium capitalize text-foreground">{detailUser.role}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
+                  <p className="text-xs font-medium text-muted-foreground">Status</p>
                   <div className="mt-1">
                     <UserStatusBadge status={detailUser.status} />
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Joined</p>
+                  <p className="text-xs font-medium text-muted-foreground">Joined</p>
                   <p className="mt-1 font-medium text-foreground">{formatDate(detailUser.joinedOn, "long")}</p>
                 </div>
                 {detailUser.department && (
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Department</p>
+                    <p className="text-xs font-medium text-muted-foreground">Department</p>
                     <p className="mt-1 font-medium text-foreground">{detailUser.department}</p>
                   </div>
                 )}
@@ -1435,33 +1435,33 @@ export default function AdminUsers() {
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent</p>
+                  <p className="text-xs font-medium text-muted-foreground">Parent</p>
                   <p className="mt-1 font-medium text-foreground">
                     {(detailChild as StudentRow).parentName ?? getParentById(detailChild.parentId)?.name ?? "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Course</p>
+                  <p className="text-xs font-medium text-muted-foreground">Course</p>
                   <p className="mt-1 font-medium text-foreground">
                     {(detailChild as StudentRow).courseName ?? getCourseById(detailChild.courseId)?.name ?? "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Classes Completed</p>
+                  <p className="text-xs font-medium text-muted-foreground">Classes Completed</p>
                   <p className="mt-1 font-medium text-foreground">{detailChild.classesCompleted}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Classes Remaining</p>
+                  <p className="text-xs font-medium text-muted-foreground">Classes Remaining</p>
                   <p className="mt-1 font-medium text-foreground">{detailChild.classesRemaining}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attendance</p>
+                  <p className="text-xs font-medium text-muted-foreground">Attendance</p>
                   <p className="mt-1 font-medium text-foreground">
                     {detailChild.attendancePercent === undefined ? "—" : `${detailChild.attendancePercent}%`}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fee Status</p>
+                  <p className="text-xs font-medium text-muted-foreground">Fee Status</p>
                   <div className="mt-1">
                     <FeeStatusBadge status={detailChild.feeStatus} />
                   </div>
@@ -1475,7 +1475,7 @@ export default function AdminUsers() {
                 <div className="mt-4 rounded-xl border border-border bg-muted/20 p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" />
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Engagement Analytics</p>
+                    <p className="text-xs font-medium text-muted-foreground">AI Engagement Analytics</p>
                   </div>
                   {analyticsLoading ? (
                     <p className="text-sm text-muted-foreground">Loading…</p>

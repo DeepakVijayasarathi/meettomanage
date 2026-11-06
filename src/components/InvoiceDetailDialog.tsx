@@ -8,7 +8,7 @@ import type { Invoice } from "@/types";
 function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <div className="mt-1 font-medium text-foreground">{value}</div>
     </div>
   );
