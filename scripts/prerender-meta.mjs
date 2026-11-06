@@ -158,6 +158,35 @@ async function getJson(url) {
   return res.json();
 }
 
+function blogProductBridge(post) {
+  const topic = `${post.slug ?? ""} ${post.title ?? ""}`.toLowerCase();
+  let solution = {
+    href: "/solutions/tuition-centre-management-software",
+    label: "See the complete coaching-centre workflow",
+    copy: "Turn the ideas in this guide into one practical system for classes, attendance, fees, parents, and daily operations.",
+  };
+  if (/demo|admission|enrol|booking|crm|lead/.test(topic)) {
+    solution = {
+      href: "/solutions/coaching-centre-admission-crm",
+      label: "See the admission CRM workflow",
+      copy: "Capture enquiries, assign follow-ups, schedule demos, and move interested families through one visible admission pipeline.",
+    };
+  } else if (/fee|payment|gateway|pricing|billing|cost/.test(topic)) {
+    solution = {
+      href: "/solutions/fee-management-software-for-coaching-centres",
+      label: "See the fee-management workflow",
+      copy: "Track collections, overdue fees, receipts, and parent reminders without maintaining separate spreadsheets.",
+    };
+  } else if (/class|whiteboard|gamif|recording|teacher|zoom|lesson/.test(topic)) {
+    solution = {
+      href: "/solutions/live-class-software-for-institutes",
+      label: "See the live-class workflow",
+      copy: "Run classes, attendance, recordings, and learner communication from a workflow designed for teaching businesses.",
+    };
+  }
+  return `<aside class="product-bridge"><h2>Put this guide into practice</h2><p>${esc(solution.copy)}</p><p><a href="${solution.href}">${esc(solution.label)}</a></p></aside>`;
+}
+
 /** Every published post with its full text, from the API. A build must never fail because the API is down. */
 async function blogPages() {
   try {
@@ -185,7 +214,7 @@ async function blogPages() {
         publishedAt: p.publishedAtUtc,
         wordCount,
         image: existsSync(path.join(dist, cover)) ? cover : undefined,
-        contentHtml: p.slug === NO_SHOWS_SLUG ? `${NO_SHOWS_CONTEXT}${contentHtml}` : contentHtml,
+        contentHtml: `${p.slug === NO_SHOWS_SLUG ? NO_SHOWS_CONTEXT : ""}${contentHtml}${blogProductBridge(p)}`,
       });
     }
     return pages;
@@ -211,7 +240,8 @@ if (blogIndex && posts.length) {
     .sort((a, b) => String(b.publishedAt ?? "").localeCompare(String(a.publishedAt ?? "")))
     .map((p) => `<li><h2><a href="${p.path}">${esc(p.heading ?? p.title)}</a></h2>${p.description ? `<p>${esc(p.description)}</p>` : ""}</li>`)
     .join("");
-  blogIndex.contentHtml = `<ul class="post-list">${items}</ul>`;
+  const buyerPaths = `<section><h2>Start with your biggest problem</h2><p>Use these practical guides to diagnose the problem, then see the matching product workflow.</p><ul><li><a href="/blog/admissions-crm-for-coaching-centres-the-complete-workflow">Improve enquiry and admission follow-up</a></li><li><a href="/blog/fee-management-software-for-coaching-institutes-a-buyer-guide">Choose a better fee-management process</a></li><li><a href="/blog/online-coaching-software-checklist">Plan an online coaching workflow</a></li></ul></section>`;
+  blogIndex.contentHtml = `${buyerPaths}<ul class="post-list">${items}</ul>`;
 }
 
 // Marketing console → SEO overrides, so crawlers that don't run JavaScript see the same

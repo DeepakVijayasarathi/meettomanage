@@ -18,6 +18,7 @@ import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listBlogPosts, type ApiBlogPostSummary } from "@/api/marketing";
 import { DEMO_BLOG_SUMMARIES } from "@/data/blogPosts";
+import { trackMarketingEvent } from "@/lib/analytics";
 
 /** Page chrome only — the posts themselves (title/excerpt/body, from listBlogPosts()/
  *  DEMO_BLOG_SUMMARIES and BlogPost.tsx) are real editorial content, not UI copy, and stay
@@ -43,6 +44,10 @@ const T = {
     ctaSub: "A free 30-minute walkthrough of scheduling, admissions and billing working together — no payment details required.",
     requestDemo: "Book a free demo",
     rights: (year: number) => `© ${year} Meet to Manage. All rights reserved.`,
+    buyerEyebrow: "Start with your biggest problem",
+    buyerHeading: "Practical guides that lead to a working system",
+    buyerIntro: "Choose the outcome you need. Each path starts with an honest guide and ends with the matching Meet to Manage workflow.",
+    readGuide: "Read the guide",
   },
   ar: {
     backHome: "العودة للرئيسية",
@@ -63,8 +68,71 @@ const T = {
     ctaSub: "جولة مجانية مدتها 30 دقيقة في الجدولة والقبول والفوترة معًا — دون الحاجة لبيانات دفع.",
     requestDemo: "احجز عرضًا مجانيًا",
     rights: (year: number) => `© ${year} Meet to Manage. جميع الحقوق محفوظة.`,
+    buyerEyebrow: "ابدأ بأكبر مشكلة تواجهك",
+    buyerHeading: "أدلة عملية تقود إلى نظام متكامل",
+    buyerIntro: "اختر النتيجة التي تحتاجها. يبدأ كل مسار بدليل عملي وينتهي بسير العمل المناسب في Meet to Manage.",
+    readGuide: "اقرأ الدليل",
   },
 };
+
+const BUYER_PATHS = [
+  {
+    analyticsKey: "admissions",
+    en: { label: "Improve admissions", title: "Stop losing enquiries after the first message", body: "Learn the complete enquiry, demo and follow-up workflow, then see the admission CRM that keeps the next action visible.", solutionLabel: "Explore admission CRM" },
+    ar: { label: "حسّن القبول", title: "لا تفقد الاستفسارات بعد الرسالة الأولى", body: "تعرّف على سير عمل الاستفسار والعرض التجريبي والمتابعة، ثم شاهد نظام القبول الذي يُظهر الإجراء التالي بوضوح.", solutionLabel: "استكشف نظام القبول" },
+    article: "/blog/admissions-crm-for-coaching-centres-the-complete-workflow",
+    solution: "/solutions/coaching-centre-admission-crm",
+  },
+  {
+    analyticsKey: "billing",
+    en: { label: "Collect fees", title: "Replace manual reminders and fee spreadsheets", body: "Use the buyer guide to plan invoices, reminders and payment tracking before comparing the built-in fee workflow.", solutionLabel: "Explore fee management" },
+    ar: { label: "حصّل الرسوم", title: "استبدل التذكيرات اليدوية وجداول الرسوم", body: "استخدم دليل الشراء لتخطيط الفواتير والتذكيرات وتتبع المدفوعات، ثم قارن سير عمل الرسوم المدمج.", solutionLabel: "استكشف إدارة الرسوم" },
+    article: "/blog/fee-management-software-for-coaching-institutes-a-buyer-guide",
+    solution: "/solutions/fee-management-software-for-coaching-centres",
+  },
+  {
+    analyticsKey: "platform",
+    en: { label: "Choose software", title: "Know what to check before buying a platform", body: "Work through the practical software checklist, then see how classes, attendance, admissions and fees connect.", solutionLabel: "Explore centre management" },
+    ar: { label: "اختر البرنامج", title: "اعرف ما يجب التحقق منه قبل شراء منصة", body: "راجع قائمة التحقق العملية، ثم شاهد كيف ترتبط الحصص والحضور والقبول والرسوم معاً.", solutionLabel: "استكشف إدارة المركز" },
+    article: "/blog/online-coaching-software-checklist",
+    solution: "/solutions/tuition-centre-management-software",
+  },
+] as const;
+
+function BuyerPathsSection({ lang }: { lang: keyof typeof T }) {
+  const copy = T[lang];
+  return (
+    <section aria-labelledby="buyer-paths-heading" className="mb-12">
+      <div className="max-w-2xl">
+        <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#C2410C]">{copy.buyerEyebrow}</p>
+        <h2 id="buyer-paths-heading" className="font-display mt-3 text-[clamp(1.6rem,3vw,2.35rem)] font-extrabold tracking-[-0.025em] text-[#111]">{copy.buyerHeading}</h2>
+        <p className="mt-3 leading-relaxed text-[#5B6472]">{copy.buyerIntro}</p>
+      </div>
+      <div className="mt-7 grid gap-5 lg:grid-cols-3">
+        {BUYER_PATHS.map((path) => {
+          const text = path[lang];
+          return (
+            <article key={path.analyticsKey} className="flex flex-col rounded-2xl border border-[#EDE6DF] bg-[#FFFBF7] p-6">
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#C2410C]">{text.label}</p>
+              <h3 className="font-display mt-3 text-xl font-extrabold leading-snug text-[#111]">{text.title}</h3>
+              <p className="mt-3 flex-1 text-sm leading-relaxed text-[#5B6472]">{text.body}</p>
+              <div className="mt-5 flex flex-col gap-2">
+                <Link to={path.article} className="inline-flex items-center gap-2 text-sm font-bold text-[#111] hover:text-[#C2410C]">{copy.readGuide} <ArrowRight className="h-4 w-4" /></Link>
+                <Link
+                  to={path.solution}
+                  onClick={() => trackMarketingEvent("content_cta_clicked", "/blog", `blog-card:${path.analyticsKey}`)}
+                  className="inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]"
+                >
+                  {text.solutionLabel} <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 export default function BlogList() {
   useLightBrandScope();
@@ -92,6 +160,7 @@ export default function BlogList() {
       <MarketingHero eyebrow={t.eyebrow} title={t.heading} sub={t.sub} />
 
       <section className="mx-auto max-w-[1200px] px-5 py-[clamp(40px,5vw,72px)]">
+        <BuyerPathsSection lang={lang} />
         <div className="mb-10 flex flex-col items-start justify-between gap-4 rounded-2xl border border-[#F0D4BD] bg-[#FFF6EE] p-6 sm:flex-row sm:items-center">
           <div><h2 className="font-display text-lg font-extrabold text-[#1C1917]">Put the process into practice.</h2><p className="mt-1 text-sm leading-relaxed text-[#625A53]">Free fee-tracker and teacher-handover templates, with examples and instructions.</p></div>
           <Link to="/resources" className="inline-flex shrink-0 items-center gap-2 text-sm font-bold text-[#C2410C]">Browse free templates <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>

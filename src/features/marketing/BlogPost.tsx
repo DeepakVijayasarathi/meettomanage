@@ -249,7 +249,7 @@ export default function BlogPost() {
   const { data: otherPosts } = useApiData<ApiBlogPostSummary[]>(() => listBlogPosts(), DEMO_BLOG_SUMMARIES);
 
   const blocks = useMemo(() => (post ? parseMarkdownLite(post.content) : []), [post]);
-  const headings = blocks.filter((b): b is Extract<Block, { kind: "heading" }> => b.kind === "heading");
+  const headings = useMemo(() => blocks.filter((b): b is Extract<Block, { kind: "heading" }> => b.kind === "heading"), [blocks]);
   const firstTextIndex = blocks.findIndex((b) => b.kind === "text");
   const topic = post ? topicOf({ slug, title: post.title }) : null;
   const [ctaVariant] = useState(() => experimentVariant(BLOG_CTA_EXPERIMENT, BLOG_CTA_VARIANTS));
@@ -305,6 +305,13 @@ export default function BlogPost() {
     : topic === "Teaching" || (topic === "Operations" && /teacher|schedul|leave|batch/i.test(`${slug} ${post?.title ?? ""}`))
       ? { to: "/resources/teacher-handover-checklist", title: "Make the next class handover clearer.", body: "A free editable checklist for session details, lesson resources and after-class follow-up. No signup required.", label: "Get the teacher-handover checklist" }
       : null;
+  const relatedSolution = topic === "Admissions"
+    ? { to: "/solutions/coaching-centre-admission-crm", eyebrow: "Related product workflow", title: "Manage enquiries, demos and follow-ups in one admission CRM", body: "Give every lead an owner, stage and dated next action, then carry the same family into payment and enrolment.", label: "Explore admission CRM" }
+    : topic === "Billing"
+      ? { to: "/solutions/fee-management-software-for-coaching-centres", eyebrow: "Related product workflow", title: "Connect invoices, reminders and payments to each student", body: "See the fee-management workflow for online payments, cash entries, part payments, receipts and overdue follow-up.", label: "Explore fee management" }
+      : topic === "Teaching"
+        ? { to: "/solutions/live-class-software-for-institutes", eyebrow: "Related product workflow", title: "Run the live class and its follow-up in one platform", body: "Connect video, whiteboard, activities, recordings and attendance to the teacher and parent portals.", label: "Explore live-class software" }
+        : { to: "/solutions/tuition-centre-management-software", eyebrow: "Related product workflow", title: "Run the centre from enquiry to paid class", body: "See how batches, scheduling, attendance, fees, admissions and parent updates work from one shared student record.", label: "Explore centre management" };
   const progress = useScrollProgress();
   const [copied, setCopied] = useState(false);
   const [activeHeading, setActiveHeading] = useState("");
@@ -327,7 +334,7 @@ export default function BlogPost() {
       if (element) observer.observe(element);
     });
     return () => observer.disconnect();
-  }, [slug, headings.map((heading) => heading.id).join("|")]);
+  }, [headings, slug]);
 
   useEffect(() => {
     if (!post) return;
@@ -534,6 +541,19 @@ export default function BlogPost() {
                   )
                 )}
               </div>
+
+              <aside aria-label="Related Meet to Manage workflow" className="mt-10 border border-[#DCE4EE] bg-[#F8FAFC] p-6 sm:p-7">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#475569]">{relatedSolution.eyebrow}</p>
+                <h2 className="font-display mt-3 text-xl font-extrabold leading-tight text-[#111]">{relatedSolution.title}</h2>
+                <p className="mt-3 text-sm leading-relaxed text-[#5B6472]">{relatedSolution.body}</p>
+                <Link
+                  to={relatedSolution.to}
+                  onClick={() => trackMarketingEvent("content_cta_clicked", `/blog/${slug}`, `blog-article:${topic?.toLowerCase() ?? "operations"}`)}
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]"
+                >
+                  {relatedSolution.label}<ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
+                </Link>
+              </aside>
 
               {relatedTemplate && <aside aria-label="Related free template" className="mt-10 rounded-2xl border border-[#EEDACB] bg-[#FFF6EE] p-6 sm:p-7">
                 <p className="text-xs font-bold uppercase tracking-wider text-[#A4431B]">Free coaching centre resource</p>
