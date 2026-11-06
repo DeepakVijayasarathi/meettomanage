@@ -46,7 +46,10 @@ export default function Mito() {
       });
     }
   }, [childId, childName]);
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [messages, sending]);
+  // Braces matter: newer browsers make scrollIntoView return a Promise, and an effect must not return one.
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, sending]);
   useEffect(() => () => window.speechSynthesis?.cancel(), []);
 
   async function submit(textValue = input, requestMode = mode) {

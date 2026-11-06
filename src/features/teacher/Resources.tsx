@@ -157,7 +157,9 @@ export default function TeacherResources() {
   const defaultBatchIds = useMemo(() => (batchOptions.length === 1 ? [batchOptions[0].id] : []), [batchOptions]);
 
   useEffect(() => {
-    setSelectedBatchIds((prev) => (prev.length > 0 ? prev : defaultBatchIds));
+    // Keep the same array when there's nothing to pre-pick: swapping one empty array for a new
+    // one re-renders, and when the batch list is rebuilt each render that looped forever.
+    setSelectedBatchIds((prev) => (prev.length > 0 || defaultBatchIds.length === 0 ? prev : defaultBatchIds));
   }, [defaultBatchIds]);
 
   function toggleBatch(id: string) {
