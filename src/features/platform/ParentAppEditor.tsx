@@ -12,8 +12,17 @@ export const APP_EDITOR_KEYS = new Set(["app.webBaseUrl", "app.announcement", "a
   "app.welcome.enabled", "app.welcome.title", "app.welcome.subtitle", "app.welcome.features", "app.maintenance.enabled", "app.maintenance.message",
   "app.maintenance.startsAtUtc", "app.maintenance.endsAtUtc", "app.minimumVersion", "app.forceUpgrade", "app.quickActions",
   "app.features.classes", "app.features.fees", "app.features.updates", "app.features.reports", "app.features.resources", "app.features.recordings",
-  "app.features.enrollment", "app.features.support", "app.features.feedback", "app.features.mito", "app.mito.chatEnabled", "app.mito.quizEnabled",
+  "app.features.enrollment", "app.features.support", "app.features.feedback", "app.features.mito",
+  "app.features.homework", "app.features.certificates", "app.features.rewards", "app.features.schedulePreferences", "app.features.webPortal", "app.mito.chatEnabled", "app.mito.quizEnabled",
   "app.mito.voiceEnabled", "app.mito.modes.doubt", "app.mito.modes.plan", "app.mito.modes.review", "app.mito.displayName", "app.mito.welcomeMessage", "app.mito.dailyLimit"]);
+
+/** Every switch under "Mobile features": [settings key suffix, label shown to the administrator]. A missing setting means on. */
+export const APP_FEATURES: [string, string][] = [
+  ["classes", "Classes"], ["fees", "Fees"], ["updates", "Updates"], ["reports", "Progress reports"], ["resources", "Learning resources"],
+  ["recordings", "Class recordings"], ["enrollment", "Enrollment"], ["support", "Help & support"], ["feedback", "Feedback"], ["mito", "Mito AI"],
+  ["homework", "Homework & tests"], ["certificates", "Certificates"], ["rewards", "Stars & badges"],
+  ["schedulePreferences", "Class schedule preferences"], ["webPortal", "Open web portal"],
+];
 
 /** Defaults for keys a client has never saved. Not public: only a signed-in family reads them, through the app config endpoint. */
 export const APP_DEFAULTS: Record<string, string> = { "app.webBaseUrl": "", "app.announcement": "", "app.joinOpensMinutesBefore": "10",
@@ -21,7 +30,7 @@ export const APP_DEFAULTS: Record<string, string> = { "app.webBaseUrl": "", "app
 Object.assign(APP_DEFAULTS, {
   "app.maintenance.enabled": "false", "app.maintenance.message": "", "app.maintenance.startsAtUtc": "", "app.maintenance.endsAtUtc": "",
   "app.minimumVersion": "", "app.forceUpgrade": "false", "app.quickActions": "reports,resources,recordings,support",
-  ...Object.fromEntries(["classes", "fees", "updates", "reports", "resources", "recordings", "enrollment", "support", "feedback", "mito"].map(x => [`app.features.${x}`, "true"])),
+  ...Object.fromEntries(APP_FEATURES.map(([key]) => key).map(x => [`app.features.${x}`, "true"])),
   "app.mito.chatEnabled": "true", "app.mito.quizEnabled": "true", "app.mito.voiceEnabled": "true",
   "app.mito.modes.doubt": "true", "app.mito.modes.plan": "true", "app.mito.modes.review": "true",
   "app.mito.displayName": "Mito", "app.mito.welcomeMessage": "", "app.mito.dailyLimit": "40",
@@ -117,7 +126,7 @@ export default function ParentAppEditor({ values, set, disabled, tenantId, token
       <div className="grid gap-1.5"><Label htmlFor="quick-actions">Home quick actions</Label><Input id="quick-actions" disabled={disabled} value={values["app.quickActions"] ?? ""} onChange={e => set("app.quickActions", e.target.value)} /><p className="text-xs text-muted-foreground">Comma-separated: reports, resources, recordings, support.</p></div>
     </div>
 
-    <div className="space-y-4 rounded-xl border border-border p-4"><div><Label className="font-semibold">Mobile features</Label><p className="mt-0.5 text-xs text-muted-foreground">Hidden features disappear from navigation immediately after configuration refresh.</p></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{["classes", "fees", "updates", "reports", "resources", "recordings", "enrollment", "support", "feedback", "mito"].map(feature => <label key={feature} className="flex items-center justify-between rounded-lg border p-3 text-sm font-medium capitalize"><span>{feature === "mito" ? "Mito AI" : feature}</span><Switch checked={values[`app.features.${feature}`] !== "false"} disabled={disabled} onCheckedChange={v => set(`app.features.${feature}`, String(v))} /></label>)}</div></div>
+    <div className="space-y-4 rounded-xl border border-border p-4"><div><Label className="font-semibold">Mobile features</Label><p className="mt-0.5 text-xs text-muted-foreground">Switch off any screen or More-menu item this academy should not offer. It disappears from the app the next time it refreshes its settings.</p></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{APP_FEATURES.map(([feature, label]) => <label key={feature} className="flex items-center justify-between rounded-lg border p-3 text-sm font-medium"><span>{label}</span><Switch checked={values[`app.features.${feature}`] !== "false"} disabled={disabled} onCheckedChange={v => set(`app.features.${feature}`, String(v))} /></label>)}</div></div>
 
     <div className="space-y-4 rounded-xl border border-primary/20 bg-primary/[0.03] p-4">
       <div><Label className="font-semibold">Mito AI configuration</Label><p className="mt-0.5 text-xs text-muted-foreground">These controls apply to the API, mobile app, dashboard entry points, and practice experience. Disabled capabilities are enforced by the server.</p></div>
