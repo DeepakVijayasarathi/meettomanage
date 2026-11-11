@@ -49,12 +49,19 @@ const blogSeoTitle = (title, slug) => {
   const searchTitle = BLOG_SEARCH_TITLES[slug] ?? title;
   return searchTitle.length + BLOG_TITLE_SUFFIX.length <= 60 ? `${searchTitle}${BLOG_TITLE_SUFFIX}` : searchTitle;
 };
+const clipDescription = (value, max = 160) => {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (text.length <= max) return text;
+  const shortened = text.slice(0, max - 3);
+  const boundary = shortened.lastIndexOf(" ");
+  return `${shortened.slice(0, boundary >= 120 ? boundary : shortened.length).trim()}...`;
+};
 const blogSeoDescription = (post, content) => {
   if (post.slug === NO_SHOWS_SLUG) return NO_SHOWS_DESCRIPTION;
   const excerpt = String(post.excerpt ?? "").trim();
-  if (excerpt.length >= 70) return excerpt;
+  if (excerpt.length >= 70) return clipDescription(excerpt);
   const plain = String(content ?? "").replace(/^##\s+.*$/gm, " ").replace(/[*_#-]+/g, " ").replace(/\s+/g, " ").trim();
-  if (plain.length <= 160) return plain || excerpt;
+  if (plain.length <= 160) return clipDescription(plain || excerpt);
   const cut = plain.slice(0, 157);
   return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 120)).trim()}…`;
 };
@@ -159,10 +166,22 @@ function render(shell, page) {
 
 const API = (process.env.PRERENDER_API_URL ?? "https://api.meettomanage.cloud").replace(/\/$/, "");
 
-async function getJson(url) {
-  const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  return res.json();
+async function getJson(url, attempts = 1) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      return await res.json();
+    } catch (err) {
+      lastError = err;
+      if (attempt < attempts) {
+        console.warn(`prerender-meta: retrying ${url} (${attempt}/${attempts})`);
+        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+      }
+    }
+  }
+  throw lastError;
 }
 
 function blogProductBridge(post) {
@@ -197,9 +216,9 @@ function blogProductBridge(post) {
 /** Every published post with its full text, from the API. A build must never fail because the API is down. */
 async function blogPages() {
   try {
-    const posts = (await getJson(`${API}/api/blog`)).filter((p) => typeof p.slug === "string" && /^[a-z0-9-]+$/.test(p.slug));
+    const posts = (await getJson(`${API}/api/blog`, 3)).filter((p) => typeof p.slug === "string" && /^[a-z0-9-]+$/.test(p.slug));
     const pages = [];
-    for (const p of posts) {
+    const makePage = async (p) => {
       let content = "";
       let contentHtml = "";
       let wordCount = 0;
@@ -211,7 +230,7 @@ async function blogPages() {
         console.warn(`prerender-meta: no body for ${p.slug} (${err.message})`);
       }
       const cover = `/blog/${p.slug}.webp`;
-      pages.push({
+      return {
         path: `/blog/${p.slug}`,
         type: "article",
         title: blogSeoTitle(p.title, p.slug),
@@ -222,7 +241,13 @@ async function blogPages() {
         wordCount,
         image: existsSync(path.join(dist, cover)) ? cover : undefined,
         contentHtml: `${p.slug === NO_SHOWS_SLUG ? NO_SHOWS_CONTEXT : ""}${contentHtml}${blogProductBridge(p)}`,
-      });
+      };
+    };
+    // Keep builds responsive when one API instance is slow, without creating an
+    // unbounded burst of requests against the production blog service.
+    const concurrency = 6;
+    for (let index = 0; index < posts.length; index += concurrency) {
+      pages.push(...await Promise.all(posts.slice(index, index + concurrency).map(makePage)));
     }
     return pages;
   } catch (err) {
@@ -256,7 +281,7 @@ if (blogIndex && posts.length) {
 const SEO_KEYS = { "/": "home", "/pricing": "pricing", "/get-started": "getStarted", "/demo": "demo", "/store": "store", "/blog": "blog" };
 let seo = {};
 try {
-  seo = Object.fromEntries((await getJson(`${API}/api/settings/public`)).filter((s) => s.key?.startsWith("seo.") && s.value?.trim()).map((s) => [s.key, s.value.trim()]));
+  seo = Object.fromEntries((await getJson(`${API}/api/settings/public`, 3)).filter((s) => s.key?.startsWith("seo.") && s.value?.trim()).map((s) => [s.key, s.value.trim()]));
 } catch (err) {
   console.warn(`prerender-meta: no SEO overrides (${err.message})`);
 }
