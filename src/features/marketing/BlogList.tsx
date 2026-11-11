@@ -153,6 +153,24 @@ export default function BlogList() {
         title="Academy Growth & Management Blog | Meet to Manage"
         description="Practical guides for coaching centres and online academies on admissions, fee collection, scheduling, parent communication and student retention."
         path="/blog"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "Academy Growth & Management Blog",
+          description: "Practical guides for coaching centres and online academies on admissions, fee collection, scheduling, parent communication and student retention.",
+          url: "https://meettomanage.cloud/blog",
+          publisher: { "@type": "Organization", name: "Meet to Manage", url: "https://meettomanage.cloud/" },
+          mainEntity: {
+            "@type": "ItemList",
+            numberOfItems: sorted.length,
+            itemListElement: sorted.slice(0, 50).map((post, index) => ({
+              "@type": "ListItem",
+              position: index + 1,
+              name: post.title,
+              url: `https://meettomanage.cloud/blog/${post.slug}`,
+            })),
+          },
+        }}
       />
 
       <MarketingNav />
@@ -248,7 +266,11 @@ export default function BlogList() {
               <div className="relative">
                 <h2 className="font-display text-[clamp(1.5rem,2.6vw,2.25rem)] font-extrabold leading-tight tracking-[-0.02em] rtl:tracking-normal">{t.ctaHeading}</h2>
                 <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-white/80">{t.ctaSub}</p>
-                <Link to="/get-started" className={cn(CTA_ORANGE, "mt-7")}>
+                <Link
+                  to="/get-started?from=blog"
+                  onClick={() => trackMarketingEvent("sales_cta_clicked", "/blog", "blog-hub:bottom")}
+                  className={cn(CTA_ORANGE, "mt-7")}
+                >
                   {t.requestDemo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
                 </Link>
                 <div><PricingLink className="text-white/80 hover:text-white focus-visible:outline-white" /></div>

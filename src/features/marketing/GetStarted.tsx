@@ -382,6 +382,20 @@ export default function GetStarted() {
                 <>
                   <h2 className="font-display text-[clamp(1.6rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em] text-[#1C1917] rtl:tracking-normal">{wantsCall ? (lang === "en" ? "Schedule your free call" : "حدد موعد مكالمتك المجانية") : pc.formTitle}</h2>
                   <p className="mt-2 max-w-[44ch] text-[15px] leading-relaxed text-[#57534E]">{wantsCall ? (lang === "en" ? "Choose how and when you prefer to talk. We will confirm the exact time with you." : "اختر طريقة ووقت التواصل المناسبين لك، وسنؤكد الموعد معك.") : pc.formSub}</p>
+                  {lang === "en" && (
+                    <ol aria-label="What happens next" className="mt-5 grid grid-cols-3 gap-2 text-center">
+                      {[
+                        ["1", "Send details"],
+                        ["2", "We confirm a time"],
+                        ["3", "See your workflow"],
+                      ].map(([step, label]) => (
+                        <li key={step} className="rounded-xl border border-[#F0E0D2] bg-[#FFF8F1] px-2 py-3">
+                          <span className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-[#EA580C] text-xs font-extrabold text-white">{step}</span>
+                          <span className="mt-1.5 block text-[11px] font-bold leading-tight text-[#57534E]">{label}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
                   <form onSubmit={handleSubmit} onFocus={markFormStarted} className="mt-6 flex flex-col gap-4">
                     <div className="grid gap-1.5">
                       <Label htmlFor="gs-fullName" className="font-semibold text-[#1C1917]">{t.yourName} <span aria-hidden className="text-[#C2410C]">*</span></Label>

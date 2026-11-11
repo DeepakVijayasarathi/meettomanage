@@ -499,6 +499,28 @@ export default function BlogPost() {
             {tableOfContents && <div className="mb-9 lg:hidden">{tableOfContents}</div>}
             <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,720px)_320px] lg:justify-between">
             <article className="min-w-0">
+              <aside aria-label="Choose your next step" className="mb-9 border border-[#F0D4BD] bg-[#FFF8F1] p-5 sm:p-6">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#9A3412]">Solve this workflow in your academy</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#57534E]">
+                  Read the guide, then see the matching product workflow or bring your current process to a free 30-minute walkthrough.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3">
+                  <Link
+                    to={relatedSolution.to}
+                    onClick={() => trackMarketingEvent("content_cta_clicked", `/blog/${slug}`, `blog-intro:${topic?.toLowerCase() ?? "operations"}`)}
+                    className="inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]"
+                  >
+                    {relatedSolution.label}<ArrowRight aria-hidden="true" className="h-4 w-4" />
+                  </Link>
+                  <Link
+                    to={demoPath}
+                    onClick={() => trackMarketingEvent("sales_cta_clicked", `/blog/${slug}`, `blog-intro:${ctaVariant}`)}
+                    className="inline-flex items-center gap-2 text-sm font-bold text-[#111827]"
+                  >
+                    {conversionCta.outcome}<ArrowRight aria-hidden="true" className="h-4 w-4" />
+                  </Link>
+                </div>
+              </aside>
               <div className="flex flex-col gap-6">
                 {slug === NO_SHOWS_SLUG && (
                   <aside className="border-s-4 border-[#F97316] bg-[#FFF8F1] p-5 text-[15px] leading-relaxed text-[#444] sm:p-7">
@@ -597,7 +619,11 @@ export default function BlogPost() {
                 <div className="relative">
                   <h3 className="font-display text-[clamp(1.5rem,2.4vw,2.125rem)] font-extrabold leading-tight tracking-[-0.02em] rtl:tracking-normal">{conversionCta.heading}</h3>
                   <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-white/80">{conversionCta.body}</p>
-                  <Link to={demoPath} className={cn(CTA_ORANGE, "mt-7")}>
+                  <Link
+                    to={demoPath}
+                    onClick={() => trackMarketingEvent("sales_cta_clicked", `/blog/${slug}`, `blog-bottom:${ctaVariant}`)}
+                    className={cn(CTA_ORANGE, "mt-7")}
+                  >
                     {ctaVariant === "a" ? t.requestDemo : conversionCta.outcome} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
                   </Link>
                   <div><PricingLink className="text-white/80 hover:text-white focus-visible:outline-white" /></div>
@@ -613,7 +639,11 @@ export default function BlogPost() {
                   <div className="relative">
                     <p className="font-display text-lg font-extrabold leading-snug">{conversionCta.heading}</p>
                     <p className="mt-2 text-sm leading-relaxed text-white/75">{conversionCta.body}</p>
-                    <Link to={demoPath} className={cn(CTA_ORANGE, "mt-5 w-full min-w-0 px-4 py-3 text-sm")}>
+                    <Link
+                      to={demoPath}
+                      onClick={() => trackMarketingEvent("sales_cta_clicked", `/blog/${slug}`, `blog-sidebar:${ctaVariant}`)}
+                      className={cn(CTA_ORANGE, "mt-5 w-full min-w-0 px-4 py-3 text-sm")}
+                    >
                       {ctaVariant === "a" ? t.sideCta : conversionCta.outcome}
                     </Link>
                     <a

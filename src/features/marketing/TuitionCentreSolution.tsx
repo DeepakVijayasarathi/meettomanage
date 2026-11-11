@@ -29,14 +29,14 @@ export default function TuitionCentreSolution() {
   return (
     <SolutionFeaturePage
       eyebrow="Coaching and tuition centres in India"
-      title="Coaching centre management software for admissions, fees and attendance."
+      title="Tuition and coaching centre software for admissions, fees and attendance."
       sub="Replace registers, fee spreadsheets and scattered parent messages with one system for enquiries, classes, payments, attendance and progress."
       seo={{
-        title: "Coaching Centre Management Software India | Meet to Manage",
-        description: "Manage coaching centre admissions, batches, attendance, fees, live classes and parent updates in one platform. Free plan available for Indian academies.",
+        title: "Tuition Centre Management Software India | Meet to Manage",
+        description: "Manage tuition centre admissions, batches, attendance, fees, live classes and parent updates in one platform. Free plan available for Indian academies.",
         path: "/solutions/tuition-centre-management-software",
       }}
-      name="Coaching centre management software for India"
+      name="Tuition centre management software for India"
       features={FEATURES}
       closingHeading="One student record from enquiry to paid class"
       closing={

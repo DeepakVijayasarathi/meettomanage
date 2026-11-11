@@ -152,6 +152,8 @@ function render(shell, page) {
       publisher: { "@type": "Organization", name: "Meet to Manage", logo: { "@type": "ImageObject", url: `${SITE}/logo-icon.png` } },
     };
     swap(/<\/head>/, `<meta property="article:published_time" content="${esc(page.publishedAt)}" />\n    <script type="application/ld+json" data-prerender>${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>\n  </head>`);
+  } else if (page.jsonLd) {
+    swap(/<\/head>/, `<script type="application/ld+json" data-prerender>${JSON.stringify(page.jsonLd).replace(/</g, "\\u003c")}</script>\n  </head>`);
   }
   // The boot screen (visible until React mounts, and all a non-JS crawler sees) carries the
   // home hero by default; give each page its own heading, summary and, for posts, the article.
@@ -268,12 +270,31 @@ for (const post of posts) {
 // JavaScript saw an empty page with no links to any post. List every post here instead, newest first.
 const blogIndex = PAGES.find((p) => p.path === "/blog");
 if (blogIndex && posts.length) {
-  const items = [...posts]
-    .sort((a, b) => String(b.publishedAt ?? "").localeCompare(String(a.publishedAt ?? "")))
+  const orderedPosts = [...posts]
+    .sort((a, b) => String(b.publishedAt ?? "").localeCompare(String(a.publishedAt ?? "")));
+  const items = orderedPosts
     .map((p) => `<li><h2><a href="${p.path}">${esc(p.heading ?? p.title)}</a></h2>${p.description ? `<p>${esc(p.description)}</p>` : ""}</li>`)
     .join("");
   const buyerPaths = `<section><h2>Start with your biggest problem</h2><p>Use these practical guides to diagnose the problem, then see the matching product workflow.</p><ul><li><a href="/blog/admissions-crm-for-coaching-centres-the-complete-workflow">Improve enquiry and admission follow-up</a></li><li><a href="/blog/fee-management-software-for-coaching-institutes-a-buyer-guide">Choose a better fee-management process</a></li><li><a href="/blog/online-coaching-software-checklist">Plan an online coaching workflow</a></li></ul></section>`;
   blogIndex.contentHtml = `${buyerPaths}<ul class="post-list">${items}</ul>`;
+  blogIndex.jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Academy Growth & Management Blog",
+    description: blogIndex.description,
+    url: `${SITE}/blog`,
+    publisher: { "@type": "Organization", name: "Meet to Manage", url: `${SITE}/` },
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: orderedPosts.length,
+      itemListElement: orderedPosts.slice(0, 50).map((post, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: post.heading ?? heading(post.title),
+        url: `${SITE}${post.path}`,
+      })),
+    },
+  };
 }
 
 // Marketing console → SEO overrides, so crawlers that don't run JavaScript see the same
