@@ -216,6 +216,7 @@ export default function GetStarted() {
   const [searchParams] = useSearchParams();
   const isCoach = searchParams.get("for") === "coach";
   const wantsCall = searchParams.get("intent") === "call";
+  const rawSourcePage = (searchParams.get("from") ?? "").replace(/[^a-z0-9/_-]/gi, "").slice(0, 120);
   // Coaches see their own copy, so only academy visitors join the copy test.
   const [variant] = useState<Variant>(() => experimentVariant(EXPERIMENT, VARIANTS));
   const incomingExperiment = (searchParams.get("exp") ?? "").toLowerCase();
@@ -224,7 +225,7 @@ export default function GetStarted() {
     ? `${incomingExperiment}:${incomingVariant}`
     : undefined;
   const effectiveVariant: Variant = incomingTag ? incomingVariant as Variant : variant;
-  const tag = isCoach ? undefined : incomingTag ?? `${EXPERIMENT}:${variant}`;
+  const tag = isCoach || wantsCall ? undefined : incomingTag ?? `${EXPERIMENT}:${variant}`;
   const pc = { ...PANEL[lang], cta: t.requestDemo, ...(tag && effectiveVariant === "b" ? PANEL_B[lang] : {}) };
   // The homepage hero hands over whatever the visitor typed (an email or a mobile number) as ?contact=.
   const [form, setForm] = useState(() => {
@@ -244,6 +245,7 @@ export default function GetStarted() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [minPreferredAt] = useState(localDateTimeMinimum);
   const startedRef = useRef(false);
   const submittedRef = useRef(false);
   const tagRef = useRef(tag);
@@ -284,6 +286,7 @@ export default function GetStarted() {
     }
 
     if (!live) {
+      submittedRef.current = true;
       setSubmitted(true);
       return;
     }
@@ -298,14 +301,19 @@ export default function GetStarted() {
           ? `Preferred time: ${new Date(form.preferredAt).toLocaleString()} (${Intl.DateTimeFormat().resolvedOptions().timeZone})`
           : "Preferred time: Please contact me to arrange",
       ].join("\n");
+      const leadContext = new URLSearchParams();
+      if (wantsCall) leadContext.set("intent", "call");
+      if (rawSourcePage) leadContext.set("from", rawSourcePage);
+      const leadQuery = leadContext.toString();
       await requestPlatformDemo({
         fullName: form.fullName,
         workEmail: form.workEmail,
         phone: form.phone,
         academyName: form.academyName.trim() || t.fallbackName,
-        message: `${scheduling}${form.message.trim() ? `\n\n${form.message.trim()}` : ""}`,
+        message: `${scheduling}${form.message.trim() ? `\n\n${form.message.trim()}` : ""}`.slice(0, 1000),
         visitorId: marketingVisitorId(), source: attribution.utmSource ?? attribution.referrerHost,
-        medium: attribution.utmMedium, campaign: attribution.utmCampaign, landingPath: `${window.location.pathname}${window.location.search}`,
+        medium: attribution.utmMedium, campaign: attribution.utmCampaign,
+        landingPath: `${window.location.pathname}${leadQuery ? `?${leadQuery}` : ""}`.slice(0, 200),
       });
       markDemoBooked();
       submittedRef.current = true;
@@ -378,27 +386,27 @@ export default function GetStarted() {
                     <div className="grid gap-1.5">
                       <Label htmlFor="gs-fullName" className="font-semibold text-[#1C1917]">{t.yourName} <span aria-hidden className="text-[#C2410C]">*</span></Label>
                       <Field icon={User}>
-                        <Input id="gs-fullName" required className={FIELD} value={form.fullName} onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} placeholder={t.namePlaceholder} />
+                        <Input id="gs-fullName" required maxLength={150} className={FIELD} value={form.fullName} onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} placeholder={t.namePlaceholder} />
                       </Field>
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="grid gap-1.5">
                         <Label htmlFor="gs-workEmail" className="font-semibold text-[#1C1917]">{t.workEmail} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
                         <Field icon={Mail}>
-                          <Input id="gs-workEmail" type="email" autoComplete="email" className={FIELD} value={form.workEmail} onChange={(e) => setForm((f) => ({ ...f, workEmail: e.target.value }))} placeholder={t.emailPlaceholder} />
+                          <Input id="gs-workEmail" type="email" autoComplete="email" maxLength={256} className={FIELD} value={form.workEmail} onChange={(e) => setForm((f) => ({ ...f, workEmail: e.target.value }))} placeholder={t.emailPlaceholder} />
                         </Field>
                       </div>
                       <div className="grid gap-1.5">
                         <Label htmlFor="gs-phone" className="font-semibold text-[#1C1917]">{lang === "en" ? "WhatsApp number" : t.phone} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
                         <Field icon={Phone}>
-                          <Input id="gs-phone" type="tel" autoComplete="tel" className={FIELD} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t.phonePlaceholder} />
+                          <Input id="gs-phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} className={FIELD} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t.phonePlaceholder} />
                         </Field>
                       </div>
                     </div>
                     <div className="grid gap-1.5">
                       <Label htmlFor="gs-academyName" className="font-semibold text-[#1C1917]">{isCoach ? t.academyNameCoach : t.academyNameAcademy} {!isCoach && <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span>}</Label>
                       <Field icon={Landmark}>
-                        <Input id="gs-academyName" autoComplete="organization" className={FIELD} value={form.academyName} onChange={(e) => setForm((f) => ({ ...f, academyName: e.target.value }))} placeholder={isCoach ? t.academyPlaceholderCoach : t.academyPlaceholderAcademy} />
+                        <Input id="gs-academyName" autoComplete="organization" maxLength={150} className={FIELD} value={form.academyName} onChange={(e) => setForm((f) => ({ ...f, academyName: e.target.value }))} placeholder={isCoach ? t.academyPlaceholderCoach : t.academyPlaceholderAcademy} />
                       </Field>
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -415,7 +423,7 @@ export default function GetStarted() {
                       <div className="grid gap-1.5">
                         <Label htmlFor="gs-preferredAt" className="font-semibold text-[#1C1917]">{lang === "en" ? "Preferred date and time" : "التاريخ والوقت المفضلان"} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
                         <Field icon={CalendarClock}>
-                          <Input id="gs-preferredAt" type="datetime-local" min={localDateTimeMinimum()} className={FIELD} value={form.preferredAt} onChange={(e) => setForm((f) => ({ ...f, preferredAt: e.target.value }))} />
+                          <Input id="gs-preferredAt" type="datetime-local" min={minPreferredAt} className={FIELD} value={form.preferredAt} onChange={(e) => setForm((f) => ({ ...f, preferredAt: e.target.value }))} />
                         </Field>
                       </div>
                     </div>
@@ -423,7 +431,7 @@ export default function GetStarted() {
                       <Label htmlFor="gs-message" className="font-semibold text-[#1C1917]">{t.anythingElse}</Label>
                       <div className="relative">
                         <MessageCircle aria-hidden className="pointer-events-none absolute start-4 top-4 h-[18px] w-[18px] text-[#44403C]" />
-                        <Textarea id="gs-message" rows={3} className={cn(FIELD, "h-auto py-3.5")} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} placeholder={t.messagePlaceholder} />
+                        <Textarea id="gs-message" rows={3} maxLength={700} className={cn(FIELD, "h-auto py-3.5")} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} placeholder={t.messagePlaceholder} />
                       </div>
                     </div>
                     {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}

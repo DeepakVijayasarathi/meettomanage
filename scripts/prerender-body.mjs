@@ -84,7 +84,9 @@ try {
   console.warn(`prerender-body: could not start Chrome (${e.message}); skipping`);
   process.exit(STRICT ? 1 : 0);
 }
-const targets = [{ path: "/", file: path.join(dist, "index.html") }, ...PAGES.filter((p) => !SKIP.has(p.path)).map((p) => ({ path: p.path, file: path.join(dist, `${p.path}.html`) }))];
+// Auth/utility pages already receive static noindex metadata from prerender-meta. Rendering
+// their interactive forms is unnecessary and some intentionally wait on API configuration.
+const targets = [{ path: "/", file: path.join(dist, "index.html") }, ...PAGES.filter((p) => !p.noindex && !SKIP.has(p.path)).map((p) => ({ path: p.path, file: path.join(dist, `${p.path}.html`) }))];
 let wrote = 0;
 const failures = [];
 try {

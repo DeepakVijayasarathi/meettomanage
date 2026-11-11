@@ -105,6 +105,13 @@ function render(shell, page) {
   swap(/(<meta property="og:type" content=")[^"]*(")/, (a, b) => `${a}${page.type ?? "website"}${b}`);
   swap(/(<meta name="twitter:title" content=")[^"]*(")/, (a, b) => `${a}${title}${b}`);
   swap(/(<meta\s+name="twitter:description"\s+content=")[^"]*(")/, (a, b) => `${a}${desc}${b}`);
+  if (page.noindex) {
+    if (/<meta\s+name="robots"/i.test(html)) {
+      html = html.replace(/(<meta\s+name="robots"\s+content=")[^"]*(")/i, "$1noindex, follow$2");
+    } else {
+      swap(/<\/head>/, '<meta name="robots" content="noindex, follow" />\n  </head>');
+    }
+  }
   if (image) {
     // The cover's own size isn't the default 1200x630, so drop the default dimensions.
     swap(/(<meta property="og:image" content=")[^"]*(")/, (a, b) => `${a}${image}${b}`);

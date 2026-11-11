@@ -16,18 +16,27 @@ const FEATURES = [
   { title: "Start without per-student pricing", body: "Meet to Manage is priced per centre rather than per student. A free plan is available, and paid plans add the operational tools growing centres need." },
 ];
 
+const FAQ = [
+  ["What is coaching centre management software?", "It is one system for enquiries, admissions, batches, timetables, attendance, fees, classes, parent communication and owner reports. Meet to Manage keeps these workflows on the same student record."],
+  ["Is it suitable for a small tuition or phonics academy?", "Yes. A centre can begin with the free plan and use the same platform as its student count, staff and operational needs grow. It supports single-subject academies as well as multi-course coaching centres."],
+  ["Can we import our existing spreadsheet data?", "Existing student and prospect lists can be imported instead of typed again. During onboarding, your team can map the columns and verify the records before daily work moves into the platform."],
+  ["Does it include live classes and automatic attendance?", "Yes. The built-in classroom includes video, whiteboard, activities and recordings. When learners join a scheduled class, attendance stays connected to that session and the parent record."],
+  ["How does fee management work?", "Staff can create fee plans and invoices, record online, cash and part payments, issue receipts, review overdue balances and send reminders. Parents see their fees from their own portal or app."],
+  ["Can multiple staff members use it safely?", "Yes. Owners, administrators, admissions staff, teachers, parents and students use separate role-based portals, so teams do not need to share one password or expose unrelated records."],
+] as const;
+
 export default function TuitionCentreSolution() {
   return (
     <SolutionFeaturePage
-      eyebrow="Tuition and coaching centres"
-      title="Tuition centre management software for fees, attendance and batches."
+      eyebrow="Coaching and tuition centres in India"
+      title="Coaching centre management software for admissions, fees and attendance."
       sub="Replace registers, fee spreadsheets and scattered parent messages with one system for enquiries, classes, payments, attendance and progress."
       seo={{
-        title: "Tuition Centre Management Software India | Meet to Manage",
-        description: "Manage tuition centre batches, attendance, fees, admissions, live classes and parent updates in one platform. Built for coaching institutes in India.",
+        title: "Coaching Centre Management Software India | Meet to Manage",
+        description: "Manage coaching centre admissions, batches, attendance, fees, live classes and parent updates in one platform. Free plan available for Indian academies.",
         path: "/solutions/tuition-centre-management-software",
       }}
-      name="Tuition centre management software for India"
+      name="Coaching centre management software for India"
       features={FEATURES}
       closingHeading="One student record from enquiry to paid class"
       closing={
@@ -41,6 +50,7 @@ export default function TuitionCentreSolution() {
           <Link to="/resources/coaching-centre-fee-tracker" className={LINK}>free fee-tracker template</Link> while you prepare your data.
         </>
       }
+      faq={FAQ}
     />
   );
 }

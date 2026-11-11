@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { BTN_PRIMARY } from "../MarketingNav";
 import type { HomeCopy } from "./copy";
 import { isValidContact } from "./contactValidation";
+import { trackMarketingEvent } from "@/lib/analytics";
 
 /** The hero's one-field "get access" form. It hands the visitor's email or mobile number to the demo booking page,
  *  which prefills it, so the first step is a single field and a single button. */
@@ -21,6 +22,7 @@ export function AccessForm({ c, watch }: { c: HomeCopy["hero"]["form"]; watch: {
       return;
     }
     setError(false);
+    trackMarketingEvent("sales_cta_clicked", window.location.pathname, "sales-intent:demo");
     navigate(value ? `/get-started?contact=${encodeURIComponent(value)}` : "/get-started");
   }
 

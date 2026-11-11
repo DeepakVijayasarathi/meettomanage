@@ -265,18 +265,24 @@ export default function MarketingVisitors() {
           <CardHeader className="pb-2"><CardTitle className="text-base">Funnel to a demo</CardTitle></CardHeader>
           <CardContent className="space-y-2.5">
             {b.funnel.length === 0 ? <p className="text-sm text-muted-foreground">No visits in this period.</p> : b.funnel.map((step, i) => {
-              const prev = i > 0 ? b.funnel[i - 1].visitors : null;
               return (
                 <div key={step.name}>
                   <div className="flex justify-between gap-3 text-sm">
                     <span>{step.name}</span>
-                    <span className="font-semibold">{step.visitors}{prev ? <span className="ml-1 text-xs font-normal text-muted-foreground">({pct(step.visitors, prev)} of previous)</span> : null}</span>
+                    <span className="font-semibold">{step.visitors}{i > 0 ? <span className="ml-1 text-xs font-normal text-muted-foreground">({pct(step.visitors, funnelTop)} of visitors)</span> : null}</span>
                   </div>
-                  <div className="mt-1 h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary" style={{ width: `${(step.visitors / funnelTop) * 100}%` }} /></div>
+                  <div
+                    className="mt-1 h-2 rounded-full bg-muted"
+                    role="progressbar"
+                    aria-label={step.name}
+                    aria-valuemin={0}
+                    aria-valuemax={funnelTop}
+                    aria-valuenow={step.visitors}
+                  ><div className="h-2 rounded-full bg-primary" style={{ width: `${Math.min(100, (step.visitors / funnelTop) * 100)}%` }} /></div>
                 </div>
               );
             })}
-            {b.funnel.length > 0 && <p className="pt-1 text-xs text-muted-foreground">Steps are independent: a visitor can open Get Started without seeing pricing first.</p>}
+            {b.funnel.length > 0 && <p className="pt-1 text-xs text-muted-foreground">Percentages use all site visitors. Steps are independent, so a visitor can open Get Started without seeing pricing first.</p>}
           </CardContent>
         </Card>
         <Card>

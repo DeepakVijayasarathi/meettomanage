@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useMarketingLocale } from "@/lib/i18n";
+import { trackMarketingEvent } from "@/lib/analytics";
 
 const SKIP = "script,style,noscript,code,pre,[data-no-translate]";
 
@@ -25,10 +26,33 @@ export function MarketingTranslationLayer({ children }: { children: ReactNode })
   // Nodes currently showing a translation, so switching language can put the English back first.
   const applied = useRef(new Map<Text, { original: string; translated: string }>());
 
+  // Capture every current and future public sales link in one place. This avoids silent
+  // analytics gaps when a new landing page adds a Book demo link but forgets an onClick.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const recordSalesClick = (event: MouseEvent) => {
+      const anchor = (event.target as Element | null)?.closest<HTMLAnchorElement>("a[href]");
+      if (!anchor || !root.contains(anchor)) return;
+      let destination: URL;
+      try {
+        destination = new URL(anchor.href, window.location.href);
+      } catch {
+        return;
+      }
+      if (destination.origin !== window.location.origin || destination.pathname !== "/get-started") return;
+      const intent = destination.searchParams.get("intent") === "call" ? "call" : "demo";
+      trackMarketingEvent("sales_cta_clicked", window.location.pathname, `sales-intent:${intent}`);
+    };
+    root.addEventListener("click", recordSalesClick);
+    return () => root.removeEventListener("click", recordSalesClick);
+  }, []);
+
   useEffect(() => {
     const root = rootRef.current;
     if (!root || locale === "en" || locale === "ar") return;
     const rootNode = root;
+    const appliedNodes = applied.current;
     let cancelled = false;
     let timer = 0;
     let dictionary: Record<string, string> | null = null;
@@ -48,7 +72,7 @@ export function MarketingTranslationLayer({ children }: { children: ReactNode })
         // Strings without an entry stay in English rather than showing a wrong guess.
         if (translated && node.nodeValue!.includes(original)) {
           node.nodeValue = node.nodeValue!.replace(original, translated);
-          applied.current.set(node, { original, translated });
+          appliedNodes.set(node, { original, translated });
         }
       }
     }
@@ -69,10 +93,10 @@ export function MarketingTranslationLayer({ children }: { children: ReactNode })
       cancelled = true;
       window.clearTimeout(timer);
       observer.disconnect();
-      applied.current.forEach(({ original, translated }, node) => {
+      appliedNodes.forEach(({ original, translated }, node) => {
         if (node.isConnected && node.nodeValue?.includes(translated)) node.nodeValue = node.nodeValue.replace(translated, original);
       });
-      applied.current.clear();
+      appliedNodes.clear();
     };
   }, [locale]);
 

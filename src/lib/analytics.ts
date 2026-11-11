@@ -218,7 +218,7 @@ function isAutomatedBrowser(): boolean {
 
 /** First-party beacon to the marketing console's own dashboard; never blocks or throws. */
 export type MarketingEventType = "page_view" | "chat_started" | "form_started" | "form_validation_failed" | "form_abandoned" | "form_submitted" | "whatsapp_clicked"
-  | "exit_intent_shown" | "exit_intent_submitted" | "experiment_viewed" | "signin_clicked" | "demo_login_clicked" | "content_cta_clicked";
+  | "exit_intent_shown" | "exit_intent_submitted" | "experiment_viewed" | "signin_clicked" | "demo_login_clicked" | "content_cta_clicked" | "sales_cta_clicked";
 
 function beacon(type: MarketingEventType, path: string, variant?: string) {
   if (!apiEnabled() || isAutomatedBrowser()) return;

@@ -21,6 +21,7 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
   const c = COPY[lang];
   const scrolled = useScrolled();
   const [open, setOpen] = useState(false);
+  const [footerVisible, setFooterVisible] = useState(false);
   const location = useLocation();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const firstMobileLinkRef = useRef<HTMLAnchorElement>(null);
@@ -60,6 +61,19 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
   const base = home ? "" : "/";
   const bookingPath = `/get-started?from=${encodeURIComponent(location.pathname)}`;
   const callPath = `/get-started?intent=call&from=${encodeURIComponent(location.pathname)}`;
+  const showMobileSalesBar = !home && location.pathname !== "/get-started";
+
+  useEffect(() => {
+    if (!showMobileSalesBar) {
+      setFooterVisible(false);
+      return;
+    }
+    const footer = document.querySelector("footer");
+    if (!footer || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => setFooterVisible(entry.isIntersecting), { rootMargin: "0px 0px 80px" });
+    observer.observe(footer);
+    return () => observer.disconnect();
+  }, [showMobileSalesBar]);
   const links = [
     { label: c.nav.features, href: `${base}#features` },
     { label: c.nav.classroom, href: `${base}#classroom` },
@@ -155,6 +169,16 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
               </div>
             </div>
           </nav>
+        </div>
+      )}
+      {showMobileSalesBar && !open && !footerVisible && (
+        <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-2 gap-2 border-t border-[#F1D9C4] bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_30px_-20px_rgba(28,25,23,0.5)] backdrop-blur sm:hidden">
+          <Link to={bookingPath} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#C2410C] px-3 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C]">
+            {lang === "ar" ? "احجز عرضاً" : "Book demo"}<ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+          </Link>
+          <Link to={callPath} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#E8C8AD] bg-white px-3 text-sm font-bold text-[#9A3412] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C]">
+            <CalendarClock className="h-4 w-4" />{lang === "ar" ? "حدد مكالمة" : "Schedule call"}
+          </Link>
         </div>
       )}
     </header>

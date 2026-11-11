@@ -7,6 +7,7 @@ import { formatMoney, isModuleKey, saasPublic, type PublicPlan, type SignupSetti
 import { requestPlatformDemo } from "@/api/marketing";
 import { marketingAttribution, marketingVisitorId, trackDemoBooked, trackMarketingEvent, trackMarketingPageView } from "@/lib/analytics";
 import { markDemoBooked } from "@/features/marketing/chatTeaser";
+import { Helmet } from "react-helmet-async";
 
 /** Saves a signup as a lead in the marketing console, linked to the visitor's journey and traffic source. */
 function saveSignupLead(input: { fullName: string; academyName: string; workEmail: string; phone: string; message: string }) {
@@ -155,6 +156,7 @@ export default function Signup() {
   const freeModules = freePlan?.entitlements.filter(e => isModuleKey(e.key) && e.value === 1).length ?? 0;
   const paidPrices = plans.flatMap(p => p.prices.filter(x => x.billingInterval === "Month" && x.amount > 0).map(x => x.amount));
   return <div className="theme-light-scope min-h-screen bg-brand-cream px-4 py-10">
+    <Helmet><title>Create your Meet to Manage workspace</title><meta name="robots" content="noindex, follow" /></Helmet>
     <div className="mx-auto w-full max-w-2xl rounded-3xl bg-white p-6 shadow-[0_24px_70px_-24px_rgba(43,32,20,0.22)] ring-1 ring-brand-ink/[0.04] sm:p-10">
       <Logo className="mb-6 justify-center" />
       {created ? <div className="space-y-4 text-center" role="status">
