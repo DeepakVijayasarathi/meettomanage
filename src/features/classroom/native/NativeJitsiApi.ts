@@ -35,6 +35,8 @@ export interface NativeParticipant {
   raisedAt?: number;
   /** Last time this person was the active speaker, so recent speakers stay on the first gallery page. */
   lastSpokeAt?: number;
+  /** Connection quality bucket from the library's stats; undefined until the first report. */
+  quality?: ConnectionQuality;
   audioTrack?: JitsiTrack;
   videoTrack?: JitsiTrack;
   desktopTrack?: JitsiTrack;
@@ -74,6 +76,18 @@ export interface NativeState {
   spotlightId: string | null;
   /** When the teacher last asked this participant to unmute (they decide; nothing unmutes them). */
   unmuteRequestAt: number | null;
+  /** Devices picked in Settings (null = browser default). */
+  cameraId: string | null;
+  micId: string | null;
+  speakerId: string | null;
+}
+
+export type ConnectionQuality = "good" | "fair" | "poor";
+
+/** lib-jitsi-meet reports connectionQuality as a 0-100 percentage. */
+export function qualityBucket(percent: unknown): ConnectionQuality | undefined {
+  if (typeof percent !== "number" || !Number.isFinite(percent)) return undefined;
+  return percent >= 70 ? "good" : percent >= 30 ? "fair" : "poor";
 }
 
 export interface NativeReaction {
@@ -141,6 +155,9 @@ export class NativeJitsiApi {
     reactions: [],
     spotlightId: null,
     unmuteRequestAt: null,
+    cameraId: null,
+    micId: null,
+    speakerId: null,
   };
 
   private lib!: JitsiMeetJSGlobal;
@@ -152,6 +169,8 @@ export class NativeJitsiApi {
   private localDesktop: JitsiTrack | null = null;
   private recordingSessionId: string | null = null;
   private sharingIds: string[] = [];
+  /** Tile key (participant id, or "<id>:screen") -> max height the UI is actually showing it at. */
+  private qualityTargets: Record<string, number> | null = null;
   private disposed = false;
   private joined = false;
   private tracksReady: Promise<void> = Promise.resolve();
@@ -240,6 +259,21 @@ export class NativeJitsiApi {
           this.update({ spotlightId: id });
           this.signal({ m2m: 1, type: "spotlight", id });
         }
+        break;
+      case "setVideoQuality":
+        // The call screen says what is on screen and how big; everything else isn't received.
+        this.qualityTargets = (args[0] as Record<string, number> | null) ?? null;
+        this.updateReceiverConstraints();
+        break;
+      case "setCameraDevice":
+        void this.switchDevice("video", String(args[0] ?? ""));
+        break;
+      case "setMicrophoneDevice":
+        void this.switchDevice("audio", String(args[0] ?? ""));
+        break;
+      case "setAudioOutputDevice":
+        // Remote audio plays through the call screen's own <audio> elements, which apply this.
+        this.update({ speakerId: (args[0] as string | null) || null });
         break;
       case "dismissUnmuteRequest":
         this.update({ unmuteRequestAt: null });
@@ -658,6 +692,15 @@ export class NativeJitsiApi {
       this.emit("connectionRestored", {});
     });
 
+    // Connection quality: only bucket changes reach the UI, so stats every few seconds don't re-render.
+    const Q = this.lib.events.connectionQuality;
+    if (Q?.LOCAL_STATS_UPDATED) {
+      conf.on(Q.LOCAL_STATS_UPDATED, (stats: { connectionQuality?: number }) => this.setQuality(this.state.localId, stats?.connectionQuality));
+    }
+    if (Q?.REMOTE_STATS_UPDATED) {
+      conf.on(Q.REMOTE_STATS_UPDATED, (id: string, stats: { connectionQuality?: number }) => this.setQuality(id, stats?.connectionQuality));
+    }
+
     conf.on(E.KICKED, () => {
       // The teacher's "End the class" removes everyone (see completeAndLeave).
       this.update({ phase: "ended" });
@@ -813,6 +856,52 @@ export class NativeJitsiApi {
       });
   }
 
+  private setQuality(id: string | null | undefined, percent: unknown) {
+    const quality = qualityBucket(percent);
+    const p = id ? this.state.participants.find((x) => x.id === id) : undefined;
+    if (!quality || !p || p.quality === quality) return;
+    this.patchParticipant(id, { quality });
+  }
+
+  /** Swaps the camera or microphone for another device without leaving the call. */
+  private async switchDevice(kind: "audio" | "video", deviceId: string) {
+    if (!deviceId) return;
+    const old = kind === "audio" ? this.localAudio : this.localVideo;
+    let created: JitsiTrack;
+    try {
+      [created] = await this.lib.createLocalTracks({
+        devices: [kind],
+        constraints: this.options.configOverwrite?.constraints,
+        ...(kind === "audio" ? { micDeviceId: deviceId } : { cameraDeviceId: deviceId }),
+      });
+    } catch {
+      this.update({ deviceError: kind === "audio" ? "That microphone couldn't be opened." : "That camera couldn't be opened." });
+      return;
+    }
+    if (this.disposed) {
+      void created.dispose?.().catch(() => undefined);
+      return;
+    }
+    // Keep the mute state: switching device must never switch someone's mic on.
+    const wasMuted = old ? old.isMuted() : false;
+    if (wasMuted) await created.mute?.();
+    if (this.conference) {
+      // While presenting, the conference is sending the screen, not the camera; swap the camera quietly.
+      if (kind === "video" && this.localDesktop) {
+        /* picked up again when the share stops */
+      } else if (old) {
+        await this.conference.replaceTrack(old, created).catch(() => undefined);
+      } else {
+        await this.conference.addTrack(created).catch(() => undefined);
+      }
+    }
+    void old?.dispose?.().catch(() => undefined);
+    if (kind === "audio") this.localAudio = created;
+    else this.localVideo = created;
+    this.patchParticipant(this.state.localId, kind === "audio" ? { audioTrack: created, audioMuted: wasMuted } : { videoTrack: created, videoMuted: wasMuted });
+    this.update(kind === "audio" ? { micId: deviceId, deviceError: null } : { cameraId: deviceId, deviceError: null });
+  }
+
   private setPinned(id: string | null) {
     this.update({ pinnedId: id });
     this.emit("pinnedEndpointChanged", { id });
@@ -823,6 +912,7 @@ export class NativeJitsiApi {
   private updateReceiverConstraints() {
     const conf = this.conference;
     if (!conf?.setReceiverConstraints) return;
+    const targets = this.qualityTargets;
     const stageIds = new Set([this.state.pinnedId, ...this.sharingIds].filter(Boolean) as string[]);
     const onStageSources: string[] = [];
     const constraints: Record<string, { maxHeight: number }> = {};
@@ -830,13 +920,21 @@ export class NativeJitsiApi {
       for (const t of [p.videoTrack, p.desktopTrack]) {
         const source = t?.getSourceName?.();
         if (!source) continue;
-        const onStage = stageIds.has(p.id) && (t === p.desktopTrack || !p.desktopTrack);
-        constraints[source] = { maxHeight: onStage ? 720 : 360 };
-        if (onStage) onStageSources.push(source);
+        let maxHeight: number;
+        if (targets) {
+          // Exactly what the screen shows; 0 stops video for tiles that are off-page or hidden.
+          maxHeight = targets[t === p.desktopTrack ? `${p.id}:screen` : p.id] ?? 0;
+        } else {
+          const onStage = stageIds.has(p.id) && (t === p.desktopTrack || !p.desktopTrack);
+          maxHeight = onStage ? 720 : 360;
+        }
+        constraints[source] = { maxHeight };
+        if (maxHeight >= 720) onStageSources.push(source);
       }
     }
     try {
-      conf.setReceiverConstraints({ lastN: -1, defaultConstraints: { maxHeight: 360 }, constraints, onStageSources });
+      // New sources (before the screen reports them) get a small layer rather than nothing.
+      conf.setReceiverConstraints({ lastN: -1, defaultConstraints: { maxHeight: targets ? 180 : 360 }, constraints, onStageSources });
     } catch {
       /* older bridge without source-name constraints */
     }

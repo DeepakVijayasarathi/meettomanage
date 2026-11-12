@@ -92,6 +92,8 @@ export interface JitsiMeetJSGlobal {
     connection: Record<string, string>;
     conference: Record<string, string>;
     track: Record<string, string>;
+    /** Per-endpoint connection quality (LOCAL_STATS_UPDATED / REMOTE_STATS_UPDATED), emitted by the conference. */
+    connectionQuality?: Record<string, string>;
   };
   errors: {
     connection: Record<string, string>;

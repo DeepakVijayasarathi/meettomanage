@@ -36,6 +36,7 @@ export const EVENTS = {
     ENDPOINT_MESSAGE_RECEIVED: "conference.endpoint_message_received",
   },
   track: { LOCAL_TRACK_STOPPED: "track.stopped" },
+  connectionQuality: { LOCAL_STATS_UPDATED: "cq.local_stats_updated", REMOTE_STATS_UPDATED: "cq.remote_stats_updated" },
 };
 
 export const ERRORS = {

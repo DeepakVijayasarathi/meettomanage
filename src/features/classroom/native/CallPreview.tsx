@@ -5,7 +5,7 @@ import { createFakeLib, EVENTS, type FakeConference } from "./fakeLibJitsi";
 
 /**
  * Development-only preview of the native call screen, driven by the in-memory lib-jitsi-meet stand-in.
- * Query: ?n=<students> &role=student &share=1 &knock=<n> &hands=<n> &chat=1 &late=1 &react=1 &spot=<id> &askunmute=1 (dev builds only, see App.tsx).
+ * Query: ?n=<students> &role=student &share=1 &knock=<n> &hands=<n> &chat=1 &late=1 &react=1 &spot=<id> &askunmute=1 &weak=1 (dev builds only, see App.tsx).
  */
 
 const PALETTE = ["#334155", "#3f3f46", "#1e3a5f", "#3b2f2f", "#2f3b2f", "#3a2f45"];
@@ -118,6 +118,10 @@ export default function CallPreview() {
             late.props.raisedHand = String(Date.now());
             conf.emit(EVENTS.conference.PARTICIPANT_PROPERTY_CHANGED, late, "raisedHand", "", late.props.raisedHand);
           }, 5000));
+        }
+        if (q.get("weak") === "1") {
+          conf.emit(EVENTS.connectionQuality.REMOTE_STATS_UPDATED, "p2", { connectionQuality: 15 });
+          conf.emit(EVENTS.connectionQuality.REMOTE_STATS_UPDATED, "p4", { connectionQuality: 45 });
         }
         if (q.get("chat") === "1") {
           conf.emit(EVENTS.conference.MESSAGE_RECEIVED, "p0", "Good morning ma'am!", Date.now());

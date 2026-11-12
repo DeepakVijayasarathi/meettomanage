@@ -16,6 +16,8 @@ import {
   Pin,
   PinOff,
   Search,
+  Settings,
+  SignalLow,
   Send,
   Smile,
   Star,
@@ -32,7 +34,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { JitsiTrack } from "./libJitsi";
-import { REACTIONS, type NativeJitsiApi, type NativeParticipant, type NativeState } from "./NativeJitsiApi";
+import { REACTIONS, type ConnectionQuality, type NativeJitsiApi, type NativeParticipant, type NativeState } from "./NativeJitsiApi";
 import { bestColumns, galleryPage, prioritiseSpeakers, type CallLayout } from "./stageLayout";
 
 const AVATAR_COLORS = ["#F26B1D", "#2F80ED", "#27AE60", "#9B51E0", "#EB5757", "#00A3A3", "#D97706", "#DB2777"];
@@ -99,7 +101,7 @@ function TrackVideo({ track, mirror, contain }: { track: JitsiTrack; mirror?: bo
  * Remote audio plays through hidden <audio> elements. Browsers (iOS Safari most of all) may refuse
  * to start them before the viewer touches the page, so every element is retried on the first gesture.
  */
-function RemoteAudio({ participants }: { participants: NativeParticipant[] }) {
+function RemoteAudio({ participants, speakerId }: { participants: NativeParticipant[]; speakerId: string | null }) {
   const container = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const resume = () => container.current?.querySelectorAll("audio").forEach((a) => a.play().catch(() => undefined));
@@ -112,12 +114,15 @@ function RemoteAudio({ participants }: { participants: NativeParticipant[] }) {
   }, []);
   return (
     <div ref={container} className="hidden" aria-hidden>
-      {participants.filter((p) => !p.isLocal && p.audioTrack).map((p) => <AudioEl key={p.id} track={p.audioTrack!} />)}
+      {participants.filter((p) => !p.isLocal && p.audioTrack).map((p) => <AudioEl key={p.id} track={p.audioTrack!} speakerId={speakerId} />)}
     </div>
   );
 }
 
-function AudioEl({ track }: { track: JitsiTrack }) {
+/** Chrome and Edge can route call audio to a chosen speaker; Safari and Firefox (mostly) can't. */
+const canPickSpeaker = typeof HTMLMediaElement !== "undefined" && "setSinkId" in HTMLMediaElement.prototype;
+
+function AudioEl({ track, speakerId }: { track: JitsiTrack; speakerId: string | null }) {
   const ref = useRef<HTMLAudioElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -126,6 +131,10 @@ function AudioEl({ track }: { track: JitsiTrack }) {
     el.play().catch(() => undefined);
     return () => track.detach(el);
   }, [track]);
+  useEffect(() => {
+    const el = ref.current as (HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }) | null;
+    if (el?.setSinkId && canPickSpeaker) el.setSinkId(speakerId ?? "").catch(() => undefined);
+  }, [speakerId]);
   return <audio ref={ref} autoPlay />;
 }
 
@@ -223,6 +232,7 @@ function Tile({ participant: p, screen, speaking, pinned, compact, handOrder, is
       )}
       {!screen && (
         <div className="absolute right-2 top-2 flex items-center gap-1">
+          {p.quality && p.quality !== "good" && <QualityBadge quality={p.quality} self={p.isLocal} />}
           {p.audioMuted ? (
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55" title="Muted"><MicOff className="h-4 w-4 text-white" aria-label="Muted" /></span>
           ) : speaking ? (
@@ -241,7 +251,7 @@ function Tile({ participant: p, screen, speaking, pinned, compact, handOrder, is
           trigger={
             <button
               aria-label={`More options for ${label}`}
-              className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity hover:bg-black/75 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange group-hover:opacity-100 data-[state=open]:opacity-100"
+              className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity hover:bg-black/75 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange group-hover:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100"
             >
               <MoreVertical className="h-4 w-4" />
             </button>
@@ -249,7 +259,7 @@ function Tile({ participant: p, screen, speaking, pinned, compact, handOrder, is
         />
       )}
       {screen && (
-        <button onClick={onTogglePin} aria-label={pinned ? `Unpin ${label}` : `Pin ${label}`} className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity hover:bg-black/75 focus-visible:opacity-100 group-hover:opacity-100">
+        <button onClick={onTogglePin} aria-label={pinned ? `Unpin ${label}` : `Pin ${label}`} className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity hover:bg-black/75 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
           {pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
         </button>
       )}
@@ -272,6 +282,25 @@ function Tile({ participant: p, screen, speaking, pinned, compact, handOrder, is
 }
 
 type Item = { key: string; participant: NativeParticipant; screen: boolean };
+
+/** Shown only when a connection is struggling, like Meet: good connections stay uncluttered. */
+function QualityBadge({ quality, self }: { quality: ConnectionQuality; self: boolean }) {
+  const text = `${self ? "Your" : "Their"} connection is ${quality === "poor" ? "poor" : "unstable"}`;
+  return (
+    <span className="flex h-7 items-end gap-[3px] rounded-full bg-black/55 px-2 pb-2 pt-1.5" title={text} role="img" aria-label={text}>
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className={cn("w-[3px] rounded-sm", i < (quality === "poor" ? 1 : 2) ? (quality === "poor" ? "bg-call-danger" : "bg-brand-amber") : "bg-white/35")}
+          style={{ height: 4 + i * 4 }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/** Phones can't share their screen from a browser; don't offer a button that can only fail. */
+const canPresent = typeof navigator !== "undefined" && typeof navigator.mediaDevices?.getDisplayMedia === "function";
 
 function ControlButton({ label, shortcut, state = "default", onClick, disabled, children, badge }: {
   label: string; shortcut?: string; state?: "default" | "off" | "on"; onClick: () => void; disabled?: boolean; children: ReactNode; badge?: number;
@@ -335,6 +364,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
   const [prefs, setPrefsState] = useState(readPrefs);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [seen, setSeen] = useState(0);
   const [draft, setDraft] = useState("");
@@ -513,13 +543,32 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
   const rows = Math.max(1, Math.ceil(pageItems.length / cols));
   const tileW = Math.max(0, Math.min((size.width - 16 - gap * (cols - 1)) / cols, (((size.height - 16 - gap * (rows - 1)) / rows) * 16) / 9));
 
+  // Tell the bridge exactly which videos are on screen and how big: HD for the stage, small layers
+  // for thumbnails, nothing for people on other gallery pages.
+  const qualityKey = useMemo(() => {
+    const targets: Record<string, number> = {};
+    if (!joined) return "";
+    if (stage) {
+      targets[stage.key] = 720;
+      for (const i of gridItems) if (i.key !== stage.key) targets[i.key] = 180;
+    } else {
+      const h = tileW >= 480 ? 720 : tileW >= 260 ? 360 : 180;
+      for (const i of pageItems) targets[i.key] = h;
+    }
+    return JSON.stringify(targets);
+  }, [joined, stage, gridItems, pageItems, tileW]);
+  useEffect(() => {
+    if (qualityKey) api.executeCommand("setVideoQuality", JSON.parse(qualityKey));
+  }, [api, qualityKey]);
+
+  const localWeak = joined && local?.quality === "poor";
   const filteredPeople = s.participants.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase()));
   const peopleCount = s.participants.length;
 
   return (
     <TooltipProvider delayDuration={200}>
       <div className="relative flex h-full w-full flex-col bg-call-bg text-call-ink">
-        <RemoteAudio participants={s.participants} />
+        <RemoteAudio participants={s.participants} speakerId={s.speakerId} />
 
         <div className="relative flex min-h-0 flex-1">
           <div ref={gridRef} className="relative min-h-0 min-w-0 flex-1">
@@ -588,6 +637,11 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
             {s.reconnecting && joined && (
               <p role="status" className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-call-surface px-4 py-2 text-sm text-call-ink shadow-lg">
                 <WifiOff className="h-4 w-4 text-call-danger" aria-hidden /> Connection lost. Trying to reconnect…
+              </p>
+            )}
+            {localWeak && !s.reconnecting && !s.deviceError && (
+              <p role="status" className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-call-surface px-4 py-2 text-xs text-call-ink/80 shadow-lg">
+                <SignalLow className="h-4 w-4 text-call-danger" aria-hidden /> Your connection is weak. Turning off your camera may help.
               </p>
             )}
             {s.deviceError && joined && !s.reconnecting && (
@@ -759,7 +813,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
         </div>
 
         {/* Control bar: clock and class on the left, call controls in the middle, panels on the right. */}
-        <div className="grid h-[72px] shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 sm:px-4">
+        <div className="flex h-[72px] shrink-0 items-center justify-center gap-2 px-2 pb-[env(safe-area-inset-bottom)] sm:grid sm:grid-cols-[1fr_auto_1fr] sm:px-4">
           <div className="hidden min-w-0 items-center gap-3 text-sm md:flex">
             <span className="font-medium tabular-nums">{clock}</span>
             {title && <><span className="h-4 w-px bg-call-ink/20" /><span className="truncate text-call-ink/80">{title}</span></>}
@@ -777,7 +831,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
                 <Hand className="h-5 w-5" />
               </ControlButton>
             )}
-            {canShareScreen && (
+            {canShareScreen && canPresent && (
               <ControlButton label={local?.desktopTrack ? "Stop presenting" : "Present now"} state={local?.desktopTrack ? "on" : "default"} onClick={() => api.executeCommand("toggleShareScreen")} disabled={!joined}>
                 <MonitorUp className="h-5 w-5" />
               </ControlButton>
@@ -805,17 +859,29 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <button aria-label="More options" disabled={!joined} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-call-raised text-call-ink transition-colors hover:bg-call-hover disabled:opacity-40 sm:h-11 sm:w-11">
+                    <button aria-label="More options" disabled={!joined} className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-call-raised text-call-ink transition-colors hover:bg-call-hover disabled:opacity-40 sm:h-11 sm:w-11">
                       <MoreVertical className="h-5 w-5" />
+                      {/* On phones People and Chat live in this menu, so flag unread messages and knocks here. */}
+                      {(unread > 0 || (isModerator && s.knocking.length > 0)) && (
+                        <span className="pointer-events-none absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-brand-orange-deep ring-2 ring-call-bg sm:hidden" aria-hidden />
+                      )}
                     </button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
                 <TooltipContent side="top">More options</TooltipContent>
               </Tooltip>
               <DropdownMenuContent side="top" align="center" className="w-60">
+                <DropdownMenuItem className="sm:hidden" onClick={() => setPanel("people")}>
+                  <Users /> People ({peopleCount}){isModerator && s.knocking.length > 0 && <span className="ml-auto text-xs font-medium text-brand-orange-ink">{s.knocking.length} waiting</span>}
+                </DropdownMenuItem>
+                <DropdownMenuItem className="sm:hidden" onClick={() => setPanel("chat")}>
+                  <MessageSquare /> Chat{unread > 0 && <span className="ml-auto text-xs font-medium text-brand-orange-ink">{unread} new</span>}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="sm:hidden" />
                 <DropdownMenuItem onClick={() => setLayoutOpen(true)}><LayoutGrid /> Change layout</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setPrefs({ hideSelf: !prefs.hideSelf })}><EyeOff /> {prefs.hideSelf ? "Show me in the grid" : "Move me to the corner"}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShortcutsOpen(true)}><Keyboard /> Keyboard shortcuts</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSettingsOpen(true)}><Settings /> Settings</DropdownMenuItem>
+                <DropdownMenuItem className="hidden sm:flex" onClick={() => setShortcutsOpen(true)}><Keyboard /> Keyboard shortcuts</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {!hideLeave && (
@@ -829,7 +895,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
               </Tooltip>
             )}
           </div>
-          <div className="col-start-3 flex items-center justify-end gap-1">
+          <div className="col-start-3 hidden items-center justify-end gap-1 sm:flex">
             <ControlButton label="People" shortcut={`${MOD}+Alt+P`} state={panel === "people" ? "on" : "default"} onClick={() => setPanel((p) => (p === "people" ? null : "people"))} disabled={!joined} badge={isModerator && s.knocking.length ? s.knocking.length : undefined}>
               <Users className="h-5 w-5" />
             </ControlButton>
@@ -863,6 +929,8 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
             </div>
           </DialogContent>
         </Dialog>
+
+        <DeviceSettings open={settingsOpen} onOpenChange={setSettingsOpen} api={api} state={s} />
 
         <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
           <DialogContent className="max-w-sm">
@@ -900,6 +968,66 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
         </Dialog>
       </div>
     </TooltipProvider>
+  );
+}
+
+/** Camera, microphone and speaker pickers, like Meet's Settings > Audio / Video. */
+function DeviceSettings({ open, onOpenChange, api, state }: { open: boolean; onOpenChange: (o: boolean) => void; api: NativeJitsiApi; state: NativeState }) {
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  useEffect(() => {
+    if (!open || !navigator.mediaDevices?.enumerateDevices) return;
+    let live = true;
+    const load = () => navigator.mediaDevices.enumerateDevices().then((d) => live && setDevices(d)).catch(() => undefined);
+    void load();
+    navigator.mediaDevices.addEventListener?.("devicechange", load);
+    return () => {
+      live = false;
+      navigator.mediaDevices.removeEventListener?.("devicechange", load);
+    };
+  }, [open]);
+  const local = state.participants.find((p) => p.isLocal);
+  const of = (kind: MediaDeviceKind) => devices.filter((d) => d.kind === kind && d.deviceId);
+  // Until a device is picked, the browser default (or the one already in use) is the selection.
+  const current = (kind: MediaDeviceKind, picked: string | null) => picked ?? of(kind).find((d) => d.deviceId === "default")?.deviceId ?? of(kind)[0]?.deviceId ?? "";
+  const rows: [string, MediaDeviceKind, string | null, string, boolean][] = [
+    ["Microphone", "audioinput", state.micId, "setMicrophoneDevice", true],
+    ["Speakers", "audiooutput", state.speakerId, "setAudioOutputDevice", canPickSpeaker],
+    ["Camera", "videoinput", state.cameraId, "setCameraDevice", true],
+  ];
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Settings</DialogTitle>
+          <DialogDescription>Switch devices without leaving the class.</DialogDescription>
+        </DialogHeader>
+        <div className="relative aspect-video overflow-hidden rounded-lg bg-call-raised">
+          {local?.videoTrack && !local.videoMuted
+            ? <TrackVideo track={local.videoTrack} mirror />
+            : <p className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Camera is off</p>}
+        </div>
+        <div className="grid gap-3">
+          {rows.filter(([, , , , shown]) => shown).map(([label, kind, picked, command]) => {
+            const list = of(kind);
+            return (
+              <label key={kind} className="grid gap-1 text-sm">
+                <span className="font-medium">{label}</span>
+                <select
+                  value={current(kind, picked)}
+                  onChange={(e) => api.executeCommand(command, e.target.value)}
+                  disabled={list.length === 0}
+                  className="h-9 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-60"
+                >
+                  {list.length === 0 && <option value="">No {label.toLowerCase()} found</option>}
+                  {list.map((d, i) => <option key={d.deviceId} value={d.deviceId}>{d.label || `${label} ${i + 1}`}</option>)}
+                </select>
+              </label>
+            );
+          })}
+          {!canPickSpeaker && <p className="text-xs text-muted-foreground">This browser plays call audio through the system speaker. Change it in your device's sound settings.</p>}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

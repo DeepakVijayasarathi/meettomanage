@@ -93,6 +93,62 @@ describe("NativeJitsiApi", () => {
     expect(Object.values(last.constraints)[0].maxHeight).toBe(720);
   });
 
+  it("receives video only for tiles on screen, at the size they're shown", async () => {
+    const { api, conf } = await start(fake);
+    conf.remoteJoin("r1", "Aarav");
+    conf.remoteJoin("r2", "Diya");
+    conf.remoteShare("r1");
+    api.executeCommand("setVideoQuality", { "r1:screen": 720, r1: 180 });
+    const last = conf.calls.filter((c) => c[0] === "setReceiverConstraints").pop()![1] as {
+      onStageSources: string[]; constraints: Record<string, { maxHeight: number }>; defaultConstraints: { maxHeight: number };
+    };
+    const tracks = (id: string) => conf.participants.get(id)!.tracks.filter((t) => t.getType() === "video");
+    const [r1Cam, r1Screen] = [tracks("r1").find((t) => t.getVideoType() === "camera")!, tracks("r1").find((t) => t.getVideoType() === "desktop")!];
+    expect(last.constraints[r1Screen.getSourceName()].maxHeight).toBe(720);
+    expect(last.constraints[r1Cam.getSourceName()].maxHeight).toBe(180);
+    // Diya is on another gallery page: no video at all.
+    expect(last.constraints[tracks("r2")[0].getSourceName()].maxHeight).toBe(0);
+    expect(last.onStageSources).toEqual([r1Screen.getSourceName()]);
+  });
+
+  it("switches camera or microphone mid-call without unmuting", async () => {
+    const { api, conf } = await start(fake);
+    const create = vi.spyOn(fake, "createLocalTracks");
+    api.executeCommand("toggleAudio"); // mute
+    await flush();
+    api.executeCommand("setMicrophoneDevice", "mic-2");
+    await flush();
+    await flush();
+    expect(create).toHaveBeenLastCalledWith(expect.objectContaining({ devices: ["audio"], micDeviceId: "mic-2" }));
+    expect(conf.calls.some((c) => c[0] === "replaceTrack" && c[1] === "audio")).toBe(true);
+    const me = api.getSnapshot().participants.find((p) => p.isLocal)!;
+    expect(me.audioMuted).toBe(true);
+    expect(me.audioTrack!.isMuted()).toBe(true);
+    expect(api.getSnapshot().micId).toBe("mic-2");
+
+    api.executeCommand("setCameraDevice", "cam-2");
+    await flush();
+    await flush();
+    expect(create).toHaveBeenLastCalledWith(expect.objectContaining({ devices: ["video"], cameraDeviceId: "cam-2" }));
+    expect(api.getSnapshot().cameraId).toBe("cam-2");
+
+    api.executeCommand("setAudioOutputDevice", "spk-2");
+    expect(api.getSnapshot().speakerId).toBe("spk-2");
+  });
+
+  it("tracks connection quality in coarse buckets", async () => {
+    const { api, conf } = await start(fake);
+    conf.remoteJoin("r1", "Aarav");
+    conf.emit(EVENTS.connectionQuality.REMOTE_STATS_UPDATED, "r1", { connectionQuality: 12 });
+    conf.emit(EVENTS.connectionQuality.LOCAL_STATS_UPDATED, { connectionQuality: 55 });
+    const snap = api.getSnapshot();
+    expect(snap.participants.find((p) => p.id === "r1")!.quality).toBe("poor");
+    expect(snap.participants.find((p) => p.isLocal)!.quality).toBe("fair");
+    const before = api.getSnapshot();
+    conf.emit(EVENTS.connectionQuality.REMOTE_STATS_UPDATED, "r1", { connectionQuality: 20 });
+    expect(api.getSnapshot()).toBe(before); // same bucket: no re-render
+  });
+
   it("knocks automatically when the waiting room is on, then joins when admitted", async () => {
     fake.joinBehavior = "membersOnly";
     const { api, conf, events } = await start(fake);
