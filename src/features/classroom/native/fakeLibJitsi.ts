@@ -35,7 +35,7 @@ export const EVENTS = {
     MESSAGE_RECEIVED: "conference.messageReceived",
     ENDPOINT_MESSAGE_RECEIVED: "conference.endpoint_message_received",
   },
-  track: { LOCAL_TRACK_STOPPED: "track.stopped" },
+  track: { LOCAL_TRACK_STOPPED: "track.stopped", TRACK_AUDIO_LEVEL_CHANGED: "track.audioLevelsChanged" },
   connectionQuality: { LOCAL_STATS_UPDATED: "cq.local_stats_updated", REMOTE_STATS_UPDATED: "cq.remote_stats_updated" },
 };
 

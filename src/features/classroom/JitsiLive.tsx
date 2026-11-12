@@ -1314,7 +1314,9 @@ export default function JitsiLive({
       if (engine === "native") {
         // Same options, same events and commands (see NativeJitsiApi), so everything below
         // runs unchanged; only the rendering moves out of the iframe into NativeStage.
-        const created = await NativeJitsiApi.create(joinDomain, joinOptions);
+        // A camera/mic check before connecting (once per room; a reconnect skips it). The
+        // recording observer is a machine and joins straight away.
+        const created = await NativeJitsiApi.create(joinDomain, { ...joinOptions, prejoin: !isRecordingObserver });
         if (cancelled) {
           created.dispose();
           return;

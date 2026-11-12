@@ -565,6 +565,15 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
   const filteredPeople = s.participants.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase()));
   const peopleCount = s.participants.length;
 
+  if (s.phase === "prejoin") {
+    return (
+      <>
+        <PreJoin api={api} state={s} title={title} mode={mode} onSettings={() => setSettingsOpen(true)} onLeave={hideLeave ? undefined : onLeave} />
+        <DeviceSettings open={settingsOpen} onOpenChange={setSettingsOpen} api={api} state={s} />
+      </>
+    );
+  }
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="relative flex h-full w-full flex-col bg-call-bg text-call-ink">
@@ -971,6 +980,99 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
   );
 }
 
+/** A live microphone level, so people can see they're being heard before they speak up. */
+function MicMeter({ api, track, wide }: { api: NativeJitsiApi; track: JitsiTrack; wide?: boolean }) {
+  const [level, setLevel] = useState(0);
+  useEffect(() => {
+    setLevel(0);
+    return api.watchAudioLevel(track, setLevel);
+  }, [api, track]);
+  const bars = wide ? 10 : 3;
+  return (
+    <span className="flex h-4 items-center gap-[3px]" role="meter" aria-label="Microphone level" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(level * 100)}>
+      {Array.from({ length: bars }, (_, i) => (
+        <span
+          key={i}
+          className={cn("w-1 rounded-full transition-[height,background-color] duration-75", level * bars > i ? "bg-brand-orange" : "bg-current opacity-25")}
+          style={{ height: wide ? 12 : 4 + Math.min(1, Math.max(0, level * bars - i)) * 10 }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/** Meet's "Ready to join?" screen: check camera and mic, pick devices, then connect. */
+function PreJoin({ api, state, title, mode, onSettings, onLeave }: {
+  api: NativeJitsiApi; state: NativeState; title?: string; mode: "teacher" | "student"; onSettings: () => void; onLeave?: () => void;
+}) {
+  const preview = state.preview;
+  const opening = !preview || (!preview.videoTrack && !preview.audioTrack && !state.deviceError);
+  const videoOn = Boolean(preview?.videoTrack && !preview.videoMuted);
+  const toggle = (cmd: "toggleAudio" | "toggleVideo") => api.executeCommand(cmd);
+  return (
+    <div className="flex h-full w-full items-center justify-center overflow-y-auto bg-call-bg p-4 text-call-ink">
+      <div className="grid w-full max-w-4xl items-center gap-6 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] md:gap-10">
+        <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-call-raised shadow-lg">
+          {videoOn && preview?.videoTrack ? (
+            <TrackVideo track={preview.videoTrack} mirror />
+          ) : (
+            <p className="absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-call-ink/70">
+              {opening ? "Starting your camera…" : preview?.videoTrack ? "Camera is off" : "No camera found"}
+            </p>
+          )}
+          {preview?.audioTrack && !preview.audioMuted && (
+            <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-white">
+              <Mic className="h-3.5 w-3.5" aria-hidden /> <MicMeter api={api} track={preview.audioTrack} />
+            </span>
+          )}
+          <div className="absolute inset-x-0 bottom-3 flex justify-center gap-3">
+            <button
+              onClick={() => toggle("toggleAudio")}
+              aria-label={preview?.audioMuted ? "Turn on microphone" : "Turn off microphone"}
+              className={cn("flex h-12 w-12 items-center justify-center rounded-full border border-white/40 text-white transition-colors", preview?.audioMuted ? "border-transparent bg-call-danger hover:bg-call-danger-hover" : "bg-black/30 hover:bg-black/50")}
+            >
+              {preview?.audioMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+            </button>
+            <button
+              onClick={() => toggle("toggleVideo")}
+              aria-label={videoOn ? "Turn off camera" : "Turn on camera"}
+              className={cn("flex h-12 w-12 items-center justify-center rounded-full border border-white/40 text-white transition-colors", !videoOn ? "border-transparent bg-call-danger hover:bg-call-danger-hover" : "bg-black/30 hover:bg-black/50")}
+            >
+              {videoOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+            </button>
+          </div>
+          <button onClick={onSettings} aria-label="Settings" className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white hover:bg-black/50">
+            <Settings className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div>
+            <h2 className="text-2xl font-normal">Ready to join?</h2>
+            {title && <p className="mt-1 text-sm text-call-ink/70">{title}</p>}
+          </div>
+          {state.deviceError && <p className="rounded-lg bg-call-danger/10 px-3 py-2 text-sm text-call-danger-ink">{state.deviceError}</p>}
+          {mode === "student" && preview?.audioMuted && !state.deviceError && (
+            <p className="text-xs text-call-ink/60">You'll join with your microphone off. Unmute when your teacher asks.</p>
+          )}
+          <div className="flex flex-wrap justify-center gap-2">
+            <button
+              onClick={() => api.executeCommand("confirmJoin")}
+              autoFocus
+              className="rounded-full bg-brand-orange-deep px-8 py-3 text-sm font-medium text-white shadow-md transition-colors hover:bg-brand-orange-to focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 focus-visible:ring-offset-call-bg"
+            >
+              Join now
+            </button>
+            {onLeave && (
+              <button onClick={onLeave} className="rounded-full px-5 py-3 text-sm font-medium text-call-ink/80 hover:bg-call-ink/10">Cancel</button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Camera, microphone and speaker pickers, like Meet's Settings > Audio / Video. */
 function DeviceSettings({ open, onOpenChange, api, state }: { open: boolean; onOpenChange: (o: boolean) => void; api: NativeJitsiApi; state: NativeState }) {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -986,6 +1088,9 @@ function DeviceSettings({ open, onOpenChange, api, state }: { open: boolean; onO
     };
   }, [open]);
   const local = state.participants.find((p) => p.isLocal);
+  const videoTrack = local?.videoTrack ?? state.preview?.videoTrack;
+  const videoOff = local ? local.videoMuted : state.preview?.videoMuted ?? true;
+  const audioTrack = local?.audioTrack ?? state.preview?.audioTrack;
   const of = (kind: MediaDeviceKind) => devices.filter((d) => d.kind === kind && d.deviceId);
   // Until a device is picked, the browser default (or the one already in use) is the selection.
   const current = (kind: MediaDeviceKind, picked: string | null) => picked ?? of(kind).find((d) => d.deviceId === "default")?.deviceId ?? of(kind)[0]?.deviceId ?? "";
@@ -1002,10 +1107,15 @@ function DeviceSettings({ open, onOpenChange, api, state }: { open: boolean; onO
           <DialogDescription>Switch devices without leaving the class.</DialogDescription>
         </DialogHeader>
         <div className="relative aspect-video overflow-hidden rounded-lg bg-call-raised">
-          {local?.videoTrack && !local.videoMuted
-            ? <TrackVideo track={local.videoTrack} mirror />
+          {videoTrack && !videoOff
+            ? <TrackVideo track={videoTrack} mirror />
             : <p className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Camera is off</p>}
         </div>
+        {audioTrack && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Mic className="h-4 w-4" aria-hidden /> <MicMeter api={api} track={audioTrack} wide /> <span>Speak to test your microphone</span>
+          </div>
+        )}
         <div className="grid gap-3">
           {rows.filter(([, , , , shown]) => shown).map(([label, kind, picked, command]) => {
             const list = of(kind);

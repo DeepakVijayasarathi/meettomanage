@@ -5,7 +5,7 @@ import { createFakeLib, EVENTS, type FakeConference } from "./fakeLibJitsi";
 
 /**
  * Development-only preview of the native call screen, driven by the in-memory lib-jitsi-meet stand-in.
- * Query: ?n=<students> &role=student &share=1 &knock=<n> &hands=<n> &chat=1 &late=1 &react=1 &spot=<id> &askunmute=1 &weak=1 (dev builds only, see App.tsx).
+ * Query: ?n=<students> &role=student &share=1 &knock=<n> &hands=<n> &chat=1 &late=1 &react=1 &spot=<id> &askunmute=1 &weak=1 &prejoin=1 (dev builds only, see App.tsx).
  */
 
 const PALETTE = ["#334155", "#3f3f46", "#1e3a5f", "#3b2f2f", "#2f3b2f", "#3a2f45"];
@@ -69,14 +69,31 @@ export default function CallPreview() {
       roomName: "preview",
       jwt: "preview",
       userInfo: { displayName: role === "teacher" ? "Karan Mehta" : "Aarav Kapoor" },
-      configOverwrite: { startWithAudioMuted: false },
+      configOverwrite: { startWithAudioMuted: role === "student" },
+      prejoin: q.get("prejoin") === "1",
     }).then((a) => {
       if (disposed) return a.dispose();
       created = a;
       a.join();
       setApi(a);
       (window as unknown as { __call?: NativeJitsiApi }).__call = a; // dev-only handle for debugging the preview
-      timers.push(window.setTimeout(() => {
+      // A fake microphone has no sound; drive the level meter so it can be seen moving.
+      const levelTimer = window.setInterval(() => {
+        const snap = a.getSnapshot();
+        const mic = (snap.preview?.audioTrack ?? snap.participants.find((p) => p.isLocal)?.audioTrack) as { fire?: (e: string, l: number) => void } | undefined;
+        mic?.fire?.(EVENTS.track.TRACK_AUDIO_LEVEL_CHANGED, Math.abs(Math.sin(Date.now() / 300)) * 0.8);
+      }, 120);
+      timers.push(levelTimer);
+      // With ?prejoin=1 nothing connects until "Join now", so the class fills in after that.
+      const whenJoined = (fn: () => void) => {
+        if (a.getSnapshot().phase === "joined") return fn();
+        const stop = a.subscribe(() => {
+          if (a.getSnapshot().phase !== "joined") return;
+          stop();
+          fn();
+        });
+      };
+      whenJoined(() => timers.push(window.setTimeout(() => {
         const conf = fake.lastConference as FakeConference;
         NAMES.slice(role === "student" ? 1 : 0, n + (role === "student" ? 1 : 0)).forEach((name, i) =>
           conf.remoteJoin(`p${i}`, name, { camera: i % 4 !== 3, mic: true, role: role === "student" && i === 0 ? "moderator" : "participant" })
@@ -108,8 +125,7 @@ export default function CallPreview() {
           else conf.remoteSignal("p0", { m2m: 1, type: "spotlight", id: q.get("spot") });
         }
         if (q.get("askunmute") === "1" && role === "student") {
-          // Wait for the local mic to finish starting before muting, then have the teacher ask.
-          timers.push(window.setTimeout(() => a.executeCommand("toggleAudio"), 1200));
+          // Students join muted; the (simulated) teacher asks once the call has settled.
           timers.push(window.setTimeout(() => conf.remoteSignal("p0", { m2m: 1, type: "askUnmute", id: conf.myId }), 2000));
         }
         if (q.get("late") === "1") {
@@ -127,11 +143,11 @@ export default function CallPreview() {
           conf.emit(EVENTS.conference.MESSAGE_RECEIVED, "p0", "Good morning ma'am!", Date.now());
           conf.emit(EVENTS.conference.MESSAGE_RECEIVED, "p2", "Can you repeat the last word?", Date.now() + 1);
         }
-      }, 300));
+      }, 300)));
     });
     return () => {
       disposed = true;
-      timers.forEach(clearTimeout);
+      timers.forEach((t) => { clearTimeout(t); clearInterval(t); });
       created?.dispose();
       delete window.JitsiMeetJS;
       delete window.config;

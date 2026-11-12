@@ -51,7 +51,21 @@ export interface NativeChatMessage {
   self: boolean;
 }
 
-export type NativePhase = "connecting" | "lobby" | "joined" | "ended" | "failed";
+export type NativePhase = "prejoin" | "connecting" | "lobby" | "joined" | "ended" | "failed";
+
+/** Your own camera and mic before joining (the "Ready to join?" screen). */
+export interface LocalPreview {
+  audioTrack?: JitsiTrack;
+  videoTrack?: JitsiTrack;
+  audioMuted: boolean;
+  videoMuted: boolean;
+}
+
+/**
+ * Rooms whose pre-join check was already passed in this tab. A dropped call is re-created from
+ * scratch (JitsiLive's self-heal), and that must reconnect straight away, not ask again.
+ */
+const prejoinPassed = new Set<string>();
 
 export interface NativeState {
   phase: NativePhase;
@@ -76,6 +90,8 @@ export interface NativeState {
   spotlightId: string | null;
   /** When the teacher last asked this participant to unmute (they decide; nothing unmutes them). */
   unmuteRequestAt: number | null;
+  /** Set while phase is "prejoin". */
+  preview: LocalPreview | null;
   /** Devices picked in Settings (null = browser default). */
   cameraId: string | null;
   micId: string | null;
@@ -123,6 +139,8 @@ export interface NativeJitsiOptions {
     lobby?: { autoKnock?: boolean };
     [key: string]: unknown;
   };
+  /** Show a camera/mic check before connecting (once per room per tab). */
+  prejoin?: boolean;
   [key: string]: unknown;
 }
 
@@ -155,6 +173,7 @@ export class NativeJitsiApi {
     reactions: [],
     spotlightId: null,
     unmuteRequestAt: null,
+    preview: null,
     cameraId: null,
     micId: null,
     speakerId: null,
@@ -259,6 +278,9 @@ export class NativeJitsiApi {
           this.update({ spotlightId: id });
           this.signal({ m2m: 1, type: "spotlight", id });
         }
+        break;
+      case "confirmJoin":
+        this.confirmJoin();
         break;
       case "setVideoQuality":
         // The call screen says what is on screen and how big; everything else isn't received.
@@ -471,6 +493,45 @@ export class NativeJitsiApi {
   join() {
     if (this.joined || this.disposed) return;
     this.joined = true;
+    if (this.options.prejoin && !prejoinPassed.has(this.options.roomName.toLowerCase())) {
+      // Nothing connects until the person confirms; their camera/mic are already opening.
+      this.update({ phase: "prejoin" });
+      this.refreshPreview();
+      void this.tracksReady.then(() => this.refreshPreview());
+      return;
+    }
+    this.connect();
+  }
+
+  private confirmJoin() {
+    if (this.state.phase !== "prejoin" || this.disposed) return;
+    prejoinPassed.add(this.options.roomName.toLowerCase());
+    this.update({ phase: "connecting", preview: null });
+    this.connect();
+  }
+
+  private refreshPreview() {
+    if (this.state.phase !== "prejoin" || this.disposed) return;
+    this.update({
+      preview: {
+        audioTrack: this.localAudio ?? undefined,
+        videoTrack: this.localVideo ?? undefined,
+        audioMuted: !this.localAudio || this.localAudio.isMuted(),
+        videoMuted: !this.localVideo || this.localVideo.isMuted(),
+      },
+    });
+  }
+
+  /** Live microphone level (0-1) for a level meter; returns an unsubscribe function. */
+  watchAudioLevel(track: JitsiTrack, onLevel: (level: number) => void): () => void {
+    const ev = this.lib?.events?.track?.TRACK_AUDIO_LEVEL_CHANGED;
+    if (!ev) return () => undefined;
+    const handler = (level: unknown) => onLevel(typeof level === "number" ? Math.max(0, Math.min(1, level)) : 0);
+    track.addEventListener(ev, handler);
+    return () => track.removeEventListener?.(ev, handler);
+  }
+
+  private connect() {
     const lib = this.lib;
     const config = this.deploymentConfig;
     const tracksReady = this.tracksReady;
@@ -770,6 +831,7 @@ export class NativeJitsiApi {
         this.patchParticipant(this.state.localId, kind === "audio" ? { audioTrack: created, audioMuted: false } : { videoTrack: created, videoMuted: false });
         this.emit(kind === "audio" ? "audioMuteStatusChanged" : "videoMuteStatusChanged", { muted: false });
         this.update({ deviceError: null });
+        this.refreshPreview();
       } catch {
         this.update({ deviceError: kind === "audio" ? "Your microphone couldn't be opened — check the browser's site permissions." : "Your camera couldn't be opened — check the browser's site permissions." });
       }
@@ -777,6 +839,7 @@ export class NativeJitsiApi {
     }
     const nowMuted = !track.isMuted();
     await (nowMuted ? track.mute?.() : track.unmute?.());
+    this.refreshPreview();
     // TRACK_MUTE_CHANGED normally reports this; patch directly too in case it doesn't fire.
     this.patchParticipant(this.state.localId, kind === "audio" ? { audioMuted: nowMuted } : { videoMuted: nowMuted });
   }
@@ -900,6 +963,7 @@ export class NativeJitsiApi {
     else this.localVideo = created;
     this.patchParticipant(this.state.localId, kind === "audio" ? { audioTrack: created, audioMuted: wasMuted } : { videoTrack: created, videoMuted: wasMuted });
     this.update(kind === "audio" ? { micId: deviceId, deviceError: null } : { cameraId: deviceId, deviceError: null });
+    this.refreshPreview();
   }
 
   private setPinned(id: string | null) {

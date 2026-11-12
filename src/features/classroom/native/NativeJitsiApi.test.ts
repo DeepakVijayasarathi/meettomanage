@@ -149,6 +149,46 @@ describe("NativeJitsiApi", () => {
     expect(api.getSnapshot()).toBe(before); // same bucket: no re-render
   });
 
+  it("holds the connection on a camera/mic check, once per room", async () => {
+    const { api, conf } = await start(fake, { roomName: "Prejoin-Room", prejoin: true });
+    expect(conf).toBeNull(); // no conference yet
+    expect(fake.lastConnection).toBeFalsy();
+    expect(api.getSnapshot().phase).toBe("prejoin");
+    await flush();
+    const preview = api.getSnapshot().preview!;
+    expect(preview.videoTrack).toBeDefined();
+    expect(preview.audioMuted).toBe(false);
+
+    // Choices made here carry into the call.
+    api.executeCommand("toggleVideo");
+    await flush();
+    expect(api.getSnapshot().preview!.videoMuted).toBe(true);
+
+    api.executeCommand("confirmJoin");
+    await flush();
+    await flush();
+    expect(api.getSnapshot().phase).toBe("joined");
+    expect(api.getSnapshot().preview).toBeNull();
+    expect(api.getSnapshot().participants.find((p) => p.isLocal)!.videoMuted).toBe(true);
+    api.dispose();
+
+    // A reconnect re-creates the engine for the same room: it must not ask again.
+    const again = await start(fake, { roomName: "prejoin-room", prejoin: true });
+    expect(again.api.getSnapshot().phase).toBe("joined");
+  });
+
+  it("reports the microphone level for the meter", async () => {
+    const { api } = await start(fake);
+    const mic = api.getSnapshot().participants.find((p) => p.isLocal)!.audioTrack as unknown as FakeTrack;
+    const levels: number[] = [];
+    const stop = api.watchAudioLevel(mic as never, (l) => levels.push(l));
+    mic.fire(EVENTS.track.TRACK_AUDIO_LEVEL_CHANGED, 0.4);
+    mic.fire(EVENTS.track.TRACK_AUDIO_LEVEL_CHANGED, 7);
+    stop();
+    mic.fire(EVENTS.track.TRACK_AUDIO_LEVEL_CHANGED, 0.9);
+    expect(levels).toEqual([0.4, 1]);
+  });
+
   it("knocks automatically when the waiting room is on, then joins when admitted", async () => {
     fake.joinBehavior = "membersOnly";
     const { api, conf, events } = await start(fake);
