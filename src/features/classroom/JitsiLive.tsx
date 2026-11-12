@@ -23,7 +23,7 @@ import AnnotationOverlay, { type AnnotationOverlayHandle, type AnnotationOp } fr
 import type { LeaderboardEntry } from "./classroomData";
 import { NativeJitsiApi } from "./native/NativeJitsiApi";
 import NativeStage from "./native/NativeStage";
-import { classroomEngine } from "./native/engine";
+import { classroomEngine, markNativeEngineFailed } from "./native/engine";
 import CallThemeToggle from "./CallThemeToggle";
 import { useTheme } from "@/lib/theme";
 
@@ -189,10 +189,11 @@ export default function JitsiLive({
   const containerRef = useRef<HTMLDivElement>(null);
   // The logo's dark figure disappears on the dark header; its "light" variant sits on a white tile.
   const { isDark } = useTheme();
-  // Video engine: Jitsi's iframe (default) or our own lib-jitsi-meet engine with Meet-style tiles
-  // (opt-in, see native/engine.ts). The recording bot always uses the iframe: it is what Jibri
-  // has been validated against.
-  const [engine] = useState(() => (isRecordingObserver ? "iframe" : classroomEngine()));
+  // Video engine: our own lib-jitsi-meet engine with Meet-style tiles (teachers' default) or
+  // Jitsi's iframe (see native/engine.ts). The recording bot always uses the iframe: it is what
+  // Jibri has been validated against. If the native engine can't start, this switches to the
+  // iframe and the init effect below runs again with it.
+  const [engine, setEngine] = useState(() => (isRecordingObserver ? "iframe" : classroomEngine(mode)));
   const [nativeApi, setNativeApi] = useState<NativeJitsiApi | null>(null);
   const [boardMaximized, setBoardMaximized] = useState(false);
   // The floating video tile shown over the full-screen board: it can be shrunk further, or tucked
@@ -1316,7 +1317,18 @@ export default function JitsiLive({
         // runs unchanged; only the rendering moves out of the iframe into NativeStage.
         // A camera/mic check before connecting (once per room; a reconnect skips it). The
         // recording observer is a machine and joins straight away.
-        const created = await NativeJitsiApi.create(joinDomain, { ...joinOptions, prejoin: !isRecordingObserver });
+        let created: NativeJitsiApi;
+        try {
+          created = await NativeJitsiApi.create(joinDomain, { ...joinOptions, prejoin: !isRecordingObserver });
+        } catch (err) {
+          // The video library didn't load (blocked script, old browser…): never let that cost a
+          // class. Fall back to the embedded Jitsi page for the rest of this tab.
+          if (cancelled) return;
+          console.warn("Native video engine failed to start; using the embedded page instead.", err);
+          markNativeEngineFailed();
+          setEngine("iframe");
+          return;
+        }
         if (cancelled) {
           created.dispose();
           return;
@@ -1816,7 +1828,7 @@ export default function JitsiLive({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room, mode]);
+  }, [room, mode, engine]);
 
   // userName is deliberately not a dependency of the init effect above — recreating the
   // whole Jitsi connection just to relabel yourself would drop everyone's call to reconnect
