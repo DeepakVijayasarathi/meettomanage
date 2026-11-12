@@ -27,14 +27,15 @@ function OperationsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const tenantId = selection.tenant?.id;
   useEffect(() => {
-    if (!selection.tenant) return setData(null);
+    if (!tenantId) return setData(null);
     const controller = new AbortController(); setError(""); setNotice(""); setData(null);
-    platformRequest<OperationsData>(`/tenants/${selection.tenant.id}/operations`, selection.token, "GET", undefined, controller.signal)
+    platformRequest<OperationsData>(`/tenants/${tenantId}/operations`, selection.token, "GET", undefined, controller.signal)
       .then(result => { setData(result); setDomain(result.tenant.customDomain ?? ""); })
       .catch(err => { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Could not load tenant operations."); });
     return () => controller.abort();
-  }, [selection.tenant?.id, selection.token]);
+  }, [tenantId, selection.token]);
   const checklist = useMemo(() => data ? Object.entries(data.onboarding) : [], [data]);
   const complete = checklist.filter(([, done]) => done).length;
   const health = checklist.length ? Math.round(complete / checklist.length * 100) : 0;

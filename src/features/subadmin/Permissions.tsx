@@ -53,7 +53,7 @@ export default function SubAdminPermissions() {
       .catch(() => {
         /* captions just stay empty */
       });
-  }, []);
+  }, [portal]);
 
   if (apiEnabled()) {
     const fullCount = modules.filter((m) => PERMISSION_ACTIONS_LABELS.some((a) => a !== "View" && isGranted(permissions, role, m.value, a))).length;

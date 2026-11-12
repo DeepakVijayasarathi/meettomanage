@@ -45,7 +45,7 @@ export default function ParentAppStatus({ tenantId, token }: { tenantId: string;
   useEffect(load, [days, tenantId, token]);
   // Treat arrays as optional at the network boundary so a rolling deployment (or a cached
   // response from the previous API version) cannot take down the whole configuration page.
-  const trend = data?.trend ?? [];
+  const trend = useMemo(() => data?.trend ?? [], [data]);
   const platforms = data?.platforms ?? [];
   const versions = data?.versions ?? [];
   const errors = data?.errors ?? [];

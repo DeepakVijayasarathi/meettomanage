@@ -82,7 +82,7 @@ function ConfigurationEditor({ tenantId, token, appAccessGranted, onDirty, onSav
     }).catch(err => { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Could not load settings."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [endpoint, token]);
+  }, [endpoint, tenantId, token]);
   async function save(event: FormEvent) {
     event.preventDefault(); setSaving(true); onSaving(true); setError(""); setNotice("");
     try {
