@@ -33,6 +33,7 @@ export const EVENTS = {
     CONNECTION_RESTORED: "conference.connectionRestored",
     KICKED: "conference.kicked",
     MESSAGE_RECEIVED: "conference.messageReceived",
+    ENDPOINT_MESSAGE_RECEIVED: "conference.endpoint_message_received",
   },
   track: { LOCAL_TRACK_STOPPED: "track.stopped" },
 };
@@ -145,6 +146,7 @@ export class FakeConference {
   }
   async stopRecording(id: string) { this.calls.push(["stopRecording", id]); }
   sendTextMessage(t: string) { this.calls.push(["sendTextMessage", t]); }
+  broadcastEndpointMessage(payload: unknown) { this.calls.push(["broadcastEndpointMessage", payload]); }
   setReceiverConstraints(c: Record<string, unknown>) { this.calls.push(["setReceiverConstraints", c]); }
 
   // ---- helpers for tests: simulate the server ----
@@ -163,6 +165,10 @@ export class FakeConference {
     this.participants.get(id)?.tracks.push(t);
     this.emit(EVENTS.conference.TRACK_ADDED, t);
     return t;
+  }
+  /** A data-channel message from another participant. */
+  remoteSignal(fromId: string, payload: unknown) {
+    this.emit(EVENTS.conference.ENDPOINT_MESSAGE_RECEIVED, this.participants.get(fromId) ?? { getId: () => fromId }, payload);
   }
   remoteLeave(id: string) {
     this.participants.delete(id);

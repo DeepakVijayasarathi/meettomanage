@@ -224,6 +224,13 @@ export default {
         "orb-spin": { from: { transform: "rotate(0deg)" }, to: { transform: "rotate(360deg)" } },
         "orb-breathe": { "0%, 100%": { transform: "scale(1)", opacity: "0.55" }, "50%": { transform: "scale(1.12)", opacity: "0.9" } },
         "orb-wave": { "0%, 100%": { transform: "scaleY(0.35)" }, "50%": { transform: "scaleY(1)" } },
+        // Live class reactions: float up and fade, like Meet's.
+        "reaction-rise": {
+          "0%": { transform: "translateY(12px) scale(0.6)", opacity: "0" },
+          "12%": { transform: "translateY(0) scale(1)", opacity: "1" },
+          "80%": { opacity: "1" },
+          "100%": { transform: "translateY(-160px) scale(1)", opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -240,6 +247,7 @@ export default {
         "orb-spin": "orb-spin 6s linear infinite",
         "orb-breathe": "orb-breathe 3.2s ease-in-out infinite",
         "orb-wave": "orb-wave 0.9s ease-in-out infinite",
+        "reaction-rise": "reaction-rise 3.8s ease-out forwards",
       },
     },
   },

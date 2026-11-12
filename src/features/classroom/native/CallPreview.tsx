@@ -5,7 +5,7 @@ import { createFakeLib, EVENTS, type FakeConference } from "./fakeLibJitsi";
 
 /**
  * Development-only preview of the native call screen, driven by the in-memory lib-jitsi-meet stand-in.
- * Query: ?n=<students> &role=student &share=1 &knock=<n> &hands=<n> &chat=1 &late=1 (dev builds only, see App.tsx).
+ * Query: ?n=<students> &role=student &share=1 &knock=<n> &hands=<n> &chat=1 &late=1 &react=1 &spot=<id> &askunmute=1 (dev builds only, see App.tsx).
  */
 
 const PALETTE = ["#334155", "#3f3f46", "#1e3a5f", "#3b2f2f", "#2f3b2f", "#3a2f45"];
@@ -75,6 +75,7 @@ export default function CallPreview() {
       created = a;
       a.join();
       setApi(a);
+      (window as unknown as { __call?: NativeJitsiApi }).__call = a; // dev-only handle for debugging the preview
       timers.push(window.setTimeout(() => {
         const conf = fake.lastConference as FakeConference;
         NAMES.slice(role === "student" ? 1 : 0, n + (role === "student" ? 1 : 0)).forEach((name, i) =>
@@ -97,6 +98,20 @@ export default function CallPreview() {
         conf.emit(EVENTS.conference.DOMINANT_SPEAKER_CHANGED, "p0");
         if (q.get("share") === "1") conf.remoteShare("p0");
         for (let k = 0; k < Number(q.get("knock") ?? 0); k++) conf.emit(EVENTS.conference.LOBBY_USER_JOINED, `w${k}`, ["Aarav's Parent", "Guest Observer", "Neha Rao"][k % 3]);
+        // Signals from the (simulated) teacher p0 in the student view, or from students in the teacher view.
+        if (q.get("react") === "1") {
+          ["👏", "🎉", "❤️", "😂", "👍"].forEach((emoji, k) =>
+            timers.push(window.setTimeout(() => conf.remoteSignal(`p${k % n}`, { m2m: 1, type: "reaction", emoji }), 500 + k * 350)));
+        }
+        if (q.get("spot")) {
+          if (role === "teacher") a.executeCommand("setSpotlight", q.get("spot"));
+          else conf.remoteSignal("p0", { m2m: 1, type: "spotlight", id: q.get("spot") });
+        }
+        if (q.get("askunmute") === "1" && role === "student") {
+          // Wait for the local mic to finish starting before muting, then have the teacher ask.
+          timers.push(window.setTimeout(() => a.executeCommand("toggleAudio"), 1200));
+          timers.push(window.setTimeout(() => conf.remoteSignal("p0", { m2m: 1, type: "askUnmute", id: conf.myId }), 2000));
+        }
         if (q.get("late") === "1") {
           timers.push(window.setTimeout(() => {
             const late = conf.remoteJoin("late1", "Neha Rao");

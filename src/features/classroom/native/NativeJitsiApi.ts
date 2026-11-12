@@ -33,6 +33,8 @@ export interface NativeParticipant {
   handRaised: boolean;
   /** When the hand went up (ms since epoch), so raised hands can be answered in order. */
   raisedAt?: number;
+  /** Last time this person was the active speaker, so recent speakers stay on the first gallery page. */
+  lastSpokeAt?: number;
   audioTrack?: JitsiTrack;
   videoTrack?: JitsiTrack;
   desktopTrack?: JitsiTrack;
@@ -66,7 +68,32 @@ export interface NativeState {
   deviceError: string | null;
   /** True while the media connection has dropped and the library is trying to restore it. */
   reconnecting: boolean;
+  /** Recent emoji reactions (kept a few seconds for the floating animation). */
+  reactions: NativeReaction[];
+  /** Someone the teacher put on everyone's main screen; null when no one is spotlighted. */
+  spotlightId: string | null;
+  /** When the teacher last asked this participant to unmute (they decide; nothing unmutes them). */
+  unmuteRequestAt: number | null;
 }
+
+export interface NativeReaction {
+  id: string;
+  from: string;
+  emoji: string;
+  at: number;
+}
+
+/** Reactions anyone can send. Anything else is ignored, so a crafted message can't inject text. */
+export const REACTIONS = ["👍", "❤️", "😂", "😮", "👏", "🎉"] as const;
+
+/** Messages sent between participants over the bridge's data channel. */
+type CallSignal =
+  | { m2m: 1; type: "reaction"; emoji: string }
+  | { m2m: 1; type: "lowerHand"; id: string }
+  | { m2m: 1; type: "lowerAllHands" }
+  | { m2m: 1; type: "askUnmute"; id: string }
+  | { m2m: 1; type: "spotlight"; id: string | null };
+const MODERATOR_ONLY = new Set(["lowerHand", "lowerAllHands", "askUnmute", "spotlight"]);
 
 type Listener = (payload: any) => void;
 
@@ -111,6 +138,9 @@ export class NativeJitsiApi {
     messages: [],
     deviceError: null,
     reconnecting: false,
+    reactions: [],
+    spotlightId: null,
+    unmuteRequestAt: null,
   };
 
   private lib!: JitsiMeetJSGlobal;
@@ -191,6 +221,29 @@ export class NativeJitsiApi {
       case "pinParticipant":
         this.setPinned((args[0] as string | null) ?? null);
         break;
+      case "sendReaction":
+        this.sendReaction(String(args[0]));
+        break;
+      // Teacher-only class controls. Every receiver re-checks that the sender is a moderator.
+      case "lowerHand":
+        if (this.state.isModerator) this.signal({ m2m: 1, type: "lowerHand", id: String(args[0]) });
+        break;
+      case "lowerAllHands":
+        if (this.state.isModerator) this.signal({ m2m: 1, type: "lowerAllHands" });
+        break;
+      case "askToUnmute":
+        if (this.state.isModerator) this.signal({ m2m: 1, type: "askUnmute", id: String(args[0]) });
+        break;
+      case "setSpotlight":
+        if (this.state.isModerator) {
+          const id = (args[0] as string | null) ?? null;
+          this.update({ spotlightId: id });
+          this.signal({ m2m: 1, type: "spotlight", id });
+        }
+        break;
+      case "dismissUnmuteRequest":
+        this.update({ unmuteRequestAt: null });
+        break;
       case "setTileView":
         this.update({ tileView: Boolean(args[0]) });
         this.emit("tileViewChanged", { enabled: Boolean(args[0]) });
@@ -252,6 +305,68 @@ export class NativeJitsiApi {
         { id: `${Date.now()}-${Math.random()}`, from: this.state.localId ?? "me", name: this.displayName, text: body, at: Date.now(), self: true },
       ],
     });
+  }
+
+  // ---- Class signals (reactions and teacher controls) -------------------------------------
+
+  private lastReactionAt = 0;
+
+  private sendReaction(emoji: string) {
+    if (!(REACTIONS as readonly string[]).includes(emoji) || !this.state.localId) return;
+    // Meet throttles reactions too: one a second is plenty and keeps the bridge quiet.
+    const now = Date.now();
+    if (now - this.lastReactionAt < 1000) return;
+    this.lastReactionAt = now;
+    this.addReaction(this.state.localId, emoji);
+    this.signal({ m2m: 1, type: "reaction", emoji });
+  }
+
+  private addReaction(from: string, emoji: string) {
+    const now = Date.now();
+    const reaction = { id: `${from}-${now}-${Math.random()}`, from, emoji, at: now };
+    this.update({ reactions: [...this.state.reactions.filter((r) => now - r.at < 5000), reaction].slice(-30) });
+    this.emit("reactionReceived", { id: from, emoji });
+    window.setTimeout(() => {
+      if (!this.disposed) this.update({ reactions: this.state.reactions.filter((r) => r.id !== reaction.id) });
+    }, 4000);
+  }
+
+  private signal(payload: CallSignal) {
+    const conf = this.conference;
+    if (!conf) return;
+    try {
+      if (conf.broadcastEndpointMessage) conf.broadcastEndpointMessage(payload);
+      else conf.sendEndpointMessage?.("", payload);
+    } catch {
+      // The data channel can be briefly unavailable (e.g. while reconnecting); these are best-effort.
+    }
+  }
+
+  /** Applies a message from another participant, after checking it's well-formed and allowed. */
+  handleSignal(fromId: string, raw: unknown) {
+    if (!raw || typeof raw !== "object" || (raw as { m2m?: unknown }).m2m !== 1) return;
+    const msg = raw as CallSignal;
+    const sender = this.state.participants.find((p) => p.id === fromId);
+    if (!sender || sender.isLocal) return;
+    if (MODERATOR_ONLY.has(msg.type) && sender.role !== "moderator") return;
+    const me = this.state.localId;
+    switch (msg.type) {
+      case "reaction":
+        if ((REACTIONS as readonly string[]).includes(msg.emoji)) this.addReaction(fromId, msg.emoji);
+        break;
+      case "lowerHand":
+        if (msg.id === me && this.local()?.handRaised) this.setRaisedHand(false);
+        break;
+      case "lowerAllHands":
+        if (this.local()?.handRaised) this.setRaisedHand(false);
+        break;
+      case "askUnmute":
+        if (msg.id === me && this.local()?.audioMuted) this.update({ unmuteRequestAt: Date.now() });
+        break;
+      case "spotlight":
+        this.update({ spotlightId: typeof msg.id === "string" || msg.id === null ? msg.id : null });
+        break;
+    }
   }
 
   // ---- Internals --------------------------------------------------------------------------
@@ -440,6 +555,7 @@ export class NativeJitsiApi {
         participants: this.state.participants.filter((p) => p.id !== id),
         dominantId: this.state.dominantId === id ? null : this.state.dominantId,
       });
+      if (this.state.spotlightId === id) this.update({ spotlightId: null });
       this.emit("participantLeft", { id });
       if (this.state.pinnedId === id) this.setPinned(null);
       this.recomputeSharing();
@@ -490,6 +606,7 @@ export class NativeJitsiApi {
 
     conf.on(E.DOMINANT_SPEAKER_CHANGED, (id: string) => {
       this.update({ dominantId: id });
+      this.patchParticipant(id, { lastSpokeAt: Date.now() });
       this.emit("dominantSpeakerChanged", { id });
     });
 
@@ -547,6 +664,10 @@ export class NativeJitsiApi {
       this.emit("readyToClose", {});
     });
 
+    if (E.ENDPOINT_MESSAGE_RECEIVED) {
+      conf.on(E.ENDPOINT_MESSAGE_RECEIVED, (participant: JitsiParticipant, payload: unknown) => this.handleSignal(participant?.getId?.(), payload));
+    }
+
     conf.on(E.MESSAGE_RECEIVED, (id: string, text: string, ts?: number) => {
       if (id === this.state.localId) return;
       const name = this.state.participants.find((p) => p.id === id)?.name ?? "Someone";
@@ -568,7 +689,11 @@ export class NativeJitsiApi {
     };
     for (const t of user.getTracks?.() ?? []) Object.assign(patch, this.trackPatch(t, false));
     this.upsertParticipant(id, patch);
-    if (!known) this.emit("participantJoined", { id, displayName: patch.name });
+    if (!known) {
+      this.emit("participantJoined", { id, displayName: patch.name });
+      // Someone joining mid-class learns who the teacher has spotlighted.
+      if (this.state.isModerator && this.state.spotlightId) this.signal({ m2m: 1, type: "spotlight", id: this.state.spotlightId });
+    }
     this.recomputeSharing();
   }
 
@@ -589,6 +714,7 @@ export class NativeJitsiApi {
   }
 
   private async toggleLocal(kind: "audio" | "video") {
+    if (kind === "audio" && this.state.unmuteRequestAt) this.update({ unmuteRequestAt: null });
     let track = kind === "audio" ? this.localAudio : this.localVideo;
     if (!track) {
       // No device on join (blocked or missing) — try again now the user has asked.

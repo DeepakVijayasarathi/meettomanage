@@ -17,6 +17,8 @@ import {
   PinOff,
   Search,
   Send,
+  Smile,
+  Star,
   UserMinus,
   Users,
   Video,
@@ -28,9 +30,10 @@ import { cn, getInitials } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { JitsiTrack } from "./libJitsi";
-import type { NativeJitsiApi, NativeParticipant, NativeState } from "./NativeJitsiApi";
-import { bestColumns, galleryPage, type CallLayout } from "./stageLayout";
+import { REACTIONS, type NativeJitsiApi, type NativeParticipant, type NativeState } from "./NativeJitsiApi";
+import { bestColumns, galleryPage, prioritiseSpeakers, type CallLayout } from "./stageLayout";
 
 const AVATAR_COLORS = ["#F26B1D", "#2F80ED", "#27AE60", "#9B51E0", "#EB5757", "#00A3A3", "#D97706", "#DB2777"];
 function colorFor(seed: string) {
@@ -153,18 +156,32 @@ function Avatar({ p, size }: { p: NativeParticipant; size: "sm" | "md" | "lg" })
 }
 
 /** Per-person actions, shared by the tile menu and the People panel. */
-function ParticipantMenu({ p, isModerator, pinned, onPin, onMute, onRemove, trigger }: {
-  p: NativeParticipant; isModerator: boolean; pinned: boolean; onPin: () => void; onMute: () => void; onRemove: () => void; trigger: ReactNode;
+interface PersonActions {
+  onPin: () => void;
+  onMute: () => void;
+  onRemove: () => void;
+  onLowerHand: () => void;
+  onAskUnmute: () => void;
+  onSpotlight: () => void;
+}
+
+function ParticipantMenu({ p, isModerator, pinned, spotlighted, actions, trigger }: {
+  p: NativeParticipant; isModerator: boolean; pinned: boolean; spotlighted: boolean; actions: PersonActions; trigger: ReactNode;
 }) {
+  const { onPin, onMute, onRemove, onLowerHand, onAskUnmute, onSpotlight } = actions;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuLabel className="truncate">{p.isLocal ? "You" : p.name}</DropdownMenuLabel>
         <DropdownMenuItem onClick={onPin}>{pinned ? <PinOff /> : <Pin />} {pinned ? "Unpin" : "Pin for me"}</DropdownMenuItem>
+        {isModerator && <DropdownMenuItem onClick={onSpotlight}><Star /> {spotlighted ? "Remove spotlight" : "Spotlight for everyone"}</DropdownMenuItem>}
         {isModerator && !p.isLocal && (
           <>
-            <DropdownMenuItem disabled={p.audioMuted} onClick={onMute}><MicOff /> {p.audioMuted ? "Already muted" : "Mute"}</DropdownMenuItem>
+            {p.audioMuted
+              ? <DropdownMenuItem onClick={onAskUnmute}><Mic /> Ask to unmute</DropdownMenuItem>
+              : <DropdownMenuItem onClick={onMute}><MicOff /> Mute</DropdownMenuItem>}
+            {p.handRaised && <DropdownMenuItem onClick={onLowerHand}><Hand /> Lower hand</DropdownMenuItem>}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onRemove} className="text-destructive focus:bg-destructive/10 focus:text-destructive"><UserMinus /> Remove from class</DropdownMenuItem>
           </>
@@ -183,12 +200,14 @@ interface TileProps {
   compact?: boolean;
   handOrder?: number;
   isModerator: boolean;
-  onTogglePin: () => void;
-  onMute: () => void;
-  onRemove: () => void;
+  spotlighted: boolean;
+  /** The emoji this person just sent, shown big on their tile for a moment. */
+  reaction?: string;
+  actions: PersonActions;
 }
 
-function Tile({ participant: p, screen, speaking, pinned, compact, handOrder, isModerator, onTogglePin, onMute, onRemove }: TileProps) {
+function Tile({ participant: p, screen, speaking, pinned, compact, handOrder, isModerator, spotlighted, reaction, actions }: TileProps) {
+  const onTogglePin = actions.onPin;
   const label = screen ? `${p.isLocal ? "You are" : `${p.name} is`} presenting` : p.isLocal ? "You" : p.name;
   const track = screen ? p.desktopTrack : !p.videoMuted ? p.videoTrack : undefined;
   return (
@@ -217,9 +236,8 @@ function Tile({ participant: p, screen, speaking, pinned, compact, handOrder, is
           p={p}
           isModerator={isModerator}
           pinned={pinned}
-          onPin={onTogglePin}
-          onMute={onMute}
-          onRemove={onRemove}
+          spotlighted={spotlighted}
+          actions={actions}
           trigger={
             <button
               aria-label={`More options for ${label}`}
@@ -236,8 +254,13 @@ function Tile({ participant: p, screen, speaking, pinned, compact, handOrder, is
         </button>
       )}
 
+      {reaction && !screen && (
+        <span key={reaction} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 animate-pop-in text-5xl drop-shadow-lg motion-reduce:animate-none" aria-hidden>{reaction}</span>
+      )}
+
       <div className="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-3.5rem)] items-center gap-1.5">
         <span className={cn("flex min-w-0 items-center gap-1 rounded-md bg-black/55 px-2 py-0.5 font-medium text-white", compact ? "text-xs" : "text-sm")}>
+          {spotlighted && !screen && <Star className="h-3 w-3 shrink-0 fill-current text-brand-amber" aria-label="Spotlighted" />}
           {pinned && <Pin className="h-3 w-3 shrink-0" aria-label="Pinned" />}
           {screen && <MonitorUp className="h-3.5 w-3.5 shrink-0" aria-hidden />}
           <span className="truncate">{label}</span>
@@ -353,8 +376,8 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
     if (joined && joinedAt.current === null) joinedAt.current = Date.now();
   }, [joined]);
 
-  const toast = useCallback((text: string, icon: Toast["icon"]) => {
-    if (joinedAt.current === null || Date.now() - joinedAt.current < 4000) return;
+  const toast = useCallback((text: string, icon: Toast["icon"], force = false) => {
+    if (!force && (joinedAt.current === null || Date.now() - joinedAt.current < 4000)) return;
     const id = ++toastSeq.current;
     setToasts((t) => [...t.slice(-2), { id, text, icon }]);
     window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4500);
@@ -428,6 +451,9 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
   const stage: Item | undefined = useMemo(() => {
     const pinned = s.pinnedId ? s.participants.find((p) => p.id === s.pinnedId) : undefined;
     if (pinned) return { key: pinned.desktopTrack ? `${pinned.id}:screen` : pinned.id, participant: pinned, screen: Boolean(pinned.desktopTrack) };
+    // The teacher's spotlight puts one person on everyone's main screen (your own pin still wins).
+    const spot = s.spotlightId ? s.participants.find((p) => p.id === s.spotlightId) : undefined;
+    if (spot) return { key: spot.desktopTrack ? `${spot.id}:screen` : spot.id, participant: spot, screen: Boolean(spot.desktopTrack) };
     const sharer = sharers.find((p) => !p.isLocal) ?? sharers[0];
     const wantsStage = prefs.layout === "speaker" || (prefs.layout === "auto" && (!s.tileView || Boolean(sharer)));
     if (!wantsStage) return undefined;
@@ -435,10 +461,27 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
     const speaker = s.participants.find((p) => p.id === s.dominantId && !p.isLocal) ?? s.participants.find((p) => !p.isLocal);
     if (speaker) return { key: speaker.id, participant: speaker, screen: false };
     return undefined;
-  }, [s.pinnedId, s.tileView, s.participants, s.dominantId, sharers, prefs.layout]);
+  }, [s.pinnedId, s.spotlightId, s.tileView, s.participants, s.dominantId, sharers, prefs.layout]);
 
   const pinToggle = (p: NativeParticipant) => api.executeCommand("pinParticipant", s.pinnedId === p.id ? null : p.id);
   const mute = (p: NativeParticipant) => api.executeCommand("muteRemoteParticipant", p.id, "audio");
+  const actionsFor = (p: NativeParticipant): PersonActions => ({
+    onPin: () => pinToggle(p),
+    onMute: () => mute(p),
+    onRemove: () => setConfirmRemove(p),
+    onLowerHand: () => api.executeCommand("lowerHand", p.id),
+    onAskUnmute: () => {
+      api.executeCommand("askToUnmute", p.id);
+      toast(`Asked ${p.name} to unmute`, "join", true);
+    },
+    onSpotlight: () => api.executeCommand("setSpotlight", s.spotlightId === p.id ? null : p.id),
+  });
+  // Each person's most recent reaction, shown on their tile while it is fresh.
+  const latestReaction = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of s.reactions) if (Date.now() - r.at < 2500) map.set(r.from, r.emoji);
+    return map;
+  }, [s.reactions]);
   const visibleKnocks = isModerator ? s.knocking.filter((k) => !knockDismissed.includes(k.id)) : [];
 
   function sendChat(e: FormEvent) {
@@ -455,14 +498,14 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
     pinned: s.pinnedId === i.participant.id,
     handOrder: handOrder(i.participant.id),
     isModerator,
-    onTogglePin: () => pinToggle(i.participant),
-    onMute: () => mute(i.participant),
-    onRemove: () => setConfirmRemove(i.participant),
+    spotlighted: s.spotlightId === i.participant.id,
+    reaction: i.screen ? undefined : latestReaction.get(i.participant.id),
+    actions: actionsFor(i.participant),
   });
 
   // Gallery: as many tiles per page as the chosen maximum allows, with Meet-style page arrows.
   const gap = 8;
-  const { pageItems, pages } = galleryPage(gridItems, prefs.maxTiles, page);
+  const { pageItems, pages } = galleryPage(prioritiseSpeakers(gridItems, prefs.maxTiles, Date.now()), prefs.maxTiles, page);
   useEffect(() => {
     if (page > pages - 1) setPage(Math.max(0, pages - 1));
   }, [page, pages]);
@@ -549,6 +592,38 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
             )}
             {s.deviceError && joined && !s.reconnecting && (
               <p className="absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full bg-call-surface px-4 py-2 text-xs text-call-ink/80 shadow-lg">{s.deviceError}</p>
+            )}
+
+            {/* Floating reactions, Meet-style: rise from the bottom-left and fade. */}
+            <div className="pointer-events-none absolute bottom-3 left-6 z-20 h-48 w-24" aria-hidden>
+              {s.reactions.map((r, i) => (
+                <span key={r.id} className="absolute bottom-0 flex animate-reaction-rise flex-col items-center motion-reduce:hidden" style={{ left: `${(i * 23) % 60}px` }}>
+                  <span className="text-3xl">{r.emoji}</span>
+                  <span className="max-w-[90px] truncate rounded-full bg-call-ink/75 px-1.5 text-[10px] font-medium text-call-bg">
+                    {s.participants.find((p) => p.id === r.from)?.isLocal ? "You" : s.participants.find((p) => p.id === r.from)?.name.split(" ")[0] ?? ""}
+                  </span>
+                </span>
+              ))}
+            </div>
+
+            {joined && s.spotlightId && (
+              <p className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-call-surface px-3 py-1.5 text-xs text-call-ink shadow-lg">
+                <Star className="h-3.5 w-3.5 fill-current text-brand-amber" aria-hidden />
+                {s.participants.find((p) => p.id === s.spotlightId)?.isLocal ? "You are spotlighted for everyone" : `${s.participants.find((p) => p.id === s.spotlightId)?.name ?? "Someone"} is spotlighted`}
+                {isModerator && <button onClick={() => api.executeCommand("setSpotlight", null)} className="font-medium text-brand-orange-ink hover:underline">Remove</button>}
+              </p>
+            )}
+
+            {joined && s.unmuteRequestAt && local?.audioMuted && (
+              <div role="alertdialog" aria-label="Your teacher is asking you to unmute" className="absolute left-1/2 top-1/2 z-40 w-[min(360px,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-call-surface p-5 text-center shadow-2xl">
+                <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-orange/15"><Mic className="h-6 w-6 text-brand-orange-ink" /></span>
+                <p className="mt-3 font-medium">Your teacher is asking you to unmute</p>
+                <p className="mt-1 text-sm text-call-ink/60">Your microphone stays off unless you choose to turn it on.</p>
+                <div className="mt-4 flex justify-center gap-2">
+                  <button onClick={() => api.executeCommand("dismissUnmuteRequest")} className="rounded-full px-4 py-2 text-sm font-medium text-call-ink/80 hover:bg-call-ink/10">Stay muted</button>
+                  <button onClick={() => api.executeCommand("toggleAudio")} className="rounded-full bg-brand-orange-deep px-4 py-2 text-sm font-medium text-white hover:bg-brand-orange-to">Unmute</button>
+                </div>
+              </div>
             )}
 
             <div className="pointer-events-none absolute bottom-3 left-3 z-30 flex w-[min(360px,calc(100%-1.5rem))] flex-col gap-2">
@@ -641,7 +716,10 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
                       </PeopleSection>
                     )}
                     {hands.length > 0 && (
-                      <PeopleSection title={`Raised hands (${hands.length})`}>
+                      <PeopleSection
+                        title={`Raised hands (${hands.length})`}
+                        action={isModerator ? <button onClick={() => api.executeCommand("lowerAllHands")} className="rounded-full px-2 py-0.5 text-xs font-medium text-brand-orange-ink hover:bg-brand-orange/10">Lower all</button> : undefined}
+                      >
                         {hands.map((p, i) => (
                           <li key={p.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
                             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-amber text-xs font-bold text-amber-950">{i + 1}</span>
@@ -665,9 +743,8 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
                             p={p}
                             isModerator={isModerator}
                             pinned={s.pinnedId === p.id}
-                            onPin={() => pinToggle(p)}
-                            onMute={() => mute(p)}
-                            onRemove={() => setConfirmRemove(p)}
+                            spotlighted={s.spotlightId === p.id}
+                            actions={actionsFor(p)}
                             trigger={<button aria-label={`More options for ${p.name}`} className="flex h-8 w-8 items-center justify-center rounded-full text-call-ink/70 hover:bg-call-ink/10"><MoreVertical className="h-4 w-4" /></button>}
                           />
                         </li>
@@ -705,6 +782,25 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
                 <MonitorUp className="h-5 w-5" />
               </ControlButton>
             )}
+            <Popover>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <button aria-label="Send a reaction" disabled={!joined} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-call-raised text-call-ink transition-colors hover:bg-call-hover disabled:opacity-40 sm:h-11 sm:w-11">
+                      <Smile className="h-5 w-5" />
+                    </button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">Send a reaction</TooltipContent>
+              </Tooltip>
+              <PopoverContent side="top" className="flex w-auto gap-1 rounded-full p-1.5">
+                {REACTIONS.map((emoji) => (
+                  <button key={emoji} onClick={() => api.executeCommand("sendReaction", emoji)} aria-label={`React ${emoji}`} className="flex h-10 w-10 items-center justify-center rounded-full text-2xl transition-transform hover:scale-125 hover:bg-accent">
+                    {emoji}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -807,10 +903,13 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
   );
 }
 
-function PeopleSection({ title, children }: { title: string; children: ReactNode }) {
+function PeopleSection({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
     <section className="mb-3">
-      <h3 className="px-2 pb-1 text-xs font-medium text-call-ink/60">{title}</h3>
+      <div className="flex items-center justify-between px-2 pb-1">
+        <h3 className="text-xs font-medium text-call-ink/60">{title}</h3>
+        {action}
+      </div>
       <ul>{children}</ul>
     </section>
   );

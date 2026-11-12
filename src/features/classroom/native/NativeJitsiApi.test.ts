@@ -234,6 +234,74 @@ describe("NativeJitsiApi", () => {
     expect(api.getSnapshot().reconnecting).toBe(false);
   });
 
+  it("sends and shows reactions, ignoring anything that isn't a known emoji", async () => {
+    const { api, conf } = await start(fake);
+    conf.remoteJoin("r1", "Asha");
+    api.executeCommand("sendReaction", "👏");
+    api.executeCommand("sendReaction", "👏"); // throttled: one a second
+    expect(conf.calls.filter((c) => c[0] === "broadcastEndpointMessage")).toEqual([["broadcastEndpointMessage", { m2m: 1, type: "reaction", emoji: "👏" }]]);
+    conf.remoteSignal("r1", { m2m: 1, type: "reaction", emoji: "🎉" });
+    conf.remoteSignal("r1", { m2m: 1, type: "reaction", emoji: "<b>hi</b>" });
+    conf.remoteSignal("r1", { type: "reaction", emoji: "🎉" }); // not ours
+    expect(api.getSnapshot().reactions.map((r) => [r.from, r.emoji])).toEqual([["local1", "👏"], ["r1", "🎉"]]);
+  });
+
+  it("obeys class controls only from the teacher", async () => {
+    const { api, conf } = await start(fake);
+    conf.remoteJoin("student", "Ravi");
+    conf.remoteJoin("teacher", "Karan", { role: "moderator" });
+    api.executeCommand("toggleRaiseHand");
+    api.executeCommand("toggleAudio");
+    await flush();
+    const me = () => api.getSnapshot().participants.find((p) => p.isLocal)!;
+    expect(me().handRaised).toBe(true);
+    expect(me().audioMuted).toBe(true);
+
+    // A classmate can't lower my hand, spotlight anyone or ask me to unmute.
+    conf.remoteSignal("student", { m2m: 1, type: "lowerAllHands" });
+    conf.remoteSignal("student", { m2m: 1, type: "spotlight", id: "student" });
+    conf.remoteSignal("student", { m2m: 1, type: "askUnmute", id: "local1" });
+    expect(me().handRaised).toBe(true);
+    expect(api.getSnapshot().spotlightId).toBeNull();
+    expect(api.getSnapshot().unmuteRequestAt).toBeNull();
+
+    // The teacher can; asking to unmute only shows a prompt and never unmutes.
+    conf.remoteSignal("teacher", { m2m: 1, type: "lowerHand", id: "local1" });
+    conf.remoteSignal("teacher", { m2m: 1, type: "spotlight", id: "student" });
+    conf.remoteSignal("teacher", { m2m: 1, type: "askUnmute", id: "local1" });
+    expect(me().handRaised).toBe(false);
+    expect(api.getSnapshot().spotlightId).toBe("student");
+    expect(api.getSnapshot().unmuteRequestAt).not.toBeNull();
+    expect(me().audioMuted).toBe(true);
+    api.executeCommand("toggleAudio");
+    await flush();
+    expect(api.getSnapshot().unmuteRequestAt).toBeNull();
+
+    // A spotlighted student leaving clears the spotlight.
+    conf.remoteLeave("student");
+    expect(api.getSnapshot().spotlightId).toBeNull();
+  });
+
+  it("lets only a moderator send class controls, and remembers recent speakers", async () => {
+    const student = await start(fake);
+    student.api.executeCommand("lowerAllHands");
+    student.api.executeCommand("setSpotlight", "x");
+    expect(student.conf.calls.some((c) => c[0] === "broadcastEndpointMessage")).toBe(false);
+    student.api.dispose();
+
+    const teacherFake = createFakeLib({ moderator: true });
+    const { api, conf } = await start(teacherFake);
+    conf.moderator = true;
+    conf.emit(EVENTS.conference.USER_ROLE_CHANGED, "local1", "moderator");
+    conf.remoteJoin("r1", "Asha");
+    api.executeCommand("setSpotlight", "r1");
+    api.executeCommand("askToUnmute", "r1");
+    expect(api.getSnapshot().spotlightId).toBe("r1");
+    expect(conf.calls.filter((c) => c[0] === "broadcastEndpointMessage").map((c) => (c[1] as { type: string }).type)).toEqual(["spotlight", "askUnmute"]);
+    conf.emit(EVENTS.conference.DOMINANT_SPEAKER_CHANGED, "r1");
+    expect(api.getSnapshot().participants.find((p) => p.id === "r1")?.lastSpokeAt).toBeGreaterThan(0);
+  });
+
   it("disposes tracks, leaves and disconnects", async () => {
     const { api, conf } = await start(fake);
     const spy = vi.fn();

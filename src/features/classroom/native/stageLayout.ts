@@ -21,3 +21,25 @@ export function galleryPage<T>(items: T[], maxTiles: number, page: number) {
   const current = Math.min(Math.max(0, page), pages - 1);
   return { pageItems: items.slice(current * size, current * size + size), pages, page: current };
 }
+
+/**
+ * Zoom-style ordering for a paged gallery: shared screens, then you, then whoever spoke in the last
+ * minute (most recent first), then everyone else in join order. With a single page nothing moves,
+ * so tiles don't jump around in a small class.
+ */
+export function prioritiseSpeakers<T extends { screen: boolean; participant: { isLocal: boolean; lastSpokeAt?: number } }>(
+  items: T[],
+  pageSize: number,
+  now: number,
+  windowMs = 60_000
+): T[] {
+  if (items.length <= pageSize) return items;
+  const screens = items.filter((i) => i.screen);
+  const self = items.filter((i) => !i.screen && i.participant.isLocal);
+  const rest = items.filter((i) => !i.screen && !i.participant.isLocal);
+  const recent = rest
+    .filter((i) => (i.participant.lastSpokeAt ?? 0) > now - windowMs)
+    .sort((a, b) => (b.participant.lastSpokeAt ?? 0) - (a.participant.lastSpokeAt ?? 0));
+  const quiet = rest.filter((i) => !recent.includes(i));
+  return [...screens, ...self, ...recent, ...quiet];
+}

@@ -69,6 +69,9 @@ export interface JitsiConference {
   sendMessage?(text: string, to?: string): void;
   setReceiverConstraints?(constraints: Record<string, unknown>): void;
   setSenderVideoConstraint?(height: number): Promise<void>;
+  /** Data channel through the video bridge; "" as `to` broadcasts. */
+  sendEndpointMessage?(to: string, payload: unknown): void;
+  broadcastEndpointMessage?(payload: unknown): void;
 }
 
 export interface JitsiConnection {
