@@ -2640,6 +2640,7 @@ export default function JitsiLive({
                   canShareScreen={canShareScreen}
                   onLeave={() => setLeaveConfirmOpen(true)}
                   hideLeave={isRecordingObserver}
+                  title={title}
                 />
               )}
             </div>

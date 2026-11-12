@@ -31,6 +31,8 @@ export interface NativeParticipant {
   audioMuted: boolean;
   videoMuted: boolean;
   handRaised: boolean;
+  /** When the hand went up (ms since epoch), so raised hands can be answered in order. */
+  raisedAt?: number;
   audioTrack?: JitsiTrack;
   videoTrack?: JitsiTrack;
   desktopTrack?: JitsiTrack;
@@ -62,6 +64,8 @@ export interface NativeState {
   messages: NativeChatMessage[];
   /** Why the local camera/mic couldn't be opened, if they couldn't. */
   deviceError: string | null;
+  /** True while the media connection has dropped and the library is trying to restore it. */
+  reconnecting: boolean;
 }
 
 type Listener = (payload: any) => void;
@@ -83,6 +87,12 @@ export interface NativeJitsiOptions {
 
 let libInitialised = false;
 
+/** The raisedHand property carries the raise time as a string; older clients send "true". */
+function raisedTime(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 1_000_000_000_000 ? n : Date.now();
+}
+
 export class NativeJitsiApi {
   readonly engine = "native" as const;
   private listeners = new Map<string, Set<Listener>>();
@@ -100,6 +110,7 @@ export class NativeJitsiApi {
     recording: false,
     messages: [],
     deviceError: null,
+    reconnecting: false,
   };
 
   private lib!: JitsiMeetJSGlobal;
@@ -492,7 +503,7 @@ export class NativeJitsiApi {
       if (name !== "raisedHand") return;
       const id = participant.getId();
       const handRaised = Boolean(value) && value !== "false";
-      this.patchParticipant(id, { handRaised });
+      this.patchParticipant(id, { handRaised, raisedAt: handRaised ? raisedTime(value) : undefined });
       this.emit("raiseHandUpdated", { id, handRaised });
     });
 
@@ -521,8 +532,14 @@ export class NativeJitsiApi {
       this.emit("recordingStatusChanged", { on, error: session.getError() });
     });
 
-    conf.on(E.CONNECTION_INTERRUPTED, () => this.emit("connectionInterrupted", {}));
-    conf.on(E.CONNECTION_RESTORED, () => this.emit("connectionRestored", {}));
+    conf.on(E.CONNECTION_INTERRUPTED, () => {
+      this.update({ reconnecting: true });
+      this.emit("connectionInterrupted", {});
+    });
+    conf.on(E.CONNECTION_RESTORED, () => {
+      this.update({ reconnecting: false });
+      this.emit("connectionRestored", {});
+    });
 
     conf.on(E.KICKED, () => {
       // The teacher's "End the class" removes everyone (see completeAndLeave).
@@ -547,6 +564,7 @@ export class NativeJitsiApi {
       name: user.getDisplayName()?.trim() || "Student",
       role: user.getRole?.() ?? "participant",
       handRaised: Boolean(user.getProperty?.("raisedHand")),
+      raisedAt: user.getProperty?.("raisedHand") ? raisedTime(user.getProperty?.("raisedHand")) : undefined,
     };
     for (const t of user.getTracks?.() ?? []) Object.assign(patch, this.trackPatch(t, false));
     this.upsertParticipant(id, patch);
@@ -635,8 +653,9 @@ export class NativeJitsiApi {
   }
 
   private setRaisedHand(raised: boolean) {
-    this.conference?.setLocalParticipantProperty("raisedHand", raised ? String(Date.now()) : "");
-    this.patchParticipant(this.state.localId, { handRaised: raised });
+    const at = Date.now();
+    this.conference?.setLocalParticipantProperty("raisedHand", raised ? String(at) : "");
+    this.patchParticipant(this.state.localId, { handRaised: raised, raisedAt: raised ? at : undefined });
     this.emit("raiseHandUpdated", { id: this.state.localId, handRaised: raised });
   }
 

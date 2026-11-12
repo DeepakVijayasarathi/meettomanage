@@ -208,6 +208,32 @@ describe("NativeJitsiApi", () => {
     expect(api.getSnapshot().phase).toBe("ended");
   });
 
+  it("keeps when each hand went up, so raised hands can be answered in order", async () => {
+    const { api, conf } = await start(fake);
+    const first = conf.remoteJoin("r1", "Asha");
+    const second = conf.remoteJoin("r2", "Ravi");
+    conf.emit(EVENTS.conference.PARTICIPANT_PROPERTY_CHANGED, second, "raisedHand", "", "1767000000000");
+    conf.emit(EVENTS.conference.PARTICIPANT_PROPERTY_CHANGED, first, "raisedHand", "", "1766000000000");
+    const byId = (id: string) => api.getSnapshot().participants.find((p) => p.id === id)!;
+    expect(byId("r1").raisedAt).toBe(1766000000000);
+    expect(byId("r2").raisedAt).toBe(1767000000000);
+    conf.emit(EVENTS.conference.PARTICIPANT_PROPERTY_CHANGED, first, "raisedHand", "1766000000000", "");
+    expect(byId("r1").handRaised).toBe(false);
+    expect(byId("r1").raisedAt).toBeUndefined();
+    // Older clients send "true" instead of a time: treated as raised now.
+    conf.emit(EVENTS.conference.PARTICIPANT_PROPERTY_CHANGED, first, "raisedHand", "", "true");
+    expect(byId("r1").raisedAt).toBeGreaterThan(1767000000000);
+  });
+
+  it("reports a dropped connection until it is restored", async () => {
+    const { api, conf } = await start(fake);
+    expect(api.getSnapshot().reconnecting).toBe(false);
+    conf.emit(EVENTS.conference.CONNECTION_INTERRUPTED);
+    expect(api.getSnapshot().reconnecting).toBe(true);
+    conf.emit(EVENTS.conference.CONNECTION_RESTORED);
+    expect(api.getSnapshot().reconnecting).toBe(false);
+  });
+
   it("disposes tracks, leaves and disconnects", async () => {
     const { api, conf } = await start(fake);
     const spy = vi.fn();

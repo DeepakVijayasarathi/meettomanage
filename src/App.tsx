@@ -160,6 +160,8 @@ const LiveClassroom = lazy(() => import("@/features/classroom/LiveClassroom"));
 const StaffLiveClassroom = lazy(() => import("@/features/classroom/StaffLiveClassroom"));
 const PersonalMeetingRoom = lazy(() => import("@/features/classroom/PersonalMeetingRoom"));
 const RecordingObserver = lazy(() => import("@/features/classroom/RecordingObserver"));
+// Development-only preview of the native call screen with simulated students (not in production builds).
+const CallPreview = import.meta.env.DEV ? lazy(() => import("@/features/classroom/native/CallPreview")) : null;
 const GuestJoin = lazy(() => import("@/features/public/GuestJoin"));
 const ViewAsHandoff = lazy(() => import("@/features/public/ViewAsHandoff"));
 const PersonalRoomGuestJoin = lazy(() => import("@/features/public/PersonalRoomGuestJoin"));
@@ -282,6 +284,7 @@ export default function App() {
             <Route path="/pay/:token" element={<AdmissionPayment />} />
             {/* Public check behind a completion certificate's QR code. */}
             <Route path="/verify/:code" element={<VerifyCertificate />} />
+            {CallPreview && <Route path="/dev/call" element={<CallPreview />} />}
             {/* Full Terms & Conditions and Refund Policy, linked from every payment screen. */}
             <Route path="/terms" element={<Terms />} />
 
