@@ -961,7 +961,13 @@ export default function JitsiLive({
       return saved ? "saved" : "empty";
     } catch (err) {
       // Left noted in this browser: the next visit to the app tries to save it again.
-      setBrowserRec((cur) => (cur ? { ...cur, status: "failed", message: `The recording couldn't be saved yet (${userMessage(err)}). It will be retried the next time you open the app.` } : cur));
+      // A plan limit is explained by the server (the parts are kept and saved later if it gets room);
+      // anything else is retried from this browser on the next visit.
+      const message =
+        err instanceof ApiError && err.status === 402
+          ? userMessage(err)
+          : `The recording couldn't be saved yet (${userMessage(err)}). It will be retried the next time you open the app.`;
+      setBrowserRec((cur) => (cur ? { ...cur, status: "failed", message } : cur));
       return "failed";
     }
   }

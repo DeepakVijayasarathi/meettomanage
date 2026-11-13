@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { fallbackPlace, parseRecordingMode, pickRecordingMimeType, planRecording } from "./plan";
 
-const desktop = { supported: true, handheld: false };
-const tablet = { supported: true, handheld: true };
-const unsupported = { supported: false, handheld: false };
+const desktop = { supported: true, handheld: false, mp4: true };
+const tablet = { supported: true, handheld: true, mp4: true };
+const unsupported = { supported: false, handheld: false, mp4: false };
+const webmOnly = { supported: true, handheld: false, mp4: false };
 
 describe("recording plan", () => {
   it("reads the academy setting, defaulting to the server", () => {
@@ -28,6 +29,9 @@ describe("recording plan", () => {
     expect(planRecording("smart", { nativeEngine: true, capability: desktop })).toBe("browser");
     expect(planRecording("smart", { nativeEngine: true, capability: tablet })).toBe("server");
     expect(planRecording("smart", { nativeEngine: false, capability: desktop })).toBe("server");
+    // Firefox records WebM only, which many iPhones can't play: smart mode uses the server.
+    expect(planRecording("smart", { nativeEngine: true, capability: webmOnly })).toBe("server");
+    expect(planRecording("browser", { nativeEngine: true, capability: webmOnly })).toBe("browser");
   });
 
   it("only smart mode falls back, and only to somewhere that can record", () => {
