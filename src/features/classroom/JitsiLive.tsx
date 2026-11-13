@@ -10,7 +10,17 @@ import { Logo } from "@/components/Logo";
 import { useSession } from "@/state/session";
 import { useToast } from "@/hooks/use-toast";
 import { postEngagement } from "@/api/engagement";
-import { completeSession, getClassroomSettings, getJitsiJoin, registerRecording } from "@/api/sessions";
+import {
+  abortBrowserRecordingUpload,
+  browserRecordingPartUrl,
+  completeBrowserRecordingUpload,
+  completeSession,
+  getClassroomSettings,
+  getJitsiJoin,
+  putRecordingPart,
+  registerRecording,
+  startBrowserRecordingUpload,
+} from "@/api/sessions";
 import { ApiError, userMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { primeAudioUnlock } from "@/lib/sounds";
@@ -25,6 +35,18 @@ import { NativeJitsiApi } from "./native/NativeJitsiApi";
 import NativeStage from "./native/NativeStage";
 import { classroomEngine, markNativeEngineFailed } from "./native/engine";
 import CallThemeToggle from "./CallThemeToggle";
+import { BrowserRecorder } from "./recording/browserRecorder";
+import { RecordingUploader } from "./recording/recordingUpload";
+import RecordingControl, { type BrowserRecordingState } from "./recording/RecordingControl";
+import {
+  browserRecordingCapability,
+  fallbackPlace,
+  parseRecordingMode,
+  pickRecordingMimeType,
+  planRecording,
+  type RecordingMode,
+  type RecordingPlace,
+} from "./recording/plan";
 import { useTheme } from "@/lib/theme";
 
 // Fallback only — used for demo-mode/mock sessions and if the authorized
@@ -256,9 +278,26 @@ export default function JitsiLive({
   // keep calling whatever onLeave was on first render.
   const onLeaveRef = useRef(onLeave);
   onLeaveRef.current = onLeave;
-  function exitClassroom() {
+  const leftRef = useRef(false);
+  function leaveNow() {
+    // Once only: "Leave without waiting" leaves at once, and the save finishing later must not
+    // navigate a second time.
+    if (leftRef.current) return;
+    leftRef.current = true;
     if (onLeaveRef.current) onLeaveRef.current();
     else navigate(-1);
+  }
+  // A recording made in this browser has to finish uploading before the page goes away.
+  function exitClassroom() {
+    if (browserRecRef.current) {
+      setSavingOnExit(true);
+      void stopBrowserRecordingRef.current().finally(() => {
+        setSavingOnExit(false);
+        leaveNow();
+      });
+      return;
+    }
+    leaveNow();
   }
   const { userName: accountName } = useSession();
   const userName = displayName || accountName;
@@ -581,6 +620,18 @@ export default function JitsiLive({
   // Last on/off state recordingStatusChanged reported — read synchronously inside that
   // listener to tell "a running recording just died" apart from "a start attempt failed".
   const recordingOnRef = useRef(false);
+
+  // ---- Where the class is recorded: the video server (Jibri) or this browser (see recording/plan.ts).
+  const recordingModeRef = useRef<RecordingMode>("server");
+  const [teacherCanChooseRecording, setTeacherCanChooseRecording] = useState(true);
+  const [recordingModeSetting, setRecordingModeSetting] = useState<RecordingMode>("server");
+  const [serverRecordingRequested, setServerRecordingRequested] = useState(false);
+  const browserRecRef = useRef<{ recorder: BrowserRecorder; uploader: RecordingUploader } | null>(null);
+  const [browserRec, setBrowserRec] = useState<BrowserRecordingState | null>(null);
+  const [savingOnExit, setSavingOnExit] = useState(false);
+  /** Set by the init effect: starts (or retries) the server recording. */
+  const serverRecordingStartRef = useRef<() => void>(() => undefined);
+  const browserFailingRef = useRef(false);
   // Jibri only ever records the room's own stage/dominant view -- it can't see our whiteboard/
   // quiz overlay, which lives in a separate cross-origin-iframed page it has no access to. The
   // one reliable fix that needs no server-side changes: have the teacher screen-share this same
@@ -760,6 +811,9 @@ export default function JitsiLive({
       .then((settings) => {
         if (!cancelled) {
           autoRecordRef.current = settings.autoRecordEnabled;
+          recordingModeRef.current = parseRecordingMode(settings.recordingMode);
+          setRecordingModeSetting(recordingModeRef.current);
+          setTeacherCanChooseRecording(settings.teacherCanChooseRecording ?? true);
           defaultLobbyRef.current = settings.defaultLobbyEnabled;
         }
       })
@@ -830,6 +884,139 @@ export default function JitsiLive({
         });
     }
     exitClassroom();
+  }
+
+  async function startBrowserRecording(): Promise<boolean> {
+    const api = jitsiApiRef.current;
+    const sessionId = effectiveSessionIdRef.current;
+    const mimeType = pickRecordingMimeType();
+    if (!(api instanceof NativeJitsiApi) || browserRecRef.current || !sessionId || !mimeType) return false;
+    browserFailingRef.current = false;
+    setBrowserRec({ status: "starting", startedAt: Date.now(), uploadedBytes: 0, pendingBytes: 0 });
+    const uploader = new RecordingUploader(
+      {
+        start: (contentType) => startBrowserRecordingUpload(sessionId, contentType),
+        partUrl: (key, uploadId, n) => browserRecordingPartUrl(sessionId, key, uploadId, n),
+        putPart: putRecordingPart,
+        complete: (key, uploadId, parts, seconds) => completeBrowserRecordingUpload(sessionId, key, uploadId, parts, seconds),
+        abort: (key, uploadId) => abortBrowserRecordingUpload(sessionId, key, uploadId),
+      },
+      mimeType.split(";")[0],
+      {
+        onProgress: (p) => setBrowserRec((cur) => (cur ? { ...cur, uploadedBytes: p.uploadedBytes, pendingBytes: p.pendingBytes } : cur)),
+        onFailure: (err) => void onBrowserRecordingFailed(err),
+      }
+    );
+    let recorder: BrowserRecorder | null = null;
+    try {
+      await uploader.begin();
+      recorder = new BrowserRecorder(api, uploader, { mimeType, onError: (err) => void onBrowserRecordingFailed(err) });
+      await recorder.start();
+    } catch (err) {
+      void recorder?.stop();
+      await uploader.abort();
+      setBrowserRec({ status: "failed", startedAt: Date.now(), uploadedBytes: 0, pendingBytes: 0, message: `Couldn't start recording on this computer: ${userMessage(err)}` });
+      return false;
+    }
+    browserRecRef.current = { recorder, uploader };
+    api.executeCommand("setLocalRecording", true);
+    setBrowserRec({ status: "recording", startedAt: Date.now(), uploadedBytes: 0, pendingBytes: 0 });
+    setRecordingIssue(null);
+    return true;
+  }
+
+  /** Stops the browser recording and finishes its upload. */
+  async function stopBrowserRecording(): Promise<"saved" | "empty" | "failed" | "none"> {
+    const current = browserRecRef.current;
+    if (!current) return "none";
+    browserRecRef.current = null;
+    const api = jitsiApiRef.current;
+    if (api instanceof NativeJitsiApi) api.executeCommand("setLocalRecording", false);
+    setBrowserRec((cur) => (cur ? { ...cur, status: "saving" } : cur));
+    await current.recorder.stop();
+    try {
+      const saved = await current.uploader.finish(current.recorder.durationSeconds);
+      setBrowserRec((cur) => (cur ? { ...cur, status: "saved", pendingBytes: 0 } : cur));
+      return saved ? "saved" : "empty";
+    } catch (err) {
+      setBrowserRec((cur) => (cur ? { ...cur, status: "failed", message: `The recording couldn't be saved: ${userMessage(err)}` } : cur));
+      return "failed";
+    }
+  }
+
+  /** The browser recorder or its upload gave up: stop it, and in smart mode hand over to the server. */
+  async function onBrowserRecordingFailed(err: unknown) {
+    if (browserFailingRef.current) return;
+    browserFailingRef.current = true;
+    const current = browserRecRef.current;
+    browserRecRef.current = null;
+    const api = jitsiApiRef.current;
+    if (api instanceof NativeJitsiApi) api.executeCommand("setLocalRecording", false);
+    if (current) {
+      await current.recorder.stop();
+      // Whatever already reached storage is still worth keeping.
+      const saved = await current.uploader.finish(current.recorder.durationSeconds).catch(() => false);
+      if (!saved) await current.uploader.abort();
+    }
+    const reason = userMessage(err, "the browser stopped recording");
+    setBrowserRec((cur) => ({ ...(cur ?? { startedAt: Date.now(), uploadedBytes: 0, pendingBytes: 0 }), status: "failed", message: `Recording on this computer stopped: ${reason}` }));
+    const next = fallbackPlace(recordingModeRef.current, "browser", { nativeEngine: api instanceof NativeJitsiApi, capability: browserRecordingCapability() });
+    if (next === "server") {
+      serverRecordingStartRef.current();
+      setRecordingIssue(`Recording on this computer stopped (${reason}), so the class is now being recorded on the server.`);
+    } else {
+      setRecordingIssue(`Recording on this computer stopped (${reason}). Start it again from the Rec button if you still need it.`);
+    }
+  }
+
+  // The init effect's listeners are created once; they reach the current functions through refs.
+  const startBrowserRecordingRef = useRef(startBrowserRecording);
+  startBrowserRecordingRef.current = startBrowserRecording;
+  const stopBrowserRecordingRef = useRef(stopBrowserRecording);
+  stopBrowserRecordingRef.current = stopBrowserRecording;
+
+  // Leaving the page some other way (back button, link): finish the upload in the background.
+  useEffect(() => () => void stopBrowserRecordingRef.current(), []);
+  // Closing the tab mid-recording would lose the unsent part: ask first.
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!browserRecRef.current && !savingOnExit) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [savingOnExit]);
+
+  const browserCapability = browserRecordingCapability();
+  const browserUnavailableReason =
+    engine !== "native"
+      ? "Needs the new class screen."
+      : !browserCapability.supported
+        ? "This browser can't record. Use Chrome or Edge on a computer."
+        : null;
+  const defaultRecordingPlace: RecordingPlace = planRecording(recordingModeSetting, { nativeEngine: engine === "native", capability: browserCapability });
+
+  async function startRecordingAt(place: RecordingPlace) {
+    // Switching: finish the current recording first (it is kept as its own file).
+    if (place === "browser") {
+      if (recording) jitsiApiRef.current?.executeCommand("stopRecording", "file");
+      const ok = await startBrowserRecording();
+      if (!ok) toast({ variant: "error", title: "Couldn't record on this computer", description: "Try the server instead." });
+    } else {
+      if (browserRecRef.current) void stopBrowserRecording();
+      serverRecordingStartRef.current();
+    }
+  }
+
+  function stopAllRecording() {
+    if (browserRecRef.current) void stopBrowserRecording();
+    if (recording) jitsiApiRef.current?.executeCommand("stopRecording", "file");
+    setServerRecordingRequested(false);
+    if (recordingWatchdogRef.current) {
+      clearTimeout(recordingWatchdogRef.current);
+      recordingWatchdogRef.current = null;
+    }
   }
 
   // Post-class feedback (teacher feedback: parents want to know what was actually covered,
@@ -920,6 +1107,13 @@ export default function JitsiLive({
       return retryCount < RECORDING_FAST_RETRIES ? RECORDING_FAST_INTERVAL_MS : RECORDING_SLOW_INTERVAL_MS;
     }
 
+    serverRecordingStartRef.current = () => {
+      recordingErrorReasonRef.current = null;
+      recordingRetryCountRef.current = 0;
+      setServerRecordingRequested(true);
+      attemptStartRecording();
+    };
+
     function attemptStartRecording() {
       // jitsiApiRef.current, not the closed-over `api` -- the first call (from
       // videoConferenceJoined, below) always has a fresh `api`, but a retry runs from
@@ -943,7 +1137,20 @@ export default function JitsiLive({
             if (recordingRetryCountRef.current < MAX_RECORDING_RETRIES) {
               recordingRetryCountRef.current += 1;
               attemptStartRecording();
+            } else if (
+              hasClassSession &&
+              fallbackPlace(recordingModeRef.current, "server", {
+                nativeEngine: jitsiApiRef.current instanceof NativeJitsiApi,
+                capability: browserRecordingCapability(),
+              }) === "browser"
+            ) {
+              // Smart mode: no recording-server capacity, so record in this browser instead.
+              setServerRecordingRequested(false);
+              void startBrowserRecordingRef.current().then((ok) => {
+                if (ok) setRecordingIssue("The recording server was busy, so this class is being recorded on this computer. Keep this tab open.");
+              });
             } else {
+              setServerRecordingRequested(false);
               const fallback = isPersonalRoom
                 ? 'This meeting is not being recorded automatically — try the "Recording" button in the meeting toolbar.'
                 : 'This class is not being recorded automatically — use the manual "Recording" button on My Classes if you need one.';
@@ -1437,15 +1644,25 @@ export default function JitsiLive({
         // already in progress) — and with the retry loop below, that turned one harmless
         // reconnect into three doomed retries and a scary "recording failed" banner for a
         // class that was, the whole time, being recorded just fine.
-        if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver && autoRecordable) {
-          setRecording((alreadyRecording) => {
-            if (!alreadyRecording) {
-              recordingErrorReasonRef.current = null;
-              recordingRetryCountRef.current = 0;
-              attemptStartRecording();
-            }
-            return alreadyRecording;
-          });
+        // A recording running in this browser survives a reconnect: keep it going from the new
+        // call engine (and announce it again in the new conference).
+        if (browserRecRef.current && api instanceof NativeJitsiApi) {
+          browserRecRef.current.recorder.attach(api);
+          api.executeCommand("setLocalRecording", true);
+        } else if (mode === "teacher" && autoRecordRef.current && !isRecordingObserver && autoRecordable) {
+          const place = hasClassSession
+            ? planRecording(recordingModeRef.current, { nativeEngine: api instanceof NativeJitsiApi, capability: browserRecordingCapability() })
+            : "server";
+          if (place === "browser") {
+            void startBrowserRecordingRef.current().then((ok) => {
+              if (!ok) serverRecordingStartRef.current();
+            });
+          } else {
+            setRecording((alreadyRecording) => {
+              if (!alreadyRecording) serverRecordingStartRef.current();
+              return alreadyRecording;
+            });
+          }
         }
       });
       // Auto recording registration: when the deployment publishes the recording
@@ -1736,6 +1953,7 @@ export default function JitsiLive({
         const wasOn = recordingOnRef.current;
         recordingOnRef.current = isOn;
         setRecording(isOn);
+        if (isOn) setServerRecordingRequested(false);
         // A recording that WAS running and then stops WITH an error means the Jibri
         // instance died mid-class (a teacher's own Stop from the toolbar arrives with no
         // error) — reported live as "the recording did not work". Nothing re-armed it
@@ -1930,10 +2148,23 @@ export default function JitsiLive({
           >
             {roleLabel ?? (mode === "teacher" ? "Teacher" : "Student")}
           </span>
-          {recording && (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-call-danger-ink ring-1 ring-inset ring-destructive/25">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" /> Rec
-            </span>
+          {mode === "teacher" && hasClassSession && !isRecordingObserver ? (
+            <RecordingControl
+              serverOn={recording}
+              serverStarting={serverRecordingRequested && !recording}
+              browser={browserRec}
+              canChoose={teacherCanChooseRecording}
+              browserUnavailableReason={browserUnavailableReason}
+              defaultPlace={defaultRecordingPlace}
+              onStart={(place) => void startRecordingAt(place)}
+              onStop={stopAllRecording}
+            />
+          ) : (
+            recording && (
+              <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-call-danger-ink ring-1 ring-inset ring-destructive/25">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" /> Rec
+              </span>
+            )
           )}
           {callDegraded && (
             <span
@@ -2367,6 +2598,29 @@ export default function JitsiLive({
           </button>
         </div>
       )}
+      <Dialog open={savingOnExit}>
+        <DialogContent className="max-w-sm [&>button]:hidden" onEscapeKeyDown={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Saving the class recording…</DialogTitle>
+            <DialogDescription>
+              {browserRec && browserRec.pendingBytes > 0
+                ? `About ${Math.max(1, Math.round(browserRec.pendingBytes / 1024 / 1024))} MB left to upload. This usually takes a few seconds.`
+                : "Finishing up. This usually takes a few seconds."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setSavingOnExit(false);
+                leaveNow();
+              }}
+            >
+              Leave without waiting
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {mode === "teacher" && recordingIssue && (
         <div className="mx-3 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-brand-amber/25 bg-brand-amber/10 px-4 py-3 text-xs text-call-warn shadow-lg shadow-black/10 backdrop-blur-md">
           <AlertTriangle className="h-4 w-4 shrink-0 translate-y-0.5" />

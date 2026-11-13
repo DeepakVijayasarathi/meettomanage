@@ -1680,7 +1680,35 @@ const EMPTY_INTEGRATION_FORM: SaveIntegrationRequest = {
   config: {},
 };
 
-const EMPTY_JITSI_FORM = { domain: "", appId: "", appSecret: "", autoRecord: true, defaultLobby: true };
+const EMPTY_JITSI_FORM = {
+  domain: "",
+  appId: "",
+  appSecret: "",
+  autoRecord: true,
+  defaultLobby: true,
+  recordingMode: "server" as "server" | "browser" | "smart",
+  teacherRecordingChoice: true,
+};
+
+const RECORDING_MODES: { value: "server" | "browser" | "smart"; title: string; detail: string; badge?: string }[] = [
+  {
+    value: "smart",
+    title: "Smart",
+    detail: "Records in the teacher's browser on a computer, on the server otherwise — and switches to the other one if a recording can't start.",
+    badge: "Recommended",
+  },
+  {
+    value: "browser",
+    title: "Teacher's browser",
+    detail: "No recording-server cost. Needs Chrome or Edge on a computer, and the class tab kept open until the recording says saved.",
+    badge: "Lowest cost",
+  },
+  {
+    value: "server",
+    title: "Recording server",
+    detail: "Best quality and independent of the teacher's computer. Each class uses a recording server for its whole length.",
+  },
+];
 
 /**
  * Purpose-built form for the one integration every class actually depends on, instead of
@@ -1712,6 +1740,8 @@ function JitsiRecordingSettings() {
         appSecret: jitsi?.config.appSecret ?? "",
         autoRecord: jitsi ? (jitsi.config.autoRecord ?? "true") !== "false" : true,
         defaultLobby: jitsi ? (jitsi.config.defaultLobby ?? "true") !== "false" : true,
+        recordingMode: jitsi?.config.recordingMode === "browser" || jitsi?.config.recordingMode === "smart" ? jitsi.config.recordingMode : "server",
+        teacherRecordingChoice: jitsi ? (jitsi.config.teacherRecordingChoice ?? "true") !== "false" : true,
       });
       setError(null);
     } catch (err) {
@@ -1742,6 +1772,8 @@ function JitsiRecordingSettings() {
           appSecret: form.appSecret,
           autoRecord: form.autoRecord ? "true" : "false",
           defaultLobby: form.defaultLobby ? "true" : "false",
+          recordingMode: form.recordingMode,
+          teacherRecordingChoice: form.teacherRecordingChoice ? "true" : "false",
         },
       };
       if (integration) await updateIntegration(integration.id, request);
@@ -1841,6 +1873,44 @@ function JitsiRecordingSettings() {
                 </p>
               </div>
               <Switch checked={form.autoRecord} onCheckedChange={(autoRecord) => setForm({ ...form, autoRecord })} />
+            </div>
+            <div className="space-y-2 rounded-xl border border-border px-4 py-3 sm:col-span-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Where classes are recorded</p>
+                <p className="text-xs text-muted-foreground">
+                  Recording in the teacher's browser saves the cost of running recording servers. Students are told
+                  whenever a class is being recorded, either way.
+                </p>
+              </div>
+              <div role="radiogroup" aria-label="Where classes are recorded" className="grid gap-2 md:grid-cols-3">
+                {RECORDING_MODES.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.recordingMode === m.value}
+                    onClick={() => setForm({ ...form, recordingMode: m.value })}
+                    className={cn(
+                      "rounded-lg border p-3 text-left transition-colors",
+                      form.recordingMode === m.value ? "border-primary bg-primary/5" : "border-border hover:bg-accent"
+                    )}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      {m.title}
+                      {m.badge && <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">{m.badge}</span>}
+                    </span>
+                    <span className="mt-1 block text-xs text-muted-foreground">{m.detail}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center justify-between gap-4 pt-1">
+                <p className="text-xs text-muted-foreground">Let teachers switch between the server and their browser during a class</p>
+                <Switch
+                  checked={form.teacherRecordingChoice}
+                  onCheckedChange={(teacherRecordingChoice) => setForm({ ...form, teacherRecordingChoice })}
+                  aria-label="Let teachers switch recording place"
+                />
+              </div>
             </div>
             <div className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 sm:col-span-2">
               <div>

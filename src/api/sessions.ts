@@ -217,6 +217,10 @@ export async function deleteRecording(sessionId: string, recordingId: string): P
 export interface ApiClassroomSettings {
   domain: string;
   autoRecordEnabled: boolean;
+  /** "server" (Jibri), "browser" (the teacher's browser) or "smart" — see recording/plan.ts. */
+  recordingMode?: string;
+  /** Whether a teacher may switch between server and browser recording in class. */
+  teacherCanChooseRecording?: boolean;
   /** Admin-managed via Settings → Integrations → Jitsi Meet ("defaultLobby") — on means the
    *  teacher's own join automatically turns on the waiting room, so a student can't land
    *  straight into an unattended room before the teacher's there. */
@@ -506,4 +510,53 @@ export async function fetchPresentationFile(sessionId: string): Promise<ArrayBuf
     throw new ApiError(response.status, await readProblemMessage(response));
   }
   return response.arrayBuffer();
+}
+
+
+// ---- Browser recording: uploaded in parts straight to storage while the class records ----
+
+export function startBrowserRecordingUpload(sessionId: string, contentType: string) {
+  return apiFetch<{ key: string; uploadId: string; partSizeBytes: number }>(`/api/sessions/${sessionId}/recordings/uploads`, {
+    method: "POST",
+    body: JSON.stringify({ contentType }),
+  });
+}
+
+export async function browserRecordingPartUrl(sessionId: string, key: string, uploadId: string, partNumber: number): Promise<string> {
+  const urls = await apiFetch<{ partNumber: number; url: string }[]>(`/api/sessions/${sessionId}/recordings/uploads/parts`, {
+    method: "POST",
+    body: JSON.stringify({ key, uploadId, partNumbers: [partNumber] }),
+  });
+  const url = urls.find((u) => u.partNumber === partNumber)?.url;
+  if (!url) throw new Error("No upload address was issued for this part of the recording.");
+  return url;
+}
+
+/** PUTs one part to its presigned address and returns the ETag storage gives it. */
+export async function putRecordingPart(url: string, blob: Blob): Promise<string> {
+  const res = await fetch(url, { method: "PUT", body: blob });
+  if (!res.ok) throw new Error(`Storage rejected part of the recording (HTTP ${res.status}).`);
+  const eTag = res.headers.get("ETag");
+  if (!eTag) throw new Error("Storage isn't set up to accept uploads from this site yet (CORS must expose the ETag header).");
+  return eTag;
+}
+
+export function completeBrowserRecordingUpload(
+  sessionId: string,
+  key: string,
+  uploadId: string,
+  parts: { partNumber: number; eTag: string }[],
+  durationSeconds: number
+) {
+  return apiFetch<void>(`/api/sessions/${sessionId}/recordings/uploads/complete`, {
+    method: "POST",
+    body: JSON.stringify({ key, uploadId, parts, durationSeconds }),
+  });
+}
+
+export function abortBrowserRecordingUpload(sessionId: string, key: string, uploadId: string) {
+  return apiFetch<void>(`/api/sessions/${sessionId}/recordings/uploads/abort`, {
+    method: "POST",
+    body: JSON.stringify({ key, uploadId }),
+  });
 }

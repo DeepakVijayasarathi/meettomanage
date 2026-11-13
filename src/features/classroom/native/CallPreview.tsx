@@ -77,6 +77,19 @@ export default function CallPreview() {
       a.join();
       setApi(a);
       (window as unknown as { __call?: NativeJitsiApi }).__call = a; // dev-only handle for debugging the preview
+      // Dev-only: record a few seconds of this call with the browser recorder and return the file.
+      (window as unknown as { __recordTest?: (ms: number) => Promise<Blob> }).__recordTest = async (ms: number) => {
+        const { BrowserRecorder } = await import("../recording/browserRecorder");
+        const { pickRecordingMimeType } = await import("../recording/plan");
+        const chunks: Blob[] = [];
+        const sink = { push: (b: Blob) => chunks.push(b) } as unknown as import("../recording/recordingUpload").RecordingUploader;
+        const mimeType = pickRecordingMimeType()!;
+        const rec = new BrowserRecorder(a, sink, { mimeType, onError: (e) => console.error(e) });
+        await rec.start();
+        await new Promise((r) => setTimeout(r, ms));
+        await rec.stop();
+        return new Blob(chunks, { type: mimeType.split(";")[0] });
+      };
       // A fake microphone has no sound; drive the level meter so it can be seen moving.
       const levelTimer = window.setInterval(() => {
         const snap = a.getSnapshot();

@@ -42,6 +42,8 @@ export interface NativeParticipant {
    * signals (ask to unmute, spotlight). Hands and reactions work for everyone.
    */
   nativeClient?: boolean;
+  /** Recording the class in their own browser (Jitsi Meet's "localRecording" flag). */
+  recordingLocally?: boolean;
   audioTrack?: JitsiTrack;
   videoTrack?: JitsiTrack;
   desktopTrack?: JitsiTrack;
@@ -97,6 +99,8 @@ export interface NativeState {
   unmuteRequestAt: number | null;
   /** Set while phase is "prejoin". */
   preview: LocalPreview | null;
+  /** This person is recording the class in their own browser (see recording/browserRecorder). */
+  localRecording: boolean;
   /** Devices picked in Settings (null = browser default). */
   cameraId: string | null;
   micId: string | null;
@@ -166,6 +170,11 @@ export function parseRaisedHand(value: unknown): number {
   return n > 1_000_000_000_000 ? n : Date.now();
 }
 
+/** Presence flags arrive as text; "", "false" and missing all mean off. */
+function isFlagOn(value: unknown) {
+  return value === true || (typeof value === "string" && value !== "" && value !== "false");
+}
+
 /** When a chat message was sent: the history stamp (ms or ISO text) if there is one, else now. */
 export function messageTime(ts: unknown): number {
   if (typeof ts === "number" && Number.isFinite(ts) && ts > 1_000_000_000_000) return ts;
@@ -206,6 +215,7 @@ export class NativeJitsiApi {
     spotlightId: null,
     unmuteRequestAt: null,
     preview: null,
+    localRecording: false,
     cameraId: null,
     micId: null,
     speakerId: null,
@@ -316,6 +326,15 @@ export class NativeJitsiApi {
           this.signal({ m2m: 1, type: "spotlight", id });
         }
         break;
+      case "setLocalRecording": {
+        // Jitsi Meet's own "localRecording" presence flag: everyone on its embedded page gets
+        // "<name> has started a local recording" (and a recording badge), so nobody is recorded
+        // without being told. It reads any non-empty value as "on", so off is "".
+        const on = Boolean(args[0]);
+        this.update({ localRecording: on });
+        this.conference?.setLocalParticipantProperty("localRecording", on ? "true" : "");
+        break;
+      }
       case "confirmJoin":
         this.confirmJoin();
         break;
@@ -655,6 +674,7 @@ export class NativeJitsiApi {
     for (const t of [this.localAudio, this.localVideo]) if (t) void conf.addTrack(t).catch(() => undefined);
     conf.setDisplayName(this.displayName);
     conf.setLocalParticipantProperty(NATIVE_CLIENT_PROP, "1");
+    if (this.state.localRecording) conf.setLocalParticipantProperty("localRecording", "true");
     conf.join();
   }
 
@@ -777,6 +797,13 @@ export class NativeJitsiApi {
         this.patchParticipant(id, { nativeClient: value === "1" });
         return;
       }
+      if (name === "localRecording") {
+        const on = isFlagOn(value);
+        const before = this.state.participants.find((p) => p.id === id)?.recordingLocally ?? false;
+        this.patchParticipant(id, { recordingLocally: on });
+        if (on !== before) this.emit("localRecordingChanged", { id, on });
+        return;
+      }
       if (name !== "raisedHand") return;
       const at = parseRaisedHand(value);
       const handRaised = at > 0;
@@ -861,6 +888,7 @@ export class NativeJitsiApi {
       handRaised: parseRaisedHand(user.getProperty?.("raisedHand")) > 0,
       raisedAt: parseRaisedHand(user.getProperty?.("raisedHand")) || undefined,
       nativeClient: user.getProperty?.(NATIVE_CLIENT_PROP) === "1",
+      recordingLocally: isFlagOn(user.getProperty?.("localRecording")),
     };
     for (const t of user.getTracks?.() ?? []) Object.assign(patch, this.trackPatch(t, false));
     this.upsertParticipant(id, patch);

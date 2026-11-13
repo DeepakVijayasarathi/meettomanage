@@ -226,6 +226,25 @@ describe("NativeJitsiApi", () => {
     expect(messageTime("1731474000000")).toBe(1731474000000);
   });
 
+  it("announces a browser recording the way Jitsi Meet does, and sees others' recordings", async () => {
+    const { api, conf } = await start(fake);
+    const events: unknown[] = [];
+    api.addListener("localRecordingChanged", (e) => events.push(e));
+    api.executeCommand("setLocalRecording", true);
+    expect(conf.calls).toContainEqual(["setLocalParticipantProperty", "localRecording", "true"]);
+    expect(api.getSnapshot().localRecording).toBe(true);
+    api.executeCommand("setLocalRecording", false);
+    // Jitsi Meet reads any non-empty value as "on", so off must be empty.
+    expect(conf.calls).toContainEqual(["setLocalParticipantProperty", "localRecording", ""]);
+
+    const teacher = conf.remoteJoin("t1", "Karan", { role: "moderator" });
+    conf.emit(EVENTS.conference.PARTICIPANT_PROPERTY_CHANGED, teacher, "localRecording", "", "true");
+    expect(api.getSnapshot().participants.find((p) => p.id === "t1")!.recordingLocally).toBe(true);
+    conf.emit(EVENTS.conference.PARTICIPANT_PROPERTY_CHANGED, teacher, "localRecording", "true", "");
+    expect(api.getSnapshot().participants.find((p) => p.id === "t1")!.recordingLocally).toBe(false);
+    expect(events).toEqual([{ id: "t1", on: true }, { id: "t1", on: false }]);
+  });
+
   it("knocks automatically when the waiting room is on, then joins when admitted", async () => {
     fake.joinBehavior = "membersOnly";
     const { api, conf, events } = await start(fake);

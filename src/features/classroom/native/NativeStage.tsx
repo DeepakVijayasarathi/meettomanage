@@ -520,10 +520,17 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
     api.addListener("participantJoined", onJoin);
     api.addListener("participantLeft", onLeft);
     api.addListener("raiseHandUpdated", onHand);
+    // Being recorded is always announced, even right after joining.
+    const onRec = (e: { id?: string; on?: boolean }) => {
+      const who = api.getSnapshot().participants.find((p) => p.id === e.id)?.name ?? "The teacher";
+      toast(e.on ? `${who} is recording this class` : `${who} stopped recording`, "join", true);
+    };
+    api.addListener("localRecordingChanged", onRec);
     return () => {
       api.removeListener("participantJoined", onJoin);
       api.removeListener("participantLeft", onLeft);
       api.removeListener("raiseHandUpdated", onHand);
+      api.removeListener("localRecordingChanged", onRec);
     };
   }, [api, toast]);
 
@@ -925,7 +932,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
           <div className="hidden min-w-0 items-center gap-3 text-sm md:flex">
             <span className="font-medium tabular-nums">{clock}</span>
             {title && <><span className="h-4 w-px bg-call-ink/20" /><span className="truncate text-call-ink/80">{title}</span></>}
-            {s.recording && <span className="flex items-center gap-1.5 rounded-full bg-call-danger/10 px-2 py-0.5 text-xs font-medium text-call-danger-ink"><span className="h-2 w-2 animate-pulse rounded-full bg-call-danger" /> REC</span>}
+            {(s.recording || s.localRecording || s.participants.some((p) => p.recordingLocally)) && <span className="flex items-center gap-1.5 rounded-full bg-call-danger/10 px-2 py-0.5 text-xs font-medium text-call-danger-ink"><span className="h-2 w-2 animate-pulse rounded-full bg-call-danger" /> REC</span>}
           </div>
           <div className="col-start-2 flex items-center justify-center gap-2 sm:gap-2.5">
             <ControlButton label={local?.audioMuted ? "Turn on microphone" : "Turn off microphone"} shortcut={`${MOD}+D`} state={local?.audioMuted ? "off" : "default"} onClick={() => api.executeCommand("toggleAudio")} disabled={!joined}>
