@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import {
+  Bell,
+  BellOff,
   ChevronLeft,
   ChevronRight,
   EyeOff,
@@ -25,6 +27,7 @@ import {
   Users,
   Video,
   VideoOff,
+  Volume2,
   WifiOff,
   X,
 } from "lucide-react";
@@ -45,7 +48,7 @@ function colorFor(seed: string) {
 }
 
 const PREFS_KEY = "trn.callPrefs";
-interface CallPrefs { layout: CallLayout; maxTiles: number; hideSelf: boolean }
+interface CallPrefs { layout: CallLayout; maxTiles: number; hideSelf: boolean; sounds: boolean }
 function readPrefs(): CallPrefs {
   try {
     const raw = JSON.parse(window.localStorage.getItem(PREFS_KEY) ?? "{}") as Partial<CallPrefs>;
@@ -53,10 +56,66 @@ function readPrefs(): CallPrefs {
       layout: raw.layout === "gallery" || raw.layout === "speaker" ? raw.layout : "auto",
       maxTiles: [6, 9, 16, 25].includes(raw.maxTiles ?? 0) ? raw.maxTiles! : 16,
       hideSelf: Boolean(raw.hideSelf),
+      sounds: raw.sounds !== false,
     };
   } catch {
-    return { layout: "auto", maxTiles: 16, hideSelf: false };
+    return { layout: "auto", maxTiles: 16, hideSelf: false, sounds: true };
   }
+}
+
+/**
+ * Short alert tones (someone waiting to join, a raised hand), made with Web Audio so there are
+ * no sound files to ship. Silently does nothing where audio can't start yet.
+ */
+let chimeCtx: AudioContext | null = null;
+function playChime(kind: "knock" | "hand") {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    chimeCtx ??= new Ctx();
+    const ctx = chimeCtx;
+    void ctx.resume?.();
+    const notes = kind === "knock" ? [660, 880] : [880];
+    notes.forEach((freq, i) => {
+      const start = ctx.currentTime + i * 0.16;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(kind === "knock" ? 0.18 : 0.1, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.3);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.32);
+    });
+  } catch {
+    /* no audio output available */
+  }
+}
+
+/** Keeps a tablet or laptop screen from dimming and locking mid-class (re-taken after a tab switch). */
+function useWakeLock(active: boolean) {
+  useEffect(() => {
+    const wl = (navigator as Navigator & { wakeLock?: { request(type: "screen"): Promise<{ release(): Promise<void> }> } }).wakeLock;
+    if (!active || !wl) return;
+    let lock: { release(): Promise<void> } | null = null;
+    let stopped = false;
+    const take = () => {
+      if (document.visibilityState !== "visible") return;
+      wl.request("screen").then((l) => {
+        if (stopped) void l.release().catch(() => undefined);
+        else lock = l;
+      }).catch(() => undefined);
+    };
+    take();
+    document.addEventListener("visibilitychange", take);
+    return () => {
+      stopped = true;
+      document.removeEventListener("visibilitychange", take);
+      void lock?.release().catch(() => undefined);
+    };
+  }, [active]);
 }
 
 function useNativeState(api: NativeJitsiApi): NativeState {
@@ -101,20 +160,23 @@ function TrackVideo({ track, mirror, contain }: { track: JitsiTrack; mirror?: bo
  * Remote audio plays through hidden <audio> elements. Browsers (iOS Safari most of all) may refuse
  * to start them before the viewer touches the page, so every element is retried on the first gesture.
  */
-function RemoteAudio({ participants, speakerId }: { participants: NativeParticipant[]; speakerId: string | null }) {
+function RemoteAudio({ participants, speakerId, onBlocked }: { participants: NativeParticipant[]; speakerId: string | null; onBlocked: (blocked: boolean) => void }) {
   const container = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const resume = () => container.current?.querySelectorAll("audio").forEach((a) => a.play().catch(() => undefined));
+    const resume = () => {
+      const all = [...(container.current?.querySelectorAll("audio") ?? [])];
+      void Promise.all(all.map((a) => a.play())).then(() => onBlocked(false)).catch(() => undefined);
+    };
     window.addEventListener("pointerdown", resume);
     window.addEventListener("keydown", resume);
     return () => {
       window.removeEventListener("pointerdown", resume);
       window.removeEventListener("keydown", resume);
     };
-  }, []);
+  }, [onBlocked]);
   return (
     <div ref={container} className="hidden" aria-hidden>
-      {participants.filter((p) => !p.isLocal && p.audioTrack).map((p) => <AudioEl key={p.id} track={p.audioTrack!} speakerId={speakerId} />)}
+      {participants.filter((p) => !p.isLocal && p.audioTrack).map((p) => <AudioEl key={p.id} track={p.audioTrack!} speakerId={speakerId} onBlocked={() => onBlocked(true)} />)}
     </div>
   );
 }
@@ -122,13 +184,18 @@ function RemoteAudio({ participants, speakerId }: { participants: NativeParticip
 /** Chrome and Edge can route call audio to a chosen speaker; Safari and Firefox (mostly) can't. */
 const canPickSpeaker = typeof HTMLMediaElement !== "undefined" && "setSinkId" in HTMLMediaElement.prototype;
 
-function AudioEl({ track, speakerId }: { track: JitsiTrack; speakerId: string | null }) {
+function AudioEl({ track, speakerId, onBlocked }: { track: JitsiTrack; speakerId: string | null; onBlocked: () => void }) {
   const ref = useRef<HTMLAudioElement>(null);
+  const blocked = useRef(onBlocked);
+  blocked.current = onBlocked;
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     track.attach(el);
-    el.play().catch(() => undefined);
+    // The browser's autoplay rule: no sound until the person has touched the page.
+    el.play().catch((err: unknown) => {
+      if (err instanceof DOMException && err.name === "NotAllowedError") blocked.current();
+    });
     return () => track.detach(el);
   }, [track]);
   useEffect(() => {
@@ -220,9 +287,17 @@ function Tile({ participant: p, screen, speaking, pinned, compact, handOrder, is
   const onTogglePin = actions.onPin;
   const label = screen ? `${p.isLocal ? "You are" : `${p.name} is`} presenting` : p.isLocal ? "You" : p.name;
   const track = screen ? p.desktopTrack : !p.videoMuted ? p.videoTrack : undefined;
+  // Showing your own share back to you makes a "hall of mirrors" and costs CPU: Meet shows a note.
+  const ownShare = screen && p.isLocal;
   return (
-    <div className={cn("group relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-call-raised", screen && "bg-black")}>
-      {track ? <TrackVideo track={track} mirror={p.isLocal && !screen} contain={screen} /> : <Avatar p={p} size={compact ? "md" : "lg"} />}
+    <div className={cn("group relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-call-raised", screen && !ownShare && "bg-black")}>
+      {ownShare ? (
+        <div className="flex flex-col items-center gap-2 px-4 text-center">
+          <MonitorUp className={cn("text-brand-orange-ink", compact ? "h-6 w-6" : "h-10 w-10")} aria-hidden />
+          <p className={cn("font-medium", compact ? "text-xs" : "text-base")}>You're presenting to everyone</p>
+          {!compact && <p className="text-sm text-call-ink/60">Use the Present button below to stop.</p>}
+        </div>
+      ) : track ? <TrackVideo track={track} mirror={p.isLocal && !screen} contain={screen} /> : <Avatar p={p} size={compact ? "md" : "lg"} />}
 
       <span className={cn("pointer-events-none absolute inset-0 rounded-xl border-[3px] transition-colors", speaking && !screen ? "border-brand-orange" : "border-transparent")} />
 
@@ -366,6 +441,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const [page, setPage] = useState(0);
   const [seen, setSeen] = useState(0);
   const [draft, setDraft] = useState("");
@@ -378,6 +454,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
   const toastSeq = useRef(0);
 
   const joined = s.phase === "joined";
+  useWakeLock(joined);
   const local = s.participants.find((p) => p.isLocal);
   const sharers = s.participants.filter((p) => p.desktopTrack);
   const unread = panel === "chat" ? 0 : s.messages.filter((m) => !m.self).length - seen;
@@ -407,6 +484,15 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
     if (joined && joinedAt.current === null) joinedAt.current = Date.now();
   }, [joined]);
 
+  const soundsRef = useRef(prefs.sounds);
+  soundsRef.current = prefs.sounds;
+  // A chime when someone starts waiting to join (easy to miss while teaching otherwise).
+  const knockCount = useRef(0);
+  useEffect(() => {
+    if (isModerator && s.knocking.length > knockCount.current && soundsRef.current) playChime("knock");
+    knockCount.current = s.knocking.length;
+  }, [isModerator, s.knocking.length]);
+
   const toast = useCallback((text: string, icon: Toast["icon"], force = false) => {
     if (!force && (joinedAt.current === null || Date.now() - joinedAt.current < 4000)) return;
     const id = ++toastSeq.current;
@@ -429,6 +515,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
       const snap = api.getSnapshot();
       if (!e.handRaised || e.id === snap.localId || !snap.isModerator) return;
       toast(`${snap.participants.find((p) => p.id === e.id)?.name ?? "A student"} raised a hand`, "hand");
+      if (soundsRef.current && joinedAt.current !== null && Date.now() - joinedAt.current > 4000) playChime("hand");
     };
     api.addListener("participantJoined", onJoin);
     api.addListener("participantLeft", onLeft);
@@ -578,7 +665,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
   return (
     <TooltipProvider delayDuration={200}>
       <div className="relative flex h-full w-full flex-col bg-call-bg text-call-ink">
-        <RemoteAudio participants={s.participants} speakerId={s.speakerId} />
+        <RemoteAudio participants={s.participants} speakerId={s.speakerId} onBlocked={setAudioBlocked} />
 
         <div className="relative flex min-h-0 flex-1">
           <div ref={gridRef} className="relative min-h-0 min-w-0 flex-1">
@@ -648,6 +735,14 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
               <p role="status" className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-call-surface px-4 py-2 text-sm text-call-ink shadow-lg">
                 <WifiOff className="h-4 w-4 text-call-danger" aria-hidden /> Connection lost. Trying to reconnect…
               </p>
+            )}
+            {audioBlocked && joined && (
+              <button
+                onClick={() => setAudioBlocked(false)}
+                className="absolute left-1/2 top-14 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-brand-orange-deep px-4 py-2 text-sm font-medium text-white shadow-lg"
+              >
+                <Volume2 className="h-4 w-4" aria-hidden /> Tap to hear the class
+              </button>
             )}
             {localWeak && !s.reconnecting && !s.deviceError && (
               <p role="status" className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-call-surface px-4 py-2 text-xs text-call-ink/80 shadow-lg">
@@ -894,6 +989,11 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
                 <DropdownMenuItem onClick={() => setLayoutOpen(true)}><LayoutGrid /> Change layout</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setPrefs({ hideSelf: !prefs.hideSelf })}><EyeOff /> {prefs.hideSelf ? "Show me in the grid" : "Move me to the corner"}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSettingsOpen(true)}><Settings /> Settings</DropdownMenuItem>
+                {isModerator && (
+                  <DropdownMenuItem onClick={() => setPrefs({ sounds: !prefs.sounds })}>
+                    {prefs.sounds ? <BellOff /> : <Bell />} {prefs.sounds ? "Turn off alert sounds" : "Turn on alert sounds"}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem className="hidden sm:flex" onClick={() => setShortcutsOpen(true)}><Keyboard /> Keyboard shortcuts</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

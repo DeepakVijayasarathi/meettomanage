@@ -14,6 +14,8 @@ export interface JitsiTrack {
   getVideoType?(): "camera" | "desktop" | undefined;
   getParticipantId(): string;
   getSourceName?(): string;
+  /** Local tracks: the input device in use. */
+  getDeviceId?(): string;
   isLocal(): boolean;
   isMuted(): boolean;
   attach(el: HTMLMediaElement): void;

@@ -70,6 +70,8 @@ export class FakeTrack {
   getVideoType() { return this.type === "video" ? this.videoType : undefined; }
   getParticipantId() { return this.participantId; }
   getSourceName() { return this.sourceName; }
+  deviceId = "";
+  getDeviceId() { return this.deviceId; }
   isLocal() { return this.local; }
   isMuted() { return this.muted; }
   setParticipantId(id: string) { this.participantId = id; }

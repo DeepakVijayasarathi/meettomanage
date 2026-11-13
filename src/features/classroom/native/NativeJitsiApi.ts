@@ -166,6 +166,16 @@ export function parseRaisedHand(value: unknown): number {
   return n > 1_000_000_000_000 ? n : Date.now();
 }
 
+/** When a chat message was sent: the history stamp (ms or ISO text) if there is one, else now. */
+export function messageTime(ts: unknown): number {
+  if (typeof ts === "number" && Number.isFinite(ts) && ts > 1_000_000_000_000) return ts;
+  if (typeof ts === "string" && ts) {
+    const parsed = /^\d+$/.test(ts) ? Number(ts) : Date.parse(ts);
+    if (Number.isFinite(parsed) && parsed > 1_000_000_000_000) return parsed;
+  }
+  return Date.now();
+}
+
 /** Jitsi Meet's own reaction names (its "endpoint-reaction" message), mapped to what we show. */
 const JITSI_REACTIONS: Record<string, string> = { like: "👍", love: "❤️", laugh: "😂", surprised: "😮", clap: "👏", boo: "🙁", silence: "😶" };
 const JITSI_REACTION_FOR: Record<string, string> = Object.fromEntries(Object.entries(JITSI_REACTIONS).map(([k, v]) => [v, k]));
@@ -364,6 +374,7 @@ export class NativeJitsiApi {
     for (const t of [this.localAudio, this.localVideo, this.localDesktop]) t?.dispose?.().catch(() => undefined);
     this.conference?.leave().catch(() => undefined);
     Promise.resolve(this.connection?.disconnect()).catch(() => undefined);
+    navigator.mediaDevices?.removeEventListener?.("devicechange", this.onDeviceChange);
     this.listeners.clear();
     this.subscribers.clear();
   }
@@ -534,6 +545,7 @@ export class NativeJitsiApi {
     if (this.disposed) return;
     // Open camera/mic now, so they're ready by the time the connection is.
     this.tracksReady = this.createLocalTracks();
+    navigator.mediaDevices?.addEventListener?.("devicechange", this.onDeviceChange);
   }
 
   /** Connects and joins the room. Safe to call once; later calls are ignored. */
@@ -828,12 +840,14 @@ export class NativeJitsiApi {
       conf.on(E.ENDPOINT_MESSAGE_RECEIVED, (participant: JitsiParticipant, payload: unknown) => this.handleSignal(participant?.getId?.(), payload));
     }
 
-    conf.on(E.MESSAGE_RECEIVED, (id: string, text: string, ts?: number) => {
+    // (id, text, ts, displayName): ts is set only for history the room replays to a late joiner.
+    conf.on(E.MESSAGE_RECEIVED, (id: string, text: string, ts?: number | string, displayName?: string) => {
       if (id === this.state.localId) return;
-      const name = this.state.participants.find((p) => p.id === id)?.name ?? "Someone";
-      this.update({
-        messages: [...this.state.messages, { id: `${id}-${ts ?? Date.now()}-${Math.random()}`, from: id, name, text, at: Date.now(), self: false }],
-      });
+      const name = this.state.participants.find((p) => p.id === id)?.name ?? (displayName?.trim() || "Someone");
+      const at = messageTime(ts);
+      const messages = [...this.state.messages, { id: `${id}-${at}-${Math.random()}`, from: id, name, text, at, self: false }];
+      if (ts !== undefined) messages.sort((a, b) => a.at - b.at);
+      this.update({ messages });
     });
   }
 
@@ -1000,15 +1014,37 @@ export class NativeJitsiApi {
   }
 
   /** Swaps the camera or microphone for another device without leaving the call. */
-  private async switchDevice(kind: "audio" | "video", deviceId: string) {
-    if (!deviceId) return;
+  /**
+   * A headset or webcam was unplugged: the track on it goes silent/black for good. Move to
+   * whatever the browser now picks, and say so.
+   */
+  private onDeviceChange = () => {
+    if (this.disposed || !navigator.mediaDevices?.enumerateDevices) return;
+    void navigator.mediaDevices.enumerateDevices().then((devices) => {
+      if (this.disposed) return;
+      for (const [kind, track, deviceKind] of [["audio", this.localAudio, "audioinput"], ["video", this.localVideo, "videoinput"]] as const) {
+        const id = track?.getDeviceId?.();
+        // "default"/"" follow the system choice already; only a specific, now-missing device needs moving.
+        if (!id || id === "default" || devices.some((d) => d.kind === deviceKind && d.deviceId === id)) continue;
+        if (!devices.some((d) => d.kind === deviceKind)) {
+          this.update({ deviceError: kind === "audio" ? "Your microphone was disconnected." : "Your camera was disconnected." });
+          continue;
+        }
+        void this.switchDevice(kind, null, kind === "audio" ? "Your microphone was disconnected, so another one is being used." : "Your camera was disconnected, so another one is being used.");
+      }
+    }).catch(() => undefined);
+  };
+
+  /** Swaps the camera or microphone without leaving the call; null = the browser's default. */
+  private async switchDevice(kind: "audio" | "video", deviceId: string | null, notice?: string) {
+    if (deviceId === "") return;
     const old = kind === "audio" ? this.localAudio : this.localVideo;
     let created: JitsiTrack;
     try {
       [created] = await this.lib.createLocalTracks({
         devices: [kind],
         constraints: this.options.configOverwrite?.constraints,
-        ...(kind === "audio" ? { micDeviceId: deviceId } : { cameraDeviceId: deviceId }),
+        ...(deviceId ? (kind === "audio" ? { micDeviceId: deviceId } : { cameraDeviceId: deviceId }) : {}),
       });
     } catch {
       this.update({ deviceError: kind === "audio" ? "That microphone couldn't be opened." : "That camera couldn't be opened." });
@@ -1032,11 +1068,13 @@ export class NativeJitsiApi {
         await this.conference.addTrack(created).catch(() => undefined);
       }
     }
-    void old?.dispose?.().catch(() => undefined);
+    // Adopt the new track before disposing the old one, so nothing reacting to the old track
+    // ending can mistake it for the current device.
     if (kind === "audio") this.localAudio = created;
     else this.localVideo = created;
+    void old?.dispose?.().catch(() => undefined);
     this.patchParticipant(this.state.localId, kind === "audio" ? { audioTrack: created, audioMuted: wasMuted } : { videoTrack: created, videoMuted: wasMuted });
-    this.update(kind === "audio" ? { micId: deviceId, deviceError: null } : { cameraId: deviceId, deviceError: null });
+    this.update(kind === "audio" ? { micId: deviceId, deviceError: notice ?? null } : { cameraId: deviceId, deviceError: notice ?? null });
     this.refreshPreview();
   }
 

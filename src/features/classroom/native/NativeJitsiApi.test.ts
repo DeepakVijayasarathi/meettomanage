@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { NativeJitsiApi } from "./NativeJitsiApi";
+import { messageTime, NativeJitsiApi } from "./NativeJitsiApi";
 import { createFakeLib, EVENTS, FakeTrack, type FakeLib } from "./fakeLibJitsi";
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -187,6 +187,43 @@ describe("NativeJitsiApi", () => {
     stop();
     mic.fire(EVENTS.track.TRACK_AUDIO_LEVEL_CHANGED, 0.9);
     expect(levels).toEqual([0.4, 1]);
+  });
+
+  it("moves to another microphone when the one in use is unplugged", async () => {
+    const devices = Object.assign(new EventTarget(), {
+      list: [{ kind: "audioinput", deviceId: "usb-headset" }, { kind: "audioinput", deviceId: "built-in" }, { kind: "videoinput", deviceId: "cam" }],
+      enumerateDevices: () => Promise.resolve(devices.list),
+    });
+    Object.defineProperty(navigator, "mediaDevices", { value: devices, configurable: true });
+    try {
+      const { api, conf } = await start(fake);
+      const mic = api.getSnapshot().participants.find((p) => p.isLocal)!.audioTrack as unknown as FakeTrack;
+      mic.deviceId = "usb-headset";
+      const create = vi.spyOn(fake, "createLocalTracks");
+      devices.list = devices.list.filter((d) => d.deviceId !== "usb-headset");
+      devices.dispatchEvent(new Event("devicechange"));
+      for (let i = 0; i < 4; i++) await flush();
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ devices: ["audio"] }));
+      expect(create.mock.calls[0][0]).not.toHaveProperty("micDeviceId");
+      expect(conf.calls.some((c) => c[0] === "replaceTrack" && c[1] === "audio")).toBe(true);
+      expect(api.getSnapshot().deviceError).toMatch(/microphone was disconnected/);
+      expect(mic.stopped).toBe(true);
+      api.dispose();
+    } finally {
+      // @ts-expect-error -- test cleanup of the stub
+      delete navigator.mediaDevices;
+    }
+  });
+
+  it("shows replayed chat history at the time it was sent, in order", async () => {
+    const { api, conf } = await start(fake);
+    conf.remoteJoin("r1", "Aarav");
+    conf.emit(EVENTS.conference.MESSAGE_RECEIVED, "r1", "second", "2026-11-13T05:02:00Z");
+    conf.emit(EVENTS.conference.MESSAGE_RECEIVED, "r1", "first", "2026-11-13T05:01:00Z");
+    expect(api.getSnapshot().messages.map((m) => m.text)).toEqual(["first", "second"]);
+    expect(api.getSnapshot().messages[0].at).toBe(Date.parse("2026-11-13T05:01:00Z"));
+    expect(messageTime(undefined)).toBeGreaterThan(Date.now() - 1000);
+    expect(messageTime("1731474000000")).toBe(1731474000000);
   });
 
   it("knocks automatically when the waiting room is on, then joins when admitted", async () => {
