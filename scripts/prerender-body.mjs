@@ -19,7 +19,7 @@ const MIN_WORDS = 150;
 const STRICT = process.env.PRERENDER_STRICT === "1";
 // Posts and API-driven pages come from the backend at runtime. Without it the page would render an
 // empty or error state, so only pages whose content is bundled with the app are rendered here.
-const SKIP = new Set(["/blog", "/store", "/blog/signs-academy-outgrown-spreadsheets", "/blog/demo-booking-to-enrolled-family", "/blog/automatic-fee-suspension-payment-conversations"]);
+const SKIP = new Set(["/blog", "/store", "/status", "/blog/signs-academy-outgrown-spreadsheets", "/blog/demo-booking-to-enrolled-family", "/blog/automatic-fee-suspension-payment-conversations"]);
 const ERROR_MARKERS = [/page not found/i, /something went wrong/i, /could not load/i];
 
 const CHROME_CANDIDATES = [
