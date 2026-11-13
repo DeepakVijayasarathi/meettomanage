@@ -23,8 +23,11 @@ const PlatformRevenue = lazy(() => import("@/features/platform/Revenue"));
 const PlatformReminders = lazy(() => import("@/features/platform/Reminders"));
 const PlatformAuditLog = lazy(() => import("@/features/platform/AuditLog"));
 const PlatformOperations = lazy(() => import("@/features/platform/Operations"));
+const PlatformMonitoring = lazy(() => import("@/features/platform/Monitoring"));
+const PlatformStatusSettings = lazy(() => import("@/features/platform/StatusSettings"));
 const AdminSubscription = lazy(() => import("@/features/admin/Subscription"));
 const Signup = lazy(() => import("@/features/public/Signup"));
+const PublicStatusPage = lazy(() => import("@/features/public/StatusPage"));
 
 const Store = lazy(() => import("@/features/marketing/Store"));
 const Demo = lazy(() => import("@/features/marketing/Demo"));
@@ -241,7 +244,10 @@ export default function App() {
             <Route path="/platform/reminders" element={<PlatformReminders />} />
             <Route path="/platform/audit-log" element={<PlatformAuditLog />} />
             <Route path="/platform/operations" element={<PlatformOperations />} />
+            <Route path="/platform/monitoring" element={<PlatformMonitoring />} />
+            <Route path="/platform/status-settings" element={<PlatformStatusSettings />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/status" element={<PublicStatusPage />} />
             <Route path="/register" element={<Navigate to="/signup" replace />} />
             <Route path="/" element={<MarketingTranslationLayer><MarketingHome /></MarketingTranslationLayer>} />
             <Route path="/store" element={<MarketingTranslationLayer><Store /></MarketingTranslationLayer>} />

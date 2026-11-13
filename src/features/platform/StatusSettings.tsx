@@ -1,0 +1,41 @@
+import { useEffect, useState, type FormEvent } from "react";
+import { ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
+import PlatformShell, { usePlatformAdmin } from "./PlatformShell";
+import { getStatusPageSettings, saveStatusPageSettings, type ServiceStatus, type StatusPageComponentSetting, type StatusPageSetting } from "@/api/platform";
+import { Hero, Notices, inputClass, labelClass, panel, primaryButton } from "./saasUi";
+
+const statuses: ServiceStatus[] = ["Operational", "Degraded", "Maintenance", "MajorOutage"];
+const blank = (): StatusPageComponentSetting => ({ key: `service-${Date.now()}`, name: "New service", type: "Api", manualStatus: "Operational", description: "" });
+
+export default function StatusSettings() { return <PlatformShell><StatusSettingsForm /></PlatformShell>; }
+
+function StatusSettingsForm() {
+  const { token } = usePlatformAdmin();
+  const [form, setForm] = useState<StatusPageSetting | null>(null);
+  const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [notice, setNotice] = useState("");
+  useEffect(() => { void getStatusPageSettings(token).then(setForm).catch(e => setError(e instanceof Error ? e.message : "Could not load status settings.")); }, [token]);
+  const patch = (value: Partial<StatusPageSetting>) => setForm(f => f ? { ...f, ...value } : f);
+  const component = (index: number, value: Partial<StatusPageComponentSetting>) => setForm(f => f ? { ...f, components: f.components.map((c, i) => i === index ? { ...c, ...value } : c) } : f);
+  async function save(event: FormEvent) { event.preventDefault(); if (!form) return; setBusy(true); setError(""); setNotice(""); try { setForm(await saveStatusPageSettings(token, form)); setNotice("Status page settings saved. Public visitors will see the change shortly."); } catch (e) { setError(e instanceof Error ? e.message : "Could not save status settings."); } finally { setBusy(false); } }
+  if (!form) return <div className="space-y-6"><Hero title="Status page" text="Configure public outages and service health without changing server files." /><Notices error={error} notice="" /><p className="text-sm text-muted-foreground">Loading…</p></div>;
+  return <form onSubmit={save} className="space-y-6">
+    <Hero title="Status page" text="Control the public service-status page, incident message and automatic health checks from the database." />
+    <div className="flex justify-end"><a href="/status" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-primary">Open public status page <ExternalLink className="h-4 w-4" /></a></div>
+    <Notices error={error} notice={notice} />
+    <section className={`${panel} space-y-5 p-6`}><div className="flex items-center justify-between"><div><h2 className="font-semibold">Public page</h2><p className="text-xs text-muted-foreground">Saved in the master database, not appsettings.</p></div><label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.enabled} onChange={e => patch({ enabled: e.target.checked })} />Published</label></div>
+      <div className="grid gap-4 sm:grid-cols-2"><label className={labelClass}><span>Page title</span><input className={inputClass} maxLength={120} value={form.title} onChange={e => patch({ title: e.target.value })} /></label><label className={labelClass}><span>Support link</span><input className={inputClass} value={form.supportUrl ?? ""} onChange={e => patch({ supportUrl: e.target.value })} placeholder="/contact or https://…" /></label></div>
+      <label className={labelClass}><span>Description</span><textarea className={inputClass} rows={3} maxLength={500} value={form.description} onChange={e => patch({ description: e.target.value })} /></label>
+      <label className={labelClass}><span>Refresh every (seconds)</span><input className={inputClass} type="number" min={15} max={300} value={form.refreshSeconds} onChange={e => patch({ refreshSeconds: Number(e.target.value) })} /></label>
+    </section>
+    <section className={`${panel} space-y-5 p-6`}><div><h2 className="font-semibold">Outage or maintenance announcement</h2><p className="text-xs text-muted-foreground">Operational uses automatic checks. Choose another status to override the whole page.</p></div>
+      <label className={labelClass}><span>Overall status</span><select className={inputClass} value={form.manualStatus ?? "Operational"} onChange={e => patch({ manualStatus: e.target.value as ServiceStatus })}>{statuses.map(s => <option key={s}>{s}</option>)}</select></label>
+      <div className="grid gap-4 sm:grid-cols-2"><label className={labelClass}><span>Incident title</span><input className={inputClass} value={form.incidentTitle ?? ""} onChange={e => patch({ incidentTitle: e.target.value })} placeholder="Optional when operational" /></label><label className={labelClass}><span>Started at</span><input className={inputClass} type="datetime-local" value={form.incidentStartedAtUtc ? form.incidentStartedAtUtc.slice(0, 16) : ""} onChange={e => patch({ incidentStartedAtUtc: e.target.value ? new Date(e.target.value).toISOString() : null })} /></label></div>
+      <label className={labelClass}><span>Customer message</span><textarea className={inputClass} rows={3} value={form.incidentMessage ?? ""} onChange={e => patch({ incidentMessage: e.target.value })} placeholder="What is affected, what your team is doing, and the next update time." /></label>
+    </section>
+    <section className={`${panel} space-y-4 p-6`}><div className="flex items-center justify-between"><div><h2 className="font-semibold">Services and automatic checks</h2><p className="text-xs text-muted-foreground">API and Database check automatically. Server and Service match names from Server monitoring.</p></div><button type="button" onClick={() => patch({ components: [...form.components, blank()] })} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm"><Plus className="h-4 w-4" />Add service</button></div>
+      {form.components.map((c, i) => <div key={`${c.key}-${i}`} className="space-y-3 rounded-xl border p-4"><div className="grid gap-3 md:grid-cols-4"><label className={labelClass}><span>Public name</span><input className={inputClass} value={c.name} onChange={e => component(i, { name: e.target.value })} /></label><label className={labelClass}><span>Unique key</span><input className={inputClass} value={c.key} onChange={e => component(i, { key: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })} /></label><label className={labelClass}><span>Check type</span><select className={inputClass} value={c.type} onChange={e => component(i, { type: e.target.value as StatusPageComponentSetting["type"] })}>{["Api", "Database", "Server", "Service"].map(t => <option key={t}>{t}</option>)}</select></label><label className={labelClass}><span>Status override</span><select className={inputClass} value={c.manualStatus ?? "Operational"} onChange={e => component(i, { manualStatus: e.target.value as ServiceStatus })}>{statuses.map(s => <option key={s}>{s}</option>)}</select></label></div>
+        <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"><label className={labelClass}><span>{c.type === "Service" ? "Monitored service name" : "Monitored server name"}</span><input disabled={c.type === "Api" || c.type === "Database"} className={inputClass} value={(c.type === "Service" ? c.service : c.server) ?? ""} onChange={e => component(i, c.type === "Service" ? { service: e.target.value } : { server: e.target.value })} /></label><label className={labelClass}><span>Public description</span><input className={inputClass} value={c.description ?? ""} onChange={e => component(i, { description: e.target.value })} /></label><button type="button" disabled={form.components.length === 1} onClick={() => patch({ components: form.components.filter((_, x) => x !== i) })} className="mt-6 rounded-lg border p-3 text-red-600 disabled:opacity-40" aria-label={`Delete ${c.name}`}><Trash2 className="h-4 w-4" /></button></div></div>)}
+    </section>
+    <button disabled={busy} className={primaryButton}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}{busy ? "Saving…" : "Save status configuration"}</button>
+  </form>;
+}

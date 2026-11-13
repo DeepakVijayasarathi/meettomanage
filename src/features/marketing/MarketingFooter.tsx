@@ -66,6 +66,7 @@ export function MarketingFooter() {
               <li><Link to="/legal/terms" className={LINK}>{f.terms}</Link></li>
               <li><Link to="/privacy" className={LINK}>{f.privacy}</Link></li>
               <li><Link to="/policy" className={LINK}>{f.clientFinder}</Link></li>
+              <li><Link to="/status" className={LINK}>System status</Link></li>
             </ul>
           </nav>
           <div>

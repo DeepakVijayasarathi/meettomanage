@@ -1,0 +1,23 @@
+import { useCallback, useEffect, useState } from "react";
+import { Activity, AlertTriangle, CheckCircle2, Clock3, RefreshCw, Wrench } from "lucide-react";
+import { getPublicStatus, type PublicStatus, type PublicStatusSummary } from "@/api/status";
+import { Button } from "@/components/ui/button";
+
+const COPY: Record<PublicStatus, { label: string; className: string; icon: typeof Activity }> = {
+  Operational: { label: "All systems operational", className: "border-emerald-200 bg-emerald-50 text-emerald-800", icon: CheckCircle2 },
+  Degraded: { label: "Degraded performance", className: "border-amber-200 bg-amber-50 text-amber-800", icon: AlertTriangle },
+  Maintenance: { label: "Scheduled maintenance", className: "border-blue-200 bg-blue-50 text-blue-800", icon: Wrench },
+  MajorOutage: { label: "Major service outage", className: "border-red-200 bg-red-50 text-red-800", icon: AlertTriangle },
+};
+
+export default function StatusPage() {
+  const [data, setData] = useState<PublicStatusSummary | null>(null); const [error, setError] = useState(""); const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => { try { setData(await getPublicStatus()); setError(""); } catch (e) { setError(e instanceof Error ? e.message : "Status information is unavailable."); } finally { setLoading(false); } }, []);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (!data) return; const id = window.setInterval(() => void load(), Math.max(15, data.refreshSeconds) * 1000); return () => window.clearInterval(id); }, [data?.refreshSeconds, load]);
+  const overall = COPY[data?.overallStatus ?? "Operational"]; const OverallIcon = overall.icon;
+  return <main className="min-h-screen bg-slate-50 text-slate-950"><header className="border-b bg-white"><div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4"><a href="/" className="flex items-center gap-2 font-bold"><img src="/logo-icon.png" alt="" className="h-8 w-8" />Meet to Manage</a><Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />Refresh</Button></div></header><div className="mx-auto max-w-3xl px-5 py-12"><div className="text-center"><Activity className="mx-auto h-9 w-9 text-primary" /><h1 className="mt-3 text-3xl font-extrabold tracking-tight">{data?.title ?? "System status"}</h1><p className="mt-2 text-slate-600">{data?.description ?? "Current service availability."}</p></div>
+    {error ? <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-5 text-amber-800"><b>Could not refresh status</b><p className="mt-1 text-sm">{error}</p></div> : <><div className={`mt-8 flex items-center gap-3 rounded-xl border p-5 ${overall.className}`}><OverallIcon className="h-6 w-6" /><span className="text-lg font-bold">{overall.label}</span></div>{data?.incident && <section className={`mt-5 rounded-xl border p-5 ${COPY[data.overallStatus].className}`}><div className="flex items-start gap-3"><AlertTriangle className="mt-0.5 h-5 w-5" /><div><h2 className="font-bold">{data.incident.title}</h2>{data.incident.message && <p className="mt-1 text-sm">{data.incident.message}</p>}{data.incident.startedAtUtc && <p className="mt-2 flex items-center gap-1 text-xs opacity-75"><Clock3 className="h-3.5 w-3.5" />Started {new Date(data.incident.startedAtUtc).toLocaleString()}</p>}</div></div></section>}
+      <section className="mt-6 overflow-hidden rounded-xl border bg-white shadow-sm"><div className="border-b px-5 py-4"><h2 className="font-bold">Services</h2></div><div className="divide-y">{data?.components.map(component => { const c = COPY[component.status]; return <div key={component.key} className="flex items-center justify-between gap-4 px-5 py-4"><div><p className="font-semibold">{component.name}</p>{component.description && <p className="mt-0.5 text-sm text-slate-500">{component.description}</p>}</div><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${c.className}`}>{c.label.replace("All systems ", "")}</span></div>; })}</div></section></>}
+    <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500"><span>{data?.checkedAtUtc ? `Last checked ${new Date(data.checkedAtUtc).toLocaleString()}` : loading ? "Checking services…" : "Status unavailable"}</span>{data?.supportUrl && <a href={data.supportUrl} className="font-semibold text-primary hover:underline">Contact support</a>}</div></div></main>;
+}

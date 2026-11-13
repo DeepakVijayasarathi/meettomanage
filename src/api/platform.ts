@@ -24,3 +24,27 @@ export async function platformRequest<T>(path: string, token: string, method = "
   }
   return response.status === 204 ? undefined as T : await response.json() as T;
 }
+
+export interface PlatformMonitoringServer {
+  name: string; hostname: string; reachable: boolean; error: string | null; isOnDemand: boolean;
+  uptimeSeconds: number; loadAverage1m: number; cpuCores: number; cpuUsagePercent: number;
+  memoryUsedPercent: number; memoryTotalMb: number; swapUsedPercent: number; swapTotalMb: number;
+  diskUsedPercent: number; diskTotalGb: number; networkRxMbps: number; networkTxMbps: number;
+  diskReadMbps: number; diskWriteMbps: number; agentDataAgeSeconds: number;
+  services: { name: string; active: boolean }[];
+  containerMetrics: { name: string; cpuPercent: number; memoryMb: number }[];
+}
+export interface PlatformMonitoringSummary {
+  infrastructure: { servers: PlatformMonitoringServer[]; activeAlerts: { name: string; severity: string; summary: string; description: string; activeSince: string; instance: string | null }[]; generatedAtUtc: string };
+  saas: { totalTenants: number; activeTenants: number; provisioningTenants: number; suspendedTenants: number; failedTenants: number; subscriptionStatuses: Record<string, number>; usageDate: string | null; usage: null | { tenantSnapshots: number; activeStudents: number; staff: number; storageBytes: number; sessionMinutesMonth: number; sessionsMonth: number; recordingsMonth: number } };
+  masterDatabase: { healthy: boolean; latencyMs: number };
+  runtime: { framework: string; os: string; processorCount: number; processUptimeSeconds: number; workingSetMb: number; managedHeapMb: number; threadCount: number; gcGen0: number; gcGen1: number; gcGen2: number };
+  generatedAtUtc: string;
+}
+export const getPlatformMonitoring = (token: string, signal?: AbortSignal) => platformRequest<PlatformMonitoringSummary>("/monitoring", token, "GET", undefined, signal);
+
+export type ServiceStatus = "Operational" | "Degraded" | "Maintenance" | "MajorOutage";
+export interface StatusPageComponentSetting { key: string; name: string; type: "Api" | "Database" | "Server" | "Service"; server?: string | null; service?: string | null; description?: string | null; manualStatus?: ServiceStatus | null }
+export interface StatusPageSetting { enabled: boolean; title: string; description: string; supportUrl?: string | null; refreshSeconds: number; manualStatus?: ServiceStatus | null; incidentTitle?: string | null; incidentMessage?: string | null; incidentStartedAtUtc?: string | null; components: StatusPageComponentSetting[] }
+export const getStatusPageSettings = (token: string) => platformRequest<StatusPageSetting>("/status-page-settings", token);
+export const saveStatusPageSettings = (token: string, value: StatusPageSetting) => platformRequest<StatusPageSetting>("/status-page-settings", token, "PUT", value);
