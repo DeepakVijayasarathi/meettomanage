@@ -264,7 +264,7 @@ describe("NativeJitsiApi", () => {
     expect(await api.isVideoMuted()).toBe(true);
 
     api.executeCommand("toggleRaiseHand");
-    expect(conf.calls.find((c) => c[0] === "setLocalParticipantProperty")?.[1]).toBe("raisedHand");
+    expect(conf.calls.find((c) => c[0] === "setLocalParticipantProperty" && c[1] === "raisedHand")).toBeTruthy();
     expect(events).toContainEqual(["raiseHandUpdated", { id: "local1", handRaised: true }]);
   });
 
@@ -280,6 +280,20 @@ describe("NativeJitsiApi", () => {
     await flush();
     await flush();
     expect(events).toContainEqual(["screenSharingStatusChanged", { on: false }]);
+  });
+
+  it("starts only one share when Present is pressed twice, and swaps the camera beside a share", async () => {
+    const { api, conf } = await start(fake);
+    api.executeCommand("toggleShareScreen");
+    api.executeCommand("toggleShareScreen"); // picker still open
+    await flush();
+    await flush();
+    expect(conf.calls.filter((c) => c[0] === "addTrack" && c[2] === "desktop")).toHaveLength(1);
+    // Current servers send the camera beside the share, so a new camera goes out straight away.
+    api.executeCommand("setCameraDevice", "cam-2");
+    await flush();
+    await flush();
+    expect(conf.calls.filter((c) => c[0] === "replaceTrack" && c[1] === "video")).toHaveLength(1);
   });
 
   it("joins with audio only when the camera is blocked, and says so", async () => {
@@ -335,11 +349,56 @@ describe("NativeJitsiApi", () => {
     conf.remoteJoin("r1", "Asha");
     api.executeCommand("sendReaction", "👏");
     api.executeCommand("sendReaction", "👏"); // throttled: one a second
-    expect(conf.calls.filter((c) => c[0] === "broadcastEndpointMessage")).toEqual([["broadcastEndpointMessage", { m2m: 1, type: "reaction", emoji: "👏" }]]);
+    // Jitsi Meet's own format, so students on the embedded page see it too.
+    const sent = conf.calls.filter((c) => c[0] === "broadcastEndpointMessage");
+    expect(sent).toHaveLength(1);
+    expect(sent[0][1]).toMatchObject({ name: "endpoint-reaction", reactions: ["clap"] });
     conf.remoteSignal("r1", { m2m: 1, type: "reaction", emoji: "🎉" });
     conf.remoteSignal("r1", { m2m: 1, type: "reaction", emoji: "<b>hi</b>" });
     conf.remoteSignal("r1", { type: "reaction", emoji: "🎉" }); // not ours
-    expect(api.getSnapshot().reactions.map((r) => [r.from, r.emoji])).toEqual([["local1", "👏"], ["r1", "🎉"]]);
+    // From the embedded page: known names only, at most three.
+    conf.remoteSignal("r1", { name: "endpoint-reaction", reactions: ["love", "<script>", "boo"], timestamp: 1 });
+    expect(api.getSnapshot().reactions.map((r) => [r.from, r.emoji])).toEqual([["local1", "👏"], ["r1", "🎉"], ["r1", "❤️"], ["r1", "🙁"]]);
+  });
+
+  it("reads hands from Jitsi's embedded page, which lowers them by setting 0", async () => {
+    const { api, conf } = await start(fake);
+    const asha = conf.remoteJoin("r1", "Asha");
+    const raise = (v: string) => {
+      asha.props.raisedHand = v;
+      conf.emit(EVENTS.conference.PARTICIPANT_PROPERTY_CHANGED, asha, "raisedHand", "", v);
+    };
+    const hand = () => api.getSnapshot().participants.find((p) => p.id === "r1")!;
+    raise("1731400000000");
+    expect(hand()).toMatchObject({ handRaised: true, raisedAt: 1731400000000 });
+    raise("0");
+    expect(hand().handRaised).toBe(false);
+    raise("true");
+    expect(hand().handRaised).toBe(true);
+    raise("false");
+    expect(hand().handRaised).toBe(false);
+    // Someone already in the room with a lowered hand.
+    const late = conf.remoteJoin("r2", "Ravi");
+    late.props.raisedHand = "0";
+    conf.emit(EVENTS.conference.USER_JOINED, "r2", late);
+    expect(api.getSnapshot().participants.find((p) => p.id === "r2")!.handRaised).toBe(false);
+  });
+
+  it("lowers hands with Jitsi Meet's own message, and knows who is on this call screen", async () => {
+    const teacherFake = createFakeLib({ moderator: true });
+    const { api, conf } = await start(teacherFake);
+    expect(conf.calls).toContainEqual(["setLocalParticipantProperty", "m2mNative", "1"]);
+    const asha = conf.remoteJoin("r1", "Asha");
+    asha.props.m2mNative = "1";
+    conf.emit(EVENTS.conference.PARTICIPANT_PROPERTY_CHANGED, asha, "m2mNative", "", "1");
+    conf.remoteJoin("r2", "Ravi");
+    const snap = api.getSnapshot().participants;
+    expect(snap.find((p) => p.id === "r1")!.nativeClient).toBe(true);
+    expect(snap.find((p) => p.id === "r2")!.nativeClient).toBe(false);
+    api.executeCommand("lowerHand", "r2");
+    api.executeCommand("lowerAllHands");
+    expect(conf.calls).toContainEqual(["sendEndpointMessage", "r2", { name: "lower-hand-message" }]);
+    expect(conf.calls).toContainEqual(["broadcastEndpointMessage", { name: "lower-hand-message" }]);
   });
 
   it("obeys class controls only from the teacher", async () => {
@@ -361,8 +420,12 @@ describe("NativeJitsiApi", () => {
     expect(api.getSnapshot().spotlightId).toBeNull();
     expect(api.getSnapshot().unmuteRequestAt).toBeNull();
 
+    // ...nor with Jitsi Meet's own lower-hand message.
+    conf.remoteSignal("student", { name: "lower-hand-message" });
+    expect(me().handRaised).toBe(true);
+
     // The teacher can; asking to unmute only shows a prompt and never unmutes.
-    conf.remoteSignal("teacher", { m2m: 1, type: "lowerHand", id: "local1" });
+    conf.remoteSignal("teacher", { name: "lower-hand-message" });
     conf.remoteSignal("teacher", { m2m: 1, type: "spotlight", id: "student" });
     conf.remoteSignal("teacher", { m2m: 1, type: "askUnmute", id: "local1" });
     expect(me().handRaised).toBe(false);
@@ -382,7 +445,7 @@ describe("NativeJitsiApi", () => {
     const student = await start(fake);
     student.api.executeCommand("lowerAllHands");
     student.api.executeCommand("setSpotlight", "x");
-    expect(student.conf.calls.some((c) => c[0] === "broadcastEndpointMessage")).toBe(false);
+    expect(student.conf.calls.some((c) => c[0] === "broadcastEndpointMessage" || c[0] === "sendEndpointMessage")).toBe(false);
     student.api.dispose();
 
     const teacherFake = createFakeLib({ moderator: true });

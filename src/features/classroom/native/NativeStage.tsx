@@ -187,8 +187,9 @@ function ParticipantMenu({ p, isModerator, pinned, spotlighted, actions, trigger
         {isModerator && <DropdownMenuItem onClick={onSpotlight}><Star /> {spotlighted ? "Remove spotlight" : "Spotlight for everyone"}</DropdownMenuItem>}
         {isModerator && !p.isLocal && (
           <>
+            {/* Only people on this call screen can get the prompt; Jitsi's embedded page has no equivalent. */}
             {p.audioMuted
-              ? <DropdownMenuItem onClick={onAskUnmute}><Mic /> Ask to unmute</DropdownMenuItem>
+              ? p.nativeClient && <DropdownMenuItem onClick={onAskUnmute}><Mic /> Ask to unmute</DropdownMenuItem>
               : <DropdownMenuItem onClick={onMute}><MicOff /> Mute</DropdownMenuItem>}
             {p.handRaised && <DropdownMenuItem onClick={onLowerHand}><Hand /> Lower hand</DropdownMenuItem>}
             <DropdownMenuSeparator />
@@ -326,7 +327,7 @@ function ControlButton({ label, shortcut, state = "default", onClick, disabled, 
           ) : null}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="top">{label}{shortcut && <span className="ml-1.5 text-muted-foreground">{shortcut}</span>}</TooltipContent>
+      <TooltipContent side="top" className="[@media(hover:none)]:hidden">{label}{shortcut && <span className="ml-1.5 text-muted-foreground">{shortcut}</span>}</TooltipContent>
     </Tooltip>
   );
 }
@@ -673,6 +674,9 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
               <p className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-call-surface px-3 py-1.5 text-xs text-call-ink shadow-lg">
                 <Star className="h-3.5 w-3.5 fill-current text-brand-amber" aria-hidden />
                 {s.participants.find((p) => p.id === s.spotlightId)?.isLocal ? "You are spotlighted for everyone" : `${s.participants.find((p) => p.id === s.spotlightId)?.name ?? "Someone"} is spotlighted`}
+                {isModerator && s.participants.some((p) => !p.isLocal && !p.nativeClient) && (
+                  <span className="hidden text-call-ink/55 sm:inline">· not shown on the older class screen</span>
+                )}
                 {isModerator && <button onClick={() => api.executeCommand("setSpotlight", null)} className="font-medium text-brand-orange-ink hover:underline">Remove</button>}
               </p>
             )}
@@ -741,7 +745,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
                             <span className="text-sm font-medium">{m.self ? "You" : m.name}</span>
                             <span className="text-xs text-call-ink/50">{new Date(m.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
                           </p>
-                          <p className="mt-0.5 break-words text-sm text-call-ink/85">{m.text}</p>
+                          <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-call-ink/85"><ChatText text={m.text} /></p>
                         </li>
                       ))}
                     </ul>
@@ -854,7 +858,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
                     </button>
                   </PopoverTrigger>
                 </TooltipTrigger>
-                <TooltipContent side="top">Send a reaction</TooltipContent>
+                <TooltipContent side="top" className="[@media(hover:none)]:hidden">Send a reaction</TooltipContent>
               </Tooltip>
               <PopoverContent side="top" className="flex w-auto gap-1 rounded-full p-1.5">
                 {REACTIONS.map((emoji) => (
@@ -877,7 +881,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
                     </button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
-                <TooltipContent side="top">More options</TooltipContent>
+                <TooltipContent side="top" className="[@media(hover:none)]:hidden">More options</TooltipContent>
               </Tooltip>
               <DropdownMenuContent side="top" align="center" className="w-60">
                 <DropdownMenuItem className="sm:hidden" onClick={() => setPanel("people")}>
@@ -900,7 +904,7 @@ export default function NativeStage({ api, mode, canShareScreen, onLeave, hideLe
                     <PhoneOff className="h-5 w-5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="top">{mode === "teacher" ? "Leave or end the class" : "Leave class"}</TooltipContent>
+                <TooltipContent side="top" className="[@media(hover:none)]:hidden">{mode === "teacher" ? "Leave or end the class" : "Leave class"}</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -1138,6 +1142,27 @@ function DeviceSettings({ open, onOpenChange, api, state }: { open: boolean; onO
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Chat text with web links made clickable (http/https only; everything else stays plain text). */
+export function ChatText({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s<>"']+)/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (i % 2 === 0) return part;
+        // Trailing punctuation usually ends the sentence, not the link.
+        const url = part.replace(/[).,!?;:]+$/, "");
+        const rest = part.slice(url.length);
+        return (
+          <span key={i}>
+            <a href={url} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-orange-ink underline underline-offset-2 break-all">{url}</a>
+            {rest}
+          </span>
+        );
+      })}
+    </>
   );
 }
 

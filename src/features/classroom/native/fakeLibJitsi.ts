@@ -148,6 +148,7 @@ export class FakeConference {
   async stopRecording(id: string) { this.calls.push(["stopRecording", id]); }
   sendTextMessage(t: string) { this.calls.push(["sendTextMessage", t]); }
   broadcastEndpointMessage(payload: unknown) { this.calls.push(["broadcastEndpointMessage", payload]); }
+  sendEndpointMessage(to: string, payload: unknown) { this.calls.push(["sendEndpointMessage", to, payload]); }
   setReceiverConstraints(c: Record<string, unknown>) { this.calls.push(["setReceiverConstraints", c]); }
 
   // ---- helpers for tests: simulate the server ----

@@ -37,6 +37,11 @@ export interface NativeParticipant {
   lastSpokeAt?: number;
   /** Connection quality bucket from the library's stats; undefined until the first report. */
   quality?: ConnectionQuality;
+  /**
+   * On this app's own call screen (not Jitsi's embedded page), so it understands the class-only
+   * signals (ask to unmute, spotlight). Hands and reactions work for everyone.
+   */
+  nativeClient?: boolean;
   audioTrack?: JitsiTrack;
   videoTrack?: JitsiTrack;
   desktopTrack?: JitsiTrack;
@@ -147,10 +152,27 @@ export interface NativeJitsiOptions {
 let libInitialised = false;
 
 /** The raisedHand property carries the raise time as a string; older clients send "true". */
-function raisedTime(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 1_000_000_000_000 ? n : Date.now();
+/**
+ * The "raisedHand" presence property, read the way jitsi-meet itself reads it: a timestamp while
+ * the hand is up, and 0 / "0" / "" / "false" / missing once it's lowered (Jitsi's embedded page
+ * lowers a hand by setting 0, which arrives as the string "0"). Returns 0 for a lowered hand.
+ */
+export function parseRaisedHand(value: unknown): number {
+  if (value === undefined || value === null || value === "" || value === false || value === "false") return 0;
+  if (value === true || value === "true") return Date.now();
+  const n = typeof value === "number" ? value : parseInt(String(value), 10);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  // Older clients sent a small counter rather than a time; it still means "up".
+  return n > 1_000_000_000_000 ? n : Date.now();
 }
+
+/** Jitsi Meet's own reaction names (its "endpoint-reaction" message), mapped to what we show. */
+const JITSI_REACTIONS: Record<string, string> = { like: "👍", love: "❤️", laugh: "😂", surprised: "😮", clap: "👏", boo: "🙁", silence: "😶" };
+const JITSI_REACTION_FOR: Record<string, string> = Object.fromEntries(Object.entries(JITSI_REACTIONS).map(([k, v]) => [v, k]));
+/** Jitsi Meet's moderator "lower your hand" message (honoured only from a moderator). */
+const JITSI_LOWER_HAND = "lower-hand-message";
+/** Presence property marking participants on this app's own call screen. */
+const NATIVE_CLIENT_PROP = "m2mNative";
 
 export class NativeJitsiApi {
   readonly engine = "native" as const;
@@ -186,6 +208,10 @@ export class NativeJitsiApi {
   private localAudio: JitsiTrack | null = null;
   private localVideo: JitsiTrack | null = null;
   private localDesktop: JitsiTrack | null = null;
+  /** True while a share is being started (the browser's picker is open). */
+  private shareStarting = false;
+  /** Older single-stream servers: the share took the camera's place instead of going beside it. */
+  private shareReplacedCamera = false;
   private recordingSessionId: string | null = null;
   private sharingIds: string[] = [];
   /** Tile key (participant id, or "<id>:screen") -> max height the UI is actually showing it at. */
@@ -263,11 +289,12 @@ export class NativeJitsiApi {
         this.sendReaction(String(args[0]));
         break;
       // Teacher-only class controls. Every receiver re-checks that the sender is a moderator.
+      // Jitsi Meet's own message, so it works on the embedded page too (and on ours, see handleSignal).
       case "lowerHand":
-        if (this.state.isModerator) this.signal({ m2m: 1, type: "lowerHand", id: String(args[0]) });
+        if (this.state.isModerator) this.endpointMessage(String(args[0]), { name: JITSI_LOWER_HAND });
         break;
       case "lowerAllHands":
-        if (this.state.isModerator) this.signal({ m2m: 1, type: "lowerAllHands" });
+        if (this.state.isModerator) this.endpointMessage("", { name: JITSI_LOWER_HAND });
         break;
       case "askToUnmute":
         if (this.state.isModerator) this.signal({ m2m: 1, type: "askUnmute", id: String(args[0]) });
@@ -374,7 +401,10 @@ export class NativeJitsiApi {
     if (now - this.lastReactionAt < 1000) return;
     this.lastReactionAt = now;
     this.addReaction(this.state.localId, emoji);
-    this.signal({ m2m: 1, type: "reaction", emoji });
+    const key = JITSI_REACTION_FOR[emoji];
+    // Jitsi Meet's format where it has the reaction, so people on the embedded page see it too.
+    if (key) this.endpointMessage("", { name: "endpoint-reaction", reactions: [key], timestamp: now });
+    else this.signal({ m2m: 1, type: "reaction", emoji });
   }
 
   private addReaction(from: string, emoji: string) {
@@ -388,11 +418,16 @@ export class NativeJitsiApi {
   }
 
   private signal(payload: CallSignal) {
+    this.endpointMessage("", payload);
+  }
+
+  /** Data-channel message to one participant, or to everyone with "". Best-effort. */
+  private endpointMessage(to: string, payload: unknown) {
     const conf = this.conference;
     if (!conf) return;
     try {
-      if (conf.broadcastEndpointMessage) conf.broadcastEndpointMessage(payload);
-      else conf.sendEndpointMessage?.("", payload);
+      if (!to && conf.broadcastEndpointMessage) conf.broadcastEndpointMessage(payload);
+      else conf.sendEndpointMessage?.(to, payload);
     } catch {
       // The data channel can be briefly unavailable (e.g. while reconnecting); these are best-effort.
     }
@@ -400,10 +435,22 @@ export class NativeJitsiApi {
 
   /** Applies a message from another participant, after checking it's well-formed and allowed. */
   handleSignal(fromId: string, raw: unknown) {
-    if (!raw || typeof raw !== "object" || (raw as { m2m?: unknown }).m2m !== 1) return;
-    const msg = raw as CallSignal;
+    if (!raw || typeof raw !== "object") return;
     const sender = this.state.participants.find((p) => p.id === fromId);
     if (!sender || sender.isLocal) return;
+    // Jitsi Meet's own messages (from people on the embedded page, and our own reactions/hands).
+    const jitsi = raw as { name?: unknown; reactions?: unknown };
+    if (jitsi.name === "endpoint-reaction") {
+      const keys = Array.isArray(jitsi.reactions) ? jitsi.reactions : [];
+      for (const k of [...new Set(keys)].slice(0, 3)) if (typeof k === "string" && JITSI_REACTIONS[k]) this.addReaction(fromId, JITSI_REACTIONS[k]);
+      return;
+    }
+    if (jitsi.name === JITSI_LOWER_HAND) {
+      if (sender.role === "moderator" && this.local()?.handRaised) this.setRaisedHand(false);
+      return;
+    }
+    if ((raw as { m2m?: unknown }).m2m !== 1) return;
+    const msg = raw as CallSignal;
     if (MODERATOR_ONLY.has(msg.type) && sender.role !== "moderator") return;
     const me = this.state.localId;
     switch (msg.type) {
@@ -595,6 +642,7 @@ export class NativeJitsiApi {
     this.wireConference(conf);
     for (const t of [this.localAudio, this.localVideo]) if (t) void conf.addTrack(t).catch(() => undefined);
     conf.setDisplayName(this.displayName);
+    conf.setLocalParticipantProperty(NATIVE_CLIENT_PROP, "1");
     conf.join();
   }
 
@@ -712,10 +760,18 @@ export class NativeJitsiApi {
     });
 
     conf.on(E.PARTICIPANT_PROPERTY_CHANGED, (participant: JitsiParticipant, name: string, _old: unknown, value: unknown) => {
-      if (name !== "raisedHand") return;
       const id = participant.getId();
-      const handRaised = Boolean(value) && value !== "false";
-      this.patchParticipant(id, { handRaised, raisedAt: handRaised ? raisedTime(value) : undefined });
+      if (name === NATIVE_CLIENT_PROP) {
+        this.patchParticipant(id, { nativeClient: value === "1" });
+        return;
+      }
+      if (name !== "raisedHand") return;
+      const at = parseRaisedHand(value);
+      const handRaised = at > 0;
+      const before = this.state.participants.find((p) => p.id === id);
+      // Same state again (e.g. a re-sent presence): keep the original time so the queue order holds.
+      if (before && before.handRaised === handRaised) return;
+      this.patchParticipant(id, { handRaised, raisedAt: handRaised ? at : undefined });
       this.emit("raiseHandUpdated", { id, handRaised });
     });
 
@@ -788,8 +844,9 @@ export class NativeJitsiApi {
     const patch: Partial<NativeParticipant> = {
       name: user.getDisplayName()?.trim() || "Student",
       role: user.getRole?.() ?? "participant",
-      handRaised: Boolean(user.getProperty?.("raisedHand")),
-      raisedAt: user.getProperty?.("raisedHand") ? raisedTime(user.getProperty?.("raisedHand")) : undefined,
+      handRaised: parseRaisedHand(user.getProperty?.("raisedHand")) > 0,
+      raisedAt: parseRaisedHand(user.getProperty?.("raisedHand")) || undefined,
+      nativeClient: user.getProperty?.(NATIVE_CLIENT_PROP) === "1",
     };
     for (const t of user.getTracks?.() ?? []) Object.assign(patch, this.trackPatch(t, false));
     this.upsertParticipant(id, patch);
@@ -845,6 +902,9 @@ export class NativeJitsiApi {
   }
 
   private async startScreenShare() {
+    // A second click while the picker is still open must not start a second share.
+    if (this.shareStarting) return;
+    this.shareStarting = true;
     const fps = this.options.configOverwrite?.desktopSharingFrameRate;
     let desktop: JitsiTrack;
     try {
@@ -853,16 +913,23 @@ export class NativeJitsiApi {
     } catch {
       // Cancelled picker or OS permission off — JitsiLive's share hint covers the latter.
       return;
+    } finally {
+      this.shareStarting = false;
     }
-    if (!desktop || this.disposed) return;
+    if (!desktop || this.disposed) {
+      void desktop?.dispose?.().catch(() => undefined);
+      return;
+    }
     this.localDesktop = desktop;
     desktop.addEventListener(this.lib.events.track.LOCAL_TRACK_STOPPED, () => void this.stopScreenShare());
     try {
       // Multi-stream (current Jitsi): the share is a second video source beside the camera.
       await this.conference?.addTrack(desktop);
+      this.shareReplacedCamera = false;
     } catch {
       // Older single-stream servers: the share replaces the camera while it runs.
       await this.conference?.replaceTrack(this.localVideo, desktop).catch(() => undefined);
+      this.shareReplacedCamera = true;
     }
     this.patchParticipant(this.state.localId, { desktopTrack: desktop });
     this.recomputeSharing();
@@ -873,11 +940,17 @@ export class NativeJitsiApi {
     const desktop = this.localDesktop;
     if (!desktop) return;
     this.localDesktop = null;
-    try {
-      await this.conference?.removeTrack(desktop);
-    } catch {
+    if (this.shareReplacedCamera) {
+      // Put the (possibly newly chosen) camera back where the share was.
       await this.conference?.replaceTrack(desktop, this.localVideo).catch(() => undefined);
+    } else {
+      try {
+        await this.conference?.removeTrack(desktop);
+      } catch {
+        await this.conference?.replaceTrack(desktop, this.localVideo).catch(() => undefined);
+      }
     }
+    this.shareReplacedCamera = false;
     await desktop.dispose?.().catch(() => undefined);
     this.patchParticipant(this.state.localId, { desktopTrack: undefined });
     this.recomputeSharing();
@@ -949,8 +1022,9 @@ export class NativeJitsiApi {
     const wasMuted = old ? old.isMuted() : false;
     if (wasMuted) await created.mute?.();
     if (this.conference) {
-      // While presenting, the conference is sending the screen, not the camera; swap the camera quietly.
-      if (kind === "video" && this.localDesktop) {
+      // On an older server the share took the camera's place: swap the camera quietly and put it
+      // back when the share stops. On current servers the camera is sent beside the share.
+      if (kind === "video" && this.localDesktop && this.shareReplacedCamera) {
         /* picked up again when the share stops */
       } else if (old) {
         await this.conference.replaceTrack(old, created).catch(() => undefined);

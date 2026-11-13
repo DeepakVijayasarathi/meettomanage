@@ -98,6 +98,13 @@ export default function CallPreview() {
         NAMES.slice(role === "student" ? 1 : 0, n + (role === "student" ? 1 : 0)).forEach((name, i) =>
           conf.remoteJoin(`p${i}`, name, { camera: i % 4 !== 3, mic: true, role: role === "student" && i === 0 ? "moderator" : "participant" })
         );
+        // Half the class on this call screen, half on Jitsi's embedded page (as in a mixed rollout).
+        for (const [id, p] of conf.participants) {
+          if (Number(id.slice(1)) % 2 === 0) {
+            p.props.m2mNative = "1";
+            conf.emit(EVENTS.conference.PARTICIPANT_PROPERTY_CHANGED, p, "m2mNative", "", "1");
+          }
+        }
         // Some students muted, a few hands up, someone talking.
         for (let i = 1; i < n; i += 2) {
           const p = conf.participants.get(`p${i}`);
