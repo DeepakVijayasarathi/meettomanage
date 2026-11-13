@@ -978,7 +978,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
             <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 py-1 text-[#111] hover:text-[#C2410C]">
               <span aria-hidden className="block h-5 w-5 bg-[#25D366] [mask:url(/tool-logos/whatsapp.svg)_center/contain_no-repeat]" /> {t.whatsapp}
             </a>
-            <a href="mailto:info@infinityuniquers.com" className="flex items-center gap-1.5 py-1 text-[#111] hover:text-[#C2410C]">
+            <a href="mailto:support@meettomanage.cloud" className="flex items-center gap-1.5 py-1 text-[#111] hover:text-[#C2410C]">
               <Mail className="h-5 w-5 text-[#EA580C]" /> {t.email}
             </a>
             {leadSentName ? (

@@ -26,9 +26,9 @@ export const COPY: Record<Lang, HomeCopy> = {
     nav: { features: "Platform", classroom: "Live classroom", app: "Mobile app", customers: "Customers", pricing: "Pricing", faq: "FAQ", blog: "Blog", signIn: "Sign in", liveDemo: "Live demo", demo: "Book free demo", menu: "Open menu", closeMenu: "Close menu" },
     hero: {
       liveDemo: "Or try the live demo now, no sign-up",
-      words: ["Run", "your", "coaching", "centre", "from", "one", "place."],
-      accent: [5, 6],
-      sub: "Replace scattered video calls, spreadsheets and fee follow-ups with one platform for live classes, admissions, payments and parent updates.",
+      words: ["Turn", "enquiries", "into", "paid", "classes."],
+      accent: [3, 4],
+      sub: "The operating system for growing coaching centres: convert enquiries, collect fees on time and run every live class without spreadsheets or scattered WhatsApp threads.",
       demo: "Book free demo",
       watch: "Watch the walkthrough",
       trust: ["One login, 8 role-based portals", "Parent mobile app included", "Live classroom, fees and admissions"],

@@ -78,8 +78,8 @@ export function MarketingFooter() {
                 </a>
               </li>
               <li>
-                <a href="mailto:info@infinityuniquers.com" className={`${LINK} inline-flex items-center gap-2`}>
-                  <Mail className="h-4 w-4 shrink-0" /> <span>info@<wbr />infinityuniquers.com</span>
+                <a href="mailto:support@meettomanage.cloud" className={`${LINK} inline-flex items-center gap-2`}>
+                  <Mail className="h-4 w-4 shrink-0" /> <span>support@<wbr />meettomanage.cloud</span>
                 </a>
               </li>
             </ul>

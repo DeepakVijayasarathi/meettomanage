@@ -425,7 +425,14 @@ export default function Pricing() {
 
       <section className="mx-auto max-w-[1160px] px-5 pb-[clamp(72px,8vw,120px)]">
         {loading && <p className="mb-4 text-center text-sm text-[#5B6472]" aria-live="polite">{t.loading}</p>}
-        <div className={cn(HERO_OVERLAP, "grid grid-cols-1 gap-4 md:grid-cols-2 lg:items-stretch", visible.length >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
+        {lang === "en" && <div className={cn(HERO_OVERLAP, "mb-6 grid gap-3 rounded-3xl border border-[#EBCFB7] bg-[#FFF8F3] p-4 sm:grid-cols-3 sm:p-5")}>
+          {[
+            { stage: "Starting out", plan: "Free", reason: "Run classes and organise up to 20 active students." },
+            { stage: "Growing operations", plan: "Starter", reason: "Add admissions, fees, recordings and academy branding." },
+            { stage: "Scaling the team", plan: "Growth", reason: "Support larger teams, more storage, WhatsApp and API access." },
+          ].map((item) => <div key={item.plan} className="rounded-2xl bg-white p-4"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#C2410C]">{item.stage}</p><p className="mt-1 font-display text-lg font-extrabold text-[#111]">Choose {item.plan}</p><p className="mt-1 text-sm leading-relaxed text-[#5B6472]">{item.reason}</p></div>)}
+        </div>}
+        <div className={cn("grid grid-cols-1 gap-4 md:grid-cols-2 lg:items-stretch", lang !== "en" && HERO_OVERLAP, visible.length >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
           {visible.map((plan) => {
             const free = isFreePlan(plan);
             const month = planPrice(plan, "Month", currency);

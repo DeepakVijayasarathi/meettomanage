@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { ArrowRight, Bell, Smartphone, Tag, Video, BookOpenText, UserRound, Mail, MessageSquare, Calculator, CheckCircle2, ChevronDown, Code2, CreditCard, GraduationCap, Languages, Lock, ShieldCheck, Sparkles, Users, type LucideIcon } from "lucide-react";
+import { ArrowRight, Bell, Smartphone, Tag, Video, BookOpenText, UserRound, Mail, MessageSquare, Calculator, CheckCircle2, ChevronDown, Code2, CreditCard, GraduationCap, Languages, Lock, ShieldCheck, Sparkles, Users, CalendarCheck2, IndianRupee, Upload, BrainCircuit, type LucideIcon } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { saasPublic } from "@/api/saas";
 import { apiEnabled } from "@/lib/api";
@@ -14,7 +14,6 @@ import { ChaosToOne } from "./ChaosToOne";
 import { MarketingFooter } from "./MarketingFooter";
 import { BTN_PRIMARY, MarketingNav } from "./MarketingNav";
 import { OpenSourceStrip } from "./OpenSourceStrip";
-import { FreeGamesPromo } from "./games/FreeGamesPromo";
 import { SALES_WHATSAPP_URL } from "./WalkthroughCta";
 import { COPY } from "./home/copy";
 import { ExplainerVideo } from "./home/ExplainerVideo";
@@ -108,6 +107,14 @@ function CardArt({ index }: { index: number }) {
 
 const SECURITY_ICONS: LucideIcon[] = [Lock, CreditCard, ShieldCheck];
 const AUDIENCE_ICONS: Record<string, LucideIcon> = { abacus: Calculator, phonics: BookOpenText, english: Languages, tuition: GraduationCap, coding: Code2, trainer: Users };
+const JOURNEY = [
+  { label: "Enquiry", detail: "Capture every lead", icon: MessageSquare },
+  { label: "Demo", detail: "Book and follow up", icon: CalendarCheck2 },
+  { label: "Admission", detail: "Keep one student record", icon: GraduationCap },
+  { label: "Invoice", detail: "Collect and reconcile fees", icon: IndianRupee },
+  { label: "Class", detail: "Teach and mark attendance", icon: Video },
+  { label: "Parent update", detail: "Share progress automatically", icon: Smartphone },
+];
 const EYEBROW = "text-xs font-bold uppercase tracking-[0.12em] text-[#C2410C] rtl:tracking-normal";
 const H2 = "font-display text-[clamp(1.65rem,3vw,2.5rem)] font-extrabold leading-[1.08] tracking-[-0.035em] text-[#1C1917] rtl:tracking-normal";
 
@@ -119,6 +126,8 @@ export default function MarketingHome() {
   const [aiOpenRequest, setAiOpenRequest] = useState(0);
   const [chatReady, setChatReady] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [weeklyAdminHours, setWeeklyAdminHours] = useState(12);
+  const [adminHourlyCost, setAdminHourlyCost] = useState(250);
   const currency = useMemo(detectMarketCurrency, []);
   const [fromInr, setFromInr] = useState(2999);
   const [fromUsd, setFromUsd] = useState<number | null>(null);
@@ -152,7 +161,7 @@ export default function MarketingHome() {
     () =>
       JSON.stringify([
         // Same @id as the Organization in index.html, so search engines merge the two instead of seeing two companies.
-        { "@context": "https://schema.org", "@type": "Organization", "@id": "https://meettomanage.cloud/#organization", name: "Meet to Manage", url: "https://meettomanage.cloud/", logo: "https://meettomanage.cloud/logo-icon.png", email: "info@infinityuniquers.com", parentOrganization: { "@type": "Organization", name: "Infinity Uniquers" } },
+        { "@context": "https://schema.org", "@type": "Organization", "@id": "https://meettomanage.cloud/#organization", name: "Meet to Manage", url: "https://meettomanage.cloud/", logo: "https://meettomanage.cloud/logo-icon.png", email: "support@meettomanage.cloud", parentOrganization: { "@type": "Organization", name: "Infinity Uniquers" } },
         { "@context": "https://schema.org", "@type": "SoftwareApplication", "@id": "https://meettomanage.cloud/#software", url: "https://meettomanage.cloud/", publisher: { "@id": "https://meettomanage.cloud/#organization" }, name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", description: COPY.en.hero.sub, featureList: ["Interactive live classes", "Admissions CRM", "Batch scheduling and attendance", "Automated fee collection", "Parent mobile app", "Academy reports"], offers: { "@type": "Offer", priceCurrency: "INR", price: fromInr, url: "https://meettomanage.cloud/pricing" } },
         { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: COPY.en.faq.items.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
       ]),
@@ -255,7 +264,51 @@ export default function MarketingHome() {
         </section>}
 
         {lang === "en" && <section className="bg-white px-5 py-[clamp(32px,4vw,56px)]"><OpenSourceStrip /></section>}
-        {lang === "en" && <FreeGamesPromo />}
+
+        {/* Free games remain available under Resources; this page keeps the buyer journey focused. */}
+
+        {lang === "en" && <section aria-labelledby="connected-journey-heading" className="border-y border-[#253044] bg-[#111827] py-[clamp(56px,6vw,88px)] text-white">
+          <div className="mx-auto max-w-[1200px] px-5">
+            <div className="max-w-[760px]">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-orange-300">One connected student record</p>
+              <h2 id="connected-journey-heading" className="font-display mt-4 text-[clamp(1.75rem,3.2vw,2.75rem)] font-extrabold leading-[1.08] tracking-[-0.035em]">From first enquiry to the next paid class.</h2>
+              <p className="mt-5 text-lg leading-relaxed text-slate-300">Your team sees the same history at every step. No copying names between a form, spreadsheet, payment app and video-call link.</p>
+            </div>
+            <ol className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+              {JOURNEY.map((step, index) => {
+                const Icon = step.icon;
+                return <li key={step.label} className="relative rounded-2xl border border-white/10 bg-white/[0.06] p-5">
+                  <div className="flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/15 text-orange-300"><Icon className="h-5 w-5" /></span><span className="text-xs font-bold text-slate-500">0{index + 1}</span></div>
+                  <h3 className="mt-5 font-display font-extrabold">{step.label}</h3><p className="mt-1 text-sm leading-relaxed text-slate-400">{step.detail}</p>
+                  {index < JOURNEY.length - 1 && <ArrowRight aria-hidden="true" className="absolute -end-3 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 text-orange-300 lg:block" />}
+                </li>;
+              })}
+            </ol>
+            <div className="mt-8 flex flex-wrap gap-3"><Link to="/demo-login" className={cn(BTN_PRIMARY, "!rounded-full")}>Try the workflow live <ArrowRight className="h-4 w-4" /></Link><Link to="/get-started?intent=migration" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3.5 text-sm font-bold text-white hover:bg-white/10"><Upload className="h-4 w-4" /> Plan my migration</Link></div>
+          </div>
+        </section>}
+
+        {lang === "en" && <section aria-labelledby="owner-briefing-heading" className="bg-white py-[clamp(56px,6vw,88px)]">
+          <div className="mx-auto grid max-w-[1200px] gap-8 px-5 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+            <div><p className={EYEBROW}>AI owner briefing</p><h2 id="owner-briefing-heading" className={cn(H2, "mt-4")}>Know what needs attention today.</h2><p className="mt-5 text-lg leading-relaxed text-[#57534E]">The AI Command Center reads your academy's live operating data and ranks actions. It explains the evidence behind every suggestion instead of giving generic advice.</p><Link to="/get-started?intent=ai-briefing" className={cn(BTN_PRIMARY, "mt-7")}>See it with your workflow <ArrowRight className="h-4 w-4" /></Link></div>
+            <div className="rounded-3xl border border-[#EFE3D7] bg-[#FFF8F3] p-5 shadow-[0_28px_70px_-45px_rgba(194,65,12,.55)] sm:p-7">
+              <div className="flex items-center gap-3 border-b border-[#EBD9CA] pb-5"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#C2410C] text-white"><BrainCircuit className="h-5 w-5" /></span><div><p className="font-display font-extrabold">Today’s owner briefing</p><p className="text-xs text-[#6B625B]">Prioritised from live academy data</p></div></div>
+              <ul className="mt-5 grid gap-3 sm:grid-cols-2">{["Leads that need a follow-up", "Fees most likely to become overdue", "Students showing disengagement", "Batches with attendance risk", "Suggested WhatsApp messages", "Weekly collections and class summary"].map((item, index) => <li key={item} className="flex gap-3 rounded-2xl bg-white p-4 text-sm font-semibold text-[#292524]"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FFF0E3] text-xs font-extrabold text-[#C2410C]">{index + 1}</span>{item}</li>)}</ul>
+              <p className="mt-4 text-xs leading-relaxed text-[#6B625B]">Recommendations depend on the records available in your academy. You stay in control before any follow-up is sent.</p>
+            </div>
+          </div>
+        </section>}
+
+        {lang === "en" && <section aria-labelledby="migration-heading" className="bg-[#FFF8F3] py-[clamp(48px,5vw,72px)]">
+          <div className="mx-auto max-w-[1200px] px-5"><div className="rounded-3xl border border-[#EBCFB7] bg-white p-7 sm:p-10"><div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center"><div><p className={EYEBROW}>Guided migration</p><h2 id="migration-heading" className={cn(H2, "mt-3")}>Bring your spreadsheets, video links and WhatsApp process.</h2><p className="mt-4 max-w-3xl text-lg leading-relaxed text-[#57534E]">We map your student and prospect columns, verify the import, configure batches and fee plans, then help your team run its first class. Your existing process becomes the starting point—not a barrier.</p></div><Link to="/get-started?intent=migration" className={cn(BTN_PRIMARY, "shrink-0")}>Get a migration plan <ArrowRight className="h-4 w-4" /></Link></div><ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{["Spreadsheet data mapped", "Student records verified", "Batches and fees configured", "Team onboarding included"].map((item) => <li key={item} className="flex items-center gap-3 rounded-xl bg-[#FFF8F3] px-4 py-3 text-sm font-bold"><CheckCircle2 className="h-4 w-4 shrink-0 text-[#EA580C]" />{item}</li>)}</ul></div></div>
+        </section>}
+
+        {lang === "en" && <section aria-labelledby="roi-heading" className="bg-white py-[clamp(56px,6vw,88px)]">
+          <div className="mx-auto grid max-w-[1200px] gap-8 px-5 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+            <div><p className={EYEBROW}>Admin cost calculator</p><h2 id="roi-heading" className={cn(H2, "mt-4")}>See what manual administration costs today.</h2><p className="mt-4 max-w-2xl text-lg leading-relaxed text-[#57534E]">Use your real workload as the baseline for a product demo. We will map which follow-ups, reminders and reports can be automated; we do not assume a saving percentage.</p><div className="mt-8 grid gap-6 sm:grid-cols-2"><label className="text-sm font-bold text-[#292524]">Admin hours each week <span className="float-right text-[#C2410C]">{weeklyAdminHours} hours</span><input type="range" min="1" max="60" value={weeklyAdminHours} onChange={(event) => setWeeklyAdminHours(Number(event.target.value))} className="mt-3 w-full accent-[#C2410C]" /></label><label className="text-sm font-bold text-[#292524]">Average hourly cost <span className="float-right text-[#C2410C]">₹{adminHourlyCost}</span><input type="range" min="100" max="1500" step="50" value={adminHourlyCost} onChange={(event) => setAdminHourlyCost(Number(event.target.value))} className="mt-3 w-full accent-[#C2410C]" /></label></div></div>
+            <div className="rounded-3xl bg-[#111827] p-7 text-white shadow-[0_28px_70px_-45px_rgba(17,24,39,.8)] sm:p-9"><span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-300"><Calculator className="h-6 w-6" /></span><p className="mt-6 text-sm font-semibold text-slate-400">Current manual-admin baseline</p><p className="font-display mt-2 text-[clamp(2.3rem,5vw,4rem)] font-extrabold tracking-tight">₹{Math.round(weeklyAdminHours * adminHourlyCost * 4.33).toLocaleString("en-IN")}<span className="text-lg font-semibold text-slate-400"> / month</span></p><p className="mt-3 text-sm leading-relaxed text-slate-400">Based on {weeklyAdminHours} hours a week at ₹{adminHourlyCost} an hour. This estimates current effort—not guaranteed savings.</p><Link to={`/get-started?intent=roi&hours=${weeklyAdminHours}&rate=${adminHourlyCost}`} className={cn(BTN_PRIMARY, "mt-6")}>Map my automation opportunities <ArrowRight className="h-4 w-4" /></Link></div>
+          </div>
+        </section>}
 
         {/* PROOF: what it's built on */}
         <section aria-label={c.proof.label} className="border-b border-[#EFE3D7] bg-white py-7">
