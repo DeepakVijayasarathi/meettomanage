@@ -267,24 +267,24 @@ export default function MarketingHome() {
 
         {/* Free games remain available under Resources; this page keeps the buyer journey focused. */}
 
-        {lang === "en" && <section aria-labelledby="connected-journey-heading" className="border-y border-[#253044] bg-[#111827] py-[clamp(56px,6vw,88px)] text-white">
+        {lang === "en" && <section aria-labelledby="connected-journey-heading" className="border-y border-[#F2DFCE] bg-[#FFF6EE] py-[clamp(56px,6vw,88px)] text-[#1C1917]">
           <div className="mx-auto max-w-[1200px] px-5">
             <div className="max-w-[760px]">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-orange-300">One connected student record</p>
+              <p className={EYEBROW}>One connected student record</p>
               <h2 id="connected-journey-heading" className="font-display mt-4 text-[clamp(1.75rem,3.2vw,2.75rem)] font-extrabold leading-[1.08] tracking-[-0.035em]">From first enquiry to the next paid class.</h2>
-              <p className="mt-5 text-lg leading-relaxed text-slate-300">Your team sees the same history at every step. No copying names between a form, spreadsheet, payment app and video-call link.</p>
+              <p className="mt-5 text-lg leading-relaxed text-[#57534E]">Your team sees the same history at every step. No copying names between a form, spreadsheet, payment app and video-call link.</p>
             </div>
             <ol className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
               {JOURNEY.map((step, index) => {
                 const Icon = step.icon;
-                return <li key={step.label} className="relative rounded-2xl border border-white/10 bg-white/[0.06] p-5">
-                  <div className="flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/15 text-orange-300"><Icon className="h-5 w-5" /></span><span className="text-xs font-bold text-slate-500">0{index + 1}</span></div>
-                  <h3 className="mt-5 font-display font-extrabold">{step.label}</h3><p className="mt-1 text-sm leading-relaxed text-slate-400">{step.detail}</p>
-                  {index < JOURNEY.length - 1 && <ArrowRight aria-hidden="true" className="absolute -end-3 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 text-orange-300 lg:block" />}
+                return <li key={step.label} className="relative rounded-2xl border border-[#EBCFB7] bg-white p-5 shadow-[0_16px_36px_-28px_rgba(194,65,12,.5)]">
+                  <div className="flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF0E3] text-[#C2410C]"><Icon className="h-5 w-5" /></span><span className="text-xs font-bold text-[#A8A29E]">0{index + 1}</span></div>
+                  <h3 className="mt-5 font-display font-extrabold text-[#1C1917]">{step.label}</h3><p className="mt-1 text-sm leading-relaxed text-[#6B625B]">{step.detail}</p>
+                  {index < JOURNEY.length - 1 && <ArrowRight aria-hidden="true" className="absolute -end-3 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 text-[#EA580C] lg:block" />}
                 </li>;
               })}
             </ol>
-            <div className="mt-8 flex flex-wrap gap-3"><Link to="/demo-login" className={cn(BTN_PRIMARY, "!rounded-full")}>Try the workflow live <ArrowRight className="h-4 w-4" /></Link><Link to="/get-started?intent=migration" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3.5 text-sm font-bold text-white hover:bg-white/10"><Upload className="h-4 w-4" /> Plan my migration</Link></div>
+            <div className="mt-8 flex flex-wrap gap-3"><Link to="/demo-login" className={cn(BTN_PRIMARY, "!rounded-full")}>Try the workflow live <ArrowRight className="h-4 w-4" /></Link><Link to="/get-started?intent=migration" className="inline-flex items-center gap-2 rounded-full border border-[#E8C8AD] bg-white px-6 py-3.5 text-sm font-bold text-[#9A3412] hover:bg-[#FFF3EA]"><Upload className="h-4 w-4" /> Plan my migration</Link></div>
           </div>
         </section>}
 
@@ -306,7 +306,7 @@ export default function MarketingHome() {
         {lang === "en" && <section aria-labelledby="roi-heading" className="bg-white py-[clamp(56px,6vw,88px)]">
           <div className="mx-auto grid max-w-[1200px] gap-8 px-5 lg:grid-cols-[1fr_0.9fr] lg:items-center">
             <div><p className={EYEBROW}>Admin cost calculator</p><h2 id="roi-heading" className={cn(H2, "mt-4")}>See what manual administration costs today.</h2><p className="mt-4 max-w-2xl text-lg leading-relaxed text-[#57534E]">Use your real workload as the baseline for a product demo. We will map which follow-ups, reminders and reports can be automated; we do not assume a saving percentage.</p><div className="mt-8 grid gap-6 sm:grid-cols-2"><label className="text-sm font-bold text-[#292524]">Admin hours each week <span className="float-right text-[#C2410C]">{weeklyAdminHours} hours</span><input type="range" min="1" max="60" value={weeklyAdminHours} onChange={(event) => setWeeklyAdminHours(Number(event.target.value))} className="mt-3 w-full accent-[#C2410C]" /></label><label className="text-sm font-bold text-[#292524]">Average hourly cost <span className="float-right text-[#C2410C]">₹{adminHourlyCost}</span><input type="range" min="100" max="1500" step="50" value={adminHourlyCost} onChange={(event) => setAdminHourlyCost(Number(event.target.value))} className="mt-3 w-full accent-[#C2410C]" /></label></div></div>
-            <div className="rounded-3xl bg-[#111827] p-7 text-white shadow-[0_28px_70px_-45px_rgba(17,24,39,.8)] sm:p-9"><span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-300"><Calculator className="h-6 w-6" /></span><p className="mt-6 text-sm font-semibold text-slate-400">Current manual-admin baseline</p><p className="font-display mt-2 text-[clamp(2.3rem,5vw,4rem)] font-extrabold tracking-tight">₹{Math.round(weeklyAdminHours * adminHourlyCost * 4.33).toLocaleString("en-IN")}<span className="text-lg font-semibold text-slate-400"> / month</span></p><p className="mt-3 text-sm leading-relaxed text-slate-400">Based on {weeklyAdminHours} hours a week at ₹{adminHourlyCost} an hour. This estimates current effort—not guaranteed savings.</p><Link to={`/get-started?intent=roi&hours=${weeklyAdminHours}&rate=${adminHourlyCost}`} className={cn(BTN_PRIMARY, "mt-6")}>Map my automation opportunities <ArrowRight className="h-4 w-4" /></Link></div>
+            <div className="rounded-3xl border border-[#EBCFB7] bg-gradient-to-br from-[#FFF3EA] via-[#FFF8F3] to-white p-7 text-[#1C1917] shadow-[0_28px_70px_-45px_rgba(194,65,12,.55)] sm:p-9"><span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFE3CF] text-[#C2410C]"><Calculator className="h-6 w-6" /></span><p className="mt-6 text-sm font-semibold text-[#6B625B]">Current manual-admin baseline</p><p className="font-display mt-2 text-[clamp(2.3rem,5vw,4rem)] font-extrabold tracking-tight text-[#C2410C]">₹{Math.round(weeklyAdminHours * adminHourlyCost * 4.33).toLocaleString("en-IN")}<span className="text-lg font-semibold text-[#6B625B]"> / month</span></p><p className="mt-3 text-sm leading-relaxed text-[#57534E]">Based on {weeklyAdminHours} hours a week at ₹{adminHourlyCost} an hour. This estimates current effort—not guaranteed savings.</p><Link to={`/get-started?intent=roi&hours=${weeklyAdminHours}&rate=${adminHourlyCost}`} className={cn(BTN_PRIMARY, "mt-6")}>Map my automation opportunities <ArrowRight className="h-4 w-4" /></Link></div>
           </div>
         </section>}
 
@@ -484,7 +484,7 @@ export default function MarketingHome() {
             </Reveal>
             <Reveal delay={120} className="mt-10">
               <div className="rounded-[28px] bg-gradient-to-b from-[#FB923C] to-[#EA580C] p-[5px] shadow-[0_40px_80px_-30px_rgba(194,65,12,0.65)]">
-                <div className="overflow-hidden rounded-[23px] bg-[#0B1220]">
+                <div className="overflow-hidden rounded-[23px] bg-[#FFF8F3]">
                   <ExplainerVideo title={c.video.heading} />
                 </div>
               </div>

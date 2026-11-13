@@ -110,6 +110,7 @@ const T = {
       feature_white_label: "Your academy's branding",
       feature_whatsapp: "WhatsApp notifications",
       feature_custom_domain: "Custom domain",
+      feature_api_access: "API access",
     } as Record<string, string>,
     planCta: "Book free demo",
     reassure: "Free 30-minute platform walkthrough. No payment details.",
@@ -189,6 +190,7 @@ const T = {
       feature_white_label: "هوية أكاديميتك",
       feature_whatsapp: "إشعارات واتساب",
       feature_custom_domain: "نطاق خاص",
+      feature_api_access: "وصول API",
     } as Record<string, string>,
     planCta: "اطلب عرضًا توضيحيًا",
     reassure: "جولة مجانية لمدة 30 دقيقة. بلا تفاصيل دفع.",
@@ -318,7 +320,7 @@ function Row({ on, label, locked }: { on: boolean; label: string; locked?: boole
   return (
     <li className="flex items-start gap-2.5">
       {on ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#EA580C]" /> : <Off className="mt-0.5 h-4 w-4 shrink-0 text-[#A8A29E]" />}
-      <span className={cn("text-sm leading-relaxed", on ? "text-[#111]" : "text-[#8A837D]")}>{label}</span>
+      <span className={cn("text-sm leading-relaxed", on ? "text-[#111]" : "text-[#8A837D]")}>{!on && <span className="sr-only">Not included: </span>}{label}</span>
     </li>
   );
 }

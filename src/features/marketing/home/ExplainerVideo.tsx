@@ -10,7 +10,7 @@ export function ExplainerVideo({ title }: { title: string }) {
   const [thumb, setThumb] = useState(`https://i.ytimg.com/vi/${VIDEO_ID}/maxresdefault.jpg`);
 
   return (
-    <div className="relative aspect-video overflow-hidden bg-[#0B1220]">
+    <div className="relative aspect-video overflow-hidden bg-[#FFF8F3]">
       {playing ? (
         <iframe
           src={`https://www.youtube-nocookie.com/embed/${VIDEO_ID}?autoplay=1&rel=0&modestbranding=1`}
@@ -37,7 +37,7 @@ export function ExplainerVideo({ title }: { title: string }) {
             decoding="async"
             className="absolute inset-0 h-full w-full object-cover"
           />
-          <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[#0B1220]/55 via-transparent to-transparent transition-colors group-hover:from-[#0B1220]/65" />
+          <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[#7C2D12]/35 via-transparent to-transparent transition-colors group-hover:from-[#7C2D12]/45" />
           <span className="relative flex h-24 w-24 items-center justify-center rounded-full bg-[#EA580C] text-white shadow-[0_0_0_8px_rgba(255,255,255,0.9),0_24px_50px_-10px_rgba(194,65,12,0.8)] transition-transform duration-300 group-hover:scale-110">
             <Play className="h-9 w-9 translate-x-0.5 rtl:-translate-x-0.5 rtl:-scale-x-100" fill="currentColor" />
           </span>

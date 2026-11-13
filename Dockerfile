@@ -31,7 +31,12 @@ COPY . .
 # now be byte-identical on every branch (it only ever holds the real prod URL), and
 # UAT's own config lives in its own file (.env.uat) that main never touches at all.
 ARG BUILD_MODE=production
+ARG RELEASE_VERSION=local
+ARG GIT_COMMIT=unknown
 RUN if [ "$BUILD_MODE" = "uat" ]; then npm run build:uat; else npm run build; fi
+# A tiny immutable deployment fingerprint lets Jenkins and support verify that the
+# container serving traffic is the commit that passed the quality gate.
+RUN printf '{"version":"%s","commit":"%s"}\n' "$RELEASE_VERSION" "$GIT_COMMIT" > /app/dist/release.json
 
 FROM nginx:1.27-alpine AS final
 COPY nginx.conf /etc/nginx/conf.d/default.conf

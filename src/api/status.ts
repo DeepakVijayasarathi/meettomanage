@@ -4,6 +4,7 @@ export interface PublicStatusSummary {
   title: string; description: string; supportUrl: string | null; refreshSeconds: number; overallStatus: PublicStatus;
   components: { key: string; name: string; description: string | null; status: PublicStatus }[];
   incident: { title: string; message: string | null; startedAtUtc: string | null } | null;
+  history: { title: string; message: string | null; status: PublicStatus; startedAtUtc: string; resolvedAtUtc: string }[];
   checkedAtUtc: string;
 }
 export async function getPublicStatus(signal?: AbortSignal): Promise<PublicStatusSummary> {
