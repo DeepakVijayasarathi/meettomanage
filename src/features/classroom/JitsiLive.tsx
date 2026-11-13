@@ -2173,7 +2173,7 @@ export default function JitsiLive({
                 <span className={cn("relative inline-flex h-2 w-2 rounded-full", error ? "bg-call-ink/30" : "bg-destructive")} />
               </span>
               <p className={cn("truncate text-sm font-semibold tracking-tight text-call-ink", mode === "teacher" && "hidden sm:block")}>{title ?? "Live class"}</p>
-              {mode === "teacher" && <span className="hidden text-xs font-semibold text-call-ink/80 min-[400px]:inline sm:hidden">Live</span>}
+              {mode === "teacher" && <span className="hidden text-xs font-semibold text-call-ink/80 [@media(min-width:400px)]:inline sm:hidden">Live</span>}
             </div>
             <p className="hidden text-[10px] font-medium uppercase tracking-wide text-call-ink/40 sm:block">Live classroom</p>
           </div>

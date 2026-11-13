@@ -253,7 +253,7 @@ export default function FounderDashboard() {
         </div>
       </Card>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 min-[1360px]:grid-cols-5">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 [@media(min-width:1360px)]:grid-cols-5">
         <KpiCard
           label="Active Enrollments"
           value={formatNumber(summary.totalEnrollments)}

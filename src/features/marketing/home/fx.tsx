@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from "react";
+import { useRef, type CSSProperties, type ElementType, type ReactNode } from "react";
 import { useInView } from "@/hooks/useInView";
 import { cn } from "@/lib/utils";
 
@@ -17,35 +17,9 @@ export function Reveal({ children, delay = 0, className, as: Tag = "div" }: { ch
   );
 }
 
-/** Counts up to `to` when scrolled into view. Shows the final value straight away under reduced motion. */
-export function CountUp({ to, prefix = "", suffix = "", duration = 1400, locale = "en-IN" }: { to: number; prefix?: string; suffix?: string; duration?: number; locale?: string }) {
-  const { ref, inView } = useInView<HTMLSpanElement>(0.4);
-  const [value, setValue] = useState(0);
-  const reduced = typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-  useEffect(() => {
-    if (!inView) return;
-    if (reduced) {
-      setValue(to);
-      return;
-    }
-    let raf = 0;
-    const begin = performance.now();
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - begin) / duration);
-      setValue(Math.round(to * (1 - Math.pow(1 - p, 3))));
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [inView, reduced, to, duration]);
-
-  return (
-    <span ref={ref}>
-      <span className="sr-only">{prefix}{to.toLocaleString(locale)}{suffix}</span>
-      <span aria-hidden="true">{prefix}{value.toLocaleString(locale)}{suffix}</span>
-    </span>
-  );
+/** A stable metric for crawlers, assistive technology and no-JavaScript visitors. */
+export function CountUp({ to, prefix = "", suffix = "", locale = "en-IN" }: { to: number; prefix?: string; suffix?: string; locale?: string }) {
+  return <span>{prefix}{to.toLocaleString(locale)}{suffix}</span>;
 }
 
 /** A card with a soft orange spotlight that follows the pointer. */

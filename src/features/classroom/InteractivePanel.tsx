@@ -432,31 +432,31 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
           <TabsList className="w-full gap-1 rounded-full bg-call-ink/5 p-1">
             <TabsTrigger
               value="board"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs [@media(max-width:639px)]:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <PencilRuler className="h-3.5 w-3.5" /> Board
             </TabsTrigger>
             <TabsTrigger
               value="slides"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs [@media(max-width:639px)]:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <Presentation className="h-3.5 w-3.5" /> Slides
             </TabsTrigger>
             <TabsTrigger
               value="quiz"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs [@media(max-width:639px)]:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <Sparkles className="h-3.5 w-3.5" /> Quiz
             </TabsTrigger>
             <TabsTrigger
               value="stars"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs [@media(max-width:639px)]:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <Trophy className="h-3.5 w-3.5" /> Stars
             </TabsTrigger>
             <TabsTrigger
               value="people"
-              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs max-sm:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
+              className="flex-1 gap-1 rounded-full px-2 text-xs text-call-ink/60 sm:text-sm lg:text-xs [@media(max-width:639px)]:[&>svg]:hidden data-[state=active]:bg-brand-orange-deep data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-brand-orange/25"
             >
               <Users className="h-3.5 w-3.5" /> People
               {roster.length > 0 && (

@@ -39,44 +39,6 @@ pipeline {
             }
         }
 
-        stage('Remove Old Container') {
-            steps {
-                sh '''
-                    echo "Stopping old container..."
-
-                    docker stop ${CONTAINER_NAME} || true
-                    docker rm ${CONTAINER_NAME} || true
-
-                    echo "Old container removed"
-                '''
-            }
-        }
-
-        stage('Remove Old Image') {
-            steps {
-                sh '''
-                    echo "Removing old image..."
-
-                    docker rmi ${IMAGE_NAME}:latest || true
-
-                    echo "Old image removed"
-                '''
-            }
-        }
-
-        stage('Clear Docker Cache') {
-            steps {
-                sh '''
-                    echo "Clearing Docker cache..."
-
-                    docker builder prune -af || true
-                    docker image prune -af || true
-
-                    echo "Docker cache cleared"
-                '''
-            }
-        }
-
         stage('Docker Build') {
             steps {
                 script {
@@ -89,7 +51,7 @@ pipeline {
                     --pull \
                     --build-arg RELEASE_VERSION=${RELEASE_VERSION} \
                     --build-arg GIT_COMMIT=${GIT_COMMIT} \
-                    -t ${IMAGE_NAME}:latest \
+                    -t ${IMAGE_NAME}:${RELEASE_VERSION} \
                     -f Dockerfile .
 
                     echo "Docker image build completed"
@@ -98,43 +60,61 @@ pipeline {
             }
         }
 
-        stage('Run Container') {
+        stage('Verify Candidate') {
             steps {
-                sh '''
-                    echo "Starting new container..."
-
+                sh """
+                    CANDIDATE=${CONTAINER_NAME}-candidate-${BUILD_NUMBER}
+                    docker rm -f \${CANDIDATE} >/dev/null 2>&1 || true
                     docker run -d \
-                    --restart unless-stopped \
-                    --name ${CONTAINER_NAME} \
-                    -p 2100:80 \
-                    ${IMAGE_NAME}:latest
-
-                    echo "Container started"
-                '''
+                      --name \${CANDIDATE} \
+                      -p 127.0.0.1:2101:80 \
+                      ${IMAGE_NAME}:${RELEASE_VERSION}
+                    for attempt in \$(seq 1 20); do
+                      curl --fail --silent http://127.0.0.1:2101/release.json >/dev/null && break
+                      test "\${attempt}" -eq 20 && { docker logs --tail 100 \${CANDIDATE}; exit 1; }
+                      sleep 1
+                    done
+                    RELEASE_JSON=\$(curl --fail --silent --show-error http://127.0.0.1:2101/release.json)
+                    echo "\${RELEASE_JSON}" | grep -F '"version":"${RELEASE_VERSION}"'
+                    echo "\${RELEASE_JSON}" | grep -F '"commit":"${GIT_COMMIT}"'
+                    curl --fail --silent http://127.0.0.1:2101/ | grep -F 'Meet to Manage'
+                    curl --fail --silent http://127.0.0.1:2101/pricing | grep -F 'Pricing'
+                    curl --fail --silent http://127.0.0.1:2101/signup | grep -F 'Create your Meet to Manage workspace'
+                    docker rm -f \${CANDIDATE}
+                """
             }
         }
 
-        stage('Verify Container') {
+        stage('Deploy') {
             steps {
                 sh """
-                    echo "Checking container status..."
-
-                    docker ps | grep ${CONTAINER_NAME}
+                    # Preserve the exact running image for automatic recovery. Build and
+                    # candidate verification happen before this point, so normal failures
+                    # never interrupt production.
+                    OLD_IMAGE=\$(docker inspect --format='{{.Image}}' ${CONTAINER_NAME} 2>/dev/null || true)
+                    test -z "\${OLD_IMAGE}" || docker tag "\${OLD_IMAGE}" ${IMAGE_NAME}:rollback
+                    docker rm -f ${CONTAINER_NAME} >/dev/null 2>&1 || true
+                    docker run -d --restart unless-stopped --name ${CONTAINER_NAME} -p 2100:80 ${IMAGE_NAME}:${RELEASE_VERSION}
                     for attempt in \$(seq 1 20); do
                       curl --fail --silent http://127.0.0.1:2100/release.json >/dev/null && break
-                      test "\${attempt}" -eq 20 && { docker logs --tail 100 ${CONTAINER_NAME}; exit 1; }
+                      if test "\${attempt}" -eq 20; then
+                        docker logs --tail 100 ${CONTAINER_NAME} || true
+                        docker rm -f ${CONTAINER_NAME} || true
+                        if docker image inspect ${IMAGE_NAME}:rollback >/dev/null 2>&1; then
+                          docker run -d --restart unless-stopped --name ${CONTAINER_NAME} -p 2100:80 ${IMAGE_NAME}:rollback
+                        fi
+                        exit 1
+                      fi
                       sleep 1
                     done
                     RELEASE_JSON=\$(curl --fail --silent --show-error http://127.0.0.1:2100/release.json)
                     echo "\${RELEASE_JSON}"
                     echo "\${RELEASE_JSON}" | grep -F '"version":"${RELEASE_VERSION}"'
                     echo "\${RELEASE_JSON}" | grep -F '"commit":"${GIT_COMMIT}"'
-                    # Conversion-path smoke checks: the new release is not healthy merely
-                    # because nginx answers; its critical public routes must render too.
-                    curl --fail --silent http://127.0.0.1:2100/ | grep -F 'Meet to Manage'
-                    curl --fail --silent http://127.0.0.1:2100/pricing | grep -F 'Pricing'
-                    curl --fail --silent http://127.0.0.1:2100/signup | grep -F 'Create your Meet to Manage workspace'
-
+                    docker tag ${IMAGE_NAME}:${RELEASE_VERSION} ${IMAGE_NAME}:latest
+                    # Keep the current, rollback and recent immutable images; never prune
+                    # unrelated products from this shared host.
+                    docker image prune -f >/dev/null || true
                     echo "Deployment verified"
                 """
             }
@@ -157,6 +137,7 @@ pipeline {
         }
 
         always {
+            sh 'docker rm -f ${CONTAINER_NAME}-candidate-${BUILD_NUMBER} >/dev/null 2>&1 || true'
             cleanWs()
         }
     }
