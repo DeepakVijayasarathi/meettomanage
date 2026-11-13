@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { cn } from "@/lib/utils";
 import { drawStroke, isFreehand, textFontPx, type Point, type Stroke, type ToolId } from "./drawing";
 import type { SlideMarkOp, SlideMarksStore } from "./slideMarks";
+import { useRecordingSurface } from "./recording/surfaces";
 
 let uidCounter = 0;
 const nextId = () => `slidemark-${Date.now()}-${uidCounter++}`;
@@ -31,6 +32,7 @@ interface SlideAnnotationLayerProps {
 export default function SlideAnnotationLayer({ slide, store, active, tool, color, width, onOp }: SlideAnnotationLayerProps) {
   const strokes = useSyncExternalStore(store.subscribe, () => store.get(slide));
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  useRecordingSurface(canvasRef, "slides", 1);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const draftRef = useRef<Stroke | null>(null);
   const lastSendRef = useRef(0);

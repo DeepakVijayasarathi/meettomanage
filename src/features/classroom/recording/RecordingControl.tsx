@@ -3,6 +3,7 @@ import { CircleDot, Cloud, Laptop, Loader2, Square } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { RecordingPlace } from "./plan";
+import { BEHIND_BYTES } from "./recordingUpload";
 
 export interface BrowserRecordingState {
   status: "starting" | "recording" | "saving" | "saved" | "failed";
@@ -74,7 +75,11 @@ export default function RecordingControl({ serverOn, serverStarting, browser, ca
           )}
           aria-label={active ? `Recording ${active === "browser" ? "on this computer" : "on the server"}. Recording options` : "Recording options"}
         >
-          {busy && !active ? <Loader2 className="h-3 w-3 animate-spin" /> : <span className={cn("h-1.5 w-1.5 rounded-full", active ? "animate-pulse bg-red-400" : "bg-call-ink/50")} />}
+          {busy && !active ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <span className={cn("h-1.5 w-1.5 rounded-full", browserOn && browser!.pendingBytes > BEHIND_BYTES ? "bg-amber-400" : active ? "animate-pulse bg-red-400" : "bg-call-ink/50")} />
+          )}
           <span className="tabular-nums">{label}</span>
         </button>
       </PopoverTrigger>
@@ -91,6 +96,13 @@ export default function RecordingControl({ serverOn, serverStarting, browser, ca
             {!active && serverStarting && "Starting the server recording…"}
           </p>
         </div>
+
+        {browserOn && browser!.pendingBytes > BEHIND_BYTES && (
+          <p role="status" className="rounded-md bg-amber-500/10 px-2.5 py-2 text-xs text-amber-800 dark:text-amber-300">
+            The upload is behind ({formatBytes(browser!.pendingBytes)} waiting) because the internet is slow. Recording continues and will
+            catch up; keep this tab open.
+          </p>
+        )}
 
         {canChoose && (
           <div role="radiogroup" aria-label="Where to record" className="grid gap-2">

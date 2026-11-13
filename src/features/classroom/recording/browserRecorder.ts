@@ -2,6 +2,7 @@ import type { JitsiTrack } from "../native/libJitsi";
 import type { NativeJitsiApi, NativeParticipant } from "../native/NativeJitsiApi";
 import { bestColumns } from "../native/stageLayout";
 import type { RecordingUploader } from "./recordingUpload";
+import { featuredSurface, type FeaturedSurface } from "./surfaces";
 
 /**
  * Records a class in the teacher's own browser: everyone's video is drawn onto one 720p canvas
@@ -82,6 +83,7 @@ export class BrowserRecorder {
   private unsubscribe: (() => void) | null = null;
   private startedAt = 0;
   private stopped: Promise<void> | null = null;
+  private removeWake: (() => void) | null = null;
 
   constructor(private source: NativeJitsiApi, private uploader: RecordingUploader, private opts: BrowserRecorderOptions) {
     this.canvas.width = WIDTH;
@@ -110,6 +112,23 @@ export class BrowserRecorder {
   async start() {
     document.body.appendChild(this.host);
     void this.audioCtx.resume?.();
+    // Browsers may start audio paused until the page is touched; without this the recording
+    // would be silent. Resume on the next click or key press.
+    if (this.audioCtx.state === "suspended") {
+      const wake = () => {
+        void this.audioCtx.resume?.();
+        if (this.audioCtx.state !== "suspended") {
+          window.removeEventListener("pointerdown", wake);
+          window.removeEventListener("keydown", wake);
+        }
+      };
+      window.addEventListener("pointerdown", wake);
+      window.addEventListener("keydown", wake);
+      this.removeWake = () => {
+        window.removeEventListener("pointerdown", wake);
+        window.removeEventListener("keydown", wake);
+      };
+    }
     this.attach(this.source);
     this.draw();
     const video = (this.canvas as HTMLCanvasElement & { captureStream(fps: number): MediaStream }).captureStream(FPS);
@@ -147,6 +166,7 @@ export class BrowserRecorder {
 
   private cleanup() {
     this.stopTicker?.();
+    this.removeWake?.();
     this.unsubscribe?.();
     for (const [track, el] of this.videos) {
       try { track.detach(el); } catch { /* already gone */ }
@@ -206,27 +226,35 @@ export class BrowserRecorder {
     }
   }
 
-  private tiles(): { stage: Tile | null; grid: Tile[]; corner: Tile | null } {
+  private tiles(): { stage: Tile | null; grid: Tile[]; corner: Tile | null; surface: FeaturedSurface | null } {
     const snap = this.source.getSnapshot();
     const people = snap.participants;
     const sharer = people.find((p) => p.desktopTrack && p.isLocal) ?? people.find((p) => p.desktopTrack);
     const speaker = people.find((p) => p.id === snap.dominantId) ?? people.find((p) => p.isLocal) ?? people[0];
     if (sharer) {
       const cornerPerson = speaker && (speaker.videoTrack && !speaker.videoMuted) ? speaker : people.find((p) => p.isLocal);
-      return { stage: { participant: sharer, screen: true }, grid: [], corner: cornerPerson ? { participant: cornerPerson, screen: false } : null };
+      return { stage: { participant: sharer, screen: true }, grid: [], corner: cornerPerson ? { participant: cornerPerson, screen: false } : null, surface: null };
+    }
+    // The teacher has the whiteboard or slides maximized: that's what the class is looking at.
+    const surface = featuredSurface();
+    if (surface) {
+      const me = people.find((p) => p.isLocal);
+      const cornerPerson = me && me.videoTrack && !me.videoMuted ? me : speaker;
+      return { stage: null, grid: [], corner: cornerPerson ? { participant: cornerPerson, screen: false } : null, surface };
     }
     // The teacher, whoever is talking, then cameras that are on, then everyone else.
     const ordered = [...people].sort((a, b) => score(b, snap.dominantId) - score(a, snap.dominantId));
-    return { stage: null, grid: ordered.slice(0, MAX_TILES).map((p) => ({ participant: p, screen: false })), corner: null };
+    return { stage: null, grid: ordered.slice(0, MAX_TILES).map((p) => ({ participant: p, screen: false })), corner: null, surface: null };
   }
 
   private draw() {
     const ctx = this.ctx;
     ctx.fillStyle = BG;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    const { stage, grid, corner } = this.tiles();
-    if (stage) {
-      this.drawTile(stage, 0, 0, WIDTH, HEIGHT, true);
+    const { stage, grid, corner, surface } = this.tiles();
+    if (stage || surface) {
+      if (stage) this.drawTile(stage, 0, 0, WIDTH, HEIGHT, true);
+      else this.drawSurface(surface!);
       if (corner) {
         const w = 256;
         const h = 144;
@@ -248,6 +276,24 @@ export class BrowserRecorder {
       const y = (HEIGHT - totalH) / 2 + row * (tileH + gap);
       this.drawTile(tile, x, y, tileW, tileH, false);
     });
+  }
+
+  private drawSurface(surface: FeaturedSurface) {
+    const base = surface.layers[0];
+    const scale = Math.min(WIDTH / base.width, HEIGHT / base.height);
+    const w = base.width * scale;
+    const h = base.height * scale;
+    const x = (WIDTH - w) / 2;
+    const y = (HEIGHT - h) / 2;
+    this.ctx.fillStyle = surface.background;
+    this.ctx.fillRect(x, y, w, h);
+    for (const layer of surface.layers) {
+      try {
+        this.ctx.drawImage(layer, x, y, w, h);
+      } catch {
+        /* a canvas resized mid-frame */
+      }
+    }
   }
 
   private drawTile(tile: Tile, x: number, y: number, w: number, h: number, contain: boolean, framed = false) {

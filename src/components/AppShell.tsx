@@ -14,7 +14,7 @@ import { useSession } from "@/state/session";
 import { hexToHslTriple } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useLocation, useNavigate } from "react-router-dom";
-import { setPlanLimitAction } from "@/hooks/use-toast";
+import { setPlanLimitAction, toast } from "@/hooks/use-toast";
 import { UsageNudge } from "@/components/UsageNudge";
 import { getMyMenu, listMenuItems, toNavSections, type ApiMenuItem } from "@/api/menus";
 import { saasTenant } from "@/api/saas";
@@ -57,6 +57,17 @@ const SUBADMIN_PRESET_PORTALS: Role[] = ["coordinator", "admission", "management
 
 export function AppShell({ role, children }: AppShellProps) {
   const { setRole, permissions, activeChildId } = useSession();
+  // A class recording made in the browser that was cut off (crash, dead battery, closed window)
+  // is saved from whatever had already uploaded, the next time a teacher or admin opens the app.
+  useEffect(() => {
+    if (!apiEnabled() || (role !== "teacher" && role !== "admin")) return;
+    void import("@/features/classroom/recording/pendingUploads").then(async (m) => {
+      if (m.listPendingRecordings().length === 0) return;
+      const { browserRecordingRecoveryApi } = await import("@/api/sessions");
+      const n = await m.recoverInterruptedRecordings(browserRecordingRecoveryApi);
+      if (n > 0) toast({ variant: "success", title: n === 1 ? "Recovered an interrupted class recording" : `Recovered ${n} interrupted class recordings`, description: "It's saved under Recordings." });
+    });
+  }, [role]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;

@@ -10,6 +10,7 @@ import { userMessage } from "@/lib/api";
 import SlideAnnotationLayer from "./SlideAnnotationLayer";
 import type { ToolId } from "./drawing";
 import type { SlideMarkOp, SlideMarksStore } from "./slideMarks";
+import { useRecordingSurface } from "./recording/surfaces";
 
 const MARK_TOOLS: { id: ToolId; label: string; icon: typeof PenTool }[] = [
   { id: "pen", label: "Pen", icon: PenTool },
@@ -112,6 +113,8 @@ const PresentationViewer = forwardRef<PresentationViewerHandle, PresentationView
   const docRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // A teacher's browser recording shows the slides when they're maximized (see recording/surfaces).
+  useRecordingSurface(canvasRef, "slides", 0, "#ffffff");
   const fileInputRef = useRef<HTMLInputElement>(null);
   // A remote slide can arrive before the deck itself has finished loading (a late-joining
   // student's replay vs. this component's own initial fetch racing each other) — stashed here

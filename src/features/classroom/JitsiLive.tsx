@@ -13,6 +13,7 @@ import { postEngagement } from "@/api/engagement";
 import {
   abortBrowserRecordingUpload,
   browserRecordingPartUrl,
+  browserRecordingRecoveryApi,
   completeBrowserRecordingUpload,
   completeSession,
   getClassroomSettings,
@@ -38,6 +39,7 @@ import CallThemeToggle from "./CallThemeToggle";
 import { BrowserRecorder } from "./recording/browserRecorder";
 import { RecordingUploader } from "./recording/recordingUpload";
 import RecordingControl, { type BrowserRecordingState } from "./recording/RecordingControl";
+import { recoverInterruptedRecordings, removePendingRecording, savePendingRecording, touchPendingRecording } from "./recording/pendingUploads";
 import {
   browserRecordingCapability,
   fallbackPlace,
@@ -626,7 +628,7 @@ export default function JitsiLive({
   const [teacherCanChooseRecording, setTeacherCanChooseRecording] = useState(true);
   const [recordingModeSetting, setRecordingModeSetting] = useState<RecordingMode>("server");
   const [serverRecordingRequested, setServerRecordingRequested] = useState(false);
-  const browserRecRef = useRef<{ recorder: BrowserRecorder; uploader: RecordingUploader } | null>(null);
+  const browserRecRef = useRef<{ recorder: BrowserRecorder; uploader: RecordingUploader; key: () => string | null; heartbeat: number } | null>(null);
   const [browserRec, setBrowserRec] = useState<BrowserRecordingState | null>(null);
   const [savingOnExit, setSavingOnExit] = useState(false);
   /** Set by the init effect: starts (or retries) the server recording. */
@@ -893,6 +895,9 @@ export default function JitsiLive({
     if (!(api instanceof NativeJitsiApi) || browserRecRef.current || !sessionId || !mimeType) return false;
     browserFailingRef.current = false;
     setBrowserRec({ status: "starting", startedAt: Date.now(), uploadedBytes: 0, pendingBytes: 0 });
+    // Crash safety: what's been uploaded is noted in this browser (see recording/pendingUploads).
+    const startedAt = Date.now();
+    let uploadKey: string | null = null;
     const uploader = new RecordingUploader(
       {
         start: (contentType) => startBrowserRecordingUpload(sessionId, contentType),
@@ -905,6 +910,10 @@ export default function JitsiLive({
       {
         onProgress: (p) => setBrowserRec((cur) => (cur ? { ...cur, uploadedBytes: p.uploadedBytes, pendingBytes: p.pendingBytes } : cur)),
         onFailure: (err) => void onBrowserRecordingFailed(err),
+        onStored: (ref) => {
+          uploadKey = ref.key;
+          savePendingRecording({ sessionId, key: ref.key, uploadId: ref.uploadId, parts: ref.parts, startedAt, updatedAt: Date.now() });
+        },
       }
     );
     let recorder: BrowserRecorder | null = null;
@@ -915,10 +924,18 @@ export default function JitsiLive({
     } catch (err) {
       void recorder?.stop();
       await uploader.abort();
+      if (uploadKey) removePendingRecording(uploadKey);
       setBrowserRec({ status: "failed", startedAt: Date.now(), uploadedBytes: 0, pendingBytes: 0, message: `Couldn't start recording on this computer: ${userMessage(err)}` });
       return false;
     }
-    browserRecRef.current = { recorder, uploader };
+    let beats = 0;
+    const heartbeat = window.setInterval(() => {
+      if (uploadKey) touchPendingRecording(uploadKey);
+      // Every 5 minutes also tell the server it's still running (a near-static class can go a
+      // long time between parts, and the server finishes uploads it thinks were abandoned).
+      if (++beats % 20 === 0) void uploader.keepAlive();
+    }, 15_000);
+    browserRecRef.current = { recorder, uploader, key: () => uploadKey, heartbeat };
     api.executeCommand("setLocalRecording", true);
     setBrowserRec({ status: "recording", startedAt: Date.now(), uploadedBytes: 0, pendingBytes: 0 });
     setRecordingIssue(null);
@@ -933,13 +950,18 @@ export default function JitsiLive({
     const api = jitsiApiRef.current;
     if (api instanceof NativeJitsiApi) api.executeCommand("setLocalRecording", false);
     setBrowserRec((cur) => (cur ? { ...cur, status: "saving" } : cur));
+    window.clearInterval(current.heartbeat);
     await current.recorder.stop();
+    const key = current.key();
     try {
-      const saved = await current.uploader.finish(current.recorder.durationSeconds);
+      // partial: if one part failed for good, still save everything uploaded before it.
+      const saved = await current.uploader.finish(current.recorder.durationSeconds, true);
+      if (key) removePendingRecording(key);
       setBrowserRec((cur) => (cur ? { ...cur, status: "saved", pendingBytes: 0 } : cur));
       return saved ? "saved" : "empty";
     } catch (err) {
-      setBrowserRec((cur) => (cur ? { ...cur, status: "failed", message: `The recording couldn't be saved: ${userMessage(err)}` } : cur));
+      // Left noted in this browser: the next visit to the app tries to save it again.
+      setBrowserRec((cur) => (cur ? { ...cur, status: "failed", message: `The recording couldn't be saved yet (${userMessage(err)}). It will be retried the next time you open the app.` } : cur));
       return "failed";
     }
   }
@@ -953,10 +975,12 @@ export default function JitsiLive({
     const api = jitsiApiRef.current;
     if (api instanceof NativeJitsiApi) api.executeCommand("setLocalRecording", false);
     if (current) {
+      window.clearInterval(current.heartbeat);
       await current.recorder.stop();
       // Whatever already reached storage is still worth keeping.
-      const saved = await current.uploader.finish(current.recorder.durationSeconds).catch(() => false);
-      if (!saved) await current.uploader.abort();
+      const key = current.key();
+      const saved = await current.uploader.finish(current.recorder.durationSeconds, true).catch(() => null);
+      if (saved !== null && key) removePendingRecording(key);
     }
     const reason = userMessage(err, "the browser stopped recording");
     setBrowserRec((cur) => ({ ...(cur ?? { startedAt: Date.now(), uploadedBytes: 0, pendingBytes: 0 }), status: "failed", message: `Recording on this computer stopped: ${reason}` }));
@@ -974,6 +998,15 @@ export default function JitsiLive({
   startBrowserRecordingRef.current = startBrowserRecording;
   const stopBrowserRecordingRef = useRef(stopBrowserRecording);
   stopBrowserRecordingRef.current = stopBrowserRecording;
+
+  // A recording interrupted last time (crash, dead battery, closed window): save what was uploaded.
+  useEffect(() => {
+    if (mode !== "teacher" || isRecordingObserver) return;
+    void recoverInterruptedRecordings(browserRecordingRecoveryApi).then((n) => {
+      if (n > 0) toast({ variant: "success", title: n === 1 ? "Recovered an interrupted recording" : `Recovered ${n} interrupted recordings`, description: "It's saved under Recordings." });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Leaving the page some other way (back button, link): finish the upload in the background.
   useEffect(() => () => void stopBrowserRecordingRef.current(), []);

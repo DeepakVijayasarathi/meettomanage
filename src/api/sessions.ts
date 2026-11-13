@@ -560,3 +560,10 @@ export function abortBrowserRecordingUpload(sessionId: string, key: string, uplo
     body: JSON.stringify({ key, uploadId }),
   });
 }
+
+/** For recovering interrupted browser recordings (see classroom/recording/pendingUploads). */
+export const browserRecordingRecoveryApi = {
+  complete: (sessionId: string, key: string, uploadId: string, parts: { partNumber: number; eTag: string }[], durationSeconds: number) =>
+    completeBrowserRecordingUpload(sessionId, key, uploadId, parts, durationSeconds),
+  abort: (sessionId: string, key: string, uploadId: string) => abortBrowserRecordingUpload(sessionId, key, uploadId),
+};

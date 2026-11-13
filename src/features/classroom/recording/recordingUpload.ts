@@ -22,7 +22,26 @@ export interface UploadProgress {
 
 /** Storage's minimum part size is 5 MB; 8 MB keeps the unsent tail small (about a minute of class). */
 export const TARGET_PART_BYTES = 8 * 1024 * 1024;
-const RETRY_DELAYS_MS = [2000, 5000, 10000, 20000];
+/** About five minutes of retrying: a Wi-Fi drop or a router restart shouldn't end the recording. */
+const RETRY_DELAYS_MS = [2000, 5000, 10000, 20000, 30000, 60000, 60000, 60000, 60000];
+/** Recorded but not yet uploaded beyond this, the connection can't keep up (and memory would run out). */
+export const MAX_BACKLOG_BYTES = 400 * 1024 * 1024;
+/** Above this the teacher is told the upload is behind (it still catches up). */
+export const BEHIND_BYTES = 24 * 1024 * 1024;
+
+/** Resolves once the browser thinks it's online again (or after a minute, to try anyway). */
+function onlineAgain(): Promise<void> {
+  if (typeof navigator === "undefined" || navigator.onLine !== false) return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = () => {
+      window.removeEventListener("online", done);
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(done, 60_000);
+    window.addEventListener("online", done);
+  });
+}
 
 export class RecordingUploader {
   private key = "";
@@ -41,7 +60,12 @@ export class RecordingUploader {
   constructor(
     private api: RecordingUploadApi,
     private contentType: string,
-    private hooks: { onProgress?: (p: UploadProgress) => void; onFailure?: (err: Error) => void } = {},
+    private hooks: {
+      onProgress?: (p: UploadProgress) => void;
+      onFailure?: (err: Error) => void;
+      /** After the upload starts and after every stored part (for crash recovery, see pendingUploads). */
+      onStored?: (ref: { key: string; uploadId: string; parts: { partNumber: number; eTag: string }[] }) => void;
+    } = {},
     private sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))
   ) {}
 
@@ -51,6 +75,11 @@ export class RecordingUploader {
     this.uploadId = started.uploadId;
     // Never larger than the server's agreed part size; never below storage's 5 MB minimum.
     this.partSize = Math.max(5 * 1024 * 1024, Math.min(started.partSizeBytes || TARGET_PART_BYTES, TARGET_PART_BYTES));
+    this.stored();
+  }
+
+  private stored() {
+    this.hooks.onStored?.({ key: this.key, uploadId: this.uploadId, parts: [...this.parts] });
   }
 
   get failed() {
@@ -59,6 +88,11 @@ export class RecordingUploader {
 
   push(chunk: Blob) {
     if (this.closed || this.failure || chunk.size === 0) return;
+    if (this.pendingBytes + this.inFlightBytes + chunk.size > MAX_BACKLOG_BYTES) {
+      this.failure = new Error("the internet connection is too slow to upload the recording");
+      this.hooks.onFailure?.(this.failure);
+      return;
+    }
     this.pending.push(chunk);
     this.pendingBytes += chunk.size;
     while (this.pendingBytes >= this.partSize) {
@@ -71,8 +105,12 @@ export class RecordingUploader {
     this.report();
   }
 
-  /** Sends what's left and joins the parts into the finished file. Returns false if nothing was recorded. */
-  async finish(durationSeconds: number): Promise<boolean> {
+  /**
+   * Sends what's left and joins the parts into the finished file. Returns false if nothing was
+   * recorded. With `partial`, a part that failed for good doesn't stop the parts already stored
+   * from being saved (the recording just ends where the upload broke).
+   */
+  async finish(durationSeconds: number, partial = false): Promise<boolean> {
     this.closed = true;
     if (this.pendingBytes > 0) {
       this.enqueue(new Blob(this.pending));
@@ -80,7 +118,7 @@ export class RecordingUploader {
       this.pendingBytes = 0;
     }
     await this.queue;
-    if (this.failure) throw this.failure;
+    if (this.failure && !partial) throw this.failure;
     if (this.parts.length === 0) {
       await this.abort();
       return false;
@@ -93,6 +131,12 @@ export class RecordingUploader {
     this.closed = true;
     this.pending = [];
     if (this.key) await this.api.abort(this.key, this.uploadId).catch(() => undefined);
+  }
+
+  /** Tells the server the recording is still running even when no part has filled up for a while. */
+  async keepAlive() {
+    if (!this.key || this.closed || this.failure) return;
+    await this.api.partUrl(this.key, this.uploadId, this.nextPart).catch(() => undefined);
   }
 
   progress(): UploadProgress {
@@ -114,6 +158,7 @@ export class RecordingUploader {
           const eTag = await this.api.putPart(url, blob);
           this.parts.push({ partNumber, eTag });
           this.uploadedBytes += blob.size;
+          this.stored();
           break;
         } catch (err) {
           if (attempt >= RETRY_DELAYS_MS.length) {
@@ -122,6 +167,7 @@ export class RecordingUploader {
             break;
           }
           await this.sleep(RETRY_DELAYS_MS[attempt]);
+          await onlineAgain();
         }
       }
       this.inFlightBytes -= blob.size;

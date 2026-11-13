@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { RecordingUploader, TARGET_PART_BYTES, type RecordingUploadApi } from "./recordingUpload";
+import { MAX_BACKLOG_BYTES, RecordingUploader, TARGET_PART_BYTES, type RecordingUploadApi } from "./recordingUpload";
 
 const MB = 1024 * 1024;
 
@@ -84,5 +84,24 @@ describe("RecordingUploader", () => {
     up.push(chunk(11 * MB));
     await up.finish(1);
     expect(api.puts[0].size).toBe(5 * MB);
+  });
+
+  it("gives up when the connection can't keep up, instead of filling memory", async () => {
+    const onFailure = vi.fn();
+    // Uploads never finish: everything recorded piles up.
+    const api = fakeApi({ putPart: vi.fn(() => new Promise<string>(() => undefined)) });
+    const up = new RecordingUploader(api, "video/mp4", { onFailure }, noSleep);
+    await up.begin();
+    for (let i = 0; i * 32 * MB <= MAX_BACKLOG_BYTES; i++) up.push(chunk(32 * MB));
+    expect(onFailure).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringMatching(/too slow/) }));
+  });
+
+  it("reports each stored part, for crash recovery", async () => {
+    const stored: number[] = [];
+    const up = new RecordingUploader(fakeApi(), "video/mp4", { onStored: (r) => stored.push(r.parts.length) }, noSleep);
+    await up.begin();
+    up.push(chunk(17 * MB));
+    await up.finish(1);
+    expect(stored).toEqual([0, 1, 2, 3]);
   });
 });

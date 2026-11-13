@@ -27,6 +27,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import WhiteboardActivity, { type WhiteboardActivitySelection } from "./WhiteboardActivity";
 import type { ApiWhiteboardActivity } from "@/api/whiteboardActivities";
 import { drawStroke, isFreehand, type Point, type Stroke, type ToolId } from "./drawing";
+import { useRecordingSurface } from "./recording/surfaces";
 
 export type { Stroke } from "./drawing";
 
@@ -190,6 +191,8 @@ export default function Whiteboard({ canDraw, mode, activities, onActivityComple
   const [viewOffset, setViewOffset] = useState<Point>({ x: 0, y: 0 });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // A teacher's browser recording shows the board when it's maximized (see recording/surfaces).
+  useRecordingSurface(canvasRef, "board");
   const containerRef = useRef<HTMLDivElement>(null);
   const drawingRef = useRef(false);
   const draftRef = useRef<Stroke | null>(null);
