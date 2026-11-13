@@ -1,11 +1,14 @@
 import { useCallback, useEffect } from "react";
-import { Activity, AlertTriangle, Cpu, HardDrive, Network, RefreshCw, Server, Users } from "lucide-react";
+import { Activity, AlertTriangle, Cpu, HardDrive, Network, RefreshCw, Server, Settings2, Users } from "lucide-react";
 import PlatformShell, { usePlatformAdmin } from "./PlatformShell";
 import { getPlatformMonitoring, type PlatformMonitoringServer, type PlatformMonitoringSummary } from "@/api/platform";
 import { Hero, Notices, StatCard, panel, smallButton, useLoader } from "./saasUi";
+import MonitoringSettingsPanel from "./MonitoringSettingsPanel";
+import { useState } from "react";
 
 const EMPTY: PlatformMonitoringSummary = {
   infrastructure: { servers: [], activeAlerts: [], generatedAtUtc: "" },
+  monitoringPolicy: { refreshSeconds: 30, servers: [] },
   saas: { totalTenants: 0, activeTenants: 0, provisioningTenants: 0, suspendedTenants: 0, failedTenants: 0, subscriptionStatuses: {}, usageDate: null, usage: null },
   masterDatabase: { healthy: false, latencyMs: 0 },
   runtime: { framework: "", os: "", processorCount: 0, processUptimeSeconds: 0, workingSetMb: 0, managedHeapMb: 0, threadCount: 0, gcGen0: 0, gcGen1: 0, gcGen2: 0 },
@@ -32,10 +35,18 @@ export default function PlatformMonitoring() {
 
 function MonitoringContent() {
   const { token } = usePlatformAdmin();
+  const [showSettings, setShowSettings] = useState(false);
   const state = useLoader(useCallback(() => getPlatformMonitoring(token), [token]), EMPTY);
-  useEffect(() => { const id = window.setInterval(() => void state.reload(), 30_000); return () => window.clearInterval(id); }, [state.reload]);
+  useEffect(() => { const id = window.setInterval(() => void state.reload(), Math.max(15, state.data.monitoringPolicy.refreshSeconds) * 1000); return () => window.clearInterval(id); }, [state.reload, state.data.monitoringPolicy.refreshSeconds]);
   const d = state.data; const u = d.saas.usage;
-  return <div className="space-y-6"><div className="flex items-start justify-between gap-4"><Hero title="SaaS server monitoring" text="Platform-wide infrastructure, API runtime, database health and tenant workload. Live server metrics refresh every 30 seconds." /><button className={smallButton} onClick={() => void state.reload()}><RefreshCw className="h-4 w-4" />Refresh</button></div><Notices error={state.error} notice="" />
+  const thresholdWarnings = d.infrastructure.servers.flatMap(server => {
+    const p = d.monitoringPolicy.servers.find(x => x.name === server.name); if (!p || p.maintenanceMode || !server.reachable) return [];
+    return [["CPU", server.cpuUsagePercent, p.cpuWarningPercent], ["memory", server.memoryUsedPercent, p.memoryWarningPercent], ["disk", server.diskUsedPercent, p.diskWarningPercent]]
+      .filter(([, value, limit]) => Number(value) >= Number(limit)).map(([metric, value, limit]) => `${server.name}: ${metric} ${Number(value).toFixed(1)}% (warning ${limit}%)`);
+  });
+  return <div className="space-y-6"><div className="flex items-start justify-between gap-4"><Hero title="SaaS server monitoring" text="Platform-wide infrastructure, API runtime, database health and tenant workload. Live server metrics refresh automatically." /><div className="flex gap-2"><button className={smallButton} onClick={() => setShowSettings(v => !v)}><Settings2 className="h-4 w-4" />Configure</button><button className={smallButton} onClick={() => void state.reload()}><RefreshCw className="h-4 w-4" />Refresh</button></div></div><Notices error={state.error} notice="" />
+    {showSettings && <MonitoringSettingsPanel token={token} close={() => setShowSettings(false)} saved={() => void state.reload()} />}
+    {thresholdWarnings.length > 0 && <section className={`${panel} border-amber-300 p-4 text-sm text-amber-800`}><b>Configured capacity warnings</b><ul className="mt-2 list-disc pl-5">{thresholdWarnings.map(x => <li key={x}>{x}</li>)}</ul></section>}
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><StatCard label="Servers online" value={`${d.infrastructure.servers.filter(s => s.reachable).length}/${d.infrastructure.servers.length || "—"}`} hint={`${d.infrastructure.activeAlerts.length} active infrastructure alerts`} tone={d.infrastructure.activeAlerts.length ? "text-amber-700" : "text-emerald-700"} /><StatCard label="Active academies" value={d.saas.activeTenants} hint={`${d.saas.provisioningTenants} provisioning · ${d.saas.suspendedTenants} suspended · ${d.saas.failedTenants} failed`} /><StatCard label="Master database" value={d.masterDatabase.healthy ? "Healthy" : "Unavailable"} hint={`${d.masterDatabase.latencyMs.toFixed(1)} ms connectivity check`} tone={d.masterDatabase.healthy ? "text-emerald-700" : "text-red-700"} /><StatCard label="API working set" value={`${d.runtime.workingSetMb.toFixed(0)} MB`} hint={`${d.runtime.managedHeapMb.toFixed(0)} MB managed heap · ${d.runtime.threadCount} threads`} /></div>
     {d.infrastructure.activeAlerts.length > 0 && <section className={`${panel} border-amber-300 p-5`}><h2 className="flex items-center gap-2 font-semibold"><AlertTriangle className="h-5 w-5 text-amber-600" />Active infrastructure alerts</h2><div className="mt-3 space-y-2">{d.infrastructure.activeAlerts.map((a, i) => <div key={`${a.name}-${i}`} className="rounded-lg border p-3 text-sm"><b>{a.summary || a.name}</b><p className="text-xs text-muted-foreground">{a.description}{a.instance ? ` · ${a.instance}` : ""}</p></div>)}</div></section>}
     <div className="grid gap-5 xl:grid-cols-2">{d.infrastructure.servers.map(s => <ServerPanel key={s.name} server={s} />)}{state.loaded && d.infrastructure.servers.length === 0 && <section className={`${panel} p-6 text-sm text-muted-foreground`}>No servers are configured in Monitoring:Servers.</section>}</div>

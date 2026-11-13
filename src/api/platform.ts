@@ -36,12 +36,18 @@ export interface PlatformMonitoringServer {
 }
 export interface PlatformMonitoringSummary {
   infrastructure: { servers: PlatformMonitoringServer[]; activeAlerts: { name: string; severity: string; summary: string; description: string; activeSince: string; instance: string | null }[]; generatedAtUtc: string };
+  monitoringPolicy: { refreshSeconds: number; servers: { name: string; maintenanceMode: boolean; cpuWarningPercent: number; memoryWarningPercent: number; diskWarningPercent: number }[] };
   saas: { totalTenants: number; activeTenants: number; provisioningTenants: number; suspendedTenants: number; failedTenants: number; subscriptionStatuses: Record<string, number>; usageDate: string | null; usage: null | { tenantSnapshots: number; activeStudents: number; staff: number; storageBytes: number; sessionMinutesMonth: number; sessionsMonth: number; recordingsMonth: number } };
   masterDatabase: { healthy: boolean; latencyMs: number };
   runtime: { framework: string; os: string; processorCount: number; processUptimeSeconds: number; workingSetMb: number; managedHeapMb: number; threadCount: number; gcGen0: number; gcGen1: number; gcGen2: number };
   generatedAtUtc: string;
 }
 export const getPlatformMonitoring = (token: string, signal?: AbortSignal) => platformRequest<PlatformMonitoringSummary>("/monitoring", token, "GET", undefined, signal);
+export interface PlatformMonitoredServerSetting { id: string; name: string; hostname: string; instance: string; services: string[]; tracksLiveCalls: boolean; isOnDemand: boolean; maintenanceMode: boolean; sshHost: string; sshPort: number; sshUsername: string; hasSshPassword: boolean; sshPassword?: string | null; cpuWarningPercent: number; memoryWarningPercent: number; diskWarningPercent: number }
+export interface PlatformMonitoringSettings { prometheusBaseUrl: string; refreshSeconds: number; servers: PlatformMonitoredServerSetting[] }
+export const getPlatformMonitoringSettings = (token: string) => platformRequest<PlatformMonitoringSettings>("/monitoring/settings", token);
+export const savePlatformMonitoringSettings = (token: string, value: PlatformMonitoringSettings) => platformRequest<PlatformMonitoringSettings>("/monitoring/settings", token, "PUT", value);
+export const testPlatformMonitoringSsh = (token: string, id: string) => platformRequest<{ ok: boolean; message: string; latencyMs: number }>(`/monitoring/servers/${id}/test-ssh`, token, "POST");
 
 export type ServiceStatus = "Operational" | "Degraded" | "Maintenance" | "MajorOutage";
 export interface StatusPageComponentSetting { key: string; name: string; type: "Api" | "Database" | "Server" | "Service"; server?: string | null; service?: string | null; description?: string | null; manualStatus?: ServiceStatus | null }
