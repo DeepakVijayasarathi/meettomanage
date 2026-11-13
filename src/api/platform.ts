@@ -33,6 +33,8 @@ export interface PlatformMonitoringServer {
   diskReadMbps: number; diskWriteMbps: number; agentDataAgeSeconds: number;
   services: { name: string; active: boolean }[];
   containerMetrics: { name: string; cpuPercent: number; memoryMb: number }[];
+  liveCalls?: { activeConferences: number; totalParticipants: number } | null;
+  callQuality?: { averageRttMs: number; incomingLossPercent: number; outgoingLossPercent: number; incomingBitrateKbps: number; outgoingBitrateKbps: number; endpointsSendingAudio: number; endpointsSendingVideo: number; jvbStressPercent: number; jvbHealthy: boolean } | null;
 }
 export interface PlatformMonitoringSummary {
   infrastructure: { servers: PlatformMonitoringServer[]; activeAlerts: { name: string; severity: string; summary: string; description: string; activeSince: string; instance: string | null }[]; generatedAtUtc: string };
