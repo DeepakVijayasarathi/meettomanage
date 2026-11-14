@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:22-alpine AS source
 WORKDIR /app
 
 # Headless Chromium for scripts/prerender-body.mjs, which renders the public marketing pages into the
@@ -11,6 +11,14 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+
+# Jenkins quality gate. Building this target sends the checked-out repository as
+# Docker build context, which also works when Jenkins itself runs in a container
+# and its workspace path is not bind-mountable by the host Docker daemon.
+FROM source AS test
+RUN npm run lint && npm test -- --run
+
+FROM source AS build
 
 # VITE_* configuration comes from a Vite mode file (.env.production or .env.uat),
 # baked into the bundle by `vite build`. Don't reintroduce blanket ARG/ENV VITE_*

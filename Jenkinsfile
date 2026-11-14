@@ -57,16 +57,13 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 sh '''
-                    # Jenkins only needs Docker installed. Keep Node/npm pinned and
-                    # isolated so an agent PATH change cannot fail with exit 127.
-                    docker run --rm \
-                      --user "$(id -u):$(id -g)" \
-                      --env HOME=/tmp \
-                      --env npm_config_cache=/tmp/npm-cache \
-                      --volume "$WORKSPACE:/workspace" \
-                      --workdir /workspace \
-                      node:22-alpine \
-                      sh -lc 'npm ci && npm run lint && npm test -- --run'
+                    # Use Docker build context instead of bind-mounting $WORKSPACE.
+                    # Jenkins runs in a container while Docker runs on the host, so
+                    # the Jenkins-only workspace path is not visible to bind mounts.
+                    docker build --pull --target test \
+                      --tag ${IMAGE_NAME}:quality-${BUILD_NUMBER} \
+                      -f Dockerfile .
+                    docker image rm ${IMAGE_NAME}:quality-${BUILD_NUMBER} >/dev/null 2>&1 || true
                 '''
             }
         }
