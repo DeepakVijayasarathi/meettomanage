@@ -35,13 +35,38 @@ pipeline {
             }
         }
 
+        stage('Agent Preflight') {
+            steps {
+                sh '''
+                    missing=0
+                    for tool in docker curl grep seq; do
+                      if command -v "$tool" >/dev/null 2>&1; then
+                        echo "READY: $tool -> $(command -v "$tool")"
+                      else
+                        echo "MISSING REQUIRED TOOL: $tool" >&2
+                        missing=1
+                      fi
+                    done
+                    test "$missing" -eq 0
+                    docker --version
+                    curl --version | head -n 1
+                '''
+            }
+        }
+
         stage('Quality Gate') {
             steps {
                 sh '''
-                    npm ci
-                    npm run lint
-                    npm test -- --run
-                    npm run build
+                    # Jenkins only needs Docker installed. Keep Node/npm pinned and
+                    # isolated so an agent PATH change cannot fail with exit 127.
+                    docker run --rm \
+                      --user "$(id -u):$(id -g)" \
+                      --env HOME=/tmp \
+                      --env npm_config_cache=/tmp/npm-cache \
+                      --volume "$WORKSPACE:/workspace" \
+                      --workdir /workspace \
+                      node:22-alpine \
+                      sh -lc 'npm ci && npm run lint && npm test -- --run'
                 '''
             }
         }
@@ -92,6 +117,8 @@ pipeline {
                     curl --fail --silent --head http://127.0.0.1:2101/ | grep -iF 'content-security-policy:' | grep -F "frame-ancestors 'self'"
                     curl --fail --silent --head http://127.0.0.1:2101/login | grep -iF 'x-robots-tag: noindex, follow'
                     curl --fail --silent --head http://127.0.0.1:2101/release.json | grep -iF 'cache-control: no-store'
+                    test "\$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:2101/api/firebase-messaging-sw)" = 404
+                    test "\$(curl --silent --output /dev/null --write-out '%{http_code}' 'http://127.0.0.1:2101/wp-admin/install.php?step=1')" = 404
                     docker rm -f \${CANDIDATE}
                 """
             }
@@ -143,8 +170,8 @@ pipeline {
             echo "❌ Build or Deployment Failed"
 
             sh '''
-                echo "Docker container logs:"
-                docker logs ${CONTAINER_NAME} || true
+                echo "Last 150 production container log lines (application remains running):"
+                docker logs --tail 150 ${CONTAINER_NAME} || true
             '''
         }
 
