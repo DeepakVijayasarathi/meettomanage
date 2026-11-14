@@ -13,6 +13,7 @@ interface LogoProps {
 
 export function Logo({ className, imgClassName, showWordmark = true, variant = "dark", wordmarkClassName }: LogoProps) {
   const brand = useBrand();
+  const tenantLogo = variant === "light" ? brand.darkLogoUrl || brand.logoUrl : brand.logoUrl;
   // logo-full.png (public/logo-full.png, sourced from Docs/newlogo.png) is the current mark —
   // the handshake "M" icon, "Meet to Manage" wordmark and "Connect · Plan · Achieve" tagline
   // baked into one image, used whole rather than cropped into separate icon/text pieces.
@@ -21,7 +22,7 @@ export function Logo({ className, imgClassName, showWordmark = true, variant = "
   // wordmark instead, same as before this mark existed.
   // A tenant may upload only a logo and intentionally keep the default product name.
   // The uploaded image must still win over the baked-in platform lockup.
-  const isDefaultBrand = brand.name === BRAND_NAME && !brand.logoUrl;
+  const isDefaultBrand = brand.name === BRAND_NAME && !tenantLogo;
 
   if (variant === "dark" && isDefaultBrand && showWordmark) {
     const height = imgClassName?.match(/\bh-\S+/)?.[0] ?? "h-14";
@@ -46,10 +47,10 @@ export function Logo({ className, imgClassName, showWordmark = true, variant = "
         // The mark's dark figure otherwise disappears against a dark sidebar/hero — a
         // white backing keeps both figures visible wherever this variant is used.
         <span className="flex shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
-          <img src={brand.logoUrl ?? "/logo-icon.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
+          <img src={tenantLogo ?? "/logo-icon.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
         </span>
       ) : (
-        <img src={brand.logoUrl ?? "/logo-icon.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
+        <img src={tenantLogo ?? "/logo-icon.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
       )}
       {showWordmark && (
         <span

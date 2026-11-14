@@ -1,4 +1,4 @@
-import { apiFetch, getAccessToken, ApiError, readProblemMessage, tenantApiBaseUrl } from "@/lib/api";
+import { apiFetch, ApiError, readProblemMessage, tenantApiBaseUrl, tenantFileFetch } from "@/lib/api";
 import { holidayNameFromReason } from "@/lib/cancelledBy";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import type { ClassSession, SessionStatus } from "@/types";
@@ -501,11 +501,7 @@ export async function getPresentation(sessionId: string): Promise<ApiSessionPres
  * is one binary PDF, not something to route through the JSON request/response pipeline.
  */
 export async function fetchPresentationFile(sessionId: string): Promise<ArrayBuffer> {
-  const token = getAccessToken();
-  const baseUrl = tenantApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/presentation/file`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
+  const response = await tenantFileFetch(`/api/sessions/${sessionId}/presentation/file`);
   if (!response.ok) {
     throw new ApiError(response.status, await readProblemMessage(response));
   }

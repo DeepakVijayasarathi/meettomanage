@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, getAccessToken, readProblemMessage, tenantApiBaseUrl } from "@/lib/api";
+import { ApiError, apiFetch, readProblemMessage, tenantFileFetch } from "@/lib/api";
 
 export interface ApiDashboardSummary {
   totalStudents: number;
@@ -251,11 +251,7 @@ export async function getStudentAnalytics(childId: string): Promise<ApiStudentAn
 export async function downloadReportCsv(
   report: "attendance" | "revenue" | "payouts" | "conversion" | "performance"
 ): Promise<void> {
-  const baseUrl = tenantApiBaseUrl();
-  const token = getAccessToken();
-  const response = await fetch(`${baseUrl}/api/reports/export/${report}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
+  const response = await tenantFileFetch(`/api/reports/export/${report}`);
   if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
 
   const blob = await response.blob();

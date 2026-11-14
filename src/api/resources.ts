@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, getAccessToken, readProblemMessage, tenantApiBaseUrl } from "@/lib/api";
+import { ApiError, apiFetch, readProblemMessage, tenantFileFetch } from "@/lib/api";
 import type { Resource } from "@/types";
 import { fileNameFor, isInlineViewable } from "@/lib/fileName";
 
@@ -117,11 +117,7 @@ export async function openResourceInNewTab(id: string, title: string): Promise<v
       // fall through to the download-and-show path below
     }
 
-    const baseUrl = tenantApiBaseUrl();
-    const token = getAccessToken();
-    const response = await fetch(`${baseUrl}/api/resources/${id}/download`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
+    const response = await tenantFileFetch(`/api/resources/${id}/download`);
     if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
 
     // A class recording filed into Resources by reference answers with its own https URL
@@ -165,11 +161,7 @@ export async function openResourceInNewTab(id: string, title: string): Promise<v
 
 /** Teacher portal: download a resource the teacher owns. */
 export async function downloadMyResource(id: string, fallbackName: string): Promise<void> {
-  const baseUrl = tenantApiBaseUrl();
-  const token = getAccessToken();
-  const response = await fetch(`${baseUrl}/api/resources/${id}/mine/download`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
+  const response = await tenantFileFetch(`/api/resources/${id}/mine/download`);
   if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
 
   const blob = await response.blob();

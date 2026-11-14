@@ -77,7 +77,7 @@ const WIDGET_CHATBOT_KEY = "widgets.doubtChatbot.enabledPortals";
 const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boolean; fallback: string }> = {
   "org.name": { category: "General", isPublic: true, fallback: "Meet to Manage" },
   "org.domain": { category: "General", fallback: "app.meettomanage.cloud" },
-  "org.supportEmail": { category: "General", fallback: "support@meettomanage.cloud" },
+  "org.supportEmail": { category: "General", isPublic: true, fallback: "support@meettomanage.cloud" },
   "org.supportPhone": { category: "General", fallback: "+91 98200 00000" },
   "org.timezone": { category: "General", fallback: "Asia/Kolkata (GMT +5:30)" },
   // Printed on every generated invoice PDF (Admin Billing → Download PDF) — these were
@@ -95,6 +95,8 @@ const SETTING_META: Record<string, { category: SettingCategory; isPublic?: boole
   "invoice.signatoryTitle": { category: "General", fallback: "" },
   "brand.name": { category: "Branding", isPublic: true, fallback: "Meet to Manage" },
   "brand.logoUrl": { category: "Branding", isPublic: true, fallback: "" },
+  "brand.darkLogoUrl": { category: "Branding", isPublic: true, fallback: "" },
+  "brand.faviconUrl": { category: "Branding", isPublic: true, fallback: "" },
   "brand.primaryColor": { category: "Branding", isPublic: true, fallback: "#1E3A5F" },
   "brand.accentColor": { category: "Branding", isPublic: true, fallback: "#E63329" },
   "brand.fontFamily": { category: "Branding", isPublic: true, fallback: "DM Sans" },
@@ -248,6 +250,8 @@ export default function AdminSettings() {
       ...getBrand(),
       name: values["brand.name"] || "Meet to Manage",
       logoUrl: values["brand.logoUrl"] || undefined,
+      darkLogoUrl: values["brand.darkLogoUrl"] || undefined,
+      faviconUrl: values["brand.faviconUrl"] || undefined,
       primaryHsl: hexToHslTriple(values["brand.primaryColor"] || "#1E3A5F"),
       accentHsl: hexToHslTriple(values["brand.accentColor"] || "#E63329"),
       fontFamily: values["brand.fontFamily"] || undefined,
@@ -452,6 +456,11 @@ export default function AdminSettings() {
                     onChange={(e) => setValue("brand.logoUrl", e.target.value)}
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5"><Label htmlFor="brand-dark-logo">Logo for dark backgrounds</Label><Input id="brand-dark-logo" placeholder="Optional light/white logo URL" value={values["brand.darkLogoUrl"]} onChange={(e) => setValue("brand.darkLogoUrl", e.target.value)} /></div>
+                <div className="grid gap-1.5"><Label htmlFor="brand-favicon">Square browser/app icon</Label><Input id="brand-favicon" placeholder="Optional square icon URL" value={values["brand.faviconUrl"]} onChange={(e) => setValue("brand.faviconUrl", e.target.value)} /></div>
               </div>
 
               <LogoField

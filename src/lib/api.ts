@@ -15,6 +15,23 @@ export function tenantApiBaseUrl(): string {
   return baseUrl(true);
 }
 
+/** Authenticated tenant-scoped response for file/stream endpoints that do not return JSON. */
+export async function tenantFileFetch(path: string): Promise<Response> {
+  const token = getAccessToken();
+  const init: RequestInit = { headers: token ? { Authorization: `Bearer ${token}` } : undefined };
+  let response = await safeFetch(`${baseUrl(true)}${path}`, init);
+  if (response.status === 401 && token) {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    response = await safeFetch(`${baseUrl(true)}${path}`, init);
+  }
+  if (response.status === 401 && token) {
+    const viewAs = getViewAs() !== null;
+    clearAuthStorage();
+    window.location.assign(viewAs ? "/view-as?ended=1" : window.location.pathname.startsWith("/marketing") ? "/marketing/login" : "/login");
+  }
+  return response;
+}
+
 const TOKEN_KEY = "trn.accessToken";
 
 export function apiEnabled(): boolean {
@@ -205,10 +222,7 @@ export function apiFetchGlobal<T>(path: string, init?: RequestInit, includeAuth 
 
 /** Downloads a file response (a bulk-export CSV) with the auth token and saves it as `filename`. */
 export async function downloadFile(path: string, filename: string): Promise<void> {
-  const token = getAccessToken();
-  const response = await safeFetch(`${baseUrl(true)}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
+  const response = await tenantFileFetch(path);
 
   if (!response.ok) {
     throw new ApiError(response.status, await readProblemMessage(response));

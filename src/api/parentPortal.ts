@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, getAccessToken, readProblemMessage, tenantApiBaseUrl } from "@/lib/api";
+import { ApiError, apiFetch, readProblemMessage, tenantFileFetch } from "@/lib/api";
 import { fileNameFor } from "@/lib/fileName";
 import type { ApiInvoice } from "@/api/billing";
 import type { ApiClassSession, ApiSessionRecording } from "@/api/sessions";
@@ -112,11 +112,7 @@ export async function listMyRecordings(): Promise<ApiParentRecording[]> {
  * and batch visibility.
  */
 export async function downloadParentResource(id: string, fallbackName: string): Promise<void> {
-  const baseUrl = tenantApiBaseUrl();
-  const token = getAccessToken();
-  const response = await fetch(`${baseUrl}/api/parent-portal/resources/${id}/download`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
+  const response = await tenantFileFetch(`/api/parent-portal/resources/${id}/download`);
   if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
 
   const blob = await response.blob();
@@ -179,11 +175,7 @@ export async function listEnrollmentForms(status?: ApiEnrollmentForm["status"]):
  * document instead).
  */
 export async function downloadParentInvoice(invoiceId: string, invoiceNumber: string): Promise<void> {
-  const baseUrl = tenantApiBaseUrl();
-  const token = getAccessToken();
-  const response = await fetch(`${baseUrl}/api/parent-portal/invoices/${invoiceId}/download`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
+  const response = await tenantFileFetch(`/api/parent-portal/invoices/${invoiceId}/download`);
   if (!response.ok) throw new ApiError(response.status, await readProblemMessage(response));
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
