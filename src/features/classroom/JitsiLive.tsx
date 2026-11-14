@@ -633,6 +633,8 @@ export default function JitsiLive({
   const [savingOnExit, setSavingOnExit] = useState(false);
   /** Set by the init effect: starts (or retries) the server recording. */
   const serverRecordingStartRef = useRef<() => void>(() => undefined);
+  // Off on plans that record in the teacher's browser only: then nothing ever asks the recording server.
+  const serverRecordingAllowedRef = useRef(true);
   const browserFailingRef = useRef(false);
   // Jibri only ever records the room's own stage/dominant view -- it can't see our whiteboard/
   // quiz overlay, which lives in a separate cross-origin-iframed page it has no access to. The
@@ -816,6 +818,7 @@ export default function JitsiLive({
           recordingModeRef.current = parseRecordingMode(settings.recordingMode);
           setRecordingModeSetting(recordingModeRef.current);
           setTeacherCanChooseRecording(settings.teacherCanChooseRecording ?? true);
+          serverRecordingAllowedRef.current = settings.serverRecordingAllowed ?? true;
           defaultLobbyRef.current = settings.defaultLobbyEnabled;
         }
       })
@@ -1147,6 +1150,14 @@ export default function JitsiLive({
     }
 
     serverRecordingStartRef.current = () => {
+      if (!serverRecordingAllowedRef.current) {
+        toast({
+          variant: "error",
+          title: "This class can't be recorded here",
+          description: "Your academy's plan records in the teacher's browser. Open the class in Chrome or Edge on a computer to record it.",
+        });
+        return;
+      }
       recordingErrorReasonRef.current = null;
       recordingRetryCountRef.current = 0;
       setServerRecordingRequested(true);

@@ -221,6 +221,8 @@ export interface ApiClassroomSettings {
   recordingMode?: string;
   /** Whether a teacher may switch between server and browser recording in class. */
   teacherCanChooseRecording?: boolean;
+  /** False when the academy's plan records in the teacher's browser only (no recording server). */
+  serverRecordingAllowed?: boolean;
   /** Admin-managed via Settings → Integrations → Jitsi Meet ("defaultLobby") — on means the
    *  teacher's own join automatically turns on the waiting room, so a student can't land
    *  straight into an unattended room before the teacher's there. */

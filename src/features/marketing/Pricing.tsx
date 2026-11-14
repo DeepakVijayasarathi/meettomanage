@@ -21,42 +21,66 @@ type Cycle = "Month" | "Year";
 /** What the page shows if the live plan list can't be fetched (offline preview, API hiccup).
  *  Mirrors the plans configured in the billing system so the page never advertises a different
  *  price from what an academy is actually invoiced — the live list always wins when it loads. */
+const OFF = (modules: string[]) => modules.map((m) => ({ key: `module_${m}`, value: 0 }));
+const FEATURES = (on: Record<string, number>) =>
+  ["feature_recordings", "feature_server_recording", "feature_payment_gateway", "feature_white_label", "feature_whatsapp", "feature_custom_domain", "feature_api_access"]
+    .map((key) => ({ key, value: on[key] ?? 0 }));
 const FALLBACK_PLANS: PublicPlan[] = [
   {
     id: "fallback-free", code: "free", name: "Free", description: null, trialDays: 0, isFree: true,
     prices: [{ id: "f-m", billingInterval: "Month", currency: "INR", amount: 0 }],
     entitlements: [
-      { key: "max_students", value: 20 }, { key: "max_staff", value: 3 }, { key: "max_storage_mb", value: 1024 },
+      { key: "max_students", value: 25 }, { key: "max_staff", value: 3 }, { key: "max_storage_mb", value: 1024 },
       { key: "max_session_minutes_per_month", value: 1200 }, { key: "recording_retention_days", value: 0 },
-      { key: "feature_recordings", value: 0 }, { key: "feature_payment_gateway", value: 0 }, { key: "feature_white_label", value: 0 },
-      { key: "feature_whatsapp", value: 0 }, { key: "feature_custom_domain", value: 0 }, { key: "feature_api_access", value: 0 },
-      ...["BillingFinance", "Payouts", "ReportsAnalytics", "Admission", "LeaveManagement", "ClassSessionLogs"].map((m) => ({ key: `module_${m}`, value: 0 })),
+      ...FEATURES({}),
+      ...OFF(["BillingFinance", "Payouts", "ReportsAnalytics", "Admission", "LeaveManagement", "ClassSessionLogs"]),
     ],
   },
   {
-    id: "fallback-starter", code: "starter", name: "Starter", description: null, trialDays: 0,
-    prices: [{ id: "s-m", billingInterval: "Month", currency: "INR", amount: 2999 }, { id: "s-y", billingInterval: "Year", currency: "INR", amount: 29990 }],
+    id: "fallback-basic", code: "basic", name: "Basic", description: null, trialDays: 14,
+    prices: [{ id: "b-m", billingInterval: "Month", currency: "INR", amount: 999 }, { id: "b-y", billingInterval: "Year", currency: "INR", amount: 9990 }],
     entitlements: [
-      { key: "max_students", value: 100 }, { key: "max_staff", value: 15 }, { key: "max_storage_mb", value: 20480 },
-      { key: "max_session_minutes_per_month", value: 6000 }, { key: "recording_retention_days", value: 16 },
-      { key: "feature_recordings", value: 1 }, { key: "feature_payment_gateway", value: 1 }, { key: "feature_white_label", value: 1 },
-      { key: "feature_whatsapp", value: 0 }, { key: "feature_custom_domain", value: 0 }, { key: "feature_api_access", value: 0 },
+      { key: "max_students", value: 75 }, { key: "max_staff", value: 5 }, { key: "max_storage_mb", value: 10240 },
+      { key: "max_session_minutes_per_month", value: 3600 }, { key: "recording_retention_days", value: 7 },
+      ...FEATURES({ feature_recordings: 1, feature_payment_gateway: 1, feature_white_label: 1 }),
+      ...OFF(["Admission", "ReportsAnalytics", "Payouts"]),
     ],
   },
   {
-    id: "fallback-growth", code: "growth", name: "Growth", description: null, trialDays: 0,
-    prices: [{ id: "g-m", billingInterval: "Month", currency: "INR", amount: 7999 }, { id: "g-y", billingInterval: "Year", currency: "INR", amount: 79990 }],
+    id: "fallback-pro", code: "pro", name: "Pro", description: null, trialDays: 14,
+    prices: [{ id: "p-m", billingInterval: "Month", currency: "INR", amount: 2499 }, { id: "p-y", billingInterval: "Year", currency: "INR", amount: 24990 }],
     entitlements: [
-      { key: "max_students", value: 500 }, { key: "max_staff", value: 50 }, { key: "max_storage_mb", value: 204800 },
-      { key: "max_session_minutes_per_month", value: 30000 }, { key: "recording_retention_days", value: 30 },
-      { key: "feature_recordings", value: 1 }, { key: "feature_payment_gateway", value: 1 }, { key: "feature_white_label", value: 1 },
-      { key: "feature_whatsapp", value: 1 }, { key: "feature_custom_domain", value: 0 }, { key: "feature_api_access", value: 1 },
+      { key: "max_students", value: 250 }, { key: "max_staff", value: 15 }, { key: "max_storage_mb", value: 51200 },
+      { key: "max_session_minutes_per_month", value: 12000 }, { key: "recording_retention_days", value: 30 },
+      ...FEATURES({ feature_recordings: 1, feature_payment_gateway: 1, feature_white_label: 1, feature_whatsapp: 1 }),
+    ],
+  },
+  {
+    id: "fallback-growth", code: "growth", name: "Growth", description: null, trialDays: 14,
+    prices: [{ id: "g-m", billingInterval: "Month", currency: "INR", amount: 5999 }, { id: "g-y", billingInterval: "Year", currency: "INR", amount: 59990 }],
+    entitlements: [
+      { key: "max_students", value: 750 }, { key: "max_staff", value: 50 }, { key: "max_storage_mb", value: 204800 },
+      { key: "max_session_minutes_per_month", value: 36000 }, { key: "recording_retention_days", value: 90 },
+      ...FEATURES({ feature_recordings: 1, feature_server_recording: 1, feature_payment_gateway: 1, feature_white_label: 1, feature_whatsapp: 1, feature_api_access: 1 }),
     ],
   },
 ];
 
 function entitlement(plan: PublicPlan, key: string): number | undefined {
   return plan.entitlements.find((e) => e.key === key)?.value;
+}
+
+/** Server recording is allowed unless the plan switches it off (matching the backend), so older plans keep it. */
+function recordsOnServer(plan: PublicPlan): boolean {
+  return entitlement(plan, "feature_server_recording") !== 0;
+}
+
+/** The plan buyers should look at first: Pro when it's on sale, otherwise the most expensive of two or the middle one. */
+function popularPlanCode(paid: PublicPlan[]): string | null {
+  if (paid.length < 2) return null;
+  const pro = paid.find((p) => p.code === "pro");
+  if (pro) return pro.code;
+  return paid.length === 2 ? paid[1].code : paid[Math.floor((paid.length - 1) / 2)].code;
 }
 
 /** A plan includes a module unless it switches it off (module_* = 0), matching the backend rule. */
@@ -94,6 +118,19 @@ const T = {
     monthsFree: (n: number) => `${n} months free`,
     popular: "MOST POPULAR",
     limitsTitle: "Included",
+    recordingKind: { browser: "Class recordings (made in the teacher's browser)", server: "Class recordings (recording server or browser)" },
+    addons: {
+      title: "Add-ons when you need a little more",
+      body: "Grow without jumping a whole plan. Ask us on WhatsApp and we'll add any of these to your account.",
+      items: [
+        { name: "50 more students", price: "₹399 / month" },
+        { name: "50 GB more storage", price: "₹299 / month" },
+        { name: "Keep recordings 180 days", price: "₹499 / month" },
+        { name: "Custom domain on Pro", price: "₹499 / month" },
+        { name: "WhatsApp messages", price: "Prepaid credit" },
+      ],
+      cta: "Ask for an add-on",
+    },
     limits: {
       students: (n: string) => `Up to ${n} active students`,
       staff: (n: string) => `Up to ${n} teachers & staff`,
@@ -174,6 +211,19 @@ const T = {
     monthsFree: (n: number) => `${n} أشهر مجانًا`,
     popular: "الأكثر شيوعًا",
     limitsTitle: "المشمول",
+    recordingKind: { browser: "تسجيل الحصص (من متصفح المعلم)", server: "تسجيل الحصص (خادم التسجيل أو المتصفح)" },
+    addons: {
+      title: "إضافات عندما تحتاج المزيد قليلًا",
+      body: "توسّع دون الانتقال إلى خطة كاملة أعلى. راسلنا عبر واتساب وسنضيف أيًا منها إلى حسابك.",
+      items: [
+        { name: "50 طالبًا إضافيًا", price: "₹399 / شهريًا" },
+        { name: "50 جيجابايت تخزين إضافي", price: "₹299 / شهريًا" },
+        { name: "حفظ التسجيلات 180 يومًا", price: "₹499 / شهريًا" },
+        { name: "نطاق خاص في خطة Pro", price: "₹499 / شهريًا" },
+        { name: "رسائل واتساب", price: "رصيد مسبق الدفع" },
+      ],
+      cta: "اطلب إضافة",
+    },
     limits: {
       students: (n: string) => `حتى ${n} طالب نشط`,
       staff: (n: string) => `حتى ${n} معلم وموظف`,
@@ -279,13 +329,15 @@ interface CardProps {
   ctaTo: string;
   note?: string;
   secondary?: { label: string; to: string };
+  /** Four plans side by side: a little less padding and a smaller price so each card stays readable. */
+  compact?: boolean;
   children: React.ReactNode;
 }
 
 /** One plan: price and the direct sign-up button up top, then the same comparison rows on every card. */
-function PlanCard({ name, price, priceNote, ribbon, saving, description, highlighted, ctaLabel, ctaTo, note, secondary, children }: CardProps) {
+function PlanCard({ name, price, priceNote, ribbon, saving, description, highlighted, ctaLabel, ctaTo, note, secondary, compact, children }: CardProps) {
   return (
-    <article className={cn(CARD, "relative flex flex-col overflow-hidden p-7 sm:p-8", highlighted && "border-transparent ring-2 ring-[#EA580C] lg:-my-3 lg:py-10")}>
+    <article className={cn(CARD, "relative flex flex-col overflow-hidden p-7 sm:p-8", compact && "lg:p-6", highlighted && "border-transparent ring-2 ring-[#EA580C] lg:-my-3 lg:py-10")}>
       {highlighted && <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5" style={{ background: ACCENT_GRADIENT }} />}
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{name}</h2>
@@ -293,7 +345,7 @@ function PlanCard({ name, price, priceNote, ribbon, saving, description, highlig
       </div>
       {description && <p className="mt-2 min-h-[2.75rem] text-sm leading-relaxed text-[#5B6472]">{description}</p>}
       <div className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="font-display text-[clamp(2.4rem,3.6vw,3.1rem)] font-extrabold leading-none tracking-[-0.03em] text-[#111] rtl:tracking-normal">{price}</span>
+        <span className={cn("font-display font-extrabold leading-none tracking-[-0.03em] text-[#111] rtl:tracking-normal", compact ? "text-[clamp(2rem,2.5vw,2.6rem)]" : "text-[clamp(2.4rem,3.6vw,3.1rem)]")}>{price}</span>
         <span className="text-sm font-semibold text-[#5B6472]">{priceNote}</span>
       </div>
       <p className={cn("mt-2 h-6 text-xs font-semibold", saving ? "text-[#C2410C]" : "text-transparent")} aria-hidden={!saving}>{saving ?? "."}</p>
@@ -389,7 +441,8 @@ export default function Pricing() {
     };
   }, [visible]);
   const paid = visible.filter((p) => !isFreePlan(p));
-  const popularCode = paid.length > 1 ? paid[paid.length - 1].code : null;
+  const popularCode = popularPlanCode(paid);
+  const fourUp = visible.length >= 4;
 
   function limitLines(plan: PublicPlan): string[] {
     const num = (v: number, fmt: (n: number) => string) => (v === -1 ? t.unlimited : fmt(v));
@@ -429,12 +482,12 @@ export default function Pricing() {
         {loading && <p className="mb-4 text-center text-sm text-[#5B6472]" aria-live="polite">{t.loading}</p>}
         {lang === "en" && <div className={cn(HERO_OVERLAP, "mb-6 grid gap-3 rounded-3xl border border-[#EBCFB7] bg-[#FFF8F3] p-4 sm:grid-cols-3 sm:p-5")}>
           {[
-            { stage: "Starting out", plan: "Free", reason: "Run classes and organise up to 20 active students." },
-            { stage: "Growing operations", plan: "Starter", reason: "Add admissions, fees, recordings and academy branding." },
-            { stage: "Scaling the team", plan: "Growth", reason: "Support larger teams, more storage, WhatsApp and API access." },
+            { stage: "Tuition centre", plan: "Basic", reason: "Online fees, your branding and class recordings for up to 75 students." },
+            { stage: "Growing academy", plan: "Pro", reason: "Add admissions, reports, payouts and WhatsApp for up to 250 students." },
+            { stage: "Multi-batch institute", plan: "Growth", reason: "Larger teams, server recording, a 90-day archive and API access." },
           ].map((item) => <div key={item.plan} className="rounded-2xl bg-white p-4"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#C2410C]">{item.stage}</p><p className="mt-1 font-display text-lg font-extrabold text-[#111]">Choose {item.plan}</p><p className="mt-1 text-sm leading-relaxed text-[#5B6472]">{item.reason}</p></div>)}
         </div>}
-        <div className={cn("grid grid-cols-1 gap-4 md:grid-cols-2 lg:items-stretch", lang !== "en" && HERO_OVERLAP, visible.length >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
+        <div className={cn("grid grid-cols-1 gap-4 md:grid-cols-2 lg:items-stretch", lang !== "en" && HERO_OVERLAP, fourUp ? "lg:grid-cols-4" : visible.length >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
           {visible.map((plan) => {
             const free = isFreePlan(plan);
             const month = planPrice(plan, "Month", currency);
@@ -460,6 +513,7 @@ export default function Pricing() {
                 saving={shownCycle === "Year" && freeMonths > 0 ? t.monthsFree(freeMonths) : undefined}
                 description={plan.description}
                 highlighted={plan.code === popularCode}
+                compact={fourUp}
                 ctaLabel={cta.label}
                 ctaTo={cta.to}
                 note={cta.note}
@@ -478,7 +532,11 @@ export default function Pricing() {
                 <div>
                   <SectionTitle>{t.featuresTitle}</SectionTitle>
                   <ul className="flex flex-col gap-2.5">
-                    {Object.keys(t.features).map((key) => <Row key={key} on={(entitlement(plan, key) ?? 0) >= 1} label={t.features[key]} />)}
+                    {Object.keys(t.features).map((key) => {
+                      const on = (entitlement(plan, key) ?? 0) >= 1;
+                      const label = key === "feature_recordings" && on ? t.recordingKind[recordsOnServer(plan) ? "server" : "browser"] : t.features[key];
+                      return <Row key={key} on={on} label={label} />;
+                    })}
                   </ul>
                 </div>
               </PlanCard>
@@ -502,6 +560,33 @@ export default function Pricing() {
               {t.own.cta} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
             </Link>
           </div>
+        </div>
+
+        {/* Add-ons: sold on request for now, so academies grow without jumping a whole plan. */}
+        <div className="mt-6 rounded-3xl border border-[#EFE3D7] bg-[#FFF8F2] p-7 sm:p-9">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="font-display text-xl font-extrabold text-[#111] sm:text-2xl">{t.addons.title}</h2>
+              <p className="mt-1 max-w-xl text-sm leading-relaxed text-[#5B6472]">{t.addons.body}</p>
+            </div>
+            <a
+              href="https://wa.me/919344773231?text=I%27d%20like%20an%20add-on%20for%20my%20Meet%20to%20Manage%20plan"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackMarketingEvent("whatsapp_clicked")}
+              className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-[#C2410C] hover:underline"
+            >
+              <MessageCircle className="h-4 w-4" /> {t.addons.cta}
+            </a>
+          </div>
+          <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {t.addons.items.map((a) => (
+              <li key={a.name} className="rounded-2xl bg-white p-4 ring-1 ring-[#EFE3D7]">
+                <p className="text-sm font-semibold text-[#111]">{a.name}</p>
+                <p className="mt-1 text-sm text-[#C2410C]">{a.price}</p>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* How self-service signup works. */}

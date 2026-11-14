@@ -129,7 +129,7 @@ export default function MarketingHome() {
   const [weeklyAdminHours, setWeeklyAdminHours] = useState(12);
   const [adminHourlyCost, setAdminHourlyCost] = useState(250);
   const currency = useMemo(detectMarketCurrency, []);
-  const [fromInr, setFromInr] = useState(2999);
+  const [fromInr, setFromInr] = useState(999);
   const [fromUsd, setFromUsd] = useState<number | null>(null);
   const fromPrice = currency === "USD" ? fromUsd ?? Math.round(fromInr / INR_PER_USD) : fromInr;
 
