@@ -9,12 +9,14 @@ import { Label } from "@/components/ui/label";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { requestPinReset } from "@/api/auth";
 import { useLightBrandScope } from "@/lib/theme";
+import { useBrand } from "@/lib/branding";
 
 // Same headline face as Login.tsx (scoped to this page only, not the global font-display).
 const HEADLINE_FONT = "'Fredoka', ui-rounded, 'Segoe UI', sans-serif";
 
 export default function ForgotPin() {
   useLightBrandScope();
+  const brand = useBrand();
   const live = apiEnabled();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -42,7 +44,7 @@ export default function ForgotPin() {
   return (
     <div className="theme-light-scope flex min-h-screen items-center justify-center bg-brand-cream px-6">
       <Helmet>
-        <title>Reset your PIN | Meet to Manage</title>
+        <title>{`Reset your PIN | ${brand.name}`}</title>
         <meta name="robots" content="noindex, follow" />
       </Helmet>
       <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-[0_24px_70px_-24px_rgba(43,32,20,0.22)] ring-1 ring-brand-ink/[0.04]">

@@ -1,8 +1,10 @@
 import { cn } from "@/lib/utils";
+import { useBrand } from "@/lib/branding";
 
 /** The app's loading mark: the handshake logo inside a slowly turning ring of orange and navy arcs, with three bouncing dots
  *  beneath it. It holds still for visitors who ask for reduced motion, and announces itself to screen readers as "Loading". */
 export function BrandLoader({ size = 120, label = "Loading", className }: { size?: number; label?: string; className?: string }) {
+  const brand = useBrand();
   return (
     <div role="status" aria-live="polite" className={cn("flex flex-col items-center gap-5", className)}>
       <div className="relative" style={{ width: size, height: size }}>
@@ -22,7 +24,7 @@ export function BrandLoader({ size = 120, label = "Loading", className }: { size
             <path d="M6 44 A44 44 0 0 1 30 12" stroke="#1E293B" />
           </g>
         </svg>
-        <img src="/logo-icon-128.webp" alt="" width={128} height={128} className="absolute inset-[22%] h-[56%] w-[56%] object-contain drop-shadow-[0_6px_14px_rgba(234,88,12,0.35)]" />
+        <img src={brand.logoUrl || "/logo-icon-128.webp"} alt="" width={128} height={128} className="absolute inset-[22%] h-[56%] w-[56%] object-contain drop-shadow-[0_6px_14px_rgba(234,88,12,0.35)]" />
       </div>
       <div aria-hidden="true" className="flex items-center gap-2">
         {[0, 1, 2].map((i) => (

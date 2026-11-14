@@ -10,6 +10,11 @@ const API_ROOT: string = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/
 /** Read per request: a single-URL login sets the tenant after this module has loaded. */
 const baseUrl = (tenantScoped: boolean) => API_ROOT + (tenantScoped ? apiTenantPath() : "");
 
+/** Absolute tenant-aware root for binary/streaming calls that cannot use JSON apiFetch. */
+export function tenantApiBaseUrl(): string {
+  return baseUrl(true);
+}
+
 const TOKEN_KEY = "trn.accessToken";
 
 export function apiEnabled(): boolean {

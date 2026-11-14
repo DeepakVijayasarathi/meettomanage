@@ -75,12 +75,13 @@ export interface Brand {
   headingFont?: string;
 }
 
-let brand: Brand = {
+const DEFAULT_BRAND: Brand = {
   name: BRAND_NAME,
   logoUrl: BRAND_LOGO_URL,
   primaryHsl: BRAND_PRIMARY,
   accentHsl: BRAND_ACCENT,
 };
+let brand: Brand = { ...DEFAULT_BRAND };
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -106,6 +107,12 @@ export function useBrand(): Brand {
 export function setBrand(next: Brand) {
   brand = next;
   document.title = brand.name;
+  // The browser tab is part of white-label branding too. Remember each purpose-built
+  // platform icon so signing out restores it after a tenant logo was applied.
+  document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]').forEach((link) => {
+    link.dataset.defaultBrandHref ||= link.getAttribute("href") || "/favicon.ico";
+    link.href = brand.logoUrl || link.dataset.defaultBrandHref;
+  });
   if (brand.primaryHsl) {
     document.documentElement.style.setProperty("--primary", brand.primaryHsl);
     document.documentElement.style.setProperty("--ring", brand.primaryHsl);
@@ -125,6 +132,11 @@ export function setBrand(next: Brand) {
 /** Applies the env-var brand at startup: document title + theme token overrides. */
 export function applyBranding() {
   setBrand(brand);
+}
+
+/** Clears a signed-out tenant's identity so it never leaks into the next login. */
+export function resetBranding() {
+  setBrand({ ...DEFAULT_BRAND });
 }
 
 /**

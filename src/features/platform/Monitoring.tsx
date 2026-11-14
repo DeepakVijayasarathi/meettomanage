@@ -37,7 +37,9 @@ function MonitoringContent() {
   const { token } = usePlatformAdmin();
   const [showSettings, setShowSettings] = useState(false);
   const state = useLoader(useCallback(() => getPlatformMonitoring(token), [token]), EMPTY);
-  useEffect(() => { const id = window.setInterval(() => void state.reload(), Math.max(15, state.data.monitoringPolicy.refreshSeconds) * 1000); return () => window.clearInterval(id); }, [state.reload, state.data.monitoringPolicy.refreshSeconds]);
+  const reload = state.reload;
+  const refreshSeconds = state.data.monitoringPolicy.refreshSeconds;
+  useEffect(() => { const id = window.setInterval(() => void reload(), Math.max(15, refreshSeconds) * 1000); return () => window.clearInterval(id); }, [reload, refreshSeconds]);
   const d = state.data; const u = d.saas.usage;
   const thresholdWarnings = d.infrastructure.servers.flatMap(server => {
     const p = d.monitoringPolicy.servers.find(x => x.name === server.name); if (!p || p.maintenanceMode || !server.reachable) return [];

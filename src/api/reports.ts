@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, getAccessToken, readProblemMessage } from "@/lib/api";
+import { ApiError, apiFetch, getAccessToken, readProblemMessage, tenantApiBaseUrl } from "@/lib/api";
 
 export interface ApiDashboardSummary {
   totalStudents: number;
@@ -251,7 +251,7 @@ export async function getStudentAnalytics(childId: string): Promise<ApiStudentAn
 export async function downloadReportCsv(
   report: "attendance" | "revenue" | "payouts" | "conversion" | "performance"
 ): Promise<void> {
-  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  const baseUrl = tenantApiBaseUrl();
   const token = getAccessToken();
   const response = await fetch(`${baseUrl}/api/reports/export/${report}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,

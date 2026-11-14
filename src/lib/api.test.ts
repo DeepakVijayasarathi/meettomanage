@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiFetch, apiFetchGlobal, getAccessToken, setAccessToken } from "./api";
+import { ApiError, apiFetch, apiFetchGlobal, getAccessToken, setAccessToken, tenantApiBaseUrl } from "./api";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -59,6 +59,11 @@ describe("apiFetch", () => {
     await apiFetch("/api/sessions");
 
     expect(vi.mocked(fetch).mock.calls[0][0]).toBe("/t/academy-one/api/sessions");
+  });
+
+  it("gives binary downloads the same tenant-aware base as JSON requests", () => {
+    localStorage.setItem("trn.tenantCode", "academy-one");
+    expect(tenantApiBaseUrl()).toBe("/t/academy-one");
   });
 
   it("returns parsed JSON on success", async () => {

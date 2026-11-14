@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
-import { useBrand } from "@/lib/branding";
+import { loadBrandingFromApi, useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
 import { apiEnabled, getAccessToken, setAccessToken, userMessage } from "@/lib/api";
 import { getRemember, setRemember } from "@/lib/authStorage";
@@ -139,7 +139,7 @@ export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
         setTwoFactor({ challenge: response.twoFactorChallenge, homeOverride });
         return;
       }
-      finishLogin(response, homeOverride);
+      await finishLogin(response, homeOverride);
     } catch (err) {
       // Shown as a popup so it can't be missed (and doesn't push the form around on a one-screen page).
       toast({ variant: "error", title: "Sign in failed", description: userMessage(err, "Sign in failed. Please try again.") });
@@ -159,7 +159,7 @@ export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
     try {
       const response = await completeTwoFactorLogin(twoFactor.challenge, twoFactorCode);
       setTwoFactor(null);
-      finishLogin(response, twoFactor.homeOverride);
+      await finishLogin(response, twoFactor.homeOverride);
     } catch (err) {
       toast({ variant: "error", title: "Code not accepted", description: userMessage(err, "Please try again.") });
       setTwoFactorCode("");
@@ -173,7 +173,7 @@ export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
     }
   }
 
-  function finishLogin(response: LoginResponse, homeOverride?: string) {
+  async function finishLogin(response: LoginResponse, homeOverride?: string) {
     const frontendRole = toFrontendRole(response.user.role);
     // The marketing team signs in only through its own console login, never this
     // academy-facing one — drop the token it was just issued instead of letting it in.
@@ -185,6 +185,9 @@ export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
     // Besides prefixing calls made from the single /login URL, this lets startup
     // reject a remembered tenant-A session opened under tenant B's portal.
     setSessionTenant(response.tenantCode ?? null);
+    // /login has no tenant in its URL. Reload now that the resolved tenant code is
+    // known so the first portal render already has the academy logo and colours.
+    await loadBrandingFromApi();
     const homePath = homeOverride ?? safeInternalPath(response.defaultRoute) ?? ROLE_META[frontendRole].homePath;
     setSessionRole(frontendRole);
     setUserName(response.user.fullName);

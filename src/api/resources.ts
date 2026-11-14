@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, getAccessToken, readProblemMessage } from "@/lib/api";
+import { ApiError, apiFetch, getAccessToken, readProblemMessage, tenantApiBaseUrl } from "@/lib/api";
 import type { Resource } from "@/types";
 import { fileNameFor, isInlineViewable } from "@/lib/fileName";
 
@@ -117,7 +117,7 @@ export async function openResourceInNewTab(id: string, title: string): Promise<v
       // fall through to the download-and-show path below
     }
 
-    const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+    const baseUrl = tenantApiBaseUrl();
     const token = getAccessToken();
     const response = await fetch(`${baseUrl}/api/resources/${id}/download`, {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -165,7 +165,7 @@ export async function openResourceInNewTab(id: string, title: string): Promise<v
 
 /** Teacher portal: download a resource the teacher owns. */
 export async function downloadMyResource(id: string, fallbackName: string): Promise<void> {
-  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  const baseUrl = tenantApiBaseUrl();
   const token = getAccessToken();
   const response = await fetch(`${baseUrl}/api/resources/${id}/mine/download`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,

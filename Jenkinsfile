@@ -2,6 +2,13 @@ pipeline {
 
     agent any
 
+    options {
+        // Avoid concurrent builds fighting over the candidate and production ports.
+        disableConcurrentBuilds(abortPrevious: true)
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+    }
+
     environment {
         IMAGE_NAME     = 'deepakrajv/meettomanage'
         CONTAINER_NAME = 'meettomanageUi'
@@ -80,6 +87,11 @@ pipeline {
                     curl --fail --silent http://127.0.0.1:2101/ | grep -F 'Meet to Manage'
                     curl --fail --silent http://127.0.0.1:2101/pricing | grep -F 'Pricing'
                     curl --fail --silent http://127.0.0.1:2101/signup | grep -F 'Create your Meet to Manage workspace'
+                    # Verify the Nginx policy itself, not only the page body. These checks
+                    # catch add_header inheritance mistakes before production is replaced.
+                    curl --fail --silent --head http://127.0.0.1:2101/ | grep -iF 'content-security-policy:' | grep -F "frame-ancestors 'self'"
+                    curl --fail --silent --head http://127.0.0.1:2101/login | grep -iF 'x-robots-tag: noindex, follow'
+                    curl --fail --silent --head http://127.0.0.1:2101/release.json | grep -iF 'cache-control: no-store'
                     docker rm -f \${CANDIDATE}
                 """
             }

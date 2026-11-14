@@ -1,4 +1,4 @@
-import { apiFetch, getAccessToken, ApiError, readProblemMessage } from "@/lib/api";
+import { apiFetch, getAccessToken, ApiError, readProblemMessage, tenantApiBaseUrl } from "@/lib/api";
 import { holidayNameFromReason } from "@/lib/cancelledBy";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import type { ClassSession, SessionStatus } from "@/types";
@@ -125,7 +125,7 @@ export async function updateSessionSummary(sessionId: string, summary: string): 
 /** Personal iCalendar feed URL (absolute) for external calendar apps — created server-side on first request. */
 export async function getCalendarFeedUrl(): Promise<string> {
   const { url } = await apiFetch<{ url: string }>("/api/sessions/calendar/feed-url");
-  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  const baseUrl = tenantApiBaseUrl();
   return `${baseUrl}${url}`;
 }
 
@@ -502,7 +502,7 @@ export async function getPresentation(sessionId: string): Promise<ApiSessionPres
  */
 export async function fetchPresentationFile(sessionId: string): Promise<ArrayBuffer> {
   const token = getAccessToken();
-  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  const baseUrl = tenantApiBaseUrl();
   const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/presentation/file`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });

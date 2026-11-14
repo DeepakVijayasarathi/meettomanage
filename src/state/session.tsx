@@ -9,6 +9,7 @@ import { checkPermission, type PermissionAction } from "@/lib/permissions";
 import { safeInternalPath, setVisibleInterval } from "@/lib/utils";
 import type { PermissionModuleName } from "@/api/permissions";
 import { getUserTimeZone, setUserTimeZone } from "@/lib/datetime";
+import { resetBranding } from "@/lib/branding";
 
 /** The logged-in parent's children, for the child switcher across parent screens. */
 export interface SessionChild {
@@ -229,6 +230,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setPermissionsState([]);
         setHomePathState(null);
         clearAuthStorage();
+        resetBranding();
         setTimeZoneId(null);
       },
       activeChildId,

@@ -10,6 +10,7 @@ import { loginMarketing } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
 import { useSession } from "@/state/session";
 import { setSessionTenant } from "@/lib/tenantPath";
+import { loadBrandingFromApi } from "@/lib/branding";
 
 const PIN_LENGTH = 4;
 
@@ -46,6 +47,7 @@ export default function MarketingLogin() {
         throw new Error("Sign in failed. Please check your email and PIN.");
       }
       setSessionTenant(response.tenantCode ?? null);
+      await loadBrandingFromApi();
       setRole("marketing");
       setUserName(response.user.fullName);
       setPermissions(response.permissions);

@@ -3,8 +3,10 @@ import { Compass } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Seo } from "@/components/Seo";
+import { useBrand } from "@/lib/branding";
 
 export default function NotFound() {
+  const brand = useBrand();
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-muted/30 px-6 text-center">
       {/* nginx serves index.html (HTTP 200) for every unknown path so client-side routing
@@ -12,7 +14,7 @@ export default function NotFound() {
           doesn't actually resolve, so it needs its own noindex rather than inheriting
           whatever title/description the previous page (or index.html's own defaults) left behind. */}
       <Seo
-        title="Page Not Found — Meet to Manage"
+        title={`Page Not Found — ${brand.name}`}
         description="The page you're looking for doesn't exist or has moved."
         path="/404"
         noindex

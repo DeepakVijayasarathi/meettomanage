@@ -19,7 +19,9 @@ export function Logo({ className, imgClassName, showWordmark = true, variant = "
   // A white-labeled tenant (brand.name overridden via Settings & Branding, see lib/branding.ts)
   // never gets this baked-in "Meet to Manage" image — it falls back to the plain icon + text
   // wordmark instead, same as before this mark existed.
-  const isDefaultBrand = brand.name === BRAND_NAME;
+  // A tenant may upload only a logo and intentionally keep the default product name.
+  // The uploaded image must still win over the baked-in platform lockup.
+  const isDefaultBrand = brand.name === BRAND_NAME && !brand.logoUrl;
 
   if (variant === "dark" && isDefaultBrand && showWordmark) {
     const height = imgClassName?.match(/\bh-\S+/)?.[0] ?? "h-14";
