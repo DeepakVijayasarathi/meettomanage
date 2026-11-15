@@ -17,7 +17,7 @@ describe("tenant branding", () => {
     expect(screen.getByRole("img", { name: BRAND_NAME })).toHaveAttribute("src", "https://cdn.example/academy.png");
   });
 
-  it("updates and restores the browser icon", () => {
+  it("keeps the platform browser icon when tenant branding changes", () => {
     const icon = document.createElement("link");
     icon.rel = "icon";
     icon.href = "/favicon-32.png";
@@ -25,7 +25,7 @@ describe("tenant branding", () => {
     document.head.appendChild(icon);
 
     setBrand({ name: "Academy One", logoUrl: "https://cdn.example/academy.png" });
-    expect(icon.href).toBe("https://cdn.example/academy.png");
+    expect(new URL(icon.href).pathname).toBe("/favicon-32.png");
 
     resetBranding();
     expect(new URL(icon.href).pathname).toBe("/favicon-32.png");

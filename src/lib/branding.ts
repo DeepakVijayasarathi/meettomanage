@@ -42,7 +42,7 @@ export const BRAND_FONTS = [
   "DM Sans", "Plus Jakarta Sans", "Inter", "Poppins", "Roboto", "Open Sans", "Lato", "Montserrat", "Nunito",
   "Work Sans", "Source Sans 3", "Raleway", "Merriweather", "Playfair Display", "Lora",
 ] as const;
-export const DEFAULT_BODY_FONT = "DM Sans";
+export const DEFAULT_BODY_FONT = "Inter";
 export const DEFAULT_HEADING_FONT = "Plus Jakarta Sans";
 const PRELOADED_FONTS = new Set<string>([DEFAULT_BODY_FONT, DEFAULT_HEADING_FONT]);
 
@@ -66,7 +66,6 @@ export interface Brand {
   name: string;
   logoUrl?: string;
   darkLogoUrl?: string;
-  faviconUrl?: string;
   /** Primary colour as "H S% L%" triple, ready for the --primary token. */
   primaryHsl?: string;
   /** Accent colour as "H S% L%" triple, ready for the --brand-accent token. */
@@ -114,7 +113,8 @@ export function setBrand(next: Brand) {
   // platform icon so signing out restores it after a tenant logo was applied.
   document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]').forEach((link) => {
     link.dataset.defaultBrandHref ||= link.getAttribute("href") || "/favicon.ico";
-    link.href = brand.faviconUrl || brand.logoUrl || link.dataset.defaultBrandHref;
+    // The browser tab represents the Meet to Manage platform, not the active tenant.
+    link.href = link.dataset.defaultBrandHref;
   });
   if (brand.primaryHsl) {
     document.documentElement.style.setProperty("--primary", brand.primaryHsl);
@@ -156,7 +156,6 @@ export async function loadBrandingFromApi(): Promise<void> {
       name: map["brand.name"] || BRAND_NAME,
       logoUrl: map["brand.logoUrl"] || BRAND_LOGO_URL,
       darkLogoUrl: map["brand.darkLogoUrl"] || undefined,
-      faviconUrl: map["brand.faviconUrl"] || undefined,
       primaryHsl: primaryHex ? hexToHslTriple(primaryHex) : BRAND_PRIMARY,
       accentHsl: accentHex ? hexToHslTriple(accentHex) : BRAND_ACCENT,
       fontFamily: map["brand.fontFamily"] ?? undefined,

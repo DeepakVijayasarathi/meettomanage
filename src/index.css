@@ -5,7 +5,7 @@
 @layer base {
   :root {
     /* Runtime-brandable typefaces (brand.fontFamily / brand.headingFont); see lib/branding.ts. */
-    --brand-font-sans: "DM Sans";
+    --brand-font-sans: "Inter";
     --brand-font-display: "Plus Jakarta Sans";
     /* Neutral, low-chroma surfaces: content and data carry the colour, not the chrome. */
     --background: 220 14% 97.5%;

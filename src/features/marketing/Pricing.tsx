@@ -337,19 +337,19 @@ interface CardProps {
 /** One plan: price and the direct sign-up button up top, then the same comparison rows on every card. */
 function PlanCard({ name, price, priceNote, ribbon, saving, description, highlighted, ctaLabel, ctaTo, note, secondary, compact, children }: CardProps) {
   return (
-    <article className={cn(CARD, "relative flex flex-col overflow-hidden p-7 sm:p-8", compact && "lg:p-6", highlighted && "border-transparent ring-2 ring-[#EA580C] lg:-my-3 lg:py-10")}>
+    <article className={cn(CARD, "relative flex h-full min-w-0 flex-col overflow-hidden p-6 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_-34px_rgba(194,65,12,.42)] sm:p-7", compact && "lg:p-6", highlighted && "border-[#EA580C] ring-2 ring-[#EA580C]/20")}>
       {highlighted && <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5" style={{ background: ACCENT_GRADIENT }} />}
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-[#111] rtl:tracking-normal">{name}</h2>
-        {ribbon && <span className={cn("rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.06em] rtl:tracking-normal", highlighted ? "bg-[#111] text-white" : "bg-[#ECFDF3] text-[#047857]")}>{ribbon}</span>}
+      <div className="flex min-h-[3rem] items-start justify-between gap-3">
+        <h2 className="font-display min-w-0 text-[1.4rem] font-extrabold leading-tight tracking-[-0.025em] text-[#111] rtl:tracking-normal">{name}</h2>
+        {ribbon && <span className={cn("mt-0.5 shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.06em] rtl:tracking-normal", highlighted ? "bg-[#111] text-white" : "bg-[#ECFDF3] text-[#047857]")}>{ribbon}</span>}
       </div>
-      {description && <p className="mt-2 min-h-[2.75rem] text-sm leading-relaxed text-[#5B6472]">{description}</p>}
-      <div className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      <p className="mt-2 min-h-[3.25rem] text-sm leading-relaxed text-[#5B6472]">{description || <span aria-hidden="true">&nbsp;</span>}</p>
+      <div className="mt-5 flex min-h-[3.25rem] flex-wrap items-baseline gap-x-2 gap-y-1">
         <span className={cn("font-display font-extrabold leading-none tracking-[-0.03em] text-[#111] rtl:tracking-normal", compact ? "text-[clamp(2rem,2.5vw,2.6rem)]" : "text-[clamp(2.4rem,3.6vw,3.1rem)]")}>{price}</span>
         <span className="text-sm font-semibold text-[#5B6472]">{priceNote}</span>
       </div>
       <p className={cn("mt-2 h-6 text-xs font-semibold", saving ? "text-[#C2410C]" : "text-transparent")} aria-hidden={!saving}>{saving ?? "."}</p>
-      <Link to={ctaTo} className={cn(highlighted ? CTA_ORANGE : CTA_DARK, "mt-4 w-full min-w-0 !rounded-2xl !px-5 text-sm")}>
+      <Link to={ctaTo} className={cn(highlighted ? CTA_ORANGE : CTA_DARK, "mt-4 min-h-12 w-full min-w-0 !rounded-2xl !px-4 text-center text-sm normal-case tracking-normal")}>
         {ctaLabel} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
       </Link>
       {/* Fixed-height slots so the comparison rows line up across cards. */}
@@ -370,7 +370,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function Row({ on, label, locked }: { on: boolean; label: string; locked?: boolean }) {
   const Off = locked ? Lock : Minus;
   return (
-    <li className="flex items-start gap-2.5">
+    <li className="flex min-h-[2.5rem] items-start gap-2.5">
       {on ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#EA580C]" /> : <Off className="mt-0.5 h-4 w-4 shrink-0 text-[#A8A29E]" />}
       <span className={cn("text-sm leading-relaxed", on ? "text-[#111]" : "text-[#8A837D]")}>{!on && <span className="sr-only">Not included: </span>}{label}</span>
     </li>
@@ -478,7 +478,7 @@ export default function Pricing() {
         </div>
       </MarketingHero>
 
-      <section className="mx-auto max-w-[1160px] px-5 pb-[clamp(72px,8vw,120px)]">
+      <section className="mx-auto max-w-[1280px] px-5 pb-[clamp(72px,8vw,120px)]">
         {loading && <p className="mb-4 text-center text-sm text-[#5B6472]" aria-live="polite">{t.loading}</p>}
         {lang === "en" && <div className={cn(HERO_OVERLAP, "mb-6 grid gap-3 rounded-3xl border border-[#EBCFB7] bg-[#FFF8F3] p-4 sm:grid-cols-3 sm:p-5")}>
           {[
@@ -487,7 +487,7 @@ export default function Pricing() {
             { stage: "Multi-batch institute", plan: "Growth", reason: "Larger teams, server recording, a 90-day archive and API access." },
           ].map((item) => <div key={item.plan} className="rounded-2xl bg-white p-4"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#C2410C]">{item.stage}</p><p className="mt-1 font-display text-lg font-extrabold text-[#111]">Choose {item.plan}</p><p className="mt-1 text-sm leading-relaxed text-[#5B6472]">{item.reason}</p></div>)}
         </div>}
-        <div className={cn("grid grid-cols-1 gap-4 md:grid-cols-2 lg:items-stretch", lang !== "en" && HERO_OVERLAP, fourUp ? "lg:grid-cols-4" : visible.length >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
+        <div className={cn("grid grid-cols-1 gap-5 md:grid-cols-2 lg:auto-rows-fr lg:items-stretch", lang !== "en" && HERO_OVERLAP, fourUp ? "xl:grid-cols-4" : visible.length >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
           {visible.map((plan) => {
             const free = isFreePlan(plan);
             const month = planPrice(plan, "Month", currency);
