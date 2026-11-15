@@ -9,9 +9,11 @@ interface LogoProps {
   /** Extra classes on the wordmark — e.g. `"hidden sm:inline"` to drop it on narrow headers
       where it would otherwise wrap and crowd sibling nav buttons. */
   wordmarkClassName?: string;
+  /** Always show the Meet to Manage lockup, ignoring any uploaded logo/name (public platform pages such as signup). */
+  platform?: boolean;
 }
 
-export function Logo({ className, imgClassName, showWordmark = true, variant = "dark", wordmarkClassName }: LogoProps) {
+export function Logo({ className, imgClassName, showWordmark = true, variant = "dark", wordmarkClassName, platform = false }: LogoProps) {
   const brand = useBrand();
   const tenantLogo = variant === "light" ? brand.darkLogoUrl || brand.logoUrl : brand.logoUrl;
   // logo-full.png (public/logo-full.png, sourced from Docs/newlogo.png) is the current mark —
@@ -22,13 +24,13 @@ export function Logo({ className, imgClassName, showWordmark = true, variant = "
   // wordmark instead, same as before this mark existed.
   // A tenant may upload only a logo and intentionally keep the default product name.
   // The uploaded image must still win over the baked-in platform lockup.
-  const isDefaultBrand = brand.name === BRAND_NAME && !tenantLogo;
+  const isDefaultBrand = platform || (brand.name === BRAND_NAME && !tenantLogo);
 
   if (variant === "dark" && isDefaultBrand && showWordmark) {
     const height = imgClassName?.match(/\bh-\S+/)?.[0] ?? "h-14";
     return (
       <div className={cn("flex items-center", className)}>
-        <img src="/logo-full.webp" alt={brand.name} className={cn(height, "w-auto object-contain", wordmarkClassName)} />
+        <img src="/logo-full.webp" alt={platform ? BRAND_NAME : brand.name} className={cn(height, "w-auto object-contain", wordmarkClassName)} />
       </div>
     );
   }

@@ -8,7 +8,7 @@ import { useBrand } from "@/lib/branding";
 export default function NotFound() {
   const brand = useBrand();
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-muted/30 px-6 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#FFF6EE] px-6 text-center">
       {/* nginx serves index.html (HTTP 200) for every unknown path so client-side routing
           survives a refresh — this route is the only signal a crawler gets that the URL
           doesn't actually resolve, so it needs its own noindex rather than inheriting
@@ -19,7 +19,7 @@ export default function NotFound() {
         path="/404"
         noindex
       />
-      <Logo />
+      <Logo wordmarkClassName="mix-blend-multiply" />
       <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
         <Compass className="h-8 w-8" />
       </span>
@@ -27,9 +27,15 @@ export default function NotFound() {
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">404 — Page not found</h1>
         <p className="mt-2 text-sm text-muted-foreground">The page you're looking for doesn't exist or has moved.</p>
       </div>
-      <Button asChild>
-        <Link to="/portal-select">Back to portals</Link>
-      </Button>
+      {/* Most 404s are visitors from an old link or a typo, not signed-in users, so lead with the homepage. */}
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <Button asChild>
+          <Link to="/">Go to homepage</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/portal-select">My portal</Link>
+        </Button>
+      </div>
     </div>
   );
 }

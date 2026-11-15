@@ -46,9 +46,10 @@ export default function Mito() {
       });
     }
   }, [childId, childName]);
-  // Braces matter: newer browsers make scrollIntoView return a Promise, and an effect must not return one.
+  // Scroll only the message list, never the page: scrollIntoView also scrolled the window on open, hiding the page title.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    const list = endRef.current?.parentElement;
+    if (list) list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
   useEffect(() => () => window.speechSynthesis?.cancel(), []);
 
@@ -106,7 +107,7 @@ export default function Mito() {
           <div ref={endRef} />
         </div>}
 
-        {!quizOpen && configuration?.chatEnabled !== false && <form className="flex gap-2 border-t border-border bg-card p-3 sm:p-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+        {!quizOpen && configuration?.chatEnabled !== false && <form className="flex gap-2 border-t border-border bg-card p-3 pe-16 sm:p-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
           <label htmlFor="mito-message" className="sr-only">Message {assistantName}</label>
           <textarea id="mito-message" value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }} maxLength={2000} rows={1} disabled={sending || !apiEnabled()} placeholder={`Ask ${assistantName} a question...`} className="min-h-11 flex-1 resize-none rounded-xl border border-input bg-background px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" />
           <Button type="submit" size="icon" className="h-11 w-11 shrink-0 rounded-xl" disabled={!input.trim() || sending || !apiEnabled()} aria-label="Send message"><Send className="h-4 w-4" /></Button>

@@ -158,7 +158,7 @@ export default function Signup() {
   return <div className="theme-light-scope min-h-screen bg-brand-cream px-4 py-10">
     <Helmet><title>Create your Meet to Manage workspace</title><meta name="robots" content="noindex, follow" /></Helmet>
     <div className="mx-auto w-full max-w-2xl rounded-3xl bg-white p-6 shadow-[0_24px_70px_-24px_rgba(43,32,20,0.22)] ring-1 ring-brand-ink/[0.04] sm:p-10">
-      <Logo className="mb-6 justify-center" />
+      <Logo platform className="mb-6 justify-center" />
       {created ? <div className="space-y-4 text-center" role="status">
         <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" />
         <h1 className="text-2xl font-semibold text-brand-ink">Your workspace is ready</h1>

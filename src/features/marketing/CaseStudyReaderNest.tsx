@@ -115,7 +115,7 @@ export default function CaseStudyReaderNest() {
               </div>
               <figure className="relative mx-auto w-full max-w-[490px]">
                 <div className="overflow-hidden rounded-t-[160px] rounded-b-[24px] border-[6px] border-white shadow-[0_24px_70px_-25px_rgba(86,60,31,0.35)] sm:rounded-t-[200px]">
-                  <img src="/clients/reader-nest/reading-photo.webp" alt="AI-generated illustrative scene of a mother helping a child read" width={1536} height={1024} fetchPriority="high" className="aspect-[4/5] w-full object-cover object-[center_40%]" />
+                  <img src="/clients/reader-nest/reading-photo.webp" alt="AI-generated illustrative scene of a mother helping a child read" width={1536} height={1024} {...{ fetchpriority: "high" }} className="aspect-[4/5] w-full object-cover object-[center_40%]" />
                 </div>
                 <figcaption className="relative mx-4 -mt-14 rounded-2xl border border-[#EAE2D7] bg-white px-5 py-4 shadow-[0_10px_35px_-15px_rgba(53,40,25,0.2)] sm:mx-7">
                   <span className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[#B34B26]"><BookOpen className="h-3.5 w-3.5" /> Where it all began</span>

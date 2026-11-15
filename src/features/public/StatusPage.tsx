@@ -12,7 +12,7 @@ const COPY: Record<PublicStatus, { label: string; className: string; icon: typeo
 
 export default function StatusPage() {
   const [data, setData] = useState<PublicStatusSummary | null>(null); const [error, setError] = useState(""); const [loading, setLoading] = useState(true);
-  const load = useCallback(async () => { try { setData(await getPublicStatus()); setError(""); } catch (e) { setError(e instanceof Error ? e.message : "Status information is unavailable."); } finally { setLoading(false); } }, []);
+  const load = useCallback(async () => { try { setData(await getPublicStatus()); setError(""); } catch (e) { console.error("Status refresh failed", e); setError("We couldn't reach the status service just now. Please try again in a minute."); } finally { setLoading(false); } }, []);
   useEffect(() => { void load(); }, [load]);
   const refreshSeconds = data?.refreshSeconds;
   useEffect(() => { if (!refreshSeconds) return; const id = window.setInterval(() => void load(), Math.max(15, refreshSeconds) * 1000); return () => window.clearInterval(id); }, [refreshSeconds, load]);

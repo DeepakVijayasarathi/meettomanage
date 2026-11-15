@@ -42,7 +42,7 @@ export function HeroPicture({ c }: { c: HomeCopy["hero"]["room"] }) {
           width={1536}
           height={1024}
           decoding="async"
-          fetchPriority="high"
+          {...{ fetchpriority: "high" }}
           className="block h-auto w-full rounded-[22px] transition-transform duration-700 ease-out motion-safe:hover:scale-[1.012]"
         />
       </div>

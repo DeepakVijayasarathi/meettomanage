@@ -1,7 +1,8 @@
 import { useState, type CSSProperties } from "react";
 import { Helmet } from "react-helmet-async";
 import { useLocation, useNavigate, Navigate, Link } from "react-router-dom";
-import { ArrowRight, Clock, Eye, EyeOff, Loader2, Lock, Mail, Sparkles } from "lucide-react";
+import { LoginFeatureSlider } from "./LoginFeatureSlider";
+import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -245,25 +246,22 @@ export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
       <Helmet><meta name="robots" content="noindex, follow" /></Helmet>
       {/* Left: the institute photo under a light warm wash, with a no-commitment card at the bottom. */}
       <div className="relative hidden overflow-hidden lg:block">
-        <img src="/loginpage.png" alt="" className="absolute inset-0 h-full w-full object-cover object-[62%_bottom]" />
-        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#FFF6EE]/30 to-transparent" />
-        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[#FFF6EE]/30 via-transparent to-transparent" />
-
-        <div className="relative flex h-full flex-col px-12 pt-9 xl:px-16">
-          <Link to="/get-started" className="mt-auto mb-7 flex w-fit max-w-[440px] items-center gap-4 rounded-2xl bg-white/90 px-5 py-4 shadow-[0_18px_40px_-24px_rgba(28,25,23,0.4)] backdrop-blur transition-transform hover:-translate-y-0.5">
-            <Clock aria-hidden className="h-8 w-8 shrink-0 text-[#EA580C]" />
-            <span><span className="block text-base font-bold text-[#1C1917]">No commitment</span><span className="block text-sm text-[#57534E]">Request a demo and we'll follow up at a convenient time.</span></span>
-          </Link>
-        </div>
+        <LoginFeatureSlider />
       </div>
 
       {/* Right: the sign-in card. The whole page is one screen tall; only the demo list may scroll inside itself. */}
       <div className="flex h-full min-h-0 items-center justify-center p-3 sm:p-5">
         <div className="animate-fade-in flex max-h-full min-h-0 w-full max-w-[460px] flex-col overflow-hidden rounded-[28px] bg-white p-5 shadow-[0_30px_70px_-30px_rgba(194,65,12,0.35)] ring-1 ring-[#F6E3D3] sm:p-7">
           <div className="flex flex-col items-center text-center">
-            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white shadow-pop ring-1 ring-[#EFE3D7] [@media(max-height:760px)]:h-11 [@media(max-height:760px)]:w-11`}>
-              <img src={brand.logoUrl ?? "/logo-icon-128.webp"} alt={brand.name} className={`h-9 w-9 object-contain [@media(max-height:760px)]:h-7 [@media(max-height:760px)]:w-7`} />
-            </div>
+            {tenantPortal ? (
+              // An academy's own sign-in page (/t/<code>/login) keeps that academy's logo.
+              <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white shadow-pop ring-1 ring-[#EFE3D7] [@media(max-height:760px)]:h-11 [@media(max-height:760px)]:w-11`}>
+                <img src={brand.logoUrl ?? "/logo-icon-128.webp"} alt={brand.name} className={`h-9 w-9 object-contain [@media(max-height:760px)]:h-7 [@media(max-height:760px)]:w-7`} />
+              </div>
+            ) : (
+              // The shared /login and /demo-login pages always show the Meet to Manage mark, never an uploaded platform logo.
+              <img src="/logo-full.webp" alt="Meet to Manage" width={420} height={150} className="h-16 w-auto object-contain mix-blend-multiply [@media(max-height:760px)]:h-12" />
+            )}
             <h2 className={`font-display mt-2.5 text-3xl font-extrabold tracking-[-0.02em] text-[#1C1917] [@media(max-height:760px)]:mt-1.5 [@media(max-height:760px)]:text-2xl`}>{demo ? "Try the live demo" : "Welcome back"}</h2>
             <p className={`mt-1 text-sm text-[#57534E] [@media(max-height:760px)]:hidden`}>{demo ? "Pick a role to explore a sample academy. No sign-up needed." : "Sign in to your account and continue"}</p>
           </div>
@@ -280,13 +278,14 @@ export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
                       type="button"
                       disabled={submitting}
                       onClick={() => handleDemoAccountClick(account)}
-                      className={cn("flex min-w-0 items-center gap-2.5 !rounded-xl bg-white px-2.5 py-3 text-start shadow-sm ring-1 ring-[#F6E3D3] transition-colors hover:ring-[#F97316] disabled:pointer-events-none disabled:opacity-50", submitting && role === account.role && "relative z-10 ring-2 ring-[#F97316]")}
+                      className={cn("flex min-w-0 items-center gap-2 !rounded-xl bg-white px-2 py-3 text-start shadow-sm ring-1 ring-[#F6E3D3] transition-colors hover:ring-[#F97316] disabled:pointer-events-none disabled:opacity-50 sm:gap-2.5 sm:px-2.5", submitting && role === account.role && "relative z-10 ring-2 ring-[#F97316]")}
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FFEBDD] text-[#C2410C]">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FFEBDD] text-[#C2410C] sm:h-9 sm:w-9">
                         {role === account.role && submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <meta.icon className="h-4 w-4" />}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-sm font-bold text-[#1C1917]">{DEMO_LABEL[account.role] ?? meta.shortLabel}</span>
-                      <ArrowRight className="h-4 w-4 shrink-0 text-[#C2410C]" />
+                      {/* No truncation: "Coordinator"/"Management" were cut to "Coor…" on phones. The arrow is dropped there to make room. */}
+                      <span className="min-w-0 flex-1 break-words text-[13px] font-bold leading-tight text-[#1C1917] sm:text-sm">{DEMO_LABEL[account.role] ?? meta.shortLabel}</span>
+                      <ArrowRight className="hidden h-4 w-4 shrink-0 text-[#C2410C] min-[400px]:block" />
                     </button>
                   );
                 })}
